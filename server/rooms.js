@@ -26,7 +26,7 @@ export class RoomStore {
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
-    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:MAP.id, chat:{enabled:true,history:[],seq:0} };
+    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:MAP.id, chat:{enabled:true,history:[]} };
     this.rooms.set(room.code,room);
     return {room, player:this.add(room,'선생님','teacher',socketId)};
   }

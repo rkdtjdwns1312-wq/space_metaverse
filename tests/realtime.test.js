@@ -99,7 +99,7 @@ test('blocked words are masked before broadcasting',async t=>{
 test('chat text is validated before anything else, independent of cooldown',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
- for(const text of ['','   ','a'.repeat(121),'hithere',123]){
+ for(const text of ['','   ','a'.repeat(121),'hi'+String.fromCharCode(7)+'there','줄'+String.fromCharCode(10)+'바꿈',123]){
   const res=await call(s,'chat:send',{text});
   assert.equal(res.ok,false);assert.equal(res.error,'채팅은 1~120자로 입력해주세요.');
  }

@@ -4,11 +4,20 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createClassroomServer } from '../server/app.js';
+import { BLOCKED_WORDS } from '../server/chat-filter.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
 const errors=[],checks=[];
 mkdirSync('.local',{recursive:true});
+// Polls the chat input's live state instead of a fixed sleep, since room:state
+// broadcasts asynchronously after a teacher action's ack resolves.
+async function waitForChatInput(page,{disabled,placeholder}){
+  await page.waitForFunction(({disabled,placeholder})=>{
+    const el=document.getElementById('chat-input');
+    return !!el && el.disabled===disabled && el.placeholder===placeholder;
+  },{disabled,placeholder});
+}
 try{
  const teacherContext=await browser.newContext({viewport:{width:1440,height:1000}});
  const studentContext=await browser.newContext({viewport:{width:1440,height:1000},hasTouch:true});
@@ -68,6 +77,73 @@ try{
  await student.mouse.down();await student.waitForTimeout(300);await student.mouse.up();
  await student.waitForTimeout(200);
  assert.ok(p.x>oldX);checks.push('Mouse press on on-screen button moves the student');
+ // --- Chat (STEP 5), exercised while the student is still joined and the classroom is mobile-sized ---
+ await student.locator('#chat-input').fill('안녕하세요 선생님');
+ await student.locator('#chat-input').press('Enter');
+ const teacherHello=teacher.locator('#chat-log li').filter({hasText:'안녕하세요 선생님'});
+ await teacherHello.waitFor();
+ assert.equal((await teacherHello.locator('.who').innerText()).trim(),'1');
+ await student.locator('#chat-log li.mine').filter({hasText:'안녕하세요 선생님'}).waitFor();
+ checks.push('Student chat message reaches the teacher log with nickname 1 and shows as "mine" in the student log');
+
+ await student.waitForTimeout(800); // clear the 700ms per-player cooldown before the next send
+ const blockedWord=BLOCKED_WORDS[0];
+ const naughty='너는 진짜 '+blockedWord+' 같아';
+ const masked=naughty.replace(blockedWord,'○'.repeat(blockedWord.length));
+ await student.locator('#chat-input').fill(naughty);
+ await student.locator('#chat-input').press('Enter');
+ const maskedEntry=teacher.locator('#chat-log li').filter({hasText:masked});
+ await maskedEntry.waitFor();
+ await maskedEntry.locator('.badge').filter({hasText:'순화됨'}).waitFor();
+ assert.ok(!(await teacher.locator('#chat-log').innerText()).includes(blockedWord));
+ checks.push('Blocked words are masked with same-length circles and flagged "순화됨", original word absent from the log');
+
+ await teacher.locator('#chat-toggle').filter({hasText:'채팅 끄기'}).click();
+ await waitForChatInput(student,{disabled:true,placeholder:'선생님이 채팅을 껐어요'});
+ await teacher.locator('#chat-log li').filter({hasText:'선생님이 채팅을 껐어요.'}).waitFor();
+ await student.locator('#chat-log li').filter({hasText:'선생님이 채팅을 껐어요.'}).waitFor();
+ await teacher.locator('#chat-input').fill('모두 잘 들려요?');
+ await teacher.locator('#chat-input').press('Enter');
+ await student.locator('#chat-log li').filter({hasText:'모두 잘 들려요?'}).waitFor();
+ await teacher.locator('#chat-toggle').filter({hasText:'채팅 켜기'}).click();
+ await waitForChatInput(student,{disabled:false,placeholder:'친구들에게 말해요 (Enter)'});
+ checks.push('Teacher chat off/on disables student input with a system message while the teacher can still speak');
+
+ const muteButton=teacher.locator('button.mute[data-player-id="'+id+'"]');
+ await muteButton.click();
+ await waitForChatInput(student,{disabled:true,placeholder:'선생님이 내 채팅을 잠시 멈췄어요'});
+ await teacher.locator('#chat-log li').filter({hasText:'1 친구의 채팅이 잠시 멈췄어요.'}).waitFor();
+ await muteButton.filter({hasText:'허용'}).waitFor();
+ await muteButton.click();
+ await waitForChatInput(student,{disabled:false,placeholder:'친구들에게 말해요 (Enter)'});
+ await muteButton.filter({hasText:'금지'}).waitFor();
+ checks.push('Teacher mute toggle disables/enables one student\'s chat input and announces it by nickname');
+
+ await teacher.locator('#chat-clear').click();
+ await teacher.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor();
+ await student.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor();
+ assert.equal(await teacher.locator('#chat-log li').count(),1);
+ assert.equal(await student.locator('#chat-log li').count(),1);
+ checks.push('Teacher clearing chat wipes both logs down to a single system message');
+
+ await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await student.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor();
+ checks.push('Chat history is restored to the student after reload/session resume');
+
+ await student.waitForTimeout(800);
+ const bubbleCanvasBefore=await teacher.locator('#world').evaluate(c=>c.toDataURL());
+ await student.locator('#chat-input').fill('말풍선 테스트');
+ await student.locator('#chat-input').press('Enter');
+ await teacher.locator('#chat-log li').filter({hasText:'말풍선 테스트'}).waitFor();
+ await teacher.waitForTimeout(150);
+ const bubbleCanvasAfter=await teacher.locator('#world').evaluate(c=>c.toDataURL());
+ assert.notEqual(bubbleCanvasBefore,bubbleCanvasAfter);
+ checks.push('Sending a chat message shows a speech bubble that changes the teacher canvas');
+
+ assert.ok(await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ checks.push('390px layout with the populated chat panel still has no horizontal overflow');
+ await teacher.screenshot({path:'.local/04-chat.png',fullPage:true});
+ // --- End chat ---------------------------------------------------------------------------------
  // Room isolation: a second teacher opens an independent classroom with the same teacher key
  // before the first classroom closes, and the two rooms must not leak allowlists or players.
  const teacher2Context=await browser.newContext({viewport:{width:1440,height:1000}});

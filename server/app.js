@@ -98,7 +98,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       const raw=data.text;
-      const trimmed=typeof raw==='string'?raw.normalize('NFKC').trim():'';
+      // 보이지 않는 서식 문자(폭 없는 공백, 글자 방향 바꾸기 등)는 지운 뒤 길이를 검사합니다.
+      const trimmed=typeof raw==='string'?raw.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'';
       const hasControl=[...trimmed].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;});
       ensure(typeof raw==='string' && trimmed.length>=1 && trimmed.length<=CHAT.maxLength && !hasControl,'채팅은 1~120자로 입력해주세요.');
       const text=trimmed.replace(/ {2,}/g,' ');

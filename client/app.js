@@ -60,7 +60,7 @@ function updateChatUI(me,isTeacher){
   $('chat-teacher-controls').hidden=!isTeacher;
   $('chat-toggle').textContent=enabled?'채팅 끄기':'채팅 켜기';
   if(isTeacher){
-    $('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';$('chat-status').textContent=enabled?'켜짐':'꺼짐';
+    $('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';$('chat-status').textContent=enabled?'켜짐':'꺼짐 · 선생님만 말할 수 있어요';
   }else if(!enabled){
     $('chat-input').disabled=true;$('chat-input').placeholder='선생님이 채팅을 껐어요';$('chat-status').textContent='꺼짐';
   }else if(me?.muted){
@@ -68,6 +68,7 @@ function updateChatUI(me,isTeacher){
   }else{
     $('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';$('chat-status').textContent='켜짐';
   }
+  $('chat-send').disabled=chatBusy||$('chat-input').disabled;
 }
 const fmtTime=ms=>{const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
 function addChatMessage(msg){
@@ -127,7 +128,7 @@ $('chat-form').onsubmit=async e=>{
   chatBusy=true;$('chat-send').disabled=true;
   try{await request('chat:send',{text});$('chat-input').value='';}
   catch(err){toast(err.message);}
-  finally{chatBusy=false;$('chat-send').disabled=false;$('chat-input').focus();}
+  finally{chatBusy=false;$('chat-send').disabled=$('chat-input').disabled;$('chat-input').focus();}
 };
 $('chat-toggle').onclick=async()=>{
   const enabled=room?.chat?.enabled!==false;
