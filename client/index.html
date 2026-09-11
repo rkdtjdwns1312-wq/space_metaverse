@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="선생님과 함께 떠나는 작은 우주, 사이버 교실">
+  <title>사이버 교실 · 우리들의 작은 우주</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/">✦ <span>사이버 교실<small>우리들의 작은 우주</small></span></a>
+  <div class="top-right"><span id="connection" role="status">연결 중…</span><span class="phase">첫 번째 여행 · 이동 연습</span></div>
+</header>
+<main>
+  <section class="space-section" aria-label="우주 광장">
+    <div class="map-heading"><div><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div>
+      <div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-code" class="small secondary" type="button">복사</button></div>
+    </div>
+    <div class="map-wrap">
+      <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
+      <span class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
+      <div id="lobby" class="lobby">
+        <div class="welcome-mark" aria-hidden="true">✦</div><h2>작은 소행성의<br>첫 여행을 시작해요</h2>
+        <p class="muted">선생님이 알려주신 교실로 들어오세요.</p>
+        <div class="role-tabs" aria-label="입장 방법">
+          <button id="student-tab" class="selected" aria-pressed="true" type="button">학생이에요</button>
+          <button id="teacher-tab" aria-pressed="false" type="button">선생님이에요</button>
+        </div>
+        <form id="student-form">
+          <label for="join-code">교실 코드</label><input id="join-code" autocomplete="off" maxlength="6" required placeholder="예: ABCD12" pattern="[A-Za-z0-9]{6}">
+          <label for="nickname">내 번호 또는 닉네임</label><input id="nickname" autocomplete="off" maxlength="12" required placeholder="선생님이 허용한 이름을 입력해요">
+          <button class="primary submit" type="submit">우주 교실 입장하기 <span aria-hidden="true">↗</span></button>
+        </form>
+        <form id="teacher-form" hidden>
+          <label for="teacher-key">교사 확인 키</label><input id="teacher-key" type="password" autocomplete="off" minlength="16" required placeholder="교사용 시작 파일을 이용하면 자동 입력돼요">
+          <label for="class-title">교실 이름</label><input id="class-title" maxlength="12" value="우리 우주 교실" required>
+          <label for="allowed-names">허용할 학생 번호 또는 닉네임</label><textarea id="allowed-names" rows="2" required aria-describedby="names-help"></textarea>
+          <small id="names-help">쉼표나 줄바꿈으로 구분 · 최대 29명</small>
+          <button class="primary submit" type="submit">교실 만들기 <span aria-hidden="true">✦</span></button>
+        </form>
+        <p id="form-message" class="form-message" role="alert"></p>
+        <p class="privacy-note">회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
+      </div>
+      <div class="touch-controls" id="touch-controls" hidden aria-label="터치 이동">
+        <button data-dx="0" data-dy="-1" class="up" aria-label="위로 이동">↑</button>
+        <button data-dx="-1" data-dy="0" class="left" aria-label="왼쪽으로 이동">←</button>
+        <button data-dx="0" data-dy="1" class="down" aria-label="아래로 이동">↓</button>
+        <button data-dx="1" data-dy="0" class="right" aria-label="오른쪽으로 이동">→</button>
+      </div>
+    </div>
+    <div class="map-footer"><span>⌨ 방향키 또는 W A S D로 이동</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
+  </section>
+  <aside>
+    <section class="panel passport"><span class="eyebrow">MY LITTLE ASTEROID</span><h2 id="self-name">나의 소행성</h2><span class="level">LV 1 · 소행성</span>
+      <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
+    </section>
+    <section class="panel crew"><div class="panel-heading"><h2>함께 있는 친구들</h2><span id="player-count">0 / 30</span></div><p id="crew-empty" class="muted">교실에 입장하면 친구들이 보여요.</p><ul id="players" aria-label="접속 목록"></ul></section>
+    <section class="panel guide"><h2>오늘의 첫 연습</h2><ol><li>교실 코드로 입장하기</li><li>나의 소행성 찾아보기</li><li>친구와 함께 움직여보기</li></ol><p class="muted">채팅과 별 아이템은 다음 여행에서 만나요.</p></section>
+    <button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button>
+  </aside>
+</main>
+<div id="toast" class="toast" role="status" hidden></div>
+<dialog id="leave-dialog"><h2 id="leave-title">교실에서 나갈까요?</h2><p id="leave-description">다시 교실 코드로 입장할 수 있어요.</p><div class="dialog-actions"><button id="stay" class="secondary">계속 있기</button><button id="confirm-leave" class="primary">나가기</button></div></dialog>
+</body></html>

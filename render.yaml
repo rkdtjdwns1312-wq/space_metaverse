@@ -1,0 +1,16 @@
+# 실제 외부 배포는 아직 수행하지 않았습니다. Render Free 테스트용 단일 서버입니다.
+services:
+  - type: web
+    name: cyber-classroom
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: TEACHER_KEY
+        generateValue: true
+      - key: PUBLIC_ORIGIN
+        sync: false
