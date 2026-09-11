@@ -7,6 +7,11 @@ set "CLASSROOM_NODE="
 for /f "delims=" %%N in ('where node 2^>nul') do if not defined CLASSROOM_NODE set "CLASSROOM_NODE=%%N"
 if defined CLASSROOM_NODE goto :found
 
+if exist "%ProgramFiles%\nodejs\node.exe" (
+  set "CLASSROOM_NODE=%ProgramFiles%\nodejs\node.exe"
+  goto :found
+)
+
 if exist "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" (
   set "CLASSROOM_NODE=%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
   goto :found
@@ -14,11 +19,6 @@ if exist "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies
 
 for /d %%D in ("%LOCALAPPDATA%\OpenAI\Codex\runtimes\cua_node\*") do if not defined CLASSROOM_NODE if exist "%%D\bin\node.exe" set "CLASSROOM_NODE=%%D\bin\node.exe"
 if defined CLASSROOM_NODE goto :found
-
-if exist "%ProgramFiles%\nodejs\node.exe" (
-  set "CLASSROOM_NODE=%ProgramFiles%\nodejs\node.exe"
-  goto :found
-)
 
 echo Node.js가 설치되어 있지 않아요. https://nodejs.org 에서 LTS 버전을 설치한 뒤 다시 실행해주세요.
 pause

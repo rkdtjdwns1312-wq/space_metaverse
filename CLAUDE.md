@@ -5,6 +5,7 @@
 ## 1. 문서 관계
 
 - `CLAUDE.md`: Claude Code 세션의 작업 방식 규칙(모델 파이프라인, 문서화 절차)을 담는다. Claude Code에서는 이 파일이 `AGENTS.md`의 모델 관련 규칙보다 우선한다.
+- 이 저장소는 Codex와 번갈아 작업한다. 두 도구 공통 규칙(시작·종료 절차, 기록 구성, 커밋 작성자, 도구 경로)은 `메인.md` '협업 규칙' 절이 기준이며, 이 파일에는 Claude Code에만 해당하는 사항만 적는다. 작업을 마칠 때 commit·push까지 끝내 Codex가 바로 이어갈 수 있게 한다.
 - `AGENTS.md`: Codex 세션용 지침이다. 모델 규칙 외의 내용(메인.md 먼저 읽기, 기록 체계, Git)은 Claude Code에서도 동일하게 적용한다.
 - `메인.md`: 사용자 요청 이력, 합의한 규칙, 현재 상태와 미완료 사항의 단일 기준 문서다. 프로젝트 상태는 항상 이 문서를 기준으로 판단한다.
 - `기록/`: 요청별 상세 작업 기록을 보관한다.
@@ -14,11 +15,12 @@
 
 1. `메인.md` 전체를 읽는다. 특히 '현재 상태와 미완료 사항'과 최신 요청 이력을 확인한다.
 2. 최신 요청과 관련된 `기록/` 파일을 읽는다 (예: 인계 지시서).
-3. git 상태를 확인하고 `git pull --ff-only origin main`을 수행한다. **이 PC에는 git·node·pnpm이 PATH에 없다.** Codex 내장 런타임을 전체 경로로 호출한다 (2026-09-12 확인):
-   - git: `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\git\cmd\git.exe` (2.53)
-   - node: `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe` (v24.19.0)
-   - pnpm: `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd`
-   - PowerShell에서는 `$git = "$env:USERPROFILE\.cache\..."; & $git status` 형태로 호출한다. 경로가 없으면 `%LOCALAPPDATA%\OpenAI\Codex\runtimes\cua_node\*\bin\node.exe`, `C:\Program Files\Git\cmd\git.exe`를 확인하고, 그래도 없으면 사용자에게 알리고 Git 동기화를 '미완료'로 기록한다.
+3. git 상태를 확인하고 `git pull --ff-only origin main`을 수행한다. 도구 위치 (2026-09-12 확인):
+   - node: `C:\Program Files\nodejs\node.exe` (v24.19.0 LTS, 2026-09-12 winget으로 정식 설치, 시스템 PATH 등록). 새로 시작한 터미널에서는 `node`로 바로 호출된다. 설치 전에 시작된 세션은 PATH에 없으므로 전체 경로로 호출한다.
+   - pnpm: `corepack pnpm <명령>` (11.19.0, `package.json`의 packageManager 기준). 단독 `pnpm` 명령은 등록하지 않았다.
+   - git: **PATH에 없다.** Codex 내장 git `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\git\cmd\git.exe` (2.53)를 전체 경로로 호출한다. PowerShell: `$git = "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\git\cmd\git.exe"; & $git status`.
+   - 예비 Node 경로: `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe`, `%LOCALAPPDATA%\OpenAI\Codex\runtimes\cua_node\*\bin\node.exe`.
+   - 도구가 없으면 사용자에게 알리고 해당 단계를 '미완료'로 기록한다.
    - `AppData\Local\OpenAI\Codex\` 경로에서 실행 중인 node 프로세스는 Codex 것이므로 종료하지 않는다.
 4. 새 요청을 `메인.md` 요청 이력에 다음 번호로 추가하고 상태를 '진행 중'으로 적은 뒤 작업을 시작한다.
 
@@ -81,17 +83,10 @@
 - `README.md`: 코드 실행 방법과 사용법.
 - `CLAUDE.md`: Claude Code 작업 방식 규칙만 담는다. 프로젝트 상태를 여기에 중복 기록하지 않는다.
 
-### 기록 파일 표준 구성 (제목 순서)
+### 기록 파일 표준 구성
 
-1. 요청 번호와 요청 요약
-2. 계획 (Fable)
-3. 수행 내용과 변경 파일 (Sonnet, 에이전트 수)
-4. 검증 결과 (Opus 검토 내용, 실행한 테스트와 결과)
-5. 최종 점검 (Fable)
-6. 미완료 사항과 다음 단계
-7. Git 동기화 결과
-
-본체가 직접 처리한 작업은 3~5절에 'Fable 직접 처리'와 검토 내용을 적는다.
+- 7절 구성(1 요청 요약 / 2 계획 / 3 수행 내용과 변경 파일 / 4 검증 결과 / 5 최종 점검 / 6 미완료 사항과 다음 단계 / 7 Git 동기화 결과)과 상단 메타(작업 시각, 작업 도구, 사용 모델, 관련 요청)는 `메인.md` '협업 규칙' 절을 따른다. Codex와 같은 구성을 쓴다.
+- Claude Code에서는 2절에 Fable 계획, 3절에 Sonnet 에이전트 수와 담당 범위, 4절에 Opus 검토 내용, 5절에 Fable 최종 점검을 적는다. 본체가 직접 처리한 작업은 3~5절에 'Fable 직접 처리'와 검토 내용을 적는다.
 
 ### 시점
 
@@ -110,7 +105,7 @@
 - 원격: `https://github.com/rkdtjdwns1312-wq/space_metaverse.git`, 브랜치 main, 원격 이름 origin.
 - 작업 전 `git pull --ff-only`, 작업 후 변경 파일을 선별해 commit하고 `git push origin main`, push 후 로컬 HEAD와 원격 main 일치를 확인한다. 사용자는 이 저장소의 일반 commit·pull·push를 지속 승인했다 (메인.md 요청 010).
 - 강제 push, hard reset을 금지한다. 로컬 변경을 보존한다.
-- Claude Code 세션의 커밋 메시지 끝에는 `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`를 붙인다. 저장소의 기존 작성자 설정(Codex Agent)은 변경하지 않는다.
+- Claude Code 세션의 커밋은 `--author="Claude Code <noreply@anthropic.com>"`로 작성자를 지정하고, 메시지 끝에 `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`를 붙인다. 저장소의 기존 작성자 설정(Codex Agent)은 변경하지 않는다. 커밋 메시지는 스크래치 폴더의 파일로 저장해 `-F <파일>`로 전달한다(PowerShell 5.1에서 here-string을 stdin으로 넘길 수 없음).
 - 인증·권한·네트워크·git 미설치로 동기화하지 못하면 원인을 기록하고 성공했다고 보고하지 않는다.
 
 ## 6. 사용자 소통 방식
