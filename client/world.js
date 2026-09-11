@@ -1,8 +1,10 @@
 import { MAP } from '/shared/config.js';
+import * as config from '/shared/config.js';
+const CHAT=config.CHAT||{bubbleMs:4000};
 // Canvas renderer만 교체하면 서버 규칙을 바꾸지 않고 그림을 바꿀 수 있습니다.
 export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null;
-  const points=new Map();
+  const points=new Map(),bubbles=new Map();
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>{
     ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.47:r;
@@ -33,6 +35,16 @@ export function createWorld(canvas) {
     }
     ctx.font='14px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';ctx.fillText('우리의 첫 번째 우주',600,660);
   }
+  function drawBubble(id,x,y){
+    const b=bubbles.get(id);if(!b)return;
+    if(Date.now()>b.until){bubbles.delete(id);return;}
+    ctx.font='600 13px "Malgun Gothic",sans-serif';
+    const w=Math.min(230,ctx.measureText(b.text).width+22),h=30,bx=x-w/2,by=y-54;
+    ctx.fillStyle='#ffffff';ctx.strokeStyle='#d8d3ea';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.roundRect(bx,by,w,h,10);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x-6,by+h-1);ctx.lineTo(x+6,by+h-1);ctx.lineTo(x,by+h+8);ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
+    ctx.fillStyle='#524969';ctx.textAlign='center';ctx.fillText(b.text,x,by+h/2+4);
+  }
   function drawAvatar(p,time){
     const point=points.get(p.id)||{x:p.x,y:p.y};
     const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -54,12 +66,17 @@ export function createWorld(canvas) {
     const w=ctx.measureText(label).width+16;ctx.fillStyle='#ffffffdf';
     ctx.beginPath();ctx.roundRect(x-w/2,y+29,w,24,9);ctx.fill();
     ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';ctx.fillText(label,x,y+46);
+    drawBubble(p.id,x,y);
     ctx.restore();
   }
   function frame(t){ctx.clearRect(0,0,1200,760);drawMap();for(const p of [...players].sort((a,b)=>a.y-b.y))drawAvatar(p,t);requestAnimationFrame(frame);}
   requestAnimationFrame(frame);
   return {
-    setRoom(room,id){players=(room?.players||[]).map(p=>({...p}));selfId=id;for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);},
-    positions(data){for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}}
+    setRoom(room,id){players=(room?.players||[]).map(p=>({...p}));selfId=id;for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);},
+    positions(data){for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}},
+    say(playerId,text,ms){
+      if(!playerId)return;const str=String(text);
+      bubbles.set(playerId,{text:str.length>24?str.slice(0,24)+'…':str,until:Date.now()+(ms||CHAT.bubbleMs||4000)});
+    }
   };
 }

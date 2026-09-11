@@ -57,7 +57,13 @@
       <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
     </section>
     <section class="panel crew"><div class="panel-heading"><h2>함께 있는 친구들</h2><span id="player-count">0 / 30</span></div><p id="crew-empty" class="muted">교실에 입장하면 친구들이 보여요.</p><ul id="players" aria-label="접속 목록"></ul></section>
-    <section class="panel guide"><h2>오늘의 첫 연습</h2><ol><li>교실 코드로 입장하기</li><li>나의 소행성 찾아보기</li><li>친구와 함께 움직여보기</li></ol><p class="muted">채팅과 별 아이템은 다음 여행에서 만나요.</p></section>
+    <section class="panel chat" id="chat-panel" hidden><div class="panel-heading"><h2>우주 채팅</h2><span id="chat-status">켜짐</span></div>
+      <div id="chat-teacher-controls" hidden><button id="chat-toggle" class="small secondary" type="button">채팅 끄기</button><button id="chat-clear" class="small secondary" type="button">채팅 지우기</button></div>
+      <ul id="chat-log" aria-live="polite" aria-label="채팅 내용"></ul>
+      <p id="chat-empty" class="muted">아직 대화가 없어요. 인사해볼까요?</p>
+      <form id="chat-form"><input id="chat-input" maxlength="120" autocomplete="off" placeholder="친구들에게 말해요 (Enter)" aria-label="채팅 메시지 입력"><button id="chat-send" class="primary small" type="submit">보내기</button></form>
+    </section>
+    <section class="panel guide"><h2>오늘의 첫 연습</h2><ol><li>교실 코드로 입장하기</li><li>나의 소행성 찾아보기</li><li>친구와 함께 움직여보기</li></ol><p class="muted">별 아이템은 다음 여행에서 만나요.</p></section>
     <button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button>
   </aside>
 </main>

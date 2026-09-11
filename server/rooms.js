@@ -1,5 +1,5 @@
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
-import { RULES, MAP, createAvatar } from '../shared/config.js';
+import { RULES, MAP, CHAT, createAvatar } from '../shared/config.js';
 import { spawnPosition } from './world.js';
 export class GameError extends Error {}
 export const ensure = (test,message) => { if (!test) throw new GameError(message); };
@@ -26,7 +26,7 @@ export class RoomStore {
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
-    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:MAP.id };
+    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:MAP.id, chat:{enabled:true,history:[],seq:0} };
     this.rooms.set(room.code,room);
     return {room, player:this.add(room,'선생님','teacher',socketId)};
   }
@@ -45,7 +45,7 @@ export class RoomStore {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room),
       avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
-      expiresAt:null, input:{x:0,y:0,at:0} };
+      expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0 };
     room.players.set(p.id,p);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
@@ -66,8 +66,14 @@ export class RoomStore {
     this.rooms.delete(room.code);
   }
   snapshot(room) {
-    return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,
+    return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       players:[...room.players.values()].map(p=>({id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-        connected:p.connected,avatar:p.avatar}))};
+        connected:p.connected,avatar:p.avatar,muted:p.muted}))};
+  }
+  pushChat(room,{playerId,nickname,role,text,flagged}) {
+    const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged};
+    room.chat.history.push(msg);
+    if(room.chat.history.length>CHAT.historySize) room.chat.history.shift();
+    return msg;
   }
 }

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError } from './rooms.js';
 import { advance } from './world.js';
-import { RULES } from '../shared/config.js';
+import { filterChat } from './chat-filter.js';
+import { RULES, CHAT } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -68,7 +69,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     const enter=session=>{
       socket.data.session=session;joinChannel(session);roster(session.room);
-      return {token:session.player.token,selfId:session.player.id,room:store.snapshot(session.room)};
+      return {token:session.player.token,selfId:session.player.id,room:store.snapshot(session.room),
+        chat:{messages:[...session.room.chat.history]}};
     };
     const notJoined=()=>ensure(!socket.data.session,'먼저 현재 교실에서 나가주세요.');
     action('room:create',data=>{
@@ -87,6 +89,61 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('room:close',()=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 교실을 종료할 수 있어요.');
       roomClosed(s.room);return {};
+    });
+    const announce=(room,text)=>{
+      const msg=store.pushChat(room,{playerId:null,nickname:'안내',role:'system',text,flagged:false});
+      io.to(room.code).emit('chat:message',msg);
+    };
+    action('chat:send',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      const raw=data.text;
+      const trimmed=typeof raw==='string'?raw.normalize('NFKC').trim():'';
+      const hasControl=[...trimmed].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;});
+      ensure(typeof raw==='string' && trimmed.length>=1 && trimmed.length<=CHAT.maxLength && !hasControl,'채팅은 1~120자로 입력해주세요.');
+      const text=trimmed.replace(/ {2,}/g,' ');
+      if(p.role==='student'){
+        ensure([...room.players.values()].some(t=>t.role==='teacher'&&t.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
+        ensure(room.chat.enabled,'선생님이 채팅을 껐어요.');
+      }
+      ensure(!p.muted,'선생님이 내 채팅을 잠시 멈췄어요.');
+      const now=Date.now();
+      ensure(now-p.lastChatAt>=CHAT.cooldownMs,'조금 천천히 말해요.');
+      const {text:filtered,flagged}=filterChat(text);
+      const msg=store.pushChat(room,{playerId:p.id,nickname:p.nickname,role:p.role,text:filtered,flagged});
+      io.to(room.code).emit('chat:message',msg);
+      p.lastChatAt=now;
+      return {};
+    });
+    action('chat:setEnabled',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
+      ensure(typeof data.enabled==='boolean','입력 내용을 확인해주세요.');
+      const {room}=s;
+      if(room.chat.enabled===data.enabled)return {};
+      room.chat.enabled=data.enabled;
+      roster(room);
+      announce(room,data.enabled?'선생님이 채팅을 켰어요.':'선생님이 채팅을 껐어요.');
+      return {};
+    });
+    action('chat:mute',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
+      ensure(typeof data.playerId==='string' && typeof data.muted==='boolean','입력 내용을 확인해주세요.');
+      const {room}=s;
+      const target=room.players.get(data.playerId);
+      ensure(target && target.role==='student','친구를 찾지 못했어요.');
+      if(target.muted===data.muted)return {};
+      target.muted=data.muted;
+      roster(room);
+      announce(room,target.nickname+(data.muted?' 친구의 채팅이 잠시 멈췄어요.':' 친구가 다시 채팅할 수 있어요.'));
+      return {};
+    });
+    action('chat:clear',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
+      const {room}=s;
+      room.chat.history=[];
+      io.to(room.code).emit('chat:cleared',{});
+      announce(room,'선생님이 채팅 기록을 지웠어요.');
+      return {};
     });
     socket.on('player:input',data=>{
       const p=socket.data.session?.player;

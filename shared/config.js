@@ -17,3 +17,4 @@ export function createAvatar() {
 }
 // 향후 인벤토리 항목: { id, name, description, icon, quantity, type, level }.
 // 향후 별 파편 잔액은 0 이상의 안전한 정수로, 지급/지출은 서버에서 검증합니다.
+export const CHAT = Object.freeze({ maxLength: 120, historySize: 50, cooldownMs: 700, bubbleMs: 4000 });
