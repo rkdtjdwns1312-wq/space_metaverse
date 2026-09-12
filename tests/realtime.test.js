@@ -383,9 +383,27 @@ test('rename vote passes immediately with a single member',async t=>{
  assert.equal(proposed.ok,true);
  await sleep(20);
  assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성 친구들이 이름을 "책읽기행성"으로 바꿀지 투표를 시작했어요.'));
- assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"로 바뀌었어요!'));
+ assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"으로 바뀌었어요!'));
  const planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
  assert.equal(planet.name,'책읽기행성');assert.equal(planet.rename,null);
+});
+test('rename announcements pick the Korean particle 로/으로 from the new name ending',async t=>{
+ const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3]});
+ const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ await call(s,'planet:join',{planetId:created.planetId});
+ const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
+ // 받침 없이 끝나는 이름은 '로', ㄹ 받침도 '로', 그 밖의 받침은 '으로'가 붙어야 합니다.
+ assert.equal((await call(s,'planet:rename:propose',{planetId:created.planetId,name:'급식나라'})).ok,true);
+ await sleep(20);
+ assert.ok(sysMsgs.some(m=>m.text==='"교과행성" 행성 친구들이 이름을 "급식나라"로 바꿀지 투표를 시작했어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='"교과행성" 행성의 이름이 "급식나라"로 바뀌었어요!'));
+ assert.equal((await call(teacher,'planet:rename:set',{planetId:created.planetId,name:'급식별'})).ok,true);
+ await sleep(20);
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 "급식나라" 행성의 이름을 "급식별"로 바꿨어요.'));
+ assert.equal((await call(teacher,'planet:rename:set',{planetId:created.planetId,name:'급식행성'})).ok,true);
+ await sleep(20);
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 "급식별" 행성의 이름을 "급식행성"으로 바꿨어요.'));
 });
 test('rename vote is rejected when a second member votes no (2 members)',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -422,7 +440,7 @@ test('rename vote passes once 2 of 3 members agree, without waiting for the thir
  const voted=await call(s2,'planet:rename:vote',{planetId:created.planetId,agree:true});
  assert.equal(voted.ok,true);
  await sleep(20);
- assert.ok(sysMsgs.some(m=>m.text==='"청소행성" 행성의 이름이 "청결행성"로 바뀌었어요!'));
+ assert.ok(sysMsgs.some(m=>m.text==='"청소행성" 행성의 이름이 "청결행성"으로 바뀌었어요!'));
  const planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
  assert.equal(planet.name,'청결행성');
  assert.equal((await call(s3,'planet:rename:vote',{planetId:created.planetId,agree:true})).error,'진행 중인 투표가 없어요.');
@@ -459,7 +477,7 @@ test('rename re-evaluates when membership shrinks (a member leaving the planet c
  await sleep(20);
  planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
  assert.equal(planet.name,'책읽기행성');assert.equal(planet.rename,null);
- assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"로 바뀌었어요!'));
+ assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"으로 바뀌었어요!'));
 });
 test('a member leaving the classroom entirely also re-evaluates a pending rename vote',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -475,7 +493,7 @@ test('a member leaving the classroom entirely also re-evaluates a pending rename
  await sleep(20);
  const planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
  assert.equal(planet.name,'책읽기행성');assert.equal(planet.rename,null);
- assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"로 바뀌었어요!'));
+ assert.ok(sysMsgs.some(m=>m.text==='"독서행성" 행성의 이름이 "책읽기행성"으로 바뀌었어요!'));
 });
 test('teacher can rename a planet directly, clearing any pending vote',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -493,7 +511,7 @@ test('teacher can rename a planet directly, clearing any pending vote',async t=>
  await sleep(20);
  const planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
  assert.equal(planet.name,'새이름');assert.equal(planet.rename,null);
- assert.ok(sysMsgs.some(m=>m.text==='선생님이 "일기행성" 행성의 이름을 "새이름"로 바꿨어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 "일기행성" 행성의 이름을 "새이름"으로 바꿨어요.'));
  assert.equal((await call(teacher,'planet:rename:set',{planetId:created.planetId,name:'새이름'})).error,'지금 이름과 같아요.');
 });
 test('planet system messages do not leak to another classroom',async t=>{

@@ -5,7 +5,7 @@ const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
 // Canvas renderer만 교체하면 서버 규칙을 바꾸지 않고 그림을 바꿀 수 있습니다.
 // 행성은 정적 목록이 아니라 room.planets 스냅샷(가변 개수, 최대 PLANET.maxPerRoom)입니다.
 export function createWorld(canvas) {
-  const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null;
+  const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),bubbles=new Map();
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>{
@@ -14,6 +14,13 @@ export function createWorld(canvas) {
     ctx.closePath();ctx.fillStyle=fill;ctx.fill();
   };
   function currentMap(){return mapOf(myMapId,planets.map(p=>({...p,kind:'planet'})));}
+  function placementOk(pt){
+    const r=PLANET.radius+(config.RULES?.radius||16);
+    if(pt.x<r||pt.y<r||pt.x>1200-r||pt.y>760-r)return false;
+    if((PLANET.reserved||[]).some(z=>{const cx=Math.max(z.x,Math.min(pt.x,z.x+z.width)),cy=Math.max(z.y,Math.min(pt.y,z.y+z.height));return Math.hypot(pt.x-cx,pt.y-cy)<PLANET.radius;}))return false;
+    const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets,...proposals];
+    return !bodies.some(o=>Math.hypot(pt.x-o.x,pt.y-o.y)<PLANET.radius+(o.radius||PLANET.radius)+PLANET.minGap);
+  }
   function drawMap(map){
     const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,'#e2e9fa');g.addColorStop(.55,'#edebfc');g.addColorStop(1,'#e0edf4');
     ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
@@ -35,9 +42,11 @@ export function createWorld(canvas) {
         ctx.fillStyle='#ffffff38';ctx.beginPath();ctx.arc(o.x+20,o.y-13,12,0,Math.PI*2);ctx.fill();
         if(o.kind==='planet'&&o.id===myDept){ctx.strokeStyle='#ffffffc5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(o.x,o.y,o.radius+9,0,Math.PI*2);ctx.stroke();}
       }
+      // 가장자리 행성의 긴 이름이 캔버스 밖으로 잘리지 않도록 이름표 x를 안쪽으로 밀어 넣습니다.
       ctx.font='600 17px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
-      ctx.fillText(o.name,o.x,o.y+o.radius+37);
-      if(o.kind==='planet'){ctx.font='12px "Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',o.x,o.y+o.radius+53);}
+      const half=ctx.measureText(o.name).width/2+8,lx=Math.min(1200-half,Math.max(half,o.x));
+      ctx.fillText(o.name,lx,o.y+o.radius+37);
+      if(o.kind==='planet'){ctx.font='12px "Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',lx,o.y+o.radius+53);}
     }
     for(const o of proposals){
       ctx.save();ctx.globalAlpha=.6;ctx.setLineDash([5,7]);ctx.strokeStyle=o.color;ctx.lineWidth=3;
@@ -47,11 +56,21 @@ export function createWorld(canvas) {
       ctx.font='11px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';
       ctx.fillText('승인 기다리는 중',o.x,o.y+PLANET.radius+38);
     }
+    if(placing||placement){
+      // 배치 모드: 행성을 만들 수 없는 예약 구역(이동 버튼 자리)을 빗금으로 보여 줍니다.
+      for(const z of PLANET.reserved||[]){
+        ctx.save();ctx.fillStyle='#9a92b41f';ctx.fillRect(z.x,z.y,z.width,z.height);
+        ctx.strokeStyle='#9a92b4';ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.strokeRect(z.x+.5,z.y+.5,z.width-1,z.height-1);ctx.restore();
+        ctx.font='12px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8f84a6';ctx.fillText(z.label||'만들 수 없는 자리',z.x+z.width/2,z.y+22);
+      }
+    }
     if(placement){
-      ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle='#6353ae';ctx.lineWidth=2;
+      // 서버와 같은 규칙으로 미리 보여 주기만 합니다(경계·별·행성·신청과의 간격·예약 구역). 최종 판정은 서버가 합니다.
+      const ok=placementOk(placement),color=ok?'#6353ae':'#d0506a';
+      ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle=color;ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(placement.x,placement.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
-      ctx.font='600 13px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6353ae';
-      ctx.fillText('여기에 만들기',placement.x,placement.y+PLANET.radius+20);
+      ctx.font='600 13px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
+      ctx.fillText(ok?'여기에 만들기':'여기는 안 돼요 · 다른 자리를 골라요',placement.x,placement.y+PLANET.radius+20);
     }
     if(planets.length===0){
       ctx.font='15px "Malgun Gothic",sans-serif';ctx.fillStyle='#8f84a6';ctx.textAlign='center';
@@ -68,21 +87,24 @@ export function createWorld(canvas) {
     const planet=planets.find(p=>p.id===map.planetId);
     for(const o of map.objects){
       if(o.kind==='board'){
-        const w=420,h=170,bx=o.x-w/2,by=o.y-h/2;
+        // 규칙은 최대 8줄·한 줄 40자입니다. 줄 수에 맞춰 게시판을 키우고, 긴 줄은 글자를 줄여 판 안에 담습니다.
+        const rules=(planet?.rules||[]).slice(0,8);
+        const w=520,h=Math.max(120,74+rules.length*19),bx=o.x-w/2,by=o.y-h/2;
         ctx.fillStyle=o.color||'#fff6d6';ctx.strokeStyle='#e7d9a8';ctx.lineWidth=3;
         ctx.beginPath();ctx.roundRect(bx,by,w,h,22);ctx.fill();ctx.stroke();
         ctx.font='700 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8a6d2d';ctx.fillText('행성 규칙',o.x,by+30);
-        const rules=planet?.rules||[];
-        ctx.font='15px "Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
-        rules.slice(0,8).forEach((line,i)=>ctx.fillText(line,o.x,by+58+i*17));
+        let size=15;
+        while(size>10&&rules.some(line=>{ctx.font=size+'px "Malgun Gothic",sans-serif';return ctx.measureText(line).width>w-32;}))size--;
+        ctx.font=size+'px "Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
+        rules.forEach((line,i)=>ctx.fillText(line,o.x,by+56+i*19));
       } else if(o.kind==='door'){
         ctx.fillStyle='#d9d3f2';ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);
         ctx.strokeStyle='#b6a9df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);
         ctx.font='600 14px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';ctx.fillText(o.name,o.x,o.y+o.radius+30);
       }
     }
-    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';
-    ctx.fillText(map.name+' · 소속 친구들만의 공간',600,700);
+    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';ctx.textAlign='center';
+    ctx.fillText(map.name+' · 소속 친구들만의 공간',600,46);
   }
   function drawBubble(id,x,y){
     const b=bubbles.get(id);if(!b)return;
@@ -155,12 +177,19 @@ export function createWorld(canvas) {
     },
     currentMapId(){return myMapId;},
     setPlacement(point){placement=point;},
+    setPlacing(value){placing=Boolean(value);},
+    placementOk,
     planetAt(point){
       return planets.find(o=>Math.hypot(point.x-o.x,point.y-o.y)<=(o.radius||PLANET.radius))||null;
     },
     canvasPoint(e){
+      // 좁은 화면(휴대폰)에서는 캔버스가 object-fit:contain으로 줄어들어 위아래에 빈 띠가 생깁니다.
+      // 그 여백을 빼고 실제 그림이 그려진 영역 기준으로 계산해야 누른 자리와 행성 위치가 맞습니다.
       const rect=canvas.getBoundingClientRect();
-      return {x:Math.round((e.clientX-rect.left)*(1200/rect.width)),y:Math.round((e.clientY-rect.top)*(760/rect.height))};
+      const scale=Math.min(rect.width/canvas.width,rect.height/canvas.height);
+      if(!(scale>0))return {x:0,y:0};
+      const left=rect.left+(rect.width-canvas.width*scale)/2,top=rect.top+(rect.height-canvas.height*scale)/2;
+      return {x:Math.round((e.clientX-left)/scale),y:Math.round((e.clientY-top)/scale)};
     }
   };
 }

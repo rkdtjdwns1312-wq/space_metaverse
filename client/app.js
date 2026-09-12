@@ -74,8 +74,12 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
 }
+let lastProposalCount=0;
 function updateProposalsPanel(isTeacher){
   const proposals=room.proposals||[];
+  // 선생님이 친구 목록 아래의 신청 패널을 놓치지 않도록 새 신청이 오면 알려 줍니다.
+  if(isTeacher&&proposals.length>lastProposalCount)toast('새 행성 신청이 왔어요. 오른쪽 "행성 신청"에서 승인하거나 돌려보내 주세요.');
+  lastProposalCount=proposals.length;
   $('proposals-panel').hidden=proposals.length===0;
   $('proposals').replaceChildren(...proposals.map(p=>{
     const li=document.createElement('li');
@@ -144,7 +148,7 @@ function renderPlanetRename(planet,me,isTeacher){
   $('planet-rename-status').hidden=!rename;
   $('planet-rename-votes').hidden=!(rename&&isMember);
   if(rename){
-    $('planet-rename-status').textContent='"'+rename.name+'"으로 바꿀까요? 찬성 '+rename.yes+' · 반대 '+rename.no+' · '+rename.needed+'명 찬성이면 바뀌어요 (제안: '+rename.proposedByNickname+')';
+    $('planet-rename-status').textContent='이름을 "'+rename.name+'"(으)로 바꿀까요? 지금 찬성 '+rename.yes+'명 · 반대 '+rename.no+'명. 우리 행성 친구 '+rename.needed+'명이 찬성하면 바뀌어요. (제안: '+rename.proposedByNickname+')';
     if(isMember){
       const myVote=rename.votes?.[selfId];
       $('planet-vote-yes').classList.toggle('selected',myVote===true);
@@ -223,14 +227,14 @@ function planetCaption(){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   return '✦ '+(planetById(planetIdOfMap(myMapId))?.name||'행성')+' 안 · 소속 친구들만의 공간';
 }
-function startPlacement(){
+function startPlacement(){world.setPlacing(true);
   placing=true;document.body.classList.add('placing');
   $('map-caption').textContent='✦ 지도에서 행성을 만들 자리를 눌러주세요 (Esc 취소)';
   $('planet-new').textContent='취소';
 }
 function stopPlacement(){
   placing=false;document.body.classList.remove('placing');
-  $('planet-new').textContent='행성 만들기';world.setPlacement(null);
+  $('planet-new').textContent='행성 만들기';world.setPlacement(null);world.setPlacing(false);
   if(room&&!$('planet-create-dialog').open)$('map-caption').textContent=planetCaption();
 }
 $('planet-new').onclick=()=>{placing?stopPlacement():startPlacement();};
@@ -292,8 +296,8 @@ function reset(message){
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
   $('self-description').textContent='모두 같은 LV 1 소행성으로 다시 출발해요.';
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
-  $('self-proposal').hidden=true;$('proposals-panel').hidden=true;$('proposals').replaceChildren();
-  $('planet-exit').hidden=true;$('planet-new').hidden=true;$('interact-prompt').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
+  $('self-proposal').hidden=true;$('proposals-panel').hidden=true;$('proposals').replaceChildren();lastProposalCount=0;
+  $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
   if(placing)stopPlacement();
   document.body.classList.remove('joined');$('form-message').textContent=message||'';
   if($('leave-dialog').open)$('leave-dialog').close();
@@ -371,7 +375,7 @@ $('world').addEventListener('click',e=>{
     return;
   }
   const point=world.canvasPoint(e);
-  world.setPlacement(point);placing=false;document.body.classList.remove('placing');$('planet-new').textContent='행성 만들기';
+  world.setPlacement(point);world.setPlacing(false);placing=false;document.body.classList.remove('placing');$('planet-new').textContent='행성 만들기';
   openPlanetCreateDialog(point);
 });
 for(const button of document.querySelectorAll('[data-dx]')){

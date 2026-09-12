@@ -13,6 +13,14 @@ const equalSecret=(value,key) => {
   const a=Buffer.from(value),b=Buffer.from(key);
   return a.length===b.length && timingSafeEqual(a,b);
 };
+// 한국어 조사 '로/으로'는 앞 글자의 받침에 따라 달라집니다(받침 없음·ㄹ 받침이면 '로').
+// 행성 이름을 아이들이 직접 지으므로 안내 문구마다 올바른 조사를 붙여줍니다.
+const ro=word => {
+  const last=[...String(word).trim()].pop()||'',code=last.codePointAt(0)||0;
+  if(code<0xAC00 || code>0xD7A3) return '로';
+  const jongseong=(code-0xAC00)%28;
+  return (jongseong===0 || jongseong===8) ? '로' : '으로';
+};
 // data.planetId/proposalId가 그 방에 실제로 있을 때만 통과시킵니다. 행성은 방마다 다르므로 room.planets에서 찾습니다.
 const requirePlanet=(room,data) => {
   const planet=typeof data.planetId==='string'?room.planets.get(data.planetId):undefined;
@@ -80,7 +88,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     if(yes>=needed){
       const oldName=planet.name;
       planet.name=rename.name;planet.rename=null;
-      announce(room,'"'+oldName+'" 행성의 이름이 "'+rename.name+'"로 바뀌었어요!');
+      announce(room,'"'+oldName+'" 행성의 이름이 "'+rename.name+'"'+ro(rename.name)+' 바뀌었어요!');
     }else if(no>=needed || yes+(n-yes-no)<needed){
       const newName=rename.name;
       planet.rename=null;
@@ -315,7 +323,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(previous){ previous.rename?.votes.delete(p.id); evaluateRename(room,previous); }
       roster(room);
       announce(room, previous
-        ? p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+'으로 옮겼어요.'
+        ? p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+ro(planet.name)+' 옮겼어요.'
         : p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
       return {};
     });
@@ -357,8 +365,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('planet:rules:set',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
-      const planet=requirePlanet(room,data);
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      const planet=requirePlanet(room,data);
       ensure(Array.isArray(data.rules) && data.rules.length>=1 && data.rules.length<=DEPARTMENT_RULES.maxLines,
         '규칙은 1~8줄, 한 줄 40자 이내로 적어주세요.');
       const rules=data.rules.map(line=>typeof line==='string'?line.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'');
@@ -381,7 +389,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(name!==planet.name,'지금 이름과 같아요.');
       ensure(!planet.rename,'이미 이름 바꾸기 투표가 진행 중이에요.');
       planet.rename={id:randomUUID(),name,proposedBy:p.id,votes:new Map([[p.id,true]]),at:Date.now()};
-      announce(room,'"'+planet.name+'" 행성 친구들이 이름을 "'+name+'"으로 바꿀지 투표를 시작했어요.');
+      announce(room,'"'+planet.name+'" 행성 친구들이 이름을 "'+name+'"'+ro(name)+' 바꿀지 투표를 시작했어요.');
       evaluateRename(room,planet);
       roster(room);
       return {};
@@ -401,14 +409,14 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('planet:rename:set',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
-      const planet=requirePlanet(room,data);
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      const planet=requirePlanet(room,data);
       const name=validatePlanetName(data.name);
       ensure(name!==planet.name,'지금 이름과 같아요.');
       const oldName=planet.name;
       planet.name=name;planet.rename=null;
       roster(room);
-      announce(room,'선생님이 "'+oldName+'" 행성의 이름을 "'+name+'"로 바꿨어요.');
+      announce(room,'선생님이 "'+oldName+'" 행성의 이름을 "'+name+'"'+ro(name)+' 바꿨어요.');
       return {};
     });
     socket.on('player:input',data=>{

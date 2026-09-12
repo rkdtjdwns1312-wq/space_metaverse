@@ -43,6 +43,11 @@ export function isNear(player, object) {
 export function placementFree(room, x, y) {
   const r = PLANET.radius + RULES.radius;
   if (x < r || y < r || x > MAP.width-r || y > MAP.height-r) return false;
+  // 예약 구역(이동 버튼 자리)과 행성 원이 겹치면 안 됩니다. 원과 사각형의 가장 가까운 점 거리로 판정합니다.
+  if ((PLANET.reserved||[]).some(z => {
+    const cx = Math.max(z.x, Math.min(x, z.x+z.width)), cy = Math.max(z.y, Math.min(y, z.y+z.height));
+    return Math.hypot(x-cx, y-cy) < PLANET.radius;
+  })) return false;
   const bodies = [...MAP.objects, ...room.planets.values(), ...room.proposals.values()];
   return !bodies.some(o => Math.hypot(x-o.x, y-o.y) < PLANET.radius+o.radius+PLANET.minGap);
 }

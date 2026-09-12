@@ -7,8 +7,10 @@ export const INTERACT = Object.freeze({ radius: 40 });
 export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 });
 // 행성(부서)은 아이들이 직접 만듭니다. 학생이 지도에서 자리를 고르고 이름·소개·색을 정해 신청하면 선생님이 승인합니다.
 // 선생님은 바로 만들 수도, 없앨 수도 있습니다. 이름은 소속 학생들의 과반 투표로 바꿀 수 있습니다.
+// reserved: 행성을 만들 수 없는 자리. 화면 왼쪽 아래 터치 이동 버튼이 지도를 덮는 곳이라 행성이 가려지지 않게 비워 둡니다.
 export const PLANET = Object.freeze({ radius: 60, minGap: 30, maxPerRoom: 12, maxPending: 6,
-  nameMin: 2, nameMax: 10, descriptionMax: 40, defaultRules: ['서로 존중하고 친절하게 말해요'] });
+  nameMin: 2, nameMax: 10, descriptionMax: 40, defaultRules: ['서로 존중하고 친절하게 말해요'],
+  reserved: [{ x: 0, y: 640, width: 240, height: 120, label: '이동 버튼 자리' }] });
 export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f5d798', '#c9e7a8', '#f7c8a8', '#d9c6f2', '#a8dff2']);
 // 광장의 고정 오브젝트는 가운데 별 하나뿐입니다. 행성은 방마다 다르게 생기므로 mapOf(mapId, planets)로 합쳐서 씁니다.
 export const MAP = Object.freeze({ id: 'space-plaza', name: '우리들의 우주 광장', width: 1200, height: 760,

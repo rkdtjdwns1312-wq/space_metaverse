@@ -20,10 +20,14 @@ async function waitForChatInput(page,{disabled,placeholder}){
   },{disabled,placeholder});
 }
 // Clicks inside the 1200x760 game-world canvas at map coordinates (mx,my), regardless of the
-// canvas's current on-screen (CSS) size.
+// canvas's current on-screen (CSS) size. Narrow (phone) layouts give the canvas a min-height with
+// object-fit:contain, so the bitmap is letterboxed inside the element and the blank bands must be
+// subtracted - exactly what client/world.js canvasPoint() does.
 async function worldClick(page,mx,my){
   const box=await page.locator('#world').boundingBox();
-  await page.mouse.click(box.x+box.width*mx/1200,box.y+box.height*my/760);
+  const scale=Math.min(box.width/1200,box.height/760);
+  const left=box.x+(box.width-1200*scale)/2,top=box.y+(box.height-760*scale)/2;
+  await page.mouse.click(left+mx*scale,top+my*scale);
 }
 // Holds whichever arrow keys currently move the live player toward target {x,y}, reading the
 // player's real position straight from the in-process server room (not an assumed spawn point,
@@ -380,6 +384,25 @@ try{
  await student.locator('#planet-new').waitFor({state:'visible'});
  assert.ok(await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  checks.push('#planet-new is visible with no horizontal overflow at 390px after the planet scenario');
+
+ // Item 14: on a phone the canvas is letterboxed (min-height + object-fit:contain), so a tap must
+ // still land on the map coordinate the child actually sees. Place a planet from the 390px layout
+ // and confirm the server stored the spot that was tapped.
+ const phoneBox=await student.locator('#world').boundingBox();
+ assert.ok(Math.abs(phoneBox.width/phoneBox.height-1200/760)>0.2,'expected a letterboxed canvas at 390px');
+ await student.locator('#planet-new').click();
+ await student.waitForFunction(()=>document.body.classList.contains('placing'));
+ await worldClick(student,900,300);
+ await student.locator('#planet-create-dialog').waitFor({state:'visible'});
+ await student.locator('#planet-name').fill('손가락행성');
+ await student.locator('#planet-create-submit').click();
+ await student.locator('#planet-create-dialog').waitFor({state:'hidden'});
+ const tapped=[...room.proposals.values()].find(pr=>pr.name==='손가락행성');
+ assert.ok(tapped,'the 390px tap did not create a proposal');
+ assert.ok(Math.hypot(tapped.x-900,tapped.y-300)<14,'390px tap landed at '+tapped.x+','+tapped.y+' instead of 900,300');
+ checks.push('A map tap on the letterboxed 390px canvas creates the planet at the tapped spot (within 14px)');
+ await teacher.locator('#proposals li').filter({hasText:'손가락행성'}).locator('button.reject').click();
+ await teacher.locator('#proposals-panel').waitFor({state:'hidden'});
  // --- End STEP 6 ----------------------------------------------------------------------------
  // Room isolation: a second teacher opens an independent classroom with the same teacher key
  // before the first classroom closes, and the two rooms must not leak allowlists or players.

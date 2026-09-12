@@ -46,6 +46,9 @@ test('placementFree keeps new planets away from the star, other planets and pend
  const star=MAP.objects.find(o=>o.kind==='star');
  assert.equal(placementFree(room, star.x, star.y), false);
  assert.equal(placementFree(room, 190, 175), true);
+ // 예약 구역(왼쪽 아래 이동 버튼 자리)에는 만들 수 없고, 그 밖은 됩니다.
+ assert.equal(placementFree(room, 120, 680), false);
+ assert.equal(placementFree(room, 400, 680), true);
  const planet=addPlanet(room,{name:'첫행성',description:'',x:190,y:175,color:'#98dfd2',rules:['규칙']});
  assert.equal(placementFree(room, planet.x, planet.y), false);
  room.proposals.set('p1',{id:'p1',name:'대기',description:'',x:400,y:400,radius:PLANET.radius,color:'#fff',playerId:'x',nickname:'x',at:Date.now()});
