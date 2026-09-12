@@ -1,6 +1,7 @@
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
+// speed: 초당 이동 픽셀. 2026-09-12 사용자 요청으로 155 → 310(2배). 한 tick(50ms)에 15.5px 움직이며, 가장 작은 장애물(소행성끼리 34px)보다 작아 뚫고 지나가지 않습니다.
 export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, broadcastMs: 100,
-  speed: 155, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
+  speed: 310, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
 // 상호작용: 행성·문 가장자리에서 이 거리 안에 있으면 살펴보기/나가기를 할 수 있습니다. 서버도 같은 값으로 검사합니다.
 export const INTERACT = Object.freeze({ radius: 40 });
 // 행성 규칙 편집 한도(선생님만 고칠 수 있음).
