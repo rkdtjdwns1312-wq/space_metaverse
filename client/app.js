@@ -51,9 +51,11 @@ function updateRoom(value){
     const name=document.createElement('span');name.textContent=p.nickname+(p.id===selfId?' · 나':'');
     if(p.departmentId){const dept=document.createElement('span');dept.className='dept';dept.textContent=(planetById(p.departmentId)?.name||'').slice(0,2);name.append(dept);}
     const insideId=planetIdOfMap(p.mapId),inside=insideId?planetById(insideId):null;
-    const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);
     const state=document.createElement('span');state.textContent=!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':'LV 1';
-    li.append(name,shards,state);
+    li.append(name);
+    // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
+    if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);li.append(shards);}
+    li.append(state);
     if(isTeacher&&p.role!=='teacher'){
       const mute=document.createElement('button');mute.type='button';mute.className='small secondary mute';mute.dataset.playerId=p.id;
       mute.textContent=p.muted?'허용':'금지';mute.setAttribute('aria-label',(p.muted?'채팅 허용: ':'채팅 금지: ')+p.nickname);
@@ -66,12 +68,19 @@ function updateRoom(value){
   $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
   $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':me?.departmentId?'소속: '+(planetById(me.departmentId)?.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
   $('self-shards').textContent=String(me?.starShards||0);
+  $('self-shards').closest('p').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
+  $('hint').textContent=isTeacher
+    ?(inStreet?'별상점 가까이에서 E · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
+    :(inStreet?'별상점 가까이에서 E · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 E로 광장':'행성 가까이에서 E · 오른쪽 문으로 별빛 거리 · 별 파편은 선생님이 나눠 줘요');
   renderBag(me?.inventory);
   const myProposal=(room.proposals||[]).find(p=>p.playerId===selfId);
   $('self-proposal').hidden=!myProposal;
   if(myProposal)$('self-proposal').textContent='"'+myProposal.name+'" 행성 신청 중 · 선생님 승인을 기다려요';
   $('leave').textContent=me?.role==='teacher'?'교실 종료하기':'교실 나가기';
   $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=inPlanet||inStreet;$('planet-info').hidden=!inPlanet;
+  // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
+  // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
+  if(placing&&(inPlanet||inStreet))stopPlacement();
   $('teacher-tools').hidden=!isTeacher;
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent='선생님 연결 대기 · 잠시 이동을 멈춰요';
@@ -79,8 +88,11 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
-  if($('shop-dialog').open){updateShopShards();renderShopBuyList();renderShopSellList();}
+  // 다른 친구의 입퇴장·구매마다 스냅샷이 오므로, 내 잔액·가방이 실제로 바뀐 경우에만 상점 목록을 다시 그립니다(입력 중인 수량 보호).
+  if($('shop-dialog').open){const sig=shopSignature();if(sig!==shopSig){shopSig=sig;updateShopShards();renderShopBuyList();renderShopSellList();}}
 }
+let shopSig='';
+function shopSignature(){return myShards()+'|'+JSON.stringify(myInventory());}
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   if(myMapId===STREET_ID)return '✦ 별빛 거리 · 별상점에서 별 파편으로 물건을 사고팔아요';
@@ -316,7 +328,15 @@ $('shards-give').onclick=async()=>{
 };
 function myShards(){return room?.players.find(p=>p.id===selfId)?.starShards||0;}
 function myInventory(){return room?.players.find(p=>p.id===selfId)?.inventory||[];}
-function updateShopShards(){$('shop-shards').textContent='내 별 파편 ★ '+myShards();}
+function updateShopShards(){const n=myShards();$('shop-shards').textContent='내 별 파편 ★ '+n+(n===0?' · 별 파편은 선생님이 나눠 줘요':'');}
+// 목록을 다시 그릴 때 입력 중인 수량과 스크롤 위치를 유지합니다.
+function rerenderList(list,build){
+  const prev=new Map([...list.querySelectorAll('li.item')].map(li=>[li.dataset.itemId,li.querySelector('.qty')?.value]));
+  const top=list.scrollTop;
+  list.replaceChildren(...build());
+  for(const li of list.querySelectorAll('li.item')){const q=li.querySelector('.qty');if(q&&prev.has(li.dataset.itemId))q.value=prev.get(li.dataset.itemId);}
+  list.scrollTop=top;
+}
 function setShopTab(tab){
   $('shop-tab-buy').classList.toggle('selected',tab==='buy');$('shop-tab-buy').setAttribute('aria-selected',String(tab==='buy'));
   $('shop-tab-sell').classList.toggle('selected',tab==='sell');$('shop-tab-sell').setAttribute('aria-selected',String(tab==='sell'));
@@ -324,17 +344,18 @@ function setShopTab(tab){
   $('shop-sell-empty').hidden=tab!=='sell'||myInventory().length>0;
 }
 $('shop-tab-buy').onclick=()=>setShopTab('buy');$('shop-tab-sell').onclick=()=>setShopTab('sell');
-function shopQty(input){return Math.max(1,Math.min(10,Math.round(Number(input.value))||1));}
+function shopQty(input){const q=Math.max(1,Math.min(10,Math.round(Number(input.value))||1));input.value=String(q);return q;}
 function applyShopAck(reply){
   const me=room?.players.find(p=>p.id===selfId);
   if(me){me.starShards=reply.starShards;me.inventory=reply.inventory;}
   $('self-shards').textContent=String(reply.starShards);
+  shopSig=shopSignature();
   updateShopShards();renderShopBuyList();renderShopSellList();renderBag(reply.inventory);
 }
 function renderShopBuyList(){
   const shards=myShards();
-  $('shop-buy-list').replaceChildren(...SHOP.items.map(item=>{
-    const li=document.createElement('li');li.className='item';
+  rerenderList($('shop-buy-list'),()=>SHOP.items.map(item=>{
+    const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
     const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
     const info=document.createElement('div');info.className='info';
     const name=document.createElement('strong');name.textContent=item.name;
@@ -361,9 +382,9 @@ function renderShopBuyList(){
 function renderShopSellList(){
   const inv=myInventory(),sellTabActive=!$('shop-sell-list').hidden;
   $('shop-sell-empty').hidden=inv.length>0||!sellTabActive;
-  $('shop-sell-list').replaceChildren(...inv.map(entry=>{
+  rerenderList($('shop-sell-list'),()=>inv.map(entry=>{
     const item=itemOf(entry.id);if(!item)return null;
-    const li=document.createElement('li');li.className='item';
+    const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
     const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
     const info=document.createElement('div');info.className='info';
     const name=document.createElement('strong');name.textContent=item.name;
@@ -387,7 +408,7 @@ function renderShopSellList(){
   }).filter(Boolean));
 }
 function openShopDialog(){
-  setShopTab('buy');updateShopShards();renderShopBuyList();renderShopSellList();
+  shopSig=shopSignature();setShopTab('buy');updateShopShards();renderShopBuyList();renderShopSellList();
   stop();$('shop-dialog').showModal();
 }
 $('shop-close').onclick=()=>$('shop-dialog').close();

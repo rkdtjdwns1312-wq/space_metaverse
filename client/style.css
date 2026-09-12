@@ -10,7 +10,9 @@ main{max-width:1640px;margin:auto;padding:28px 30px;display:flex;flex-direction:
 .leave{font-size:14px}
 .space-section{width:100%}
 .map-wrap{position:relative;width:100%;border:1px solid #d4d5e9;border-radius:26px;overflow:hidden;background:#e7eafb;box-shadow:0 10px 35px #3232760a}
-canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;outline:none}
+/* 맵은 전체 폭이지만, 노트북 화면에서 아래 HUD(가방·채팅)가 밀려나지 않도록 높이를 화면에 맞춰 제한합니다.
+   object-fit:contain으로 그림 비율은 유지되고, 클릭 좌표는 canvasPoint()가 여백을 보정합니다. */
+canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:calc(100vh - 300px);min-height:320px;object-fit:contain;outline:none}
 .map-caption{position:absolute;top:20px;left:24px;font-size:12px;color:#6e7095;pointer-events:none;max-width:calc(100% - 48px)}
 .map-footer{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#737388;margin:14px 5px 0}
 .interact{position:absolute;left:50%;bottom:128px;transform:translateX(-50%);z-index:2;background:#ffffffe8;color:#5b439a;border:1px solid #d8cdf0;box-shadow:0 6px 18px #3b2f6a26;font-size:13px;min-height:40px;padding:9px 18px;max-width:calc(100% - 40px);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

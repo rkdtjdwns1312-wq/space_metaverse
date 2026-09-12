@@ -323,7 +323,7 @@ test('planet:join is rejected while inside a planet; exiting returns to the plaz
  const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
- assert.equal((await call(s,'planet:exit',{})).error,'지금은 광장에 있어요.');
+ assert.equal((await call(s,'planet:exit',{})).error,'지금은 행성 안이 아니에요.');
  await call(s,'planet:join',{planetId:reading.planetId});
  p.x=190;p.y=175+PLANET.radius;
  await call(s,'planet:enter',{planetId:reading.planetId});
@@ -591,6 +591,30 @@ test('map:travel requires a nearby gate to a real map; success moves the player 
  await call(s,'planet:enter',{planetId:created.planetId});
  const insideTravel=await call(s,'map:travel',{to:STREET_ID});
  assert.equal(insideTravel.ok,false);assert.equal(insideTravel.error,'여기서는 그곳으로 갈 수 없어요.');
+});
+// 행성 자리는 광장 좌표라, 광장 밖(별빛 거리·행성 안)에서 신청·생성하면 보이지 않는 곳에 행성이 생깁니다.
+// 화면에서는 버튼을 숨기지만 서버도 같은 규칙을 지켜야 합니다.
+test('new planets can only be proposed or created from the plaza, not from the star street or inside a planet',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ const room=game.store.rooms.get(r.room.code);
+ const p=room.players.get(joined.selfId);
+ const tp=[...room.players.values()].find(x=>x.role==='teacher');
+ const gate=MAP.objects.find(o=>o.kind==='gate');
+ p.x=gate.x;p.y=gate.y;
+ assert.equal((await call(s,'map:travel',{to:STREET_ID})).ok,true);
+ const fromStreet=await call(s,'planet:propose',{name:'몰래행성',description:'',x:600,y:420,color:PLANET_COLORS[0]});
+ assert.equal(fromStreet.ok,false);
+ assert.equal(fromStreet.error,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
+ assert.equal(room.proposals.size,0);
+ const base=await call(teacher,'planet:create',{name:'기준행성',description:'',x:190,y:175,color:PLANET_COLORS[1]});
+ assert.equal(base.ok,true);
+ tp.x=190;tp.y=175+PLANET.radius;
+ assert.equal((await call(teacher,'planet:enter',{planetId:base.planetId})).ok,true);
+ const fromInside=await call(teacher,'planet:create',{name:'내부행성',description:'',x:1010,y:565,color:PLANET_COLORS[2]});
+ assert.equal(fromInside.ok,false);
+ assert.equal(fromInside.error,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
+ assert.equal(room.planets.size,1);
 });
 test('teacher gives or takes star shards from one student or everyone; amounts are validated and clamped',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);

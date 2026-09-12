@@ -224,6 +224,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(p.role==='student','선생님은 행성 만들기로 바로 만들 수 있어요.');
+      ensure(p.mapId===PLAZA_ID,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
       ensure(room.planets.size+room.proposals.size<PLANET.maxPerRoom,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
       ensure(room.proposals.size<PLANET.maxPending,'승인을 기다리는 행성이 너무 많아요. 잠시 후 다시 신청해주세요.');
       ensure(![...room.proposals.values()].some(pr=>pr.playerId===p.id),'이미 승인을 기다리는 행성이 있어요.');
@@ -238,6 +239,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      ensure(p.mapId===PLAZA_ID,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
       ensure(room.planets.size+room.proposals.size<PLANET.maxPerRoom,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
       const input=planetInput(room,data);
       const planet=addPlanet(room,{...input,rules:[...PLANET.defaultRules],createdBy:p.id});
@@ -356,7 +358,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       const planetId=planetIdOfMap(p.mapId);
-      ensure(planetId,'지금은 광장에 있어요.');
+      ensure(planetId,'지금은 행성 안이 아니에요.');
       const planet=room.planets.get(planetId);
       ensure(planet,'행성을 찾지 못했어요.');
       Object.assign(p,exitPosition(room,planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
@@ -494,7 +496,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const existing=p.inventory.find(i=>i.id===item.id);
       ensure(existing && existing.quantity>=quantity,'그만큼 가지고 있지 않아요.');
       const gain=Math.floor(item.price*SHOP.sellRate)*quantity;
-      p.starShards=Math.min(SHARDS.max,p.starShards+gain);
+      // 상한을 넘기면 아이템만 사라지는 일이 없도록, 담을 수 있을 때만 팝니다.
+      ensure(p.starShards+gain<=SHARDS.max,'별 파편을 더 담을 수 없어요. (최대 '+SHARDS.max+'개)');
+      p.starShards+=gain;
       existing.quantity-=quantity;
       if(existing.quantity===0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
       roster(room);

@@ -58,6 +58,7 @@ async function walkNear(page,player,target,{timeoutMs=8000}={}){
 // before walking to a different, farther target with walkNear: standing next to the first object
 // already shows #interact-prompt, so walkNear's "prompt appeared" success check would otherwise
 // fire immediately without the player ever having moved toward the real target.
+// 주의: 아래 holdKey의 시간(600ms·1500ms)은 이동 속도 RULES.speed=310 기준입니다. 속도를 바꾸면 이 값도 다시 맞추세요.
 async function holdKey(page,code,ms){
   await page.keyboard.down(code);
   await page.waitForTimeout(ms);
