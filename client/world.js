@@ -1,4 +1,4 @@
-import { mapOf, PLAZA_ID, PLANET } from '/shared/config.js';
+import { mapOf, PLAZA_ID, PLANET, STREET_ID, MAP, STREET } from '/shared/config.js';
 import * as config from '/shared/config.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
@@ -34,6 +34,8 @@ export function createWorld(canvas) {
       if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');
         ctx.fillStyle=glow;ctx.fillRect(o.x-110,o.y-110,220,220);star(o.x,o.y,o.radius,'#fff2c9');star(o.x,o.y,o.radius-7,o.color);
+      } else if(o.kind==='gate'){
+        drawGate(o);continue;
       } else {
         const fill=ctx.createRadialGradient(o.x-22,o.y-25,5,o.x,o.y,o.radius);
         fill.addColorStop(0,'#ffffff');fill.addColorStop(.3,o.color);fill.addColorStop(1,o.color);
@@ -77,6 +79,63 @@ export function createWorld(canvas) {
       ctx.fillText('아직 행성이 없어요. 행성 만들기로 첫 행성을 신청해보세요!',600,700);
     }
     ctx.font='14px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';ctx.fillText('우리의 첫 번째 우주',600,660);
+  }
+  // 두 맵(광장·별빛 거리) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
+  function drawGate(o){
+    const glowR=o.radius*2.4;
+    const glow=ctx.createRadialGradient(o.x,o.y,6,o.x,o.y,glowR);
+    glow.addColorStop(0,'#d9c6f273');glow.addColorStop(1,'#d9c6f200');
+    ctx.fillStyle=glow;ctx.fillRect(o.x-glowR,o.y-glowR,glowR*2,glowR*2);
+    const postW=12,postH=o.radius*2.1,archY=o.y-o.radius*.5;
+    ctx.fillStyle='#b7a4dd';
+    ctx.fillRect(o.x-o.radius-postW,archY-postH/2,postW,postH);
+    ctx.fillRect(o.x+o.radius,archY-postH/2,postW,postH);
+    ctx.beginPath();ctx.arc(o.x,archY,o.radius+postW,Math.PI,0);ctx.closePath();
+    ctx.fillStyle='#c9b7ec';ctx.fill();ctx.strokeStyle='#9d86c9';ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle='#ffffffb0';ctx.beginPath();ctx.arc(o.x,archY,o.radius*.6,0,Math.PI*2);ctx.fill();
+    ctx.font='600 15px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
+    ctx.fillText(o.name,o.x,archY+o.radius+postH/2+26);
+  }
+  // 천막 모양 별상점: 둥근 지붕 + 줄무늬 + 간판.
+  function drawShop(o){
+    const w=190,h=150,x=o.x-w/2,topY=o.y-h/2;
+    ctx.fillStyle='#00000018';ctx.beginPath();ctx.ellipse(o.x,o.y+h*.42,w*.55,14,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fffaf0';ctx.beginPath();ctx.roundRect(x,topY+34,w,h-34,16);ctx.fill();
+    ctx.strokeStyle='#e7c96a';ctx.lineWidth=2;ctx.stroke();
+    const stripes=6,sw=w/stripes;
+    for(let i=0;i<stripes;i++){
+      ctx.fillStyle=i%2?'#f5bace':'#ffffff';
+      ctx.beginPath();ctx.moveTo(x+i*sw,topY+34);ctx.quadraticCurveTo(x+i*sw+sw/2,topY-16,x+(i+1)*sw,topY+34);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#e0a9b8';ctx.lineWidth=1;ctx.stroke();
+    }
+    ctx.fillStyle='#6353ae';ctx.beginPath();ctx.roundRect(o.x-56,o.y-6,112,36,10);ctx.fill();
+    ctx.font='700 19px "Malgun Gothic",sans-serif';ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.fillText('별상점',o.x,o.y+19);
+    star(o.x-72,o.y+44,11,'#ffe59b');star(o.x+72,o.y+44,11,'#ffe59b');
+  }
+  // 가로등: 기둥 + 빛 번짐.
+  function drawLamp(o){
+    const poleTop=o.y-o.radius*1.6;
+    ctx.strokeStyle='#c8bde8';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(o.x,o.y+o.radius*.6);ctx.lineTo(o.x,poleTop);ctx.stroke();
+    const glow=ctx.createRadialGradient(o.x,poleTop,2,o.x,poleTop,42);
+    glow.addColorStop(0,'#fff2c9cc');glow.addColorStop(1,'#fff2c900');
+    ctx.fillStyle=glow;ctx.fillRect(o.x-42,poleTop-42,84,84);
+    ctx.fillStyle=o.color||'#fff2c9';ctx.beginPath();ctx.arc(o.x,poleTop,10,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#e8dba0';ctx.lineWidth=2;ctx.stroke();
+  }
+  function drawStreet(map){
+    const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,'#372f5c');g.addColorStop(.55,'#453a72');g.addColorStop(1,'#332a54');
+    ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
+    for(const s of stars){ctx.fillStyle='#ffffffd0';ctx.beginPath();ctx.arc(s.x,s.y*.82+30,s.r,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#5d5093';ctx.fillRect(0,540,1200,220);
+    ctx.fillStyle='#7266a6aa';ctx.fillRect(0,540,1200,8);
+    ctx.strokeStyle='#ffffff26';ctx.lineWidth=1;ctx.strokeRect(16,16,1168,728);
+    for(const o of map.objects){
+      if(o.kind==='gate'){drawGate(o);continue;}
+      if(o.kind==='shop'){drawShop(o);continue;}
+      if(o.kind==='lamp'){drawLamp(o);continue;}
+    }
+    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#ded6f5';ctx.textAlign='center';
+    ctx.fillText(map.name+' · 별상점에서 별 파편으로 물건을 사고팔아요',600,46);
   }
   function drawInterior(map){
     ctx.fillStyle='#f3f1fb';ctx.fillRect(0,0,1200,760);
@@ -143,7 +202,7 @@ export function createWorld(canvas) {
   function frame(t){
     ctx.clearRect(0,0,1200,760);
     const map=currentMap();
-    if(myMapId===PLAZA_ID)drawMap(map);else drawInterior(map);
+    if(myMapId===PLAZA_ID)drawMap(map);else if(myMapId===STREET_ID)drawStreet(map);else drawInterior(map);
     for(const p of players.filter(p=>(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
   }
@@ -164,12 +223,24 @@ export function createWorld(canvas) {
     nearby(){
       const me=players.find(p=>p.id===selfId);if(!me)return null;
       if(myMapId===PLAZA_ID){
+        const candidates=[...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate')];
         let best=null,bestDist=Infinity;
-        for(const o of planets){
+        for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
           if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
         }
-        return best?{kind:'planet',id:best.id,name:best.name}:null;
+        if(!best)return null;
+        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:'planet',id:best.id,name:best.name};
+      }
+      if(myMapId===STREET_ID){
+        const candidates=STREET.objects.filter(o=>o.kind==='gate'||o.kind==='shop');
+        let best=null,bestDist=Infinity;
+        for(const o of candidates){
+          const d=Math.hypot(me.x-o.x,me.y-o.y);
+          if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
+        }
+        if(!best)return null;
+        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:'shop',name:best.name};
       }
       const door=mapOf(myMapId,planets).objects.find(o=>o.kind==='door');
       if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {kind:'door'};

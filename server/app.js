@@ -4,9 +4,10 @@ import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError } from './rooms.js';
-import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet } from './world.js';
+import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
-import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf } from '../shared/config.js';
+import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
+  STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -315,7 +316,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s;
       const planet=requirePlanet(room,data);
       ensure(p.role==='student','선생님은 모든 행성에 들어갈 수 있어요.');
-      ensure(p.mapId===PLAZA_ID,'행성 안에서는 다른 행성에 가입할 수 없어요. 먼저 광장으로 나와주세요.');
+      ensure(p.mapId===PLAZA_ID,'광장에서만 행성에 가입할 수 있어요.');
       const previousId=p.avatar.departmentId;
       ensure(previousId!==planet.id,'이미 '+planet.name+' 소속이에요.');
       const previous=previousId?room.planets.get(previousId):null;
@@ -418,6 +419,86 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);
       announce(room,'선생님이 "'+oldName+'" 행성의 이름을 "'+name+'"'+ro(name)+' 바꿨어요.');
       return {};
+    });
+    action('map:travel',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      ensure(typeof data.to==='string' && Object.prototype.hasOwnProperty.call(STATIC_MAPS,data.to),'그런 곳은 없어요.');
+      const here=mapOf(p.mapId,room.planets.values());
+      const gate=here.objects.find(o=>o.kind==='gate' && o.target===data.to);
+      ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
+      ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
+      Object.assign(p,arrivePosition(room,data.to,gate.arrival),{mapId:data.to,input:{x:0,y:0,at:0}});
+      roster(room);
+      return {};
+    });
+    action('shards:give',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      const amount=data.amount;
+      ensure(Number.isInteger(amount) && amount!==0 && Math.abs(amount)<=SHARDS.giveMax,'별 파편 개수는 1~999 사이 정수로 적어주세요.');
+      const apply=target=>{target.starShards=Math.max(0,Math.min(SHARDS.max,target.starShards+amount));};
+      if(data.playerId==='all'){
+        for(const t of room.players.values()) if(t.role==='student') apply(t);
+        roster(room);
+        announce(room, amount>0
+          ? '선생님이 모두에게 별 파편 '+amount+'개씩 주었어요.'
+          : '선생님이 모두의 별 파편 '+(-amount)+'개씩 거두었어요.');
+      }else{
+        const target=room.players.get(data.playerId);
+        ensure(target && target.role==='student','친구를 찾지 못했어요.');
+        apply(target);
+        roster(room);
+        announce(room, amount>0
+          ? '선생님이 '+target.nickname+' 친구에게 별 파편 '+amount+'개를 주었어요.'
+          : '선생님이 '+target.nickname+' 친구의 별 파편 '+(-amount)+'개를 거두었어요.');
+      }
+      return {};
+    });
+    const requireShop=p=>{
+      ensure(p.mapId===STREET_ID,'별상점은 별빛 거리에 있어요.');
+      const shop=STREET.objects.find(o=>o.kind==='shop');
+      ensure(isNear(p,shop),'별상점에 더 가까이 가주세요.');
+    };
+    action('shop:buy',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      requireShop(p);
+      const item=itemOf(data.itemId);
+      ensure(item,'그런 물건은 없어요.');
+      const quantity=data.quantity;
+      ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
+      const cost=item.price*quantity;
+      ensure(p.starShards>=cost,'별 파편이 부족해요. (필요 '+cost+'개, 지금 '+p.starShards+'개)');
+      const existing=p.inventory.find(i=>i.id===item.id);
+      if(existing){
+        ensure(existing.quantity+quantity<=SHOP.maxStack,'한 종류는 99개까지만 가질 수 있어요.');
+        existing.quantity+=quantity;
+      }else{
+        ensure(p.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
+        p.inventory.push({id:item.id,quantity});
+      }
+      p.starShards-=cost;
+      roster(room);
+      return {starShards:p.starShards,inventory:[...p.inventory]};
+    });
+    action('shop:sell',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      requireShop(p);
+      const item=itemOf(data.itemId);
+      ensure(item,'그런 물건은 없어요.');
+      const quantity=data.quantity;
+      ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
+      const existing=p.inventory.find(i=>i.id===item.id);
+      ensure(existing && existing.quantity>=quantity,'그만큼 가지고 있지 않아요.');
+      const gain=Math.floor(item.price*SHOP.sellRate)*quantity;
+      p.starShards=Math.min(SHARDS.max,p.starShards+gain);
+      existing.quantity-=quantity;
+      if(existing.quantity===0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
+      roster(room);
+      return {starShards:p.starShards,inventory:[...p.inventory]};
     });
     socket.on('player:input',data=>{
       const p=socket.data.session?.player;

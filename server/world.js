@@ -31,6 +31,12 @@ export function spawnInside(room, mapId) {
   if (!pos) throw new Error('안전하게 들어갈 자리가 없습니다.');
   return pos;
 }
+// 문을 통과해 다른 맵으로 이동할 때 도착 좌표(point) 근처의 빈 자리를 찾습니다. mapId는 도착하는 맵입니다.
+export function arrivePosition(room, mapId, point) {
+  const pos = nearestFree(room, point.x, point.y, mapId);
+  if (!pos) throw new Error('안전하게 도착할 자리가 없습니다.');
+  return pos;
+}
 export function exitPosition(room, planet) {
   const pos = nearestFree(room, planet.x, planet.y+planet.radius+RULES.radius+12, PLAZA_ID);
   if (!pos) throw new Error('안전하게 들어갈 자리가 없습니다.');

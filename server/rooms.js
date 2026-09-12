@@ -88,7 +88,8 @@ export class RoomStore {
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname})),
       players:[...room.players.values()].map(p=>({id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-        connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId}))};
+        connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
+        starShards:p.starShards,inventory:[...p.inventory]}))};
   }
   pushChat(room,{playerId,nickname,role,text,flagged}) {
     const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged};

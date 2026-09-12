@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
-import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet } from '../server/world.js';
-import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf } from '../shared/config.js';
+import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
+import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID } from '../shared/config.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
 test('all entrants start as level-one asteroids; identities and secrets are separated',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'teacher');
  const {player:student}=store.join({code:room.code,nickname:'1',role:'teacher',level:5,x:9999},'student');
  assert.equal(student.role,'student');assert.equal(student.avatar.level,1);assert.equal(student.avatar.constellationId,null);
  assert.equal(student.avatar.form,'asteroid');assert.equal(player.avatar.form,'asteroid');assert.equal(student.starShards,0);
+ assert.deepEqual(student.inventory,[]);
  const snapshot=JSON.stringify(store.snapshot(room));assert.ok(!snapshot.includes(student.token));assert.ok(!snapshot.includes('allowedNames'));
  assert.throws(()=>store.join({code:room.code,nickname:'1'},'other'));
  assert.throws(()=>store.join({code:room.code,nickname:'허용안됨'},'other'));
@@ -118,9 +119,34 @@ test('snapshot exposes seeded planets (default rules, no members) and per-player
  }
  const p=snap.players.find(x=>x.id===player.id);
  assert.equal(p.mapId, PLAZA_ID);assert.equal(p.departmentId, null);
+ assert.equal(p.starShards, 0);assert.deepEqual(p.inventory, []);
  const json=JSON.stringify(snap);
  assert.ok(!json.includes(player.token));assert.ok(!json.includes('socketId'));
  assert.ok(!json.includes('lastChatAt'));assert.ok(!json.includes('"input"'));
+});
+test('mapOf resolves the star street as a fixed map with a shop and a passable gate back to the plaza',()=>{
+ const map=mapOf(STREET_ID);
+ assert.equal(map.id, STREET_ID);assert.equal(map.name, STREET.name);
+ assert.ok(map.objects.some(o=>o.kind==='shop'));
+ const gate=map.objects.find(o=>o.kind==='gate');
+ assert.equal(gate.target, PLAZA_ID);assert.equal(gate.passable, true);
+});
+test('the star street has no planets: shop and lamps block movement, the gate is passable, and the boundary holds',()=>{
+ const store=new RoomStore(),{room}=store.create(roomData,'t');
+ const shop=STREET.objects.find(o=>o.kind==='shop'), lamp=STREET.objects.find(o=>o.kind==='lamp'), gate=STREET.objects.find(o=>o.kind==='gate');
+ assert.equal(isFree(room, shop.x, shop.y, null, STREET_ID), false);
+ assert.equal(isFree(room, lamp.x, lamp.y, null, STREET_ID), false);
+ assert.equal(isFree(room, gate.x, gate.y, null, STREET_ID), true);
+ assert.equal(isFree(room, RULES.radius-1, 400, null, STREET_ID), false);
+ assert.equal(isFree(room, STREET.width-RULES.radius+1, 400, null, STREET_ID), false);
+ assert.equal(isFree(room, STREET.spawn.x, STREET.spawn.y, null, STREET_ID), true);
+});
+test('arrivePosition lands near the requested arrival point on the target map, clear of its objects',()=>{
+ const store=new RoomStore(),{room}=store.create(roomData,'t');
+ const gate=MAP.objects.find(o=>o.kind==='gate' && o.target===STREET_ID);
+ const pos=arrivePosition(room, STREET_ID, gate.arrival);
+ assert.ok(Math.hypot(pos.x-gate.arrival.x, pos.y-gate.arrival.y) < 400);
+ assert.ok(isFree(room, pos.x, pos.y, null, STREET_ID));
 });
 test('resume token only restores its own disconnected, unexpired session',()=>{
  const store=new RoomStore(),s=store.create(roomData,'t');

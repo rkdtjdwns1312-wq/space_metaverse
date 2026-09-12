@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
-import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf } from '../shared/config.js';
+import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP } from '../shared/config.js';
 import { placementFree } from '../server/world.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -182,7 +182,8 @@ test('pending-proposal limit blocks a further proposal once maxPending is reache
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
  await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
  for(let i=0;i<PLANET.maxPending;i++){
-  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:400,color:PLANET_COLORS[i%PLANET_COLORS.length]});
+  // y:550인 가로줄은 별(600,170)과 별빛 거리로 가는 문(1120,380) 둘 다에서 충분히 떨어져 있습니다.
+  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:550,color:PLANET_COLORS[i%PLANET_COLORS.length]});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
  }
  const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',x:100,y:600,color:PLANET_COLORS[0]});
@@ -329,7 +330,7 @@ test('planet:join is rejected while inside a planet; exiting returns to the plaz
  for(const planetId of [reading.planetId,diary.planetId]){
   const rejected=await call(s,'planet:join',{planetId});
   assert.equal(rejected.ok,false);
-  assert.equal(rejected.error,'행성 안에서는 다른 행성에 가입할 수 없어요. 먼저 광장으로 나와주세요.');
+  assert.equal(rejected.error,'광장에서만 행성에 가입할 수 있어요.');
  }
  const exited=await call(s,'planet:exit',{});
  assert.equal(exited.ok,true);
@@ -563,4 +564,147 @@ test('resume includes recent chat history, trimmed to the configured size from t
  assert.equal(result2.chat.messages.length,50);
  assert.equal(result2.chat.messages[0].text,'채움10');
  assert.equal(result2.chat.messages[49].text,'채움59');
+});
+test('map:travel requires a nearby gate to a real map; success moves the player to the arrival point',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
+ const invalidTo=await call(s,'map:travel',{to:'nowhere'});
+ assert.equal(invalidTo.ok,false);assert.equal(invalidTo.error,'그런 곳은 없어요.');
+ const tooFar=await call(s,'map:travel',{to:STREET_ID});
+ assert.equal(tooFar.ok,false);assert.equal(tooFar.error,'문에 더 가까이 가주세요.');
+ const gate=MAP.objects.find(o=>o.kind==='gate');
+ p.x=gate.x;p.y=gate.y;
+ const travelled=await call(s,'map:travel',{to:STREET_ID});
+ assert.equal(travelled.ok,true);
+ assert.equal(p.mapId,STREET_ID);
+ assert.ok(Math.hypot(p.x-gate.arrival.x,p.y-gate.arrival.y)<400);
+ const streetGate=STREET.objects.find(o=>o.kind==='gate');
+ const stillFar=await call(s,'map:travel',{to:PLAZA_ID});
+ assert.equal(stillFar.ok,false);assert.equal(stillFar.error,'문에 더 가까이 가주세요.');
+ p.x=streetGate.x;p.y=streetGate.y;
+ const back=await call(s,'map:travel',{to:PLAZA_ID});
+ assert.equal(back.ok,true);assert.equal(p.mapId,PLAZA_ID);
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ await call(s,'planet:join',{planetId:created.planetId});
+ p.x=190;p.y=175+PLANET.radius;
+ await call(s,'planet:enter',{planetId:created.planetId});
+ const insideTravel=await call(s,'map:travel',{to:STREET_ID});
+ assert.equal(insideTravel.ok,false);assert.equal(insideTravel.error,'여기서는 그곳으로 갈 수 없어요.');
+});
+test('teacher gives or takes star shards from one student or everyone; amounts are validated and clamped',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const p1=game.store.rooms.get(r.room.code).players.get(j1.selfId);
+ const p2=game.store.rooms.get(r.room.code).players.get(j2.selfId);
+ assert.equal((await call(s1,'shards:give',{playerId:j1.selfId,amount:10})).error,'선생님만 할 수 있어요.');
+ for(const amount of [0,1000,1.5,-1000])
+  assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount})).error,'별 파편 개수는 1~999 사이 정수로 적어주세요.');
+ assert.equal((await call(teacher,'shards:give',{playerId:'nope',amount:5})).error,'친구를 찾지 못했어요.');
+ const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
+ assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:10})).ok,true);
+ assert.equal(p1.starShards,10);
+ assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:-3})).ok,true);
+ assert.equal(p1.starShards,7);
+ assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:-100})).ok,true);
+ assert.equal(p1.starShards,0);
+ p1.starShards=SHARDS.max-5;
+ assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:SHARDS.giveMax})).ok,true);
+ assert.equal(p1.starShards,SHARDS.max);
+ assert.equal((await call(teacher,'shards:give',{playerId:'all',amount:5})).ok,true);
+ assert.equal(p2.starShards,5);
+ assert.equal((await call(teacher,'shards:give',{playerId:'all',amount:-2})).ok,true);
+ assert.equal(p2.starShards,3);
+ await sleep(20);
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 1 친구에게 별 파편 10개를 주었어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 1 친구의 별 파편 3개를 거두었어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 모두에게 별 파편 5개씩 주었어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='선생님이 모두의 별 파편 2개씩 거두었어요.'));
+});
+test('star shards and star-street purchases stay isolated per classroom',async t=>{
+ const {connect,game}=await fixture(t),teacherA=await connect(),teacherB=await connect();
+ const ra=await create(teacherA),rb=await create(teacherB);
+ const a1=await connect(),b1=await connect();
+ const ja=await call(a1,'room:join',{code:ra.room.code,nickname:'1'});
+ const jb=await call(b1,'room:join',{code:rb.room.code,nickname:'1'});
+ assert.equal((await call(teacherA,'shards:give',{playerId:ja.selfId,amount:20})).ok,true);
+ const pa=game.store.rooms.get(ra.room.code).players.get(ja.selfId);
+ const pb=game.store.rooms.get(rb.room.code).players.get(jb.selfId);
+ assert.equal(pa.starShards,20);assert.equal(pb.starShards,0);
+ assert.equal((await call(teacherB,'shards:give',{playerId:ja.selfId,amount:5})).error,'친구를 찾지 못했어요.');
+});
+test('star shop enforces location, funds, stack and bag limits; buying and selling update shards and inventory together',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
+ const item=SHOP.items[0];
+ const fromPlaza=await call(s,'shop:buy',{itemId:item.id,quantity:1});
+ assert.equal(fromPlaza.ok,false);assert.equal(fromPlaza.error,'별상점은 별빛 거리에 있어요.');
+ const gate=MAP.objects.find(o=>o.kind==='gate');
+ p.x=gate.x;p.y=gate.y;
+ assert.equal((await call(s,'map:travel',{to:STREET_ID})).ok,true);
+ const farBuy=await call(s,'shop:buy',{itemId:item.id,quantity:1});
+ assert.equal(farBuy.ok,false);assert.equal(farBuy.error,'별상점에 더 가까이 가주세요.');
+ const shop=STREET.objects.find(o=>o.kind==='shop');
+ p.x=shop.x;p.y=shop.y;
+ const noFunds=await call(s,'shop:buy',{itemId:item.id,quantity:1});
+ assert.equal(noFunds.ok,false);assert.equal(noFunds.error,'별 파편이 부족해요. (필요 '+item.price+'개, 지금 0개)');
+ assert.equal((await call(teacher,'shards:give',{playerId:joined.selfId,amount:100})).ok,true);
+ const bought=await call(s,'shop:buy',{itemId:item.id,quantity:2});
+ assert.equal(bought.ok,true);
+ assert.equal(bought.starShards,100-item.price*2);
+ assert.equal(p.starShards,bought.starShards);
+ assert.deepEqual(bought.inventory,[{id:item.id,quantity:2}]);
+ assert.deepEqual(p.inventory,[{id:item.id,quantity:2}]);
+ const badItem=await call(s,'shop:buy',{itemId:'nope',quantity:1});
+ assert.equal(badItem.ok,false);assert.equal(badItem.error,'그런 물건은 없어요.');
+ for(const quantity of [0,11]){
+  const res=await call(s,'shop:buy',{itemId:item.id,quantity});
+  assert.equal(res.ok,false);assert.equal(res.error,'1~10개씩 사고팔 수 있어요.');
+ }
+ p.starShards=SHARDS.max;
+ p.inventory=[{id:item.id,quantity:95}];
+ const overStack=await call(s,'shop:buy',{itemId:item.id,quantity:5});
+ assert.equal(overStack.ok,false);assert.equal(overStack.error,'한 종류는 99개까지만 가질 수 있어요.');
+ const otherItem=SHOP.items[1];
+ p.inventory=SHOP.items.filter(it=>it.id!==otherItem.id).map(it=>({id:it.id,quantity:1}))
+   .concat(Array.from({length:30-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
+ assert.equal(p.inventory.length,30);
+ const fullBag=await call(s,'shop:buy',{itemId:otherItem.id,quantity:1});
+ assert.equal(fullBag.ok,false);assert.equal(fullBag.error,'가방이 가득 찼어요.');
+ p.inventory=[{id:item.id,quantity:4}];p.starShards=0;
+ const sellTooMany=await call(s,'shop:sell',{itemId:item.id,quantity:5});
+ assert.equal(sellTooMany.ok,false);assert.equal(sellTooMany.error,'그만큼 가지고 있지 않아요.');
+ const sold=await call(s,'shop:sell',{itemId:item.id,quantity:4});
+ assert.equal(sold.ok,true);
+ assert.equal(sold.starShards,Math.floor(item.price*SHOP.sellRate)*4);
+ assert.equal(p.starShards,sold.starShards);
+ assert.deepEqual(sold.inventory,[]);
+ assert.deepEqual(p.inventory,[]);
+});
+test('resume after reconnecting keeps star shards, inventory and the star-street map',async t=>{
+ const {connect,game}=await fixture(t,{reconnectMs:500}),teacher=await connect(),r=await create(teacher);
+ const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
+ const gate=MAP.objects.find(o=>o.kind==='gate');
+ p.x=gate.x;p.y=gate.y;
+ assert.equal((await call(s,'map:travel',{to:STREET_ID})).ok,true);
+ assert.equal((await call(teacher,'shards:give',{playerId:joined.selfId,amount:30})).ok,true);
+ const shop=STREET.objects.find(o=>o.kind==='shop');
+ p.x=shop.x;p.y=shop.y;
+ const item=SHOP.items[0];
+ assert.equal((await call(s,'shop:buy',{itemId:item.id,quantity:1})).ok,true);
+ s.disconnect();await sleep(60);
+ const resumed=await connect();
+ const result=await call(resumed,'session:resume',{token:joined.token});
+ assert.ok(result.ok);
+ assert.equal(p.mapId,STREET_ID);
+ assert.equal(p.starShards,30-item.price);
+ assert.deepEqual(p.inventory,[{id:item.id,quantity:1}]);
+ const rp=result.room.players.find(x=>x.id===joined.selfId);
+ assert.equal(rp.mapId,STREET_ID);
+ assert.equal(rp.starShards,30-item.price);
+ assert.deepEqual(rp.inventory,[{id:item.id,quantity:1}]);
 });
