@@ -40,7 +40,9 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // targets: 'self'면 나에게만, 'any'면 친구에게도 쓸 수 있습니다. 낮은 레벨이 높은 레벨 친구에게는 쓸 수 없습니다(선생님은 LV5로 취급).
 // secret: true면 누가 썼는지 친구들에게는 비밀('누군가')이고 선생님에게만 보입니다.
 // effect: 사용하면 대상에게 붙는 표시(아이콘·이름·지속 시간). 지금은 겉모습 표시만 하고 이동 속도 등 실제 능력치는 바꾸지 않습니다.
-export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 30, items: [
+// maxKinds 20 = 가방 격자 5×4칸(한 칸에 한 종류). BAG는 화면 격자 크기입니다.
+export const BAG = Object.freeze({ columns: 5, rows: 4 });
+export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 20, items: [
   { id: 'star-sticker', name: '반짝 별 스티커', description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
   { id: 'space-snack', name: '우주 간식', description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,
@@ -65,16 +67,54 @@ export const ITEM_USE = Object.freeze({ cooldownMs: 2000, maxEffects: 3, logSize
 export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999 });
 export const ITEM_TYPES = Object.freeze({ decoration: '꾸미기', consumable: '간식', tool: '도구', pet: '펫', mount: '탈것' });
 export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || null;
-// 선생님이 교실을 만들 때 '예시 행성으로 시작'을 켜면 아래 4개가 미리 놓입니다. 이름·규칙은 예시일 뿐이며 나중에 바꿀 수 있습니다.
-export const EXAMPLE_PLANETS = Object.freeze([
-  { name: '독서행성', x: 190, y: 175, color: '#98dfd2', description: '책을 아끼고 함께 읽는 친구들의 행성이에요.',
-    rules: ['읽은 책은 제자리에 꽂아요', '책을 읽는 동안에는 조용히 해요', '빌린 책은 일주일 안에 돌려줘요'] },
-  { name: '일기행성', x: 1010, y: 175, color: '#f5bace', description: '하루를 기록하고 마음을 나누는 친구들의 행성이에요.',
+// 만들 수 있는 행성 종류(2026-09-12 사용자 지정 13종). 아이들은 이 목록에서 골라 행성을 만들고, 이름은 2~10자 안에서 바꿀 수 있습니다.
+// look: 화면이 종류에 맞게 다르게 그리는 모양 스타일. icon: 행성 가운데에 그리는 그림 글자. 추후 아이들이 직접 그린 디자인(이미지)을 붙이는 기능을 붙일 자리는 image(현재 null)입니다.
+export const PLANET_TEMPLATES = Object.freeze([
+  { id: 'diary', name: '일기행성', icon: '📔', color: '#f5bace', look: 'ribbon', image: null,
+    description: '하루를 기록하고 마음을 나누는 친구들의 행성이에요.',
     rules: ['일기는 매일 한 줄 이상 써요', '친구의 일기는 허락 없이 보지 않아요', '일기장은 정해진 자리에 제출해요'] },
-  { name: '청소행성', x: 190, y: 565, color: '#b5c6f6', description: '교실을 반짝이게 만드는 친구들의 행성이에요.',
+  { id: 'subject', name: '교과행성', icon: '📚', color: '#f5d798', look: 'stripes', image: null,
+    description: '수업을 준비하고 서로 가르쳐 주는 친구들의 행성이에요.',
+    rules: ['수업 준비물을 미리 챙겨요', '모르는 것은 손을 들고 물어봐요', '친구가 물어보면 친절하게 알려줘요'] },
+  { id: 'reading', name: '독서행성', icon: '📖', color: '#98dfd2', look: 'pages', image: null,
+    description: '책을 아끼고 함께 읽는 친구들의 행성이에요.',
+    rules: ['읽은 책은 제자리에 꽂아요', '책을 읽는 동안에는 조용히 해요', '빌린 책은 일주일 안에 돌려줘요'] },
+  { id: 'rules', name: '규칙행성', icon: '📜', color: '#c5c9f7', look: 'shield', image: null,
+    description: '우리 반 약속을 지키고 알려 주는 친구들의 행성이에요.',
+    rules: ['약속을 어긴 친구에게는 먼저 부드럽게 알려줘요', '규칙은 모두가 함께 정해요', '경고는 누구에게나 공평하게 줘요'] },
+  { id: 'pe', name: '체육행성', icon: '⚽', color: '#ffd2a8', look: 'ball', image: null,
+    description: '몸을 움직이고 함께 뛰노는 친구들의 행성이에요.',
+    rules: ['체육 도구는 쓴 뒤 제자리에 둬요', '준비운동을 꼭 해요', '이기고 져도 서로 박수를 쳐요'] },
+  { id: 'meal', name: '급식행성', icon: '🍱', color: '#ffe0b5', look: 'plate', image: null,
+    description: '맛있는 급식을 함께 준비하는 친구들의 행성이에요.',
+    rules: ['차례를 지켜 줄을 서요', '음식은 먹을 만큼만 받아요', '식판은 깨끗이 정리해요'] },
+  { id: 'facility', name: '시설행성', icon: '🔧', color: '#cfd8e6', look: 'bolts', image: null,
+    description: '교실 물건과 시설을 돌보는 친구들의 행성이에요.',
+    rules: ['고장 난 것은 바로 알려요', '물건은 소중히 다뤄요', '창문과 전등은 마지막에 확인해요'] },
+  { id: 'finance', name: '재무행성', icon: '💰', color: '#f7e39b', look: 'coins', image: null,
+    description: '우리 반 살림을 관리하는 친구들의 행성이에요.',
+    rules: ['별 파편 기록은 정확하게 남겨요', '내 것과 반 것을 구별해요', '쓰기 전에 함께 의논해요'] },
+  { id: 'counsel', name: '상담행성', icon: '💬', color: '#d9c6f2', look: 'heart', image: null,
+    description: '친구의 고민을 들어 주는 친구들의 행성이에요.',
+    rules: ['친구의 비밀은 지켜요', '끝까지 들어 준 다음 말해요', '힘든 친구는 선생님께 함께 가요'] },
+  { id: 'cleaning', name: '청소행성', icon: '🧹', color: '#b5c6f6', look: 'sparkle', image: null,
+    description: '교실을 반짝이게 만드는 친구들의 행성이에요.',
     rules: ['줄을 서지 않으면 경고를 받아요', '청소 도구는 쓴 뒤 제자리에 둬요', '내 자리는 내가 정리해요'] },
-  { name: '교과행성', x: 1010, y: 565, color: '#f5d798', description: '수업을 준비하고 서로 가르쳐 주는 친구들의 행성이에요.',
-    rules: ['수업 준비물을 미리 챙겨요', '모르는 것은 손을 들고 물어봐요', '친구가 물어보면 친절하게 알려줘요'] }
+  { id: 'art', name: '예술행성', icon: '🎨', color: '#f9c6e0', look: 'splash', image: null,
+    description: '그림과 만들기로 교실을 꾸미는 친구들의 행성이에요.',
+    rules: ['재료는 아껴 써요', '작품은 소중히 다뤄요', '친구 작품의 좋은 점을 말해줘요'] },
+  { id: 'show', name: '예능행성', icon: '🎤', color: '#ffcfa3', look: 'stars', image: null,
+    description: '노래·춤·재미로 교실을 즐겁게 하는 친구들의 행성이에요.',
+    rules: ['무대는 차례대로 써요', '친구를 놀리는 개그는 하지 않아요', '공연 준비는 함께 해요'] },
+  { id: 'audit', name: '감찰행성', icon: '🔍', color: '#bfe3d6', look: 'eye', image: null,
+    description: '교실이 공정하게 돌아가는지 살펴보는 친구들의 행성이에요.',
+    rules: ['본 것만 정확하게 말해요', '친구를 몰래 지켜보지 않아요', '문제는 선생님께 먼저 알려요'] }
+]);
+export const templateOf = templateId => PLANET_TEMPLATES.find(t => t.id === templateId) || null;
+// 선생님이 교실을 만들 때 '예시 행성으로 시작'을 켜면 아래 4개가 종류 목록의 값으로 미리 놓입니다. 이름·규칙은 나중에 바꿀 수 있습니다.
+const example = (templateId, x, y) => { const t = templateOf(templateId); return { templateId, name: t.name, x, y, color: t.color, description: t.description, rules: [...t.rules] }; };
+export const EXAMPLE_PLANETS = Object.freeze([
+  example('reading', 190, 175), example('diary', 1010, 175), example('cleaning', 190, 565), example('subject', 1010, 565)
 ]);
 // 행성 내부 맵 템플릿: 광장과 같은 크기의 작은 방. 위에는 규칙 게시판(충돌), 아래에는 광장으로 나가는 문(통과 가능).
 export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 600, y: 560 },

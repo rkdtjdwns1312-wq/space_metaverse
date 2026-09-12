@@ -108,21 +108,55 @@ test('isNear includes planet radius plus interact and player radius, inclusive a
  assert.equal(isNear({x:planet.x+limit,y:planet.y}, planet), true);
  assert.equal(isNear({x:planet.x+limit+0.01,y:planet.y}, planet), false);
 });
-test('snapshot exposes seeded planets (default rules, no members) and per-player mapId/departmentId, no secrets',()=>{
+test('snapshot(room, teacher) exposes seeded planets (default rules, no members) and per-player mapId/departmentId',()=>{
  const store=new RoomStore(),{room,player}=store.create({...roomData,seedPlanets:true},'t');
- const snap=store.snapshot(room);
+ const snap=store.snapshot(room,player);
  assert.equal(snap.planets.length, EXAMPLE_PLANETS.length);
  assert.deepEqual(snap.proposals, []);
  for(const seed of EXAMPLE_PLANETS){
   const pl=snap.planets.find(x=>x.name===seed.name);
   assert.ok(pl);assert.deepEqual(pl.rules, seed.rules);assert.equal(pl.memberCount,0);assert.equal(pl.createdBy,null);assert.equal(pl.rename,null);
+  assert.equal(pl.templateId, seed.templateId);
  }
  const p=snap.players.find(x=>x.id===player.id);
  assert.equal(p.mapId, PLAZA_ID);assert.equal(p.departmentId, null);
  assert.equal(p.starShards, 0);assert.deepEqual(p.inventory, []);
+ assert.deepEqual(p.effects, []);
+ assert.deepEqual(snap.itemLog, []);assert.deepEqual(snap.trades, []);assert.deepEqual(snap.tradeLog, []);
  const json=JSON.stringify(snap);
  assert.ok(!json.includes(player.token));assert.ok(!json.includes('socketId'));
  assert.ok(!json.includes('lastChatAt'));assert.ok(!json.includes('"input"'));
+});
+test('snapshot(room, viewer) keeps star shards/inventory/item-user/trade secret between students; the teacher sees everything',()=>{
+ const store=new RoomStore(),{room,player:teacher}=store.create(roomData,'t');
+ const student=store.join({code:room.code,nickname:'1'},'s').player;
+ const other=store.join({code:room.code,nickname:'2'},'s2').player;
+ const third=store.join({code:room.code,nickname:'3'},'s3').player;
+ student.starShards=7;student.inventory=[{id:'star-sticker',quantity:2}];
+ other.starShards=9;other.inventory=[{id:'space-snack',quantity:1}];
+ student.effects=[{itemId:'star-sticker',icon:'⭐',label:'반짝반짝',style:'sparkle',until:Date.now()+1000,
+   fromId:other.id,fromNickname:other.nickname,secret:false}];
+ room.itemLog.push({id:'log1',at:Date.now(),userId:other.id,userNickname:other.nickname,targetId:student.id,
+   targetNickname:student.nickname,itemId:'star-sticker',itemName:'반짝 별 스티커',secret:false});
+ room.trades.set('t1',{id:'t1',fromId:student.id,fromNickname:student.nickname,toId:other.id,toNickname:other.nickname,
+   give:{shards:1,items:[]},want:{shards:0,items:[]},status:'proposed',at:Date.now()});
+ const asStudent=store.snapshot(room,student);
+ const meView=asStudent.players.find(p=>p.id===student.id), otherView=asStudent.players.find(p=>p.id===other.id);
+ assert.equal(meView.starShards,7);assert.deepEqual(meView.inventory,[{id:'star-sticker',quantity:2}]);
+ assert.ok(!('starShards' in otherView));assert.ok(!('inventory' in otherView));
+ assert.equal(meView.effects[0].icon,'⭐');assert.ok(!('fromId' in meView.effects[0]));assert.ok(!('fromNickname' in meView.effects[0]));
+ assert.ok(!('itemLog' in asStudent));assert.ok(!('tradeLog' in asStudent));
+ assert.equal(asStudent.trades.length,1);
+ const asThird=store.snapshot(room,third);
+ assert.equal(asThird.trades.length,0); // 당사자가 아닌 학생에게는 거래가 보이지 않습니다.
+ const asTeacher=store.snapshot(room,teacher);
+ const teacherOtherView=asTeacher.players.find(p=>p.id===other.id);
+ assert.equal(teacherOtherView.starShards,9);assert.deepEqual(teacherOtherView.inventory,[{id:'space-snack',quantity:1}]);
+ assert.equal(asTeacher.itemLog.length,1);assert.equal(asTeacher.trades.length,1);
+ assert.equal(asTeacher.players.find(p=>p.id===student.id).effects[0].fromId,other.id);
+ const asNoone=store.snapshot(room);
+ const noneView=asNoone.players.find(p=>p.id===student.id);
+ assert.ok(!('starShards' in noneView));assert.ok(!('itemLog' in asNoone));assert.deepEqual(asNoone.trades, []);
 });
 test('mapOf resolves the star street as a fixed map with a shop and a passable gate back to the plaza',()=>{
  const map=mapOf(STREET_ID);

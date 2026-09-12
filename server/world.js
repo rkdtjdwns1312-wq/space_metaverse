@@ -58,9 +58,10 @@ export function placementFree(room, x, y) {
   return !bodies.some(o => Math.hypot(x-o.x, y-o.y) < PLANET.radius+o.radius+PLANET.minGap);
 }
 // 행성을 만들고 room.planets에 등록합니다. 방금 생긴 행성 자리에 서 있던 광장의 플레이어는 갇히지 않도록 밖으로 내보냅니다.
-export function addPlanet(room, {name, description, x, y, color, rules, createdBy=null}) {
+// templateId: 만들 때 고른 행성 종류(PLANET_TEMPLATES의 id). 이름·소개·색은 종류 기본값이 아니라 실제로 저장된 값을 그대로 씁니다.
+export function addPlanet(room, {name, description, x, y, color, rules, createdBy=null, templateId=null}) {
   const planet = { id: randomUUID(), name, description, x, y, radius: PLANET.radius, color, kind: 'planet',
-    rules: [...rules], createdBy, createdAt: Date.now(), rename: null };
+    rules: [...rules], createdBy, createdAt: Date.now(), rename: null, templateId };
   room.planets.set(planet.id, planet);
   for (const p of room.players.values())
     if (p.mapId === PLAZA_ID && Math.hypot(p.x-planet.x, p.y-planet.y) < planet.radius+RULES.radius)

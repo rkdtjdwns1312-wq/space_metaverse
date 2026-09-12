@@ -14,6 +14,14 @@ function renameView(room, planetId, rename) {
     proposedByNickname:proposer?proposer.nickname:'친구',yes,no,needed:Math.floor(members.length/2)+1,votes};
 }
 export const ensure = (test,message) => { if (!test) throw new GameError(message); };
+// 아이템 효과를 스냅샷/사용 응답에 실을 때 쓰는 뷰. 누가 썼는지(fromId/fromNickname)는 선생님에게만 보입니다.
+export function effectsView(effects, viewerIsTeacher) {
+  return (effects||[]).map(e=>{
+    const v={itemId:e.itemId,icon:e.icon,label:e.label,style:e.style,until:e.until};
+    if(viewerIsTeacher){v.fromId=e.fromId;v.fromNickname=e.fromNickname;}
+    return v;
+  });
+}
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function nickname(value) {
   ensure(typeof value==='string','닉네임을 입력해주세요.');
@@ -38,7 +46,7 @@ export class RoomStore {
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
     const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
-      planets:new Map(), proposals:new Map() };
+      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map() };
     this.rooms.set(room.code,room);
     // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
     if (data.seedPlanets===true) for (const seed of EXAMPLE_PLANETS) addPlanet(room,{...seed,createdBy:null});
@@ -59,7 +67,8 @@ export class RoomStore {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
-      expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0 };
+      expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
+      effects:[], lastItemUseAt:0, notes:[] };
     room.players.set(p.id,p);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
@@ -79,17 +88,31 @@ export class RoomStore {
     for (const p of room.players.values()) this.sessions.delete(p.token);
     this.rooms.delete(room.code);
   }
-  snapshot(room) {
+  // viewer: 이 스냅샷을 받을 플레이어 객체(또는 null=최소 정보). 아이들끼리는 서로의 별 파편·아이템·아이템 사용자·거래 내용이 비밀이라
+  // 받는 사람에 따라 내용을 다르게 만듭니다(선생님은 전부 봅니다). roster()가 방의 플레이어 소켓마다 이 함수를 따로 호출합니다.
+  snapshot(room, viewer=null) {
+    const isTeacher=!!(viewer && viewer.role==='teacher');
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
-        rename:renameView(room,pl.id,pl.rename)})),
+        templateId:pl.templateId,rename:renameView(room,pl.id,pl.rename)})),
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
-        radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname})),
-      players:[...room.players.values()].map(p=>({id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-        connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-        starShards:p.starShards,inventory:[...p.inventory]}))};
+        radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
+      players:[...room.players.values()].map(p=>{
+        const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
+          connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
+          effects:effectsView(p.effects,isTeacher)};
+        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
+        return out;
+      }),
+      ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),
+      trades:[...room.trades.values()]
+        .filter(t=>isTeacher || (viewer && (t.fromId===viewer.id || t.toId===viewer.id)))
+        .map(t=>({id:t.id,fromId:t.fromId,fromNickname:t.fromNickname,toId:t.toId,toNickname:t.toNickname,
+          give:t.give,want:t.want,status:t.status,at:t.at})),
+      ...(isTeacher ? {tradeLog:[...room.tradeLog]} : {})
+    };
   }
   pushChat(room,{playerId,nickname,role,text,flagged}) {
     const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged};

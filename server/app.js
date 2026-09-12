@@ -3,11 +3,11 @@ import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import { RoomStore, ensure, GameError } from './rooms.js';
+import { RoomStore, ensure, GameError, effectsView } from './rooms.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
-  STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf } from '../shared/config.js';
+  STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -21,6 +21,17 @@ const ro=word => {
   if(code<0xAC00 || code>0xD7A3) return '로';
   const jongseong=(code-0xAC00)%28;
   return (jongseong===0 || jongseong===8) ? '로' : '으로';
+};
+// 을/를, 이/가: 받침이 있으면 '을'/'이', 없으면 '를'/'가'. 아이템 사용 안내 문구에 씁니다.
+const eul=word=>{
+  const last=[...String(word).trim()].pop()||'',code=last.codePointAt(0)||0;
+  if(code<0xAC00 || code>0xD7A3) return '를';
+  return ((code-0xAC00)%28===0) ? '를' : '을';
+};
+const iga=word=>{
+  const last=[...String(word).trim()].pop()||'',code=last.codePointAt(0)||0;
+  if(code<0xAC00 || code>0xD7A3) return '가';
+  return ((code-0xAC00)%28===0) ? '가' : '이';
 };
 // data.planetId/proposalId가 그 방에 실제로 있을 때만 통과시킵니다. 행성은 방마다 다르므로 room.planets에서 찾습니다.
 const requirePlanet=(room,data) => {
@@ -40,7 +51,8 @@ const validatePlanetName=raw => {
   ensure(!filterChat(name).flagged,'행성 이름에 쓸 수 없는 말이 있어요.');
   return name;
 };
-// 행성 신청·생성 공통 입력 검증: 이름·소개·좌표(빈자리인지)·색을 확인해 정리된 값을 돌려줍니다.
+// 행성 신청·생성 공통 입력 검증: 이름·소개·좌표(빈자리인지)·색·종류를 확인해 정리된 값을 돌려줍니다.
+// 이름·소개·색은 사용자가 보낸 값을 그대로 쓰고(화면이 종류 기본값을 미리 채워 보낼 뿐), templateId만 실제로 그 종류가 있는지 검사합니다.
 const planetInput=(room,data) => {
   const name=validatePlanetName(data.name);
   const description=typeof data.description==='string'?data.description.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'';
@@ -51,7 +63,8 @@ const planetInput=(room,data) => {
   const x=Math.round(data.x), y=Math.round(data.y);
   ensure(placementFree(room,x,y),'그 자리에는 행성을 만들 수 없어요. 조금 떨어진 곳을 골라주세요.');
   ensure(PLANET_COLORS.includes(data.color),'행성 색을 골라주세요.');
-  return {name,description,x,y,color:data.color};
+  ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
+  return {name,description,x,y,color:data.color,templateId:data.templateId};
 };
 export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
@@ -70,10 +83,27 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   // 교사 키 무작위 대입은 연결을 새로 열어도 제한되도록 주소별로 집계합니다.
   const authAttempts=new Map();
   const joinChannel=s=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code);
-  const roster=room=>io.to(room.code).emit('room:state',store.snapshot(room));
+  // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
+  const roster=room=>{
+    for(const p of room.players.values()){
+      if(!p.connected) continue;
+      const sock=io.sockets.sockets.get(p.socketId);
+      if(sock) sock.emit('room:state',store.snapshot(room,p));
+    }
+  };
   const announce=(room,text)=>{
     const msg=store.pushChat(room,{playerId:null,nickname:'안내',role:'system',text,flagged:false});
     io.to(room.code).emit('chat:message',msg);
+  };
+  // 한 사람에게만 가는 개인 안내(선생님의 별 파편 지급, 비밀 아이템 사용, 거래 알림 등). 방 채팅 기록에는 남지 않고
+  // 그 사람의 notes에 최근 것만 보관해 재접속 시 enter()에서 방 기록과 합쳐 돌려줍니다.
+  const whisper=(room,player,text)=>{
+    const msg={id:randomUUID(),playerId:null,nickname:'안내',role:'system',text,at:Date.now(),flagged:false,private:true};
+    player.notes.push(msg);
+    if(player.notes.length>ITEM_USE.notesSize) player.notes.shift();
+    const sock=player.connected?io.sockets.sockets.get(player.socketId):null;
+    if(sock) sock.emit('chat:message',msg);
+    return msg;
   };
   // 행성 이름 바꾸기 투표를 현재 소속 인원 기준으로 다시 계산합니다. 필요 표가 모이면 반영/부결하고 투표를 닫습니다.
   const evaluateRename=(room,planet)=>{
@@ -104,6 +134,16 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     planet.rename?.votes.delete(playerId);
     evaluateRename(room,planet);
   };
+  // 거래 당사자가 방을 완전히 나가면(퇴장·만료) 진행 중이던 거래를 지우고 상대에게 알립니다.
+  const cancelTradesFor=(room,playerId,nickname)=>{
+    for(const trade of [...room.trades.values()]){
+      if(trade.fromId!==playerId && trade.toId!==playerId) continue;
+      room.trades.delete(trade.id);
+      const otherId=trade.fromId===playerId?trade.toId:trade.fromId;
+      const other=room.players.get(otherId);
+      if(other) whisper(room,other,(nickname||'친구')+' 친구가 교실을 나가서 거래가 취소되었어요.');
+    }
+  };
   const roomClosed=room=>{
     for(const p of room.players.values()){
       const s=io.sockets.sockets.get(p.socketId);
@@ -119,6 +159,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       else {
         const planetId=s.player.avatar.departmentId;
         store.remove(s.room,s.player);
+        cancelTradesFor(s.room,s.player.id,s.player.nickname);
         afterMemberRemoved(s.room,s.player.id,planetId);
         roster(s.room);
       }
@@ -147,8 +188,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     const enter=session=>{
       socket.data.session=session;joinChannel(session);roster(session.room);
-      return {token:session.player.token,selfId:session.player.id,room:store.snapshot(session.room),
-        chat:{messages:[...session.room.chat.history]}};
+      const {room,player}=session;
+      // 방 공개 기록과 이 사람에게만 왔던 개인 안내(notes)를 시간순으로 합쳐 돌려줍니다.
+      const messages=[...room.chat.history,...player.notes].sort((a,b)=>a.at-b.at);
+      return {token:player.token,selfId:player.id,room:store.snapshot(room,player),chat:{messages}};
     };
     const notJoined=()=>ensure(!socket.data.session,'먼저 현재 교실에서 나가주세요.');
     action('room:create',data=>{
@@ -258,7 +301,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         throw new GameError('그 자리에 이미 다른 행성이 생겼어요.');
       }
       const planet=addPlanet(room,{name:proposal.name,description:proposal.description,x:proposal.x,y:proposal.y,
-        color:proposal.color,rules:[...PLANET.defaultRules],createdBy:proposal.playerId});
+        color:proposal.color,rules:[...PLANET.defaultRules],createdBy:proposal.playerId,templateId:proposal.templateId});
       const student=room.players.get(proposal.playerId);
       if(student){
         const previousId=student.avatar.departmentId;
@@ -441,20 +484,17 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const amount=data.amount;
       ensure(Number.isInteger(amount) && amount!==0 && Math.abs(amount)<=SHARDS.giveMax,'별 파편 개수는 1~999 사이 정수로 적어주세요.');
       const apply=target=>{target.starShards=Math.max(0,Math.min(SHARDS.max,target.starShards+amount));};
+      // 별 파편은 아이들끼리 비밀이라 공개 채팅 대신 받는 학생에게만 개인 안내를 보냅니다. 선생님은 ack로만 확인합니다.
+      const text=amount>0?'선생님이 나에게 별 파편 '+amount+'개를 주었어요.':'선생님이 내 별 파편 '+(-amount)+'개를 거두었어요.';
       if(data.playerId==='all'){
-        for(const t of room.players.values()) if(t.role==='student') apply(t);
+        for(const t of room.players.values()) if(t.role==='student'){ apply(t); whisper(room,t,text); }
         roster(room);
-        announce(room, amount>0
-          ? '선생님이 모두에게 별 파편 '+amount+'개씩 주었어요.'
-          : '선생님이 모두의 별 파편 '+(-amount)+'개씩 거두었어요.');
       }else{
         const target=room.players.get(data.playerId);
         ensure(target && target.role==='student','친구를 찾지 못했어요.');
         apply(target);
+        whisper(room,target,text);
         roster(room);
-        announce(room, amount>0
-          ? '선생님이 '+target.nickname+' 친구에게 별 파편 '+amount+'개를 주었어요.'
-          : '선생님이 '+target.nickname+' 친구의 별 파편 '+(-amount)+'개를 거두었어요.');
       }
       return {};
     });
@@ -504,6 +544,213 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);
       return {starShards:p.starShards,inventory:[...p.inventory]};
     });
+    // 선생님은 취급상 LV5(모든 아이템을 쓰고, 누구에게나 쓸 수 있음). 학생은 아바타 레벨을 그대로 씁니다.
+    const levelOf=player=>player.role==='teacher'?ITEM_USE.teacherLevel:player.avatar.level;
+    action('item:use',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      const item=itemOf(data.itemId);
+      ensure(item,'그런 물건은 없어요.');
+      const owned=p.inventory.find(i=>i.id===item.id);
+      ensure(owned,'가방에 그 물건이 없어요.');
+      ensure(levelOf(p)>=item.level,'LV '+item.level+'부터 쓸 수 있어요.');
+      ensure(typeof data.targetId==='string','그 친구는 지금 없어요.');
+      const target=room.players.get(data.targetId);
+      ensure(target && target.connected,'그 친구는 지금 없어요.');
+      ensure(item.targets!=='self' || target.id===p.id,'이 물건은 나에게만 쓸 수 있어요.');
+      ensure(levelOf(p)>=levelOf(target),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
+      const now=Date.now();
+      ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
+      // 소비: 수량 1 소모, 0이 되면 가방에서 완전히 지웁니다.
+      owned.quantity-=1;
+      if(owned.quantity<=0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
+      p.lastItemUseAt=now;
+      // 효과 적용: 같은 아이템이 이미 붙어 있으면 시간과 사용자만 갱신하고, 새로 붙는 경우 한도(maxEffects)를 넘으면
+      // 가장 먼저 끝나는 효과(가장 작은 until)부터 지웁니다.
+      const until=now+item.effect.durationMs;
+      const existingEffect=target.effects.find(e=>e.itemId===item.id);
+      if(existingEffect){
+        existingEffect.until=until;existingEffect.fromId=p.id;existingEffect.fromNickname=p.nickname;
+      }else{
+        target.effects.push({itemId:item.id,icon:item.effect.icon,label:item.effect.label,style:item.effect.style,
+          until,fromId:p.id,fromNickname:p.nickname,secret:item.secret});
+        if(target.effects.length>ITEM_USE.maxEffects){
+          let oldest=0;
+          for(let i=1;i<target.effects.length;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
+          target.effects.splice(oldest,1);
+        }
+      }
+      room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:target.id,
+        targetNickname:target.nickname,itemId:item.id,itemName:item.name,secret:item.secret});
+      if(room.itemLog.length>ITEM_USE.logSize) room.itemLog.shift();
+      const selfTarget=target.id===p.id;
+      const actorPhrase=p.role==='teacher'?'선생님이':p.nickname+' 친구가';
+      if(item.secret){
+        announce(room, selfTarget
+          ? target.nickname+' 친구에게 '+item.name+iga(item.name)+' 조용히 생겼어요.'
+          : '누군가 '+target.nickname+' 친구에게 '+item.name+eul(item.name)+' 썼어요.');
+        const teacher=[...room.players.values()].find(t=>t.role==='teacher'&&t.connected);
+        if(teacher) whisper(room,teacher,'(선생님만) '+actorPhrase+' '+target.nickname+' 친구에게 '+item.name+eul(item.name)+' 썼어요.');
+      }else{
+        announce(room, selfTarget
+          ? actorPhrase+' '+item.name+eul(item.name)+' 썼어요.'
+          : actorPhrase+' '+target.nickname+' 친구에게 '+item.name+eul(item.name)+' 썼어요.');
+      }
+      roster(room);
+      return {inventory:[...p.inventory],effects:effectsView(target.effects,p.role==='teacher')};
+    });
+    // 거래 한쪽(주는 것/받고 싶은 것) 검증: 파편 수·아이템 종류·수량이 규칙 안이고, 아이템은 실제로 존재하며 중복이 없어야 합니다.
+    const tradeSide=x=>{
+      ensure(x && typeof x==='object' && !Array.isArray(x),'거래 내용을 확인해주세요.');
+      ensure(Number.isInteger(x.shards) && x.shards>=0 && x.shards<=TRADE.maxShards,'거래 내용을 확인해주세요.');
+      ensure(Array.isArray(x.items) && x.items.length<=TRADE.maxItemKinds,'거래 내용을 확인해주세요.');
+      const seen=new Set(),items=x.items.map(it=>{
+        ensure(it && typeof it==='object','거래 내용을 확인해주세요.');
+        ensure(itemOf(it.id),'거래 내용을 확인해주세요.');
+        ensure(Number.isInteger(it.quantity) && it.quantity>=1 && it.quantity<=99,'거래 내용을 확인해주세요.');
+        ensure(!seen.has(it.id),'거래 내용을 확인해주세요.');
+        seen.add(it.id);
+        return {id:it.id,quantity:it.quantity};
+      });
+      return {shards:x.shards,items};
+    };
+    const sideEmpty=side=>side.shards===0 && side.items.length===0;
+    const hasAssets=(player,side)=>{
+      if(player.starShards<side.shards) return false;
+      return side.items.every(it=>{
+        const owned=player.inventory.find(i=>i.id===it.id);
+        return owned && owned.quantity>=it.quantity;
+      });
+    };
+    const busyWithTrade=(room,playerId)=>[...room.trades.values()].some(t=>t.fromId===playerId||t.toId===playerId);
+    action('trade:propose',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      ensure(p.role==='student','선생님은 거래하지 않아요.');
+      const target=room.players.get(data.targetId);
+      ensure(target && target.role==='student' && target.id!==p.id,'친구를 찾지 못했어요.');
+      ensure(target.connected,'그 친구는 지금 없어요.');
+      const give=tradeSide(data.give),want=tradeSide(data.want);
+      ensure(!(sideEmpty(give) && sideEmpty(want)),'주거나 받을 것을 하나는 적어주세요.');
+      ensure(!busyWithTrade(room,p.id) && !busyWithTrade(room,target.id),'진행 중인 거래가 있어요. 먼저 끝내주세요.');
+      ensure(room.trades.size<TRADE.maxPending,'기다리는 거래가 너무 많아요.');
+      ensure(hasAssets(p,give),'주려는 것을 충분히 가지고 있지 않아요.');
+      const trade={id:randomUUID(),fromId:p.id,fromNickname:p.nickname,toId:target.id,toNickname:target.nickname,
+        give,want,status:'proposed',at:Date.now()};
+      room.trades.set(trade.id,trade);
+      roster(room);
+      whisper(room,target,p.nickname+' 친구가 거래를 제안했어요. 가방에서 확인해보세요.');
+      return {tradeId:trade.id};
+    });
+    action('trade:respond',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      const trade=room.trades.get(data.tradeId);
+      ensure(trade && trade.toId===p.id && trade.status==='proposed','내가 받은 제안이 아니에요.');
+      ensure(typeof data.accept==='boolean','입력 내용을 확인해주세요.');
+      const proposer=room.players.get(trade.fromId);
+      if(!data.accept){
+        room.trades.delete(trade.id);
+        roster(room);
+        if(proposer) whisper(room,proposer,trade.toNickname+' 친구가 거래를 거절했어요.');
+        return {};
+      }
+      ensure(hasAssets(p,trade.want),'받고 싶다는 것을 내가 충분히 가지고 있지 않아요.');
+      trade.status='accepted';
+      roster(room);
+      if(proposer) whisper(room,proposer,trade.toNickname+' 친구가 수락했어요. 선생님 승인을 기다려요.');
+      const teacher=[...room.players.values()].find(t=>t.role==='teacher'&&t.connected);
+      if(teacher) whisper(room,teacher,'거래 승인 요청: '+trade.fromNickname+' ↔ '+trade.toNickname+'. 선생님 도구에서 확인해주세요.');
+      return {};
+    });
+    action('trade:cancel',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      const trade=room.trades.get(data.tradeId);
+      ensure(trade && (trade.fromId===p.id || trade.toId===p.id),'내 거래가 아니에요.');
+      room.trades.delete(trade.id);
+      const otherId=trade.fromId===p.id?trade.toId:trade.fromId;
+      const other=room.players.get(otherId);
+      if(other) whisper(room,other,p.nickname+' 친구가 거래를 취소했어요.');
+      roster(room);
+      return {};
+    });
+    const pushTradeLog=(room,trade,result)=>{
+      room.tradeLog.push({id:randomUUID(),at:Date.now(),fromNickname:trade.fromNickname,toNickname:trade.toNickname,
+        give:trade.give,want:trade.want,result});
+      if(room.tradeLog.length>100) room.tradeLog.shift();
+    };
+    action('trade:approve',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      const trade=room.trades.get(data.tradeId);
+      ensure(trade,'거래를 찾지 못했어요.');
+      ensure(trade.status==='accepted','아직 친구가 수락하지 않았어요.');
+      const from=room.players.get(trade.fromId),to=room.players.get(trade.toId);
+      const reject=message=>{
+        room.trades.delete(trade.id);
+        if(from) whisper(room,from,message);
+        if(to) whisper(room,to,message);
+        pushTradeLog(room,trade,'rejected');
+        roster(room);
+        throw new GameError(message);
+      };
+      if(!from || !to || !hasAssets(from,trade.give) || !hasAssets(to,trade.want))
+        reject('가진 것이 바뀌어서 거래할 수 없어요.');
+      if(from.starShards-trade.give.shards+trade.want.shards>SHARDS.max
+        || to.starShards-trade.want.shards+trade.give.shards>SHARDS.max)
+        reject('별 파편이 넘쳐서 거래할 수 없어요.');
+      // 가방 한도(종류 30·스택 99)를 넘기지 않는지 미리 계산으로 확인한 뒤에만 실제로 옮깁니다.
+      const wouldOverflow=(player,giveItems,wantItems)=>{
+        const bag=new Map(player.inventory.map(i=>[i.id,i.quantity]));
+        for(const it of giveItems){
+          const left=(bag.get(it.id)||0)-it.quantity;
+          if(left<=0) bag.delete(it.id); else bag.set(it.id,left);
+        }
+        for(const it of wantItems){
+          const next=(bag.get(it.id)||0)+it.quantity;
+          if(next>SHOP.maxStack) return true;
+          bag.set(it.id,next);
+        }
+        return bag.size>SHOP.maxKinds;
+      };
+      if(wouldOverflow(from,trade.give.items,trade.want.items) || wouldOverflow(to,trade.want.items,trade.give.items))
+        reject('가방이 가득 차서 거래할 수 없어요.');
+      const invAdd=(player,itemId,quantity)=>{
+        const owned=player.inventory.find(i=>i.id===itemId);
+        if(owned) owned.quantity+=quantity; else player.inventory.push({id:itemId,quantity});
+      };
+      const invRemove=(player,itemId,quantity)=>{
+        const owned=player.inventory.find(i=>i.id===itemId);
+        owned.quantity-=quantity;
+        if(owned.quantity<=0) player.inventory=player.inventory.filter(i=>i.id!==itemId);
+      };
+      from.starShards+=trade.want.shards-trade.give.shards;
+      to.starShards+=trade.give.shards-trade.want.shards;
+      for(const it of trade.give.items){ invRemove(from,it.id,it.quantity); invAdd(to,it.id,it.quantity); }
+      for(const it of trade.want.items){ invRemove(to,it.id,it.quantity); invAdd(from,it.id,it.quantity); }
+      room.trades.delete(trade.id);
+      pushTradeLog(room,trade,'approved');
+      roster(room);
+      whisper(room,from,'선생님이 거래를 승인했어요. 가방을 확인해보세요.');
+      whisper(room,to,'선생님이 거래를 승인했어요. 가방을 확인해보세요.');
+      return {};
+    });
+    action('trade:reject',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s;
+      ensure(p.role==='teacher','선생님만 할 수 있어요.');
+      const trade=room.trades.get(data.tradeId);
+      ensure(trade,'거래를 찾지 못했어요.');
+      room.trades.delete(trade.id);
+      const from=room.players.get(trade.fromId),to=room.players.get(trade.toId);
+      if(from) whisper(room,from,'선생님이 거래를 돌려보냈어요.');
+      if(to) whisper(room,to,'선생님이 거래를 돌려보냈어요.');
+      pushTradeLog(room,trade,'rejected');
+      roster(room);
+      return {};
+    });
     socket.on('player:input',data=>{
       const p=socket.data.session?.player;
       if(!p || !data || typeof data!=='object')return;
@@ -522,12 +769,23 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           if(p.role==='teacher'){roomClosed(room);break;}
           const planetId=p.avatar.departmentId;
           store.remove(room,p);changed=true;
+          cancelTradesFor(room,p.id,p.nickname);
           afterMemberRemoved(room,p.id,planetId);
         }
       }
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
       advance(room,now);
+      // 1초에 한 번(50ms tick 20회) 만료된 아이템 효과를 지웁니다. 하나라도 지웠으면 스냅샷을 다시 보냅니다.
+      if(step%20===0){
+        let effectsChanged=false;
+        for(const p of room.players.values()){
+          if(!p.effects.length) continue;
+          const kept=p.effects.filter(e=>e.until>now);
+          if(kept.length!==p.effects.length){ p.effects=kept; effectsChanged=true; }
+        }
+        if(effectsChanged) roster(room);
+      }
       if(step%2===0){
         const before=previous.get(room.code)||new Map(),next=new Map(),positions=[];
         for(const p of room.players.values()){

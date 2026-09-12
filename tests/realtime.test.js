@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
-import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP } from '../shared/config.js';
+import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP, ITEM_USE, TRADE } from '../shared/config.js';
 import { placementFree } from '../server/world.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -169,7 +169,7 @@ test('a student can propose a new planet; invalid name/color/location are reject
  assert.equal(overlap.ok,false);assert.equal(overlap.error,'그 자리에는 행성을 만들 수 없어요. 조금 떨어진 곳을 골라주세요.');
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
- const ok=await call(s,'planet:propose',{name:'독서행성',description:'책 읽기',x:190,y:175,color:PLANET_COLORS[0]});
+ const ok=await call(s,'planet:propose',{name:'독서행성',description:'책 읽기',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  assert.equal(ok.ok,true);
  await sleep(30);
  assert.ok(states.some(st=>st.proposals.some(p=>p.id===ok.proposalId && p.name==='독서행성' && p.nickname==='1')));
@@ -177,13 +177,38 @@ test('a student can propose a new planet; invalid name/color/location are reject
  const already=await call(s,'planet:propose',{name:'다른행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
  assert.equal(already.ok,false);assert.equal(already.error,'이미 승인을 기다리는 행성이 있어요.');
 });
+test('planet:propose/create require a valid templateId (planet kind), and it is echoed back in the snapshot for planets and proposals',async t=>{
+ const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
+ const missing=await call(s,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ assert.equal(missing.ok,false);assert.equal(missing.error,'행성 종류를 골라주세요.');
+ const invalid=await call(s,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'nope'});
+ assert.equal(invalid.ok,false);assert.equal(invalid.error,'행성 종류를 골라주세요.');
+ const missingCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ assert.equal(missingCreate.ok,false);assert.equal(missingCreate.error,'행성 종류를 골라주세요.');
+ const invalidCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'nope'});
+ assert.equal(invalidCreate.ok,false);assert.equal(invalidCreate.error,'행성 종류를 골라주세요.');
+ const states=[];teacher.on('room:state',st=>states.push(st));
+ const proposed=await call(s,'planet:propose',{name:'급식모임',description:'맛있게 먹어요',x:190,y:175,color:PLANET_COLORS[0],templateId:'meal'});
+ assert.equal(proposed.ok,true);
+ const created=await call(teacher,'planet:create',{name:'감찰행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'audit'});
+ assert.equal(created.ok,true);
+ await sleep(30);
+ assert.ok(states.some(st=>st.proposals.some(p=>p.id===proposed.proposalId && p.templateId==='meal')));
+ assert.ok(states.some(st=>st.planets.some(pl=>pl.id===created.planetId && pl.templateId==='audit')));
+ // 승인된 행성도 신청 때 고른 종류를 그대로 이어받습니다.
+ const approved=await call(teacher,'planet:approve',{proposalId:proposed.proposalId});
+ assert.equal(approved.ok,true);
+ await sleep(30);
+ assert.ok(states.some(st=>st.planets.some(pl=>pl.id===approved.planetId && pl.templateId==='meal')));
+});
 test('pending-proposal limit blocks a further proposal once maxPending is reached',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
  await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
  for(let i=0;i<PLANET.maxPending;i++){
   // y:550인 가로줄은 별(600,170)과 별빛 거리로 가는 문(1120,380) 둘 다에서 충분히 떨어져 있습니다.
-  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:550,color:PLANET_COLORS[i%PLANET_COLORS.length]});
+  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:550,color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
  }
  const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',x:100,y:600,color:PLANET_COLORS[0]});
@@ -197,7 +222,7 @@ test('the 12-per-room planet limit blocks further teacher creation and student p
   for(let x=100;x<1150;x+=200){
    if(created>=PLANET.maxPerRoom) break outer;
    if(!placementFree(room,x,y)) continue;
-   const res=await call(teacher,'planet:create',{name:'행성'+created,description:'',x,y,color:PLANET_COLORS[colorIndex%PLANET_COLORS.length]});
+   const res=await call(teacher,'planet:create',{name:'행성'+created,description:'',x,y,color:PLANET_COLORS[colorIndex%PLANET_COLORS.length],templateId:'meal'});
    assert.equal(res.ok,true,'create '+created+' failed: '+res.error);
    colorIndex++;created++;
   }
@@ -213,7 +238,7 @@ test('teacher approves a proposal: it becomes a planet and the proposer becomes 
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
- const proposed=await call(s,'planet:propose',{name:'독서행성',description:'책 읽기',x:190,y:175,color:PLANET_COLORS[0]});
+ const proposed=await call(s,'planet:propose',{name:'독서행성',description:'책 읽기',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  assert.equal(proposed.ok,true);
  assert.equal((await call(s,'planet:approve',{proposalId:proposed.proposalId})).error,'선생님만 할 수 있어요.');
  assert.equal((await call(teacher,'planet:approve',{proposalId:'nope'})).error,'신청을 찾지 못했어요.');
@@ -231,7 +256,7 @@ test('teacher can reject a proposal; a student can withdraw only their own',asyn
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
- const p1=await call(s1,'planet:propose',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const p1=await call(s1,'planet:propose',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  assert.equal(p1.ok,true);
  assert.equal((await call(s2,'planet:withdraw',{proposalId:p1.proposalId})).error,'내 신청만 취소할 수 있어요.');
  assert.equal((await call(s1,'planet:withdraw',{proposalId:'nope'})).error,'신청을 찾지 못했어요.');
@@ -239,7 +264,7 @@ test('teacher can reject a proposal; a student can withdraw only their own',asyn
  assert.equal(withdrawn.ok,true);
  await sleep(20);
  assert.ok(sysMsgs.some(m=>m.text==='1 친구가 "일기행성" 행성 신청을 취소했어요.'));
- const p2=await call(s2,'planet:propose',{name:'청소행성',description:'',x:190,y:565,color:PLANET_COLORS[2]});
+ const p2=await call(s2,'planet:propose',{name:'청소행성',description:'',x:190,y:565,color:PLANET_COLORS[2],templateId:'cleaning'});
  assert.equal(p2.ok,true);
  assert.equal((await call(s1,'planet:reject',{proposalId:p2.proposalId})).error,'선생님만 할 수 있어요.');
  const rejected=await call(teacher,'planet:reject',{proposalId:p2.proposalId});
@@ -252,13 +277,13 @@ test('creating a planet on top of a standing plaza player pushes them out',async
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  p.x=500;p.y=500;p.mapId=PLAZA_ID;
- const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:500,y:500,color:PLANET_COLORS[3]});
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:500,y:500,color:PLANET_COLORS[3],templateId:'subject'});
  assert.equal(created.ok,true);
  assert.ok(Math.hypot(p.x-500,p.y-500) >= PLANET.radius+RULES.radius);
 });
 test('teacher can remove a planet: interior occupants return to the plaza and membership is cleared',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  await call(s,'planet:join',{planetId:created.planetId});
@@ -277,8 +302,8 @@ test('teacher can remove a planet: interior occupants return to the plaza and me
 });
 test('students join and transfer planets; teachers cannot join and re-joining the same planet is rejected',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
- const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
+ const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -297,7 +322,7 @@ test('students join and transfer planets; teachers cannot join and re-joining th
 });
 test('entering a planet requires membership (or teacher) and proximity; success moves the player inside',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const rejectNotMember=await call(s,'planet:enter',{planetId:reading.planetId});
  assert.equal(rejectNotMember.ok,false);assert.equal(rejectNotMember.error,'독서행성 소속 친구만 들어갈 수 있어요.');
@@ -319,8 +344,8 @@ test('entering a planet requires membership (or teacher) and proximity; success 
 });
 test('planet:join is rejected while inside a planet; exiting returns to the plaza just below it; exit is rejected from the plaza',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
- const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
+ const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  assert.equal((await call(s,'planet:exit',{})).error,'지금은 행성 안이 아니에요.');
@@ -340,7 +365,7 @@ test('planet:join is rejected while inside a planet; exiting returns to the plaz
 });
 test('a student inside a planet can leave, returning to the plaza with membership cleared',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  await call(s,'planet:join',{planetId:reading.planetId});
@@ -354,7 +379,7 @@ test('a student inside a planet can leave, returning to the plaza with membershi
 });
 test('only the teacher can set a planet rules; valid rules broadcast and announce, invalid ones are rejected',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -376,7 +401,7 @@ test('only the teacher can set a planet rules; valid rules broadcast and announc
 });
 test('rename vote passes immediately with a single member',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  await call(s,'planet:join',{planetId:created.planetId});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -390,7 +415,7 @@ test('rename vote passes immediately with a single member',async t=>{
 });
 test('rename announcements pick the Korean particle 로/으로 from the new name ending',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3]});
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3],templateId:'subject'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  await call(s,'planet:join',{planetId:created.planetId});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -408,7 +433,7 @@ test('rename announcements pick the Korean particle 로/으로 from the new name
 });
 test('rename vote is rejected when a second member votes no (2 members)',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -427,7 +452,7 @@ test('rename vote is rejected when a second member votes no (2 members)',async t
 });
 test('rename vote passes once 2 of 3 members agree, without waiting for the third',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'청소행성',description:'',x:190,y:565,color:PLANET_COLORS[2]});
+ const created=await call(teacher,'planet:create',{name:'청소행성',description:'',x:190,y:565,color:PLANET_COLORS[2],templateId:'cleaning'});
  const s1=await connect(),s2=await connect(),s3=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -448,7 +473,7 @@ test('rename vote passes once 2 of 3 members agree, without waiting for the thir
 });
 test('a non-member cannot vote on a planet rename',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3]});
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3],templateId:'subject'});
  const s1=await connect(),s2=await connect(),outsider=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -462,7 +487,7 @@ test('a non-member cannot vote on a planet rename',async t=>{
 });
 test('rename re-evaluates when membership shrinks (a member leaving the planet can flip a pending vote to pass)',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -482,7 +507,7 @@ test('rename re-evaluates when membership shrinks (a member leaving the planet c
 });
 test('a member leaving the classroom entirely also re-evaluates a pending rename vote',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -498,7 +523,7 @@ test('a member leaving the classroom entirely also re-evaluates a pending rename
 });
 test('teacher can rename a planet directly, clearing any pending vote',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -522,7 +547,7 @@ test('planet system messages do not leak to another classroom',async t=>{
  await call(a1,'room:join',{code:ra.room.code,nickname:'1'});
  await call(b1,'room:join',{code:rb.room.code,nickname:'1'});
  let leaked=false;teacherB.on('chat:message',()=>{leaked=true;});b1.on('chat:message',()=>{leaked=true;});
- const proposed=await call(a1,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const proposed=await call(a1,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  assert.equal(proposed.ok,true);
  assert.equal((await call(teacherA,'planet:approve',{proposalId:proposed.proposalId})).ok,true);
  await sleep(60);
@@ -530,7 +555,7 @@ test('planet system messages do not leak to another classroom',async t=>{
 });
 test('resume preserves the player mapId and department after reconnecting',async t=>{
  const {connect,game}=await fixture(t,{reconnectMs:500}),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  await call(s,'planet:join',{planetId:created.planetId});
@@ -585,7 +610,7 @@ test('map:travel requires a nearby gate to a real map; success moves the player 
  p.x=streetGate.x;p.y=streetGate.y;
  const back=await call(s,'map:travel',{to:PLAZA_ID});
  assert.equal(back.ok,true);assert.equal(p.mapId,PLAZA_ID);
- const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0]});
+ const created=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
  await call(s,'planet:join',{planetId:created.planetId});
  p.x=190;p.y=175+PLANET.radius;
  await call(s,'planet:enter',{planetId:created.planetId});
@@ -607,7 +632,7 @@ test('new planets can only be proposed or created from the plaza, not from the s
  assert.equal(fromStreet.ok,false);
  assert.equal(fromStreet.error,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
  assert.equal(room.proposals.size,0);
- const base=await call(teacher,'planet:create',{name:'기준행성',description:'',x:190,y:175,color:PLANET_COLORS[1]});
+ const base=await call(teacher,'planet:create',{name:'기준행성',description:'',x:190,y:175,color:PLANET_COLORS[1],templateId:'meal'});
  assert.equal(base.ok,true);
  tp.x=190;tp.y=175+PLANET.radius;
  assert.equal((await call(teacher,'planet:enter',{planetId:base.planetId})).ok,true);
@@ -616,7 +641,7 @@ test('new planets can only be proposed or created from the plaza, not from the s
  assert.equal(fromInside.error,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
  assert.equal(room.planets.size,1);
 });
-test('teacher gives or takes star shards from one student or everyone; amounts are validated and clamped',async t=>{
+test('teacher gives or takes star shards from one student or everyone; amounts are validated, clamped, and privately whispered',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const s1=await connect(),s2=await connect();
  const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
@@ -627,7 +652,10 @@ test('teacher gives or takes star shards from one student or everyone; amounts a
  for(const amount of [0,1000,1.5,-1000])
   assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount})).error,'별 파편 개수는 1~999 사이 정수로 적어주세요.');
  assert.equal((await call(teacher,'shards:give',{playerId:'nope',amount:5})).error,'친구를 찾지 못했어요.');
- const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
+ // 별 파편 지급/회수는 더 이상 공개 채팅에 나가지 않고, 받는 학생에게만 개인 안내(private)가 갑니다.
+ const teacherMsgs=[];teacher.on('chat:message',m=>teacherMsgs.push(m));
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
  assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:10})).ok,true);
  assert.equal(p1.starShards,10);
  assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:-3})).ok,true);
@@ -642,10 +670,21 @@ test('teacher gives or takes star shards from one student or everyone; amounts a
  assert.equal((await call(teacher,'shards:give',{playerId:'all',amount:-2})).ok,true);
  assert.equal(p2.starShards,3);
  await sleep(20);
- assert.ok(sysMsgs.some(m=>m.text==='선생님이 1 친구에게 별 파편 10개를 주었어요.'));
- assert.ok(sysMsgs.some(m=>m.text==='선생님이 1 친구의 별 파편 3개를 거두었어요.'));
- assert.ok(sysMsgs.some(m=>m.text==='선생님이 모두에게 별 파편 5개씩 주었어요.'));
- assert.ok(sysMsgs.some(m=>m.text==='선생님이 모두의 별 파편 2개씩 거두었어요.'));
+ assert.equal(teacherMsgs.length,0);
+ assert.ok(msgs1.some(m=>m.text==='선생님이 나에게 별 파편 10개를 주었어요.' && m.private===true && m.playerId===null));
+ assert.ok(msgs1.some(m=>m.text==='선생님이 내 별 파편 3개를 거두었어요.'));
+ assert.ok(msgs1.some(m=>m.text==='선생님이 내 별 파편 100개를 거두었어요.'));
+ assert.ok(msgs1.some(m=>m.text==='선생님이 나에게 별 파편 '+SHARDS.giveMax+'개를 주었어요.'));
+ // playerId:'all'은 학생 전원(1과 2 모두)에게 개인 안내가 갑니다.
+ assert.ok(msgs1.some(m=>m.text==='선생님이 나에게 별 파편 5개를 주었어요.'));
+ assert.ok(msgs1.some(m=>m.text==='선생님이 내 별 파편 2개를 거두었어요.'));
+ assert.ok(msgs2.some(m=>m.text==='선생님이 나에게 별 파편 5개를 주었어요.'));
+ assert.ok(msgs2.some(m=>m.text==='선생님이 내 별 파편 2개를 거두었어요.'));
+ // 1에게만 보낸 개별 지급/회수 안내는 2에게 새지 않습니다.
+ assert.equal(msgs2.filter(m=>m.text==='선생님이 나에게 별 파편 10개를 주었어요.').length,0);
+ assert.equal(msgs2.filter(m=>m.text==='선생님이 내 별 파편 3개를 거두었어요.').length,0);
+ assert.equal(msgs2.filter(m=>m.text==='선생님이 내 별 파편 100개를 거두었어요.').length,0);
+ assert.equal(msgs2.filter(m=>m.text==='선생님이 나에게 별 파편 '+SHARDS.giveMax+'개를 주었어요.').length,0);
 });
 test('star shards and star-street purchases stay isolated per classroom',async t=>{
  const {connect,game}=await fixture(t),teacherA=await connect(),teacherB=await connect();
@@ -694,8 +733,8 @@ test('star shop enforces location, funds, stack and bag limits; buying and selli
  assert.equal(overStack.ok,false);assert.equal(overStack.error,'한 종류는 99개까지만 가질 수 있어요.');
  const otherItem=SHOP.items[1];
  p.inventory=SHOP.items.filter(it=>it.id!==otherItem.id).map(it=>({id:it.id,quantity:1}))
-   .concat(Array.from({length:30-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
- assert.equal(p.inventory.length,30);
+   .concat(Array.from({length:SHOP.maxKinds-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
+ assert.equal(p.inventory.length,SHOP.maxKinds);
  const fullBag=await call(s,'shop:buy',{itemId:otherItem.id,quantity:1});
  assert.equal(fullBag.ok,false);assert.equal(fullBag.error,'가방이 가득 찼어요.');
  p.inventory=[{id:item.id,quantity:4}];p.starShards=0;
@@ -731,4 +770,388 @@ test('resume after reconnecting keeps star shards, inventory and the star-street
  assert.equal(rp.mapId,STREET_ID);
  assert.equal(rp.starShards,30-item.price);
  assert.deepEqual(rp.inventory,[{id:item.id,quantity:1}]);
+});
+test("whisper reaches only the target's own socket as a private system message, and survives reconnect merged into chat history",async t=>{
+ const {connect,game}=await fixture(t,{reconnectMs:500}),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ let leaked=false;s2.on('chat:message',()=>{leaked=true;});teacher.on('chat:message',()=>{leaked=true;});
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ assert.equal((await call(teacher,'shards:give',{playerId:j1.selfId,amount:7})).ok,true);
+ await sleep(20);
+ assert.equal(leaked,false);
+ assert.ok(msgs1.some(m=>m.text==='선생님이 나에게 별 파편 7개를 주었어요.' && m.private===true && m.role==='system' && m.nickname==='안내' && m.playerId===null));
+ s1.disconnect();await sleep(60);
+ const resumed=await connect();
+ const result=await call(resumed,'session:resume',{token:j1.token});
+ assert.ok(result.ok);
+ assert.ok(result.chat.messages.some(m=>m.text==='선생님이 나에게 별 파편 7개를 주었어요.' && m.private===true));
+});
+test('item:use lets a player use an owned item on themself or a friend: it is consumed and applies a timed effect that a later use refreshes instead of duplicating',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect(),s4=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const j3=await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const j4=await call(s4,'room:join',{code:r.room.code,nickname:'4'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId),p3=room.players.get(j3.selfId);
+ const sticker=SHOP.items.find(i=>i.id==='star-sticker');
+ p1.inventory=[{id:sticker.id,quantity:1}];
+ const selfUse=await call(s1,'item:use',{itemId:sticker.id,targetId:j1.selfId});
+ assert.equal(selfUse.ok,true);
+ assert.deepEqual(selfUse.inventory,[]);
+ assert.equal(p1.inventory.length,0);
+ assert.equal(p1.effects.length,1);
+ assert.equal(p1.effects[0].itemId,sticker.id);
+ assert.equal(p1.effects[0].icon,sticker.effect.icon);
+ assert.equal(p1.effects[0].label,sticker.effect.label);
+ assert.ok(p1.effects[0].until>Date.now());
+ assert.ok(!('fromId' in selfUse.effects[0])); // 학생 ack에는 선생님이 아니므로 누가 썼는지 정보가 없음
+ room.players.get(j2.selfId).inventory=[{id:sticker.id,quantity:1}];
+ const otherUse=await call(s2,'item:use',{itemId:sticker.id,targetId:j3.selfId});
+ assert.equal(otherUse.ok,true);
+ assert.equal(p3.effects.length,1);
+ const firstUntil=p3.effects[0].until;
+ room.players.get(j4.selfId).inventory=[{id:sticker.id,quantity:1}];
+ const refreshed=await call(s4,'item:use',{itemId:sticker.id,targetId:j3.selfId});
+ assert.equal(refreshed.ok,true);
+ assert.equal(p3.effects.length,1); // 같은 아이템이므로 새로 추가되지 않고 시간만 갱신됩니다.
+ assert.ok(p3.effects[0].until>=firstUntil);
+});
+test('item:use caps a player at 3 active effects, dropping the one closest to expiring when a 4th distinct item lands',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const sockets=await Promise.all(Array.from({length:4},()=>connect()));
+ const joins=await Promise.all(sockets.map((s,i)=>call(s,'room:join',{code:r.room.code,nickname:String(i+1)})));
+ const room=game.store.rooms.get(r.room.code);
+ const target=room.players.get(joins[0].selfId);
+ const give=(i,itemId)=>{room.players.get(joins[i].selfId).inventory=[{id:itemId,quantity:1}];};
+ give(1,'space-snack'); // 5분(가장 짧음)
+ give(2,'firefly-lamp'); // 10분
+ give(3,'star-sticker'); // 30분
+ assert.equal((await call(sockets[1],'item:use',{itemId:'space-snack',targetId:joins[0].selfId})).ok,true);
+ assert.equal((await call(sockets[2],'item:use',{itemId:'firefly-lamp',targetId:joins[0].selfId})).ok,true);
+ assert.equal((await call(sockets[3],'item:use',{itemId:'star-sticker',targetId:joins[0].selfId})).ok,true);
+ assert.equal(target.effects.length,3);
+ give(0,'asteroid-helmet'); // 4번째(30분), 대상 스스로 자기에게 씀(쿨다운 문제 없음)
+ const fourth=await call(sockets[0],'item:use',{itemId:'asteroid-helmet',targetId:joins[0].selfId});
+ assert.equal(fourth.ok,true);
+ assert.equal(target.effects.length,3);
+ assert.ok(!target.effects.some(e=>e.itemId==='space-snack')); // 가장 먼저 끝나는 효과가 사라짐
+ assert.ok(target.effects.some(e=>e.itemId==='firefly-lamp'));
+ assert.ok(target.effects.some(e=>e.itemId==='star-sticker'));
+ assert.ok(target.effects.some(e=>e.itemId==='asteroid-helmet'));
+});
+test('item:use validates ownership, level gates, target existence/connection, and self-only items',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const j3=await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId),p3=room.players.get(j3.selfId);
+ assert.equal((await call(s1,'item:use',{itemId:'nope',targetId:j1.selfId})).error,'그런 물건은 없어요.');
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId})).error,'가방에 그 물건이 없어요.');
+ p1.inventory=[{id:'rainbow-tail',quantity:1}];
+ assert.equal((await call(s1,'item:use',{itemId:'rainbow-tail',targetId:j1.selfId})).error,'LV 2부터 쓸 수 있어요.');
+ p1.inventory=[{id:'star-sticker',quantity:1}];
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:'nope'})).error,'그 친구는 지금 없어요.');
+ p3.connected=false;
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j3.selfId})).error,'그 친구는 지금 없어요.');
+ p3.connected=true;
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:r.selfId})).error,'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
+ p1.avatar.level=2;p1.inventory=[{id:'rainbow-tail',quantity:1}];
+ assert.equal((await call(s1,'item:use',{itemId:'rainbow-tail',targetId:j2.selfId})).error,'이 물건은 나에게만 쓸 수 있어요.');
+ assert.equal((await call(s1,'item:use',{itemId:'rainbow-tail',targetId:j1.selfId})).ok,true);
+});
+test('item:use enforces a per-actor cooldown between uses',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const p1=game.store.rooms.get(r.room.code).players.get(j1.selfId);
+ p1.inventory=[{id:'star-sticker',quantity:2}];
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId})).ok,true);
+ const second=await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId});
+ assert.equal(second.ok,false);assert.equal(second.error,'조금 천천히 써요.');
+ assert.equal(p1.inventory[0].quantity,1); // 실패한 시도는 소비되지 않음
+});
+test('item:use announces the user and target in public chat, keeps secret-item users anonymous except to the teacher, and logs every use for the teacher only',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId);
+ p1.inventory=[{id:'star-sticker',quantity:2},{id:'space-snack',quantity:2}];
+ const publicToS2=[];s2.on('chat:message',m=>publicToS2.push(m));
+ const teacherMsgs=[];teacher.on('chat:message',m=>teacherMsgs.push(m));
+ const teacherStates=[];teacher.on('room:state',st=>teacherStates.push(st));
+ const s2States=[];s2.on('room:state',st=>s2States.push(st));
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId})).ok,true); // 일반 아이템, 자기 대상
+ p1.lastItemUseAt=0;
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j2.selfId})).ok,true); // 일반 아이템, 타인 대상
+ p1.lastItemUseAt=0;
+ assert.equal((await call(s1,'item:use',{itemId:'space-snack',targetId:j1.selfId})).ok,true); // 비밀 아이템, 자기 대상
+ p1.lastItemUseAt=0;
+ assert.equal((await call(s1,'item:use',{itemId:'space-snack',targetId:j2.selfId})).ok,true); // 비밀 아이템, 타인 대상
+ await sleep(30);
+ assert.ok(publicToS2.some(m=>m.text==='1 친구가 반짝 별 스티커를 썼어요.'));
+ assert.ok(publicToS2.some(m=>m.text==='1 친구가 2 친구에게 반짝 별 스티커를 썼어요.'));
+ assert.ok(publicToS2.some(m=>m.text==='1 친구에게 우주 간식이 조용히 생겼어요.'));
+ assert.ok(publicToS2.some(m=>m.text==='누군가 2 친구에게 우주 간식을 썼어요.'));
+ assert.ok(!publicToS2.some(m=>m.text.includes('선생님만')));
+ assert.ok(teacherMsgs.some(m=>m.text==='(선생님만) 1 친구가 1 친구에게 우주 간식을 썼어요.' && m.private===true));
+ assert.ok(teacherMsgs.some(m=>m.text==='(선생님만) 1 친구가 2 친구에게 우주 간식을 썼어요.'));
+ assert.equal(room.itemLog.length,4);
+ assert.ok(teacherStates.some(st=>st.itemLog && st.itemLog.length===4));
+ assert.ok(s2States.every(st=>!('itemLog' in st)));
+});
+test('an expired item effect is cleared by the periodic tick and the room is refreshed',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const p1=game.store.rooms.get(r.room.code).players.get(j1.selfId);
+ p1.inventory=[{id:'star-sticker',quantity:1}];
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId})).ok,true);
+ assert.equal(p1.effects.length,1);
+ p1.effects[0].until=Date.now()-1000; // durationMs를 짧게 만들기 어려우므로 이미 끝난 것처럼 바꿔둡니다.
+ const states=[];s1.on('room:state',st=>states.push(st));
+ await sleep(1200);
+ assert.equal(p1.effects.length,0);
+ assert.ok(states.some(st=>st.players.find(p=>p.id===j1.selfId).effects.length===0));
+});
+test('trade:propose validates the give/want shapes, requires a real connected student target, and rejects teachers',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const j3=await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId);
+ const empty={shards:0,items:[]};
+ assert.equal((await call(teacher,'trade:propose',{targetId:j1.selfId,give:{shards:1,items:[]},want:empty})).error,'선생님은 거래하지 않아요.');
+ assert.equal((await call(s1,'trade:propose',{targetId:r.selfId,give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
+ assert.equal((await call(s1,'trade:propose',{targetId:j1.selfId,give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
+ assert.equal((await call(s1,'trade:propose',{targetId:'nope',give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
+ room.players.get(j3.selfId).connected=false;
+ assert.equal((await call(s1,'trade:propose',{targetId:j3.selfId,give:{shards:1,items:[]},want:empty})).error,'그 친구는 지금 없어요.');
+ for(const bad of [{shards:-1,items:[]},{shards:1.5,items:[]},{shards:TRADE.maxShards+1,items:[]},
+   {shards:0,items:[{id:'nope',quantity:1}]},{shards:0,items:[{id:'star-sticker',quantity:0}]},
+   {shards:0,items:[{id:'star-sticker',quantity:100}]},
+   {shards:0,items:[{id:'star-sticker',quantity:1},{id:'star-sticker',quantity:1}]},
+   {shards:0,items:Array.from({length:TRADE.maxItemKinds+1},()=>({id:'star-sticker',quantity:1}))}])
+  assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:bad,want:empty})).error,'거래 내용을 확인해주세요.');
+ assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:empty,want:empty})).error,'주거나 받을 것을 하나는 적어주세요.');
+ assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:empty})).error,
+   '주려는 것을 충분히 가지고 있지 않아요.');
+ p1.starShards=5;
+ assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:empty})).ok,true);
+});
+test('trade:propose blocks a second trade while one is pending for either side, and enforces the room-wide pending limit',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const count=TRADE.maxPending*2+2;
+ const sockets=await Promise.all(Array.from({length:count},()=>connect()));
+ const joins=await Promise.all(sockets.map((s,i)=>call(s,'room:join',{code:r.room.code,nickname:String(i+1)})));
+ const room=game.store.rooms.get(r.room.code);
+ for(const j of joins) room.players.get(j.selfId).starShards=10;
+ const give={shards:1,items:[]},empty={shards:0,items:[]};
+ const first=await call(sockets[0],'trade:propose',{targetId:joins[1].selfId,give,want:empty});
+ assert.equal(first.ok,true);
+ assert.equal((await call(sockets[0],'trade:propose',{targetId:joins[2].selfId,give,want:empty})).error,
+   '진행 중인 거래가 있어요. 먼저 끝내주세요.');
+ assert.equal((await call(sockets[2],'trade:propose',{targetId:joins[1].selfId,give,want:empty})).error,
+   '진행 중인 거래가 있어요. 먼저 끝내주세요.');
+ for(let i=2;i<TRADE.maxPending*2;i+=2){
+  const res=await call(sockets[i],'trade:propose',{targetId:joins[i+1].selfId,give,want:empty});
+  assert.equal(res.ok,true,'pair '+i+' failed: '+res.error);
+ }
+ assert.equal(room.trades.size,TRADE.maxPending);
+ const overflow=await call(sockets[TRADE.maxPending*2],'trade:propose',
+   {targetId:joins[TRADE.maxPending*2+1].selfId,give,want:empty});
+ assert.equal(overflow.ok,false);assert.equal(overflow.error,'기다리는 거래가 너무 많아요.');
+});
+test('trade:respond lets only the recipient answer; declining removes the trade and whispers the proposer',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const room=game.store.rooms.get(r.room.code);
+ room.players.get(j1.selfId).starShards=10;
+ const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:{shards:0,items:[]}});
+ assert.equal(propose.ok,true);
+ assert.equal((await call(s3,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
+ assert.equal((await call(s1,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ const declined=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:false});
+ assert.equal(declined.ok,true);
+ assert.equal(room.trades.size,0);
+ await sleep(20);
+ assert.ok(msgs1.some(m=>m.text==='2 친구가 거래를 거절했어요.' && m.private===true));
+ assert.equal((await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
+});
+test('trade:respond accept requires the recipient really has what they promise; teacher approval swaps shards and items atomically and logs it for the teacher',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId),p2=room.players.get(j2.selfId);
+ p1.starShards=20;p1.inventory=[{id:'star-sticker',quantity:3}];
+ p2.starShards=3;p2.inventory=[{id:'firefly-lamp',quantity:1}];
+ const propose=await call(s1,'trade:propose',
+   {targetId:j2.selfId,give:{shards:10,items:[{id:'star-sticker',quantity:2}]},want:{shards:5,items:[{id:'firefly-lamp',quantity:1}]}});
+ assert.equal(propose.ok,true);
+ const insufficientWant=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true});
+ assert.equal(insufficientWant.ok,false);assert.equal(insufficientWant.error,'받고 싶다는 것을 내가 충분히 가지고 있지 않아요.');
+ assert.equal(room.trades.get(propose.tradeId).status,'proposed');
+ p2.starShards=5;
+ const teacherStates=[];teacher.on('room:state',st=>teacherStates.push(st));
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ const teacherMsgs=[];teacher.on('chat:message',m=>teacherMsgs.push(m));
+ const accepted=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true});
+ assert.equal(accepted.ok,true);
+ assert.equal(room.trades.get(propose.tradeId).status,'accepted');
+ await sleep(20);
+ assert.ok(msgs1.some(m=>m.text==='2 친구가 수락했어요. 선생님 승인을 기다려요.'));
+ assert.ok(teacherMsgs.some(m=>m.text==='거래 승인 요청: 1 ↔ 2. 선생님 도구에서 확인해주세요.' && m.private===true));
+ const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
+ assert.equal((await call(s1,'trade:approve',{tradeId:propose.tradeId})).error,'선생님만 할 수 있어요.');
+ const done=await call(teacher,'trade:approve',{tradeId:propose.tradeId});
+ assert.equal(done.ok,true);
+ assert.equal(room.trades.size,0);
+ assert.equal(p1.starShards,20-10+5);assert.equal(p2.starShards,5-5+10);
+ assert.equal(p1.inventory.find(i=>i.id==='star-sticker').quantity,1);
+ assert.equal(p1.inventory.find(i=>i.id==='firefly-lamp').quantity,1);
+ assert.equal(p2.inventory.find(i=>i.id==='star-sticker').quantity,2);
+ assert.ok(!p2.inventory.some(i=>i.id==='firefly-lamp'));
+ await sleep(20);
+ assert.ok(msgs1.some(m=>m.text==='선생님이 거래를 승인했어요. 가방을 확인해보세요.'));
+ assert.ok(msgs2.some(m=>m.text==='선생님이 거래를 승인했어요. 가방을 확인해보세요.'));
+ assert.ok(teacherStates.some(st=>st.tradeLog && st.tradeLog.some(tl=>tl.result==='approved')));
+});
+test('trade:approve rejects and logs the trade when holdings changed since acceptance, or when the swap would overflow shards or the bag',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const room=game.store.rooms.get(r.room.code);
+ const p1=room.players.get(j1.selfId),p2=room.players.get(j2.selfId);
+ p1.starShards=10;p2.starShards=10;
+ const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:10,items:[]},want:{shards:5,items:[]}});
+ assert.equal((await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true})).ok,true);
+ p1.starShards=0; // 승인 전에 1이 가진 것을 다 써버림
+ const msgs1a=[];s1.on('chat:message',m=>msgs1a.push(m));
+ const msgs2a=[];s2.on('chat:message',m=>msgs2a.push(m));
+ const failed=await call(teacher,'trade:approve',{tradeId:propose.tradeId});
+ assert.equal(failed.ok,false);assert.equal(failed.error,'가진 것이 바뀌어서 거래할 수 없어요.');
+ assert.equal(room.trades.size,0);
+ assert.equal(p1.starShards,0);assert.equal(p2.starShards,10);
+ await sleep(20);
+ assert.ok(msgs1a.some(m=>m.text==='가진 것이 바뀌어서 거래할 수 없어요.'));
+ assert.ok(msgs2a.some(m=>m.text==='가진 것이 바뀌어서 거래할 수 없어요.'));
+ // 별 파편 상한 넘침
+ p1.starShards=SHARDS.max-2;p2.starShards=10;
+ const overflowShards=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:0,items:[]},want:{shards:5,items:[]}});
+ assert.equal((await call(s2,'trade:respond',{tradeId:overflowShards.tradeId,accept:true})).ok,true);
+ const shardFail=await call(teacher,'trade:approve',{tradeId:overflowShards.tradeId});
+ assert.equal(shardFail.ok,false);assert.equal(shardFail.error,'별 파편이 넘쳐서 거래할 수 없어요.');
+ assert.equal(p1.starShards,SHARDS.max-2);assert.equal(p2.starShards,10);
+ // 가방 종류 한도(SHOP.maxKinds) 넘침: 1의 가방을 반딧불 램프만 빼고 꽉 채운 뒤 2에게서 반딧불 램프를 받으면 한도를 넘깁니다.
+ p1.starShards=10;p2.starShards=10;
+ p1.inventory=SHOP.items.filter(it=>it.id!=='firefly-lamp').map(it=>({id:it.id,quantity:1}))
+   .concat(Array.from({length:SHOP.maxKinds-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
+ assert.equal(p1.inventory.length,SHOP.maxKinds);
+ p2.inventory=[{id:'firefly-lamp',quantity:1}];
+ const overflowBag=await call(s2,'trade:propose',{targetId:j1.selfId,give:{shards:0,items:[{id:'firefly-lamp',quantity:1}]},want:{shards:0,items:[]}});
+ assert.equal(overflowBag.ok,true);
+ assert.equal((await call(s1,'trade:respond',{tradeId:overflowBag.tradeId,accept:true})).ok,true);
+ const bagFail=await call(teacher,'trade:approve',{tradeId:overflowBag.tradeId});
+ assert.equal(bagFail.ok,false);assert.equal(bagFail.error,'가방이 가득 차서 거래할 수 없어요.');
+ assert.equal(p1.inventory.length,SHOP.maxKinds);assert.equal(p2.inventory.length,1);
+});
+test('trade:cancel lets either party withdraw before teacher approval, notifying the other side only',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const room=game.store.rooms.get(r.room.code);
+ room.players.get(j1.selfId).starShards=10;
+ const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ assert.equal((await call(s3,'trade:cancel',{tradeId:propose.tradeId})).error,'내 거래가 아니에요.');
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ assert.equal((await call(s2,'trade:cancel',{tradeId:propose.tradeId})).ok,true);
+ assert.equal(room.trades.size,0);
+ await sleep(20);
+ assert.ok(msgs1.some(m=>m.text==='2 친구가 거래를 취소했어요.'));
+ room.players.get(j1.selfId).starShards=10;
+ const propose2=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
+ assert.equal((await call(s1,'trade:cancel',{tradeId:propose2.tradeId})).ok,true);
+ await sleep(20);
+ assert.ok(msgs2.some(m=>m.text==='1 친구가 거래를 취소했어요.'));
+});
+test('trade:reject works even on a merely proposed trade, and trades stay invisible to non-parties',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect(),s3=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ await call(s3,'room:join',{code:r.room.code,nickname:'3'});
+ const room=game.store.rooms.get(r.room.code);
+ room.players.get(j1.selfId).starShards=10;
+ const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ assert.equal(propose.ok,true); // 아직 'proposed' 상태
+ const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
+ const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
+ const states3=[];s3.on('room:state',st=>states3.push(st));
+ assert.equal((await call(s2,'trade:reject',{tradeId:propose.tradeId})).error,'선생님만 할 수 있어요.');
+ const rejected=await call(teacher,'trade:reject',{tradeId:propose.tradeId});
+ assert.equal(rejected.ok,true);
+ assert.equal(room.trades.size,0);
+ await sleep(30);
+ assert.ok(msgs1.some(m=>m.text==='선생님이 거래를 돌려보냈어요.'));
+ assert.ok(msgs2.some(m=>m.text==='선생님이 거래를 돌려보냈어요.'));
+ room.players.get(j1.selfId).starShards=10;
+ const states1=[];s1.on('room:state',st=>states1.push(st));
+ const propose2=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ assert.equal(propose2.ok,true);
+ await sleep(30);
+ assert.ok(states1.some(st=>st.trades.some(tr=>tr.id===propose2.tradeId)));
+ assert.ok(states3.every(st=>st.trades.length===0)); // 3은 당사자가 아니므로 거래를 보지 못함
+});
+test('a pending trade is cancelled and the other side notified when either party leaves the classroom entirely',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const s1=await connect(),s2=await connect();
+ const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
+ const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
+ const room=game.store.rooms.get(r.room.code);
+ room.players.get(j1.selfId).starShards=10;
+ const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ assert.equal(propose.ok,true);
+ const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
+ assert.equal((await call(s1,'room:leave')).ok,true);
+ await sleep(20);
+ assert.equal(room.trades.size,0);
+ assert.ok(msgs2.some(m=>m.text.includes('나가서 거래가 취소되었어요.')));
+});
+test('trades never leak between classrooms',async t=>{
+ const {connect,game}=await fixture(t),teacherA=await connect(),teacherB=await connect();
+ const ra=await create(teacherA),rb=await create(teacherB);
+ const a1=await connect(),a2=await connect(),b1=await connect(),b2=await connect();
+ const ja1=await call(a1,'room:join',{code:ra.room.code,nickname:'1'});
+ const ja2=await call(a2,'room:join',{code:ra.room.code,nickname:'2'});
+ await call(b1,'room:join',{code:rb.room.code,nickname:'1'});
+ await call(b2,'room:join',{code:rb.room.code,nickname:'2'});
+ const roomA=game.store.rooms.get(ra.room.code),roomB=game.store.rooms.get(rb.room.code);
+ roomA.players.get(ja1.selfId).starShards=10;
+ let leaked=false;b1.on('chat:message',()=>{leaked=true;});teacherB.on('chat:message',()=>{leaked=true;});
+ const propose=await call(a1,'trade:propose',{targetId:ja2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
+ assert.equal(propose.ok,true);
+ assert.equal((await call(teacherB,'trade:approve',{tradeId:propose.tradeId})).error,'거래를 찾지 못했어요.');
+ await sleep(30);
+ assert.equal(leaked,false);
+ assert.equal(roomB.trades.size,0);
+ assert.equal(roomA.trades.size,1);
 });
