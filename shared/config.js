@@ -35,18 +35,34 @@ export const STREET_ID = STREET.id;
 export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET });
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
-// 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate). 아직 아이템 '사용'은 구현하지 않으며 가방에 모읍니다.
-// level은 나중에 아바타 레벨이 생기면 '그 레벨부터 사용 가능'의 뜻입니다. 구매는 레벨과 관계없이 됩니다.
+// 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).
+// level: 아바타가 그 레벨 이상이어야 '사용'할 수 있습니다(구매는 레벨과 관계없이 됨). 지금은 모두 LV1이라 LV1 물건만 쓸 수 있습니다.
+// targets: 'self'면 나에게만, 'any'면 친구에게도 쓸 수 있습니다. 낮은 레벨이 높은 레벨 친구에게는 쓸 수 없습니다(선생님은 LV5로 취급).
+// secret: true면 누가 썼는지 친구들에게는 비밀('누군가')이고 선생님에게만 보입니다.
+// effect: 사용하면 대상에게 붙는 표시(아이콘·이름·지속 시간). 지금은 겉모습 표시만 하고 이동 속도 등 실제 능력치는 바꾸지 않습니다.
 export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 30, items: [
-  { id: 'star-sticker', name: '반짝 별 스티커', description: '소행성에 붙이는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5 },
-  { id: 'space-snack', name: '우주 간식', description: '달콤한 별사탕이에요. 친구와 나눠 먹어요.', icon: '🍬', type: 'consumable', level: 1, price: 3 },
-  { id: 'asteroid-helmet', name: '소행성 헬멧', description: '튼튼하고 귀여운 우주 헬멧이에요.', icon: '🪖', type: 'decoration', level: 1, price: 6 },
-  { id: 'firefly-lamp', name: '반딧불 램프', description: '어두운 우주를 밝혀 주는 램프예요.', icon: '🏮', type: 'tool', level: 1, price: 8 },
-  { id: 'rainbow-tail', name: '무지개 꼬리', description: '움직일 때 무지개가 따라와요.', icon: '🌈', type: 'decoration', level: 2, price: 12 },
-  { id: 'mini-satellite', name: '작은 위성 친구', description: '내 곁을 빙글빙글 도는 귀여운 위성이에요.', icon: '🛰️', type: 'pet', level: 2, price: 15 },
-  { id: 'starlight-cape', name: '별빛 망토', description: '별빛으로 짠 반짝이는 망토예요.', icon: '🧣', type: 'decoration', level: 3, price: 25 },
-  { id: 'meteor-board', name: '유성 보드', description: '유성을 타고 씽씽 달려요.', icon: '☄️', type: 'mount', level: 3, price: 30 }
+  { id: 'star-sticker', name: '반짝 별 스티커', description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
+    targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
+  { id: 'space-snack', name: '우주 간식', description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,
+    targets: 'any', secret: true, effect: { label: '냠냠 행복', icon: '🍬', durationMs: 5 * 60_000, style: 'happy' } },
+  { id: 'asteroid-helmet', name: '소행성 헬멧', description: '튼튼하고 귀여운 우주 헬멧이에요.', icon: '🪖', type: 'decoration', level: 1, price: 6,
+    targets: 'any', secret: false, effect: { label: '튼튼 헬멧', icon: '🪖', durationMs: 30 * 60_000, style: 'helmet' } },
+  { id: 'firefly-lamp', name: '반딧불 램프', description: '어두운 우주를 밝혀 주는 램프예요.', icon: '🏮', type: 'tool', level: 1, price: 8,
+    targets: 'any', secret: false, effect: { label: '반딧불 빛', icon: '🏮', durationMs: 10 * 60_000, style: 'glow' } },
+  { id: 'rainbow-tail', name: '무지개 꼬리', description: '움직일 때 무지개가 따라와요. (LV2부터)', icon: '🌈', type: 'decoration', level: 2, price: 12,
+    targets: 'self', secret: false, effect: { label: '무지개 꼬리', icon: '🌈', durationMs: 30 * 60_000, style: 'trail' } },
+  { id: 'mini-satellite', name: '작은 위성 친구', description: '내 곁을 빙글빙글 도는 귀여운 위성이에요. (LV2부터)', icon: '🛰️', type: 'pet', level: 2, price: 15,
+    targets: 'self', secret: false, effect: { label: '위성 친구', icon: '🛰️', durationMs: 60 * 60_000, style: 'orbit' } },
+  { id: 'starlight-cape', name: '별빛 망토', description: '별빛으로 짠 반짝이는 망토예요. (LV3부터)', icon: '🧣', type: 'decoration', level: 3, price: 25,
+    targets: 'any', secret: false, effect: { label: '별빛 망토', icon: '🧣', durationMs: 30 * 60_000, style: 'cape' } },
+  { id: 'meteor-board', name: '유성 보드', description: '유성을 타고 씽씽 달려요. 누가 태워 줬는지는 비밀! (LV3부터)', icon: '☄️', type: 'mount', level: 3, price: 30,
+    targets: 'any', secret: true, effect: { label: '유성 질주', icon: '☄️', durationMs: 3 * 60_000, style: 'speed' } }
 ] });
+// 아이템 사용 규칙: 연속 사용 간격, 한 사람이 동시에 가질 수 있는 효과 수(넘치면 오래된 것부터 사라짐), 선생님용 사용 기록 보관 수, 선생님의 취급 레벨.
+export const ITEM_USE = Object.freeze({ cooldownMs: 2000, maxEffects: 3, logSize: 100, teacherLevel: 5, notesSize: 20 });
+// 거래: 학생끼리 별 파편·아이템을 주고받을 수 있지만, 상대가 수락한 뒤 선생님이 최종 승인해야 실제로 오갑니다.
+// (힘 있는 아이가 약한 아이의 것을 강제로 뺏는 일을 막기 위한 장치입니다.) 한 사람은 한 번에 하나의 거래만 진행합니다.
+export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999 });
 export const ITEM_TYPES = Object.freeze({ decoration: '꾸미기', consumable: '간식', tool: '도구', pet: '펫', mount: '탈것' });
 export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || null;
 // 선생님이 교실을 만들 때 '예시 행성으로 시작'을 켜면 아래 4개가 미리 놓입니다. 이름·규칙은 예시일 뿐이며 나중에 바꿀 수 있습니다.
