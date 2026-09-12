@@ -1,7 +1,18 @@
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
-import { RULES, MAP, CHAT, createAvatar } from '../shared/config.js';
-import { spawnPosition } from './world.js';
+import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
+import { spawnPosition, addPlanet } from './world.js';
 export class GameError extends Error {}
+// planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
+function renameView(room, planetId, rename) {
+  if (!rename) return null;
+  const members=[...room.players.values()].filter(p=>p.avatar.departmentId===planetId);
+  const memberIds=new Set(members.map(m=>m.id));
+  let yes=0,no=0; const votes={};
+  for (const [id,agree] of rename.votes) if (memberIds.has(id)) { votes[id]=agree; agree?yes++:no++; }
+  const proposer=room.players.get(rename.proposedBy);
+  return {id:rename.id,name:rename.name,proposedBy:rename.proposedBy,
+    proposedByNickname:proposer?proposer.nickname:'친구',yes,no,needed:Math.floor(members.length/2)+1,votes};
+}
 export const ensure = (test,message) => { if (!test) throw new GameError(message); };
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function nickname(value) {
@@ -26,8 +37,11 @@ export class RoomStore {
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
-    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:MAP.id, chat:{enabled:true,history:[]} };
+    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
+      planets:new Map(), proposals:new Map() };
     this.rooms.set(room.code,room);
+    // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
+    if (data.seedPlanets===true) for (const seed of EXAMPLE_PLANETS) addPlanet(room,{...seed,createdBy:null});
     return {room, player:this.add(room,'선생님','teacher',socketId)};
   }
   join(data,socketId) {
@@ -43,7 +57,7 @@ export class RoomStore {
   }
   add(room,name,role,socketId) {
     const token=randomBytes(32).toString('hex');
-    const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room),
+    const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0 };
     room.players.set(p.id,p);
@@ -66,9 +80,15 @@ export class RoomStore {
     this.rooms.delete(room.code);
   }
   snapshot(room) {
+    const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
+      planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
+        radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
+        rename:renameView(room,pl.id,pl.rename)})),
+      proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
+        radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname})),
       players:[...room.players.values()].map(p=>({id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-        connected:p.connected,avatar:p.avatar,muted:p.muted}))};
+        connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId}))};
   }
   pushChat(room,{playerId,nickname,role,text,flagged}) {
     const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged};

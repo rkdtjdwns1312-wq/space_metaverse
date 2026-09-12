@@ -11,16 +11,20 @@
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/">✦ <span>사이버 교실<small>우리들의 작은 우주</small></span></a>
-  <div class="top-right"><span id="connection" role="status">연결 중…</span><span class="phase">두 번째 여행 · 채팅 연습</span></div>
+  <div class="top-right"><span id="connection" role="status">연결 중…</span><span class="phase">세 번째 여행 · 행성 탐험</span></div>
 </header>
 <main>
   <section class="space-section" aria-label="우주 광장">
     <div class="map-heading"><div><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div>
+      <button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button>
+      <button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button>
+      <button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button>
       <div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-code" class="small secondary" type="button">복사</button></div>
     </div>
     <div class="map-wrap">
       <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
-      <span class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
+      <span id="map-caption" class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
+      <button id="interact-prompt" class="interact" type="button" hidden></button>
       <div id="lobby" class="lobby">
         <div class="welcome-mark" aria-hidden="true">✦</div><h2>작은 소행성의<br>첫 여행을 시작해요</h2>
         <p class="muted">선생님이 알려주신 교실로 들어오세요.</p>
@@ -38,6 +42,7 @@
           <label for="class-title">교실 이름</label><input id="class-title" maxlength="12" value="우리 우주 교실" required>
           <label for="allowed-names">허용할 학생 번호 또는 닉네임</label><textarea id="allowed-names" rows="2" required aria-describedby="names-help"></textarea>
           <small id="names-help">쉼표나 줄바꿈으로 구분 · 최대 29명</small>
+          <label class="check"><input type="checkbox" id="seed-planets"> 예시 행성 4개(독서·일기·청소·교과)로 시작하기</label>
           <button class="primary submit" type="submit">교실 만들기 <span aria-hidden="true">✦</span></button>
         </form>
         <p id="form-message" class="form-message" role="alert"></p>
@@ -55,18 +60,23 @@
   <aside>
     <section class="panel passport"><span class="eyebrow">MY LITTLE ASTEROID</span><h2 id="self-name">나의 소행성</h2><span class="level">LV 1 · 소행성</span>
       <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
+      <p id="self-department" class="muted">아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.</p>
+      <p id="self-proposal" class="muted" hidden></p>
     </section>
     <section class="panel crew"><div class="panel-heading"><h2>함께 있는 친구들</h2><span id="player-count">0 / 30</span></div><p id="crew-empty" class="muted">교실에 입장하면 친구들이 보여요.</p><ul id="players" aria-label="접속 목록"></ul></section>
+    <section class="panel proposals" id="proposals-panel" hidden><h2>행성 신청</h2><ul id="proposals" aria-label="승인 기다리는 행성"></ul></section>
     <section class="panel chat" id="chat-panel" hidden><div class="panel-heading"><h2>우주 채팅</h2><span id="chat-status">켜짐</span></div>
       <div id="chat-teacher-controls" hidden><button id="chat-toggle" class="small secondary" type="button">채팅 끄기</button><button id="chat-clear" class="small secondary" type="button">채팅 지우기</button></div>
       <ul id="chat-log" aria-live="polite" aria-label="채팅 내용"></ul>
       <p id="chat-empty" class="muted">아직 대화가 없어요. 인사해볼까요?</p>
       <form id="chat-form"><input id="chat-input" maxlength="120" autocomplete="off" placeholder="친구들에게 말해요 (Enter)" aria-label="채팅 메시지 입력"><button id="chat-send" class="primary small" type="submit">보내기</button></form>
     </section>
-    <section class="panel guide"><h2>오늘의 첫 연습</h2><ol><li>교실 코드로 입장하기</li><li>나의 소행성 찾아보기</li><li>친구와 함께 움직여보기</li></ol><p class="muted">별 아이템은 다음 여행에서 만나요.</p></section>
+    <section class="panel guide"><h2>오늘의 세 번째 연습</h2><ol><li>교실 코드로 입장하기</li><li>행성 만들기로 우리 반 역할 행성 신청</li><li>승인되면 가까이 가서 E → 입장</li></ol><p class="muted">별 아이템은 다음 여행에서 만나요.</p></section>
     <button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button>
   </aside>
 </main>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="leave-dialog"><h2 id="leave-title">교실에서 나갈까요?</h2><p id="leave-description">다시 교실 코드로 입장할 수 있어요.</p><div class="dialog-actions"><button id="stay" class="secondary">계속 있기</button><button id="confirm-leave" class="primary">나가기</button></div></dialog>
+<dialog id="planet-dialog"><h2 id="planet-title">행성</h2><p id="planet-description"></p><p id="planet-member-count">소속 친구 0명</p><ul id="planet-members" aria-label="소속 친구 목록"></ul><p id="planet-members-empty" class="muted">아직 소속 친구가 없어요.</p><button id="planet-rules-toggle" class="small secondary" type="button">규칙 확인하기</button><section id="planet-rules" hidden><h3>행성 규칙</h3><ol id="planet-rules-list"></ol><div id="planet-rules-editor" hidden><textarea id="planet-rules-input" rows="5" maxlength="400" aria-label="행성 규칙 편집"></textarea><button id="planet-rules-save" class="primary small" type="button">규칙 저장</button></div></section><section id="planet-rename" hidden><h3>이름 바꾸기</h3><div id="planet-rename-propose-row"><input id="planet-rename-input" maxlength="10" placeholder="새 이름" aria-label="새 행성 이름"><button id="planet-rename-propose" class="small secondary" type="button">이름 바꾸기 제안</button></div><p id="planet-rename-status" class="muted" hidden></p><div id="planet-rename-votes" hidden><button id="planet-vote-yes" class="small primary" type="button">찬성</button><button id="planet-vote-no" class="small secondary" type="button">반대</button></div><div id="planet-rename-teacher-row" hidden><input id="planet-rename-teacher" maxlength="10" placeholder="바로 바꿀 이름" aria-label="교사용 즉시 이름 변경"><button id="planet-rename-set" class="small secondary" type="button">이름 바로 바꾸기</button></div><button id="planet-remove" class="small secondary danger" type="button" hidden>행성 없애기</button></section><div class="dialog-actions"><button id="planet-close" class="secondary" type="button">닫기</button><button id="planet-leave-dept" class="secondary" type="button" hidden>탈퇴하기</button><button id="planet-join" class="secondary" type="button" hidden>가입하기</button><button id="planet-enter" class="primary" type="button" hidden>입장하기</button></div></dialog>
+<dialog id="planet-create-dialog"><h2 id="planet-create-title">새 행성 신청하기</h2><p id="planet-create-hint" class="muted">행성은 우리 반의 역할이에요. 어떤 역할의 행성인지 이름과 소개를 적어요.</p><label for="planet-name">행성 이름</label><input id="planet-name" maxlength="10" required placeholder="예: 급식행성"><label for="planet-desc">행성 소개</label><input id="planet-desc" maxlength="40" placeholder="어떤 친구들의 행성인가요? (선택)"><fieldset id="planet-colors"><legend>행성 색</legend></fieldset><p id="planet-create-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-create-cancel" class="secondary" type="button">취소</button><button id="planet-create-submit" class="primary" type="button">신청하기</button></div></dialog>
 </body></html>

@@ -1,9 +1,11 @@
-import { MAP } from '/shared/config.js';
+import { mapOf, PLAZA_ID, PLANET } from '/shared/config.js';
 import * as config from '/shared/config.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
+const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
 // Canvas renderer만 교체하면 서버 규칙을 바꾸지 않고 그림을 바꿀 수 있습니다.
+// 행성은 정적 목록이 아니라 room.planets 스냅샷(가변 개수, 최대 PLANET.maxPerRoom)입니다.
 export function createWorld(canvas) {
-  const ctx=canvas.getContext('2d'); let players=[],selfId=null;
+  const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null;
   const points=new Map(),bubbles=new Map();
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>{
@@ -11,14 +13,16 @@ export function createWorld(canvas) {
       i?ctx.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s):ctx.moveTo(x+Math.cos(a)*s,y+Math.sin(a)*s);}
     ctx.closePath();ctx.fillStyle=fill;ctx.fill();
   };
-  function drawMap(){
+  function currentMap(){return mapOf(myMapId,planets.map(p=>({...p,kind:'planet'})));}
+  function drawMap(map){
     const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,'#e2e9fa');g.addColorStop(.55,'#edebfc');g.addColorStop(1,'#e0edf4');
     ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
     for(const s of stars){ctx.fillStyle='#ffffffcc';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
     ctx.strokeStyle='#d9d7ef';ctx.lineWidth=1;ctx.setLineDash([4,12]);
     ctx.beginPath();ctx.ellipse(600,380,370,265,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
     ctx.strokeStyle='#b9b3d85c';ctx.strokeRect(16,16,1168,728);
-    for(const o of MAP.objects){
+    const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
+    for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
       if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');
@@ -29,11 +33,56 @@ export function createWorld(canvas) {
         ctx.fillStyle=fill;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,0,Math.PI*2);ctx.fill();
         ctx.strokeStyle='#ffffff77';ctx.lineWidth=8;ctx.beginPath();ctx.ellipse(o.x,o.y+10,o.radius+18,19,-.22,0,Math.PI*2);ctx.stroke();
         ctx.fillStyle='#ffffff38';ctx.beginPath();ctx.arc(o.x+20,o.y-13,12,0,Math.PI*2);ctx.fill();
+        if(o.kind==='planet'&&o.id===myDept){ctx.strokeStyle='#ffffffc5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(o.x,o.y,o.radius+9,0,Math.PI*2);ctx.stroke();}
       }
       ctx.font='600 17px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
       ctx.fillText(o.name,o.x,o.y+o.radius+37);
+      if(o.kind==='planet'){ctx.font='12px "Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',o.x,o.y+o.radius+53);}
+    }
+    for(const o of proposals){
+      ctx.save();ctx.globalAlpha=.6;ctx.setLineDash([5,7]);ctx.strokeStyle=o.color;ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(o.x,o.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
+      ctx.font='600 15px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
+      ctx.fillText(o.name,o.x,o.y+PLANET.radius+22);
+      ctx.font='11px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';
+      ctx.fillText('승인 기다리는 중',o.x,o.y+PLANET.radius+38);
+    }
+    if(placement){
+      ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle='#6353ae';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(placement.x,placement.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
+      ctx.font='600 13px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6353ae';
+      ctx.fillText('여기에 만들기',placement.x,placement.y+PLANET.radius+20);
+    }
+    if(planets.length===0){
+      ctx.font='15px "Malgun Gothic",sans-serif';ctx.fillStyle='#8f84a6';ctx.textAlign='center';
+      ctx.fillText('아직 행성이 없어요. 행성 만들기로 첫 행성을 신청해보세요!',600,700);
     }
     ctx.font='14px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';ctx.fillText('우리의 첫 번째 우주',600,660);
+  }
+  function drawInterior(map){
+    ctx.fillStyle='#f3f1fb';ctx.fillRect(0,0,1200,760);
+    const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,map.color);g.addColorStop(1,'#ffffff');
+    ctx.save();ctx.globalAlpha=.18;ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);ctx.restore();
+    for(const s of stars){ctx.fillStyle='#ffffffb0';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='#b9b3d85c';ctx.strokeRect(16,16,1168,728);
+    const planet=planets.find(p=>p.id===map.planetId);
+    for(const o of map.objects){
+      if(o.kind==='board'){
+        const w=420,h=170,bx=o.x-w/2,by=o.y-h/2;
+        ctx.fillStyle=o.color||'#fff6d6';ctx.strokeStyle='#e7d9a8';ctx.lineWidth=3;
+        ctx.beginPath();ctx.roundRect(bx,by,w,h,22);ctx.fill();ctx.stroke();
+        ctx.font='700 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8a6d2d';ctx.fillText('행성 규칙',o.x,by+30);
+        const rules=planet?.rules||[];
+        ctx.font='15px "Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
+        rules.slice(0,8).forEach((line,i)=>ctx.fillText(line,o.x,by+58+i*17));
+      } else if(o.kind==='door'){
+        ctx.fillStyle='#d9d3f2';ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);
+        ctx.strokeStyle='#b6a9df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);
+        ctx.font='600 14px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';ctx.fillText(o.name,o.x,o.y+o.radius+30);
+      }
+    }
+    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';
+    ctx.fillText(map.name+' · 소속 친구들만의 공간',600,700);
   }
   function drawBubble(id,x,y){
     const b=bubbles.get(id);if(!b)return;
@@ -69,14 +118,49 @@ export function createWorld(canvas) {
     drawBubble(p.id,x,y);
     ctx.restore();
   }
-  function frame(t){ctx.clearRect(0,0,1200,760);drawMap();for(const p of [...players].sort((a,b)=>a.y-b.y))drawAvatar(p,t);requestAnimationFrame(frame);}
+  function frame(t){
+    ctx.clearRect(0,0,1200,760);
+    const map=currentMap();
+    if(myMapId===PLAZA_ID)drawMap(map);else drawInterior(map);
+    for(const p of players.filter(p=>(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    requestAnimationFrame(frame);
+  }
   requestAnimationFrame(frame);
   return {
-    setRoom(room,id){players=(room?.players||[]).map(p=>({...p}));selfId=id;for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);},
+    setRoom(room,id){
+      players=(room?.players||[]).map(p=>({...p}));selfId=id;
+      planets=room?.planets||[];proposals=room?.proposals||[];
+      myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
+      for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
+      for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
+    },
     positions(data){for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}},
     say(playerId,text,ms){
       if(!playerId)return;const str=String(text);
       bubbles.set(playerId,{text:str.length>24?str.slice(0,24)+'…':str,until:Date.now()+(ms||CHAT.bubbleMs||4000)});
+    },
+    nearby(){
+      const me=players.find(p=>p.id===selfId);if(!me)return null;
+      if(myMapId===PLAZA_ID){
+        let best=null,bestDist=Infinity;
+        for(const o of planets){
+          const d=Math.hypot(me.x-o.x,me.y-o.y);
+          if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
+        }
+        return best?{kind:'planet',id:best.id,name:best.name}:null;
+      }
+      const door=mapOf(myMapId,planets).objects.find(o=>o.kind==='door');
+      if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {kind:'door'};
+      return null;
+    },
+    currentMapId(){return myMapId;},
+    setPlacement(point){placement=point;},
+    planetAt(point){
+      return planets.find(o=>Math.hypot(point.x-o.x,point.y-o.y)<=(o.radius||PLANET.radius))||null;
+    },
+    canvasPoint(e){
+      const rect=canvas.getBoundingClientRect();
+      return {x:Math.round((e.clientX-rect.left)*(1200/rect.width)),y:Math.round((e.clientY-rect.top)*(760/rect.height))};
     }
   };
 }
