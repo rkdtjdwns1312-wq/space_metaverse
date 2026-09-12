@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createClassroomServer } from '../server/app.js';
 import { BLOCKED_WORDS } from '../server/chat-filter.js';
-import { PLAZA_ID, STREET_ID, STREET, MAP, SHOP, BAG } from '../shared/config.js';
+import { PLAZA_ID, STREET_ID, STREET, MAP, SHOP, BAG, PLANET_TEMPLATES } from '../shared/config.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
@@ -271,9 +271,11 @@ try{
  checks.push('E key opens the planet dialog for a member: enter shown, join hidden, leave shown, member count 1');
  await student.locator('#planet-rules-toggle').click();
  await student.locator('#planet-rules-list li').first().waitFor();
- assert.equal(await student.locator('#planet-rules-list li').count(),1);
- assert.equal((await student.locator('#planet-rules-list li').first().innerText()).trim(),'서로 존중하고 친절하게 말해요');
- checks.push('Planet rules list shows the single default rule');
+ // 새 행성은 고른 종류(급식행성 meal)의 기본 규칙으로 시작합니다.
+ const mealRules=PLANET_TEMPLATES.find(t=>t.id==='meal').rules;
+ assert.equal(await student.locator('#planet-rules-list li').count(),mealRules.length);
+ assert.equal((await student.locator('#planet-rules-list li').first().innerText()).trim(),mealRules[0]);
+ checks.push('Planet rules list starts with the chosen type\'s default rules');
 
  // Item 6: entering the planet switches to the interior map.
  const studentCanvasBeforeEnter=await student.locator('#world').evaluate(c=>c.toDataURL());
@@ -300,7 +302,8 @@ try{
  await teacher.locator('#planet-rules-toggle').click();
  await teacher.locator('#planet-rules-input').fill('줄을 서지 않으면 경고를 받아요\n급식 도구는 제자리에');
  await teacher.locator('#planet-rules-save').click();
- await teacher.locator('#planet-rules-list li').nth(1).waitFor();
+ // 저장 전 목록에 종류 기본 규칙 3줄이 이미 있으므로, 서버 스냅샷이 반영되어 정확히 2줄이 될 때까지 기다립니다.
+ await teacher.waitForFunction(()=>document.querySelectorAll('#planet-rules-list li').length===2,{timeout:5000});
  assert.equal(await teacher.locator('#planet-rules-list li').count(),2);
  checks.push('Teacher edits planet rules to two lines from the dialog opened by a map click');
  await student.locator('#chat-log li').filter({hasText:'규칙을 바꿨어요'}).waitFor();
@@ -609,7 +612,7 @@ try{
  await teacher.locator('#teacher-close').click();
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  // --- End STEP 6 ----------------------------------------------------------------------------
- // --- STEP 8: planet templates, avatar card/bag, shard secrecy, item use, and trades -------------
+ // --- STEP 7-2: planet templates, avatar card/bag, shard secrecy, item use, and trades -----------
  // Both students stay connected through this whole section (student2's explicit leave, previously
  // right after Item 12, is moved to run again right after Scenario 9, restoring room.players.size
  // ===2 before the Room isolation section further down, which assumes that precondition).
@@ -831,7 +834,7 @@ try{
  await student2.locator('#confirm-leave').click();
  await student2.locator('#lobby').waitFor({state:'visible'});
  await student2Context.close();
- // --- End STEP 8 ----------------------------------------------------------------------------
+ // --- End STEP 7-2 --------------------------------------------------------------------------
  // Room isolation: a second teacher opens an independent classroom with the same teacher key
  // before the first classroom closes, and the two rooms must not leak allowlists or players.
  const teacher2Context=await browser.newContext({viewport:{width:1440,height:1000}});

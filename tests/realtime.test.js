@@ -842,6 +842,13 @@ test('item:use caps a player at 3 active effects, dropping the one closest to ex
  assert.ok(target.effects.some(e=>e.itemId==='firefly-lamp'));
  assert.ok(target.effects.some(e=>e.itemId==='star-sticker'));
  assert.ok(target.effects.some(e=>e.itemId==='asteroid-helmet'));
+ // 방금 쓴 효과는 지속 시간이 가장 짧아도 밀려나지 않습니다. (밀려나면 아이템만 없어지고 효과는 안 붙습니다.)
+ target.effects=target.effects.map(e=>({...e,until:Date.now()+30*60_000}));
+ give(1,'space-snack'); // 5분짜리(가장 짧음)를 이미 꽉 찬 대상에게 다시 씀
+ room.players.get(joins[1].selfId).lastItemUseAt=0;
+ assert.equal((await call(sockets[1],'item:use',{itemId:'space-snack',targetId:joins[0].selfId})).ok,true);
+ assert.equal(target.effects.length,3);
+ assert.ok(target.effects.some(e=>e.itemId==='space-snack'));
 });
 test('item:use validates ownership, level gates, target existence/connection, and self-only items',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -990,6 +997,11 @@ test('trade:respond lets only the recipient answer; declining removes the trade 
  await sleep(20);
  assert.ok(msgs1.some(m=>m.text==='2 친구가 거래를 거절했어요.' && m.private===true));
  assert.equal((await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
+ // 거절당한 상대에게 바로 다시 제안하면 막히고(조르기 방지), 다른 친구에게는 제안할 수 있습니다.
+ const again=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:{shards:0,items:[]}});
+ assert.equal(again.ok,false);assert.ok(again.error.startsWith('그 친구가 거절했어요.'));
+ const other=await call(s1,'trade:propose',{targetId:room.players.get([...room.players.keys()].find(id=>room.players.get(id).nickname==='3')).id,give:{shards:5,items:[]},want:{shards:0,items:[]}});
+ assert.equal(other.ok,true);
 });
 test('trade:respond accept requires the recipient really has what they promise; teacher approval swaps shards and items atomically and logs it for the teacher',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);

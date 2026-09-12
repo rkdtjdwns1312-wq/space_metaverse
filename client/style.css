@@ -92,6 +92,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 #trades,#teacher-trades{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:10px;max-height:260px;overflow:auto}
 #trades li,#teacher-trades li{font-size:13px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
 #trades li strong,#teacher-trades li strong{color:#4a4361}
+.trade-warning{margin:6px 0 0;font-size:12px;color:#a23b4c;font-weight:700}
 .trade-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
 #item-log{list-style:none;padding:0;margin:10px 0 0;max-height:200px;overflow:auto;font-size:12px;color:#726d87;display:flex;flex-direction:column;gap:4px}
 #item-log li{border-bottom:1px solid var(--line);padding:5px 0}

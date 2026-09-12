@@ -285,7 +285,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.mapId===PLAZA_ID,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
       ensure(room.planets.size+room.proposals.size<PLANET.maxPerRoom,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
       const input=planetInput(room,data);
-      const planet=addPlanet(room,{...input,rules:[...PLANET.defaultRules],createdBy:p.id});
+      // 새 행성의 기본 규칙은 고른 종류의 규칙(없으면 공통 기본 규칙)으로 시작합니다.
+      const planet=addPlanet(room,{...input,rules:[...(templateOf(input.templateId)?.rules||PLANET.defaultRules)],createdBy:p.id});
       roster(room);
       announce(room,'선생님이 새 행성 "'+planet.name+'"을 만들었어요.');
       return {planetId:planet.id};
@@ -301,7 +302,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         throw new GameError('그 자리에 이미 다른 행성이 생겼어요.');
       }
       const planet=addPlanet(room,{name:proposal.name,description:proposal.description,x:proposal.x,y:proposal.y,
-        color:proposal.color,rules:[...PLANET.defaultRules],createdBy:proposal.playerId,templateId:proposal.templateId});
+        color:proposal.color,rules:[...(templateOf(proposal.templateId)?.rules||PLANET.defaultRules)],createdBy:proposal.playerId,templateId:proposal.templateId});
       const student=room.players.get(proposal.playerId);
       if(student){
         const previousId=student.avatar.departmentId;
@@ -574,9 +575,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }else{
         target.effects.push({itemId:item.id,icon:item.effect.icon,label:item.effect.label,style:item.effect.style,
           until,fromId:p.id,fromNickname:p.nickname,secret:item.secret});
+        // 방금 붙인 효과(배열 마지막 칸)는 지울 후보에서 빼고, 원래 있던 것 중 가장 먼저 끝나는 효과를 지웁니다.
+        // 빼지 않으면 지속 시간이 짧은 아이템(예: 우주 간식 5분)을 썼을 때 물건만 없어지고 효과는 바로 사라집니다.
         if(target.effects.length>ITEM_USE.maxEffects){
           let oldest=0;
-          for(let i=1;i<target.effects.length;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
+          for(let i=1;i<target.effects.length-1;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
           target.effects.splice(oldest,1);
         }
       }
@@ -633,6 +636,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const give=tradeSide(data.give),want=tradeSide(data.want);
       ensure(!(sideEmpty(give) && sideEmpty(want)),'주거나 받을 것을 하나는 적어주세요.');
       ensure(!busyWithTrade(room,p.id) && !busyWithTrade(room,target.id),'진행 중인 거래가 있어요. 먼저 끝내주세요.');
+      // 거절당한 상대에게 바로 다시 제안하며 조르는 것을 막습니다(TRADE.declineBlockMs 동안).
+      const blockedUntil=p.tradeBlocks?.get(target.id)||0;
+      ensure(blockedUntil<=Date.now(),'그 친구가 거절했어요. '+Math.ceil(TRADE.declineBlockMs/60_000)+'분 뒤에 다시 제안할 수 있어요.');
       ensure(room.trades.size<TRADE.maxPending,'기다리는 거래가 너무 많아요.');
       ensure(hasAssets(p,give),'주려는 것을 충분히 가지고 있지 않아요.');
       const trade={id:randomUUID(),fromId:p.id,fromNickname:p.nickname,toId:target.id,toNickname:target.nickname,
@@ -651,6 +657,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const proposer=room.players.get(trade.fromId);
       if(!data.accept){
         room.trades.delete(trade.id);
+        if(proposer){
+          if(!proposer.tradeBlocks) proposer.tradeBlocks=new Map();
+          proposer.tradeBlocks.set(p.id,Date.now()+TRADE.declineBlockMs);
+        }
         roster(room);
         if(proposer) whisper(room,proposer,trade.toNickname+' 친구가 거래를 거절했어요.');
         return {};
@@ -701,7 +711,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(from.starShards-trade.give.shards+trade.want.shards>SHARDS.max
         || to.starShards-trade.want.shards+trade.give.shards>SHARDS.max)
         reject('별 파편이 넘쳐서 거래할 수 없어요.');
-      // 가방 한도(종류 30·스택 99)를 넘기지 않는지 미리 계산으로 확인한 뒤에만 실제로 옮깁니다.
+      // 가방 한도(종류 SHOP.maxKinds=20칸·한 종류 SHOP.maxStack=99개)를 넘기지 않는지 미리 계산으로 확인한 뒤에만 실제로 옮깁니다.
       const wouldOverflow=(player,giveItems,wantItems)=>{
         const bag=new Map(player.inventory.map(i=>[i.id,i.quantity]));
         for(const it of giveItems){

@@ -12,7 +12,9 @@ export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 }
 export const PLANET = Object.freeze({ radius: 60, minGap: 30, maxPerRoom: 12, maxPending: 6,
   nameMin: 2, nameMax: 10, descriptionMax: 40, defaultRules: ['서로 존중하고 친절하게 말해요'],
   reserved: [{ x: 0, y: 640, width: 240, height: 120, label: '이동 버튼 자리' }] });
-export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f5d798', '#c9e7a8', '#f7c8a8', '#d9c6f2', '#a8dff2']);
+// 행성 색 팔레트. 뒤의 8색은 행성 종류(PLANET_TEMPLATES)의 기본색으로, 종류를 고르면 자동 선택됩니다. 목록에 없는 색은 서버가 거부합니다.
+export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f5d798', '#c9e7a8', '#f7c8a8', '#d9c6f2', '#a8dff2',
+  '#c5c9f7', '#ffd2a8', '#ffe0b5', '#cfd8e6', '#f7e39b', '#f9c6e0', '#ffcfa3', '#bfe3d6']);
 // 광장의 고정 오브젝트는 가운데 별과 오른쪽의 '별빛 거리로 가는 문'입니다. 행성은 방마다 다르게 생기므로 mapOf(mapId, planets)로 합쳐서 씁니다.
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
 export const MAP = Object.freeze({ id: 'space-plaza', name: '우리들의 우주 광장', width: 1200, height: 760,
@@ -64,7 +66,8 @@ export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 20, i
 export const ITEM_USE = Object.freeze({ cooldownMs: 2000, maxEffects: 3, logSize: 100, teacherLevel: 5, notesSize: 20 });
 // 거래: 학생끼리 별 파편·아이템을 주고받을 수 있지만, 상대가 수락한 뒤 선생님이 최종 승인해야 실제로 오갑니다.
 // (힘 있는 아이가 약한 아이의 것을 강제로 뺏는 일을 막기 위한 장치입니다.) 한 사람은 한 번에 하나의 거래만 진행합니다.
-export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999 });
+// declineBlockMs: 상대가 거절하면 같은 상대에게 그 시간 동안 다시 제안할 수 없습니다(계속 조르기 방지).
+export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999, declineBlockMs: 5 * 60_000 });
 export const ITEM_TYPES = Object.freeze({ decoration: '꾸미기', consumable: '간식', tool: '도구', pet: '펫', mount: '탈것' });
 export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || null;
 // 만들 수 있는 행성 종류(2026-09-12 사용자 지정 13종). 아이들은 이 목록에서 골라 행성을 만들고, 이름은 2~10자 안에서 바꿀 수 있습니다.

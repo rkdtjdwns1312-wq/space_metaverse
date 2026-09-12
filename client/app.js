@@ -110,6 +110,7 @@ function updateRoom(value){
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
   if(placing&&(inPlanet||inStreet))stopPlacement();
   $('teacher-tools').hidden=!isTeacher;
+  $('trade-section').hidden=isTeacher; // 선생님은 거래 당사자가 아니라 제안 버튼을 숨깁니다.
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent='선생님 연결 대기 · 잠시 이동을 멈춰요';
   updateChatUI(me,isTeacher);
@@ -207,7 +208,9 @@ $('use-confirm').onclick=async()=>{
   try{
     const reply=await request('item:use',{itemId:useItem.id,targetId});
     const me=room?.players.find(p=>p.id===selfId);
-    if(me){me.inventory=reply.inventory;me.effects=reply.effects;}
+    // reply.effects는 '대상'의 효과 목록입니다. 친구에게 썼을 때 이것을 내 효과로 넣으면
+    // 다음 스냅샷이 올 때까지 친구의 효과가 내 카드에 잘못 보이므로, 나에게 쓴 경우에만 반영합니다.
+    if(me){me.inventory=reply.inventory;if(targetId===selfId)me.effects=reply.effects;}
     renderBag(reply.inventory);renderSelfEffects(me);
     if(room)world.setRoom(room,selfId);
     toast(useItem.name+'을(를) 썼어요.');
@@ -333,6 +336,9 @@ function updateTeacherPanels(isTeacher){
     const want=document.createElement('p');want.className='muted';want.textContent='받는 것: '+summarizeTrade(t.want);
     const status=document.createElement('p');status.className='muted';status.textContent=t.status==='proposed'?'친구 수락 기다리는 중':'승인 대기';
     const actions=document.createElement('div');actions.className='trade-actions';
+    // 주는 것 없이 받기만 하는 거래는 강요일 수 있어 선생님에게 눈에 띄게 표시합니다.
+    const oneSided=(t.give?.shards||0)===0&&!(t.give?.items||[]).length&&((t.want?.shards||0)>0||(t.want?.items||[]).length>0);
+    if(oneSided){const warn=document.createElement('p');warn.className='trade-warning';warn.textContent='⚠ 한쪽만 받는 거래예요. 억지로 요구한 것은 아닌지 확인해 주세요.';li.append(warn);}
     if(t.status==='accepted'){
       const approve=document.createElement('button');approve.type='button';approve.className='small primary approve-trade';approve.textContent='승인';
       approve.onclick=async()=>{try{await request('trade:approve',{tradeId:t.id});}catch(e){toast(e.message);}};
