@@ -27,7 +27,7 @@ exit /b 1
 :found
 for /f "delims=" %%V in ('"%CLASSROOM_NODE%" --version') do set "CLASSROOM_NODE_VERSION=%%V"
 echo 사용하는 Node: %CLASSROOM_NODE% (%CLASSROOM_NODE_VERSION%)
-echo 사이버 교실을 엽니다. 이 창을 닫으면 교실 서버가 종료됩니다.
+echo 교실 서버를 확인합니다. 새로 켠 서버 창은 학생 이용 중 닫지 마세요.
 "%CLASSROOM_NODE%" scripts\local.mjs --open
 if errorlevel 1 (
   echo 시작하지 못했습니다. 위 오류를 확인하거나 도우미^(Claude 또는 Codex^)에게 이 창의 내용을 알려주세요.

@@ -88,7 +88,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store'});
     next();
   });
-  app.get('/health',(_req,res)=>res.json({ok:true,version:'0.2.0',persistent}));
+  app.get('/health',(_req,res)=>res.json({ok:true,service:'space-classroom',version:'0.2.0',persistent,publicOrigin}));
   app.get('/api/public-config',(_req,res)=>res.json({managedAccounts:persistent&&teacherManagedAccounts,studentHours}));
   app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url))));
   app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));

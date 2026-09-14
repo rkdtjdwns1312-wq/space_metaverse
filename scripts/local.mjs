@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { spawn } from 'node:child_process';
+import {startLocalClassroom} from './local-state.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
 if(!existsSync('.env'))writeFileSync('.env','TEACHER_KEY='+randomBytes(32).toString('hex')+'\nPORT=3000\nHOST=127.0.0.1\nPUBLIC_ORIGIN=\n',{mode:0o600});
@@ -11,16 +12,29 @@ const secret=process.env.TEACHER_KEY;
 if(!secret||secret.length<16||secret.startsWith('replace-'))throw new Error('Please set a private TEACHER_KEY in .env (at least 16 characters).');
 const port=Number(process.env.PORT || 3000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
-const {createClassroomServer}=await import('../server/app.js');
-const game=createClassroomServer({teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes'});
 const address='http://127.0.0.1:'+port;
-try{await game.listen(port,'127.0.0.1');}
-catch(error){
- await game.close();
- if(error.code!=='EADDRINUSE')throw error;
- console.error('Port '+port+' is already in use. Keep the existing classroom open, or close it before starting again.');
- process.exit(1);
+function openTeacher(target){
+ if(!process.argv.includes('--open'))return;
+ if(process.platform==='win32'){
+   const quoted="'"+target.replaceAll("'","''")+"'";
+   const child=spawn('powershell.exe',['-NoProfile','-Command','Start-Process -FilePath '+quoted],{windowsHide:true,stdio:'ignore'});
+   child.on('error',()=>console.error('교사 화면을 열지 못했어요. '+address+' 에 접속해주세요.'));
+ }else console.log('교사 화면: '+address);
 }
+let started;
+try{started=await startLocalClassroom({port,teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes'});}
+catch(error){console.error('교실을 시작하지 못했어요: '+error.message);process.exit(1);}
+const {existing}=started;
+if(existing){
+ console.log('교실 서버가 이미 켜져 있어요. 기존 교사 화면을 엽니다.');
+ if(process.argv.includes('--public')&&!existing.publicOrigin)
+   console.log('현재는 이 PC 전용 서버입니다. 기존 서버 창에서 Ctrl+C로 종료한 뒤 외부접속-교실-시작.cmd를 다시 실행해주세요.');
+ else if(existing.publicOrigin)console.log('외부 접속 주소: '+existing.publicOrigin);
+ // 인증 정보가 있는 시작 파일은 로컬 교사 화면에만 사용하고 공개 주소로 보내지 않습니다.
+ openTeacher(existsSync('.local/teacher.html')?resolve('.local/teacher.html'):address+'/#teacher');process.exitCode=0;
+}else{
+const {game,recovered}=started;
+if(recovered)console.log('이전에 종료된 서버의 잠금을 복구했어요. 저장된 교실은 유지됩니다.');
 // 이 파일은 교사 확인 정보를 담으므로 .local 전체를 Git과 HTTP 공개 대상에서 제외합니다.
 mkdirSync('.local',{recursive:true});
 const teacherUrl=address+'/#teacher='+encodeURIComponent(secret);
@@ -45,11 +59,5 @@ if(process.argv.includes('--public')){
     tunnel.child.once('exit',()=>{if(!closing)console.error('외부 접속 연결이 종료되었습니다. 서버를 재시작해 새 주소를 확인해주세요.');});
   }catch(error){console.error('외부 접속을 열지 못했습니다: '+error.message);await game.close();process.exitCode=1;throw error;}
 }
-if(process.argv.includes('--open')){
- const file=resolve('.local/teacher.html');
- if(process.platform==='win32'){
-   const quoted="'"+file.replaceAll("'","''")+"'";
-   const child=spawn('powershell.exe',['-NoProfile','-Command','Start-Process -FilePath '+quoted],{windowsHide:true,stdio:'ignore'});
-   child.on('error',()=>console.error('Open .local/teacher.html in your browser.'));
- }else console.log('Open .local/teacher.html in your browser.');
+openTeacher(resolve('.local/teacher.html'));
 }
