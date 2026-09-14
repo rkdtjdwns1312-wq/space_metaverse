@@ -35,6 +35,12 @@ function setMode(value){
   $('form-message').textContent='';
 }
 $('student-tab').onclick=()=>setMode('student');$('teacher-tab').onclick=()=>setMode('teacher');
+$('class-mode').onchange=()=>{
+  const open=$('class-mode').value==='open';
+  $('open-class-fields').hidden=!open;$('new-class-fields').disabled=open;$('new-class-fields').hidden=open;
+  $('open-code').required=open;$('form-message').textContent='';
+  $('teacher-form').querySelector('.submit').textContent=open?'교실 열기 ↗':'교실 만들기 ✦';
+};
 $('allowed-names').value=Array.from({length:29},(_,i)=>String(i+1)).join(', ');
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('teacher')){
@@ -69,7 +75,7 @@ function updateRoom(value){
       name.append(dept);
     }
     const insideId=planetIdOfMap(p.mapId),inside=insideId?planetById(insideId):null;
-    const state=document.createElement('span');state.textContent=!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':'LV 1';
+    const state=document.createElement('span');state.textContent=p.away?'수업 밖':!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':'LV 1';
     li.append(name);
     // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
     if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);li.append(shards);}
@@ -104,18 +110,20 @@ function updateRoom(value){
   const myProposal=(room.proposals||[]).find(p=>p.playerId===selfId);
   $('self-proposal').hidden=!myProposal;
   if(myProposal)$('self-proposal').textContent='"'+myProposal.name+'" 행성 신청 중 · 선생님 승인을 기다려요';
-  $('leave').textContent=me?.role==='teacher'?'교실 종료하기':'교실 나가기';
+  $('leave').textContent=me?.role==='teacher'?(room.persistent===true?'수업 마치기':'교실 종료하기'):'교실 나가기';
   $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=inPlanet||inStreet;$('planet-info').hidden=!inPlanet;
   // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
   if(placing&&(inPlanet||inStreet))stopPlacement();
   $('teacher-tools').hidden=!isTeacher;
+  $('pin-panel').hidden=!isTeacher||room.persistent!==true;
   $('trade-section').hidden=isTeacher; // 선생님은 거래 당사자가 아니라 제안 버튼을 숨깁니다.
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent='선생님 연결 대기 · 잠시 이동을 멈춰요';
   updateChatUI(me,isTeacher);
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
+  updatePinTargetOptions();
   updateTradesList();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
@@ -372,6 +380,12 @@ function updateShardsTargetOptions(){
   }));
   if([...select.options].some(o=>o.value===prev))select.value=prev;
 }
+function updatePinTargetOptions(){
+  const select=$('pin-target'),prev=select.value;
+  const students=(room?.players||[]).filter(p=>p.role!=='teacher');
+  select.replaceChildren(...students.map(p=>{const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.nickname+(p.away?' · 수업 밖':'');return opt;}));
+  if([...select.options].some(o=>o.value===prev))select.value=prev;
+}
 let lastProposalCount=0;
 function updateProposalsPanel(isTeacher){
   const proposals=room.proposals||[];
@@ -582,6 +596,12 @@ $('shards-give').onclick=async()=>{
   try{await request('shards:give',{playerId,amount});toast('별 파편을 지급했어요.');}
   catch(e){toast(e.message);}
 };
+$('pin-save').onclick=async()=>{
+  const pin=$('reset-pin').value;
+  if(!/^\d{4}$/.test(pin)){toast('비밀번호는 숫자 4자리로 입력해 주세요.');return;}
+  try{await request('student:pin:set',{playerId:$('pin-target').value,pin});$('reset-pin').value='';toast('학생 비밀번호를 바꿨어요.');}
+  catch(e){toast(e.message);}
+};
 function myShards(){return room?.players.find(p=>p.id===selfId)?.starShards||0;}
 function myInventory(){return room?.players.find(p=>p.id===selfId)?.inventory||[];}
 function updateShopShards(){const n=myShards();$('shop-shards').textContent='내 별 파편 ★ '+n+(n===0?' · 별 파편은 선생님이 나눠 줘요':'');}
@@ -708,14 +728,14 @@ function reset(message){
   $('players').replaceChildren();$('player-count').textContent='0 / 30';$('crew-count').textContent='0 / 30';$('crew-empty').hidden=false;
   clearChat();$('chat-input').value='';$('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
-  $('self-description').textContent='모두 같은 LV 1 소행성으로 다시 출발해요.';
+  $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
   $('self-shards').textContent='0';$('bag-currency').hidden=false;
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
   $('avatar-card').style.removeProperty('--card-accent');$('avatar-card').classList.remove('teacher-card');
   {const portrait=$('avatar-portrait');portrait.getContext('2d').clearRect(0,0,portrait.width,portrait.height);}
-  $('self-proposal').hidden=true;$('proposals-empty').hidden=false;$('proposals').replaceChildren();lastProposalCount=0;
+  $('self-proposal').hidden=true;$('proposals-empty').hidden=false;$('proposals').replaceChildren();lastProposalCount=0;$('pin-panel').hidden=true;$('reset-pin').value='';
   $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
   selectedSlotId=null;$('bag-list').replaceChildren();$('bag-empty').hidden=false;$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';
   $('shop-buy-list').replaceChildren();$('shop-sell-list').replaceChildren();$('shop-sell-empty').hidden=true;
@@ -740,8 +760,23 @@ async function submit(event,handler){
   try{enter(await handler());}catch(e){$('form-message').textContent=e.message==='operation has timed out'?'응답이 늦어지고 있어요. 연결 상태를 확인해주세요.':e.message;}
   finally{busy=false;controls();}
 }
-$('student-form').onsubmit=e=>submit(e,()=>request('room:join',{code:$('join-code').value,nickname:$('nickname').value}));
-$('teacher-form').onsubmit=e=>submit(e,()=>request('room:create',{teacherKey:$('teacher-key').value,title:$('class-title').value,allowedNames:$('allowed-names').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean),seedPlanets:$('seed-planets').checked}));
+$('student-form').onsubmit=e=>submit(e,async()=>{const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});
+$('teacher-form').onsubmit=e=>submit(e,()=>{
+  const teacherKey=$('teacher-key').value;
+  if($('class-mode').value==='open')return request('room:open',{teacherKey,code:$('open-code').value});
+  return request('room:create',{teacherKey,title:$('class-title').value,allowedNames:$('allowed-names').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean),seedPlanets:$('seed-planets').checked});
+});
+$('saved-classes-button').onclick=async()=>{
+  const teacherKey=$('teacher-key').value;
+  if(!teacherKey){toast('교사 확인 키를 먼저 입력해 주세요.');return;}
+  try{
+    const result=await request('room:list',{teacherKey}),select=$('saved-classes');
+    select.replaceChildren(...(result.classes||[]).map(c=>{const option=document.createElement('option');option.value=c.code;option.textContent=c.title+' · '+c.code+(c.open?' · 열림':'');return option;}));
+    select.hidden=!result.classes?.length;
+    if(result.classes?.length){$('open-code').value=result.classes[0].code;select.onchange=()=>{$('open-code').value=select.value;};}
+    else toast('아직 저장된 교실이 없어요. 새 교실을 한 번 만들어주세요.');
+  }catch(e){toast(e.message);}
+};
 socket.on('connect',async()=>{
   $('connection').textContent='우주와 연결되었어요';controls();
   if(sessionToken){busy=true;controls();try{enter(await request('session:resume',{token:sessionToken}));}
@@ -771,8 +806,9 @@ $('chat-input').addEventListener('keydown',e=>{if(e.code==='Escape'){$('chat-inp
 $('copy-code').onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast('교실 코드를 복사했어요.');}catch{toast('화면의 교실 코드 '+room.code+'를 알려주세요.');}};
 $('leave').onclick=()=>{
   stop();const teacher=room?.players.find(p=>p.id===selfId)?.role==='teacher';
-  $('leave-title').textContent=teacher?'모두의 교실을 종료할까요?':'교실에서 나갈까요?';
-  $('leave-description').textContent=teacher?'모든 친구들이 나가게 되고, 이 교실 코드는 사용할 수 없어요.':'다시 교실 코드로 입장할 수 있어요.';
+  const persistent=room?.persistent===true;
+  $('leave-title').textContent=teacher&&persistent?'수업을 마칠까요?':teacher?'모두의 교실을 종료할까요?':'교실에서 나갈까요?';
+  $('leave-description').textContent=teacher&&persistent?'저장하고 수업을 마칩니다. 교실 코드와 아이들이 만든 내용은 그대로 유지돼요.':teacher?'모든 친구들이 나가게 되고, 이 교실 코드는 사용할 수 없어요.':'다시 교실 코드로 입장할 수 있어요.';
   $('leave-dialog').showModal();
 };
 $('stay').onclick=()=>{$('leave-dialog').close();$('world').focus();};

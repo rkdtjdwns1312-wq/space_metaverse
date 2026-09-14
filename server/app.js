@@ -4,6 +4,7 @@ import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError, effectsView } from './rooms.js';
+import { PersistentRoomStore, pinHash } from './persistent-rooms.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
@@ -66,9 +67,14 @@ const planetInput=(room,data) => {
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
   return {name,description,x,y,color:data.color,templateId:data.templateId};
 };
-export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs}={}) {
+export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
-  const app=express(), http=createServer(app), store=new RoomStore();
+  const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir):new RoomStore();
+  const persistent=!!dataDir;
+  // 브라우저의 미리 연결(preconnect)은 HTTP 요청 없이도 남을 수 있습니다.
+  // 서버 종료 때 이 연결까지 닫아야 http.close()가 무기한 기다리지 않습니다.
+  const connections=new Set();
+  http.on('connection',connection=>{connections.add(connection);connection.once('close',()=>connections.delete(connection));});
   const originAllowed=req => !req.headers.origin || req.headers.origin===(publicOrigin || 'http://'+req.headers.host);
   const io=new Server(http,{maxHttpBufferSize:8192,allowRequest:(req,done)=>done(null,originAllowed(req))});
   app.disable('x-powered-by');
@@ -77,23 +83,47 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store'});
     next();
   });
-  app.get('/health',(_req,res)=>res.json({ok:true,version:'0.1.0'}));
+  app.get('/health',(_req,res)=>res.json({ok:true,version:'0.2.0',persistent}));
   app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url))));
   app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
   // 교사 키 무작위 대입은 연결을 새로 열어도 제한되도록 주소별로 집계합니다.
   const authAttempts=new Map();
-  const joinChannel=s=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code);
+  // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
+  let pending=null;
+  const deliver=fn=>pending?pending.push(fn):fn();
+  const transaction=work=>{
+    if(!persistent)return work();
+    const connections=[...io.sockets.sockets.values()].map(s=>[s,s.data.session?.player.token]);
+    pending=[];
+    try {
+      const result=store.transact(work),events=pending;pending=null;
+      for(const event of events)event();
+      return result;
+    }catch(error){
+      if(error.commitOnError){
+        const events=pending;pending=null;for(const event of events)event();throw error;
+      }
+      pending=null;
+      for(const [s,token] of connections)s.data.session=store.sessions.get(token)||null;
+      if(!(error instanceof GameError)){
+        console.error('교실 저장 실패:',error.message);
+        throw new GameError('저장하지 못했어요. 변경을 취소했어요. 선생님은 서버의 저장 공간을 확인해주세요.');
+      }
+      throw error;
+    }
+  };
+  const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
     for(const p of room.players.values()){
       if(!p.connected) continue;
       const sock=io.sockets.sockets.get(p.socketId);
-      if(sock) sock.emit('room:state',store.snapshot(room,p));
+      if(sock) deliver(()=>sock.emit('room:state',store.snapshot(room,p)));
     }
   };
   const announce=(room,text)=>{
     const msg=store.pushChat(room,{playerId:null,nickname:'안내',role:'system',text,flagged:false});
-    io.to(room.code).emit('chat:message',msg);
+    deliver(()=>io.to(room.code).emit('chat:message',msg));
   };
   // 한 사람에게만 가는 개인 안내(선생님의 별 파편 지급, 비밀 아이템 사용, 거래 알림 등). 방 채팅 기록에는 남지 않고
   // 그 사람의 notes에 최근 것만 보관해 재접속 시 enter()에서 방 기록과 합쳐 돌려줍니다.
@@ -102,7 +132,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     player.notes.push(msg);
     if(player.notes.length>ITEM_USE.notesSize) player.notes.shift();
     const sock=player.connected?io.sockets.sockets.get(player.socketId):null;
-    if(sock) sock.emit('chat:message',msg);
+    if(sock) deliver(()=>sock.emit('chat:message',msg));
     return msg;
   };
   // 행성 이름 바꾸기 투표를 현재 소속 인원 기준으로 다시 계산합니다. 필요 표가 모이면 반영/부결하고 투표를 닫습니다.
@@ -147,20 +177,23 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const roomClosed=room=>{
     for(const p of room.players.values()){
       const s=io.sockets.sockets.get(p.socketId);
-      if(s){ s.emit('room:closed',{message:'교실이 종료되었어요. 새 교실 코드로 입장해주세요.'});s.leave(room.code);s.data.session=null; }
+      if(s){
+        s.data.session=null;
+        deliver(()=>{s.emit('room:closed',{message:persistent?'수업을 마쳤어요. 다음에도 같은 코드와 비밀번호로 만나요.':'교실이 종료되었어요. 새 교실 코드로 입장해주세요.'});s.leave(room.code);});
+      }
     }
     store.destroy(room);
   };
   const detach=(socket,immediate)=>{
     const s=socket.data.session;if(!s)return;
-    socket.leave(s.room.code);socket.data.session=null;
+    deliver(()=>socket.leave(s.room.code));socket.data.session=null;
     if(immediate){
       if(s.player.role==='teacher') roomClosed(s.room);
       else {
         const planetId=s.player.avatar.departmentId;
         store.remove(s.room,s.player);
         cancelTradesFor(s.room,s.player.id,s.player.nickname);
-        afterMemberRemoved(s.room,s.player.id,planetId);
+        if(!persistent)afterMemberRemoved(s.room,s.player.id,planetId);
         roster(s.room);
       }
     }else {
@@ -180,7 +213,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(typeof ack!=='function')return;
       try {
         ensure(data && typeof data==='object' && !Array.isArray(data),'입력 내용을 확인해주세요.');
-        ack({ok:true,...handler(data)});
+        ack({ok:true,...transaction(()=>{
+          const session=socket.data.session;
+          if(persistent && session?.player.role==='student' && name!=='room:leave')
+            ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
+          return handler(data);
+        })});
       }catch(error){
         if(!(error instanceof GameError)) console.error('Action failed:',name,error.message);
         ack({ok:false,error:error instanceof GameError?error.message:'처리하지 못했어요. 다시 시도해주세요.'});
@@ -194,14 +232,27 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return {token:player.token,selfId:player.id,room:store.snapshot(room,player),chat:{messages}};
     };
     const notJoined=()=>ensure(!socket.data.session,'먼저 현재 교실에서 나가주세요.');
-    action('room:create',data=>{
-      notJoined();
+    const authorizeTeacher=data=>{
       const ip=socket.handshake.address,now=Date.now();
       let bucket=authAttempts.get(ip);
       if(!bucket || now-bucket.at>60_000){bucket={at:now,count:0};authAttempts.set(ip,bucket);}
       ensure(bucket.count<10,'교사 확인을 여러 번 시도했어요. 1분 후 다시 시도해주세요.');
       if(!equalSecret(data.teacherKey,teacherKey)){bucket.count++;throw new GameError('교사용 시작 링크 또는 교사 확인 키를 확인해주세요.');}
+    };
+    action('room:create',data=>{
+      notJoined();authorizeTeacher(data);
       return enter(store.create(data,socket.id));
+    });
+    action('room:list',data=>{notJoined();authorizeTeacher(data);ensure(persistent,'저장 기능이 켜져 있지 않아요.');return {classes:store.list()};});
+    action('room:open',data=>{notJoined();authorizeTeacher(data);ensure(persistent,'저장 기능이 켜져 있지 않아요.');return enter(store.open(data,socket.id));});
+    action('student:pin:set',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
+      ensure(persistent,'저장 기능이 켜져 있지 않아요.');
+      const p=s.room.players.get(data.playerId);ensure(p?.role==='student','학생을 선택해주세요.');
+      const pin=pinHash(data.pin),oldSocket=io.sockets.sockets.get(p.socketId);
+      cancelTradesFor(s.room,p.id,p.nickname);store.remove(s.room,p);p.pin=pin;
+      if(oldSocket){oldSocket.data.session=null;deliver(()=>{oldSocket.leave(s.room.code);oldSocket.emit('room:closed',{message:'선생님이 비밀번호를 바꿨어요. 새 비밀번호로 입장해주세요.'});});}
+      roster(s.room);return {};
     });
     action('room:join',data=>{notJoined();return enter(store.join(data,socket.id));});
     action('session:resume',data=>{notJoined();return enter(store.resume(data.token,socket.id));});
@@ -229,7 +280,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(now-p.lastChatAt>=CHAT.cooldownMs,'조금 천천히 말해요.');
       const {text:filtered,flagged}=filterChat(text);
       const msg=store.pushChat(room,{playerId:p.id,nickname:p.nickname,role:p.role,text:filtered,flagged});
-      io.to(room.code).emit('chat:message',msg);
+      deliver(()=>io.to(room.code).emit('chat:message',msg));
       p.lastChatAt=now;
       return {};
     });
@@ -259,7 +310,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
       const {room}=s;
       room.chat.history=[];
-      io.to(room.code).emit('chat:cleared',{});
+      deliver(()=>io.to(room.code).emit('chat:cleared',{}));
       announce(room,'선생님이 채팅 기록을 지웠어요.');
       return {};
     });
@@ -299,7 +350,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       room.proposals.delete(proposal.id);
       if(!placementFree(room,proposal.x,proposal.y)){
         announce(room,'"'+proposal.name+'" 행성은 자리가 겹쳐서 만들 수 없었어요.');
-        throw new GameError('그 자리에 이미 다른 행성이 생겼어요.');
+        const error=new GameError('그 자리에 이미 다른 행성이 생겼어요.');error.commitOnError=true;throw error;
       }
       const planet=addPlanet(room,{name:proposal.name,description:proposal.description,x:proposal.x,y:proposal.y,
         color:proposal.color,rules:[...(templateOf(proposal.templateId)?.rules||PLANET.defaultRules)],createdBy:proposal.playerId,templateId:proposal.templateId});
@@ -704,7 +755,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         if(to) whisper(room,to,message);
         pushTradeLog(room,trade,'rejected');
         roster(room);
-        throw new GameError(message);
+        // 거래 실패라는 응답과 별개로 취소·안내·교사 기록은 확정해 저장해야 합니다.
+        const error=new GameError(message);error.commitOnError=true;throw error;
       };
       if(!from || !to || !hasAssets(from,trade.give) || !hasAssets(to,trade.want))
         reject('가진 것이 바뀌어서 거래할 수 없어요.');
@@ -774,14 +826,18 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
-      for(const p of room.players.values()){
-        if(!p.connected && p.expiresAt<=now){
+      const expired=now>=(room.cleanupRetryAt||0)&&[...room.players.values()].some(p=>!p.connected && p.expiresAt!==null && p.expiresAt<=now);
+      try { if(expired)transaction(()=>{for(const p of room.players.values()){
+        if(!p.connected && p.expiresAt!==null && p.expiresAt<=now){
           if(p.role==='teacher'){roomClosed(room);break;}
           const planetId=p.avatar.departmentId;
           store.remove(room,p);changed=true;
           cancelTradesFor(room,p.id,p.nickname);
-          afterMemberRemoved(room,p.id,planetId);
+          if(!persistent)afterMemberRemoved(room,p.id,planetId);
         }
+      }}); }catch(error){
+        const restored=store.rooms.get(room.code);if(restored)restored.cleanupRetryAt=now+5000;
+        console.error('수업 정리 실패:',error.message);continue;
       }
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
@@ -799,6 +855,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(step%2===0){
         const before=previous.get(room.code)||new Map(),next=new Map(),positions=[];
         for(const p of room.players.values()){
+          if(p.away)continue;
           const point=[p.id,Math.round(p.x*10)/10,Math.round(p.y*10)/10];
           next.set(p.id,point);
           const old=before.get(p.id);
@@ -816,6 +873,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     listen:(port=0,host='127.0.0.1')=>new Promise((resolve,reject)=>{
       http.once('error',reject);http.listen(port,host,()=>{http.off('error',reject);resolve(http.address());});
     }),
-    close:()=>new Promise(resolve=>{clearInterval(timer);io.close(()=>resolve());})
+    close:async()=>{
+      clearInterval(timer);
+      let saveError;
+      try {if(persistent)for(const room of [...store.rooms.values()])transaction(()=>roomClosed(room));}
+      catch(error){saveError=error;}
+      const closing=io.close();
+      for(const connection of connections)connection.destroy();
+      try {await closing;}finally{if(persistent)store.close();}
+      if(saveError)throw saveError;
+    }
   };
 }

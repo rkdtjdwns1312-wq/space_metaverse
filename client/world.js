@@ -285,7 +285,7 @@ export function createWorld(canvas) {
     ctx.clearRect(0,0,1200,760);
     const map=currentMap();
     if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else drawInterior(map);
-    for(const p of players.filter(p=>(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

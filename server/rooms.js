@@ -101,7 +101,7 @@ export class RoomStore {
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-          connected:p.connected,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
+          connected:p.connected,away:!!p.away,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           effects:effectsView(p.effects,isTeacher)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
         return out;

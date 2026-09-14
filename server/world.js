@@ -4,7 +4,7 @@ export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID) {
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
-  return ![...room.players.values()].some(p => p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
+  return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
 }
 export function spawnPosition(room) {
   // 광장 아래부터 일정 간격으로 탐색하여 새 아바타가 서로 겹치지 않게 합니다.

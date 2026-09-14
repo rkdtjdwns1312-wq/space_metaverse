@@ -12,10 +12,11 @@ if(!secret||secret.length<16||secret.startsWith('replace-'))throw new Error('Ple
 const port=Number(process.env.PORT || 3000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
 const {createClassroomServer}=await import('../server/app.js');
-const game=createClassroomServer({teacherKey:secret});
+const game=createClassroomServer({teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes'});
 const address='http://127.0.0.1:'+port;
 try{await game.listen(port,'127.0.0.1');}
 catch(error){
+ await game.close();
  if(error.code!=='EADDRINUSE')throw error;
  console.error('Port '+port+' is already in use. Keep the existing classroom open, or close it before starting again.');
  process.exit(1);
