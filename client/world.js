@@ -1,5 +1,5 @@
-import { mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, MAP, STREET, templateOf } from '/shared/config.js';
-import { drawTemple, drawGarden } from './scenery.js';
+import { mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
+import { drawTemple, drawGarden, drawRainbowSpace, drawValley } from './scenery.js';
 import * as config from '/shared/config.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
@@ -15,6 +15,7 @@ export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),bubbles=new Map();
   let view={x:0,y:0,scale:1},overview=false;
+  let previousFrame=null;
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
   function currentMap(){return mapOf(myMapId,planets.map(p=>({...p,kind:'planet'})));}
@@ -101,6 +102,8 @@ export function createWorld(canvas) {
         ctx.fillStyle=glow;ctx.fillRect(o.x-110,o.y-110,220,220);star(o.x,o.y,o.radius,'#fff2c9');star(o.x,o.y,o.radius-7,o.color);
       } else if(o.kind==='gate'){
         drawGate(o);continue;
+      } else if(o.kind==='pillar'){
+        // 기둥 그림은 scenery 배경에 있습니다. 여기서는 역할 이름만 표시합니다.
       } else {
         drawPlanet(o,myDept,time);
       }
@@ -109,6 +112,11 @@ export function createWorld(canvas) {
       const half=ctx.measureText(o.name).width/2+8,lx=Math.min(map.width-half,Math.max(half,o.x));
       ctx.fillText(o.name,lx,o.y+o.radius+37);
       if(o.kind==='planet'){ctx.font='12px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',lx,o.y+o.radius+53);}
+      if(o.kind==='planet'&&o.reportPending){
+        ctx.font='16px "Jua","Malgun Gothic",sans-serif';const width=ctx.measureText('실적제출확인요함').width+20;
+        ctx.fillStyle='#fff1bf';ctx.beginPath();ctx.roundRect(lx-width/2,o.y-o.radius-43,width,28,12);ctx.fill();
+        ctx.fillStyle='#805218';ctx.fillText('실적제출확인요함',lx,o.y-o.radius-24);
+      }
     }
     for(const o of proposals){
       ctx.save();ctx.globalAlpha=.6;ctx.setLineDash([5,7]);ctx.strokeStyle=o.color;ctx.lineWidth=3;
@@ -142,7 +150,7 @@ export function createWorld(canvas) {
     }
     ctx.font='20px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#776292';ctx.fillText('별들의 신전',MAP.spawn.x,MAP.spawn.y+100);
   }
-  // 두 맵(광장·별빛 거리) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
+  // 두 맵(광장·오색별빛 쉼터) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
   function drawGate(o){
     const glowR=o.radius*2.4;
     const glow=ctx.createRadialGradient(o.x,o.y,6,o.x,o.y,glowR);
@@ -185,16 +193,20 @@ export function createWorld(canvas) {
     ctx.strokeStyle='#e8dba0';ctx.lineWidth=2;ctx.stroke();
   }
   function drawStreet(map){
-    const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,'#372f5c');g.addColorStop(.55,'#453a72');g.addColorStop(1,'#332a54');
-    ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
+    drawRainbowSpace(ctx,map);
     for(const s of stars){ctx.fillStyle='#ffffffd0';ctx.beginPath();ctx.arc(s.x,s.y*.82+30,s.r,0,Math.PI*2);ctx.fill();}
-    ctx.fillStyle='#5d5093';ctx.fillRect(0,540,1200,220);
-    ctx.fillStyle='#7266a6aa';ctx.fillRect(0,540,1200,8);
+    ctx.fillStyle='#dad3f626';ctx.fillRect(0,540,1200,220);
     ctx.strokeStyle='#ffffff26';ctx.lineWidth=1;ctx.strokeRect(16,16,1168,728);
     for(const o of map.objects){
       if(o.kind==='gate'){drawGate(o);continue;}
       if(o.kind==='shop'){drawShop(o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
+      if(o.kind==='arcade'){
+        ctx.fillStyle=o.color;ctx.beginPath();ctx.roundRect(o.x-33,o.y-58,66,92,12);ctx.fill();ctx.strokeStyle='#ffffffbb';ctx.lineWidth=3;ctx.stroke();
+        ctx.fillStyle='#565078';ctx.beginPath();ctx.roundRect(o.x-25,o.y-46,50,43,7);ctx.fill();star(o.x,o.y-24,12,'#fff2b2');
+        ctx.fillStyle='#faf2ff';ctx.beginPath();ctx.arc(o.x-13,o.y+12,7,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(o.x+15,o.y+12,4,0,Math.PI*2);ctx.fill();
+        ctx.font='14px Jua,sans-serif';ctx.textAlign='center';ctx.fillStyle='#514771';ctx.fillText(o.name,o.x,o.y+58);
+      }
     }
     ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#ded6f5';ctx.textAlign='center';
     ctx.fillText(map.name+' · 별상점에서 별 파편으로 물건을 사고팔아요',600,46);
@@ -220,6 +232,11 @@ export function createWorld(canvas) {
         while(size>10&&rules.some(line=>{ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';return ctx.measureText(line).width>w-32;}))size--;
         ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
         rules.forEach((line,i)=>ctx.fillText(line,o.x,by+56+i*19));
+      } else if(o.kind==='report-board'){
+        ctx.fillStyle='#fffaf0';ctx.strokeStyle='#bfacd8';ctx.lineWidth=3;
+        ctx.beginPath();ctx.roundRect(o.x-23,o.y-30,46,60,7);ctx.fill();ctx.stroke();
+        ctx.strokeStyle='#b6add1';for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(o.x-12,o.y-13+i*12);ctx.lineTo(o.x+12,o.y-13+i*12);ctx.stroke();}
+        ctx.textAlign='center';ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#716389';ctx.fillText('부서실적 작성하기',o.x,o.y+53);
       } else if(o.kind==='door'){
         ctx.fillStyle='#d9d3f2';ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);
         ctx.strokeStyle='#b6a9df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);
@@ -241,8 +258,6 @@ export function createWorld(canvas) {
   }
   function drawAvatar(p,time){
     const point=points.get(p.id)||{x:p.x,y:p.y};
-    const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    point.x+=(p.x-point.x)*(reduce?1:.35);point.y+=(p.y-point.y)*(reduce?1:.35);points.set(p.id,point);
     const x=point.x,y=point.y;
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
@@ -279,20 +294,31 @@ export function createWorld(canvas) {
     ctx.restore();
   }
   function frame(t){
+    // 서버는 20Hz, 화면은 보통 60Hz입니다. 그릴 좌표를 먼저 보간하고 카메라도
+    // 같은 좌표를 따라가야 패킷마다 아바타가 뒤로 밀렸다 돌아오는 현상이 없습니다.
+    const dt=previousFrame===null?16:Math.max(0,Math.min(100,t-previousFrame));previousFrame=t;
+    const blend=1-Math.exp(-dt/45);
+    for(const p of players){
+      let point=points.get(p.id);
+      if(!point||Math.hypot(p.x-point.x,p.y-point.y)>240)point={x:p.x,y:p.y};
+      else{point.x+=(p.x-point.x)*blend;point.y+=(p.y-point.y)*blend;}
+      points.set(p.id,point);
+    }
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
     const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
     const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     const map=currentMap();
     const scale=(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
-    const me=players.find(p=>p.id===selfId),cw=rect.width/scale,ch=rect.height/scale;
+    const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
     const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(me?.x??map.width/2)-cw/2));
     const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(me?.y??map.height/2)-ch/2));
     view={x,y,scale};
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
+    if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(myMapId===GARDEN_ID){drawGarden(ctx,map,t);for(const o of map.objects)drawGate(o);}else drawInterior(map);
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID){if(myMapId===GARDEN_ID)drawGarden(ctx,map,t);else drawValley(ctx,map,t);for(const o of map.objects)drawGate(o);}else drawInterior(map);
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
   }
@@ -315,27 +341,29 @@ export function createWorld(canvas) {
     nearby(){
       const me=players.find(p=>p.id===selfId);if(!me)return null;
       if(myMapId===PLAZA_ID){
-        const candidates=[...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate')];
+        const candidates=[...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate'||o.kind==='pillar')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
           if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
-        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:'planet',id:best.id,name:best.name};
+        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:best.kind,id:best.id,name:best.name};
       }
-      if(myMapId===STREET_ID||myMapId===GARDEN_ID){
-        const candidates=currentMap().objects.filter(o=>o.kind==='gate'||o.kind==='shop');
+      if(myMapId===STREET_ID||myMapId===GARDEN_ID||myMapId===VALLEY_ID){
+        const candidates=currentMap().objects.filter(o=>['gate','shop','arcade'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
           if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
-        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:'shop',name:best.name};
+        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:best.kind,id:best.id,name:best.name};
       }
       const door=mapOf(myMapId,planets).objects.find(o=>o.kind==='door');
       if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {kind:'door'};
+      const document=mapOf(myMapId,planets).objects.find(o=>o.kind==='report-board');
+      if(document&&Math.hypot(me.x-document.x,me.y-document.y)<=document.radius+NEAR)return {kind:'report-board',id:planetIdOfMap(myMapId),name:document.name};
       return null;
     },
     currentMapId(){return myMapId;},

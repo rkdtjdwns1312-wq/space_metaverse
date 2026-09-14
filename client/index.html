@@ -6,6 +6,7 @@
   <title>사이버 교실 · 우리들의 작은 우주</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/arcade.css">
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" type="module"></script>
 </head>
@@ -17,6 +18,11 @@
   <section class="space-section" aria-label="우주 광장">
     <div class="map-wrap">
       <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
+      <aside id="world-navigation" aria-label="현재 맵 탐색">
+        <button id="map-overview" class="secondary" type="button">전체 우주 지도</button>
+        <div id="minimap-title">현재 맵</div>
+        <canvas id="minimap" width="300" height="180" aria-label="현재 맵과 내 위치, 작은 점 설명"></canvas>
+      </aside>
       <span id="map-caption" class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
       <button id="interact-prompt" class="interact" type="button" hidden></button>
       <div id="lobby" class="lobby">
@@ -53,6 +59,12 @@
         <button data-dx="-1" data-dy="0" class="left" aria-label="왼쪽으로 이동">←</button>
         <button data-dx="0" data-dy="1" class="down" aria-label="아래로 이동">↓</button>
         <button data-dx="1" data-dy="0" class="right" aria-label="오른쪽으로 이동">→</button>
+      </div>
+      <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
+        <div id="joystick" role="application" aria-label="터치 조이스틱" tabindex="0">
+          <div id="joystick-knob" aria-hidden="true"></div>
+        </div>
+        <button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기">E <span>조사하기</span></button>
       </div>
     </div>
     <div class="map-footer"><span>⌨ 방향키 또는 W A S D로 이동</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
@@ -107,7 +119,8 @@
 </nav>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="social-dialog" aria-labelledby="social-title"><h2 id="social-title">친구와 소통</h2><button id="crew-button" class="icon-button" type="button" hidden aria-label="함께 있는 친구들"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>접속 중인 친구</span><span id="player-count">0 / 30</span></button><button id="open-chat" class="primary" type="button">채팅 열기</button><div class="dialog-actions"><button class="secondary" type="button" data-close="social-dialog">닫기</button></div></dialog>
-<dialog id="menu-dialog" aria-labelledby="menu-title"><h2 id="menu-title">교실 메뉴</h2><button id="map-overview" class="secondary">전체 우주 지도</button><button id="my-password" class="secondary" hidden>내 비밀번호 바꾸기</button><div id="menu-content"><div class="topline"><div class="topline-title"><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div><div class="topline-actions"><div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-student-link" class="small primary" type="button">학생 입장 링크 복사</button><button id="copy-code" class="small secondary" type="button">복사</button></div><button id="teacher-tools" class="small secondary" type="button" hidden>선생님 도구<span id="teacher-badge" class="badge" hidden>0</span></button><button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button><button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button><button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button><button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button></div></div><p class="menu-connection">연결 상태: <span id="connection">연결 중…</span></p></div><div class="dialog-actions"><button class="secondary" type="button" data-close="menu-dialog">닫기</button></div></dialog>
+<dialog id="menu-dialog" aria-labelledby="menu-title"><h2 id="menu-title">교실 메뉴</h2><button id="my-password" class="secondary" hidden>내 비밀번호 바꾸기</button><div id="menu-content"><div class="topline"><div class="topline-title"><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div><div class="topline-actions"><div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-student-link" class="small primary" type="button">학생 입장 링크 복사</button><button id="copy-code" class="small secondary" type="button">복사</button></div><button id="teacher-tools" class="small secondary" type="button" hidden>선생님 도구<span id="teacher-badge" class="badge" hidden>0</span></button><button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button><button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button><button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button><button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button></div></div><p class="menu-connection">연결 상태: <span id="connection">연결 중…</span></p></div><div class="dialog-actions"><button class="secondary" type="button" data-close="menu-dialog">닫기</button></div></dialog>
+<dialog id="universe-dialog" aria-labelledby="universe-title"><header><h2 id="universe-title">전체 우주 지도</h2><button id="universe-close" class="secondary" type="button">닫기</button></header><p id="universe-current" aria-live="polite"></p><div id="universe-links"></div><h3 id="universe-preview-title">지도 미리보기</h3><canvas id="universe-preview" width="960" height="640" aria-label="전체 우주 지도 미리보기"></canvas><p>지도를 살펴보는 화면이에요. 이동은 맵의 문을 이용해요.</p><h3>부서행성</h3><div id="universe-planets"></div><button id="map-area-view" class="secondary" type="button">현재 맵 한눈에 보기</button></dialog>
 <dialog id="friend-dialog"><h2 id="friend-title">친구에게</h2><button id="friend-whisper" class="secondary" type="button">귓속말</button><button id="friend-summon" class="primary" type="button">불러오기</button><p id="friend-note"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="friend-dialog">닫기</button></div></dialog>
 <dialog id="summon-dialog"><h2>친구 초대</h2><p id="summon-message"></p><div class="dialog-actions"><button id="summon-no" class="secondary" type="button">아니오</button><button id="summon-yes" class="primary" type="button">예</button></div></dialog>
 <dialog id="crew-dialog" aria-labelledby="crew-title"><h2 id="crew-title">지금 접속 중인 친구들 <span id="crew-count" class="dialog-count">0 / 30</span></h2>

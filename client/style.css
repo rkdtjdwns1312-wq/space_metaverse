@@ -164,3 +164,88 @@ label{font-size:16px;font-weight:400}.small{font-size:14px}.dock-button{font-siz
 #password-error{color:#ad4561}#accounts-panel{border-top:1px solid #dfd4ef;margin-top:18px;padding-top:16px}
 body.joined .toast{bottom:112px;z-index:100}
 body.joined #menu-dialog .topline{display:flex}.chat-routing #chat-recipient:not([hidden]){display:block}
+
+/* 요청046: 입장 후 현재 맵 탐색과 전체 우주 지도 */
+#world-navigation{display:none}
+body.joined:not(.placing) #world-navigation{position:fixed;display:flex;flex-direction:column;gap:7px;top:12px;right:12px;width:220px;padding:12px;background:#fff9f5e8;border:1px solid #fff;border-radius:18px;box-shadow:0 10px 28px #6d668026;backdrop-filter:blur(10px);z-index:8;color:#655b79}
+#world-navigation #map-overview{width:100%;padding:9px 10px;background:#f0ebff;color:#5e4f8a;border-color:#d8cef6}
+#minimap-title{font-size:13px;font-weight:700;color:#665b7d;padding:2px 3px 0}
+body.joined #world-navigation #minimap{display:block;width:100%;height:auto;aspect-ratio:300/180;min-height:0;max-height:none;border:1px solid #d8e5e3;border-radius:12px;background:#eff9f6;object-fit:contain}
+#world-navigation button:focus-visible,#universe-dialog button:focus-visible{outline:3px solid #a87810;outline-offset:3px}
+#universe-dialog{width:min(900px,calc(100vw - 28px));max-width:min(900px,calc(100vw - 28px));}
+#universe-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#universe-dialog>header h2{margin:0}
+#universe-close{flex-shrink:0}
+#universe-current{min-height:1.5em;color:#665b7d}
+#universe-links{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 18px}
+.universe-node{position:relative;display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #d8cef6;border-radius:14px;background:#f6f1ff;color:#5e4f8a;cursor:pointer}
+.universe-node:not(:last-child)::after{content:'→';margin-left:8px;color:#baaed8;pointer-events:none}
+.universe-node.is-current{background:#e9f7f2;border-color:#a7d8c8;color:#397e78}
+.universe-node.is-selected{outline:2px solid #a87810;outline-offset:2px}
+.location-badge{display:inline-block;padding:2px 6px;border-radius:99px;background:#fff1c9;color:#936d24;font-size:11px;font-weight:700}
+#universe-preview{display:block;width:100%;height:auto;min-height:0;max-height:none;aspect-ratio:960/640;border:1px solid #d8e5e3;border-radius:16px;background:#eff9f6;object-fit:contain}
+#universe-dialog h3{margin:18px 0 8px;color:#5d4795}
+#universe-planets{display:flex;flex-wrap:wrap;gap:8px;max-height:48px;overflow:auto}
+#universe-planets{max-height:180px}
+#universe-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+#universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
+#universe-links .universe-node span{word-break:keep-all}
+#universe-links .universe-node:last-child{grid-column:2}
+#universe-links .universe-node::after{display:none}
+#universe-planets .universe-node::after{display:none}
+#temple-dialog{width:min(620px,calc(100vw - 24px))}
+#temple-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#temple-dialog h2{margin:0}#temple-close{flex-shrink:0}
+#temple-content{max-height:38vh;min-height:64px;overflow:auto;white-space:pre-wrap;line-height:1.8;padding:14px;border-radius:14px;background:#f4f0fb}
+#temple-content ul{margin:0;padding:0;list-style:none}#temple-content li{padding:9px;border-bottom:1px solid #ded5ef}
+#temple-editor{width:100%;box-sizing:border-box;margin:10px 0;resize:vertical;font-size:17px}
+#temple-error{color:#ab4160}#temple-description{color:#766488}
+#map-area-view{margin-top:18px}
+@media(max-width:390px){body.joined:not(.placing) #world-navigation{width:150px;padding:9px;gap:5px}#world-navigation #map-overview{font-size:13px;padding:7px 6px}#minimap-title{font-size:11px}}
+
+/* 요청046 추가: 방향 패드·상호작용·하단 독을 같은 하단 기준선에 맞춥니다. */
+body.joined .touch-controls{bottom:max(14px,env(safe-area-inset-bottom));left:18px;z-index:21}
+body.joined #interact-prompt:not([hidden]){left:170px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;z-index:22;max-width:150px}
+@media(max-width:520px){body.joined .touch-controls{left:10px;bottom:max(14px,env(safe-area-inset-bottom))}}
+@media(max-width:390px){
+  body.joined .touch-controls{left:10px;grid-template:30px 30px / 30px 30px 30px;gap:3px}
+  body.joined .touch-controls button{width:30px;height:30px;min-height:30px;font-size:14px}
+  body.joined .bottom-dock{left:auto;right:8px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;gap:3px;padding:6px}
+  body.joined .dock-button{width:40px;min-height:43px;padding:4px 3px;border-radius:13px;font-size:10px}
+  body.joined .dock-button svg{width:19px;height:19px}
+  body.joined #interact-prompt:not([hidden]){left:106px;bottom:max(14px,env(safe-area-inset-bottom));max-width:60px;padding:7px 8px;font-size:11px}
+}
+
+/* 모바일 조이스틱은 입장 후에만 표시합니다. */
+#mobile-controls{display:none}
+body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-items:flex-end;gap:8px;right:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:21;touch-action:none}
+#joystick{position:relative;width:76px;height:76px;flex:0 0 76px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none}
+#joystick-knob{position:absolute;left:50%;top:50%;width:32px;height:32px;border:2px solid #8b7dbb;background:#e8e0ff;border-radius:50%;box-shadow:0 3px 8px #62548b33;pointer-events:none;transform:translate(-50%,-50%)}
+#touch-interact{position:static;transform:none;min-width:52px;max-width:130px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#touch-interact:disabled{opacity:.55;cursor:default}
+@media(max-width:390px){
+  body.joined:not(.placing) #mobile-controls{right:8px;gap:5px}
+  #joystick{width:64px;height:64px;flex-basis:64px}
+  #joystick-knob{width:27px;height:27px}
+  #touch-interact{min-width:42px;max-width:54px;padding:6px 7px;font-size:11px}
+  #touch-interact span{display:none}
+}
+
+@media(max-width:520px){
+  body.joined:not(.placing) .bottom-dock{left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:2px;padding:4px}
+  body.joined .dock-button{width:34px;min-height:43px;padding:4px 2px;font-size:10px}
+  body.joined .dock-button svg{width:19px;height:19px}
+  body.joined:not(.placing) #mobile-controls{right:8px;bottom:max(14px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;gap:4px}
+  body.joined #interact-prompt:not([hidden]){left:100px;bottom:90px;max-width:100px;padding:7px 8px;font-size:11px}
+}
+@media(max-width:390px){
+  body.joined:not(.placing) .bottom-dock{left:50%;right:auto;transform:translateX(-50%)}
+  body.joined .dock-button{width:34px}
+  body.joined:not(.placing) #mobile-controls{right:8px}
+}
+#department-work-dialog{width:min(660px,94vw);max-height:88dvh;overflow:auto;color:var(--ink,#615276)}
+.department-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.department-heading h2{margin:0}
+.department-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.department-tabs button{flex:1;border-radius:16px;padding:10px;white-space:nowrap}.department-tabs .selected{background:#e4d8ff}
+#department-text{display:block;width:100%;box-sizing:border-box;margin:10px 0;resize:vertical}#department-text:read-only{background:#f5f0fa}
+.department-allocation{display:grid;grid-template-columns:minmax(85px,1fr) 85px 75px;align-items:center;gap:8px;margin:10px 0}.department-allocation input{width:100%;box-sizing:border-box}
+#department-message{color:#935d31;white-space:pre-wrap}#department-history article{background:#f6f0ff;border-radius:16px;padding:12px;margin:10px 0}#department-award-row{padding:14px;background:#fff2cb;border-radius:16px}#department-award-amount{width:90px}

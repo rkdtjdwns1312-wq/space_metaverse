@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createClassroomServer } from '../server/app.js';
 import { verifyPersistence } from './verify-persistence.mjs';
 import { BLOCKED_WORDS } from '../server/chat-filter.js';
-import { PLAZA_ID, STREET_ID, STREET, MAP, SHOP, BAG, PLANET_TEMPLATES } from '../shared/config.js';
+import { PLAZA_ID, STREET_ID, STREET, MAP, SHOP, BAG, PLANET_TEMPLATES, RULES } from '../shared/config.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
@@ -28,10 +28,12 @@ async function waitForChatInput(page,{disabled,placeholder}){
 // subtracted - exactly what client/world.js canvasPoint() does.
 async function worldClick(page,mx,my){
   await closeOpenDialogs(page);
+  // 배치 모드/창 닫기 직후에는 다음 프레임에서 카메라 축척이 바뀝니다.
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   let view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
   let box=await page.locator('#world').boundingBox();
   if((mx-view.x)*view.scale<0||(my-view.y)*view.scale<0||(mx-view.x)*view.scale>box.width||(my-view.y)*view.scale>box.height){
-    await openMenuFromDock(page);await page.locator('#map-overview').click();
+    await page.locator('#map-overview').click();await page.locator('#map-area-view').click();
     await page.waitForTimeout(100);
     view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
     box=await page.locator('#world').boundingBox();
@@ -73,8 +75,18 @@ async function walkNear(page,player,target,{timeoutMs=20000}={}){
 async function holdKey(page,code,ms){
   await closeOpenDialogs(page);await page.locator('#world').focus();
   await page.keyboard.down(code);
-  await page.waitForTimeout(ms);
+  await page.waitForTimeout(ms*310/RULES.speed);
   await page.keyboard.up(code);
+}
+async function clearShopPath(page,p,shop){
+  // 어느 쪽에서 상점에 도착했든 건물 반대쪽으로 먼저 빠져나옵니다.
+  // 고정적으로 아래만 누르면 북쪽에서 접근한 경우 상점 벽에 막힐 수 있습니다.
+  const direction=p.x<shop.x?'ArrowLeft':'ArrowRight';
+  for(let i=0;i<12&&Math.abs(p.x-shop.x)<shop.radius+90;i++)await holdKey(page,direction,120);
+  assert.ok(Math.abs(p.x-shop.x)>=shop.radius+90,'상점 옆 통로로 나와야 합니다');
+  for(let i=0;i<15&&p.y<460;i++)await holdKey(page,'ArrowDown',120);
+  assert.ok(p.y>=460,'상점 아래쪽 통로에 도착해야 합니다');
+  for(let i=0;i<25&&p.x>300;i++)await holdKey(page,'ArrowLeft',120);
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}
 async function openChatFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
@@ -224,7 +236,7 @@ try{
  // Reset the student viewport (left at 390px after the mobile/chat checks) so map clicks below use
  // normal desktop coordinates; item 13 switches back to 390px once this scenario is done.
  await student.setViewportSize({width:1440,height:1000});
- await openMenuFromDock(teacher);await teacher.locator('#map-overview').click();await teacher.waitForTimeout(100);
+ await closeOpenDialogs(teacher);await teacher.locator('#map-overview').click();await teacher.locator('#map-area-view').click();await teacher.waitForTimeout(100);
  const teacherCanvasBeforePropose=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  await clickMenuAction(student,'planet-new');
  await student.waitForFunction(()=>document.body.classList.contains('placing'));
@@ -459,9 +471,9 @@ try{
  const plazaCanvasBeforeTravel=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  const rosterBeforeTravel=(await teacher.locator('#player-count').innerText()).trim();
  await walkNear(student,p,{x:streetGate.x,y:streetGate.y,radius:streetGate.radius});
- await student.locator('#interact-prompt').filter({hasText:'별빛 거리로 가는 문'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'오색별빛 쉼터로 가는 문'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
- await student.locator('#map-caption').filter({hasText:'별빛 거리'}).waitFor({state:'attached'});
+ await student.locator('#map-caption').filter({hasText:'오색별빛 쉼터'}).waitFor({state:'attached'});
  assert.equal(p.mapId,STREET_ID);
  await student.locator('#planet-new').waitFor({state:'hidden'});
  check('Walking to the plaza gate and pressing E travels the student to star-street (#planet-new hides)');
@@ -539,12 +551,10 @@ try{
  // (held arrow keys move at a fixed 45°, not a straight line at the target's exact angle, so a
  // shallow diagonal like this one swings close to whatever sits near the midpoint). The row is
  // picked to also clear the street lamps' collision radius, not just the shop's interact radius.
- await holdKey(student,'ArrowDown',600);
- await student.locator('#interact-prompt').waitFor({state:'hidden'});
- await holdKey(student,'ArrowLeft',1500);
+ await clearShopPath(student,p,shopObj);
  // 새 도착 위치에서는 이미 귀환문 근처일 수 있다. 아래에서 실제 목표와 거리를 확인한다.
  await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
- await student.locator('#interact-prompt').filter({hasText:'우주 광장으로 가는 문'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
  await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
  assert.equal(p.mapId,PLAZA_ID);
@@ -745,9 +755,9 @@ try{
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  await student.locator('#world').focus();
  await walkNear(student,p,{x:streetGate.x,y:streetGate.y,radius:streetGate.radius});
- await student.locator('#interact-prompt').filter({hasText:'별빛 거리로 가는 문'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'오색별빛 쉼터로 가는 문'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
- await student.locator('#map-caption').filter({hasText:'별빛 거리'}).waitFor({state:'attached'});
+ await student.locator('#map-caption').filter({hasText:'오색별빛 쉼터'}).waitFor({state:'attached'});
  // updateInteractPrompt() only refreshes on an 80ms interval, so right after travel the prompt can
  // still show the plaza gate's stale text for a moment; wait for it to clear before walkNear (which
  // returns as soon as ANY prompt is visible) so it does not return immediately without moving.
@@ -764,12 +774,10 @@ try{
  await student.locator('#shop-close').click();
  await student.locator('#shop-dialog').waitFor({state:'hidden'});
  await student.locator('#world').focus();
- await holdKey(student,'ArrowDown',600);
- await student.locator('#interact-prompt').waitFor({state:'hidden'});
- await holdKey(student,'ArrowLeft',1500);
+ await clearShopPath(student,p,shopObj);
  // 귀환문 안내가 이미 켜져 있어도 정상이다. 실제 귀환문 거리와 안내를 아래에서 확인한다.
  await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
- await student.locator('#interact-prompt').filter({hasText:'우주 광장으로 가는 문'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
  await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
  await openInventoryFromDock(student);await student.locator('#bag-list li').first().locator('.slot-btn').click();

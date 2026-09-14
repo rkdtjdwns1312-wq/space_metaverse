@@ -1,7 +1,8 @@
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
-// speed: 초당 이동 픽셀. 2026-09-12 사용자 요청으로 155 → 310(2배). 한 tick(50ms)에 15.5px 움직이며, 가장 작은 장애물(소행성끼리 34px)보다 작아 뚫고 지나가지 않습니다.
+// speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
+// 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
 export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, broadcastMs: 100,
-  speed: 310, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
+  speed: 620, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
 // 상호작용: 행성·문 가장자리에서 이 거리 안에 있으면 살펴보기/나가기를 할 수 있습니다. 서버도 같은 값으로 검사합니다.
 export const INTERACT = Object.freeze({ radius: 40 });
 // 행성 규칙 편집 한도(선생님만 고칠 수 있음).
@@ -16,32 +17,45 @@ export const PLANET = Object.freeze({ radius: 60, minGap: 80, maxPerRoom: 48, ma
 // 행성 색 팔레트. 뒤의 8색은 행성 종류(PLANET_TEMPLATES)의 기본색으로, 종류를 고르면 자동 선택됩니다. 목록에 없는 색은 서버가 거부합니다.
 export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f5d798', '#c9e7a8', '#f7c8a8', '#d9c6f2', '#a8dff2',
   '#c5c9f7', '#ffd2a8', '#ffe0b5', '#cfd8e6', '#f7e39b', '#f9c6e0', '#ffcfa3', '#bfe3d6']);
-// 광장의 고정 오브젝트는 가운데 별과 오른쪽의 '별빛 거리로 가는 문'입니다. 행성은 방마다 다르게 생기므로 mapOf(mapId, planets)로 합쳐서 씁니다.
+// 광장의 고정 오브젝트는 가운데 별과 오른쪽의 '오색별빛 쉼터로 가는 문'입니다. 행성은 방마다 다르게 생기므로 mapOf(mapId, planets)로 합쳐서 씁니다.
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
-export const MAP = Object.freeze({ id: 'space-plaza', name: '별들의 신전 · 중앙광장', width: 3600, height: 2400, spawn:{x:1800,y:1280},
+export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: 3600, height: 2400, spawn:{x:1800,y:1280},
   objects: [
     { id: 'square', name: '별들의 쉼터', x: 1800, y: 1020, radius: 58, color: '#ffe59b', kind: 'star' },
-    { id: 'gate-street', name: '별빛 거리로 가는 문', x: 3520, y: 1200, radius: 38, kind: 'gate', target: 'star-street',
+    {id:'pillar-notice',name:'오늘의 알림장',x:1480,y:1074,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
+    {id:'pillar-effects',name:'사용 중인 아이템',x:2120,y:1074,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
+    {id:'pillar-timetable',name:'오늘의 시간표',x:1510,y:1284,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
+    {id:'pillar-weekly',name:'이번 주 받은 별',x:2090,y:1284,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
+    { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x: 3520, y: 1200, radius: 38, kind: 'gate', target: 'star-street',
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
-    { id: 'gate-garden', name: '← 달구름 정원', x: 80, y: 1200, radius: 38, kind: 'gate', target:'moon-garden',
-      arrival:{x:1030,y:380},color:'#bdeade',passable:true }
+    { id: 'gate-garden', name: '← 태양이 머무는 낙원', x: 80, y: 1200, radius: 38, kind: 'gate', target:'moon-garden',
+      arrival:{x:1030,y:380},color:'#bdeade',passable:true },
+    {id:'gate-valley',name:'은하수계곡 ↓',x:1800,y:2320,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true}
   ] });
 export const PLAZA_ID = MAP.id;
-// 두 번째 맵 '별빛 거리': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
-export const STREET = Object.freeze({ id: 'star-street', name: '별빛 거리', width: 1200, height: 760, spawn: { x: 170, y: 380 },
+// 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
+export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼터', width: 1200, height: 760, spawn: { x: 170, y: 380 },
   objects: [
-    { id: 'gate-plaza', name: '우주 광장으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
+    { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: { x: 3430, y: 1200 }, color: '#d9c6f2', passable: true },
     { id: 'shop', name: '별상점', x: 600, y: 300, radius: 72, kind: 'shop', color: '#ffe59b' },
+    ...[
+      ['memory','별 그림 짝 맞추기','#f2badb'],['sequence','숫자 이어가기','#b8d6fa'],
+      ['stars','반짝별 찾기','#ffdf9c'],['addition','덧셈 놀이터','#bce8cd'],['reaction','번쩍 반응 놀이','#cfbcf1']
+    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
     { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' },
     { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' }
   ] });
 export const STREET_ID = STREET.id;
-export const GARDEN = Object.freeze({id:'moon-garden',name:'달구름 정원',width:1200,height:760,spawn:{x:1030,y:380},objects:[
+export const GARDEN = Object.freeze({id:'moon-garden',name:'태양이 머무는 낙원',width:1200,height:760,spawn:{x:1030,y:380},objects:[
   {id:'gate-plaza',name:'중앙광장 →',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:1200},color:'#d9c6f2',passable:true}
 ]});
 export const GARDEN_ID=GARDEN.id;
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN });
+export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
+  {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1800,y:2230},color:'#f4deaa',passable:true}
+]});
+export const VALLEY_ID=VALLEY.id;
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY });
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).
@@ -130,14 +144,17 @@ export const EXAMPLE_PLANETS = Object.freeze([
 export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 600, y: 560 },
   objects: [
     { id: 'board', name: '행성 규칙 게시판', x: 600, y: 150, radius: 80, kind: 'board', color: '#fff6d6' },
+    { id: 'report-board', name: '부서실적 작성하기', x: 860, y: 420, radius: 28, kind: 'report-board', color: '#fff6d6' },
     { id: 'door', name: '광장으로 나가는 문', x: 600, y: 690, radius: 34, kind: 'door', color: '#d9d3f2', passable: true }
   ] });
 export const interiorIdOf = planetId => 'planet:' + planetId;
 export const planetIdOfMap = mapId => (typeof mapId === 'string' && mapId.startsWith('planet:')) ? mapId.slice(7) : null;
-// planets: 그 방의 행성 목록(배열 또는 Map의 values). 광장이면 별·문 + 행성들이 오브젝트가 되고, 별빛 거리는 고정 맵, 내부 맵이면 템플릿에 행성 정보를 얹습니다.
+// planets: 그 방의 행성 목록(배열 또는 Map의 values). 광장이면 별·문 + 행성들이 오브젝트가 되고, 오색별빛 쉼터는 고정 맵, 내부 맵이면 템플릿에 행성 정보를 얹습니다.
 export function mapOf(mapId, planets = []) {
   const list = Array.isArray(planets) ? planets : [...planets];
   if (mapId === STREET_ID) return STREET;
+  if (mapId === GARDEN_ID) return GARDEN;
+  if (mapId === VALLEY_ID) return VALLEY;
   const planetId = planetIdOfMap(mapId);
   if (!planetId) return { ...MAP, objects: [...MAP.objects, ...list] };
   const planet = list.find(p => p.id === planetId);

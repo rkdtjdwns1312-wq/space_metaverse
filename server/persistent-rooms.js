@@ -1,4 +1,6 @@
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import {validateTemple} from './temple.js';
+import {validateWork} from './department-work.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, itemOf } from '../shared/config.js';
@@ -32,6 +34,7 @@ function offline(p) {
 }
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
+    temple:structuredClone(room.temple),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
@@ -51,13 +54,14 @@ export function fromRecord(r) {
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
+    temple:validateTemple(r.temple),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
     itemLog:structuredClone(r.itemLog),tradeLog:structuredClone(r.tradeLog),trades:new Map()};
   for(const pl of r.planets){
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){

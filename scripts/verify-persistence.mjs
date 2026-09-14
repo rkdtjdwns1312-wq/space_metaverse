@@ -23,7 +23,8 @@ export async function verifyPersistence(browser){
   const openChat=async(p)=>{await closeOpenDialogs(p);await p.locator('#dock-chat').click();await p.locator('#social-dialog').waitFor({state:'visible'});await p.locator('#open-chat').click();await p.locator('#chat-dialog').waitFor({state:'visible'});};
   const openMenu=async(p)=>{await closeOpenDialogs(p);await p.locator('#dock-menu').click();await p.locator('#menu-dialog').waitFor({state:'visible'});};
   const clickPlanet=async(p,planet)=>{
-    await openMenu(p);if(await p.locator('#map-overview').textContent()==='전체 우주 지도')await p.locator('#map-overview').click();else await closeOpenDialogs(p);
+    await closeOpenDialogs(p);await p.locator('#map-overview').click();
+    if(await p.locator('#map-area-view').textContent()==='현재 맵 한눈에 보기')await p.locator('#map-area-view').click();else await p.locator('#universe-close').click();
     await p.waitForTimeout(100);const box=await p.locator('#world').boundingBox();
     const v=await p.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
     await p.mouse.click(box.x+(planet.x-v.x)*v.scale,box.y+(planet.y-v.y)*v.scale);await p.locator('#planet-dialog').waitFor({state:'visible'});

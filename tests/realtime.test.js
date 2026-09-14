@@ -207,7 +207,7 @@ test('pending-proposal limit blocks a further proposal once maxPending is reache
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
  await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
  for(let i=0;i<PLANET.maxPending;i++){
-  // y:550인 가로줄은 별(600,170)과 별빛 거리로 가는 문(1120,380) 둘 다에서 충분히 떨어져 있습니다.
+  // y:550인 가로줄은 별(600,170)과 오색별빛 쉼터로 가는 문(1120,380) 둘 다에서 충분히 떨어져 있습니다.
   const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:550,color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
  }
@@ -620,7 +620,7 @@ test('map:travel requires a nearby gate to a real map; success moves the player 
  const insideTravel=await call(s,'map:travel',{to:STREET_ID});
  assert.equal(insideTravel.ok,false);assert.equal(insideTravel.error,'여기서는 그곳으로 갈 수 없어요.');
 });
-// 행성 자리는 광장 좌표라, 광장 밖(별빛 거리·행성 안)에서 신청·생성하면 보이지 않는 곳에 행성이 생깁니다.
+// 행성 자리는 광장 좌표라, 광장 밖(오색별빛 쉼터·행성 안)에서 신청·생성하면 보이지 않는 곳에 행성이 생깁니다.
 // 화면에서는 버튼을 숨기지만 서버도 같은 규칙을 지켜야 합니다.
 test('new planets can only be proposed or created from the plaza, not from the star street or inside a planet',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -707,7 +707,7 @@ test('star shop enforces location, funds, stack and bag limits; buying and selli
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  const item=SHOP.items[0];
  const fromPlaza=await call(s,'shop:buy',{itemId:item.id,quantity:1});
- assert.equal(fromPlaza.ok,false);assert.equal(fromPlaza.error,'별상점은 별빛 거리에 있어요.');
+ assert.equal(fromPlaza.ok,false);assert.equal(fromPlaza.error,'별상점은 오색별빛 쉼터에 있어요.');
  const gate=MAP.objects.find(o=>o.kind==='gate');
  p.x=gate.x;p.y=gate.y;
  assert.equal((await call(s,'map:travel',{to:STREET_ID})).ok,true);

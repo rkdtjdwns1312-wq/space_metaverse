@@ -9,8 +9,10 @@ import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, a
 import { filterChat } from './chat-filter.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
+import {readDaily,saveDaily,weeklyRewards,recordReward} from './temple.js';
+import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
-  STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
+  MAP, STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -79,7 +81,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const connections=new Set();
   http.on('connection',connection=>{connections.add(connection);connection.once('close',()=>connections.delete(connection));});
   const originAllowed=req => !req.headers.origin || req.headers.origin==='http://'+req.headers.host || (!!publicOrigin&&req.headers.origin===publicOrigin);
-  const io=new Server(http,{maxHttpBufferSize:8192,allowRequest:(req,done)=>done(null,originAllowed(req))});
+  const io=new Server(http,{maxHttpBufferSize:32768,allowRequest:(req,done)=>done(null,originAllowed(req))});
   app.disable('x-powered-by');
   app.use((req,res,next)=>{
     res.set({'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
@@ -119,6 +121,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
+    // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
+    for(const planet of room.planets.values()) if(planet.work?.distribution) {
+      reconcileMembership(room,planet,clock());
+      if(!planet.work.distribution) deliver(()=>io.to(room.code).emit('department:changed',{planetId:planet.id}));
+    }
     for(const p of room.players.values()){
       if(!p.connected) continue;
       const sock=io.sockets.sockets.get(p.socketId);
@@ -513,6 +520,41 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);
       return {};
     });
+    // 문서와 분배 명단은 해당 부서와 교사에게만 보냅니다. 공개 스냅샷에는 제출 표시만 포함합니다.
+    const departmentAccess=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const planet=requirePlanet(s.room,data),p=s.player;
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'우리 부서의 실적만 볼 수 있어요.');
+      const inside=p.mapId===interiorIdOf(planet.id);
+      ensure(inside||(p.mapId===PLAZA_ID&&isNear(p,planet)),'행성에 가까이 가거나 안에 입장해주세요.');
+      const document=mapOf(interiorIdOf(planet.id)).objects.find(o=>o.kind==='report-board');
+      return {...s,planet,canWrite:p.role==='student'&&inside&&isNear(p,document)};
+    };
+    const departmentView=s=>({planetId:s.planet.id,name:s.planet.name,work:validateWork(s.planet.work,clock()),
+      members:[...s.room.players.values()].filter(p=>p.role==='student'&&p.avatar.departmentId===s.planet.id).map(p=>({playerId:p.id,nickname:p.nickname,connected:p.connected})),
+      teacher:s.player.role==='teacher',selfId:s.player.id,canWrite:s.canWrite});
+    const departmentChanged=s=>{roster(s.room);deliver(()=>io.to(s.room.code).emit('department:changed',{planetId:s.planet.id}));return departmentView(s);};
+    action('department:get',data=>departmentView(departmentAccess(data)));
+    for(const event of ['save','submit']) action('department:'+event,data=>{
+      const s=departmentAccess(data);ensure(s.canWrite,'부서 안의 실적 문서에 가까이 가주세요.');
+      saveReport(s.planet,data.text,data.version,event==='submit',clock());return departmentChanged(s);
+    });
+    action('department:award',data=>{
+      const s=departmentAccess(data);ensure(s.player.role==='teacher','선생님만 실적을 확인하고 별을 줄 수 있어요.');
+      awardReport(s.planet,data.amount,data.version,clock());return departmentChanged(s);
+    });
+    action('department:propose',data=>{
+      const s=departmentAccess(data);proposeDistribution(s.room,s.planet,s.player.id,data.allocations,clock());return departmentChanged(s);
+    });
+    action('department:confirm',data=>{
+      const s=departmentAccess(data),result=confirmDistribution(s.room,s.planet,s.player.id,data.proposalId,clock());
+      if(result.completed) for(const a of result.allocations){
+        recordReward(s.room,a.playerId,a.quantity,clock());
+        whisper(s.room,s.room.players.get(a.playerId),s.planet.name+' 분배로 별 파편 '+a.quantity+'개를 받았어요.');
+      }
+      return {...departmentChanged(s),completed:result.completed};
+    });
+    action('department:cancel',data=>{const s=departmentAccess(data);cancelDistribution(s.room,s.planet,s.player.id);return departmentChanged(s);});
     action('planet:rules:set',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
@@ -582,13 +624,31 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);
       return {};
     });
+    const templeAccess=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const pillar=MAP.objects.find(o=>o.kind==='pillar'&&o.id===data.objectId);
+      ensure(pillar&&s.player.mapId===PLAZA_ID&&isNear(s.player,pillar),'해당 기둥에 더 가까이 가주세요.');
+      return {...s,pillar};
+    };
+    action('temple:read',data=>{
+      const {room,player,pillar}=templeAccess(data),kind=pillar.service;
+      if(kind==='weekly')return {kind,...weeklyRewards(room,clock())};
+      if(kind==='effects')return {kind,rows:[...room.players.values()].flatMap(p=>effectsView(p.effects,player.role==='teacher').filter(e=>e.until>clock()).map(e=>({nickname:p.nickname,...e})))};
+      return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
+    });
+    action('temple:save',data=>{
+      const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 내용을 바꿀 수 있어요.');
+      ensure(['notice','timetable'].includes(pillar.service),'알림장 또는 시간표를 골라주세요.');
+      ensure(typeof data.text==='string'&&data.text.length<=2000,'내용은 2000자 이내로 적어주세요.');
+      return {kind:pillar.service,...saveDaily(room,pillar.service,data.text,clock()),canEdit:true};
+    });
     action('shards:give',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
       const amount=data.amount;
       ensure(Number.isInteger(amount) && amount!==0 && Math.abs(amount)<=SHARDS.giveMax,'별 파편 개수는 1~999 사이 정수로 적어주세요.');
-      const apply=target=>{target.starShards=Math.max(0,Math.min(SHARDS.max,target.starShards+amount));};
+      const apply=target=>{const previous=target.starShards;target.starShards=Math.max(0,Math.min(SHARDS.max,previous+amount));recordReward(room,target.id,Math.max(0,target.starShards-previous),clock());};
       // 별 파편은 아이들끼리 비밀이라 공개 채팅 대신 받는 학생에게만 개인 안내를 보냅니다. 선생님은 ack로만 확인합니다.
       const text=amount>0?'선생님이 나에게 별 파편 '+amount+'개를 주었어요.':'선생님이 내 별 파편 '+(-amount)+'개를 거두었어요.';
       if(data.playerId==='all'){
@@ -603,8 +663,14 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
       return {};
     });
+    action('arcade:open',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(o=>o.kind==='arcade'&&o.id===data.objectId);
+      ensure(machine&&s.player.mapId===STREET_ID&&isNear(s.player,machine),'오락기에 더 가까이 가주세요.');
+      return {gameId:machine.gameId};
+    });
     const requireShop=p=>{
-      ensure(p.mapId===STREET_ID,'별상점은 별빛 거리에 있어요.');
+      ensure(p.mapId===STREET_ID,'별상점은 오색별빛 쉼터에 있어요.');
       const shop=STREET.objects.find(o=>o.kind==='shop');
       ensure(isNear(p,shop),'별상점에 더 가까이 가주세요.');
     };

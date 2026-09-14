@@ -2,8 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
 import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
-import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID } from '../shared/config.js';
+import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
+test('garden uses its own map size and collision boundaries, not the enlarged plaza',()=>{
+ const {room}=new RoomStore().create(roomData,'teacher');
+ assert.equal(mapOf(GARDEN_ID),GARDEN);
+ assert.equal(isFree(room,GARDEN.width+20,400,null,GARDEN_ID),false);
+ assert.equal(isFree(room,1000,400,null,GARDEN_ID),true);
+});
 test('all entrants start as level-one asteroids; identities and secrets are separated',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'teacher');
  const {player:student}=store.join({code:room.code,nickname:'1',role:'teacher',level:5,x:9999},'student');
