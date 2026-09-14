@@ -1,9 +1,23 @@
 import { createWorld, renderPortrait } from './world.js';
-import { PLAZA_ID, STREET_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
+import { createSocialUI } from './social-ui.js';
+import { createAccountsUI } from './accounts-ui.js';
+import { PLAZA_ID, STREET_ID, GARDEN_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
+const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
+let discardItemId=null;
+$('discard-no').onclick=()=>$('discard-dialog').close();
+$('discard-yes').onclick=async()=>{
+  if(!discardItemId)return;$('discard-yes').disabled=true;
+  try{await request('item:discard',{itemId:discardItemId});$('discard-dialog').close();toast('아이템 1개를 버렸어요.');}
+  catch(e){toast(e.message);}finally{$('discard-yes').disabled=false;}
+};
+$('discard-dialog').addEventListener('close',()=>{discardItemId=null;});
+document.querySelector('.top-right').append($('connection'));
+let overview=false;
+$('map-overview').onclick=()=>{overview=!overview;world.setOverview(overview);$('map-overview').textContent=overview?'내 주변 보기':'전체 우주 지도';$('menu-dialog').close();$('world').focus();};
 $('planet-colors').append(...PLANET_COLORS.map((color,i)=>{
   const label=document.createElement('label');label.className='swatch';
   const input=document.createElement('input');input.type='radio';input.name='planet-color';input.value=color;if(i===0)input.checked=true;
@@ -27,6 +41,7 @@ $('planet-types').append(...PLANET_TEMPLATES.map(t=>{
 let sessionToken=null;
 try{sessionToken=sessionStorage.getItem('space-session');}catch{}
 const saveToken=token=>{sessionToken=token;try{token?sessionStorage.setItem('space-session',token):sessionStorage.removeItem('space-session');}catch{}};
+const accounts=createAccountsUI({getRoom:()=>room,getSelfId:()=>selfId,request,toast,saveToken});
 const TEACHER_KEY_STORAGE='space-teacher-key';
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function setMode(value){
@@ -66,7 +81,7 @@ function updateRoom(value){
   const me=room.players.find(p=>p.id===selfId);
   const isTeacher=me?.role==='teacher';
   const myMapId=me?.mapId||PLAZA_ID,inPlanet=Boolean(planetIdOfMap(myMapId)),inStreet=myMapId===STREET_ID;
-  $('players').replaceChildren(...room.players.map(p=>{
+  $('players').replaceChildren(...room.players.filter(p=>p.connected).map(p=>{
     const li=document.createElement('li');li.classList.toggle('mine',p.id===selfId);
     const name=document.createElement('span');name.textContent=p.nickname+(p.id===selfId?' · 나':'');
     if(p.departmentId){
@@ -77,6 +92,7 @@ function updateRoom(value){
     const insideId=planetIdOfMap(p.mapId),inside=insideId?planetById(insideId):null;
     const state=document.createElement('span');state.textContent=p.away?'수업 밖':!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':'LV 1';
     li.append(name);
+    if(p.id!==selfId){const select=document.createElement('button');select.type='button';select.className='small secondary friend-select';select.dataset.playerId=p.id;select.textContent='대화 · 부르기';select.setAttribute('aria-label',p.nickname+' 친구 선택');select.onclick=()=>social.friend(p.id);li.append(select);}
     // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
     if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);li.append(shards);}
     const effects=document.createElement('span');effects.className='effects';effects.textContent=(p.effects||[]).map(e=>e.icon).join(' ');
@@ -110,17 +126,21 @@ function updateRoom(value){
   const myProposal=(room.proposals||[]).find(p=>p.playerId===selfId);
   $('self-proposal').hidden=!myProposal;
   if(myProposal)$('self-proposal').textContent='"'+myProposal.name+'" 행성 신청 중 · 선생님 승인을 기다려요';
-  $('leave').textContent=me?.role==='teacher'?(room.persistent===true?'수업 마치기':'교실 종료하기'):'교실 나가기';
-  $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=inPlanet||inStreet;$('planet-info').hidden=!inPlanet;
+  $('leave').textContent=me?.role==='teacher'?(room.unattended?'선생님 나가기':room.persistent===true?'수업 마치기':'교실 종료하기'):'교실 나가기';
+  $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=myMapId!==PLAZA_ID;$('planet-info').hidden=!inPlanet;
   // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
-  if(placing&&(inPlanet||inStreet))stopPlacement();
+  if(placing&&myMapId!==PLAZA_ID)stopPlacement();
   $('teacher-tools').hidden=!isTeacher;
-  $('pin-panel').hidden=!isTeacher||room.persistent!==true;
+  $('copy-student-link').hidden=!isTeacher;
+  $('pin-panel').hidden=!isTeacher||room.persistent!==true||room.managedAccounts;
   $('trade-section').hidden=isTeacher; // 선생님은 거래 당사자가 아니라 제안 버튼을 숨깁니다.
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
-  if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent='선생님 연결 대기 · 잠시 이동을 멈춰요';
+  if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent=room.unattended?'우주와 연결되었어요 · 선생님 자리 비움':'선생님 연결 대기 · 잠시 이동을 멈춰요';
+  else if(socket.connected)$('connection').textContent='우주와 연결되었어요';
   updateChatUI(me,isTeacher);
+  social.update();
+  accounts.update();
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
@@ -138,9 +158,10 @@ function shopSignature(){return myShards()+'|'+JSON.stringify(myInventory());}
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   if(myMapId===STREET_ID)return '✦ 별빛 거리 · 별상점에서 별 파편으로 물건을 사고팔아요';
+  if(myMapId===GARDEN_ID)return '✦ 달구름 정원 · 오른쪽 문으로 중앙광장';
   return '✦ '+(planetById(planetIdOfMap(myMapId))?.name||'행성')+' 안 · 소속 친구들만의 공간';
 }
-function myLevel(){return room?.players.find(p=>p.id===selfId)?.role==='teacher'?ITEM_USE.teacherLevel:1;}
+function myLevel(){const me=room?.players.find(p=>p.id===selfId);return me?.role==='teacher'?ITEM_USE.teacherLevel:me?.avatar?.level||1;}
 // 레트로 인벤토리 격자: BAG.columns×BAG.rows칸(한 종류당 한 칸). 채워진 칸만 li.slot(검증 스크립트가 세는 '가진 물건 수'), 빈 칸은 div.slot.empty입니다.
 function renderBag(inventory){
   const rows=(inventory||[]).map(entry=>({entry,item:itemOf(entry.id)})).filter(row=>row.item);
@@ -180,9 +201,14 @@ function renderBagDetail(rows){
   const meta=document.createElement('p');meta.className='muted';meta.textContent=(ITEM_TYPES[item.type]||item.type)+' · LV '+item.level+' · × '+entry.quantity;
   info.append(name,desc,meta);
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
-  if(!canUse)use.disabled=true;
-  use.onclick=()=>openUseDialog(item);
-  wrap.append(icon,info,use);
+  use.textContent='아이템 사용하기';
+  use.onclick=()=>canUse?openUseDialog(item):toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
+  const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보 보기';
+  details.onclick=()=>{$('item-info-title').textContent=item.icon+' '+item.name;$('item-info-text').textContent=item.description+' · 효과: '+item.effect.label+' ('+Math.round(item.effect.durationMs/60000)+'분) · LV '+item.level;$('item-info-dialog').showModal();};
+  const discard=document.createElement('button');discard.type='button';discard.className='small danger item-discard';discard.textContent='아이템 버리기';
+  discard.onclick=()=>{discardItemId=item.id;$('discard-message').textContent=item.name+' 1개를 정말 버리시겠습니까? 버린 아이템은 되돌릴 수 없어요.';$('discard-dialog').showModal();};
+  const choices=document.createElement('div');choices.className='item-choices';choices.append(details,use,discard);
+  wrap.append(icon,info,choices);
   $('bag-detail').replaceChildren(wrap);
 }
 function effectText(e){
@@ -198,6 +224,7 @@ function renderSelfEffects(me){
   $('self-effects').replaceChildren(...list.map(e=>{const li=document.createElement('li');li.textContent=effectText(e);return li;}));
 }
 function openUseDialog(item){
+  if(item.level>myLevel()){toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');return;}
   useItem=item;
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
@@ -550,7 +577,7 @@ function stopPlacement(){
   $('planet-new').textContent='행성 만들기';world.setPlacement(null);world.setPlacing(false);
   if(room&&!$('planet-create-dialog').open)$('map-caption').textContent=mapCaption(room.players.find(p=>p.id===selfId)?.mapId||PLAZA_ID);
 }
-$('planet-new').onclick=()=>{placing?stopPlacement():startPlacement();};
+$('planet-new').onclick=()=>{placing?stopPlacement():startPlacement();$('world').focus();};
 window.addEventListener('keydown',e=>{if(e.code==='Escape'&&placing)stopPlacement();});
 function openPlanetCreateDialog(point){
   const isTeacher=room?.players.find(p=>p.id===selfId)?.role==='teacher';
@@ -710,10 +737,11 @@ function addChatMessage(msg){
 }
 function clearChat(){$('chat-log').replaceChildren();$('chat-empty').hidden=false;}
 function enter(result){
-  selfId=result.selfId;saveToken(result.token);updateRoom(result.room);$('lobby').hidden=true;
+  social.reset();selfId=result.selfId;saveToken(result.token);updateRoom(result.room);$('lobby').hidden=true;
+  $('menu-dialog').prepend($('connection'));
   $('room-badge').hidden=false;$('leave').hidden=false;$('touch-controls').hidden=false;$('chat-panel').hidden=false;
   $('crew-button').hidden=false;
-  clearChat();for(const msg of result.chat?.messages||[])addChatMessage(msg);
+  social.seed(result.chat?.messages);
   document.body.classList.add('joined');$('world').focus();$('form-message').textContent='';
   $('interact-prompt').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
@@ -722,6 +750,7 @@ function enter(result){
   setActionsTab('bag');
 }
 function reset(message){
+  social.reset();document.querySelector('.top-right').append($('connection'));
   stop();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
   $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('touch-controls').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
@@ -757,10 +786,10 @@ function reset(message){
 }
 async function submit(event,handler){
   event.preventDefault();if(busy)return;busy=true;controls();$('form-message').textContent='';
-  try{enter(await handler());}catch(e){$('form-message').textContent=e.message==='operation has timed out'?'응답이 늦어지고 있어요. 연결 상태를 확인해주세요.':e.message;}
+  try{await accounts.ready;const result=await handler();enter(result);accounts.entered(result,{login:mode==='student'});}catch(e){$('form-message').textContent=e.message==='operation has timed out'?'응답이 늦어지고 있어요. 연결 상태를 확인해주세요.':e.message;}
   finally{busy=false;controls();}
 }
-$('student-form').onsubmit=e=>submit(e,async()=>{const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});
+$('student-form').onsubmit=e=>submit(e,async()=>{accounts.checkLink();const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});
 $('teacher-form').onsubmit=e=>submit(e,()=>{
   const teacherKey=$('teacher-key').value;
   if($('class-mode').value==='open')return request('room:open',{teacherKey,code:$('open-code').value});
@@ -787,12 +816,13 @@ socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textCon
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('world:positions',data=>{if(selfId)world.positions(data);});
 socket.on('room:closed',data=>reset(data.message));
-socket.on('chat:message',msg=>{if(!selfId)return;addChatMessage(msg);if(!msg.private)world.say(msg.playerId,msg.text);});
-socket.on('chat:cleared',()=>{if(selfId)clearChat();});
+socket.on('item:notice',data=>{if(selfId)toast(data.text);});
+socket.on('chat:message',msg=>{if(!selfId)return;social.receive(msg);if(msg.channel==='map')world.say(msg.playerId,msg.text);});
+socket.on('chat:cleared',()=>{if(selfId)social.clear();});
 $('chat-form').onsubmit=async e=>{
   e.preventDefault();const text=$('chat-input').value.trim();if(!text||chatBusy)return;
   chatBusy=true;$('chat-send').disabled=true;
-  try{await request('chat:send',{text});$('chat-input').value='';}
+  try{await request('chat:send',{text,...social.scope()});$('chat-input').value='';}
   catch(err){toast(err.message);}
   finally{chatBusy=false;$('chat-send').disabled=$('chat-input').disabled;$('chat-input').focus();}
 };
@@ -801,7 +831,7 @@ $('chat-toggle').onclick=async()=>{
   try{await request('chat:setEnabled',{enabled:!enabled});}catch(e){toast(e.message);}
 };
 $('chat-clear').onclick=async()=>{try{await request('chat:clear',{});}catch(e){toast(e.message);}};
-$('world').addEventListener('keydown',e=>{if(e.code==='Enter'){e.preventDefault();$('chat-input').focus();}});
+$('world').addEventListener('keydown',e=>{if(e.code==='Enter'){e.preventDefault();social.openChat();}});
 $('chat-input').addEventListener('keydown',e=>{if(e.code==='Escape'){$('chat-input').blur();$('world').focus();}});
 $('copy-code').onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast('교실 코드를 복사했어요.');}catch{toast('화면의 교실 코드 '+room.code+'를 알려주세요.');}};
 $('leave').onclick=()=>{
@@ -809,6 +839,7 @@ $('leave').onclick=()=>{
   const persistent=room?.persistent===true;
   $('leave-title').textContent=teacher&&persistent?'수업을 마칠까요?':teacher?'모두의 교실을 종료할까요?':'교실에서 나갈까요?';
   $('leave-description').textContent=teacher&&persistent?'저장하고 수업을 마칩니다. 교실 코드와 아이들이 만든 내용은 그대로 유지돼요.':teacher?'모든 친구들이 나가게 되고, 이 교실 코드는 사용할 수 없어요.':'다시 교실 코드로 입장할 수 있어요.';
+  if(teacher&&room.unattended){$('leave-title').textContent='선생님 화면에서 나갈까요?';$('leave-description').textContent='학생들은 서버가 켜져 있으면 07~21시에 계속 이용할 수 있어요. 다음에는 기존 교실 열기로 돌아오세요.';}
   $('leave-dialog').showModal();
 };
 $('stay').onclick=()=>{$('leave-dialog').close();$('world').focus();};

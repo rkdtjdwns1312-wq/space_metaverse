@@ -11,21 +11,9 @@
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/">✦ <span>사이버 교실<small>우리들의 작은 우주</small></span></a>
-  <div class="top-right"><span id="connection" role="status">연결 중…</span><span class="phase">일곱 번째 여행 · 별빛 거리</span></div>
+  <div class="top-right"><span class="phase">일곱 번째 여행 · 별빛 거리</span></div>
 </header>
 <main>
-  <div class="topline">
-    <div class="topline-title"><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div>
-    <div class="topline-actions">
-      <div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-code" class="small secondary" type="button">복사</button></div>
-      <button id="crew-button" class="icon-button" type="button" hidden aria-label="함께 있는 친구들"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="currentColor"></circle><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="currentColor"></path></svg><span id="player-count">0 / 30</span></button>
-      <button id="teacher-tools" class="small secondary" type="button" hidden>선생님 도구<span id="teacher-badge" class="badge" hidden>0</span></button>
-      <button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button>
-      <button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button>
-      <button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button>
-      <button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button>
-    </div>
-  </div>
   <section class="space-section" aria-label="우주 광장">
     <div class="map-wrap">
       <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
@@ -58,7 +46,7 @@
           <button class="primary submit" type="submit">교실 만들기 <span aria-hidden="true">✦</span></button>
         </form>
         <p id="form-message" class="form-message" role="alert"></p>
-        <p class="privacy-note">회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
+        <p class="privacy-note">학생 이용 시간 07:00~21:00 · 한국 시간<br>회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
       </div>
       <div class="touch-controls" id="touch-controls" hidden aria-label="터치 이동">
         <button data-dx="0" data-dy="-1" class="up" aria-label="위로 이동">↑</button>
@@ -70,7 +58,7 @@
     <div class="map-footer"><span>⌨ 방향키 또는 W A S D로 이동</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
   </section>
   <section class="hud">
-    <section class="panel passport avatar-card" id="avatar-card">
+    <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
       <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas></div>
       <div class="card-attr"><span class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.</span></div>
@@ -80,8 +68,8 @@
       </div>
       <div class="card-effects"><h3>효과</h3><ul id="self-effects" aria-label="지금 내 효과"><li class="muted">지금은 특별한 효과가 없어요.</li></ul></div>
       <p class="card-foot" id="card-foot"></p>
-    </section>
-    <section class="panel actions">
+    </section><div class="dialog-actions"><button class="secondary" type="button" data-close="avatar-dialog">닫기</button></div></dialog>
+    <dialog id="inventory-dialog" aria-labelledby="inventory-title"><section class="panel actions"><h2 id="inventory-title" class="sr-only">내 활동</h2>
       <div class="tabs" role="tablist" aria-label="내 활동">
         <button id="tab-bag" class="tab selected" role="tab" aria-selected="true" aria-controls="bag-panel" type="button">가방</button>
         <button id="tab-skills" class="tab" role="tab" aria-selected="false" aria-controls="skills-panel" type="button">능력</button>
@@ -101,16 +89,27 @@
       <div id="skills-panel" role="tabpanel" hidden><p class="muted">아직 배운 능력이 없어요. 다음 여행에서 열려요.</p></div>
       <div id="tasks-panel" role="tabpanel" hidden><p class="muted">선생님이 내 준 과제가 여기에 보여요. (준비 중)</p></div>
       <p id="hint" class="hint">행성 가까이에서 E · 오른쪽 문으로 별빛 거리</p>
-    </section>
-    <section class="panel chat" id="chat-panel" hidden><div class="panel-heading"><h2>우주 채팅</h2><span id="chat-status">켜짐</span></div>
+    </section><div class="dialog-actions"><button class="secondary" type="button" data-close="inventory-dialog">닫기</button></div></dialog>
+    <dialog id="chat-dialog" aria-labelledby="chat-title"><section class="panel chat" id="chat-panel"><div class="panel-heading"><h2 id="chat-title">우주 채팅</h2><span id="chat-status">켜짐</span></div>
+      <div class="chat-routing"><label for="chat-channel">대화 범위</label><select id="chat-channel"><option value="map">전체 대화 · 같은 맵</option><option value="department">행성 대화</option><option value="direct">1:1 대화</option></select><select id="chat-recipient" hidden aria-label="대화 상대"></select><p id="chat-context" class="muted">같은 맵에 있는 친구들과 대화해요.</p></div>
       <div id="chat-teacher-controls" hidden><button id="chat-toggle" class="small secondary" type="button">채팅 끄기</button><button id="chat-clear" class="small secondary" type="button">채팅 지우기</button></div>
       <ul id="chat-log" aria-live="polite" aria-label="채팅 내용"></ul>
       <p id="chat-empty" class="muted">아직 대화가 없어요. 인사해볼까요?</p>
       <form id="chat-form"><input id="chat-input" maxlength="120" autocomplete="off" placeholder="친구들에게 말해요 (Enter)" aria-label="채팅 메시지 입력"><button id="chat-send" class="primary small" type="submit">보내기</button></form>
-    </section>
+    </section><div class="dialog-actions"><button class="secondary" type="button" data-close="chat-dialog">닫기</button></div></dialog>
   </section>
 </main>
+<nav id="bottom-dock" class="bottom-dock" aria-label="빠른 메뉴">
+  <button id="dock-avatar" class="dock-button" type="button" aria-label="내 아바타"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>나</span></button>
+  <button id="dock-inventory" class="dock-button" type="button" aria-label="인벤토리"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4zM7 8V5h10v3"/><path d="M9 12h6"/></svg><span>가방</span></button>
+  <button id="dock-chat" class="dock-button" type="button" aria-label="채팅"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg><span>채팅</span><span id="unread-count" hidden>0</span></button>
+  <button id="dock-menu" class="dock-button" type="button" aria-label="메뉴"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><span>메뉴</span></button>
+</nav>
 <div id="toast" class="toast" role="status" hidden></div>
+<dialog id="social-dialog" aria-labelledby="social-title"><h2 id="social-title">친구와 소통</h2><button id="crew-button" class="icon-button" type="button" hidden aria-label="함께 있는 친구들"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>접속 중인 친구</span><span id="player-count">0 / 30</span></button><button id="open-chat" class="primary" type="button">채팅 열기</button><div class="dialog-actions"><button class="secondary" type="button" data-close="social-dialog">닫기</button></div></dialog>
+<dialog id="menu-dialog" aria-labelledby="menu-title"><h2 id="menu-title">교실 메뉴</h2><button id="map-overview" class="secondary">전체 우주 지도</button><button id="my-password" class="secondary" hidden>내 비밀번호 바꾸기</button><div id="menu-content"><div class="topline"><div class="topline-title"><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div><div class="topline-actions"><div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-student-link" class="small primary" type="button">학생 입장 링크 복사</button><button id="copy-code" class="small secondary" type="button">복사</button></div><button id="teacher-tools" class="small secondary" type="button" hidden>선생님 도구<span id="teacher-badge" class="badge" hidden>0</span></button><button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button><button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button><button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button><button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button></div></div><p class="menu-connection">연결 상태: <span id="connection">연결 중…</span></p></div><div class="dialog-actions"><button class="secondary" type="button" data-close="menu-dialog">닫기</button></div></dialog>
+<dialog id="friend-dialog"><h2 id="friend-title">친구에게</h2><button id="friend-whisper" class="secondary" type="button">귓속말</button><button id="friend-summon" class="primary" type="button">불러오기</button><p id="friend-note"></p><div class="dialog-actions"><button class="secondary" type="button" data-close="friend-dialog">닫기</button></div></dialog>
+<dialog id="summon-dialog"><h2>친구 초대</h2><p id="summon-message"></p><div class="dialog-actions"><button id="summon-no" class="secondary" type="button">아니오</button><button id="summon-yes" class="primary" type="button">예</button></div></dialog>
 <dialog id="crew-dialog" aria-labelledby="crew-title"><h2 id="crew-title">지금 접속 중인 친구들 <span id="crew-count" class="dialog-count">0 / 30</span></h2>
   <p id="crew-empty" class="muted">교실에 입장하면 친구들이 보여요.</p>
   <ul id="players" class="crew-list" aria-label="접속 목록"></ul>
@@ -135,7 +134,7 @@
     <ul id="item-log" aria-label="사용·거래 기록"></ul>
     <p id="item-log-empty" class="muted">아직 기록이 없어요.</p>
   </section>
-  <section class="pin-panel" id="pin-panel" hidden><h3>⑤ 학생 비밀번호 바꾸기</h3><label for="pin-target">학생</label><select id="pin-target"></select><label for="reset-pin">새 비밀번호</label><input id="reset-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><button id="pin-save" class="primary small" type="button">비밀번호 저장</button></section>
+  <section id="accounts-panel" hidden><h3>학생 계정 만들기 · 수정하기</h3><p class="muted">학생은 배부받은 계정으로만 입장해요. 비밀번호는 숫자 4자리예요.</p><label for="account-target">관리할 계정</label><select id="account-target"><option value="new">새 학생 만들기</option></select><label for="account-name">이름</label><input id="account-name" maxlength="12" autocomplete="off"><label for="account-pin">비밀번호</label><input id="account-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" placeholder="수정할 때 비워두면 현재 비밀번호 유지"><button id="account-save" class="primary small">계정 저장</button><p id="account-result" role="status"></p></section><section class="pin-panel" id="pin-panel" hidden><h3>⑤ 학생 비밀번호 바꾸기</h3><label for="pin-target">학생</label><select id="pin-target"></select><label for="reset-pin">새 비밀번호</label><input id="reset-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><button id="pin-save" class="primary small" type="button">비밀번호 저장</button></section>
   <div class="dialog-actions"><button id="teacher-close" class="secondary" type="button">닫기</button></div>
 </dialog>
 <dialog id="leave-dialog"><h2 id="leave-title">교실에서 나갈까요?</h2><p id="leave-description">다시 교실 코드로 입장할 수 있어요.</p><div class="dialog-actions"><button id="stay" class="secondary">계속 있기</button><button id="confirm-leave" class="primary">나가기</button></div></dialog>
@@ -172,4 +171,7 @@
   <p id="trade-error" class="form-message" role="alert"></p>
   <div class="dialog-actions"><button id="trade-cancel-btn" class="secondary" type="button">닫기</button><button id="trade-submit" class="primary" type="button">제안 보내기</button></div>
 </dialog>
-</body></html>
+<dialog id="item-info-dialog"><h2 id="item-info-title">아이템 정보</h2><p id="item-info-text"></p><button class="secondary" data-close="item-info-dialog">닫기</button></dialog>
+<dialog id="discard-dialog"><h2>아이템 버리기</h2><p id="discard-message"></p><div class="dialog-actions"><button id="discard-no" class="secondary">아니오</button><button id="discard-yes" class="danger">예</button></div></dialog><dialog id="credentials-dialog"><h2>학생에게 배부할 계정</h2><p>각 학생에게 본인의 이름과 비밀번호만 알려주세요. 비밀번호 목록은 이 창에서 처음 한 번만 보여요. 학생이 바꾸거나 잊으면 선생님 도구에서 재설정할 수 있어요.</p><textarea id="credentials-text" rows="10" readonly aria-label="배부용 계정 목록"></textarea><div class="dialog-actions"><button id="credentials-download" class="primary">목록 파일 저장</button><button class="secondary" data-close="credentials-dialog">닫기</button></div></dialog>
+<dialog id="password-offer-dialog"><h2>비밀번호를 새로 지정하겠습니까?</h2><p>다른 사람이 내 이름으로 들어오지 못하도록 나만 아는 비밀번호로 바꿀 수 있어요.</p><div class="dialog-actions"><button id="password-offer-no" class="secondary">아니오</button><button id="password-offer-yes" class="primary">예</button></div></dialog>
+<dialog id="password-dialog"><h2>내 비밀번호 바꾸기</h2><form id="password-form"><label for="password-current">지금 비밀번호</label><input id="password-current" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required><label for="password-new">새 비밀번호 · 숫자 4자리</label><input id="password-new" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required><label for="password-confirm">새 비밀번호 한 번 더</label><input id="password-confirm" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required><p id="password-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" data-close="password-dialog">취소</button><button id="password-save" type="submit" class="primary">바꾸기</button></div></form></dialog></body></html>

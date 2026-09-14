@@ -8,8 +8,8 @@ export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID) {
 }
 export function spawnPosition(room) {
   // 광장 아래부터 일정 간격으로 탐색하여 새 아바타가 서로 겹치지 않게 합니다.
-  for (let y=340; y<MAP.height-40; y+=42)
-    for (let x=390; x<850; x+=42)
+  for (let y=MAP.spawn.y; y<MAP.height-40; y+=72)
+    for (let x=MAP.spawn.x-210; x<MAP.spawn.x+250; x+=72)
       if (isFree(room,x,y)) return {x,y};
   for (let y=40; y<MAP.height; y+=42)
     for (let x=40; x<MAP.width; x+=42)
@@ -70,7 +70,7 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
 }
 export function advance(room, now) {
   // 실제 경과 시간이나 클라이언트 좌표 대신 고정 서버 tick으로 속도를 제한합니다.
-  if (![...room.players.values()].some(p => p.role==='teacher' && p.connected)) return;
+  if (!room.unattended && ![...room.players.values()].some(p => p.role==='teacher' && p.connected)) return;
   for (const p of room.players.values()) {
     if (!p.connected || now-p.input.at>RULES.inputExpiryMs) continue;
     const length=Math.hypot(p.input.x,p.input.y);

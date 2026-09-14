@@ -7,7 +7,7 @@ import { placementFree } from '../server/world.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fixture(t,options={}) {
- const game=createClassroomServer({teacherKey:key,...options}), address=await game.listen();
+ const game=createClassroomServer({studentHours:false,teacherKey:key,...options}), address=await game.listen();
  const url='http://127.0.0.1:'+address.port,sockets=[];
  t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();});
  async function connect(){
@@ -165,7 +165,7 @@ test('a student can propose a new planet; invalid name/color/location are reject
  assert.equal(badWord.ok,false);assert.equal(badWord.error,'행성 이름에 쓸 수 없는 말이 있어요.');
  const badColor=await call(s,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:'#000000'});
  assert.equal(badColor.ok,false);assert.equal(badColor.error,'행성 색을 골라주세요.');
- const overlap=await call(s,'planet:propose',{name:'독서행성',description:'',x:600,y:170,color:PLANET_COLORS[0]});
+ const overlap=await call(s,'planet:propose',{name:'독서행성',description:'',x:MAP.objects[0].x,y:MAP.objects[0].y,color:PLANET_COLORS[0]});
  assert.equal(overlap.ok,false);assert.equal(overlap.error,'그 자리에는 행성을 만들 수 없어요. 조금 떨어진 곳을 골라주세요.');
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -214,12 +214,12 @@ test('pending-proposal limit blocks a further proposal once maxPending is reache
  const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',x:100,y:600,color:PLANET_COLORS[0]});
  assert.equal(over.ok,false);assert.equal(over.error,'승인을 기다리는 행성이 너무 많아요. 잠시 후 다시 신청해주세요.');
 });
-test('the 12-per-room planet limit blocks further teacher creation and student proposals',async t=>{
+test('the 48-per-room planet limit allows more than 30 separate planets and blocks further creation',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const room=game.store.rooms.get(r.room.code);
  let created=0,colorIndex=0;
- outer: for(let y=100;y<720;y+=160)
-  for(let x=100;x<1150;x+=200){
+ outer: for(let y=100;y<MAP.height-100;y+=220)
+  for(let x=100;x<MAP.width-100;x+=220){
    if(created>=PLANET.maxPerRoom) break outer;
    if(!placementFree(room,x,y)) continue;
    const res=await call(teacher,'planet:create',{name:'행성'+created,description:'',x,y,color:PLANET_COLORS[colorIndex%PLANET_COLORS.length],templateId:'meal'});
@@ -227,6 +227,8 @@ test('the 12-per-room planet limit blocks further teacher creation and student p
    colorIndex++;created++;
   }
  assert.equal(created,PLANET.maxPerRoom);
+ const planets=[...room.planets.values()];assert.ok(planets.length>30);
+ for(let i=0;i<planets.length;i++)for(let j=i+1;j<planets.length;j++)assert.ok(Math.hypot(planets[i].x-planets[j].x,planets[i].y-planets[j].y)>=PLANET.radius*2+PLANET.minGap);
  const overLimitCreate=await call(teacher,'planet:create',{name:'초과행성',description:'',x:600,y:400,color:PLANET_COLORS[0]});
  assert.equal(overLimitCreate.ok,false);assert.equal(overLimitCreate.error,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
@@ -605,6 +607,7 @@ test('map:travel requires a nearby gate to a real map; success moves the player 
  assert.equal(p.mapId,STREET_ID);
  assert.ok(Math.hypot(p.x-gate.arrival.x,p.y-gate.arrival.y)<400);
  const streetGate=STREET.objects.find(o=>o.kind==='gate');
+ p.x=STREET.width/2;p.y=STREET.height-100;
  const stillFar=await call(s,'map:travel',{to:PLAZA_ID});
  assert.equal(stillFar.ok,false);assert.equal(stillFar.error,'문에 더 가까이 가주세요.');
  p.x=streetGate.x;p.y=streetGate.y;
@@ -861,7 +864,7 @@ test('item:use validates ownership, level gates, target existence/connection, an
  assert.equal((await call(s1,'item:use',{itemId:'nope',targetId:j1.selfId})).error,'그런 물건은 없어요.');
  assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j1.selfId})).error,'가방에 그 물건이 없어요.');
  p1.inventory=[{id:'rainbow-tail',quantity:1}];
- assert.equal((await call(s1,'item:use',{itemId:'rainbow-tail',targetId:j1.selfId})).error,'LV 2부터 쓸 수 있어요.');
+ assert.equal((await call(s1,'item:use',{itemId:'rainbow-tail',targetId:j1.selfId})).error,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
  p1.inventory=[{id:'star-sticker',quantity:1}];
  assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:'nope'})).error,'그 친구는 지금 없어요.');
  p3.connected=false;

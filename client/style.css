@@ -121,3 +121,46 @@ body.placing #world{cursor:crosshair}
 @media(max-width:800px){.topbar{height:75px;padding:0 18px}.phase{display:none}.brand span{font-size:19px}.top-right{font-size:12px}main{padding:18px 12px;gap:14px}.topline{padding:0 6px}.map-wrap{border-radius:20px;min-height:650px;display:flex;align-items:center}.map-caption{top:12px;left:15px;font-size:10px}.hud{grid-template-columns:1fr;gap:12px}.lobby{padding:20px 22px}.map-footer{font-size:11px}.panel{padding:18px}body.joined .map-wrap{min-height:340px}body.joined canvas{min-height:340px;object-fit:contain}#room-code{font-size:20px}}
 @media(max-width:390px){.bag-grid{grid-template-columns:repeat(5,44px);grid-auto-rows:44px;gap:6px;padding:10px}.slot,.slot-btn{width:44px;height:44px}.slot .icon{font-size:20px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 요청036: 입장 후에는 맵을 화면의 주 작업 영역으로 전환합니다. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+body.joined #menu-dialog .topline{display:flex;gap:18px}
+body.joined .hud{display:contents!important}
+body.joined:not(.placing) .map-caption{display:none}
+.chat-routing #chat-recipient:not([hidden]){display:block}
+.crew-list li{flex-wrap:wrap}
+#avatar-dialog{width:min(390px,calc(100vw - 24px))}
+#inventory-dialog{width:min(480px,calc(100vw - 24px))}
+#chat-dialog{width:min(560px,calc(100vw - 24px))}
+#chat-log{height:clamp(140px,35vh,360px);overflow:auto}
+#skills-panel{padding:14px;background:#f4efff;color:#564576}
+#tab-skills{display:none}
+#friend-note{font-size:13px;line-height:1.7;color:#746789}
+.item-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+body:not(.joined) .map-wrap{min-height:min(780px,calc(100dvh - 140px))}
+body.joined .interact{bottom:110px}
+body.joined{background:#dfeaf8;overflow:hidden}
+body.joined .topbar,body.joined .topline,body.joined .map-footer,body.joined .hud{display:none}
+body.joined main{max-width:none;width:100vw;height:100vh;padding:0;display:block}
+body.joined .space-section{height:100vh}
+body.joined .map-wrap{position:fixed;inset:0;width:100vw;height:100vh;min-height:0;border:0;border-radius:0;box-shadow:none;background:#dfeaf8;z-index:0}
+body.joined #world{width:100%;height:100%;max-height:none;min-height:0;aspect-ratio:auto;object-fit:fill}
+body.joined .map-caption{top:18px;left:22px;color:#596987;background:#ffffffa8;border-radius:999px;padding:7px 12px}
+body.joined .touch-controls{bottom:92px;left:18px;z-index:4}
+.bottom-dock{display:none}
+body.joined .bottom-dock{position:fixed;display:flex;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;gap:8px;padding:8px;background:#fff9;border:1px solid #fff;border-radius:24px;box-shadow:0 10px 28px #42527a26;backdrop-filter:blur(12px)}
+.dock-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:64px;min-height:58px;padding:7px 8px;border-radius:18px;background:#f8f5ff;color:#61538f;font-size:11px}
+.dock-button:nth-child(2){background:#fff5dc;color:#9b7333}.dock-button:nth-child(3){background:#e8f7f3;color:#397e78}.dock-button:nth-child(4){background:#eaf0ff;color:#526da1}
+.dock-button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.dock-button #unread-count{position:absolute;top:3px;right:7px;min-width:17px;padding:2px 4px;border-radius:99px;background:#d95c75;color:white;font-size:10px;font-weight:800}
+dialog{background:#fffdfd;box-shadow:0 22px 70px #41527436;max-height:calc(100vh - 28px);overflow:auto}dialog .panel{box-shadow:none;border:0;padding:0;background:transparent}.chat-routing{padding:0 0 8px}.chat-routing label{margin-top:0}.chat-routing{border-bottom:1px solid var(--line);margin-bottom:8px}.chat-routing select{margin-bottom:6px}.chat-routing #chat-recipient{display:none}.dialog-actions{position:relative}
+@media(max-width:520px){body.joined .touch-controls{bottom:92px;left:10px}.bottom-dock{gap:3px}.dock-button{width:58px}.dialog-actions{margin-top:18px}dialog{padding:20px;max-width:calc(100vw - 20px)}}
+/* 공통 그림책 스타일. 폰트 파일도 이 서버에서 제공해 학생 접속 시 외부 폰트 요청이 없습니다. */
+@font-face{font-family:Jua;src:url('/assets/fonts/Jua-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+body,button,input,select,textarea{font-family:Jua,'Malgun Gothic',sans-serif}
+button{font-size:16px;font-weight:400}h1,h2,h3{font-weight:400}h2{font-size:24px}.muted{font-size:15px}
+label{font-size:16px;font-weight:400}.small{font-size:14px}.dock-button{font-size:13px}.dock-button svg{stroke-width:2.3}
+#avatar-portrait{height:150px!important;min-height:0!important;max-height:150px!important;aspect-ratio:240/150!important;object-fit:contain!important}
+#chat-context{font-size:15px;line-height:1.5}.bag-detail-inner{flex-wrap:wrap}.item-choices{width:100%}
+#password-error{color:#ad4561}#accounts-panel{border-top:1px solid #dfd4ef;margin-top:18px;padding-top:16px}
+body.joined .toast{bottom:112px;z-index:100}
+body.joined #menu-dialog .topline{display:flex}.chat-routing #chat-recipient:not([hidden]){display:block}

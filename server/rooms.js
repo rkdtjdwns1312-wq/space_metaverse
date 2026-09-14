@@ -111,11 +111,13 @@ export class RoomStore {
         .filter(t=>isTeacher || (viewer && (t.fromId===viewer.id || t.toId===viewer.id)))
         .map(t=>({id:t.id,fromId:t.fromId,fromNickname:t.fromNickname,toId:t.toId,toNickname:t.toNickname,
           give:t.give,want:t.want,status:t.status,at:t.at})),
-      ...(isTeacher ? {tradeLog:[...room.tradeLog]} : {})
+      ...(isTeacher ? {tradeLog:[...room.tradeLog]} : {}),
+      summons:[...(room.summons?.values()||[])].filter(r=>r.expiresAt>Date.now()&&viewer&&(r.toId===viewer.id||r.fromId===viewer.id)),
+      summonCooldowns:[...(room.summonCooldowns||[])].filter(([key,until])=>viewer&&key.startsWith(viewer.id+':')&&until>Date.now()).map(([key,until])=>({targetId:key.slice(viewer.id.length+1),until}))
     };
   }
-  pushChat(room,{playerId,nickname,role,text,flagged}) {
-    const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged};
+  pushChat(room,{playerId,nickname,role,text,flagged,...scope}) {
+    const msg={id:randomUUID(),playerId,nickname,role,text,at:Date.now(),flagged,...scope};
     room.chat.history.push(msg);
     if(room.chat.history.length>CHAT.historySize) room.chat.history.shift();
     return msg;

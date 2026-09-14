@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, itemOf } from '../shared/config.js';
@@ -11,7 +11,7 @@ export function pinHash(pin) {
   const salt=randomBytes(16).toString('hex');
   return {salt,hash:scryptSync(pin,salt,32).toString('hex'),failures:0,lockedUntil:0};
 }
-function checkPin(player,pin) {
+export function checkPin(player,pin) {
   ensure(typeof pin==='string' && /^\d{4}$/.test(pin),'비밀번호는 숫자 4자리로 입력해주세요.');
   const auth=player.pin,now=Date.now();
   ensure(auth.lockedUntil<=now,'비밀번호를 여러 번 틀렸어요. 1분 후 다시 시도해주세요.');
@@ -33,6 +33,7 @@ function offline(p) {
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
+    summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
@@ -75,31 +76,58 @@ export function fromRecord(r) {
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
     room.proposals.set(pr.id,structuredClone(pr));
   }
+  if(r.summonCooldowns!==undefined&&(!Array.isArray(r.summonCooldowns)||r.summonCooldowns.some(e=>!Array.isArray(e)||e.length!==2||typeof e[0]!=='string'||!Number.isSafeInteger(e[1]))))bad();
+  room.summonCooldowns=new Map((r.summonCooldowns||[]).filter(([,until])=>until>Date.now()));
+  room.summons=new Map(); // 답을 기다리는 호출은 다음 수업에 자동 재생하지 않습니다.
   return room;
 }
 
 export class PersistentRoomStore extends RoomStore {
-  constructor(directory) {
-    super();this.files=new ClassFileStore(directory);this.records=new Map();
+  constructor(directory,{unattended=false,teacherManagedAccounts=false}={}) {
+    super();this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
     try {for(const r of this.files.loadAll()){fromRecord(r);this.records.set(r.code,r);}}
     catch(error){this.files.close();throw error;}
   }
   newCode(){let code;do{code=super.newCode();}while(this.records.has(code));return code;}
-  create(data,socketId){const s=super.create(data,socketId);s.room.createdAt=Date.now();return s;}
+  create(data,socketId){
+    const s=super.create(data,socketId);s.room.createdAt=Date.now();s.room.unattended=this.unattended;
+    if(this.teacherManagedAccounts)s.credentials=[...s.room.allowedNames].map(name=>{
+      const pin=String(randomInt(10000)).padStart(4,'0');this.createStudent(s.room,{nickname:name,pin});return {nickname:name,pin};
+    });
+    return s;
+  }
+  createStudent(room,data){
+    const name=nickname(data.nickname),pin=pinHash(data.pin);
+    ensure(name!=='선생님'&&![...room.players.values()].some(p=>p.nickname===name),'이미 있는 이름이에요. 다른 이름을 적어주세요.');
+    ensure(room.allowedNames.has(name)||room.allowedNames.size<29,'학생은 최대 29명까지 만들 수 있어요.');
+    room.allowedNames.add(name);
+    const player=this.add(room,name,'student',null);player.pin=pin;this.remove(room,player);return player;
+  }
   open(data,socketId){
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
-    ensure(!this.rooms.has(code),'이미 열린 교실이에요. 원래 선생님 창에서 계속해주세요.');
+    const active=this.rooms.get(code);
+    if(active&&this.unattended){
+      ensure(![...active.players.values()].some(p=>p.role==='teacher'&&p.connected),'이미 열린 교실이에요. 원래 선생님 창에서 계속해주세요.');
+      for(const p of active.players.values())if(p.role==='teacher')this.remove(active,p);
+      return {room:active,player:this.add(active,'선생님','teacher',socketId)};
+    }
+    ensure(!active,'이미 열린 교실이에요. 원래 선생님 창에서 계속해주세요.');
     ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요.');
     const record=this.records.get(code);ensure(record,'저장된 교실 코드를 확인해주세요.');
-    const room=fromRecord(record);this.rooms.set(code,room);
+    const room=fromRecord(record);room.unattended=this.unattended;this.rooms.set(code,room);
     return {room,player:this.add(room,'선생님','teacher',socketId)};
   }
   list(){return [...this.records.values()].map(r=>({code:r.code,title:r.title,open:this.rooms.has(r.code)}));}
-  snapshot(room,viewer){return {...super.snapshot(room,viewer),persistent:true};}
+  snapshot(room,viewer){return {...super.snapshot(room,viewer),persistent:true,unattended:!!room.unattended,managedAccounts:this.teacherManagedAccounts};}
   join(data,socketId){
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
-    const room=this.rooms.get(code);ensure(room,'선생님이 교실을 열었는지와 교실 코드를 확인해주세요.');
-    ensure([...room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
+    let room=this.rooms.get(code);
+    if(!room&&this.unattended&&this.records.has(code)){
+      ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요.');
+      room=fromRecord(this.records.get(code));room.unattended=true;this.rooms.set(code,room);
+    }
+    ensure(room,'선생님이 교실을 열었는지와 교실 코드를 확인해주세요.');
+    ensure(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
     const name=nickname(data.nickname);ensure(room.allowedNames.has(name),'선생님이 허용한 닉네임이나 번호로 입장해주세요.');
     const p=[...room.players.values()].find(p=>p.nickname===name);
     if(p){
@@ -110,6 +138,7 @@ export class PersistentRoomStore extends RoomStore {
         expiresAt:null,mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
       const session={room,player:p};this.sessions.set(p.token,session);return session;
     }
+    ensure(!this.teacherManagedAccounts,'선생님이 아직 계정을 만들지 않았어요. 선생님께 알려주세요.');
     const pin=pinHash(data.pin);
     ensure(room.players.size<RULES.maxPlayers,'교실 정원 30명이 모두 찼어요.');
     const player=this.add(room,name,'student',socketId);player.pin=pin;return {room,player};

@@ -1,4 +1,5 @@
-import { mapOf, PLAZA_ID, PLANET, STREET_ID, MAP, STREET, templateOf } from '/shared/config.js';
+import { mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, MAP, STREET, templateOf } from '/shared/config.js';
+import { drawTemple, drawGarden } from './scenery.js';
 import * as config from '/shared/config.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
@@ -13,12 +14,13 @@ function drawStar(ctx,x,y,r,fill){
 export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),bubbles=new Map();
+  let view={x:0,y:0,scale:1},overview=false;
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
   function currentMap(){return mapOf(myMapId,planets.map(p=>({...p,kind:'planet'})));}
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
-    if(pt.x<r||pt.y<r||pt.x>1200-r||pt.y>760-r)return false;
+    if(pt.x<r||pt.y<r||pt.x>MAP.width-r||pt.y>MAP.height-r)return false;
     if((PLANET.reserved||[]).some(z=>{const cx=Math.max(z.x,Math.min(pt.x,z.x+z.width)),cy=Math.max(z.y,Math.min(pt.y,z.y+z.height));return Math.hypot(pt.x-cx,pt.y-cy)<PLANET.radius;}))return false;
     const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets,...proposals];
     return !bodies.some(o=>Math.hypot(pt.x-o.x,pt.y-o.y)<PLANET.radius+(o.radius||PLANET.radius)+PLANET.minGap);
@@ -86,16 +88,11 @@ export function createWorld(canvas) {
     const template=templateOf(o.templateId);
     if(template){
       drawPlanetLook(o,template,time);
-      ctx.save();ctx.font='28px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x,o.y);ctx.restore();
+      ctx.save();ctx.font='28px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x,o.y);ctx.restore();
     }
   }
   function drawMap(map,time){
-    const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,'#e2e9fa');g.addColorStop(.55,'#edebfc');g.addColorStop(1,'#e0edf4');
-    ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
-    for(const s of stars){ctx.fillStyle='#ffffffcc';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-    ctx.strokeStyle='#d9d7ef';ctx.lineWidth=1;ctx.setLineDash([4,12]);
-    ctx.beginPath();ctx.ellipse(600,380,370,265,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-    ctx.strokeStyle='#b9b3d85c';ctx.strokeRect(16,16,1168,728);
+    drawTemple(ctx,map,time);
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
@@ -108,19 +105,19 @@ export function createWorld(canvas) {
         drawPlanet(o,myDept,time);
       }
       // 가장자리 행성의 긴 이름이 캔버스 밖으로 잘리지 않도록 이름표 x를 안쪽으로 밀어 넣습니다.
-      ctx.font='600 17px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
-      const half=ctx.measureText(o.name).width/2+8,lx=Math.min(1200-half,Math.max(half,o.x));
+      ctx.font='600 17px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
+      const half=ctx.measureText(o.name).width/2+8,lx=Math.min(map.width-half,Math.max(half,o.x));
       ctx.fillText(o.name,lx,o.y+o.radius+37);
-      if(o.kind==='planet'){ctx.font='12px "Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',lx,o.y+o.radius+53);}
+      if(o.kind==='planet'){ctx.font='12px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',lx,o.y+o.radius+53);}
     }
     for(const o of proposals){
       ctx.save();ctx.globalAlpha=.6;ctx.setLineDash([5,7]);ctx.strokeStyle=o.color;ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(o.x,o.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
       const template=templateOf(o.templateId);
-      if(template){ctx.save();ctx.globalAlpha=.85;ctx.font='22px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x,o.y);ctx.restore();}
-      ctx.font='600 15px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
+      if(template){ctx.save();ctx.globalAlpha=.85;ctx.font='22px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x,o.y);ctx.restore();}
+      ctx.font='600 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
       ctx.fillText(o.name,o.x,o.y+PLANET.radius+22);
-      ctx.font='11px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';
+      ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';
       ctx.fillText('승인 기다리는 중',o.x,o.y+PLANET.radius+38);
     }
     if(placing||placement){
@@ -128,7 +125,7 @@ export function createWorld(canvas) {
       for(const z of PLANET.reserved||[]){
         ctx.save();ctx.fillStyle='#9a92b41f';ctx.fillRect(z.x,z.y,z.width,z.height);
         ctx.strokeStyle='#9a92b4';ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.strokeRect(z.x+.5,z.y+.5,z.width-1,z.height-1);ctx.restore();
-        ctx.font='12px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8f84a6';ctx.fillText(z.label||'만들 수 없는 자리',z.x+z.width/2,z.y+22);
+        ctx.font='12px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8f84a6';ctx.fillText(z.label||'만들 수 없는 자리',z.x+z.width/2,z.y+22);
       }
     }
     if(placement){
@@ -136,14 +133,14 @@ export function createWorld(canvas) {
       const ok=placementOk(placement),color=ok?'#6353ae':'#d0506a';
       ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle=color;ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(placement.x,placement.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
-      ctx.font='600 13px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
+      ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
       ctx.fillText(ok?'여기에 만들기':'여기는 안 돼요 · 다른 자리를 골라요',placement.x,placement.y+PLANET.radius+20);
     }
     if(planets.length===0){
-      ctx.font='15px "Malgun Gothic",sans-serif';ctx.fillStyle='#8f84a6';ctx.textAlign='center';
-      ctx.fillText('아직 행성이 없어요. 행성 만들기로 첫 행성을 신청해보세요!',600,700);
+      ctx.font='15px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#8f84a6';ctx.textAlign='center';
+      ctx.fillText('나만의 부서행성을 만들어 함께 별을 돌봐요',MAP.spawn.x,MAP.spawn.y+140);
     }
-    ctx.font='14px "Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';ctx.fillText('우리의 첫 번째 우주',600,660);
+    ctx.font='20px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#776292';ctx.fillText('별들의 신전',MAP.spawn.x,MAP.spawn.y+100);
   }
   // 두 맵(광장·별빛 거리) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
   function drawGate(o){
@@ -158,7 +155,7 @@ export function createWorld(canvas) {
     ctx.beginPath();ctx.arc(o.x,archY,o.radius+postW,Math.PI,0);ctx.closePath();
     ctx.fillStyle='#c9b7ec';ctx.fill();ctx.strokeStyle='#9d86c9';ctx.lineWidth=3;ctx.stroke();
     ctx.fillStyle='#ffffffb0';ctx.beginPath();ctx.arc(o.x,archY,o.radius*.6,0,Math.PI*2);ctx.fill();
-    ctx.font='600 15px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
+    ctx.font='600 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     ctx.fillText(o.name,o.x,archY+o.radius+postH/2+26);
   }
   // 천막 모양 별상점: 둥근 지붕 + 줄무늬 + 간판.
@@ -174,7 +171,7 @@ export function createWorld(canvas) {
       ctx.strokeStyle='#e0a9b8';ctx.lineWidth=1;ctx.stroke();
     }
     ctx.fillStyle='#6353ae';ctx.beginPath();ctx.roundRect(o.x-56,o.y-6,112,36,10);ctx.fill();
-    ctx.font='700 19px "Malgun Gothic",sans-serif';ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.fillText('별상점',o.x,o.y+19);
+    ctx.font='700 19px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.fillText('별상점',o.x,o.y+19);
     star(o.x-72,o.y+44,11,'#ffe59b');star(o.x+72,o.y+44,11,'#ffe59b');
   }
   // 가로등: 기둥 + 빛 번짐.
@@ -199,7 +196,7 @@ export function createWorld(canvas) {
       if(o.kind==='shop'){drawShop(o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
     }
-    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#ded6f5';ctx.textAlign='center';
+    ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#ded6f5';ctx.textAlign='center';
     ctx.fillText(map.name+' · 별상점에서 별 파편으로 물건을 사고팔아요',600,46);
   }
   function drawInterior(map){
@@ -217,25 +214,25 @@ export function createWorld(canvas) {
         ctx.fillStyle=o.color||'#fff6d6';ctx.strokeStyle='#e7d9a8';ctx.lineWidth=3;
         ctx.beginPath();ctx.roundRect(bx,by,w,h,22);ctx.fill();ctx.stroke();
         const boardTemplate=templateOf(planet?.templateId);
-        ctx.font='700 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8a6d2d';
+        ctx.font='700 18px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8a6d2d';
         ctx.fillText((boardTemplate?boardTemplate.icon+' ':'')+(planet?.name||'행성')+' 규칙',o.x,by+30);
         let size=15;
-        while(size>10&&rules.some(line=>{ctx.font=size+'px "Malgun Gothic",sans-serif';return ctx.measureText(line).width>w-32;}))size--;
-        ctx.font=size+'px "Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
+        while(size>10&&rules.some(line=>{ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';return ctx.measureText(line).width>w-32;}))size--;
+        ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
         rules.forEach((line,i)=>ctx.fillText(line,o.x,by+56+i*19));
       } else if(o.kind==='door'){
         ctx.fillStyle='#d9d3f2';ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);
         ctx.strokeStyle='#b6a9df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);
-        ctx.font='600 14px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';ctx.fillText(o.name,o.x,o.y+o.radius+30);
+        ctx.font='600 14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';ctx.fillText(o.name,o.x,o.y+o.radius+30);
       }
     }
-    ctx.font='13px "Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';ctx.textAlign='center';
+    ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';ctx.textAlign='center';
     ctx.fillText(map.name+' · 소속 친구들만의 공간',600,46);
   }
   function drawBubble(id,x,y){
     const b=bubbles.get(id);if(!b)return;
     if(Date.now()>b.until){bubbles.delete(id);return;}
-    ctx.font='600 13px "Malgun Gothic",sans-serif';
+    ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';
     const w=Math.min(230,ctx.measureText(b.text).width+22),h=30,bx=x-w/2,by=y-54;
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#d8d3ea';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.roundRect(bx,by,w,h,10);ctx.fill();ctx.stroke();
@@ -271,26 +268,39 @@ export function createWorld(canvas) {
       }
     }
     ctx.translate(-x,-y);
-    if(effects.length){ctx.font='14px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a3450';ctx.fillText(effects.map(e=>e.icon).join(' '),x,y-74);}
-    ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Malgun Gothic",sans-serif';
+    if(effects.length){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a3450';ctx.fillText(effects.map(e=>e.icon).join(' '),x,y-74);}
+    ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Jua","Malgun Gothic",sans-serif';
     const label=p.nickname+(p.id===selfId?' · 나':'')+(!p.connected?' · 연결 중':'');
     const w=ctx.measureText(label).width+16;ctx.fillStyle='#ffffffdf';
     ctx.beginPath();ctx.roundRect(x-w/2,y+29,w,24,9);ctx.fill();
     ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';ctx.fillText(label,x,y+46);
-    if(effects.some(e=>e.style==='happy')){ctx.font='14px "Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
+    if(effects.some(e=>e.style==='happy')){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
     drawBubble(p.id,x,y);
     ctx.restore();
   }
   function frame(t){
-    ctx.clearRect(0,0,1200,760);
+    // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
+    const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+    const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     const map=currentMap();
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else drawInterior(map);
+    const scale=(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
+    const me=players.find(p=>p.id===selfId),cw=rect.width/scale,ch=rect.height/scale;
+    const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(me?.x??map.width/2)-cw/2));
+    const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(me?.y??map.height/2)-ch/2));
+    view={x,y,scale};
+    canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
+    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
+    ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(myMapId===GARDEN_ID){drawGarden(ctx,map,t);for(const o of map.objects)drawGate(o);}else drawInterior(map);
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   return {
     setRoom(room,id){
+      const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
+      if(nextMap!==myMapId){points.clear();bubbles.clear();}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       planets=room?.planets||[];proposals=room?.proposals||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
@@ -314,8 +324,8 @@ export function createWorld(canvas) {
         if(!best)return null;
         return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:'planet',id:best.id,name:best.name};
       }
-      if(myMapId===STREET_ID){
-        const candidates=STREET.objects.filter(o=>o.kind==='gate'||o.kind==='shop');
+      if(myMapId===STREET_ID||myMapId===GARDEN_ID){
+        const candidates=currentMap().objects.filter(o=>o.kind==='gate'||o.kind==='shop');
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
@@ -329,6 +339,7 @@ export function createWorld(canvas) {
       return null;
     },
     currentMapId(){return myMapId;},
+    setOverview(value){overview=!!value;},
     setPlacement(point){placement=point;},
     setPlacing(value){placing=Boolean(value);},
     placementOk,
@@ -339,10 +350,7 @@ export function createWorld(canvas) {
       // 좁은 화면(휴대폰)에서는 캔버스가 object-fit:contain으로 줄어들어 위아래에 빈 띠가 생깁니다.
       // 그 여백을 빼고 실제 그림이 그려진 영역 기준으로 계산해야 누른 자리와 행성 위치가 맞습니다.
       const rect=canvas.getBoundingClientRect();
-      const scale=Math.min(rect.width/canvas.width,rect.height/canvas.height);
-      if(!(scale>0))return {x:0,y:0};
-      const left=rect.left+(rect.width-canvas.width*scale)/2,top=rect.top+(rect.height-canvas.height*scale)/2;
-      return {x:Math.round((e.clientX-left)/scale),y:Math.round((e.clientY-top)/scale)};
+      return {x:Math.round((e.clientX-rect.left)/view.scale+view.x),y:Math.round((e.clientY-rect.top)/view.scale+view.y)};
     }
   };
 }
@@ -376,6 +384,6 @@ export function renderPortrait(canvas,player,effects){
     }
   }
   ctx.restore();
-  if(list.length){ctx.font='16px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#f2ecff';ctx.fillText(list.map(e=>e.icon).join(' '),cx,cy-52);}
-  if(player?.deptIcon){ctx.save();ctx.font='22px "Malgun Gothic",sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText(player.deptIcon,w-10,10);ctx.restore();}
+  if(list.length){ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#f2ecff';ctx.fillText(list.map(e=>e.icon).join(' '),cx,cy-52);}
+  if(player?.deptIcon){ctx.save();ctx.font='22px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText(player.deptIcon,w-10,10);ctx.restore();}
 }
