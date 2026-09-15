@@ -1,4 +1,4 @@
-import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,interiorIdOf,templateOf} from '/shared/config.js';
+import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
 export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
@@ -26,7 +26,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:12;
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#e1daf2';ctx.fillRect(ox,oy,info.width*scale,info.height*scale);
+    ctx.fillStyle=info.theme==='star-origin'?'#090b17':'#e1daf2';ctx.fillRect(ox,oy,info.width*scale,info.height*scale);
     ctx.strokeStyle='#b9a9d7';ctx.lineWidth=2;ctx.strokeRect(ox,oy,info.width*scale,info.height*scale);
     for(const o of info.objects){
       const x=ox+o.x*scale,y=oy+o.y*scale;
@@ -46,11 +46,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   function render(){
     const p=me();if(!p)return;
     $('minimap-title').textContent=map(p.mapId).name;draw($('minimap'),p.mapId);
-    if(!selected||!([PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
+    if(!selected||!([...Object.keys(STATIC_MAPS),...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
     const next=JSON.stringify([p.mapId,selected,planets().map(p=>[p.id,p.name,p.color])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
-      $('universe-links').replaceChildren(node(GARDEN_ID,'☀'),node(PLAZA_ID,'★'),node(STREET_ID,'✦'),node(VALLEY_ID,'≋'));
+      const layout=[...ORIGIN_MAPS.map((m,i)=>[m.id,'✧',3-i,2]).reverse(),[GARDEN_ID,'☀',4,1],[PLAZA_ID,'★',4,2],[STREET_ID,'✦',4,3],[VALLEY_ID,'≋',5,2]];
+      $('universe-links').replaceChildren(...layout.map(([id,icon,row,column])=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
       $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
       if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
     }

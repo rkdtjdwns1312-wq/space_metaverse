@@ -1,5 +1,5 @@
 import { mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
-import { drawTemple, drawGarden, drawRainbowSpace, drawValley } from './scenery.js';
+import { drawTemple, drawGarden, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
@@ -315,7 +315,7 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID){if(myMapId===GARDEN_ID)drawGarden(ctx,map,t);else drawValley(ctx,map,t);for(const o of map.objects)drawGate(o);}else drawInterior(map);
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID){if(myMapId===GARDEN_ID)drawGarden(ctx,map,t);else drawValley(ctx,map,t);for(const o of map.objects)drawGate(o);}else drawInterior(map);
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
   }
@@ -345,9 +345,9 @@ export function createWorld(canvas) {
           if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
-        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:best.kind,id:best.id,name:best.name};
+        return {...best};
       }
-      if(myMapId===STREET_ID||myMapId===GARDEN_ID||myMapId===VALLEY_ID){
+      if(!planetIdOfMap(myMapId)){
         const candidates=currentMap().objects.filter(o=>['gate','shop','arcade'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
@@ -355,15 +355,17 @@ export function createWorld(canvas) {
           if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
-        return best.kind==='gate'?{kind:'gate',target:best.target,name:best.name}:{kind:best.kind,id:best.id,name:best.name};
+        return {...best};
       }
       const door=mapOf(myMapId,planets).objects.find(o=>o.kind==='door');
-      if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {kind:'door'};
+      if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {...door};
       const document=mapOf(myMapId,planets).objects.find(o=>o.kind==='report-board');
-      if(document&&Math.hypot(me.x-document.x,me.y-document.y)<=document.radius+NEAR)return {kind:'report-board',id:planetIdOfMap(myMapId),name:document.name};
+      if(document&&Math.hypot(me.x-document.x,me.y-document.y)<=document.radius+NEAR)return {...document,id:planetIdOfMap(myMapId)};
       return null;
     },
     currentMapId(){return myMapId;},
+    // Canvas에서 쓰는 카메라·배율과 동일하게 변환해야 물체 옆 안내가 이동 중에도 붙어 있습니다.
+    screenPoint(point){const rect=canvas.getBoundingClientRect();return {x:rect.left+(point.x-view.x)*view.scale,y:rect.top+(point.y-view.y)*view.scale,scale:view.scale};},
     setOverview(value){overview=!!value;},
     setPlacement(point){placement=point;},
     setPlacing(value){placing=Boolean(value);},

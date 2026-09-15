@@ -3,7 +3,7 @@ import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
-import { RULES, PLAZA_ID, itemOf } from '../shared/config.js';
+import { RULES, PLAZA_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import { spawnPosition } from './world.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
@@ -69,7 +69,8 @@ export function fromRecord(r) {
       !Number.isSafeInteger(p.starShards)||p.starShards<0||!Array.isArray(p.inventory)||
       p.inventory.some(i=>!itemOf(i.id)||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
       !Array.isArray(p.notes)||typeof p.muted!=='boolean'||!p.avatar||
-      !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>5||
+      !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>PROGRESSION.maxLevel||
+      !Number.isSafeInteger(p.avatar.xp)||p.avatar.xp<0||
       (p.avatar.departmentId && !room.planets.has(p.avatar.departmentId))||
       !/^[a-f0-9]{32}$/.test(p.pin?.salt)||!/^[a-f0-9]{64}$/.test(p.pin?.hash)||
       !Number.isInteger(p.pin.failures)||p.pin.failures<0||!Number.isFinite(p.pin.lockedUntil))bad();

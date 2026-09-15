@@ -86,3 +86,42 @@ export function drawValley(ctx,map,time){
     ctx.globalAlpha=reduced?.55:.4+.25*Math.sin(time/1900+i);star(ctx,x,y,2.5+i%3,'#fffdf6');
   }ctx.restore();
 }
+
+// 별의 시작점은 거의 검은 공간 위에 별을 드문드문 놓습니다. 위치와 색은
+// 맵 이름으로 만든 시드에서 결정해 캐시된 배경이 매번 달라지지 않게 합니다.
+export function drawStarOrigin(ctx,map,time=0){
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ctx.drawImage(cached(map,c=>{
+    c.fillStyle='#050710';c.fillRect(0,0,map.width,map.height);
+    let seed=2166136261;
+    for(const ch of `${map.id??''}:${map.name??'star-origin'}`){seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);}
+    const rand=()=>{seed=Math.imul(seed^seed>>>16,2246822519);seed=Math.imul(seed^seed>>>13,3266489917);return ((seed^seed>>>16)>>>0)/4294967296;};
+    const colors=['#d9e7ff','#fff4d0','#cfe8ff','#eee1ff'];
+    const cols=9,rows=5,cellW=map.width/cols,cellH=map.height/rows,stars=[];
+    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+      if(stars.length>=45)break;
+      const x=(col+.5+(rand()-.5)*.58)*cellW;
+      const y=(row+.5+(rand()-.5)*.58)*cellH;
+      const r=.9+rand()*1.25;
+      stars.push({x,y,r,color:colors[Math.floor(rand()*colors.length)],phase:rand()*Math.PI*2,speed:6000+rand()*6000,animated:stars.length<5+Math.floor(rand()*4)});
+    }
+    for(const s of stars){c.fillStyle=s.color;c.globalAlpha=.48+rand()*.35;c.beginPath();c.arc(s.x,s.y,s.r,0,Math.PI*2);c.fill();}
+    c.globalAlpha=1;
+  }),0,0);
+  if(reduced)return;
+  const elapsed=Number.isFinite(time)?time:0;
+  let seed=2166136261;for(const ch of `${map.id??''}:${map.name??'star-origin'}`){seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);}
+  const rand=()=>{seed=Math.imul(seed^seed>>>16,2246822519);seed=Math.imul(seed^seed>>>13,3266489917);return ((seed^seed>>>16)>>>0)/4294967296;};
+  const cols=9,rows=5,cellW=map.width/cols,cellH=map.height/rows,animated=[];
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+    const x=(col+.5+(rand()-.5)*.58)*cellW,y=(row+.5+(rand()-.5)*.58)*cellH,r=.9+rand()*1.25,color=['#d9e7ff','#fff4d0','#cfe8ff','#eee1ff'][Math.floor(rand()*4)],phase=rand()*Math.PI*2,speed=6000+rand()*6000;
+    if(animated.length<5+Math.floor(rand()*4))animated.push({x,y,r,color,phase,speed});
+  }
+  ctx.save();
+  for(const s of animated){
+    const alpha=.42+.28*(.5+.5*Math.sin(elapsed*2*Math.PI/s.speed+s.phase));
+    ctx.globalAlpha=alpha;ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=alpha*.14;ctx.beginPath();ctx.arc(s.x,s.y,s.r*3.2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}

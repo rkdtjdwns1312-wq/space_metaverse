@@ -9,6 +9,7 @@ import net from 'node:net';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { PersistentRoomStore } from '../server/persistent-rooms.js';
+import { gainExperience } from '../server/progression.js';
 import { unlockStoppedStore } from '../server/store-lock.js';
 import { PLAZA_ID, STREET_ID, STREET, SHOP } from '../shared/config.js';
 
@@ -36,6 +37,17 @@ async function classroom(f){
 }
 const join=(s,code,nickname='1',pin='1234')=>call(s,'room:join',{code,nickname,pin});
 const open=(s,code)=>call(s,'room:open',{teacherKey:key,code});
+
+test('초월체 단계와 경험치가 서버 재시작 뒤에도 복원된다',async t=>{
+  const f=await fixture(t),{code}=await classroom(f),s=await f.connect();
+  const joined=await join(s,code);assert.ok(joined.ok);
+  const p=f.game.store.rooms.get(code).players.get(joined.selfId);
+  f.game.store.transact(()=>{p.avatar=gainExperience(p.avatar,130);});
+  await f.restart();await open(await f.connect(),code);
+  const back=await join(await f.connect(),code);assert.ok(back.ok,back.error);
+  const avatar=back.room.players.find(p=>p.id===back.selfId).avatar;
+  assert.equal(avatar.level,6);assert.equal(avatar.form,'transcendent');assert.equal(avatar.xp,0);
+});
 
 test('요청을 보내지 않은 브라우저 사전 연결이 있어도 서버 종료와 저장 잠금 해제가 끝난다',async t=>{
   const f=await fixture(t);const connection=net.connect(Number(new URL(f.url).port),'127.0.0.1');

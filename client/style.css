@@ -205,7 +205,9 @@ body.joined #world-navigation #minimap{display:block;width:100%;height:auto;aspe
 
 /* 요청046 추가: 방향 패드·상호작용·하단 독을 같은 하단 기준선에 맞춥니다. */
 body.joined .touch-controls{bottom:max(14px,env(safe-area-inset-bottom));left:18px;z-index:21}
-body.joined #interact-prompt:not([hidden]){left:170px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;z-index:22;max-width:150px}
+body.joined #interact-prompt:not([hidden]){position:fixed;bottom:auto;transform:none;z-index:7;max-width:min(220px,calc(100vw - 16px));padding:8px 14px;border-radius:16px;white-space:normal;text-align:center;font-size:15px}
+body.joined #interact-prompt small{display:block;font-size:11px;color:#857396;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+body.joined #interact-prompt span{display:block;white-space:nowrap}
 @media(max-width:520px){body.joined .touch-controls{left:10px;bottom:max(14px,env(safe-area-inset-bottom))}}
 @media(max-width:390px){
   body.joined .touch-controls{left:10px;grid-template:30px 30px / 30px 30px 30px;gap:3px}
@@ -213,7 +215,6 @@ body.joined #interact-prompt:not([hidden]){left:170px;bottom:max(14px,env(safe-a
   body.joined .bottom-dock{left:auto;right:8px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;gap:3px;padding:6px}
   body.joined .dock-button{width:40px;min-height:43px;padding:4px 3px;border-radius:13px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
-  body.joined #interact-prompt:not([hidden]){left:106px;bottom:max(14px,env(safe-area-inset-bottom));max-width:60px;padding:7px 8px;font-size:11px}
 }
 
 /* 모바일 조이스틱은 입장 후에만 표시합니다. */
@@ -236,7 +237,6 @@ body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-ite
   body.joined .dock-button{width:34px;min-height:43px;padding:4px 2px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
   body.joined:not(.placing) #mobile-controls{right:8px;bottom:max(14px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;gap:4px}
-  body.joined #interact-prompt:not([hidden]){left:100px;bottom:90px;max-width:100px;padding:7px 8px;font-size:11px}
 }
 @media(max-width:390px){
   body.joined:not(.placing) .bottom-dock{left:50%;right:auto;transform:translateX(-50%)}
@@ -249,3 +249,5 @@ body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-ite
 #department-text{display:block;width:100%;box-sizing:border-box;margin:10px 0;resize:vertical}#department-text:read-only{background:#f5f0fa}
 .department-allocation{display:grid;grid-template-columns:minmax(85px,1fr) 85px 75px;align-items:center;gap:8px;margin:10px 0}.department-allocation input{width:100%;box-sizing:border-box}
 #department-message{color:#935d31;white-space:pre-wrap}#department-history article{background:#f6f0ff;border-radius:16px;padding:12px;margin:10px 0}#department-award-row{padding:14px;background:#fff2cb;border-radius:16px}#department-award-amount{width:90px}
+#experience-panel{border-top:1px solid #ded3ee;padding-top:14px;margin-top:14px;color:#695582}.experience-heading{display:flex;justify-content:space-between;gap:14px}#experience-bar{display:block;width:100%;height:13px;margin-top:9px;accent-color:#a48ade;border:0;border-radius:9px;overflow:hidden;background:#eee6f7}#experience-bar::-webkit-progress-bar{background:#eee6f7}#experience-bar::-webkit-progress-value{background:linear-gradient(90deg,#b5a0ed,#e3b5dd);border-radius:9px}#experience-next{font-size:13px;margin:8px 0 0;color:#887899}
+#universe-links .universe-node::after{content:none}

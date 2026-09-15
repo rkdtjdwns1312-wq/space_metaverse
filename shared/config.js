@@ -30,7 +30,8 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
     { id: 'gate-garden', name: '← 태양이 머무는 낙원', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
       arrival:{x:1030,y:380},color:'#bdeade',passable:true },
-    {id:'gate-valley',name:'은하수계곡 ↓',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true}
+    {id:'gate-valley',name:'은하수계곡 ↓',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
+    {id:'gate-origin',name:'별의 시작점 1 ↑',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true}
   ] });
 export const PLAZA_ID = MAP.id;
 // 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
@@ -55,7 +56,14 @@ export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',wi
   {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY });
+// 위쪽 맵은 1→2→3으로 이어지며, 아래 문은 바로 전 맵으로 돌아옵니다.
+export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>Object.freeze({id:'star-origin-'+n,name:'별의 시작점 '+n,theme:'star-origin',
+  width:1200,height:900,spawn:{x:600,y:740},objects:[
+    {id:'gate-back',name:(n===1?'별의 기원':'별의 시작점 '+(n-1))+' ↓',x:600,y:820,radius:38,kind:'gate',
+      target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?{x:1080,y:175}:{x:600,y:175},color:'#d2d3ef',passable:true},
+    ...(n<3?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:600,y:80,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:600,y:740},color:'#e0d6ff',passable:true}]:[])
+  ]})));
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,...Object.fromEntries(ORIGIN_MAPS.map(m=>[m.id,m])) });
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).
@@ -138,7 +146,7 @@ export const templateOf = templateId => PLANET_TEMPLATES.find(t => t.id === temp
 // 선생님이 교실을 만들 때 '예시 행성으로 시작'을 켜면 아래 4개가 종류 목록의 값으로 미리 놓입니다. 이름·규칙은 나중에 바꿀 수 있습니다.
 const example = (templateId, x, y) => { const t = templateOf(templateId); return { templateId, name: t.name, x, y, color: t.color, description: t.description, rules: [...t.rules] }; };
 export const EXAMPLE_PLANETS = Object.freeze([
-  example('reading', 190, 175), example('diary', 1010, 175), example('cleaning', 190, 565), example('subject', 1870, 565)
+  example('reading', 190, 175), example('diary', 1450, 175), example('cleaning', 190, 565), example('subject', 1870, 565)
 ]);
 // 행성 내부 맵 템플릿: 광장과 같은 크기의 작은 방. 위에는 규칙 게시판(충돌), 아래에는 광장으로 나가는 문(통과 가능).
 export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 600, y: 560 },
@@ -152,16 +160,15 @@ export const planetIdOfMap = mapId => (typeof mapId === 'string' && mapId.starts
 // planets: 그 방의 행성 목록(배열 또는 Map의 values). 광장이면 별·문 + 행성들이 오브젝트가 되고, 오색별빛 쉼터는 고정 맵, 내부 맵이면 템플릿에 행성 정보를 얹습니다.
 export function mapOf(mapId, planets = []) {
   const list = Array.isArray(planets) ? planets : [...planets];
-  if (mapId === STREET_ID) return STREET;
-  if (mapId === GARDEN_ID) return GARDEN;
-  if (mapId === VALLEY_ID) return VALLEY;
+  if (mapId !== PLAZA_ID && STATIC_MAPS[mapId]) return STATIC_MAPS[mapId];
   const planetId = planetIdOfMap(mapId);
   if (!planetId) return { ...MAP, objects: [...MAP.objects, ...list] };
   const planet = list.find(p => p.id === planetId);
   return { ...INTERIOR, id: mapId, planetId, name: (planet ? planet.name : '행성') + ' 안', color: planet ? planet.color : '#d9d3f2' };
 }
-// 아직 성장/장비 동작은 구현하지 않습니다. 그림 교체와 후속 단계 연결을 위한 계약입니다.
-export const PROGRESSION = Object.freeze({ maxLevel: 5, nextLevelXp: [15, 20, 25, 30], constellationSlots: 16 });
+// 경험치 계산은 server/progression.js에서 수행합니다. 경험치 획득 활동과 장비·그림은 후속 연결 대상입니다.
+export const PROGRESSION = Object.freeze({ maxLevel: 6, nextLevelXp: Object.freeze([15, 20, 25, 30, 40]),
+  transcendentLevel: 6, transcendentName: '초월체', constellationSlots: 16 });
 export function createAvatar() {
   return { form: 'asteroid', level: 1, xp: 0, constellationId: null,
     equipment: { pet: null, mount: null, decoration: null }, departmentId: null };

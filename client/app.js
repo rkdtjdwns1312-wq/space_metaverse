@@ -6,12 +6,14 @@ import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
 import { createDepartmentWorkUI } from './department-work-ui.js';
+import { PROGRESSION, STATIC_MAPS } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
+$('avatar-card').append($('experience-panel'));
 let discardItemId=null;
 $('discard-no').onclick=()=>$('discard-dialog').close();
 $('discard-yes').onclick=async()=>{
@@ -104,7 +106,7 @@ function updateRoom(value){
       name.append(dept);
     }
     const insideId=planetIdOfMap(p.mapId),inside=insideId?planetById(insideId):null;
-    const state=document.createElement('span');state.textContent=p.away?'수업 밖':!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':'LV 1';
+    const state=document.createElement('span');state.textContent=p.away?'수업 밖':!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':p.avatar.level>=PROGRESSION.transcendentLevel?PROGRESSION.transcendentName:'LV '+p.avatar.level;
     li.append(name);
     if(p.id!==selfId){const select=document.createElement('button');select.type='button';select.className='small secondary friend-select';select.dataset.playerId=p.id;select.textContent='대화 · 부르기';select.setAttribute('aria-label',p.nickname+' 친구 선택');select.onclick=()=>social.friend(p.id);li.append(select);}
     // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
@@ -127,7 +129,12 @@ function updateRoom(value){
   $('self-shards').textContent=String(me?.starShards||0);
   $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
   const myLv=myLevel();
-  $('self-level').textContent='LV '+myLv+' '+'★'.repeat(myLv);
+  const transcendent=myLv>=PROGRESSION.transcendentLevel;
+  $('self-level').textContent=transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
+  const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
+  $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
+  $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
+  $('experience-next').textContent=transcendent?'초월체에 도달했어요!':(myLv===5?'초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
   $('card-foot').textContent=room.title+' · '+room.code;
   $('avatar-card').style.setProperty('--card-accent',isTeacher?'#d2a454':(myPlanet?.color||'#b9a8f0'));
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
@@ -174,6 +181,7 @@ function mapCaption(myMapId){
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 태양이 머무는 낙원 · 오른쪽 문으로 중앙광장';
+  if(STATIC_MAPS[myMapId]?.theme==='star-origin')return '✧ '+STATIC_MAPS[myMapId].name+' · 작은 별들이 반짝이는 우주';
   return '✦ '+(planetById(planetIdOfMap(myMapId))?.name||'행성')+' 안 · 소속 친구들만의 공간';
 }
 function myLevel(){const me=room?.players.find(p=>p.id===selfId);return me?.role==='teacher'?ITEM_USE.teacherLevel:me?.avatar?.level||1;}
@@ -583,10 +591,22 @@ function updateInteractPrompt(){
   if(!selfId||placing||document.querySelector('dialog[open]')){$('interact-prompt').hidden=true;return;}
   const n=world.nearby();
   if(!n){$('interact-prompt').hidden=true;return;}
-  $('interact-prompt').hidden=false;
-  $('interact-prompt').textContent=n.kind==='planet'?n.name+' 살펴보기 (E)':n.kind==='door'?'광장으로 나가기 (E)':['gate','pillar','arcade','report-board'].includes(n.kind)?n.name+' (E)':n.kind==='shop'?'별상점 구경하기 (E)':'';
-  $('touch-interact').disabled=!$('interact-prompt').textContent;
-  $('touch-interact').setAttribute('aria-label',$('interact-prompt').textContent||'가까운 물체가 없어요');
+  const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.name;
+  const prompt=$('interact-prompt'),caption=$('interact-object');
+  if(caption.textContent!==label)caption.textContent=label;
+  prompt.hidden=false;
+  const point=world.screenPoint(n),width=prompt.offsetWidth,height=prompt.offsetHeight,gap=12;
+  let x=Math.max(8,Math.min(innerWidth-width-8,point.x-width/2));
+  let y=point.y-(n.radius||0)*point.scale-height-gap;
+  const navigation=$('world-navigation').getBoundingClientRect();
+  // 맵 상단과 미니맵에 가려지는 경우에는 같은 물체 바로 아래에 붙입니다.
+  if(y<8||(x<navigation.right&&x+width>navigation.left&&y<navigation.bottom&&y+height>navigation.top))
+    y=point.y+(n.radius||0)*point.scale+gap;
+  y=Math.max(8,Math.min(innerHeight-height-8,y));
+  prompt.style.left=x+'px';prompt.style.top=y+'px';
+  prompt.dataset.objectId=n.id||n.target||n.kind;
+  $('touch-interact').disabled=false;
+  $('touch-interact').setAttribute('aria-label',label+' · E 상호작용하기');
 }
 window.addEventListener('keydown',e=>{
   if(e.code!=='KeyE'||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]')||['INPUT','TEXTAREA','BUTTON'].includes(e.target.tagName))return;
@@ -911,4 +931,7 @@ for(const button of document.querySelectorAll('[data-dx]')){
   for(const type of ['pointerup','pointercancel','lostpointercapture','pointerleave'])button.addEventListener(type,()=>{touch={x:0,y:0};input();});
   button.addEventListener('contextmenu',e=>e.preventDefault());
 }
-setInterval(()=>{input();updateInteractPrompt();},80);controls();socket.connect();
+// 입력 전송 간격은 그대로 두고, 물체 안내만 화면 프레임에 맞춰 카메라를 따라갑니다.
+setInterval(input,80);
+function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
+requestAnimationFrame(interactionFrame);controls();socket.connect();

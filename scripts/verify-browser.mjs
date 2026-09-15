@@ -296,8 +296,8 @@ try{
  // movement keydown handler ignores arrow keys while an INPUT/TEXTAREA/BUTTON is focused.
  await student.locator('#world').focus();
  await walkNear(student,p,{x:1080,y:1150});
- await student.locator('#interact-prompt').filter({hasText:'급식행성 살펴보기'}).waitFor({timeout:2000});
- check('Walking the student near the new planet shows the "급식행성 살펴보기 (E)" interact prompt');
+ await student.locator('#interact-prompt').filter({hasText:'급식행성'}).waitFor({timeout:2000});
+ check('Walking the student near the new planet shows the "급식행성 (E)" interact prompt');
 
  // Item 5: E opens the planet dialog for a member.
  await student.keyboard.press('e');
@@ -495,7 +495,7 @@ try{
  // Item 4: the star shop.
  const shopObj=STREET.objects.find(o=>o.id==='shop');
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
- await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기 (E)'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
  await student.locator('#shop-dialog').waitFor({state:'visible'});
  await student.locator('#shop-shards').filter({hasText:'25'}).waitFor({state:'attached'});
@@ -764,7 +764,7 @@ try{
  await holdKey(student,'ArrowRight',400); // 새 도착점은 왼쪽 문 앞이므로 먼저 문에서 떨어집니다.
  await student.locator('#interact-prompt').waitFor({state:'hidden'});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
- await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기 (E)'}).waitFor({timeout:2000});
+ await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
  await student.locator('#shop-dialog').waitFor({state:'visible'});
  const snackBuyRow=student.locator('#shop-buy-list li.item').nth(1);

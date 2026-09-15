@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP, ITEM_USE, TRADE } from '../shared/config.js';
 import { placementFree } from '../server/world.js';
+import { ORIGIN_MAPS, mapOf } from '../shared/config.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fixture(t,options={}) {
@@ -18,6 +19,20 @@ async function fixture(t,options={}) {
 }
 const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
 const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNames:Array.from({length:29},(_,i)=>String(i+1))});
+
+test('위쪽 세 맵은 가까운 연결 문으로만 왕복하고 건너뛰기 요청을 거절한다',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
+ const j=await call(s,'room:join',{code:r.room.code,nickname:'1'});assert.ok(j.ok);
+ const p=game.store.rooms.get(r.room.code).players.get(j.selfId);
+ assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[2].id})).ok,false);
+ assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[0].id})).ok,false);
+ for(const to of [...ORIGIN_MAPS.map(m=>m.id),ORIGIN_MAPS[1].id,ORIGIN_MAPS[0].id,PLAZA_ID]){
+   const gate=mapOf(p.mapId).objects.find(o=>o.target===to);assert.ok(gate);
+   p.x=gate.x;p.y=gate.y;
+   assert.equal((await call(s,'map:travel',{to})).ok,true);assert.equal(p.mapId,to);
+   const map=mapOf(to);assert.ok(p.x>0&&p.x<map.width&&p.y>0&&p.y<map.height);
+ }
+});
 test('real sockets enforce teacher permissions and keep rooms isolated',async t=>{
  const {connect,game}=await fixture(t),a=await connect(),b=await connect(),student=await connect();
  assert.equal((await call(student,'room:create',{teacherKey:'wrong',allowedNames:['1']})).ok,false);
@@ -174,7 +189,7 @@ test('a student can propose a new planet; invalid name/color/location are reject
  await sleep(30);
  assert.ok(states.some(st=>st.proposals.some(p=>p.id===ok.proposalId && p.name==='독서행성' && p.nickname==='1')));
  assert.ok(sysMsgs.some(m=>m.text==='1 친구가 새 행성 "독서행성"을 신청했어요. 선생님의 승인을 기다려요.'));
- const already=await call(s,'planet:propose',{name:'다른행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const already=await call(s,'planet:propose',{name:'다른행성',description:'',x:1450,y:175,color:PLANET_COLORS[1]});
  assert.equal(already.ok,false);assert.equal(already.error,'이미 승인을 기다리는 행성이 있어요.');
 });
 test('planet:propose/create require a valid templateId (planet kind), and it is echoed back in the snapshot for planets and proposals',async t=>{
@@ -184,14 +199,14 @@ test('planet:propose/create require a valid templateId (planet kind), and it is 
  assert.equal(missing.ok,false);assert.equal(missing.error,'행성 종류를 골라주세요.');
  const invalid=await call(s,'planet:propose',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'nope'});
  assert.equal(invalid.ok,false);assert.equal(invalid.error,'행성 종류를 골라주세요.');
- const missingCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1010,y:175,color:PLANET_COLORS[1]});
+ const missingCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1450,y:175,color:PLANET_COLORS[1]});
  assert.equal(missingCreate.ok,false);assert.equal(missingCreate.error,'행성 종류를 골라주세요.');
- const invalidCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'nope'});
+ const invalidCreate=await call(teacher,'planet:create',{name:'급식행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'nope'});
  assert.equal(invalidCreate.ok,false);assert.equal(invalidCreate.error,'행성 종류를 골라주세요.');
  const states=[];teacher.on('room:state',st=>states.push(st));
  const proposed=await call(s,'planet:propose',{name:'급식모임',description:'맛있게 먹어요',x:190,y:175,color:PLANET_COLORS[0],templateId:'meal'});
  assert.equal(proposed.ok,true);
- const created=await call(teacher,'planet:create',{name:'감찰행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'audit'});
+ const created=await call(teacher,'planet:create',{name:'감찰행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'audit'});
  assert.equal(created.ok,true);
  await sleep(30);
  assert.ok(states.some(st=>st.proposals.some(p=>p.id===proposed.proposalId && p.templateId==='meal')));
@@ -206,7 +221,7 @@ test('pending-proposal limit blocks a further proposal once maxPending is reache
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
  await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
- const positions=Array.from({length:11},(_,i)=>({x:76+i*200,y:76})).concat({x:176,y:260});
+ const positions=Array.from({length:11},(_,i)=>({x:76+i*200,y:76})).filter(point=>placementFree({planets:new Map(),proposals:new Map()},point.x,point.y)).concat({x:176,y:260},{x:376,y:260});
  for(let i=0;i<PLANET.maxPending;i++){
   const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',...positions[i],color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
@@ -258,7 +273,7 @@ test('teacher can reject a proposal; a student can withdraw only their own',asyn
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
- const p1=await call(s1,'planet:propose',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
+ const p1=await call(s1,'planet:propose',{name:'일기행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  assert.equal(p1.ok,true);
  assert.equal((await call(s2,'planet:withdraw',{proposalId:p1.proposalId})).error,'내 신청만 취소할 수 있어요.');
  assert.equal((await call(s1,'planet:withdraw',{proposalId:'nope'})).error,'신청을 찾지 못했어요.');
@@ -305,7 +320,7 @@ test('teacher can remove a planet: interior occupants return to the plaza and me
 test('students join and transfer planets; teachers cannot join and re-joining the same planet is rejected',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
- const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
+ const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const states=[];teacher.on('room:state',st=>states.push(st));
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -347,7 +362,7 @@ test('entering a planet requires membership (or teacher) and proximity; success 
 test('planet:join is rejected while inside a planet; exiting returns to the plaza just below it; exit is rejected from the plaza',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',x:190,y:175,color:PLANET_COLORS[0],templateId:'reading'});
- const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
+ const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
  assert.equal((await call(s,'planet:exit',{})).error,'지금은 행성 안이 아니에요.');
@@ -435,7 +450,7 @@ test('rename announcements pick the Korean particle 로/으로 from the new name
 });
 test('rename vote is rejected when a second member votes no (2 members)',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
+ const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
@@ -525,7 +540,7 @@ test('a member leaving the classroom entirely also re-evaluates a pending rename
 });
 test('teacher can rename a planet directly, clearing any pending vote',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1010,y:175,color:PLANET_COLORS[1],templateId:'diary'});
+ const created=await call(teacher,'planet:create',{name:'일기행성',description:'',x:1450,y:175,color:PLANET_COLORS[1],templateId:'diary'});
  const s1=await connect(),s2=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});

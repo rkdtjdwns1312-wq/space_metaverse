@@ -19,7 +19,7 @@ try{
  const button=await page.locator('#map-overview').boundingBox();assert.ok(button.x>1100&&button.y<35);assert.equal(await page.locator('#menu-dialog #map-overview').count(),0);
  await page.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();check('오른쪽 위 지도 버튼과 현재 맵 미니맵');
  await page.locator('#map-overview').click();await page.locator('#universe-dialog').waitFor({state:'visible'});
- assert.equal(await page.locator('#universe-links button').count(),4);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),PLAZA_ID);
+ assert.equal(await page.locator('#universe-links button').count(),7);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),PLAZA_ID);
  await page.locator('#universe-links [data-map-id="'+GARDEN_ID+'"]').click();assert.equal(p.mapId,PLAZA_ID);assert.equal(await page.locator('#universe-preview').getAttribute('data-has-player'),'false');
  await page.locator('#universe-close').click();await page.waitForFunction(()=>document.activeElement.id==='world');
  await page.locator('#map-overview').click();await page.keyboard.press('Escape');await page.locator('#universe-dialog').waitFor({state:'hidden'});check('연결 맵과 현위치 표시, 지도 선택은 이동하지 않음, 닫기·Esc');
