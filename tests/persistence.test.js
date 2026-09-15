@@ -183,7 +183,7 @@ test('대기 행성 신청과 이름 투표 Map을 복원하며 수업 밖 소�
   assert.ok((await call(a,'planet:join',{planetId:planet.id})).ok);
   assert.ok((await call(b,'planet:join',{planetId:planet.id})).ok);
   assert.ok((await call(a,'planet:rename:propose',{planetId:planet.id,name:'책읽는행성'})).ok);
-  const proposed=await call(c,'planet:propose',{name:'새행성',description:'내일 이어서',x:750,y:520,color:'#98dfd2',templateId:'reading'});
+  const proposed=await call(c,'planet:propose',{name:'새행성',description:'내일 이어서',x:1870,y:1050,color:'#98dfd2',templateId:'reading'});
   assert.equal(proposed.ok,true,proposed.error);
   await f.restart();const tr=await f.connect(),opened=await open(tr,code);assert.ok(opened.ok);
   const saved=opened.room.planets.find(p=>p.id===planet.id);

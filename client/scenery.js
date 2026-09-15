@@ -27,10 +27,8 @@ function cached(map,draw){
 export function drawTemple(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height);
-    const x=map.width/2,y=1180;
-    // 좌우 맵으로 이어지는 별빛 길. 부서행성 배치에서도 비워 두는 통로입니다.
-    c.strokeStyle='#f7f1ff77';c.lineWidth=50;c.beginPath();c.moveTo(0,1200);c.lineTo(map.width,1200);c.stroke();
-    c.strokeStyle='#ffffff88';c.lineWidth=3;c.setLineDash([5,22]);c.stroke();c.setLineDash([]);
+    const centralStar=map.objects.find(o=>o.id==='square');
+    const x=centralStar?.x??map.width/2,y=(centralStar?.y??map.height/2)+160;
     ellipse(c,x,y+70,455,258,'#887ca62c');
     ellipse(c,x,y+26,443,257,'#bda9d6');ellipse(c,x,y+14,443,246,'#e7d6f0');
     ellipse(c,x,y,421,235,'#c9b7df');ellipse(c,x,y-10,419,229,'#fbf4fc');
@@ -39,8 +37,9 @@ export function drawTemple(ctx,map){
     for(const r of [120,235,342]){c.beginPath();c.ellipse(x,y-16,r,r*.52,0,0,Math.PI*2);c.stroke();}
     for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(x+Math.cos(a)*120,y-16+Math.sin(a)*62);c.lineTo(x+Math.cos(a)*377,y-16+Math.sin(a)*198);c.stroke();}
     // 중앙의 낮은 제단 위에는 world.js가 커다란 별을 그립니다.
-    ellipse(c,x,1058,112,60,'#bba5d2');ellipse(c,x,1045,114,58,'#fff6e1');ellipse(c,x,1038,93,42,'#eddaec');
-    for(const [px,py] of [[1480,1040],[2120,1040],[1510,1250],[2090,1250]]){
+    ellipse(c,x,y-122,112,60,'#bba5d2');ellipse(c,x,y-135,114,58,'#fff6e1');ellipse(c,x,y-142,93,42,'#eddaec');
+    for(const pillar of map.objects.filter(o=>o.kind==='pillar')){
+      const px=pillar.x,py=pillar.y-34;
       ellipse(c,px,py+42,42,17,'#9583af25');
       c.fillStyle='#c8b5dc';c.beginPath();c.roundRect(px-22,py-105,44,144,14);c.fill();
       c.fillStyle='#faf0ff';c.beginPath();c.roundRect(px-19,py-106,29,142,12);c.fill();
@@ -48,9 +47,8 @@ export function drawTemple(ctx,map){
       star(c,px,py-129,20,'#ffeab3');ellipse(c,px-5,py-130,2,3,'#a08496');ellipse(c,px+5,py-130,2,3,'#a08496');
     }
     // 둥근 초승달 장식과 별사탕을 놓아 위압적인 건물 대신 쉬어가는 쉼터로 만듭니다.
-    ellipse(c,x,864,44,44,'#fff0bf');ellipse(c,x+18,852,36,38,'#d3c0e2');
-    for(let i=0;i<7;i++)star(c,x-180+i*60,914+Math.abs(i-3)*11,8,'#fff4d1');
-    c.fillStyle='#8873a0';c.font='24px "Jua","Malgun Gothic",sans-serif';c.textAlign='center';c.fillText('별들이 잠시 쉬어가는 곳',x,1502);
+    ellipse(c,x,y-316,44,44,'#fff0bf');ellipse(c,x+18,y-328,36,38,'#d3c0e2');
+    for(let i=0;i<7;i++)star(c,x-180+i*60,y-266+Math.abs(i-3)*11,8,'#fff4d1');
   }),0,0);
 }
 export function drawGarden(ctx,map){

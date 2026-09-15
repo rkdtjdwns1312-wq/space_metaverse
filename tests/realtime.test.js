@@ -206,9 +206,9 @@ test('pending-proposal limit blocks a further proposal once maxPending is reache
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
  await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
+ const positions=Array.from({length:11},(_,i)=>({x:76+i*200,y:76})).concat({x:176,y:260});
  for(let i=0;i<PLANET.maxPending;i++){
-  // y:550인 가로줄은 별(600,170)과 오색별빛 쉼터로 가는 문(1120,380) 둘 다에서 충분히 떨어져 있습니다.
-  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',x:100+i*200,y:550,color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
+  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',...positions[i],color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
  }
  const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',x:100,y:600,color:PLANET_COLORS[0]});
@@ -218,8 +218,8 @@ test('the 48-per-room planet limit allows more than 30 separate planets and bloc
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const room=game.store.rooms.get(r.room.code);
  let created=0,colorIndex=0;
- outer: for(let y=100;y<MAP.height-100;y+=220)
-  for(let x=100;x<MAP.width-100;x+=220){
+ outer: for(let y=76,row=0;y<=MAP.height-76;y+=184,row++)
+  for(let x=76+(row%2?100:0);x<=MAP.width-76;x+=200){
    if(created>=PLANET.maxPerRoom) break outer;
    if(!placementFree(room,x,y)) continue;
    const res=await call(teacher,'planet:create',{name:'행성'+created,description:'',x,y,color:PLANET_COLORS[colorIndex%PLANET_COLORS.length],templateId:'meal'});
@@ -417,7 +417,7 @@ test('rename vote passes immediately with a single member',async t=>{
 });
 test('rename announcements pick the Korean particle 로/으로 from the new name ending',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3],templateId:'subject'});
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1870,y:565,color:PLANET_COLORS[3],templateId:'subject'});
  const s=await connect();await call(s,'room:join',{code:r.room.code,nickname:'1'});
  await call(s,'planet:join',{planetId:created.planetId});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
@@ -475,7 +475,7 @@ test('rename vote passes once 2 of 3 members agree, without waiting for the thir
 });
 test('a non-member cannot vote on a planet rename',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1010,y:565,color:PLANET_COLORS[3],templateId:'subject'});
+ const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1870,y:565,color:PLANET_COLORS[3],templateId:'subject'});
  const s1=await connect(),s2=await connect(),outsider=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});

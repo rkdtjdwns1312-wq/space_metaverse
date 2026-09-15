@@ -24,6 +24,7 @@ try{
  await page.locator('#universe-close').click();await page.waitForFunction(()=>document.activeElement.id==='world');
  await page.locator('#map-overview').click();await page.keyboard.press('Escape');await page.locator('#universe-dialog').waitFor({state:'hidden'});check('연결 맵과 현위치 표시, 지도 선택은 이동하지 않음, 닫기·Esc');
  // 이전 메뉴 버튼에 초점이 남아도 방향키는 맵을 조작해야 합니다.
+ Object.assign(p,{x:300,y:500,mapId:PLAZA_ID});publish();await page.waitForFunction(()=>Math.abs(+document.getElementById('world').dataset.selfRenderY-500)<50);
  await page.locator('#dock-menu').click();const before=p.y;await page.keyboard.down('ArrowDown');await page.waitForTimeout(160);await page.keyboard.up('ArrowDown');assert.equal(p.y,before);
  await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement.id==='world');await page.locator('#dock-avatar').focus();
  const samples=page.evaluate(()=>new Promise(resolve=>{const values=[],start=performance.now();function tick(){const c=document.getElementById('world'),y=+c.dataset.selfRenderY;values.push({y,screen:(y- +c.dataset.viewY)* +c.dataset.viewScale});if(performance.now()-start>700)resolve(values);else requestAnimationFrame(tick);}tick();}));

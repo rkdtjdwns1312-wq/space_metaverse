@@ -4,6 +4,13 @@ import { RoomStore } from '../server/rooms.js';
 import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
 import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
+test('the plaza is 60% of its former dimensions while the temple reservation stays the same size',()=>{
+ assert.deepEqual([MAP.width,MAP.height],[2160,1440]);
+ const temple=PLANET.reserved.find(z=>z.label==='별들의 신전');
+ assert.deepEqual([temple.width,temple.height],[900,700]);
+ assert.equal(PLANET.reserved.some(z=>z.label.includes('가는 길')),false);
+ for(const object of MAP.objects)assert.ok(object.x>=0&&object.x<=MAP.width&&object.y>=0&&object.y<=MAP.height);
+});
 test('garden uses its own map size and collision boundaries, not the enlarged plaza',()=>{
  const {room}=new RoomStore().create(roomData,'teacher');
  assert.equal(mapOf(GARDEN_ID),GARDEN);

@@ -107,6 +107,8 @@ export function createWorld(canvas) {
       } else {
         drawPlanet(o,myDept,time);
       }
+      // 중앙 신전의 큰 별은 그림만 남기고, 신전 아래에 겹치던 이름표는 표시하지 않습니다.
+      if(o.id==='square')continue;
       // 가장자리 행성의 긴 이름이 캔버스 밖으로 잘리지 않도록 이름표 x를 안쪽으로 밀어 넣습니다.
       ctx.font='600 17px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#716389';
       const half=ctx.measureText(o.name).width/2+8,lx=Math.min(map.width-half,Math.max(half,o.x));
@@ -144,11 +146,6 @@ export function createWorld(canvas) {
       ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
       ctx.fillText(ok?'여기에 만들기':'여기는 안 돼요 · 다른 자리를 골라요',placement.x,placement.y+PLANET.radius+20);
     }
-    if(planets.length===0){
-      ctx.font='15px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#8f84a6';ctx.textAlign='center';
-      ctx.fillText('나만의 부서행성을 만들어 함께 별을 돌봐요',MAP.spawn.x,MAP.spawn.y+140);
-    }
-    ctx.font='20px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#776292';ctx.fillText('별들의 신전',MAP.spawn.x,MAP.spawn.y+100);
   }
   // 두 맵(광장·오색별빛 쉼터) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
   function drawGate(o){
