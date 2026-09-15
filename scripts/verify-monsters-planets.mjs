@@ -1,0 +1,47 @@
+// 임시 서버/계정에서 몬스터와 행성 메뉴를 실제 키보드·터치로 검증합니다.
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {createClassroomServer} from '../server/app.js';
+import {monstersOf} from '../server/monsters.js';
+import {MONSTER_TYPES} from '../shared/monsters.js';
+import {addPlanet} from '../server/world.js';
+import {PLAZA_ID,PLANET_COLORS} from '../shared/config.js';
+const key='monster-ui-test-only-private',game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen();
+const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
+const check=text=>{checks.push(text);console.log(text);};await mkdir('.local',{recursive:true});
+try{
+  const teacher=await browser.newPage();await teacher.goto('http://127.0.0.1:'+address.port,{waitUntil:'domcontentloaded',timeout:25000});
+  await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await teacher.locator('#allowed-names').fill('1');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  const room=[...game.store.rooms.values()][0],page=await browser.newPage({viewport:{width:1440,height:960},hasTouch:true});page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:'+address.port,{waitUntil:'domcontentloaded',timeout:25000});await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill('1');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  const p=[...room.players.values()].find(p=>p.role==='student'),publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+  for(const mapId of ['star-origin-1','star-origin-2','star-origin-3']){
+    Object.assign(p,{mapId,x:600,y:450});publish();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='5');
+    await page.locator('#minimap-title').filter({hasText:mapId.replace('star-origin-','별의 시작점 ')}).waitFor();
+    await page.screenshot({path:'.local/'+mapId+'-monsters.png'});
+  }
+  check('별의 시작점1·2·3에 각각5마리 표시·다른 맵과 분리');
+  const m=monstersOf(room).get('rabbit');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
+  await page.locator('#interact-object').filter({hasText:'토끼자리'}).waitFor();await page.locator('#world').focus();await page.keyboard.press('e');
+  await page.locator('#monster-title').filter({hasText:'토끼자리'}).waitFor();await page.locator('#monster-info').click();await page.locator('#monster-description').filter({hasText:'달토끼'}).waitFor();
+  assert.equal(await page.locator('#monster-hunt').isDisabled(),true);assert.ok((await page.locator('#monster-hunt').textContent()).includes('준비 중'));assert.equal(p.avatar.xp,0);
+  await page.screenshot({path:'.local/monster-info.png'});await page.keyboard.press('Escape');await page.locator('#monster-dialog').waitFor({state:'hidden'});
+  check('E→몬스터 정보 보기·설명·사냥 준비중 비활성·Esc 닫기·경험치 유지');
+  await page.setViewportSize({width:390,height:844});Object.assign(p,{x:m.x+30,y:m.y});publish();await page.locator('#interact-object').filter({hasText:'토끼자리'}).waitFor();
+  await page.locator('#touch-interact').tap();await page.locator('#monster-dialog').waitFor({state:'visible'});await page.locator('#monster-info').tap();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'.local/monster-mobile.png'});await page.locator('#monster-close').tap();
+  check('390px 터치E·정보창·닫기·가로 넘침 없음');
+  const planet=addPlanet(room,{name:'체육행성',description:'친구들과 건강하게 놀아요.',templateId:'sports',x:700,y:400,color:PLANET_COLORS[0],rules:['서로 응원해요.']});
+  p.avatar.departmentId=planet.id;Object.assign(p,{mapId:PLAZA_ID,x:planet.x+70,y:planet.y});publish();
+  await page.locator('#interact-object').filter({hasText:'체육행성'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#planet-dialog').waitFor({state:'visible'});
+  const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings','#planet-rename','#planet-work'];
+  const boxes=await Promise.all(selectors.map(selector=>page.locator(selector).boundingBox()));for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].y>=boxes[i-1].y+boxes[i-1].height-1);
+  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();await page.locator('#planet-warnings p').filter({hasText:'준비 중'}).waitFor();
+  await page.screenshot({path:'.local/planet-menu-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#planet-close').tap();
+  check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·준비중 안내·닫기');
+  Object.assign(p,{mapId:PLAZA_ID,x:300,y:1100});publish();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='0');
+  check('광장에서는 몬스터 표시 없음');
+  assert.equal(MONSTER_TYPES.length,15);assert.deepEqual(errors,[]);
+}finally{await writeFile('.local/monsters-planets-result.json',JSON.stringify({checks,errors},null,2));await browser.close();await game.close();}
+console.log(JSON.stringify({checks:checks.length,errors}));

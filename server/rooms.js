@@ -1,6 +1,7 @@
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
+import {monsterViews} from './monsters.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -94,6 +95,7 @@ export class RoomStore {
     const isTeacher=!!(viewer && viewer.role==='teacher');
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
+      monsters:monsterViews(room),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
         templateId:pl.templateId,reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),

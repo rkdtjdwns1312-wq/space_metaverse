@@ -5,7 +5,7 @@ export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, b
   speed: 620, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
 // 상호작용: 행성·문 가장자리에서 이 거리 안에 있으면 살펴보기/나가기를 할 수 있습니다. 서버도 같은 값으로 검사합니다.
 export const INTERACT = Object.freeze({ radius: 40 });
-// 행성 규칙 편집 한도(선생님만 고칠 수 있음).
+// 행성 규칙 편집 한도(소속 친구와 선생님이 내부 규칙판 근처에서 수정).
 export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 });
 // 행성(부서)은 아이들이 직접 만듭니다. 학생이 지도에서 자리를 고르고 이름·소개·색을 정해 신청하면 선생님이 승인합니다.
 // 선생님은 바로 만들 수도, 없앨 수도 있습니다. 이름은 소속 학생들의 과반 투표로 바꿀 수 있습니다.
@@ -39,10 +39,10 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: { x: 1990, y: 720 }, color: '#d9c6f2', passable: true },
-    { id: 'shop', name: '별상점', x: 600, y: 300, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'shop', name: '별 상점', x: 600, y: 600, radius: 72, kind: 'shop', color: '#ffe59b' },
     ...[
-      ['memory','별 그림 짝 맞추기','#f2badb'],['sequence','숫자 이어가기','#b8d6fa'],
-      ['stars','반짝별 찾기','#ffdf9c'],['addition','덧셈 놀이터','#bce8cd'],['reaction','번쩍 반응 놀이','#cfbcf1']
+      ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
+      ['stars','반짝별 찾기','#ffdf9c'],['addition','숫자놀이터','#bce8cd'],['dodge','별 피하기','#cfbcf1']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
     { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' },
     { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' }
@@ -53,6 +53,8 @@ export const GARDEN = Object.freeze({id:'moon-garden',name:'태양이 머무는 
 ]});
 export const GARDEN_ID=GARDEN.id;
 export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
+  {id:'evolution-star',name:'진화의 별',x:600,y:480,radius:105,kind:'evolution',color:'#ffffff'},
+  {id:'growth-star',name:'성장의 별',x:930,y:480,radius:80,kind:'growth',color:'#ffd76d'},
   {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;

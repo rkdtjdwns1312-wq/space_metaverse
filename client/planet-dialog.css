@@ -1,0 +1,40 @@
+#planet-dialog {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  width: min(520px, calc(100vw - 32px));
+  box-sizing: border-box;
+}
+
+#planet-dialog[open] { display: flex; }
+#planet-dialog > * { margin: 0; }
+#planet-dialog > h2 { order: 1; }
+#planet-dialog > .planet-description-heading { order: 2; }
+#planet-dialog > #planet-description { order: 3; }
+#planet-dialog > #planet-member-count { order: 4; }
+#planet-dialog > #planet-members,
+#planet-dialog > #planet-members-empty { order: 5; }
+#planet-dialog > #planet-rules-toggle { order: 6; width: 100%; }
+#planet-dialog > #planet-rules { order: 7; }
+#planet-dialog > #planet-warnings { order: 8; }
+#planet-dialog > #planet-rename { order: 9; }
+#planet-dialog > #planet-work { order: 10; width: 100%; }
+#planet-dialog > .dialog-actions { order: 11; }
+
+#planet-dialog > .planet-description-heading,
+#planet-dialog > #planet-rules h3,
+#planet-dialog > #planet-rename h3 {
+  font-size: 14px;
+  color: #5d4795;
+}
+
+#planet-dialog > #planet-warnings { padding: 10px 12px; background: #f7f2ff; border-radius: 12px; }
+#planet-dialog > #planet-warnings summary { cursor: pointer; font-weight: 700; }
+#planet-dialog > #planet-warnings p { margin: 8px 0 0; color: #57536d; font-size: 13px; }
+#planet-dialog > #planet-rules-list { max-width: 100%; }
+#planet-dialog > .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 390px) {
+  #planet-dialog { width: calc(100vw - 20px); padding: 18px 14px; }
+  #planet-dialog > .dialog-actions button { flex: 1 1 auto; }
+}

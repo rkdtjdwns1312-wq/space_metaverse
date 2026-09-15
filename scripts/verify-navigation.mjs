@@ -70,21 +70,17 @@ try{
  for(const machine of STREET.objects.filter(o=>o.kind==='arcade')){
    Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+72});publish();await page.locator('#interact-prompt').filter({hasText:machine.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#arcade-dialog').waitFor({state:'visible'});
    const board=page.locator('#arcade-board');
-   if(machine.gameId==='sequence'){for(let n=1;n<=9;n++)await board.getByRole('button',{name:String(n),exact:true}).click();assert.equal(await board.locator('button:disabled').count(),9);}
-   if(machine.gameId==='stars'){for(let n=0;n<10;n++)await board.getByRole('button',{name:'⭐',exact:true}).click();await page.locator('#arcade-score').filter({hasText:'10 / 10'}).waitFor();}
-   if(machine.gameId==='addition'){for(let n=0;n<5;n++){const expression=await board.locator('p').textContent();const [a,b]=expression.match(/\d+/g).map(Number);await board.getByRole('button',{name:String(a+b),exact:true}).click();}assert.equal(await board.locator('button').count(),0);}
-   if(machine.gameId==='memory'){
-     const seen=new Map();
-     for(let i=0;i<8;i+=2){for(const j of [i,i+1]){const card=board.locator('button').nth(j);if(await card.getAttribute('data-state')!=='matched')await card.click();seen.set(j,await card.textContent());}await page.waitForTimeout(660);}
-     for(let i=0;i<8;i++){const card=board.locator('button').nth(i);if(await card.getAttribute('data-state')==='matched')continue;const other=[...seen].find(([j,v])=>j!==i&&v===seen.get(i));assert.ok(other);await card.click();await board.locator('button').nth(other[0]).click();}
-     await page.locator('#arcade-score').filter({hasText:'4쌍 / 4쌍'}).waitFor();
+   // 각 게임의 경계값·완료 조건은 전용 verify-*.mjs에서 검증합니다.
+   // 여기서는 실제 오락기 접근→정확한 게임 창→닫기 연결을 확인합니다.
+   assert.ok(await board.locator('button').count()>0);
+   if(machine.gameId==='stars'){
+     await board.locator('#star-start').click();
+     for(let n=0;n<10;n++){await board.getByRole('button',{name:'⭐',exact:true}).click();await board.locator('#star-timer').filter({hasText:(n+1)+' / 10'}).waitFor();}
+     await board.locator('#star-timer').filter({hasText:'10 / 10'}).waitFor();
+     await board.getByRole('button',{name:'랭킹 보기',exact:true}).click();
+     await board.locator('#star-ranking').filter({hasText:'1위'}).waitFor();
    }
-   if(machine.gameId==='reaction'){
-     await board.getByRole('button',{name:'시작',exact:true}).click();await board.locator('[data-state="waiting"]').click();
-     for(let n=0;n<3;n++)await board.locator('[data-state="ready"]').click();await page.locator('#arcade-score').filter({hasText:'3 / 3'}).waitFor();
-     await page.locator('#arcade-restart').click();await board.getByRole('button',{name:'시작',exact:true}).click();
-   }
-   await page.locator('#arcade-close').click();check('오락기 실제 실행·완료·닫기: '+machine.name);
+   await page.locator('#arcade-close').click();check('오락기 실제 접근·게임 창·닫기: '+machine.name);
  }
  await page.waitForTimeout(3200);assert.equal(await page.locator('#arcade-board').locator('button').count(),0);
  assert.deepEqual(errors,[]);await writeFile('.local/navigation-result.json',JSON.stringify({checks,errors},null,2));

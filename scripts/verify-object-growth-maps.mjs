@@ -3,7 +3,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createClassroomServer} from '../server/app.js';
-import {gainExperience} from '../server/progression.js';
+import {gainExperience,evolveAvatar} from '../server/progression.js';
 import {createAvatar,MAP,ORIGIN_MAPS,PLAZA_ID,mapOf} from '../shared/config.js';
 const game=createClassroomServer({teacherKey:'object-growth-maps-test-only-key',studentHours:false}),address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
@@ -18,12 +18,12 @@ try{
  async function aligned(){await page.waitForFunction(o=>{const c=document.getElementById('world'),r=document.getElementById('interact-prompt').getBoundingClientRect(),s=+c.dataset.viewScale,x=(o.x- +c.dataset.viewX)*s,y=(o.y-o.radius- +c.dataset.viewY)*s;return Math.abs(r.x+r.width/2-x)<2&&Math.abs(r.bottom-(y-12))<2;},pillar);}
  await aligned();p.x+=10;publish();await page.waitForTimeout(180);await aligned();await page.screenshot({path:'.local/object-prompt-desktop.png'});check('물체 바로 위 E 문구, 카메라 움직임과 같은 위치 추적');
  await page.locator('#world').focus();await page.keyboard.press('e');await page.locator('#temple-dialog').waitFor({state:'visible'});await prompt.waitFor({state:'hidden'});await page.locator('#temple-close').click();check('E 키 상호작용 유지·창이 열리면 안내 숨김');
- await page.setViewportSize({width:390,height:844});await prompt.waitFor({state:'visible'});const box=await prompt.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390&&box.y>=0&&box.y+box.height<=844);await page.screenshot({path:'.local/object-prompt-mobile.png'});await prompt.tap();await page.locator('#temple-dialog').waitFor({state:'visible'});await page.locator('#temple-close').click();
+ await page.setViewportSize({width:390,height:844});await prompt.waitFor({state:'visible'});await page.waitForFunction(()=>{const r=document.getElementById('interact-prompt').getBoundingClientRect();return r.x>=0&&r.right<=innerWidth&&r.y>=0&&r.bottom<=innerHeight;});const box=await prompt.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390&&box.y>=0&&box.y+box.height<=844);await page.screenshot({path:'.local/object-prompt-mobile.png'});await prompt.tap();await page.locator('#temple-dialog').waitFor({state:'visible'});await page.locator('#temple-close').click();
  Object.assign(p,{x:300,y:1100});publish();await prompt.waitFor({state:'hidden'});assert.equal(await page.locator('#touch-interact').isDisabled(),true);check('휴대폰 물체 안내 잘림 없음·터치로 열기·멀어지면 사라짐');
  await page.locator('#dock-avatar').click();
  for(const [level,xp,denominator] of [[1,14,15],[2,5,20],[3,7,25],[4,8,30],[5,39,40]]){p.avatar={...createAvatar(),level,xp};publish();await page.locator('#self-xp').filter({hasText:xp+' / '+denominator}).waitFor();assert.equal(await page.locator('#experience-bar').getAttribute('max'),String(denominator));}
  await page.locator('#experience-next').filter({hasText:'초월체까지 1 남았어요.'}).waitFor();assert.equal(await page.locator('#avatar-card > :last-child').getAttribute('id'),'experience-panel');await page.screenshot({path:'.local/experience-lv5.png'});
- p.avatar=gainExperience(p.avatar,1);publish();await page.locator('#self-level').filter({hasText:'초월체'}).waitFor();await page.locator('#self-xp').filter({hasText:'최고 단계'}).waitFor();check('경험치 5단계 기준·정보 맨 아래 막대·LV5 다음 초월체 표시');await page.keyboard.press('Escape');
+ p.avatar=evolveAvatar(gainExperience(p.avatar,1));publish();await page.locator('#self-level').filter({hasText:'초월체'}).waitFor();await page.locator('#self-xp').filter({hasText:'최고 단계'}).waitFor();check('경험치 5단계 기준·정보 맨 아래 막대·LV5 다음 초월체 표시');await page.keyboard.press('Escape');
  await page.setViewportSize({width:1440,height:960});
  for(const target of [...ORIGIN_MAPS.map(m=>m.id),ORIGIN_MAPS[1].id,ORIGIN_MAPS[0].id,PLAZA_ID]){
    const gate=mapOf(p.mapId,room.planets.values()).objects.find(o=>o.target===target);assert.ok(gate);Object.assign(p,{x:gate.x,y:gate.y});publish();await page.locator('#interact-object').filter({hasText:gate.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:mapOf(target).name}).waitFor();assert.equal(p.mapId,target);

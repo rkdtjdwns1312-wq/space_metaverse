@@ -45,7 +45,7 @@ async function worldClick(page,mx,my){
 // player's real position straight from the in-process server room (not an assumed spawn point,
 // since earlier movement/touch/mouse checks may have already nudged it), until the interact
 // prompt appears or the timeout elapses.
-async function walkNear(page,player,target,{timeoutMs=20000}={}){
+async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
   await closeOpenDialogs(page);await page.locator("#world").focus();
   const held=new Set();
   const wanted=()=>{
@@ -60,9 +60,11 @@ async function walkNear(page,player,target,{timeoutMs=20000}={}){
       const need=wanted();
       for(const code of need)if(!held.has(code)){await page.keyboard.down(code);held.add(code);}
       for(const code of [...held])if(!need.has(code)){await page.keyboard.up(code);held.delete(code);}
-      if(Math.hypot(player.x-target.x,player.y-target.y)<130&&await page.evaluate(()=>!document.getElementById('interact-prompt').hidden))return;
+      const distance=Math.hypot(player.x-target.x,player.y-target.y);
+      if(waypoint?distance<45:distance<130&&await page.evaluate(()=>!document.getElementById('interact-prompt').hidden))return;
       await page.waitForTimeout(100);
     }
+    throw new Error('걷기 경로를 확인해주세요: '+JSON.stringify({at:{x:player.x,y:player.y,mapId:player.mapId},target}));
   }finally{
     for(const code of held){await page.keyboard.up(code);held.delete(code);}
   }
@@ -331,19 +333,22 @@ try{
  assert.notEqual(studentCanvasBeforeEnter,studentCanvasAfterEnter);
  check('Entering the planet shows the interior caption, updates the teacher roster, and redraws the student canvas');
 
- // Item 7: the teacher clicks the planet directly on the plaza map (new feature) instead of
- // walking over, edits its rules from there, and students see the announcement.
+ // 외부 행성 정보는 읽기 전용입니다. 소속 학생이 내부 규칙판 가까이에서 수정합니다.
  await worldClick(teacher,cafeteria.x,cafeteria.y);
  await teacher.locator('#planet-dialog').waitFor({state:'visible'});
  await teacher.locator('#planet-title').filter({hasText:'급식행성'}).waitFor({state:'attached'});
  check('Teacher clicking an existing planet on the map opens its info dialog directly (no walking required)');
  await teacher.locator('#planet-rules-toggle').click();
- await teacher.locator('#planet-rules-input').fill('줄을 서지 않으면 경고를 받아요\n급식 도구는 제자리에');
- await teacher.locator('#planet-rules-save').click();
+ assert.equal(await teacher.locator('#planet-rules-editor').isVisible(),false);
+ await walkNear(student,p,{x:600,y:150,radius:80});
+ await student.locator('#world').focus();await student.keyboard.press('e');
+ await student.locator('#rules-edit-dialog').waitFor({state:'visible'});
+ await student.locator('#rules-edit-input').fill('줄을 서지 않으면 경고를 받아요\n급식 도구는 제자리에');
+ await student.locator('#rules-edit-save').click();await student.locator('#rules-edit-dialog').waitFor({state:'hidden'});
  // 저장 전 목록에 종류 기본 규칙 3줄이 이미 있으므로, 서버 스냅샷이 반영되어 정확히 2줄이 될 때까지 기다립니다.
  await teacher.waitForFunction(()=>document.querySelectorAll('#planet-rules-list li').length===2,{timeout:5000});
  assert.equal(await teacher.locator('#planet-rules-list li').count(),2);
- check('Teacher edits planet rules to two lines from the dialog opened by a map click');
+ check('Outside rules are read-only; a member edits two lines at the interior rules board');
  await student.locator('#chat-log li').filter({hasText:'규칙을 바꿨어요'}).waitFor({state:'attached'});
  check('Students are notified in chat that the planet rules changed');
  await teacher.locator('#planet-close').click();
@@ -494,6 +499,8 @@ try{
 
  // Item 4: the star shop.
  const shopObj=STREET.objects.find(o=>o.id==='shop');
+ // 아래쪽으로 옮긴 상점은 가로등을 돌아, 가운데 통로에서 접근합니다.
+ await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('e');
@@ -763,6 +770,7 @@ try{
  // returns as soon as ANY prompt is visible) so it does not return immediately without moving.
  await holdKey(student,'ArrowRight',400); // 새 도착점은 왼쪽 문 앞이므로 먼저 문에서 떨어집니다.
  await student.locator('#interact-prompt').waitFor({state:'hidden'});
+ await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('e');

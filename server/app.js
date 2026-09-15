@@ -11,6 +11,12 @@ import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } 
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveDaily,weeklyRewards,recordReward} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
+import {moveMonsters,monsterViews,nearbyMonster} from './monsters.js';
+import {monsterType} from '../shared/monsters.js';
+import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
+import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
+import {currentWeekRecords} from './weekly-ranking.js';
+import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -235,6 +241,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         if(!(error instanceof GameError)) console.error('Action failed:',name,error.message);
         ack({ok:false,error:error instanceof GameError?error.message:'처리하지 못했어요. 다시 시도해주세요.'});
       }
+    });
+    action('monster:info',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const monster=nearbyMonster(s.room,s.player,data.monsterId);
+      return {monster:{...monsterType(monster.typeId),radius:monster.radius},huntingEnabled:false};
     });
     const enter=session=>{
       const credentials=session.credentials;delete session.credentials;
@@ -555,11 +566,21 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return {...departmentChanged(s),completed:result.completed};
     });
     action('department:cancel',data=>{const s=departmentAccess(data);cancelDistribution(s.room,s.planet,s.player.id);return departmentChanged(s);});
-    action('planet:rules:set',data=>{
+    const rulesBoardAccess=data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
-      ensure(p.role==='teacher','선생님만 할 수 있어요.');
       const planet=requirePlanet(room,data);
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'이 행성에 소속된 친구만 규칙을 수정할 수 있어요.');
+      const mapId=interiorIdOf(planet.id),board=mapOf(mapId).objects.find(o=>o.kind==='board');
+      ensure(p.mapId===mapId&&board&&isNear(p,board),'행성 안의 규칙판 가까이에서 수정해주세요.');
+      return {room,player:p,planet};
+    };
+    action('planet:rules:open',data=>{
+      const {planet}=rulesBoardAccess(data);return {planetId:planet.id,name:planet.name,rules:[...planet.rules]};
+    });
+    action('planet:rules:set',data=>{
+      const {room,player:p,planet}=rulesBoardAccess(data);
+      ensure(Array.isArray(data.expectedRules)&&JSON.stringify(data.expectedRules)===JSON.stringify(planet.rules),'다른 친구가 규칙을 바꿨어요. 창을 닫고 다시 열어 확인해주세요.');
       ensure(Array.isArray(data.rules) && data.rules.length>=1 && data.rules.length<=DEPARTMENT_RULES.maxLines,
         '규칙은 1~8줄, 한 줄 40자 이내로 적어주세요.');
       const rules=data.rules.map(line=>typeof line==='string'?line.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'');
@@ -570,7 +591,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!invalid,'규칙은 1~8줄, 한 줄 40자 이내로 적어주세요.');
       planet.rules=rules;
       roster(room);
-      announce(room,'선생님이 '+planet.name+'의 규칙을 바꿨어요.');
+      announce(room,(p.role==='teacher'?'선생님이':p.nickname+' 친구가')+' '+planet.name+'의 규칙을 바꿨어요.');
       return {};
     });
     action('planet:rename:propose',data=>{
@@ -668,6 +689,38 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const machine=STREET.objects.find(o=>o.kind==='arcade'&&o.id===data.objectId);
       ensure(machine&&s.player.mapId===STREET_ID&&isNear(s.player,machine),'오락기에 더 가까이 가주세요.');
       return {gameId:machine.gameId};
+    });
+    const avatarSession=()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return s;};
+    action('evolution:info',()=>{const s=avatarSession();return evolutionInfo(s.room,s.player);});
+    action('evolution:change',data=>{const s=avatarSession(),result=changeConstellation(s.room,s.player,data);roster(s.room);return result;});
+    action('evolution:evolve',data=>{const s=avatarSession(),result=evolveConstellation(s.room,s.player,data);roster(s.room);return result;});
+    action('growth:info',()=>{const s=avatarSession();return growthInfo(s.room,s.player);});
+    action('growth:buy',data=>{const s=avatarSession(),result=buyExperience(s.room,s.player,data);roster(s.room);return result;});
+    const starAccess=()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(o=>o.gameId==='stars');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'반짝별 찾기 오락기 가까이에서 이용해주세요.');return s;
+    };
+    action('stars:ranking',()=>{const s=starAccess();return {ranking:starRanking(s.room)};});
+    action('stars:start',()=>{const s=starAccess();return startStarRun(s.room,s.player);});
+    action('stars:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelStarRun(s.room,s.player,data.runId);return {};});
+    action('stars:click',data=>{
+      const s=starAccess(),result=clickStar(s.room,s.player,data);
+      if(result.done)deliver(()=>io.to(s.room.code).emit('stars:ranking',{ranking:result.ranking}));
+      return result;
+    });
+    const dodgeAccess=()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(o=>o.gameId==='dodge');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'별 피하기 오락기 가까이에서 이용해주세요.');return s;
+    };
+    action('dodge:ranking',()=>{const s=dodgeAccess();return {ranking:dodgeRanking(s.room)};});
+    action('dodge:start',()=>{const s=dodgeAccess();return startDodgeRun(s.room,s.player);});
+    action('dodge:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelDodgeRun(s.room,s.player,data.runId);return {};});
+    // 방향 입력에는 디스크 저장이 필요 없습니다. 점수와 충돌 판정은 서버가 계산합니다.
+    socket.on('dodge:input',data=>{
+      const s=socket.data.session;if(!s||!data||typeof data!=='object'||(s.player.role==='student'&&!studentOpen()))return;
+      setDodgeInput(s.room,s.player,data);
     });
     const requireShop=p=>{
       ensure(p.mapId===STREET_ID,'별상점은 오색별빛 쉼터에 있어요.');
@@ -986,8 +1039,35 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
       advance(room,now);
+      moveMonsters(room,now);
+      let dodgeSaveFailed=false;
+      for(const update of advanceDodgeRuns(room)){
+        const player=room.players.get(update.playerId);if(!player?.connected)continue;
+        if(update.finished){
+          if(now<(room.dodgeSaveRetryAt||0))continue;
+          try{transaction(()=>{
+            const result=completeDodgeRun(room,player,update.state.runId);
+            deliver(()=>io.to(player.socketId).emit('dodge:state',{...update,result}));
+            deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:result.ranking}));
+          });}catch(error){
+            const restored=store.rooms.get(room.code);if(restored)restored.dodgeSaveRetryAt=now+5000;
+            io.to(player.socketId).emit('dodge:state',{...update,error:error.message});
+            console.error('별 피하기 기록 저장 실패:',error.message);dodgeSaveFailed=true;break;
+          }
+        }else io.to(player.socketId).volatile.emit('dodge:state',update);
+      }
+      // 롤백은 room 객체도 교체하므로 실패 전 참조로 아래 작업을 계속하지 않습니다.
+      if(dodgeSaveFailed)continue;
       // 1초에 한 번(50ms tick 20회) 만료된 아이템 효과를 지웁니다. 하나라도 지웠으면 스냅샷을 다시 보냅니다.
       if(step%20===0){
+        // 열린 랭킹 창도 한국 시간 월요일 0시를 지나면 즉시 비웁니다.
+        if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
+          try{transaction(()=>{
+            room.starRanking=currentWeekRecords(room.starRanking||[]);room.dodgeRanking=currentWeekRecords(room.dodgeRanking||[]);
+            deliver(()=>io.to(room.code).emit('stars:ranking',{ranking:starRanking(room)}));
+            deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:dodgeRanking(room)}));
+          });}catch(error){const restored=store.rooms.get(room.code);if(restored)restored.rankingRetryAt=now+5000;console.error('주간 순위 초기화 저장 실패:',error.message);continue;}
+        }
         let effectsChanged=false;
         for(const p of room.players.values()){
           if(!p.effects.length) continue;
@@ -1006,6 +1086,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]) positions.push(point);
         }
         if(positions.length)io.to(room.code).volatile.emit('world:positions',{positions});
+        // 몬스터는 같은 교실 안에서 공유하되 현재 맵의 그림만 클라이언트가 표시합니다.
+        io.to(room.code).volatile.emit('world:monsters',{monsters:monsterViews(room)});
         previous.set(room.code,next);
       }
     }

@@ -1,0 +1,36 @@
+.star-dialog {
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 24px));
+  max-width: 100%;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  color: #49365f;
+  border: 3px solid #a88acb;
+  border-radius: 20px;
+  background: #fffafd;
+  box-shadow: 0 16px 44px #3d285b55;
+}
+.star-dialog::backdrop { background: #241c3a99; }
+.star-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.star-dialog h2, .star-dialog h3 { margin: 0.25rem 0; }
+.star-dialog button { min-width: 0; overflow-wrap: anywhere; }
+.temporary-art-note { padding: 8px 10px; border-radius: 10px; background: #f4edf9; color: #6f5a83; }
+#evolution-menu { display: grid; gap: 10px; }
+.constellation-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.constellation-choice { display: grid; justify-items: center; gap: 3px; padding: 10px 4px; border: 2px solid color-mix(in srgb, var(--constellation-color), #72598e 30%); background: color-mix(in srgb, var(--constellation-color), white 73%); color: #40304f; }
+.constellation-choice.current { outline: 3px solid #76529f; outline-offset: -3px; }
+.constellation-choice:disabled { filter: grayscale(0.75); opacity: 0.55; }
+.constellation-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 25px; background: var(--constellation-color); color: white; text-shadow: 0 1px 2px #39264c88; }
+.constellation-name { font-size: 0.92rem; line-height: 1.15; }
+.constellation-count { font-size: 0.75rem; color: #6f5b7d; }
+.growth-info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.growth-info p { display: flex; justify-content: space-between; gap: 8px; margin: 0; padding: 9px; border-radius: 10px; background: #fff2bf; }
+#growth-amount { box-sizing: border-box; width: 100%; max-width: 220px; }
+@media (max-width: 440px) {
+  .star-dialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); padding: 12px; }
+  .constellation-grid { gap: 4px; }
+  .constellation-choice { padding: 7px 2px; font-size: 0.82rem; }
+  .constellation-icon { width: 32px; height: 32px; font-size: 20px; }
+  .constellation-count { font-size: 0.65rem; }
+  .growth-info { grid-template-columns: 1fr; }
+}

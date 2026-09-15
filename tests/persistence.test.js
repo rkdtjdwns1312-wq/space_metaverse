@@ -9,9 +9,9 @@ import net from 'node:net';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { PersistentRoomStore } from '../server/persistent-rooms.js';
-import { gainExperience } from '../server/progression.js';
+import { evolveAvatar, gainExperience } from '../server/progression.js';
 import { unlockStoppedStore } from '../server/store-lock.js';
-import { PLAZA_ID, STREET_ID, STREET, SHOP } from '../shared/config.js';
+import { PLAZA_ID, STREET_ID, STREET, SHOP, interiorIdOf, mapOf } from '../shared/config.js';
 
 const key='persistence-tests-private-teacher-key';
 const call=(s,event,data={})=>s.timeout(5000).emitWithAck(event,data);
@@ -42,7 +42,12 @@ test('초월체 단계와 경험치가 서버 재시작 뒤에도 복원된다',
   const f=await fixture(t),{code}=await classroom(f),s=await f.connect();
   const joined=await join(s,code);assert.ok(joined.ok);
   const p=f.game.store.rooms.get(code).players.get(joined.selfId);
-  f.game.store.transact(()=>{p.avatar=gainExperience(p.avatar,130);});
+  f.game.store.transact(()=>{
+    for(const amount of [15,20,25,30,40]){
+      p.avatar=gainExperience(p.avatar,amount);
+      p.avatar=evolveAvatar(p.avatar);
+    }
+  });
   await f.restart();await open(await f.connect(),code);
   const back=await join(await f.connect(),code);assert.ok(back.ok,back.error);
   const avatar=back.room.players.find(p=>p.id===back.selfId).avatar;
@@ -65,7 +70,13 @@ test('수업 마치기/서버 재시작 후 코드·학생 id·행성·소속·�
   let room=f.game.store.rooms.get(code),p=room.players.get(j.selfId);
   const planet=[...room.planets.values()][0];
   assert.equal((await call(student,'planet:join',{planetId:planet.id})).ok,true);
-  assert.equal((await call(teacher,'planet:rules:set',{planetId:planet.id,rules:['책은 소중히']})).ok,true);
+  const board=mapOf(interiorIdOf(planet.id)).objects.find(o=>o.kind==='board');assert.ok(board);
+  const teacherPlayer=[...room.players.values()].find(x=>x.role==='teacher');
+  teacherPlayer.mapId=interiorIdOf(planet.id);teacherPlayer.x=board.x;teacherPlayer.y=board.y;
+  const initialRules=structuredClone(planet.rules);
+  const openedRules=await call(teacher,'planet:rules:open',{planetId:planet.id});
+  assert.equal(openedRules.ok,true);assert.deepEqual(openedRules,{ok:true,rules:initialRules,planetId:planet.id,name:planet.name});
+  assert.equal((await call(teacher,'planet:rules:set',{planetId:planet.id,rules:['책은 소중히'],expectedRules:initialRules})).ok,true);
   assert.equal((await call(teacher,'shards:give',{playerId:p.id,amount:100})).ok,true);
   // 위치만 테스트에서 상점 앞으로 옮깁니다. 구매 자체는 실제 서버 요청으로 검사합니다.
   p.mapId=STREET_ID;const shop=STREET.objects.find(o=>o.kind==='shop');

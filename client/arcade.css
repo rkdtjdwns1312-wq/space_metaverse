@@ -1,1 +1,61 @@
-#arcade-dialog{width:min(560px,calc(100vw - 24px));padding:24px;background:#fffaff;color:#51456d;border:3px solid #eadcf7;border-radius:28px;box-shadow:0 18px 60px #78669a44}#arcade-dialog::backdrop{background:#33264d66}#arcade-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}#arcade-title{margin:0;color:#70549b;font-size:28px}#arcade-dialog button{min-height:54px;padding:12px 18px;border:3px solid #dacaf0;border-radius:18px;background:#f2edff;color:#5d4b83;font:inherit;font-size:20px;cursor:pointer;touch-action:manipulation}#arcade-dialog button:hover{filter:brightness(.98);transform:translateY(-1px)}#arcade-dialog button:focus-visible{outline:4px solid #f4bd62;outline-offset:2px}#arcade-close,#arcade-restart{background:#fff0f4!important;border-color:#f2c9d5!important;font-size:17px!important}#arcade-instructions{margin:14px 0 6px;font-size:17px;line-height:1.5}#arcade-score{margin:0 0 14px;color:#9a6d35;font-weight:700;font-size:18px}#arcade-board{display:grid;grid-template-columns:repeat(4,minmax(58px,1fr));gap:12px;min-height:210px;align-content:center;padding:16px;border:3px dashed #e6d9f4;border-radius:22px;background:#f8f5ff}#arcade-board button{min-height:76px;background:#e5f6f2;border-color:#bde3da;font-size:30px}#arcade-board button[data-state=hidden]{background:#dcd4f5;color:transparent}#arcade-board button[data-state=matched],#arcade-board button[data-state=done]{background:#fff0c9;border-color:#f1d184}#arcade-board p{grid-column:1/-1;text-align:center;font-size:32px;color:#7757a0}#arcade-board .arcade-go{background:#8bd8a2;border-color:#4ba96a;color:#174d2a}#arcade-restart{display:block;margin:18px auto 0}@media(max-width:430px){#arcade-dialog{padding:18px}#arcade-title{font-size:23px}#arcade-dialog button{font-size:17px;min-height:48px;padding:9px 12px}#arcade-board{gap:8px;padding:10px}#arcade-board button{min-height:62px;font-size:25px}}
+#arcade-dialog{
+  box-sizing:border-box;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:24px;
+  background:#fffaff;color:#51456d;border:3px solid #eadcf7;border-radius:28px;box-shadow:0 18px 60px #78669a44;
+}
+#arcade-dialog::backdrop{background:#33264d66}
+#arcade-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#arcade-title{margin:0;color:#70549b;font-size:28px}
+#arcade-dialog button{
+  box-sizing:border-box;min-width:0;min-height:54px;padding:12px 18px;border:3px solid #dacaf0;border-radius:18px;
+  background:#f2edff;color:#5d4b83;font:inherit;font-size:20px;cursor:pointer;touch-action:manipulation;
+}
+#arcade-dialog button:hover:not(:disabled){filter:brightness(.98);transform:translateY(-1px)}
+#arcade-dialog button:disabled{cursor:default;opacity:.68}
+#arcade-dialog button:focus-visible,#arcade-dialog input:focus-visible{outline:4px solid #f4bd62;outline-offset:2px}
+#arcade-close,#arcade-restart{background:#fff0f4!important;border-color:#f2c9d5!important;font-size:17px!important}
+#arcade-instructions{margin:14px 0 6px;font-size:17px;line-height:1.5}
+#arcade-score{margin:0 0 14px;color:#9a6d35;font-weight:700;font-size:18px}
+#arcade-board{
+  box-sizing:border-box;display:block;min-width:0;min-height:210px;overflow:hidden;padding:16px;
+  border:3px dashed #e6d9f4;border-radius:22px;background:#f8f5ff;
+}
+#arcade-board p{margin:10px 0;text-align:center;color:#7757a0}
+#arcade-board button[data-state=matched],#arcade-board button[data-state=done]{background:#fff0c9;border-color:#f1d184}
+#arcade-board .arcade-go{background:#8bd8a2;border-color:#4ba96a;color:#174d2a}
+#arcade-restart{display:block;margin:18px auto 0}
+
+.memory-game{display:grid;gap:12px;min-width:0}
+.memory-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.memory-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#arcade-board .memory-level,#arcade-board .memory-start{min-height:48px;padding:8px 6px;font-size:16px}
+#arcade-board [aria-pressed=true]{background:#d9cdf7;border-color:#8a70ba;color:#3f2d64;box-shadow:inset 0 0 0 1px #8a70ba}
+.memory-grid{
+  display:grid;grid-template-columns:repeat(var(--memory-columns,1),minmax(0,1fr));grid-template-rows:repeat(var(--memory-rows,1),minmax(44px,auto));
+  gap:7px;min-width:0;
+}
+#arcade-board .memory-card{position:relative;min-width:0;min-height:54px;overflow:hidden;padding:4px;background:#e5f6f2;border-color:#bde3da;font-size:28px}
+.memory-card[data-state=hidden]{background:#dcd4f5!important}
+.memory-card[data-state=hidden] .memory-picture{visibility:hidden}
+.memory-card[data-state=hidden]::after{position:absolute;inset:0;display:grid;place-items:center;content:'?';color:#74639e;font-weight:800}
+
+.baseball-game{display:grid;gap:12px;min-width:0}
+.baseball-levels,.baseball-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.baseball-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+#arcade-board .baseball-level,#arcade-board .baseball-actions button{min-height:48px;padding:8px 6px;font-size:16px}
+.baseball-form{display:grid;gap:8px}
+#baseball-input{box-sizing:border-box;width:100%;min-width:0;padding:11px;border:3px solid #d5c8e9;border-radius:14px;background:#fff;color:#46375f;text-align:center;font:inherit;font-size:28px;letter-spacing:.18em}
+#arcade-board .baseball-feedback{min-height:24px;margin:0;font-size:16px}
+.baseball-game h3{margin:2px 0 0;font-size:17px}
+#baseball-attempts{box-sizing:border-box;max-height:190px;overflow:auto;margin:0;padding:0 0 0 30px}
+#baseball-attempts li{margin:5px 0;font-size:15px;line-height:1.35}
+
+@media(max-width:430px){
+  #arcade-dialog{padding:16px;border-radius:22px}
+  #arcade-title{font-size:23px}
+  #arcade-dialog button{min-height:48px;padding:9px 10px;font-size:17px}
+  #arcade-board{min-width:0;padding:9px}
+  .memory-controls{grid-template-columns:1fr}
+  .memory-grid{gap:4px}
+  #arcade-board .memory-card{min-width:0;min-height:44px;padding:1px;font-size:clamp(19px,6vw,25px);border-width:2px;border-radius:11px}
+  #arcade-board .memory-level,#arcade-board .memory-start,#arcade-board .baseball-level,#arcade-board .baseball-actions button{padding:6px 3px;font-size:14px}
+}

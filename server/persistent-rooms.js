@@ -5,6 +5,8 @@ import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import { spawnPosition } from './world.js';
+import {validateStarRanking} from './star-game.js';
+import {validateDodgeRanking} from './dodge-game.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 export const PIN_RULES = { attempts:5, lockMs:60_000 };
@@ -35,6 +37,8 @@ function offline(p) {
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     temple:structuredClone(room.temple),
+    starRanking:structuredClone(room.starRanking||[]),
+    dodgeRanking:structuredClone(room.dodgeRanking||[]),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
@@ -55,6 +59,8 @@ export function fromRecord(r) {
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
     temple:validateTemple(r.temple),
+    starRanking:validateStarRanking(r.starRanking),
+    dodgeRanking:validateDodgeRanking(r.dodgeRanking),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
     itemLog:structuredClone(r.itemLog),tradeLog:structuredClone(r.tradeLog),trades:new Map()};
   for(const pl of r.planets){
