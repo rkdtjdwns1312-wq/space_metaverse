@@ -4,5 +4,6 @@ data/
 .env.*
 !.env.example
 .local/
+/교사확인키.txt
 .sites-runtime/
 *.log
