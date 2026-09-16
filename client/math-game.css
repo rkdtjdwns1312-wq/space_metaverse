@@ -25,6 +25,12 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.math-ops .math-choice {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
 .math-game button {
   min-width: 0;
   min-height: 46px;

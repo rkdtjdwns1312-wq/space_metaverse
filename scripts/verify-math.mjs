@@ -162,6 +162,12 @@ try {
 
   for (const label of Object.values(operations)) await page.getByRole('button', {name: label, exact: true}).waitFor();
   for (const label of Object.values(difficulties)) await page.getByRole('button', {name: label, exact: true}).waitFor();
+  const divideLabelLayout = await page.getByRole('button', {name: operations.divide, exact: true}).evaluate(button => {
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    return {lines: range.getClientRects().length, whiteSpace: getComputedStyle(button).whiteSpace};
+  });
+  assert.deepEqual(divideLabelLayout, {lines: 1, whiteSpace: 'nowrap'});
   assert.equal(await page.getByRole('button', {name: operations.plus, exact: true}).getAttribute('aria-pressed'), 'true');
   assert.equal(await page.getByRole('button', {name: difficulties.low, exact: true}).getAttribute('aria-pressed'), 'true');
   await page.getByRole('button', {name: difficulties.high, exact: true}).click();
@@ -169,7 +175,7 @@ try {
   await page.getByRole('button', {name: operations.divide, exact: true}).click();
   await page.getByRole('button', {name: difficulties.low, exact: true}).click();
   assert.match(await page.locator('.math-guide').textContent(), /정식 나눗셈은 초등 3학년부터.*20개 이하.*2~5명/);
-  check('한글 연산명+기호·하중상·선택 상태·학년군 안내 표시');
+  check('한글 연산명+기호를 한 줄로 표시하고 하중상·선택 상태·학년군 안내 표시');
 
   const chooseAndStart = async (operation, difficulty) => {
     await page.getByRole('button', {name: operations[operation], exact: true}).click();

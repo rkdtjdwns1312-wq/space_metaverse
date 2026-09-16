@@ -63,7 +63,7 @@ export function createMemoryGame({board,setScore=()=>{},toast=()=>{},random=Math
     for(const button of levelGroup.children)button.setAttribute('aria-pressed',String(button.dataset.level===level.id));
     grid.replaceChildren();grid.removeAttribute('data-rows');grid.removeAttribute('data-columns');grid.setAttribute('aria-label',`${level.rows}행 ${level.columns}열, 시작 전`);
     startButton.disabled=false;startButton.textContent='시작';
-    setScore(`${level.name} · ${level.rows}행 ${level.columns}열 · 시작 전`);
+    setScore(`${level.name} · 시작 전`);
   };
   const start=()=>{
     if(!level||destroyed)return;
@@ -101,7 +101,7 @@ export function createMemoryGame({board,setScore=()=>{},toast=()=>{},random=Math
   };
 
   for(const item of LEVELS){
-    const button=document.createElement('button');button.type='button';button.className='memory-level';button.dataset.level=item.id;button.setAttribute('aria-pressed','false');button.textContent=`${item.name} (${item.rows}행 ${item.columns}열)`;button.addEventListener('click',()=>selectLevel(item));levelGroup.append(button);
+    const button=document.createElement('button');button.type='button';button.className='memory-level';button.dataset.level=item.id;button.setAttribute('aria-pressed','false');button.textContent=item.name;button.addEventListener('click',()=>selectLevel(item));levelGroup.append(button);
   }
   startButton.addEventListener('click',start);setScore('난이도를 선택하세요 · 시작 전');
 
