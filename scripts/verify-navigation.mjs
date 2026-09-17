@@ -3,7 +3,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createClassroomServer} from '../server/app.js';
-import {MAP,STREET,VALLEY,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
+import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
 import {addPlanet} from '../server/world.js';
 const key='navigation-test-only-private-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
@@ -23,7 +23,7 @@ try{
  await page.locator('#minimap-toggle').click();
  assert.equal(await page.locator('#minimap').isVisible(),true);assert.equal(await page.locator('#minimap-title').isVisible(),true);assert.equal(await page.locator('#map-overview').isVisible(),true);assert.equal(await page.locator('#minimap-toggle').textContent(),'맵 닫기');assert.equal(await page.locator('#minimap-toggle').getAttribute('aria-expanded'),'true');check('미니맵 접기·지도 보기로 다시 열기');
  await page.locator('#map-overview').click();await page.locator('#universe-dialog').waitFor({state:'visible'});
- assert.equal(await page.locator('#universe-links button').count(),7);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),PLAZA_ID);
+ assert.equal(await page.locator('#universe-links button').count(),Object.keys(STATIC_MAPS).length);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),PLAZA_ID);
  await page.locator('#universe-links [data-map-id="'+GARDEN_ID+'"]').click();assert.equal(p.mapId,PLAZA_ID);assert.equal(await page.locator('#universe-preview').getAttribute('data-has-player'),'false');
  await page.locator('#universe-close').click();await page.waitForFunction(()=>document.activeElement.id==='world');
  await page.locator('#map-overview').click();await page.keyboard.press('Escape');await page.locator('#universe-dialog').waitFor({state:'hidden'});check('연결 맵과 현위치 표시, 지도 선택은 이동하지 않음, 닫기·Esc');
@@ -61,7 +61,8 @@ try{
  for(const id of ['pillar-notice','pillar-timetable','pillar-effects','pillar-weekly']){
    const pillar=MAP.objects.find(o=>o.id===id);Object.assign(p,{mapId:PLAZA_ID,x:pillar.x+65,y:pillar.y});publish();
    await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor({state:'visible'});await page.locator('#touch-interact').tap();await page.locator('#temple-title').filter({hasText:pillar.name}).waitFor();
-   if(['notice','timetable'].includes(pillar.service)){await page.locator('#temple-editor').waitFor({state:'visible'});await page.locator('#temple-editor').fill('오늘도 즐겁게\n함께 배워요');await page.locator('#temple-save').click();await page.locator('#temple-content').filter({hasText:'오늘도 즐겁게'}).waitFor();}
+   if(pillar.service==='notice'){await page.locator('#temple-editor').waitFor({state:'visible'});await page.locator('#temple-editor').fill('오늘도 즐겁게\n함께 배워요');await page.locator('#temple-save').click();await page.locator('#temple-content').filter({hasText:'오늘도 즐겁게'}).waitFor();}
+   else if(pillar.service==='timetable'){await page.getByRole('textbox',{name:'월요일 1교시 과목'}).fill('우주과학');await page.locator('#temple-save').click();await page.locator('#toast').filter({hasText:'시간표를 저장했어요'}).waitFor();assert.equal(room.temple.schedule[0][0],'우주과학');}
    else await page.locator('#temple-content').filter({hasText:/없어요/}).waitFor();
    await page.locator('#temple-close').click();
  }

@@ -9,7 +9,7 @@ import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, a
 import { filterChat } from './chat-filter.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
-import {readDaily,saveDaily,weeklyRewards,recordReward} from './temple.js';
+import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,nearbyMonster} from './monsters.js';
 import {monsterType} from '../shared/monsters.js';
@@ -17,8 +17,10 @@ import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
+import {warningView,issueWarning,clearBlackStar,blackStarList} from './warnings.js';
+import {addTask,completeTask} from './tasks.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
-  MAP, STREET, STREET_ID, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
+  MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -428,7 +430,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const student=room.players.get(proposal.playerId);
       if(student){
         const previousId=student.avatar.departmentId;
-        if(student.mapId!==PLAZA_ID){
+        if(student.mapId!==PLAZA_ID&&!student.avatar.blackStar){
           const previousPlanet=room.planets.get(previousId);
           Object.assign(student,exitPosition(room,previousPlanet||planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
         }
@@ -469,6 +471,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s;
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
       const planet=requirePlanet(room,data);
+      for(const player of room.players.values())if(player.avatar.blackStar?.planetId===planet.id)clearBlackStar(room,player);
       room.planets.delete(planet.id);
       const mapId=interiorIdOf(planet.id);
       for(const player of room.players.values()){
@@ -637,13 +640,60 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(typeof data.to==='string' && Object.prototype.hasOwnProperty.call(STATIC_MAPS,data.to),'그런 곳은 없어요.');
+      ensure(!p.avatar.blackStar || data.to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
       const here=mapOf(p.mapId,room.planets.values());
-      const gate=here.objects.find(o=>o.kind==='gate' && o.target===data.to);
+      const gate=here.objects.find(o=>(o.kind==='gate'||o.kind==='black-hole') && o.target===data.to);
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
       ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
       Object.assign(p,arrivePosition(room,data.to,gate.arrival),{mapId:data.to,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
+    });
+    const warningRockAccess=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const planet=requirePlanet(s.room,data),p=s.player;
+      ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 경고 돌덩이를 이용할 수 있어요.');
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'소속 학생만 이 부서의 경고를 줄 수 있어요.');
+      const rock=mapOf(p.mapId).objects.find(o=>o.kind==='warning-rock');
+      ensure(rock&&isNear(p,rock),'경고 돌덩이에 더 가까이 가주세요.');
+      return {...s,planet};
+    };
+    action('warning:get',data=>{
+      const {room,planet}=warningRockAccess(data);
+      return warningView(room,planet);
+    });
+    action('warning:threshold:set',data=>{
+      const {room,planet}=warningRockAccess(data);
+      ensure(Number.isInteger(data.threshold)&&data.threshold>=WARNING_RULES.minThreshold&&data.threshold<=WARNING_RULES.maxThreshold,
+        '검은별 기준은 1~10회로 정해주세요.');
+      planet.warnings??={threshold:WARNING_RULES.defaultThreshold,entries:[]};
+      planet.warnings.threshold=data.threshold;
+      roster(room);
+      return warningView(room,planet);
+    });
+    action('warning:issue',data=>{
+      const {room,player:p,planet}=warningRockAccess(data);
+      ensure(p.role==='student'&&p.avatar.departmentId===planet.id,'소속 학생만 경고를 줄 수 있어요.');
+      const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
+      const reason=typeof data.reason==='string'?data.reason.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'';
+      ensure(![...reason].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;}),'경고 이유에 줄바꿈이나 제어 문자를 쓸 수 없어요.');
+      ensure(!filterChat(reason).flagged,'경고 이유에 쓸 수 없는 말이 있어요.');
+      const result=issueWarning(room,planet,p,target,reason,clock());
+      whisper(room,target,planet.name+'에서 경고를 받았어요. ('+result.count+'/'+result.threshold+'회) 이유: '+reason+(result.blackStar?' 검은별이 되어 블랙홀로 이동했어요.':''));
+      roster(room);
+      return {...warningView(room,planet),count:result.count,blackStar:result.blackStar};
+    });
+    action('warning:teacher:list',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 검은별 명단을 볼 수 있어요.');
+      return {students:blackStarList(s.room)};
+    });
+    action('warning:teacher:clear',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 검은별 상태를 해제할 수 있어요.');
+      const target=typeof data.targetId==='string'?s.room.players.get(data.targetId):null;
+      clearBlackStar(s.room,target);
+      whisper(s.room,target,'선생님이 검은별 상태를 해제했어요. 다시 별의 기원으로 이동했어요.');
+      roster(s.room);
+      return {students:blackStarList(s.room)};
     });
     const templeAccess=data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -655,13 +705,47 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player,pillar}=templeAccess(data),kind=pillar.service;
       if(kind==='weekly')return {kind,...weeklyRewards(room,clock())};
       if(kind==='effects')return {kind,rows:[...room.players.values()].flatMap(p=>effectsView(p.effects,player.role==='teacher').filter(e=>e.until>clock()).map(e=>({nickname:p.nickname,...e})))};
+      if(kind==='timetable')return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
       return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
     });
     action('temple:save',data=>{
       const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 내용을 바꿀 수 있어요.');
-      ensure(['notice','timetable'].includes(pillar.service),'알림장 또는 시간표를 골라주세요.');
+      ensure(pillar.service==='notice','알림장 기둥에서 저장해주세요.');
       ensure(typeof data.text==='string'&&data.text.length<=2000,'내용은 2000자 이내로 적어주세요.');
-      return {kind:pillar.service,...saveDaily(room,pillar.service,data.text,clock()),canEdit:true};
+      try{return {kind:pillar.service,...saveNotice(room,data.text,data.taskLineIndexes??[],clock()),canEdit:true};}
+      catch(error){if(error.message.startsWith('Invalid temple:'))throw new GameError('알림장 과제 표시를 확인해주세요. 비어 있지 않은 줄만 체크할 수 있어요.');throw error;}
+    });
+    action('temple:timetable:save',data=>{
+      const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 시간표를 바꿀 수 있어요.');
+      ensure(pillar.service==='timetable','오늘의 시간표 기둥 가까이에서 저장해주세요.');
+      try{return {kind:'timetable',...saveTimetable(room,data.cells),canEdit:true};}
+      catch(error){if(error.message.startsWith('Invalid temple:'))throw new GameError('시간표를 확인해주세요. 월~금 1~6교시 과목을 각 20자 이내로 적어주세요.');throw error;}
+    });
+    action('task:add',data=>{
+      const {room,player,pillar}=templeAccess({objectId:'pillar-notice'});
+      ensure(player.role==='student'&&pillar.service==='notice','학생만 알림장에서 과제를 가져올 수 있어요.');
+      ensure(Number.isInteger(data.lineIndex)&&data.lineIndex>=0,'가져올 알림장 줄을 골라주세요.');
+      const notice=readDaily(room,'notice',clock()),line=notice.text.split('\n')[data.lineIndex]?.trim();
+      const marked=notice.taskLines?.find(item=>item.lineIndex===data.lineIndex);
+      ensure(line&&marked,'과제로 표시된 오늘 알림장 줄을 골라주세요.');
+      ensure(typeof data.assignmentId==='string'&&data.assignmentId===marked.assignmentId,'알림장 과제가 바뀌었어요. 다시 열어주세요.');
+      const assignment=assignmentById(room,marked.assignmentId);
+      ensure(assignment&&assignment.text===line,'과제 내용이 바뀌었어요. 다시 열어주세요.');
+      const tasks=addTask(player,{assignmentId:assignment.id,text:line,sourceDate:notice.date,lineIndex:data.lineIndex},clock());
+      roster(room);return {tasks};
+    });
+    action('task:complete',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 자신의 과제를 완료할 수 있어요.');
+      const task=s.player.tasks?.find(task=>task.id===data.taskId);
+      ensure(task,'과제를 찾지 못했어요.');
+      markAssignmentDone(s.room,task.assignmentId,s.player.id);
+      const tasks=completeTask(s.player,data.taskId);roster(s.room);return {tasks};
+    });
+    action('assignment:read',()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const portal=MAP.objects.find(o=>o.kind==='andromeda');
+      ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제안드로메다 가까이에서 확인해주세요.');
+      return recentAssignments(s.room,clock());
     });
     action('shards:give',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');

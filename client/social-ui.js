@@ -7,11 +7,12 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   function open(id){stop();closeRoots();if(!$(id).open)$(id).showModal();}
   for(const button of document.querySelectorAll('[data-close]'))button.onclick=()=>$(button.dataset.close).close();
   // 프로필에서 스킬을 확인합니다. 아직 없는 스킬은 준비 중이라고 표시합니다.
-  const skills=$('skills-panel');skills.removeAttribute('role');skills.hidden=false;
+  const skills=$('skills-panel')||document.createElement('div');skills.id='skills-panel';skills.removeAttribute('role');skills.hidden=false;
   skills.prepend(Object.assign(document.createElement('h3'),{textContent:'내 별자리 스킬'}));
   $('avatar-card').append(skills);
   $('dock-avatar').onclick=()=>{skills.hidden=false;open('avatar-dialog');};
-  $('dock-inventory').onclick=()=>{open('inventory-dialog');$('tab-bag').click();};
+  $('dock-inventory').onclick=()=>open('inventory-dialog');
+  $('dock-tasks').onclick=()=>open('tasks-dialog');
   $('dock-chat').onclick=()=>open('social-dialog');
   $('dock-menu').onclick=()=>open('menu-dialog');
   $('menu-dialog').addEventListener('click',e=>{if(e.target.closest('#teacher-tools,#planet-new,#planet-exit,#planet-info,#leave'))closeRoots();},true);

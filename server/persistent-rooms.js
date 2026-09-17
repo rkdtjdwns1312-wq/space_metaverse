@@ -1,10 +1,12 @@
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
+import {validateWarnings,validateBlackStar} from './warnings.js';
+import {validateTasks} from './tasks.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
-import { RULES, PLAZA_ID, itemOf, PROGRESSION } from '../shared/config.js';
-import { spawnPosition } from './world.js';
+import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
+import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
 
@@ -45,7 +47,7 @@ export function toRecord(room) {
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,
-      muted:p.muted,notes:p.notes,pin:p.pin
+      muted:p.muted,notes:p.notes,tasks:p.tasks||[],pin:p.pin
     }))};
 }
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
@@ -67,7 +69,7 @@ export function fromRecord(r) {
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){
@@ -81,7 +83,10 @@ export function fromRecord(r) {
       !/^[a-f0-9]{32}$/.test(p.pin?.salt)||!/^[a-f0-9]{64}$/.test(p.pin?.hash)||
       !Number.isInteger(p.pin.failures)||p.pin.failures<0||!Number.isFinite(p.pin.lockedUntil))bad();
     names.add(p.nickname);
-    room.players.set(p.id,offline({...structuredClone(p),role:'student'}));
+    const avatar=structuredClone(p.avatar);avatar.blackStar=validateBlackStar(avatar.blackStar,new Set(room.planets.keys()));
+    const tasks=validateTasks(p.tasks);
+    if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
+    room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
@@ -145,8 +150,9 @@ export class PersistentRoomStore extends RoomStore {
       ensure(!p.connected,'이미 사용 중인 닉네임이에요. 원래 창에서 계속해주세요.');
       checkPin(p,data.pin);
       this.sessions.delete(p.token);
-      Object.assign(p,spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
-        expiresAt:null,mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      const mapId=p.avatar.blackStar?BLACK_HOLE_ID:PLAZA_ID;
+      Object.assign(p,mapId===BLACK_HOLE_ID?spawnInside(room,mapId):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
+        expiresAt:null,mapId,input:{x:0,y:0,at:0}});
       const session={room,player:p};this.sessions.set(p.token,session);return session;
     }
     ensure(!this.teacherManagedAccounts,'선생님이 아직 계정을 만들지 않았어요. 선생님께 알려주세요.');

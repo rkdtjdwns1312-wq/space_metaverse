@@ -7,6 +7,7 @@ export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, b
 export const INTERACT = Object.freeze({ radius: 40 });
 // 행성 규칙 편집 한도(소속 친구와 선생님이 내부 규칙판 근처에서 수정).
 export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 });
+export const WARNING_RULES = Object.freeze({defaultThreshold:3,minThreshold:1,maxThreshold:10,maxReasonLength:120,maxEntries:3000});
 // 행성(부서)은 아이들이 직접 만듭니다. 학생이 지도에서 자리를 고르고 이름·소개·색을 정해 신청하면 선생님이 승인합니다.
 // 선생님은 바로 만들 수도, 없앨 수도 있습니다. 이름은 소속 학생들의 과반 투표로 바꿀 수 있습니다.
 // reserved: 행성을 만들 수 없는 자리. 화면 왼쪽 아래 터치 이동 버튼이 지도를 덮는 곳이라 행성이 가려지지 않게 비워 둡니다.
@@ -31,7 +32,9 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     { id: 'gate-garden', name: '← 태양이 머무는 낙원', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
       arrival:{x:1030,y:380},color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡 ↓',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
-    {id:'gate-origin',name:'별의 시작점 1 ↑',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true}
+    {id:'gate-origin',name:'별의 시작점 1 ↑',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
+    {id:'assignment-andromeda',name:'과제안드로메다',x:260,y:260,radius:240,kind:'andromeda',passable:true},
+    {id:'black-hole-portal',name:'블랙홀 입장',x:1900,y:260,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true}
   ] });
 export const PLAZA_ID = MAP.id;
 // 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
@@ -58,6 +61,10 @@ export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',wi
   {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;
+export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
+  {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:1560,y:560},passable:true}
+]});
+export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 위쪽 맵은 1→2→3으로 이어지며, 아래 문은 바로 전 맵으로 돌아옵니다.
 export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>Object.freeze({id:'star-origin-'+n,name:'별의 시작점 '+n,theme:'star-origin',
   width:1200,height:900,spawn:{x:600,y:740},objects:[
@@ -65,7 +72,7 @@ export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>Object.freeze({id:'star-or
       target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?{x:1080,y:175}:{x:600,y:175},color:'#d2d3ef',passable:true},
     ...(n<3?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:600,y:80,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:600,y:740},color:'#e0d6ff',passable:true}]:[])
   ]})));
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,...Object.fromEntries(ORIGIN_MAPS.map(m=>[m.id,m])) });
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,...Object.fromEntries(ORIGIN_MAPS.map(m=>[m.id,m])) });
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).
@@ -148,13 +155,14 @@ export const templateOf = templateId => PLANET_TEMPLATES.find(t => t.id === temp
 // 선생님이 교실을 만들 때 '예시 행성으로 시작'을 켜면 아래 4개가 종류 목록의 값으로 미리 놓입니다. 이름·규칙은 나중에 바꿀 수 있습니다.
 const example = (templateId, x, y) => { const t = templateOf(templateId); return { templateId, name: t.name, x, y, color: t.color, description: t.description, rules: [...t.rules] }; };
 export const EXAMPLE_PLANETS = Object.freeze([
-  example('reading', 190, 175), example('diary', 1450, 175), example('cleaning', 190, 565), example('subject', 1870, 565)
+  example('reading', 650, 150), example('diary', 1450, 175), example('cleaning', 190, 565), example('subject', 1870, 565)
 ]);
 // 행성 내부 맵 템플릿: 광장과 같은 크기의 작은 방. 위에는 규칙 게시판(충돌), 아래에는 광장으로 나가는 문(통과 가능).
 export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 600, y: 560 },
   objects: [
     { id: 'board', name: '행성 규칙 게시판', x: 600, y: 150, radius: 80, kind: 'board', color: '#fff6d6' },
     { id: 'report-board', name: '부서실적 작성하기', x: 860, y: 420, radius: 28, kind: 'report-board', color: '#fff6d6' },
+    { id: 'warning-rock', name: '경고 돌덩이', x: 330, y: 420, radius: 48, kind: 'warning-rock', color: '#696477' },
     { id: 'door', name: '광장으로 나가는 문', x: 600, y: 690, radius: 34, kind: 'door', color: '#d9d3f2', passable: true }
   ] });
 export const interiorIdOf = planetId => 'planet:' + planetId;
@@ -173,7 +181,7 @@ export const PROGRESSION = Object.freeze({ maxLevel: 6, nextLevelXp: Object.free
   transcendentLevel: 6, transcendentName: '초월체', constellationSlots: 16 });
 export function createAvatar() {
   return { form: 'asteroid', level: 1, xp: 0, constellationId: null,
-    equipment: { pet: null, mount: null, decoration: null }, departmentId: null };
+    equipment: { pet: null, mount: null, decoration: null }, departmentId: null, blackStar:null };
 }
 // 향후 인벤토리 항목: { id, name, description, icon, quantity, type, level }.
 // 향후 별 파편 잔액은 0 이상의 안전한 정수로, 지급/지출은 서버에서 검증합니다.

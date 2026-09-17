@@ -69,7 +69,7 @@ export class RoomStore {
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], lastItemUseAt:0, notes:[] };
+      effects:[], lastItemUseAt:0, notes:[], tasks:[] };
     room.players.set(p.id,p);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
@@ -103,9 +103,10 @@ export class RoomStore {
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
-          connected:p.connected,away:!!p.away,avatar:p.avatar,muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
+          connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           effects:effectsView(p.effects,isTeacher)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
+        if(viewer && viewer.id===p.id)out.tasks=structuredClone(p.tasks||[]);
         return out;
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),

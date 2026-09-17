@@ -1,0 +1,92 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {io} from 'socket.io-client';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {createClassroomServer} from '../server/app.js';
+import {addPlanet} from '../server/world.js';
+import {BLACK_HOLE_ID,PLAZA_ID,interiorIdOf,MAP,PLANET,PLANET_COLORS} from '../shared/config.js';
+import {validateWarnings,validateBlackStar,warningCount} from '../server/warnings.js';
+
+test('블랙홀은 별의 기원 오른쪽 위에 있고 부서행성 약 4배 크기다',()=>{
+  const portal=MAP.objects.find(o=>o.kind==='black-hole');
+  assert.equal(portal.radius,PLANET.radius*4);
+  assert.ok(portal.x>MAP.width*.75&&portal.y<MAP.height*.25);
+});
+
+test('경고 저장 형식과 검은별 소속 정보는 손상된 내용을 거부한다',()=>{
+  assert.equal(validateWarnings().threshold,3);
+  assert.throws(()=>validateWarnings({threshold:0,entries:[]}),/올바르지/);
+  assert.throws(()=>validateWarnings({threshold:3,entries:[{id:'x'}]}),/올바르지/);
+  assert.deepEqual(validateBlackStar({planetId:'p',at:1},new Set(['p'])),{planetId:'p',at:1});
+  assert.throws(()=>validateBlackStar({planetId:'missing',at:1},new Set(['p'])),/올바르지/);
+});
+
+test('소속 학생의 직접 경고가 누적되면 검은별로 이동하고 교사만 해제한다',async t=>{
+  const game=createClassroomServer({teacherKey:'warning-test-private-key',studentHours:false});
+  const address=await game.listen(),sockets=[];
+  const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});return s;};
+  t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();});
+  const call=(s,event,data={})=>s.timeout(2500).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:'warning-test-private-key',allowedNames:['1','2']});
+  const actorSocket=await connect(),actorJoin=await call(actorSocket,'room:join',{code:created.room.code,nickname:'1'});
+  const targetSocket=await connect(),targetJoin=await call(targetSocket,'room:join',{code:created.room.code,nickname:'2'});
+  const room=game.store.rooms.get(created.room.code),actor=room.players.get(actorJoin.selfId),target=room.players.get(targetJoin.selfId);
+  const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
+  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:330,y:480});
+  const pending=await call(targetSocket,'planet:propose',{name:'읽기행성',description:'',x:650,y:150,color:PLANET_COLORS[0],templateId:'reading'});
+  assert.equal(pending.ok,true);
+  assert.equal((await call(targetSocket,'warning:teacher:list',{})).ok,false);
+  assert.equal((await call(targetSocket,'warning:issue',{planetId:planet.id,targetId:actor.id,reason:'규칙 위반'})).ok,false);
+  const initial=await call(actorSocket,'warning:get',{planetId:planet.id});assert.equal(initial.threshold,3);
+  assert.equal((await call(actorSocket,'warning:threshold:set',{planetId:planet.id,threshold:2})).threshold,2);
+  assert.equal((await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:actor.id,reason:'스스로'})).ok,false);
+  const first=await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:target.id,reason:'약속을 지키지 않음'});
+  assert.equal(first.count,1);assert.equal(first.blackStar,false);assert.equal(warningCount(planet,target.id),1);
+  const second=await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:target.id,reason:'같은 약속을 다시 어김'});
+  assert.equal(second.count,2);assert.equal(second.blackStar,true);
+  assert.equal(target.mapId,BLACK_HOLE_ID);assert.equal(target.avatar.blackStar.planetId,planet.id);
+  assert.equal((await call(teacher,'planet:approve',{proposalId:pending.proposalId})).ok,true);
+  assert.equal(target.mapId,BLACK_HOLE_ID);assert.ok(target.avatar.blackStar);
+  const list=await call(teacher,'warning:teacher:list',{});assert.equal(list.students.length,1);assert.equal(list.students[0].planetName,'규칙행성');
+  Object.assign(target,{x:600,y:680});
+  const denied=await call(targetSocket,'map:travel',{to:PLAZA_ID});
+  assert.equal(denied.ok,false);assert.match(denied.error,/현재 검은별 상태입니다/);
+  assert.equal((await call(targetSocket,'warning:teacher:clear',{targetId:target.id})).ok,false);
+  const released=await call(teacher,'warning:teacher:clear',{targetId:target.id});
+  assert.equal(released.students.length,0);assert.equal(target.avatar.blackStar,null);assert.equal(target.mapId,PLAZA_ID);
+  assert.equal(warningCount(planet,target.id),0);
+  Object.assign(target,{x:1650,y:260});
+  assert.equal((await call(targetSocket,'map:travel',{to:BLACK_HOLE_ID})).ok,true);
+  assert.equal(target.mapId,BLACK_HOLE_ID);
+  Object.assign(target,{x:600,y:680});
+  assert.equal((await call(targetSocket,'map:travel',{to:PLAZA_ID})).ok,true);
+});
+
+test('검은별·경고는 서버 재시작 뒤에도 보존되고 학생은 블랙홀에 재입장한다',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'black-star-save-')),key='warning-persistence-private-key',sockets=[];
+  let game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false}),address=await game.listen();
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();await rm(directory,{recursive:true,force:true});});
+  const connect=async()=>{const socket=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(2500).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2']});
+  const pin=name=>created.credentials.find(c=>c.nickname===name).pin;
+  const actorSocket=await connect(),actorJoin=await call(actorSocket,'room:join',{code:created.room.code,nickname:'1',pin:pin('1')});
+  const targetSocket=await connect(),targetJoin=await call(targetSocket,'room:join',{code:created.room.code,nickname:'2',pin:pin('2')});
+  let room=game.store.rooms.get(created.room.code),actor=room.players.get(actorJoin.selfId),target=room.players.get(targetJoin.selfId);
+  const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
+  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:330,y:480});
+  assert.equal((await call(actorSocket,'warning:threshold:set',{planetId:planet.id,threshold:1})).ok,true);
+  assert.equal((await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:target.id,reason:'약속을 어김'})).blackStar,true);
+  for(const socket of sockets)socket.disconnect();await game.close();
+  game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false});address=await game.listen();
+  const returned=await connect(),resumed=await call(returned,'room:join',{code:created.room.code,nickname:'2',pin:pin('2')});
+  room=game.store.rooms.get(created.room.code);target=room.players.get(targetJoin.selfId);
+  assert.equal(resumed.selfId,targetJoin.selfId);assert.equal(target.mapId,BLACK_HOLE_ID);assert.equal(resumed.room.players.find(p=>p.id===target.id).avatar.blackStar,true);
+  assert.equal(room.planets.get(planet.id).warnings.entries.length,1);
+  const newTeacher=await connect();assert.equal((await call(newTeacher,'room:open',{teacherKey:key,code:created.room.code})).ok,true);
+  assert.equal((await call(newTeacher,'warning:teacher:list',{})).students[0].planetId,planet.id);
+  assert.equal((await call(newTeacher,'warning:teacher:clear',{targetId:target.id})).students.length,0);
+  assert.equal(target.mapId,PLAZA_ID);
+});

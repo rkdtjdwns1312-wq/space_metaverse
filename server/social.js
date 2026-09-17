@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ensure } from './rooms.js';
-import { planetIdOfMap, STATIC_MAPS } from '../shared/config.js';
+import { planetIdOfMap, STATIC_MAPS, BLACK_HOLE_ID } from '../shared/config.js';
 import { arrivePosition } from './world.js';
 
 export const SOCIAL = { rejectMs:24*60*60*1000, requestMs:60_000, cooldownMs:5000 };
@@ -35,6 +35,7 @@ function state(room,now) {
   for(const [key,until] of room.summonCooldowns)if(until<=now)room.summonCooldowns.delete(key);
 }
 function canTravel(room,target,host) {
+  ensure(!target.avatar.blackStar || host.mapId===BLACK_HOLE_ID,'현재 검은별 상태입니다');
   const planetId=planetIdOfMap(host.mapId);
   ensure(planetId?room.planets.has(planetId):!!STATIC_MAPS[host.mapId],'친구가 있는 맵을 찾지 못했어요.');
   ensure(!planetId||target.role==='teacher'||target.avatar.departmentId===planetId,'가입한 부서행성으로만 이동할 수 있어요.');

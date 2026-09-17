@@ -32,8 +32,13 @@ async function worldClick(page,mx,my){
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   let view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
   let box=await page.locator('#world').boundingBox();
-  if((mx-view.x)*view.scale<0||(my-view.y)*view.scale<0||(mx-view.x)*view.scale>box.width||(my-view.y)*view.scale>box.height){
-    await page.locator('#map-overview').click();await page.locator('#map-area-view').click();
+  const placing=await page.evaluate(()=>document.body.classList.contains('placing'));
+  const edgeX=placing?box.width:box.width-80,edgeY=placing?box.height:box.height-90;
+  if((mx-view.x)*view.scale<0||(my-view.y)*view.scale<0||(mx-view.x)*view.scale>edgeX||(my-view.y)*view.scale>edgeY){
+    if(!(await page.locator('#map-overview').isVisible()))await page.locator('#minimap-toggle').click();
+    await page.locator('#map-overview').click();
+    if((await page.locator('#map-area-view').textContent()).includes('한눈에 보기'))await page.locator('#map-area-view').click();
+    else await page.locator('#universe-close').click();
     await page.waitForTimeout(100);
     view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
     box=await page.locator('#world').boundingBox();
@@ -381,6 +386,10 @@ try{
  await student2.locator('#lobby').waitFor({state:'hidden'});
  check('A second student (nickname 2) joins the same classroom');
  await worldClick(student2,cafeteria.x,cafeteria.y);
+ if(!(await student2.locator('#planet-dialog').isVisible())){
+   await student2.waitForTimeout(150);
+   await worldClick(student2,cafeteria.x,cafeteria.y);
+ }
  await student2.locator('#planet-dialog').waitFor({state:'visible'});
  await student2.locator('#planet-title').filter({hasText:'급식별'}).waitFor({state:'attached'});
  await student2.locator('#planet-join').click();
@@ -429,9 +438,8 @@ try{
  await student.locator('#crew-close').click();
  await student.locator('#crew-dialog').waitFor({state:'hidden'});
  assert.equal((await student.locator('#self-shards').innerText()).trim(),'0');
- assert.ok(await student.locator('#tab-bag').evaluate(el=>el.classList.contains('selected')));
  await openInventoryFromDock(student);assert.ok(await student.locator('#bag-empty').isVisible());
- check('.hud passport shows 0 star shards and the bag tab is selected with an empty bag by default');
+ check('.hud passport shows 0 star shards and the inventory-only bag is empty by default');
  {
    const worldBox=await student.locator('#world').boundingBox();
    const viewport=student.viewportSize();assert.equal(worldBox.width,viewport.width);assert.equal(worldBox.height,viewport.height);
@@ -539,7 +547,7 @@ try{
  check('Selling 1 star sticker back refunds 2 shards, leaving 17');
  await student.locator('#shop-close').click();
  await student.locator('#shop-dialog').waitFor({state:'hidden'});
- await openInventoryFromDock(student);await student.locator('#tab-bag').click();
+ await openInventoryFromDock(student);
  // #bag-list li only holds an icon + count (see renderBag in client/app.js) - the item name is
  // never rendered as text, only as the slot button's aria-label - so check that instead of hasText.
  assert.equal(await student.locator('#bag-list li').count(),1);
@@ -637,7 +645,7 @@ try{
  assert.ok(Math.abs(phoneBox.width/phoneBox.height-1200/760)>0.2,'expected a letterboxed canvas at 390px');
  await clickMenuAction(student,'planet-new');
  await student.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(student,1900,300);
+ await worldClick(student,1900,1100);
  await student.locator('#planet-create-dialog').waitFor({state:'visible'});
  await student.locator('input[name="planet-type"][value="audit"]').check();
  await student.locator('#planet-name').fill('손가락행성');
@@ -645,7 +653,7 @@ try{
  await student.locator('#planet-create-dialog').waitFor({state:'hidden'});
  const tapped=[...room.proposals.values()].find(pr=>pr.name==='손가락행성');
  assert.ok(tapped,'the 390px tap did not create a proposal');
- assert.ok(Math.hypot(tapped.x-1900,tapped.y-300)<14,'390px tap landed at '+tapped.x+','+tapped.y+' instead of 1900,300');
+ assert.ok(Math.hypot(tapped.x-1900,tapped.y-1100)<14,'390px tap landed at '+tapped.x+','+tapped.y+' instead of 1900,1100');
  check('A map tap on the letterboxed 390px canvas creates the planet at the tapped spot (within 14px)');
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});

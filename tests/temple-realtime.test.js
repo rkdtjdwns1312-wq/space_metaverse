@@ -34,12 +34,19 @@ test('temple enforces proximity and teacher permissions, preserves daily notices
   const refresh=()=>{room=game.store.rooms.get(made.room.code);t=room.players.get(made.selfId);p=room.players.get(joined.selfId);};
   const approach=(who,id)=>{const o=MAP.objects.find(o=>o.id===id);const current=game.store.rooms.get(made.room.code).players.get(who.id);Object.assign(current,{mapId:PLAZA_ID,x:o.x+65,y:o.y});};
   assert.equal((await call(student,'temple:read',{objectId:'pillar-notice'})).ok,false);
-  for(const [id,text] of [['pillar-notice','내일 색연필을 준비해요.'],['pillar-timetable','1교시 국어\n2교시 수학']]){
+  for(const [id,text] of [['pillar-notice','내일 색연필을 준비해요.']]){
    approach(t,id);approach(p,id);assert.equal((await call(student,'temple:save',{objectId:id,text:'위조'})).ok,false);
    assert.equal((await call(teacher,'temple:save',{objectId:id,text})).ok,true);
    const viewed=await call(student,'temple:read',{objectId:id});assert.equal(viewed.text,text);assert.equal(viewed.canEdit,false);
    assert.equal((await call(teacher,'temple:save',{objectId:id,text:'가'.repeat(2001)})).ok,false);
   }
+  approach(t,'pillar-timetable');approach(p,'pillar-timetable');
+  const cells=Array.from({length:6},()=>Array(5).fill(''));cells[0][0]='국어';cells[5][4]='체육';
+  assert.equal((await call(student,'temple:timetable:save',{objectId:'pillar-timetable',cells})).ok,false);
+  assert.equal((await call(teacher,'temple:save',{objectId:'pillar-timetable',text:'옛 메모'})).ok,false);
+  assert.deepEqual((await call(teacher,'temple:timetable:save',{objectId:'pillar-timetable',cells})).cells,cells);
+  const timetable=await call(student,'temple:read',{objectId:'pillar-timetable'});assert.deepEqual(timetable.cells,cells);assert.equal(timetable.canEdit,false);
+  assert.equal((await call(teacher,'temple:timetable:save',{objectId:'pillar-timetable',cells:[['국어']]})).ok,false);
   refresh();p.starShards=9998;await call(teacher,'shards:give',{playerId:p.id,amount:5});await call(teacher,'shards:give',{playerId:p.id,amount:-2});await call(teacher,'shards:give',{playerId:'all',amount:3});
   // 상한까지 1개, 회수 뒤 상한까지 2개를 실제로 받았습니다. 다른 학생은 3개입니다.
   approach(p,'pillar-weekly');const weekly=await call(student,'temple:read',{objectId:'pillar-weekly'});assert.equal(weekly.rows.find(r=>r.playerId===p.id).total,3);assert.equal(weekly.rows.find(r=>r.nickname==='2').total,3);assert.equal(JSON.stringify(weekly).includes('starShards'),false);
@@ -49,6 +56,7 @@ test('temple enforces proximity and teacher permissions, preserves daily notices
   for(const s of sockets)s.disconnect();await game.close();game=null;
   const b=await start(),returning=await connect(b.port);const resumed=await call(returning,'room:join',{code:made.room.code,nickname:'1',pin:made.credentials.find(c=>c.nickname==='1').pin});assert.equal(resumed.selfId,p.id);
   const restored=game.store.rooms.get(made.room.code),rp=restored.players.get(p.id);approach(rp,'pillar-notice');assert.equal((await call(returning,'temple:read',{objectId:'pillar-notice'})).text,'내일 색연필을 준비해요.');
+  approach(rp,'pillar-timetable');assert.deepEqual((await call(returning,'temple:read',{objectId:'pillar-timetable'})).cells,cells);
   approach(rp,'pillar-weekly');assert.equal((await call(returning,'temple:read',{objectId:'pillar-weekly'})).rows.find(r=>r.playerId===p.id).total,3);
  }finally{for(const s of sockets)s.disconnect();if(game)await game.close();await rm(dir,{recursive:true,force:true});}
 });

@@ -50,9 +50,9 @@ try{
   await page.locator('#interact-object').filter({hasText:'체육행성'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#planet-dialog').waitFor({state:'visible'});
   const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings','#planet-rename','#planet-work'];
   const boxes=await Promise.all(selectors.map(selector=>page.locator(selector).boundingBox()));for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].y>=boxes[i-1].y+boxes[i-1].height-1);
-  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();await page.locator('#planet-warnings p').filter({hasText:'준비 중'}).waitFor();
+  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();await page.locator('#planet-warnings p').filter({hasText:'경고 돌덩이'}).waitFor();
   await page.screenshot({path:'.local/planet-menu-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#planet-close').tap();
-  check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·준비중 안내·닫기');
+  check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·경고 돌덩이 안내·닫기');
   Object.assign(p,{mapId:PLAZA_ID,x:300,y:1100});publish();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='0');
   check('광장에서는 몬스터 표시 없음');
   assert.equal(MONSTER_TYPES.length,15);assert.deepEqual(errors,[]);
