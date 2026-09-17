@@ -46,6 +46,30 @@ test('실제 소켓 정보 요청은 방·지도·근접을 검사하고 사냥 
   assert.ok(info.ok);assert.equal(info.huntingEnabled,false);assert.equal(info.monster.name,'토끼자리');
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
-  const packet=await new Promise(resolve=>otherTeacher.once('world:monsters',resolve));
+  const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
   assert.equal(packet.monsters.length,15);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
+});
+
+test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 좌표가 함께 온다',async t=>{
+  const game=createClassroomServer({teacherKey:'monster-motion-test-private',studentHours:false}),address=await game.listen(),sockets=[];
+  const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});return s;};
+  t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();});
+  const call=(s,event,data={})=>s.timeout(2000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:'monster-motion-test-private',allowedNames:['1']});
+  const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1'});
+  const room=game.store.rooms.get(created.room.code),player=room.players.get(joined.selfId);
+  Object.assign(player,{mapId:'star-origin-1',x:600,y:450});
+  const packets=[];student.on('world:positions',packet=>packets.push(packet));
+  const input=setInterval(()=>student.emit('player:input',{x:1,y:0}),80);
+  try{
+    await new Promise((resolve,reject)=>{
+      let check;
+      const deadline=setTimeout(()=>{clearInterval(check);reject(new Error('동시 이동 패킷을 받지 못했어요.'));},2000);
+      check=setInterval(()=>{if(packets.length>=8){clearInterval(check);clearTimeout(deadline);resolve();}},20);
+    });
+  }finally{clearInterval(input);student.emit('player:input',{x:0,y:0});}
+  const avatarXs=packets.flatMap(packet=>packet.positions.filter(([id])=>id===joined.selfId).map(([,x])=>x));
+  const monsterPoints=packets.map(packet=>packet.monsters?.find(monster=>monster.id==='rabbit'));
+  assert.ok(avatarXs.length>=2&&Math.max(...avatarXs)-Math.min(...avatarXs)>1,'아바타가 움직여야 합니다.');
+  assert.ok(monsterPoints.every(monster=>Number.isFinite(monster?.x)&&Number.isFinite(monster?.y))&&monsterPoints.some((monster,index)=>index>0&&Math.hypot(monster.x-monsterPoints[index-1].x,monster.y-monsterPoints[index-1].y)>.1),'아바타 이동 중 몬스터 좌표도 갱신되어야 합니다.');
 });

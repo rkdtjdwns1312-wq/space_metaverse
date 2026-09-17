@@ -19,6 +19,14 @@ const player = (overrides = {}) => ({
 const room = (...players) => ({ players: new Map(players.map(value => [value.id, value])) });
 const atGrowth = value => Object.assign(value, { x: growthStar.x, y: growthStar.y });
 
+test('진화의 별은 계곡 왼쪽, 성장의 별은 오른쪽 끝에 서로 떨어져 배치된다', () => {
+  assert.ok(evolutionStar.x < VALLEY.width / 4);
+  assert.ok(growthStar.x > VALLEY.width * 3 / 4);
+  assert.equal(evolutionStar.y, growthStar.y);
+  assert.ok(evolutionStar.x - evolutionStar.radius > 16);
+  assert.ok(growthStar.x + growthStar.radius < VALLEY.width - 16);
+});
+
 test('16 canonical constellations have unique ids and complete display metadata', () => {
   assert.equal(CONSTELLATIONS.length, 16);
   assert.equal(new Set(CONSTELLATIONS.map(value => value.id)).size, 16);

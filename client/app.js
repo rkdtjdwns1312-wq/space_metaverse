@@ -887,8 +887,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';controls();});
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
-socket.on('world:positions',data=>{if(selfId){world.positions(data);universe.positions(data);}});
-socket.on('world:monsters',data=>{if(selfId)world.monsters(data);});
+socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
 socket.on('chat:message',msg=>{if(!selfId)return;social.receive(msg);if(msg.channel==='map')world.say(msg.playerId,msg.text);});

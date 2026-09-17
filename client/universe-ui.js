@@ -4,11 +4,22 @@ import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,STATIC_MAPS,int
 export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   const $=id=>document.getElementById(id),dialog=$('universe-dialog');
   let position=null,selected=null,signature='';
+  let minimapOpen=true;
+  function setMinimapOpen(open){
+    minimapOpen=open;
+    $('world-navigation').classList.toggle('minimap-collapsed',!open);
+    $('minimap-title').hidden=!open;
+    $('minimap').hidden=!open;
+    $('map-overview').hidden=!open;
+    $('minimap-toggle').textContent=open?'맵 닫기':'지도 보기';
+    $('minimap-toggle').setAttribute('aria-expanded',String(open));
+  }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
   const map=id=>mapOf(id,planets());
   function close(){dialog.close();}
   $('universe-close').onclick=close;
+  $('minimap-toggle').onclick=()=>setMinimapOpen(!minimapOpen);
   $('map-overview').onclick=()=>{
     if(!me())return;stop();selected=me().mapId;signature='';render();
     if(!dialog.open)dialog.showModal();draw($('universe-preview'),selected,true);

@@ -355,6 +355,9 @@ export function createWorld(canvas) {
     }else drawInterior(map);
     const visibleMonsters=monsters.filter(m=>m.alive&&m.mapId===myMapId);
     canvas.dataset.monsterCount=String(visibleMonsters.length);
+    const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
+    canvas.dataset.monsterRenderX=firstMonsterPoint?.x??'';
+    canvas.dataset.monsterRenderY=firstMonsterPoint?.y??'';
     for(const m of visibleMonsters){
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
       drawMonster(ctx,{...type,...m,...pos},t);

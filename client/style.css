@@ -168,9 +168,12 @@ body.joined #menu-dialog .topline{display:flex}.chat-routing #chat-recipient:not
 /* 요청046: 입장 후 현재 맵 탐색과 전체 우주 지도 */
 #world-navigation{display:none}
 body.joined:not(.placing) #world-navigation{position:fixed;display:flex;flex-direction:column;gap:7px;top:12px;right:12px;width:220px;padding:12px;background:#fff9f5e8;border:1px solid #fff;border-radius:18px;box-shadow:0 10px 28px #6d668026;backdrop-filter:blur(10px);z-index:8;color:#655b79}
+body.joined:not(.placing) #world-navigation.minimap-collapsed{width:auto;padding:7px}
 #world-navigation #map-overview{width:100%;padding:9px 10px;background:#f0ebff;color:#5e4f8a;border-color:#d8cef6}
 #minimap-title{font-size:13px;font-weight:700;color:#665b7d;padding:2px 3px 0}
+#minimap-toggle{align-self:flex-end;width:auto;padding:5px 8px;font-size:12px}
 body.joined #world-navigation #minimap{display:block;width:100%;height:auto;aspect-ratio:300/180;min-height:0;max-height:none;border:1px solid #d8e5e3;border-radius:12px;background:#eff9f6;object-fit:contain}
+body.joined #world-navigation #minimap[hidden]{display:none}
 #world-navigation button:focus-visible,#universe-dialog button:focus-visible{outline:3px solid #a87810;outline-offset:3px}
 #universe-dialog{width:min(900px,calc(100vw - 28px));max-width:min(900px,calc(100vw - 28px));}
 #universe-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:16px}

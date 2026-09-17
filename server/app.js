@@ -1085,9 +1085,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           const old=before.get(p.id);
           if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]) positions.push(point);
         }
-        if(positions.length)io.to(room.code).volatile.emit('world:positions',{positions});
+        // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
+        // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
         // 몬스터는 같은 교실 안에서 공유하되 현재 맵의 그림만 클라이언트가 표시합니다.
-        io.to(room.code).volatile.emit('world:monsters',{monsters:monsterViews(room)});
+        io.to(room.code).volatile.emit('world:positions',{positions,monsters:monsterViews(room)});
         previous.set(room.code,next);
       }
     }

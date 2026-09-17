@@ -18,6 +18,10 @@ try{
  const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
  const button=await page.locator('#map-overview').boundingBox();assert.ok(button.x>1100&&button.y<35);assert.equal(await page.locator('#menu-dialog #map-overview').count(),0);
  await page.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();check('오른쪽 위 지도 버튼과 현재 맵 미니맵');
+ await page.locator('#minimap-toggle').click();
+ assert.equal(await page.locator('#minimap').isVisible(),false);assert.equal(await page.locator('#minimap-title').isVisible(),false);assert.equal(await page.locator('#map-overview').isVisible(),false);assert.equal(await page.locator('#minimap-toggle').textContent(),'지도 보기');assert.equal(await page.locator('#minimap-toggle').getAttribute('aria-expanded'),'false');
+ await page.locator('#minimap-toggle').click();
+ assert.equal(await page.locator('#minimap').isVisible(),true);assert.equal(await page.locator('#minimap-title').isVisible(),true);assert.equal(await page.locator('#map-overview').isVisible(),true);assert.equal(await page.locator('#minimap-toggle').textContent(),'맵 닫기');assert.equal(await page.locator('#minimap-toggle').getAttribute('aria-expanded'),'true');check('미니맵 접기·지도 보기로 다시 열기');
  await page.locator('#map-overview').click();await page.locator('#universe-dialog').waitFor({state:'visible'});
  assert.equal(await page.locator('#universe-links button').count(),7);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),PLAZA_ID);
  await page.locator('#universe-links [data-map-id="'+GARDEN_ID+'"]').click();assert.equal(p.mapId,PLAZA_ID);assert.equal(await page.locator('#universe-preview').getAttribute('data-has-player'),'false');

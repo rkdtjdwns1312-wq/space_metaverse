@@ -3,7 +3,7 @@ import {mapOf} from '/shared/config.js';
 
 export function createMonsterUI({request,stop,toast,isJoined}){
   const dialog=document.createElement('dialog');dialog.id='monster-dialog';dialog.setAttribute('aria-labelledby','monster-title');
-  dialog.innerHTML='<h2 id="monster-title">별자리 몬스터</h2><canvas id="monster-picture" width="300" height="180" aria-label="별자리 모습"></canvas><div class="monster-menu"><button id="monster-info" type="button" class="secondary" aria-expanded="false">정보 보기</button><section id="monster-details" hidden><p id="monster-description"></p><p id="monster-map"></p><p>1초마다 방향을 골라 천천히 산책해요.</p></section><button id="monster-hunt" type="button" disabled>사냥하기 · 준비 중</button><p class="muted">사냥과 경험치 보상은 아직 열리지 않았어요.</p><button id="monster-close" type="button" class="secondary">닫기</button></div>';
+  dialog.innerHTML='<h2 id="monster-title">별자리 몬스터</h2><canvas id="monster-picture" width="300" height="180" aria-label="별자리 모습"></canvas><div class="monster-menu"><button id="monster-info" type="button" class="secondary" aria-expanded="false">정보 보기</button><section id="monster-details" hidden><p id="monster-description"></p><p id="monster-map"></p></section><button id="monster-hunt" type="button" disabled>사냥하기 · 준비 중</button><p class="muted">사냥과 경험치 보상은 아직 열리지 않았어요.</p><button id="monster-close" type="button" class="secondary">닫기</button></div>';
   document.body.append(dialog);const $=id=>dialog.querySelector('#monster-'+id);let revision=0;
   $('close').onclick=()=>dialog.close();
   dialog.addEventListener('close',()=>{revision++;document.getElementById('world').focus();});

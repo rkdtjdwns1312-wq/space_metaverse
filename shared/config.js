@@ -44,8 +44,8 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['stars','반짝별 찾기','#ffdf9c'],['addition','숫자놀이터','#bce8cd'],['dodge','별 피하기','#cfbcf1']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
-    { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' },
-    { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9' }
+    { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
+    { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 export const GARDEN = Object.freeze({id:'moon-garden',name:'태양이 머무는 낙원',width:1200,height:760,spawn:{x:1030,y:380},objects:[
@@ -53,8 +53,8 @@ export const GARDEN = Object.freeze({id:'moon-garden',name:'태양이 머무는 
 ]});
 export const GARDEN_ID=GARDEN.id;
 export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
-  {id:'evolution-star',name:'진화의 별',x:600,y:480,radius:105,kind:'evolution',color:'#ffffff'},
-  {id:'growth-star',name:'성장의 별',x:930,y:480,radius:80,kind:'growth',color:'#ffd76d'},
+  {id:'evolution-star',name:'진화의 별',x:205,y:480,radius:105,kind:'evolution',color:'#ffffff'},
+  {id:'growth-star',name:'성장의 별',x:1020,y:480,radius:80,kind:'growth',color:'#ffd76d'},
   {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;

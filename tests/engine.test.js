@@ -178,11 +178,12 @@ test('mapOf resolves the star street as a fixed map with a shop and a passable g
  const gate=map.objects.find(o=>o.kind==='gate');
  assert.equal(gate.target, PLAZA_ID);assert.equal(gate.passable, true);
 });
-test('the star street has no planets: shop and lamps block movement, the gate is passable, and the boundary holds',()=>{
+test('the star street has no planets: shop blocks movement, decorative lamps and gate are passable, and the boundary holds',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'t');
  const shop=STREET.objects.find(o=>o.kind==='shop'), lamp=STREET.objects.find(o=>o.kind==='lamp'), gate=STREET.objects.find(o=>o.kind==='gate');
  assert.equal(isFree(room, shop.x, shop.y, null, STREET_ID), false);
- assert.equal(isFree(room, lamp.x, lamp.y, null, STREET_ID), false);
+ assert.equal(isFree(room, lamp.x, lamp.y, null, STREET_ID), true);
+ assert.ok(STREET.objects.filter(o=>o.kind==='lamp').every(o=>o.passable&&isFree(room,o.x,o.y,null,STREET_ID)));
  assert.equal(isFree(room, gate.x, gate.y, null, STREET_ID), true);
  assert.equal(isFree(room, RULES.radius-1, 400, null, STREET_ID), false);
  assert.equal(isFree(room, STREET.width-RULES.radius+1, 400, null, STREET_ID), false);

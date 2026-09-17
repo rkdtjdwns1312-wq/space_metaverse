@@ -22,9 +22,22 @@ try{
     await page.screenshot({path:'.local/'+mapId+'-monsters.png'});
   }
   check('별의 시작점1·2·3에 각각5마리 표시·다른 맵과 분리');
+  Object.assign(p,{mapId:'star-origin-1',x:600,y:450});publish();await page.locator('#world').focus();
+  const movingSamples=page.evaluate(()=>new Promise(resolve=>{
+    const samples=[],started=performance.now();
+    function sample(){const canvas=document.getElementById('world');samples.push({avatar:+canvas.dataset.selfRenderX,monsterX:+canvas.dataset.monsterRenderX,monsterY:+canvas.dataset.monsterRenderY});
+      if(performance.now()-started>=800)resolve(samples);else requestAnimationFrame(sample);}
+    sample();
+  }));
+  await page.keyboard.down('ArrowRight');await page.waitForTimeout(700);await page.keyboard.up('ArrowRight');
+  const samples=await movingSamples;
+  assert.ok(Math.max(...samples.map(sample=>sample.avatar))-Math.min(...samples.map(sample=>sample.avatar))>100);
+  assert.ok(samples.some((sample,index)=>index>0&&Math.hypot(sample.monsterX-samples[0].monsterX,sample.monsterY-samples[0].monsterY)>1));
+  check('아바타가 움직이는 동안 몬스터의 화면상 월드 좌표도 계속 갱신');
   const m=monstersOf(room).get('rabbit');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
   await page.locator('#interact-object').filter({hasText:'토끼자리'}).waitFor();await page.locator('#world').focus();await page.keyboard.press('e');
   await page.locator('#monster-title').filter({hasText:'토끼자리'}).waitFor();await page.locator('#monster-info').click();await page.locator('#monster-description').filter({hasText:'달토끼'}).waitFor();
+  assert.ok(!(await page.locator('#monster-details').textContent()).includes('1초마다 방향을 골라 천천히 산책해요'));
   assert.equal(await page.locator('#monster-hunt').isDisabled(),true);assert.ok((await page.locator('#monster-hunt').textContent()).includes('준비 중'));assert.equal(p.avatar.xp,0);
   await page.screenshot({path:'.local/monster-info.png'});await page.keyboard.press('Escape');await page.locator('#monster-dialog').waitFor({state:'hidden'});
   check('E→몬스터 정보 보기·설명·사냥 준비중 비활성·Esc 닫기·경험치 유지');
