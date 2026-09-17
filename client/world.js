@@ -6,7 +6,7 @@ import {monsterType} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
-const CHAT=config.CHAT||{bubbleMs:4000};
+const CHAT=config.CHAT||{maxLength:100,bubbleBaseMs:3000,bubblePerCharMs:90,bubbleMaxMs:12000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
 // 여러 캔버스(광장 지도·아바타 카드 일러스트)에서 함께 쓰는 별 그리기.
 function drawStar(ctx,x,y,r,fill){
@@ -337,11 +337,23 @@ export function createWorld(canvas) {
     const b=bubbles.get(id);if(!b)return;
     if(Date.now()>b.until){bubbles.delete(id);return;}
     ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';
-    const w=Math.min(230,ctx.measureText(b.text).width+22),h=30,bx=x-w/2,by=y-54;
+    // 글자 단위로 폭을 재어 230px 안에서 줄바꿈하고, 카메라 화면 안으로 좌우를 맞춥니다.
+    const maxTextWidth=208,lines=[];let line='';
+    for(const char of Array.from(b.text)){
+      const next=line+char;
+      if(line&&ctx.measureText(next).width>maxTextWidth){lines.push(line);line=char;}else line=next;
+    }
+    if(line||!lines.length)lines.push(line);
+    const w=Math.min(230,Math.max(44,...lines.map(value=>ctx.measureText(value).width+22)));
+    const lineHeight=18,h=lines.length*lineHeight+12;
+    const visibleWidth=canvas.width/(window.devicePixelRatio||1)/view.scale;
+    const visibleLeft=view.x+8,visibleRight=view.x+visibleWidth-8;
+    const bx=Math.max(visibleLeft+w/2,Math.min(visibleRight-w/2,x)),by=y-38-h;
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#d8d3ea';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.roundRect(bx,by,w,h,10);ctx.fill();ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x-6,by+h-1);ctx.lineTo(x+6,by+h-1);ctx.lineTo(x,by+h+8);ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
-    ctx.fillStyle='#524969';ctx.textAlign='center';ctx.fillText(b.text,x,by+h/2+4);
+    ctx.beginPath();ctx.moveTo(bx-6,by+h-1);ctx.lineTo(bx+6,by+h-1);ctx.lineTo(bx,by+h+8);ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
+    ctx.fillStyle='#524969';ctx.textAlign='center';
+    lines.forEach((value,index)=>ctx.fillText(value,bx,by+lineHeight+index*lineHeight));
   }
   function drawAvatar(p,time){
     const point=points.get(p.id)||{x:p.x,y:p.y};
@@ -464,7 +476,11 @@ export function createWorld(canvas) {
     monsters(data){setMonsters(data.monsters||[]);},
     say(playerId,text,ms){
       if(!playerId)return;const str=String(text);
-      bubbles.set(playerId,{text:str.length>24?str.slice(0,24)+'…':str,until:Date.now()+(ms||CHAT.bubbleMs||4000)});
+      const limited=Array.from(str).slice(0,CHAT.maxLength??100).join('');
+      const duration=ms==null
+        ?Math.min(CHAT.bubbleMaxMs??12000,(CHAT.bubbleBaseMs??3000)+Array.from(str).length*(CHAT.bubblePerCharMs??90))
+        :ms;
+      bubbles.set(playerId,{text:limited,until:Date.now()+duration});
     },
     nearby(){
       const me=players.find(p=>p.id===selfId);if(!me)return null;
