@@ -136,6 +136,7 @@
     <label for="shards-target">누구에게</label><select id="shards-target"><option value="all">모두에게</option></select>
     <label for="shards-amount">몇 개</label><input id="shards-amount" type="number" min="-999" max="999" value="5">
     <button id="shards-give" class="primary small" type="button">지급</button>
+    <p id="shards-feedback" role="status" aria-live="polite"></p>
     <p class="muted">음수를 적으면 거두어요.</p>
   </section>
   <section class="trade-approve" id="trade-approve-panel"><h3>③ 거래 승인</h3>
@@ -148,7 +149,7 @@
   </section>
   <section class="black-star-tools"><h3>검은별 관리</h3><button id="black-star-list-button" class="small secondary" type="button">검은별 명단 확인하기</button></section>
   <section id="accounts-panel" hidden><h3>학생 계정 만들기 · 수정하기</h3><p class="muted">학생은 배부받은 계정으로만 입장해요. 비밀번호는 숫자 4자리예요.</p><label for="account-target">관리할 계정</label><select id="account-target"><option value="new">새 학생 만들기</option></select><label for="account-name">이름</label><input id="account-name" maxlength="12" autocomplete="off"><label for="account-pin">비밀번호</label><input id="account-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" placeholder="수정할 때 비워두면 현재 비밀번호 유지"><button id="account-save" class="primary small">계정 저장</button><p id="account-result" role="status"></p></section><section class="pin-panel" id="pin-panel" hidden><h3>⑤ 학생 비밀번호 바꾸기</h3><label for="pin-target">학생</label><select id="pin-target"></select><label for="reset-pin">새 비밀번호</label><input id="reset-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><button id="pin-save" class="primary small" type="button">비밀번호 저장</button></section>
-  <section id="credentials-panel" hidden><h3>학생에게 배부할 계정</h3><p class="muted">처음 만든 계정의 임시 비밀번호는 이 화면에서만 확인할 수 있어요. 학생에게는 본인의 계정만 알려주세요.</p><p id="credentials-empty" class="muted">이전에 만든 계정의 비밀번호는 다시 표시되지 않아요. 필요한 학생은 위의 계정 수정에서 새 비밀번호를 지정해주세요.</p><textarea id="credentials-text" rows="10" readonly aria-label="배부용 계정 목록" hidden></textarea><button id="credentials-download" class="primary small" type="button" hidden>목록 파일 저장</button></section>
+  <section id="credentials-panel" hidden><h3>학생에게 배부할 계정</h3><p class="muted">계정 저장 후 이름과 새 비밀번호가 아래 목록에 반영돼요. 비밀번호는 이 화면에서 발급한 값만 표시해요. 이전 비밀번호를 확인할 수 없거나 학생이 바꿨다면 위에서 새 비밀번호를 지정해주세요. 학생에게는 본인의 계정만 알려주세요.</p><p id="credentials-empty" class="muted">아직 학생 계정이 없어요. 위에서 계정을 만들어주세요.</p><textarea id="credentials-text" rows="10" readonly aria-label="배부용 계정 목록" hidden></textarea><button id="credentials-download" class="primary small" type="button" hidden>목록 파일 저장</button></section>
   <div class="dialog-actions teacher-footer"><button id="teacher-leave" class="secondary" type="button">선생님 나가기</button><button id="teacher-close" class="secondary" type="button">닫기</button></div>
 </dialog>
 <dialog id="leave-dialog"><h2 id="leave-title">교실에서 나갈까요?</h2><p id="leave-description">다시 교실 코드로 입장할 수 있어요.</p><div class="dialog-actions"><button id="stay" class="secondary">계속 있기</button><button id="confirm-leave" class="primary">나가기</button></div></dialog>

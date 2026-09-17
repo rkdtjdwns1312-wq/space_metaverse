@@ -32,17 +32,94 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
     button.onclick=()=>{selected=id;signature='';render();};return button;
   }
-  // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 점의 좌표가 어긋나지 않습니다.
+  // 작은 지도에서도 실제 월드의 종류와 위치가 보이도록 간단한 실루엣을 사용합니다.
+  // 애니메이션이나 월드 캔버스 재사용 없이, 미니맵을 그릴 때만 한 번씩 그립니다.
+  function drawSilhouette(ctx,o,x,y,r,theme){
+    const color=o.color|| (theme==='black-hole'?'#a995d8':'#fff0b6');
+    const kind=o.kind||'planet';
+    ctx.save();ctx.translate(x,y);ctx.fillStyle=color;ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.08);
+    if(kind==='pillar'){
+      ctx.beginPath();ctx.roundRect(-r*.35,-r*1.15,r*.7,r*1.8,r*.18);ctx.fill();ctx.stroke();
+      ctx.fillRect(-r*.55,-r*1.25,r*1.1,r*.2);ctx.fillRect(-r*.55,r*.62,r*1.1,r*.2);
+    }else if(kind==='gate'||kind==='door'){
+      ctx.beginPath();ctx.arc(0,0,r*.8,Math.PI,0);ctx.lineTo(r*.8,r*.75);ctx.lineTo(-r*.8,r*.75);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffffff88';ctx.fillRect(-r*.42,-r*.05,r*.84,r*.75);
+    }else if(kind==='shop'){
+      ctx.fillRect(-r*.8,-r*.35,r*1.6,r*1.1);ctx.strokeRect(-r*.8,-r*.35,r*1.6,r*1.1);
+      ctx.beginPath();ctx.moveTo(-r,-r*.35);ctx.lineTo(0,-r*1.05);ctx.lineTo(r,-r*.35);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#fff8';ctx.fillRect(-r*.25,r*.05,r*.5,r*.7);
+    }else if(kind==='arcade'){
+      ctx.beginPath();ctx.roundRect(-r*.65,-r,r*1.3,r*2,r*.18);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffffffb8';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.55);ctx.fillStyle='#665784';ctx.fillRect(-r*.2,r*.2,r*.4,r*.12);
+    }else if(kind==='star'||kind==='growth'||kind==='evolution'||kind==='black-star'){
+      ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.42:r;const px=Math.cos(a)*s,py=Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
+    }else if(kind==='board'||kind==='report-board'){
+      ctx.fillRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.strokeRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
+      ctx.strokeStyle='#ffffffaa';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-r*.55,i*r*.25);ctx.lineTo(r*.55,i*r*.25);ctx.stroke();}
+    }else if(kind==='black-hole'){
+      ctx.beginPath();ctx.arc(0,0,r*.85,0,Math.PI*2);ctx.fillStyle='#080610';ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,r*1.15,.2,Math.PI*1.35);ctx.stroke();
+    }else if(kind==='andromeda'){
+      // 실제 광장 그림의 부드러운 성운 대신, 작은 지도에서는 중심과 나선 팔만 남깁니다.
+      ctx.fillStyle='#dff5ff99';ctx.beginPath();ctx.ellipse(0,0,r*.9,r*.55,-.25,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#ffffffcc';ctx.lineWidth=Math.max(1,r*.08);ctx.beginPath();
+      for(let i=0;i<28;i++){const a=i*.42,rr=r*(.08+i/30);const px=Math.cos(a)*rr,py=Math.sin(a)*rr*.58;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r*.18,0,Math.PI*2);ctx.fill();
+    }else if(kind==='lamp'){
+      ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.12);ctx.beginPath();ctx.moveTo(0,r*.9);ctx.lineTo(0,-r*.45);ctx.stroke();
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,-r*.65,r*.42,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-r*.38,-r*.2);ctx.lineTo(r*.38,-r*.2);ctx.stroke();
+    }else if(kind==='warning-rock'){
+      ctx.beginPath();ctx.moveTo(-r*.8,r*.45);ctx.lineTo(-r*.95,-r*.15);ctx.lineTo(-r*.35,-r*.8);ctx.lineTo(r*.35,-r*.7);ctx.lineTo(r*.9,-r*.15);ctx.lineTo(r*.65,r*.65);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#d8c8e8';ctx.lineWidth=Math.max(1,r*.09);ctx.beginPath();ctx.moveTo(-r*.12,-r*.35);ctx.lineTo(r*.12,r*.2);ctx.moveTo(r*.12,-r*.35);ctx.lineTo(-r*.12,r*.2);ctx.stroke();
+    }else{
+      // 부서행성은 원 대신 실제 월드의 행성처럼 타원과 소속 고리를 사용합니다.
+      ctx.beginPath();ctx.ellipse(0,0,r*.9,r*.68,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#ffffffaa';ctx.beginPath();ctx.ellipse(0,0,r*1.25,r*.35,-.35,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function mapBackground(ctx,info,x,y,w,h){
+    // 고정 맵 네 곳은 config에 theme을 두지 않으므로 실제 id로 배경을 선택합니다.
+    const theme=info.theme||({
+      [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'garden',[VALLEY_ID]:'valley'
+    }[info.id]||'default');
+    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='garden'?'#f4d4c5':theme==='valley'?'#c7c9e5':'#e1daf2';
+    ctx.fillRect(x,y,w,h);
+    if(theme==='plaza'){
+      // scenery.drawTemple의 중심(별 1080,540 기준 아래 160)을 작은 타원 바닥으로 압축합니다.
+      const star=info.objects.find(o=>o.id==='square');
+      const sx=w/info.width,sy=h/info.height,cx=x+(star?.x??info.width/2)*sx,cy=y+((star?.y??info.height/2)+160)*sy;
+      ctx.fillStyle='#bda9d688';ctx.beginPath();ctx.ellipse(cx,cy+26*sy,443*sx,257*sy,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fbf4fccc';ctx.beginPath();ctx.ellipse(cx,cy-10*sy,419*sx,229*sy,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#bfaed766';ctx.lineWidth=Math.max(1,2*sx);
+      for(const r of [120,235,342]){ctx.beginPath();ctx.ellipse(cx,cy-16*sy,r*sx,r*.52*sy,0,0,Math.PI*2);ctx.stroke();}
+    }
+    if(theme==='star-origin'){ctx.fillStyle='#cfd9ff99';for(let i=0;i<24;i++){ctx.fillRect(x+(i*83%Math.max(1,w)),y+(i*47%Math.max(1,h)),1.5,1.5);}}
+    // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
+    ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
+    if(theme==='garden'){
+      ctx.fillStyle='#fff1d4';ctx.beginPath();ctx.ellipse(590,450,445,205,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f7dbbc';ctx.beginPath();ctx.ellipse(590,445,406,179,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff2ad';ctx.beginPath();ctx.arc(600,165,62,0,Math.PI*2);ctx.fill();
+    }
+    if(theme==='valley'){
+      for(const [width,color] of [[135,'#dceafd80'],[40,'#fff8ffaa']]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(-120,780);ctx.bezierCurveTo(450,780,340,210,1320,290);ctx.stroke();}
+    }
+    if(theme==='rainbow-space'){
+      for(const [i,color] of ['#ffbbd9','#ffdba2','#bceacc','#b9deff','#ddc0ff'].entries()){ctx.strokeStyle=color+'90';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-50,560+i*20);ctx.bezierCurveTo(300,80+i*42,720,720-i*38,1250,180+i*30);ctx.stroke();}
+    }
+    ctx.restore();
+  }
+  // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 좌표가 어긋나지 않습니다.
   function draw(canvas,mapId,detailed=false){
     const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:12;
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle=info.theme==='black-hole'?'#05040a':info.theme==='star-origin'?'#090b17':'#e1daf2';ctx.fillRect(ox,oy,info.width*scale,info.height*scale);
+    mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
     ctx.strokeStyle='#b9a9d7';ctx.lineWidth=2;ctx.strokeRect(ox,oy,info.width*scale,info.height*scale);
     for(const o of info.objects){
       const x=ox+o.x*scale,y=oy+o.y*scale;
-      ctx.fillStyle=o.color||'#fff0b6';ctx.beginPath();ctx.arc(x,y,Math.max(detailed?5:2.5,o.radius*scale),0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#8978aa';ctx.lineWidth=1;ctx.stroke();
+      drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme);
       if(detailed){ctx.fillStyle='#54456e';ctx.font='15px Jua, sans-serif';ctx.textAlign='center';const label=o.name||'행성';ctx.fillText(label,Math.max(65,Math.min(w-65,x)),Math.min(h-9,y+o.radius*scale+20),125);}
     }
     const p=position||me();canvas.dataset.mapId=mapId;

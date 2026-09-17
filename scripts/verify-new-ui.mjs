@@ -74,6 +74,14 @@ try{
   await teacher.locator('#account-name').fill('달솔');await teacher.locator('#account-pin').fill('4321');await teacher.locator('#account-save').click();
   await two.locator('#lobby').waitFor({state:'visible'});await two.locator('#nickname').fill('달솔');await two.locator('#student-pin').fill('4321');await two.locator('#student-form .submit').click();
   await two.locator('#password-offer-no').click();assert.equal([...room.players.values()].find(p=>p.nickname==='달솔').id,p2.id);check('교사가 이름·비밀번호를 수정하고 학생이 같은 자산 계정으로 재입장');
+  await teacher.waitForFunction(()=>document.getElementById('credentials-text').value.includes('달솔\t4321'));
+  assert.doesNotMatch(await teacher.locator('#credentials-text').inputValue(),/달이\t/);
+  await teacher.locator('#account-target').selectOption(p2.id);await teacher.locator('#account-name').fill('달솔이');await teacher.locator('#account-pin').fill('');await teacher.locator('#account-save').click();
+  await teacher.waitForFunction(()=>document.getElementById('credentials-text').value.includes('달솔이\t4321'));
+  await teacher.locator('#account-target').selectOption('new');await teacher.locator('#account-name').fill('새별');await teacher.locator('#account-pin').fill('2468');await teacher.locator('#account-save').click();
+  await teacher.waitForFunction(()=>document.getElementById('credentials-text').value.includes('새별\t2468'));
+  assert.equal((await teacher.locator('#credentials-text').inputValue()).split('\n').length,3);
+  await teacher.screenshot({path:'.local/098-credentials.png'});check('계정 수정·이름만 수정·신규 저장 후 배부 목록 갱신, 중복 없음');
   assert.deepEqual(errors,[]);console.log(JSON.stringify({checks,errors},null,2));
   await writeFile('.local/new-ui-result.json',JSON.stringify({checks,errors},null,2));
 }catch(e){await writeFile('.local/new-ui-failure.txt',e.stack+'\n'+JSON.stringify(errors));for(const c of browser.contexts())for(const p of c.pages())await p.screenshot({path:'.local/new-ui-fail-'+browser.contexts().indexOf(c)+'.png',timeout:3000}).catch(()=>{});throw e;}

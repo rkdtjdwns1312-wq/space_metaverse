@@ -450,9 +450,11 @@ try{
  // Item 2: teacher gives star shards to one student, then to everyone, then rejects an invalid amount.
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
+ assert.equal((await teacher.locator('#shards-feedback').innerText()).trim(),'');
  await teacher.locator('#shards-target').selectOption({value:id});
  await teacher.locator('#shards-amount').fill('20');
  await teacher.locator('#shards-give').click();
+ await teacher.locator('#shards-feedback').filter({hasText:'지급되었습니다'}).waitFor({state:'visible'});
  await student.locator('#self-shards').filter({hasText:'20'}).waitFor({state:'attached'});
  // 별 파편 지급은 공개 채팅이 아니라 받는 학생에게만 가는 개인 안내(whisper, li.private)입니다(server/app.js shards:give).
  await student.locator('#chat-log li.private').filter({hasText:'선생님이 나에게 별 파편 20개를 주었어요.'}).waitFor({state:'attached'});
@@ -461,11 +463,14 @@ try{
  await teacher.locator('#shards-target').selectOption('all');
  await teacher.locator('#shards-amount').fill('5');
  await teacher.locator('#shards-give').click();
+ await teacher.locator('#shards-feedback').filter({hasText:'지급되었습니다'}).waitFor({state:'visible'});
  await student.locator('#self-shards').filter({hasText:'25'}).waitFor({state:'attached'});
  await student.locator('#chat-log li.private').filter({hasText:'선생님이 나에게 별 파편 5개를 주었어요.'}).waitFor({state:'attached'});
  check('Teacher gives 5 star shards to everyone; student 1 now has 25 and receives the same private whisper wording, not a public announcement');
  await teacher.locator('#shards-amount').fill('0');
  await teacher.locator('#shards-give').click();
+ await teacher.locator('#shards-feedback').filter({hasText:'별 파편 개수는 1~999 사이 정수로 적어주세요.'}).waitFor({state:'visible'});
+ assert.doesNotMatch(await teacher.locator('#shards-feedback').innerText(),/지급되었습니다/);
  await teacher.locator('#toast').filter({hasText:'별 파편 개수는 1~999 사이 정수로 적어주세요.'}).waitFor({state:'attached'});
  check('Giving 0 star shards is rejected with the exact validation message');
  await teacher.locator('#teacher-close').click();

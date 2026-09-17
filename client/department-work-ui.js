@@ -56,15 +56,16 @@ export function createDepartmentWorkUI({request,stop,toast}) {
   }
   $('refresh').onclick=()=>{if(!dirty||confirm('저장하지 않은 글 대신 서버에 저장된 글을 불러올까요?'))refresh();};
   async function act(event,payload,success) {
-    if(acting||!data)return;acting=true;const id=planetId,revision=++generation;
+    if(acting||!data)return;acting=true;$('message').textContent='';const id=planetId,revision=++generation;
     for(const b of dialog.querySelectorAll('button:not(#department-work-close)'))b.disabled=true;
-    try{const value=await request('department:'+event,{planetId:id,...payload});if(id===planetId&&revision===generation){render(value);toast(success);}}
+    // 열린 부서 창 안에 결과를 표시해 모달 뒤의 토스트가 가려져도 확인할 수 있습니다.
+    try{const value=await request('department:'+event,{planetId:id,...payload});if(id===planetId&&revision===generation){render(value);$('message').textContent=success;toast(success);}}
     catch(error){if(id===planetId)$('message').textContent=error.message;}
     finally{if(revision===generation){acting=false;for(const b of dialog.querySelectorAll('button'))b.disabled=false;if(data)$('confirm').disabled=!!data.work.distribution?.confirmedIds.includes(data.selfId);}}
   }
   $('save').onclick=()=>act('save',{text:$('text').value,version:data.work.report.version},'실적을 저장했어요.');
   $('submit').onclick=()=>act('submit',{text:$('text').value,version:data.work.report.version},'선생님께 실적을 제출했어요.');
-  $('award').onclick=()=>act('award',{amount:Number($('award-amount').value),version:data.work.report.version},'부서에 별 파편을 지급했어요. 실적 작성란은 비웠어요.');
+  $('award').onclick=()=>act('award',{amount:Number($('award-amount').value),version:data.work.report.version},'지급완료되었습니다');
   $('propose').onclick=()=>act('propose',{allocations:amountInputs().map(i=>({playerId:i.dataset.playerId,quantity:Number(i.value)}))},'분배 제안을 만들었어요. 부원 모두 확인해주세요.');
   $('confirm').onclick=()=>act('confirm',{proposalId:data.work.distribution.id},'분배 금액을 확인했어요.');
   $('cancel').onclick=()=>act('cancel',{},'분배 제안을 취소했어요.');

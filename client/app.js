@@ -720,14 +720,18 @@ $('planet-create-submit').onclick=async()=>{
 $('crew-button').onclick=()=>{stop();$('crew-dialog').showModal();};
 $('crew-close').onclick=()=>$('crew-dialog').close();
 $('crew-dialog').addEventListener('close',()=>$('world').focus());
-$('teacher-tools').onclick=()=>{updateShardsTargetOptions();stop();$('teacher-dialog').showModal();};
+$('teacher-tools').onclick=()=>{updateShardsTargetOptions();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
 $('teacher-close').onclick=()=>$('teacher-dialog').close();
 $('teacher-leave').onclick=()=>{$('teacher-dialog').close();$('leave').click();};
 $('teacher-dialog').addEventListener('close',()=>$('world').focus());
 $('shards-give').onclick=async()=>{
+  if($('shards-give').disabled)return;
   const playerId=$('shards-target').value,amount=Number($('shards-amount').value);
-  try{await request('shards:give',{playerId,amount});toast('별 파편을 지급했어요.');}
-  catch(e){toast(e.message);}
+  $('shards-give').disabled=true;$('shards-feedback').textContent='';
+  // 모달 뒤에 가려지는 토스트 대신 지급 버튼 옆에도 서버 처리 결과를 남깁니다.
+  try{await request('shards:give',{playerId,amount});const message=amount<0?'별 파편을 거두었습니다.':'지급되었습니다';$('shards-feedback').textContent=message;toast(message);}
+  catch(e){$('shards-feedback').textContent=e.message;toast(e.message);}
+  finally{$('shards-give').disabled=false;}
 };
 $('pin-save').onclick=async()=>{
   const pin=$('reset-pin').value;
