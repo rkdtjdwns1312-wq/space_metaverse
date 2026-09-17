@@ -171,7 +171,7 @@ try{
  await student.locator('#chat-log li.mine').filter({hasText:'안녕하세요 선생님'}).waitFor({state:'attached'});
  check('Student chat message reaches the teacher log with nickname 1 and shows as "mine" in the student log');
 
- await student.waitForTimeout(800); // clear the 700ms per-player cooldown before the next send
+ await student.waitForTimeout(1600); // clear the 1500ms per-player cooldown before the next send
  const blockedWord=BLOCKED_WORDS[0];
  const naughty='너는 진짜 '+blockedWord+' 같아';
  const masked=naughty.replace(blockedWord,'○'.repeat(blockedWord.length));
@@ -225,7 +225,7 @@ try{
  await student.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor({state:'attached'});
  check('Chat history is restored to the student after reload/session resume');
 
- await student.waitForTimeout(800);
+ await student.waitForTimeout(1600);
  const bubbleCanvasBefore=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  await student.locator('#chat-input').fill('말풍선 테스트');
  await student.locator('#chat-input').press('Enter');

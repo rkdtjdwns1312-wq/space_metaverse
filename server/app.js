@@ -7,6 +7,7 @@ import { RoomStore, ensure, GameError, effectsView, nickname } from './rooms.js'
 import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
+import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward} from './temple.js';
@@ -323,7 +324,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       // 보이지 않는 서식 문자(폭 없는 공백, 글자 방향 바꾸기 등)는 지운 뒤 길이를 검사합니다.
       const trimmed=typeof raw==='string'?raw.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'';
       const hasControl=[...trimmed].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;});
-      ensure(typeof raw==='string' && trimmed.length>=1 && trimmed.length<=CHAT.maxLength && !hasControl,'채팅은 1~120자로 입력해주세요.');
+      ensure(typeof raw==='string' && trimmed.length>=1 && [...trimmed].length<=CHAT.maxLength && !hasControl,'채팅은 1~100자로 입력해주세요.');
       const text=trimmed.replace(/ {2,}/g,' ');
       if(p.role==='student'){
         ensure(room.unattended||[...room.players.values()].some(t=>t.role==='teacher'&&t.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
@@ -331,16 +332,16 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
       ensure(!p.muted,'선생님이 내 채팅을 잠시 멈췄어요.');
       const now=Date.now();
-      ensure(now-p.lastChatAt>=CHAT.cooldownMs,'조금 천천히 말해요.');
       const {text:filtered,flagged}=filterChat(text);
       const scope=chatScope(room,p,data);
       if(scope.channel==='direct')ensure(room.players.get(scope.targetId)?.connected,'현재 접속 중인 친구에게 말해주세요.');
+      const recentChats=checkChatRate(p,filtered,now);
       const msg=store.pushChat(room,{playerId:p.id,nickname:p.nickname,role:p.role,text:filtered,flagged,...scope});
       for(const recipient of room.players.values())if(recipient.connected&&canReadChat(recipient,msg)){
         const targetSocket=io.sockets.sockets.get(recipient.socketId);
         if(targetSocket)deliver(()=>targetSocket.emit('chat:message',msg));
       }
-      p.lastChatAt=now;
+      p.lastChatAt=now;p.recentChats=recentChats;
       return {};
     });
     action('chat:history',()=>{

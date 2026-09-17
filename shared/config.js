@@ -186,4 +186,7 @@ export function createAvatar() {
 }
 // 향후 인벤토리 항목: { id, name, description, icon, quantity, type, level }.
 // 향후 별 파편 잔액은 0 이상의 안전한 정수로, 지급/지출은 서버에서 검증합니다.
-export const CHAT = Object.freeze({ maxLength: 120, historySize: 50, cooldownMs: 700, bubbleMs: 4000 });
+// 길이에 따른 읽기 시간과 도배 방지 기준은 화면·서버가 함께 참조합니다.
+export const CHAT = Object.freeze({ maxLength: 100, historySize: 50, cooldownMs: 1500,
+  rateWindowMs: 10_000, maxPerWindow: 5, repeatWindowMs: 10_000,
+  bubbleBaseMs: 3000, bubblePerCharMs: 90, bubbleMaxMs: 12_000 });

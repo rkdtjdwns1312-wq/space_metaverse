@@ -346,11 +346,11 @@ export function createWorld(canvas) {
     if(line||!lines.length)lines.push(line);
     const w=Math.min(230,Math.max(44,...lines.map(value=>ctx.measureText(value).width+22)));
     const lineHeight=18,h=lines.length*lineHeight+12;
-    const visibleWidth=canvas.width/(window.devicePixelRatio||1)/view.scale;
+    const visibleWidth=canvas.width/Math.min(window.devicePixelRatio||1,2)/view.scale;
     const visibleLeft=view.x+8,visibleRight=view.x+visibleWidth-8;
-    const bx=Math.max(visibleLeft+w/2,Math.min(visibleRight-w/2,x)),by=y-38-h;
+    const bx=Math.max(visibleLeft+w/2,Math.min(visibleRight-w/2,x)),by=Math.max(view.y+8,y-38-h);
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#d8d3ea';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.roundRect(bx,by,w,h,10);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.roundRect(bx-w/2,by,w,h,10);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(bx-6,by+h-1);ctx.lineTo(bx+6,by+h-1);ctx.lineTo(bx,by+h+8);ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
     ctx.fillStyle='#524969';ctx.textAlign='center';
     lines.forEach((value,index)=>ctx.fillText(value,bx,by+lineHeight+index*lineHeight));

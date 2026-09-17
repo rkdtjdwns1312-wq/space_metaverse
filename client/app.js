@@ -15,7 +15,7 @@ import {createAssignmentUI} from './assignment-ui.js';
 import {createInteriorDecorUI} from './interior-decor-ui.js';
 import {interiorDecorObject} from '/shared/interior-decor.js';
 import {constellationOf} from '/shared/constellations.js';
-import { PROGRESSION, STATIC_MAPS } from '/shared/config.js';
+import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
@@ -866,7 +866,7 @@ function reset(message){
   $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('touch-controls').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   $('players').replaceChildren();$('player-count').textContent='0 / 30';$('crew-count').textContent='0 / 30';$('crew-empty').hidden=false;
-  clearChat();$('chat-input').value='';$('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';
+  clearChat();$('chat-input').value='';updateChatCount();$('chat-feedback').textContent='';$('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
   $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
@@ -932,13 +932,25 @@ socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
-socket.on('chat:message',msg=>{if(!selfId)return;social.receive(msg);if(msg.channel==='map')world.say(msg.playerId,msg.text);});
+// 서버에서 대화 범위에 맞게 전달한 메시지만 말풍선으로 표시합니다.
+// 1:1·부서 대화는 원래 수신자 화면에서만 그려지며 다른 친구에게 전파하지 않습니다.
+socket.on('chat:message',msg=>{if(!selfId)return;social.receive(msg);if(msg.playerId&&['map','department','direct'].includes(msg.channel))world.say(msg.playerId,msg.text);});
 socket.on('chat:cleared',()=>{if(selfId)social.clear();});
+function updateChatCount(){
+  const input=$('chat-input');
+  input.value=Array.from(input.value).slice(0,CHAT.maxLength).join('');
+  $('chat-count').textContent=Array.from(input.value).length+' / '+CHAT.maxLength+'자';
+}
+// 한글 조합 중에는 자르지 않고 조합이 끝난 뒤 제한합니다. 이모지도 한 글자로 셉니다.
+$('chat-input').addEventListener('input',e=>{if(!e.isComposing)updateChatCount();});
+$('chat-input').addEventListener('compositionend',updateChatCount);
 $('chat-form').onsubmit=async e=>{
   e.preventDefault();const text=$('chat-input').value.trim();if(!text||chatBusy)return;
+  if(Array.from(text).length>CHAT.maxLength){$('chat-feedback').textContent='채팅은 1~100자로 입력해주세요.';return;}
+  $('chat-feedback').textContent='';
   chatBusy=true;$('chat-send').disabled=true;
-  try{await request('chat:send',{text,...social.scope()});$('chat-input').value='';}
-  catch(err){toast(err.message);}
+  try{await request('chat:send',{text,...social.scope()});$('chat-input').value='';updateChatCount();}
+  catch(err){$('chat-feedback').textContent=err.message;toast(err.message);}
   finally{chatBusy=false;$('chat-send').disabled=$('chat-input').disabled;$('chat-input').focus();}
 };
 $('chat-toggle').onclick=async()=>{
