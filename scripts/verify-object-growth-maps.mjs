@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createClassroomServer} from '../server/app.js';
 import {gainExperience,evolveAvatar} from '../server/progression.js';
-import {createAvatar,MAP,ORIGIN_MAPS,PLAZA_ID,mapOf} from '../shared/config.js';
+import {createAvatar,MAP,ORIGIN_MAPS,PLAZA_ID,STATIC_MAPS,mapOf} from '../shared/config.js';
 const game=createClassroomServer({teacherKey:'object-growth-maps-test-only-key',studentHours:false}),address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
 const check=s=>{checks.push(s);console.log(s);};await mkdir('.local',{recursive:true});
@@ -29,7 +29,7 @@ try{
    const gate=mapOf(p.mapId,room.planets.values()).objects.find(o=>o.target===target);assert.ok(gate);Object.assign(p,{x:gate.x,y:gate.y});publish();await page.locator('#interact-object').filter({hasText:gate.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:mapOf(target).name}).waitFor();assert.equal(p.mapId,target);
  }check('별의 기원→시작점1→2→3→2→1→중앙 왕복과 미니맵 갱신');
  Object.assign(p,{mapId:ORIGIN_MAPS[1].id,x:600,y:450});publish();await page.locator('#minimap-title').filter({hasText:'별의 시작점 2'}).waitFor();await page.screenshot({path:'.local/star-origin-2.png'});
- await page.locator('#map-overview').click();assert.equal(await page.locator('#universe-links button').count(),7);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),ORIGIN_MAPS[1].id);
+ await page.locator('#map-overview').click();assert.equal(await page.locator('#universe-links button').count(),Object.keys(STATIC_MAPS).length);assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),ORIGIN_MAPS[1].id);
  const rows=await Promise.all([2,1,0].map(i=>page.locator('#universe-links [data-map-id="'+ORIGIN_MAPS[i].id+'"]').boundingBox()));assert.ok(rows[0].y<rows[1].y&&rows[1].y<rows[2].y);await page.screenshot({path:'.local/seven-map-atlas.png'});await page.locator('#universe-close').click();check('전체 지도 세 위쪽 맵 배치·현재 맵 표시·닫기');
  const render=()=>page.evaluate(async()=>{const {drawStarOrigin}=await import('/scenery.js'),{ORIGIN_MAPS}=await import('/shared/config.js'),canvas=document.createElement('canvas');canvas.width=1200;canvas.height=900;const c=canvas.getContext('2d');drawStarOrigin(c,ORIGIN_MAPS[0],1000);const a=canvas.toDataURL(),corner=[...c.getImageData(0,0,1,1).data];drawStarOrigin(c,ORIGIN_MAPS[0],4600);return {same:a===canvas.toDataURL(),corner};});
  let result=await render();assert.equal(result.same,false);assert.ok(result.corner.slice(0,3).every(v=>v<20));await page.emulateMedia({reducedMotion:'reduce'});result=await render();assert.equal(result.same,true);check('검은 우주·은은한 별 애니메이션·움직임 줄이기 지원');assert.deepEqual(errors,[]);
