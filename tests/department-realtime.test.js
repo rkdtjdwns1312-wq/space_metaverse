@@ -11,6 +11,7 @@ import { INTERIOR, MAP, PLANET_COLORS, PLAZA_ID, interiorIdOf } from '../shared/
 
 const key = 'department-test-private-not-real-key';
 const call = (socket, event, data = {}) => socket.timeout(3000).emitWithAck(event, data);
+const reportBoard = INTERIOR.objects.find(object => object.kind === 'report-board');
 
 test('department realtime access, work, distribution, privacy, and persistence', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'department-realtime-'));
@@ -52,7 +53,7 @@ test('department realtime access, work, distribution, privacy, and persistence',
     secondPlayer = room.players.get(joins[1].selfId);
     planet = room.planets.get(planet.id);
   };
-  const insideNearBoard = player => Object.assign(player, { mapId: interiorIdOf(planet.id), x: 860, y: 420 });
+  const insideNearBoard = player => Object.assign(player, { mapId: interiorIdOf(planet.id), x: reportBoard.x, y: reportBoard.y });
   const plazaNearPlanet = player => Object.assign(player, { mapId: PLAZA_ID, x: planet.x + planet.radius + 10, y: planet.y });
   plazaNearPlanet(teacherPlayer);
   await call(teacher, 'department:get', { planetId: planet.id });
@@ -101,7 +102,7 @@ test('department realtime access, work, distribution, privacy, and persistence',
   assert.equal(planet.work.balance, balanceBeforeDeniedLeave);
   const restoredFirst = room.players.get(firstPlayer.id);
   const restoredSecond = room.players.get(secondPlayer.id);
-  Object.assign(restoredFirst, { mapId: interiorIdOf(planet.id), x: 860, y: 420 });
+  Object.assign(restoredFirst, { mapId: interiorIdOf(planet.id), x: reportBoard.x, y: reportBoard.y });
   assert.equal((await call(resumed, 'department:confirm', { planetId: planet.id, proposalId })).completed, false);
   const resumedSecond = io(`http://127.0.0.1:${address.port}`, { transports: ['websocket'], forceNew: true, reconnection: false });
   sockets.push(resumedSecond);
@@ -109,7 +110,7 @@ test('department realtime access, work, distribution, privacy, and persistence',
   const secondJoin = await call(resumedSecond, 'room:join', { code: created.room.code, nickname: '2', pin: created.credentials.find(c => c.nickname === '2').pin });
   assert.equal(secondJoin.selfId, restoredSecond.id);
   room = game.store.rooms.get(created.room.code); planet = room.planets.get(planet.id);
-  Object.assign(room.players.get(restoredSecond.id), { mapId: interiorIdOf(planet.id), x: 860, y: 420 });
+  Object.assign(room.players.get(restoredSecond.id), { mapId: interiorIdOf(planet.id), x: reportBoard.x, y: reportBoard.y });
   const completed = await call(resumedSecond, 'department:confirm', { planetId: planet.id, proposalId });
   assert.equal(completed.completed, true);
   refresh();

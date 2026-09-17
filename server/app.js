@@ -19,6 +19,7 @@ import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import {warningView,issueWarning,clearBlackStar,blackStarList} from './warnings.js';
 import {addTask,completeTask} from './tasks.js';
+import {interiorDecorObject,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -648,6 +649,21 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       Object.assign(p,arrivePosition(room,data.to,gate.arrival),{mapId:data.to,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
+    });
+    action('planet:interior-decor:set',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s,planet=requirePlanet(room,data);
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'우리 부서의 오브젝트만 꾸밀 수 있어요.');
+      ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 꾸밀 수 있어요.');
+      const object=interiorDecorObject(data.objectId);
+      ensure(object,'꾸밀 오브젝트를 골라주세요.');
+      const target=mapOf(p.mapId).objects.find(item=>item.id===object.id);
+      ensure(target&&isNear(p,target),'오브젝트 가까이에서 꾸며주세요.');
+      ensure(interiorDecorColor(data.colorId)&&object.shapes.some(shape=>shape.id===data.shapeId),'준비된 색과 모양 중에서 골라주세요.');
+      const style={colorId:data.colorId,shapeId:data.shapeId};
+      planet.interiorDecor??={};planet.interiorDecor[object.id]=style;
+      roster(room);
+      return {planetId:planet.id,objectId:object.id,style};
     });
     const warningRockAccess=data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');

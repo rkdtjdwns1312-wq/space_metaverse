@@ -61,7 +61,7 @@ export function placementFree(room, x, y) {
 // templateId: 만들 때 고른 행성 종류(PLANET_TEMPLATES의 id). 이름·소개·색은 종류 기본값이 아니라 실제로 저장된 값을 그대로 씁니다.
 export function addPlanet(room, {name, description, x, y, color, rules, createdBy=null, templateId=null}) {
   const planet = { id: randomUUID(), name, description, x, y, radius: PLANET.radius, color, kind: 'planet',
-    rules: [...rules], createdBy, createdAt: Date.now(), rename: null, templateId };
+    rules: [...rules], createdBy, createdAt: Date.now(), rename: null, templateId, interiorDecor:{} };
   room.planets.set(planet.id, planet);
   for (const p of room.players.values())
     if (p.mapId === PLAZA_ID && Math.hypot(p.x-planet.x, p.y-planet.y) < planet.radius+RULES.radius)

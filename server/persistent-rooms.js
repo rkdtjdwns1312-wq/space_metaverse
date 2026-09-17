@@ -3,6 +3,7 @@ import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
+import {validateInteriorDecor} from './interior-decor.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
@@ -69,7 +70,7 @@ export function fromRecord(r) {
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){

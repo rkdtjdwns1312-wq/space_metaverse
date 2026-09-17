@@ -5,6 +5,7 @@ import { createMotionTrack } from './motion.js';
 import {monsterType} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
+import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const CHAT=config.CHAT||{bubbleMs:4000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
 // 여러 캔버스(광장 지도·아바타 카드 일러스트)에서 함께 쓰는 별 그리기.
@@ -265,12 +266,18 @@ export function createWorld(canvas) {
     ctx.strokeStyle='#b9b3d85c';ctx.strokeRect(16,16,1168,728);
     const planet=planets.find(p=>p.id===map.planetId);
     for(const o of map.objects){
+      const style=interiorDecorStyle(planet?.interiorDecor,o.id),chosen=interiorDecorColor(style.colorId)?.hex;
       if(o.kind==='board'){
         // 규칙은 최대 8줄·한 줄 40자입니다. 줄 수에 맞춰 게시판을 키우고, 긴 줄은 글자를 줄여 판 안에 담습니다.
         const rules=(planet?.rules||[]).slice(0,8);
         const w=520,h=Math.max(120,74+rules.length*19),bx=o.x-w/2,by=o.y-h/2;
-        ctx.fillStyle=o.color||'#fff6d6';ctx.strokeStyle='#e7d9a8';ctx.lineWidth=3;
-        ctx.beginPath();ctx.roundRect(bx,by,w,h,22);ctx.fill();ctx.stroke();
+        ctx.fillStyle=chosen||o.color||'#fff6d6';ctx.strokeStyle='#9b82b4';ctx.lineWidth=3;
+        if(style.shapeId==='tablet'){
+          ctx.beginPath();ctx.moveTo(bx+23,by);ctx.lineTo(bx+w-23,by);ctx.lineTo(bx+w,by+23);ctx.lineTo(bx+w,by+h-23);ctx.lineTo(bx+w-23,by+h);ctx.lineTo(bx+23,by+h);ctx.lineTo(bx,by+h-23);ctx.lineTo(bx,by+23);ctx.closePath();ctx.fill();ctx.stroke();
+        }else{
+          ctx.beginPath();ctx.roundRect(bx,by,w,h,style.shapeId==='scroll'?13:22);ctx.fill();ctx.stroke();
+          if(style.shapeId==='scroll')for(const side of [bx+14,bx+w-14]){ctx.beginPath();ctx.roundRect(side-12,by-10,24,h+20,11);ctx.fill();ctx.stroke();}
+        }
         const boardTemplate=templateOf(planet?.templateId);
         ctx.font='700 18px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#8a6d2d';
         ctx.fillText((boardTemplate?boardTemplate.icon+' ':'')+(planet?.name||'행성')+' 규칙',o.x,by+30);
@@ -279,24 +286,35 @@ export function createWorld(canvas) {
         ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
         rules.forEach((line,i)=>ctx.fillText(line,o.x,by+56+i*19));
       } else if(o.kind==='report-board'){
-        ctx.fillStyle='#fffaf0';ctx.strokeStyle='#bfacd8';ctx.lineWidth=3;
-        ctx.beginPath();ctx.roundRect(o.x-23,o.y-30,46,60,7);ctx.fill();ctx.stroke();
-        ctx.strokeStyle='#b6add1';for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(o.x-12,o.y-13+i*12);ctx.lineTo(o.x+12,o.y-13+i*12);ctx.stroke();}
+        ctx.fillStyle=chosen||'#fffaf0';ctx.strokeStyle='#9c83bb';ctx.lineWidth=3;
+        if(style.shapeId==='hex'){
+          ctx.beginPath();ctx.moveTo(o.x-21,o.y-32);ctx.lineTo(o.x+21,o.y-32);ctx.lineTo(o.x+32,o.y);ctx.lineTo(o.x+21,o.y+32);ctx.lineTo(o.x-21,o.y+32);ctx.lineTo(o.x-32,o.y);ctx.closePath();ctx.fill();ctx.stroke();
+        }else if(style.shapeId==='star'){drawStar(ctx,o.x,o.y,39,chosen||'#fffaf0');ctx.stroke();}
+        else{ctx.beginPath();ctx.roundRect(o.x-23,o.y-30,46,60,7);ctx.fill();ctx.stroke();}
+        ctx.strokeStyle='#746494';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(o.x-11,o.y-13+i*11);ctx.lineTo(o.x+11,o.y-13+i*11);ctx.stroke();}
         ctx.textAlign='center';ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#716389';ctx.fillText('부서실적 작성하기',o.x,o.y+53);
       } else if(o.kind==='door'){
-        ctx.fillStyle='#d9d3f2';ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);
-        ctx.strokeStyle='#b6a9df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);
+        ctx.fillStyle=chosen||'#d9d3f2';ctx.strokeStyle='#8d79ad';ctx.lineWidth=2;
+        if(style.shapeId==='portal'){ctx.beginPath();ctx.ellipse(o.x,o.y,40,47,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fff9';ctx.beginPath();ctx.ellipse(o.x,o.y,24,32,0,0,Math.PI*2);ctx.fill();}
+        else if(style.shapeId==='star'){drawStar(ctx,o.x,o.y,47,chosen||'#d9d3f2');ctx.stroke();}
+        else{ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.fill();ctx.fillRect(o.x-o.radius,o.y,o.radius*2,24);ctx.beginPath();ctx.arc(o.x,o.y,o.radius,Math.PI,0);ctx.stroke();ctx.strokeRect(o.x-o.radius,o.y,o.radius*2,24);}
         ctx.font='600 14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';ctx.fillText(o.name,o.x,o.y+o.radius+30);
       } else if(o.kind==='warning-rock'){
-        drawWarningRock(o);
+        drawWarningRock(o,style,chosen);
       }
     }
     ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#9b93b3';ctx.textAlign='center';
     ctx.fillText(map.name+' · 소속 친구들만의 공간',600,46);
   }
-  function drawWarningRock(o){
-    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(-.12);ctx.fillStyle='#7b718c';ctx.strokeStyle='#4f475f';ctx.lineWidth=3;
-    ctx.beginPath();ctx.moveTo(-34,22);ctx.lineTo(-42,-8);ctx.lineTo(-17,-34);ctx.lineTo(15,-28);ctx.lineTo(40,-4);ctx.lineTo(27,27);ctx.closePath();ctx.fill();ctx.stroke();
+  function drawWarningRock(o,style,chosen){
+    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(-.12);ctx.fillStyle=chosen||'#7b718c';ctx.strokeStyle='#4f475f';ctx.lineWidth=3;
+    if(style.shapeId==='crystal'){
+      ctx.beginPath();ctx.moveTo(0,-43);ctx.lineTo(31,-18);ctx.lineTo(35,18);ctx.lineTo(0,39);ctx.lineTo(-35,18);ctx.lineTo(-31,-18);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,-43);ctx.lineTo(0,39);ctx.moveTo(-31,-18);ctx.lineTo(0,0);ctx.lineTo(31,-18);ctx.stroke();
+    }else if(style.shapeId==='meteor'){
+      ctx.beginPath();ctx.ellipse(0,0,41,32,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#493f6359';for(const [x,y,r] of [[-15,-7,7],[16,9,9],[10,-14,4]]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+    }else{ctx.beginPath();ctx.moveTo(-34,22);ctx.lineTo(-42,-8);ctx.lineTo(-17,-34);ctx.lineTo(15,-28);ctx.lineTo(40,-4);ctx.lineTo(27,27);ctx.closePath();ctx.fill();ctx.stroke();}
     ctx.fillStyle='#c9b9e7';ctx.font='700 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('⚠ 경고 주기',0,58);ctx.restore();
   }
   function drawBlackHoleInterior(map,time){

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {createClassroomServer} from '../server/app.js';
 import {addPlanet} from '../server/world.js';
-import {BLACK_HOLE_ID,interiorIdOf} from '../shared/config.js';
+import {BLACK_HOLE_ID,INTERIOR,interiorIdOf} from '../shared/config.js';
 
 const key=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
@@ -22,7 +22,8 @@ try{
   const room=[...game.store.rooms.values()][0],actorPage=await join('1',room.code),targetPage=await join('2',room.code);
   const actor=[...room.players.values()].find(p=>p.nickname==='1'),target=[...room.players.values()].find(p=>p.nickname==='2');
   const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
-  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:330,y:480});
+  const rock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
+  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:rock.x,y:rock.y+70});
   game.io.to(actor.socketId).emit('room:state',game.store.snapshot(room,actor));
   await actorPage.locator('#interact-object').filter({hasText:'경고 주기'}).waitFor();
   await actorPage.locator('#touch-interact').click();await actorPage.locator('#warning-dialog').waitFor({state:'visible'});

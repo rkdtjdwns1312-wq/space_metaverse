@@ -6,13 +6,22 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createClassroomServer} from '../server/app.js';
 import {addPlanet} from '../server/world.js';
-import {BLACK_HOLE_ID,PLAZA_ID,interiorIdOf,MAP,PLANET,PLANET_COLORS} from '../shared/config.js';
+import {BLACK_HOLE_ID,PLAZA_ID,interiorIdOf,INTERIOR,MAP,PLANET,PLANET_COLORS} from '../shared/config.js';
 import {validateWarnings,validateBlackStar,warningCount} from '../server/warnings.js';
 
 test('블랙홀은 별의 기원 오른쪽 위에 있고 부서행성 약 4배 크기다',()=>{
   const portal=MAP.objects.find(o=>o.kind==='black-hole');
   assert.equal(portal.radius,PLANET.radius*4);
   assert.ok(portal.x>MAP.width*.75&&portal.y<MAP.height*.25);
+});
+
+test('행성 내부 경고 돌과 실적 게시판은 서로 다른 지정 위치에 있다',()=>{
+  const rock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
+  const report=INTERIOR.objects.find(object=>object.kind==='report-board');
+  const rules=INTERIOR.objects.find(object=>object.kind==='board');
+  assert.ok(rock.x<INTERIOR.width*.35&&rock.y>INTERIOR.height*.65);
+  assert.ok(report.x>rules.x+rules.radius&&report.y<INTERIOR.height*.35);
+  assert.ok(Math.hypot(report.x-rock.x,report.y-rock.y)>rock.radius+report.radius);
 });
 
 test('경고 저장 형식과 검은별 소속 정보는 손상된 내용을 거부한다',()=>{
@@ -34,7 +43,8 @@ test('소속 학생의 직접 경고가 누적되면 검은별로 이동하고 �
   const targetSocket=await connect(),targetJoin=await call(targetSocket,'room:join',{code:created.room.code,nickname:'2'});
   const room=game.store.rooms.get(created.room.code),actor=room.players.get(actorJoin.selfId),target=room.players.get(targetJoin.selfId);
   const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
-  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:330,y:480});
+  const warningRock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
+  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:warningRock.x,y:warningRock.y});
   const pending=await call(targetSocket,'planet:propose',{name:'읽기행성',description:'',x:650,y:150,color:PLANET_COLORS[0],templateId:'reading'});
   assert.equal(pending.ok,true);
   assert.equal((await call(targetSocket,'warning:teacher:list',{})).ok,false);
@@ -76,7 +86,8 @@ test('검은별·경고는 서버 재시작 뒤에도 보존되고 학생은 블
   const targetSocket=await connect(),targetJoin=await call(targetSocket,'room:join',{code:created.room.code,nickname:'2',pin:pin('2')});
   let room=game.store.rooms.get(created.room.code),actor=room.players.get(actorJoin.selfId),target=room.players.get(targetJoin.selfId);
   const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
-  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:330,y:480});
+  const warningRock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
+  actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:warningRock.x,y:warningRock.y});
   assert.equal((await call(actorSocket,'warning:threshold:set',{planetId:planet.id,threshold:1})).ok,true);
   assert.equal((await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:target.id,reason:'약속을 어김'})).blackStar,true);
   for(const socket of sockets)socket.disconnect();await game.close();

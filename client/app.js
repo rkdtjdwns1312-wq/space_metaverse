@@ -12,6 +12,8 @@ import {createEvolutionUI} from './evolution-ui.js';
 import {createGrowthUI} from './growth-ui.js';
 import {createWarningUI} from './warning-ui.js';
 import {createAssignmentUI} from './assignment-ui.js';
+import {createInteriorDecorUI} from './interior-decor-ui.js';
+import {interiorDecorObject} from '/shared/interior-decor.js';
 import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
@@ -34,6 +36,7 @@ let overview=false;
 const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,onAreaView:()=>{overview=!overview;world.setOverview(overview);$('map-area-view').textContent=overview?'내 주변으로 돌아가기':'현재 맵 한눈에 보기';$('world').focus();}});
 const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog[open]'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
 const temple=createTempleUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
+const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room});
 const subscribe=(event,listener)=>{socket.on(event,listener);return()=>socket.off(event,listener);};
 const arcade=createArcadeUI({stop,toast,request,
   subscribeStarRanking:listener=>subscribe('stars:ranking',listener),
@@ -634,9 +637,15 @@ function doInteract(){
 }
 $('interact-prompt').onclick=doInteract;
 $('touch-interact').onclick=doInteract;
+$('interior-decorate').onclick=()=>{
+  if(!selfId||placing||document.querySelector('dialog[open]'))return;
+  const nearby=world.nearby(),planetId=planetIdOfMap(world.currentMapId());
+  const me=room?.players.find(player=>player.id===selfId);
+  if(nearby&&planetId&&interiorDecorObject(nearby.kind)&&(me?.role==='teacher'||me?.departmentId===planetId))interiorDecor.open(planetId,nearby.kind);
+};
 function updateInteractPrompt(){
-  const prompt=$('interact-prompt'),touchButton=$('touch-interact');
-  const hide=()=>{if(!prompt.hidden)prompt.hidden=true;if(!touchButton.disabled)touchButton.disabled=true;};
+  const prompt=$('interact-prompt'),touchButton=$('touch-interact'),decorate=$('interior-decorate');
+  const hide=()=>{if(!prompt.hidden)prompt.hidden=true;if(!decorate.hidden)decorate.hidden=true;if(!touchButton.disabled)touchButton.disabled=true;};
   if(!selfId||placing||document.querySelector('dialog[open]')){hide();return;}
   const n=world.nearby();
   if(!n){hide();return;}
@@ -655,6 +664,15 @@ function updateInteractPrompt(){
   y=Math.max(8,Math.min(innerHeight-height-8,y));
   // 좌표만 바뀔 때 레이아웃을 다시 계산하지 않도록 합성 이동을 사용합니다.
   prompt.style.transform='translate3d('+x+'px,'+y+'px,0)';
+  const planetId=planetIdOfMap(world.currentMapId()),me=room?.players.find(player=>player.id===selfId);
+  const canDecorate=!!(planetId&&interiorDecorObject(n.kind)&&(me?.role==='teacher'||me?.departmentId===planetId));
+  decorate.hidden=!canDecorate;
+  if(canDecorate){
+    const decorWidth=decorate.offsetWidth,decorHeight=decorate.offsetHeight;
+    const dx=Math.max(8,Math.min(innerWidth-decorWidth-8,x+(width-decorWidth)/2));
+    const below=y+height+5,dy=below+decorHeight+8<=innerHeight?below:Math.max(8,y-decorHeight-5);
+    decorate.style.transform='translate3d('+dx+'px,'+dy+'px,0)';
+  }
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
 window.addEventListener('keydown',e=>{
@@ -831,7 +849,7 @@ function enter(result){
   $('crew-button').hidden=false;
   social.seed(result.chat?.messages);
   document.body.classList.add('joined');$('world').focus();$('form-message').textContent='';
-  $('interact-prompt').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
+  $('interact-prompt').hidden=true;$('interior-decorate').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
   knownIncomingTradeIds=new Set();tradeDialogSig='';selectedSlotId=null;
   if($('use-dialog').open)$('use-dialog').close();if($('trade-dialog').open)$('trade-dialog').close();
@@ -854,7 +872,7 @@ function reset(message){
   $('avatar-card').style.removeProperty('--card-accent');$('avatar-card').classList.remove('teacher-card');
   {const portrait=$('avatar-portrait');portrait.getContext('2d').clearRect(0,0,portrait.width,portrait.height);}
   $('self-proposal').hidden=true;$('proposals-empty').hidden=false;$('proposals').replaceChildren();lastProposalCount=0;$('pin-panel').hidden=true;$('reset-pin').value='';
-  $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
+  $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('interior-decorate').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
   selectedSlotId=null;$('bag-list').replaceChildren();$('bag-empty').hidden=false;$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';
   $('shop-buy-list').replaceChildren();$('shop-sell-list').replaceChildren();$('shop-sell-empty').hidden=true;
   $('trades').replaceChildren();$('trades-empty').hidden=false;
@@ -866,6 +884,7 @@ function reset(message){
   departmentWork.reset();
   monsterUI.reset();
   rulesUI.reset();
+  interiorDecor.reset();
   evolutionUI.reset();growthUI.reset();
   if($('leave-dialog').open)$('leave-dialog').close();
   if($('planet-dialog').open)$('planet-dialog').close();

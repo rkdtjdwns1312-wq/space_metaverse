@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {addPlanet} from '../server/world.js';
+import {INTERIOR,interiorIdOf} from '../shared/config.js';
+import {INTERIOR_DECOR_COLORS,INTERIOR_DECOR_OBJECTS} from '../shared/interior-decor.js';
+import {validateInteriorDecor} from '../server/interior-decor.js';
+
+test('부서 내부 네 오브젝트에는 기본색 포함 7색과 각각 3가지 모양이 있다',()=>{
+  assert.equal(INTERIOR_DECOR_COLORS.length,7);
+  assert.deepEqual(INTERIOR_DECOR_OBJECTS.map(object=>object.id),['board','report-board','warning-rock','door']);
+  for(const object of INTERIOR_DECOR_OBJECTS)assert.equal(object.shapes.length,3);
+  assert.deepEqual(validateInteriorDecor(),{});
+  assert.throws(()=>validateInteriorDecor({'warning-rock':{colorId:'neon',shapeId:'default'}}),/꾸미기 저장/);
+  assert.throws(()=>validateInteriorDecor({'warning-rock':{colorId:'rose',shapeId:'unlisted'}}),/꾸미기 저장/);
+  assert.throws(()=>validateInteriorDecor({'not-an-object':{colorId:'rose',shapeId:'default'}}),/꾸미기 저장/);
+});
+
+test('소속 학생만 가까운 오브젝트를 꾸미고 행성별 선택은 재시작 뒤에도 남는다',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'interior-decor-')),key='decor-persistence-test-key',sockets=[];
+  let game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false}),address=await game.listen();
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();await rm(directory,{recursive:true,force:true});});
+  const connect=async()=>{const socket=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2']});
+  const pin=name=>created.credentials.find(credential=>credential.nickname===name).pin;
+  const memberSocket=await connect(),memberJoin=await call(memberSocket,'room:join',{code:created.room.code,nickname:'1',pin:pin('1')});
+  const outsiderSocket=await connect(),outsiderJoin=await call(outsiderSocket,'room:join',{code:created.room.code,nickname:'2',pin:pin('2')});
+  let room=game.store.rooms.get(created.room.code),member=room.players.get(memberJoin.selfId),outsider=room.players.get(outsiderJoin.selfId);
+  const planet=addPlanet(room,{name:'예술행성',description:'',x:360,y:430,color:'#c5c9f7',rules:['함께 꾸며요'],templateId:'art'});
+  const other=addPlanet(room,{name:'독서행성',description:'',x:1150,y:430,color:'#d1a7f2',rules:['책을 읽어요'],templateId:'reading'});
+  const refresh=()=>{room=game.store.rooms.get(created.room.code);member=room.players.get(memberJoin.selfId);outsider=room.players.get(outsiderJoin.selfId);return room.planets.get(planet.id);};
+  member.avatar.departmentId=planet.id;
+  const event='planet:interior-decor:set',object=INTERIOR.objects.find(item=>item.id==='warning-rock');
+  Object.assign(member,{mapId:interiorIdOf(planet.id),x:object.x,y:object.y+70});
+  Object.assign(outsider,{mapId:interiorIdOf(planet.id),x:object.x,y:object.y+70});
+  const selected={planetId:planet.id,objectId:object.id,colorId:'mint',shapeId:'crystal'};
+  assert.equal((await call(outsiderSocket,event,selected)).ok,false);
+  assert.equal((await call(memberSocket,event,{...selected,colorId:'invalid'})).ok,false);
+  assert.equal((await call(memberSocket,event,{...selected,shapeId:'invalid'})).ok,false);
+  assert.deepEqual(refresh().interiorDecor,{});
+  Object.assign(member,{x:600,y:540});assert.equal((await call(memberSocket,event,selected)).ok,false);
+  refresh();Object.assign(member,{x:object.x,y:object.y+70});
+  assert.equal((await call(memberSocket,event,selected)).ok,true);
+  assert.deepEqual(refresh().interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
+  assert.deepEqual(game.store.snapshot(room,outsider).planets.find(item=>item.id===planet.id).interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
+  assert.deepEqual(other.interiorDecor,{});
+  for(const socket of sockets)socket.disconnect();await game.close();
+  game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false});address=await game.listen();
+  const reopenedTeacher=await connect();assert.equal((await call(reopenedTeacher,'room:open',{teacherKey:key,code:created.room.code})).ok,true);
+  room=game.store.rooms.get(created.room.code);
+  assert.deepEqual(room.planets.get(planet.id).interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
+  assert.deepEqual(room.planets.get(other.id).interiorDecor,{});
+});

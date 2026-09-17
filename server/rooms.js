@@ -98,7 +98,7 @@ export class RoomStore {
       monsters:monsterViews(room),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
-        templateId:pl.templateId,reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
+        templateId:pl.templateId,interiorDecor:structuredClone(pl.interiorDecor||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
