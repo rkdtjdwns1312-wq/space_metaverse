@@ -256,8 +256,8 @@ export function createWorld(canvas) {
     ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#ded6f5';ctx.textAlign='center';
     ctx.fillText(map.name+' · 별상점에서 별 파편으로 물건을 사고팔아요',600,46);
   }
-  function drawInterior(map){
-    if(map.id==='black-hole')return drawBlackHoleInterior(map);
+  function drawInterior(map,time){
+    if(map.id==='black-hole')return drawBlackHoleInterior(map,time);
     ctx.fillStyle='#f3f1fb';ctx.fillRect(0,0,1200,760);
     const g=ctx.createLinearGradient(0,0,1200,760);g.addColorStop(0,map.color);g.addColorStop(1,'#ffffff');
     ctx.save();ctx.globalAlpha=.18;ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);ctx.restore();
@@ -299,13 +299,21 @@ export function createWorld(canvas) {
     ctx.beginPath();ctx.moveTo(-34,22);ctx.lineTo(-42,-8);ctx.lineTo(-17,-34);ctx.lineTo(15,-28);ctx.lineTo(40,-4);ctx.lineTo(27,27);ctx.closePath();ctx.fill();ctx.stroke();
     ctx.fillStyle='#c9b9e7';ctx.font='700 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('⚠ 경고 주기',0,58);ctx.restore();
   }
-  function drawBlackHoleInterior(map){
+  function drawBlackHoleInterior(map,time){
     ctx.fillStyle='#010106';ctx.fillRect(0,0,1200,760);
     const g=ctx.createRadialGradient(600,350,20,600,350,620);g.addColorStop(0,'#09051a');g.addColorStop(1,'#000');ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
     for(const s of stars){ctx.fillStyle='#bda8ff55';ctx.beginPath();ctx.arc(s.x,(s.y*1.13)%760,s.r*.7,0,Math.PI*2);ctx.fill();}
     ctx.strokeStyle='#3b285e';ctx.lineWidth=2;ctx.strokeRect(16,16,1168,728);
+    const darkStar=map.objects?.find(o=>o.kind==='black-star');
+    if(darkStar){
+      const pulse=window.matchMedia('(prefers-reduced-motion: reduce)').matches?.45:(Math.sin(time/900)+1)*.18+.27;
+      ctx.save();ctx.shadowColor=`rgba(255,255,255,${pulse})`;ctx.shadowBlur=28;
+      drawStar(ctx,darkStar.x,darkStar.y,darkStar.radius,'#020205');
+      ctx.lineWidth=2;ctx.strokeStyle=`rgba(255,255,255,${pulse+.15})`;ctx.stroke();ctx.restore();
+      ctx.save();ctx.textAlign='center';ctx.font='700 17px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e9e5f2';ctx.fillText(darkStar.name,darkStar.x,darkStar.y+darkStar.radius+32);ctx.restore();
+    }
     const door=map.objects?.find(o=>o.kind==='gate');if(door)drawGate(door);
-    ctx.font='700 20px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#d8c8ff';ctx.fillText('검은별의 안식처',600,52);
+    ctx.font='700 20px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#d8c8ff';ctx.fillText(map.name,600,52);
   }
   function drawBubble(id,x,y){
     const b=bubbles.get(id);if(!b)return;
@@ -405,7 +413,7 @@ export function createWorld(canvas) {
     if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID){
       if(myMapId===GARDEN_ID)drawGarden(ctx,map,t);else drawValley(ctx,map,t);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawGrowthStar(o,t);}
-    }else drawInterior(map);
+    }else drawInterior(map,t);
     const visibleMonsters=monsters.filter(m=>m.alive&&m.mapId===myMapId);
     canvas.dataset.monsterCount=String(visibleMonsters.length);
     const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
@@ -453,7 +461,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>['gate','shop','arcade','evolution','growth'].includes(o.kind)),
+        const candidates=[...currentMap().objects.filter(o=>['gate','shop','arcade','evolution','growth','black-star'].includes(o.kind)),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId).map(m=>({...m,name:monsterType(m.typeId)?.name||'별자리',kind:'monster'}))];
         let best=null,bestDist=Infinity;
         for(const o of candidates){

@@ -1,6 +1,6 @@
 export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   const $=id=>document.getElementById(id),classCode=new URLSearchParams(location.search).get('class')||'';
-  let managed=false;
+  let managed=false,credentialsAvailable=false;
   const ready=fetch('/api/public-config').then(r=>r.json()).then(config=>{
     managed=config.managedAccounts;
     if(managed){
@@ -27,7 +27,6 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
     const url=URL.createObjectURL(new Blob([$('credentials-text').value],{type:'text/plain;charset=utf-8'}));
     const a=document.createElement('a');a.href=url;a.download='학생별-배부용-계정.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
-  $('credentials-dialog').addEventListener('close',()=>{$('credentials-text').value='';});
   $('password-offer-no').onclick=()=>$('password-offer-dialog').close();
   function password(){
     for(const id of ['password-offer-dialog','menu-dialog'])if($(id).open)$(id).close();
@@ -46,20 +45,29 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
     try{const result=await request('room:studentLink',{});await navigator.clipboard.writeText(result.url);toast('학생 입장 링크를 복사했어요.');}
     catch(e){toast(e.message);}
   };
+  function renderCredentials(room=getRoom()){
+    const me=room?.players.find(p=>p.id===getSelfId()),teacher=me?.role==='teacher'&&room?.managedAccounts;
+    $('credentials-panel').hidden=!teacher;
+    $('credentials-empty').hidden=!teacher||credentialsAvailable;
+    $('credentials-text').hidden=!teacher||!credentialsAvailable;
+    $('credentials-download').hidden=!teacher||!credentialsAvailable;
+  }
   return {
     ready,
     update(){
       const room=getRoom(),me=room?.players.find(p=>p.id===getSelfId());if(!me)return;
       $('accounts-panel').hidden=me.role!=='teacher'||!room.managedAccounts;
+      renderCredentials(room);
       $('my-password').hidden=me.role!=='student'||!room.managedAccounts;
       const select=$('account-target'),old=select.value;
       select.replaceChildren(Object.assign(document.createElement('option'),{value:'new',textContent:'새 학생 만들기'}),...room.players.filter(p=>p.role==='student').map(p=>Object.assign(document.createElement('option'),{value:p.id,textContent:p.nickname})));
       if([...select.options].some(o=>o.value===old))select.value=old;
     },
     entered(result,{login=false}={}){
-      if(result.credentials?.length){$('credentials-text').value=result.credentials.map(c=>c.nickname+'\t'+c.pin).join('\n');$('credentials-dialog').showModal();}
+      if(result.credentials?.length){$('credentials-text').value=result.credentials.map(c=>c.nickname+'\t'+c.pin).join('\n');credentialsAvailable=true;renderCredentials(result.room);}
       else if(login&&result.room.managedAccounts)$('password-offer-dialog').showModal();
     },
+    reset(){credentialsAvailable=false;$('credentials-text').value='';renderCredentials(null);},
     checkLink(){if(managed&&!classCode)throw new Error('선생님이 보내주신 학생 입장 링크로 접속해주세요.');}
   };
 }

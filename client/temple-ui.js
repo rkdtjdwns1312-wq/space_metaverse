@@ -3,7 +3,7 @@ import {itemOf} from '/shared/config.js';
 export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   const dialog=document.createElement('dialog');dialog.id='temple-dialog';dialog.setAttribute('aria-labelledby','temple-title');
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
-  dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><label id="temple-label" for="temple-editor" hidden>선생님 내용 입력</label><textarea id="temple-editor" rows="8" maxlength="2000" hidden></textarea><div id="temple-task-flags" hidden></div><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
+  dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
   document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;
   $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;});
   function renderEffects(){
@@ -12,19 +12,18 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     for(const r of rows){const li=document.createElement('li');li.textContent=r.nickname+' · '+(itemOf(r.itemId)?.name||r.label)+' · '+Math.ceil((r.until-Date.now())/1000)+'초 남음';ul.append(li);}
     $('content').replaceChildren(rows.length?ul:Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
   }
-  function renderTaskFlags(initial=false){
+  function renumberNoticeRows(){[...$('notice-rows').children].forEach((row,index)=>{row.querySelector('.notice-line').setAttribute('aria-label',`${index+1}번째 알림 내용`);row.querySelector('.notice-task input').setAttribute('aria-label',`${index+1}번째 줄 과제`);row.querySelector('.notice-remove-line').setAttribute('aria-label',`${index+1}번째 줄 삭제`);});}
+  function addNoticeRow(value='',checked=false,focus=false){const rows=$('notice-rows'),index=rows.children.length,row=document.createElement('div');row.className='notice-editor-row';
+    const input=document.createElement('input');input.type='text';input.className='notice-line';input.maxLength=2000;input.value=value;input.setAttribute('aria-label',`${index+1}번째 알림 내용`);input.placeholder='알림 내용을 입력하세요';
+    const label=document.createElement('label');label.className='notice-task';const check=document.createElement('input');check.type='checkbox';check.checked=checked;check.setAttribute('aria-label',`${index+1}번째 줄 과제`);label.append(check,document.createTextNode('과제'));
+    const remove=document.createElement('button');remove.type='button';remove.className='small secondary notice-remove-line';remove.textContent='삭제';remove.setAttribute('aria-label',`${index+1}번째 줄 삭제`);remove.onclick=()=>{row.remove();if(!rows.children.length)addNoticeRow();renumberNoticeRows();};
+    row.append(input,label,remove);rows.append(row);if(focus)input.focus();}
+  function renderNoticeRows(){
     if(result?.kind!=='notice'||!result.canEdit)return;
-    const flags=$('task-flags'),marked=initial?new Set((result.taskLines||[]).map(row=>row.lineIndex)):
-      new Set([...flags.querySelectorAll('input:checked')].map(input=>Number(input.dataset.lineIndex)));
-    const lines=$('editor').value.trim().split('\n');flags.replaceChildren();
-    for(const [index,raw] of lines.entries()){
-      const value=raw.trim();if(!value)continue;
-      const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.dataset.lineIndex=String(index);input.checked=marked.has(index);
-      const span=document.createElement('span');span.textContent=(index+1)+'번째 줄 · '+value;
-      label.append(input,span);flags.append(label);
-    }
+    const rows=$('notice-rows'),marked=new Set((result.taskLines||[]).map(row=>row.lineIndex));rows.replaceChildren();
+    String(result.text||'').split('\n').forEach((line,index)=>addNoticeRow(line,marked.has(index)));
   }
-  $('editor').addEventListener('input',()=>renderTaskFlags());
+  $('add-line').onclick=()=>addNoticeRow('',false,true);
   function renderNotice(){
     const rows=(result.text||'').split('\n').map((text,index)=>({text:text.trim(),index})).filter(row=>row.text);
     if(!rows.length){$('content').textContent='선생님이 아직 내용을 등록하지 않았어요.';return;}
@@ -56,14 +55,14 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     for(const day of days){const th=document.createElement('th');th.scope='col';th.textContent=day;hr.append(th);}head.append(hr);table.append(head);
     const body=document.createElement('tbody');
     for(let row=0;row<6;row++){const tr=document.createElement('tr');const th=document.createElement('th');th.scope='row';th.textContent=`${row+1}교시`;tr.append(th);
-      for(let col=0;col<5;col++){const td=document.createElement('td');const label=`${days[col]}요일 ${row+1}교시 과목`;if(result.canEdit){const input=document.createElement('input');input.type='text';input.maxLength=20;input.value=String(cells[row]?.[col]??'');input.setAttribute('aria-label',label);input.placeholder='과목 입력';td.append(input);}else{td.textContent=String(cells[row]?.[col]||'');td.setAttribute('aria-label',label);}tr.append(td);}body.append(tr);}
+      for(let col=0;col<5;col++){const td=document.createElement('td');const label=`${days[col]}요일 ${row+1}교시 과목`;if(result.canEdit){const input=document.createElement('input');input.type='text';input.maxLength=20;input.value=String(cells[row]?.[col]??'');input.setAttribute('aria-label',label);input.placeholder='과목';td.append(input);}else{const subject=String(cells[row]?.[col]||'');td.textContent=subject;td.title=subject;td.setAttribute('aria-label',subject?`${label}: ${subject}`:label);}tr.append(td);}body.append(tr);}
     table.append(body);$('content').replaceChildren(table);
   }
   function render(){
     $('error').textContent='';const daily=['notice','timetable'].includes(result.kind);
-    $('save').hidden=!result.canEdit;$('editor').hidden=result.kind==='timetable'||!result.canEdit;$('label').hidden=result.kind==='timetable'||!result.canEdit;$('task-flags').hidden=result.kind!=='notice'||!result.canEdit;$('refresh').hidden=daily;
+    $('save').hidden=!result.canEdit;$('content').hidden=result.kind==='notice'&&result.canEdit;$('notice-rows').hidden=result.kind!=='notice'||!result.canEdit;$('add-line').hidden=result.kind!=='notice'||!result.canEdit;$('refresh').hidden=daily;
     if(result.kind==='timetable'){$('description').textContent='월요일부터 금요일까지 · 선생님이 채우는 우주 시간표';renderTimetable();}
-    else if(daily){$('description').textContent=result.date+' · 오늘';renderNotice();$('editor').value=result.text;renderTaskFlags(true);}
+    else if(daily){$('description').textContent=result.date+' · 오늘';if(result.canEdit)renderNoticeRows();else renderNotice();}
     else if(result.kind==='weekly'){
       $('description').textContent=result.week+' 월요일부터 이번 주에 받은 별 파편 · 잔액과 달라요';const ul=document.createElement('ul');
       for(const r of result.rows){const li=document.createElement('li');li.textContent=r.nickname+' · ★ '+r.total+'개';ul.append(li);}
@@ -72,7 +71,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   }
   async function load(){const rev=++revision;try{const data=await request('temple:read',{objectId:selected.id});if(rev!==revision||!dialog.open)return;result=data;render();}catch(e){if(rev===revision)$('error').textContent=e.message;}}
   $('refresh').onclick=load;
-  $('save').onclick=async()=>{if(!selected)return;const rev=revision;$('save').disabled=true;try{let data;if(result?.kind==='timetable'){const cells=[...$('content').querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(input=>input.value));data=await request('temple:timetable:save',{objectId:selected.id,cells});}else{const taskLineIndexes=[...$('task-flags').querySelectorAll('input:checked')].map(input=>Number(input.dataset.lineIndex));data=await request('temple:save',{objectId:selected.id,text:$('editor').value.trim(),taskLineIndexes});}if(rev===revision&&dialog.open){result=data;render();toast(result.kind==='timetable'?'시간표를 저장했어요.':'오늘의 내용을 저장했어요.');}}catch(e){if(rev===revision)$('error').textContent=e.message;}finally{$('save').disabled=false;}};
+  $('save').onclick=async()=>{if(!selected)return;const rev=revision;$('save').disabled=true;try{let data;if(result?.kind==='timetable'){const cells=[...$('content').querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(input=>input.value));data=await request('temple:timetable:save',{objectId:selected.id,cells});}else{const rows=[...$('notice-rows').children].map(row=>({text:row.querySelector('.notice-line').value.trim(),task:row.querySelector('.notice-task input').checked})).filter(row=>row.text);const text=rows.map(row=>row.text).join('\n');if(text.length>2000)throw new Error('알림장은 2000자 이내로 적어주세요.');const taskLineIndexes=rows.flatMap((row,index)=>row.task?[index]:[]);data=await request('temple:save',{objectId:selected.id,text,taskLineIndexes});}if(rev===revision&&dialog.open){result=data;render();toast(result.kind==='timetable'?'시간표를 저장했어요.':'오늘의 내용을 저장했어요.');}}catch(e){if(rev===revision)$('error').textContent=e.message;}finally{$('save').disabled=false;}};
   setInterval(()=>{if(dialog.open&&result?.kind==='effects')renderEffects();},1000);
-  return {open(pillar){stop();selected=pillar;result=null;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['label','editor','task-flags','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
+  return {open(pillar){stop();selected=pillar;result=null;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
 }

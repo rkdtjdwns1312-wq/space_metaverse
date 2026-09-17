@@ -35,7 +35,17 @@ try{
   await interact(teacher,'오늘의 시간표');await teacher.locator('#temple-dialog').waitFor({state:'visible'});
   assert.deepEqual(await teacher.locator('.timetable-table thead th').allTextContents(),['교시','월','화','수','목','금']);
   assert.equal(await teacher.locator('.timetable-table tbody tr').count(),6);
+  for(const width of [1440,390,320]){
+    await teacher.setViewportSize({width,height:width===320?568:844});
+    const layout=await teacher.locator('#temple-dialog').evaluate(dialog=>({dialogHeight:dialog.scrollHeight,dialogVisible:dialog.clientHeight,contentHeight:dialog.querySelector('#temple-content').scrollHeight,contentVisible:dialog.querySelector('#temple-content').clientHeight,tableWidth:dialog.querySelector('.timetable-table').scrollWidth,contentWidth:dialog.querySelector('#temple-content').clientWidth}));
+    assert.ok(layout.dialogHeight<=layout.dialogVisible+1,`시간표 창 세로 스크롤 ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.contentHeight<=layout.contentVisible+1,`시간표 표 세로 스크롤 ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.tableWidth<=layout.contentWidth+1,`시간표 가로 스크롤 ${width}px: ${JSON.stringify(layout)}`);
+  }
+  await teacher.setViewportSize({width:1440,height:960});
+  check('오늘의 시간표 30칸이 데스크톱·휴대폰 화면에서 스크롤 없이 보임');
   await teacher.getByRole('textbox',{name:'월요일 1교시 과목'}).fill('우주과학');
+  for(let period=2;period<=6;period++)await teacher.getByRole('textbox',{name:`월요일 ${period}교시 과목`}).fill('창의적 체험활동(자율 활동)');
   await teacher.locator('#temple-save').click();await teacher.locator('#toast').filter({hasText:'시간표를 저장했어요'}).waitFor();
   assert.equal(room.temple.schedule[0][0],'우주과학');
   await teacher.locator('#temple-close').click();
@@ -43,16 +53,36 @@ try{
   await interact(student,'오늘의 시간표');await student.locator('.timetable-table').waitFor();
   assert.match(await student.locator('.timetable-table').textContent(),/우주과학/);
   assert.equal(await student.locator('.timetable-table input').count(),0);
+  await student.setViewportSize({width:320,height:568});
+  const studentLayout=await student.locator('#temple-dialog').evaluate(dialog=>({dialogHeight:dialog.scrollHeight,dialogVisible:dialog.clientHeight,tableWidth:dialog.querySelector('.timetable-table').scrollWidth,contentWidth:dialog.querySelector('#temple-content').clientWidth}));
+  assert.ok(studentLayout.dialogHeight<=studentLayout.dialogVisible+1,`긴 과목이 든 학생 시간표 세로 스크롤: ${JSON.stringify(studentLayout)}`);
+  assert.ok(studentLayout.tableWidth<=studentLayout.contentWidth+1,`긴 과목이 든 학생 시간표 가로 스크롤: ${JSON.stringify(studentLayout)}`);
+  assert.equal(await student.getByRole('cell',{name:/월요일 2교시 과목/}).getAttribute('title'),'창의적 체험활동(자율 활동)');
+  await student.setViewportSize({width:390,height:844});
   await student.locator('#temple-close').click();
   check('교사가 월~금 1~6교시 표를 저장하고 학생은 읽기 전용으로 봄');
   await reposition(teacher,teacherPlayer,760,650);
-  await interact(teacher,'오늘의 알림장');await teacher.locator('#temple-editor').fill('별 관찰 기록하기\n내일은 체육복 입기');
-  await teacher.locator('#temple-task-flags input').first().check();
-  assert.equal(await teacher.locator('#temple-task-flags input:checked').count(),1);
-  await teacher.locator('#temple-save').click();await teacher.locator('#temple-content small').filter({hasText:'과제'}).waitFor();
+  await interact(teacher,'오늘의 알림장');
+  await teacher.locator('#temple-add-line').click();await teacher.locator('.notice-line').nth(1).fill('별 관찰 기록하기');
+  await teacher.locator('#temple-add-line').click();await teacher.locator('.notice-line').nth(2).fill('내일은 체육복 입기');
+  await teacher.locator('.notice-task input').nth(1).check();
+  assert.equal(await teacher.locator('.notice-task input:checked').count(),1);
+  for(const width of [390,320]){
+    await teacher.setViewportSize({width,height:844});
+    const layout=await teacher.locator('#temple-dialog').evaluate(dialog=>{const bounds=dialog.getBoundingClientRect(),row=dialog.querySelector('.notice-editor-row');return {left:bounds.left,right:bounds.right,viewport:innerWidth,inputY:row.querySelector('.notice-line').getBoundingClientRect().y,checkY:row.querySelector('.notice-task').getBoundingClientRect().y,removeY:row.querySelector('.notice-remove-line').getBoundingClientRect().y};});
+    assert.ok(layout.left>=0&&layout.right<=width,`알림장 창 가로 넘침 ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(Math.abs(layout.inputY-layout.checkY)<24&&Math.abs(layout.inputY-layout.removeY)<24,`알림장 체크·삭제가 입력 줄에서 벗어남 ${width}px: ${JSON.stringify(layout)}`);
+  }
+  await teacher.setViewportSize({width:1440,height:960});
+  await teacher.locator('#temple-save').click();await teacher.locator('#toast').filter({hasText:'오늘의 내용을 저장했어요'}).waitFor();
+  assert.equal(await teacher.locator('.notice-task input:checked').count(),1);
+  assert.equal(await teacher.locator('.notice-line').count(),2);
+  assert.equal(room.temple.notices[0].taskLines[0].lineIndex,0);
+  assert.equal(await teacher.locator('#temple-content').isVisible(),false);
   await teacher.locator('#temple-close').click();
   await reposition(student,studentPlayer,760,650);
   await interact(student,'오늘의 알림장');
+  await student.getByRole('button',{name:'과제로 가져오기'}).waitFor();
   assert.equal(await student.getByRole('button',{name:'과제로 가져오기'}).count(),1);
   await student.getByRole('button',{name:'과제로 가져오기'}).click();
   await student.getByRole('button',{name:'가져왔어요'}).waitFor();

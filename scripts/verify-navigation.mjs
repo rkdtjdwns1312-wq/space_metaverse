@@ -61,7 +61,7 @@ try{
  for(const id of ['pillar-notice','pillar-timetable','pillar-effects','pillar-weekly']){
    const pillar=MAP.objects.find(o=>o.id===id);Object.assign(p,{mapId:PLAZA_ID,x:pillar.x+65,y:pillar.y});publish();
    await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor({state:'visible'});await page.locator('#touch-interact').tap();await page.locator('#temple-title').filter({hasText:pillar.name}).waitFor();
-   if(pillar.service==='notice'){await page.locator('#temple-editor').waitFor({state:'visible'});await page.locator('#temple-editor').fill('오늘도 즐겁게\n함께 배워요');await page.locator('#temple-save').click();await page.locator('#temple-content').filter({hasText:'오늘도 즐겁게'}).waitFor();}
+   if(pillar.service==='notice'){await page.locator('.notice-line').first().waitFor({state:'visible'});await page.locator('.notice-line').first().fill('오늘도 즐겁게');await page.locator('#temple-add-line').click();await page.locator('.notice-line').nth(1).fill('함께 배워요');await page.locator('#temple-save').click();await page.locator('.notice-line').first().waitFor();assert.equal(await page.locator('.notice-line').first().inputValue(),'오늘도 즐겁게');}
    else if(pillar.service==='timetable'){await page.getByRole('textbox',{name:'월요일 1교시 과목'}).fill('우주과학');await page.locator('#temple-save').click();await page.locator('#toast').filter({hasText:'시간표를 저장했어요'}).waitFor();assert.equal(room.temple.schedule[0][0],'우주과학');}
    else await page.locator('#temple-content').filter({hasText:/없어요/}).waitFor();
    await page.locator('#temple-close').click();

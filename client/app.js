@@ -203,7 +203,7 @@ let shopSig='';
 function shopSignature(){return myShards()+'|'+JSON.stringify(myInventory());}
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
-  if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
+  if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 태양이 머무는 낙원 · 오른쪽 문으로 중앙광장';
@@ -597,6 +597,8 @@ $('planet-rules-toggle').onclick=()=>{
 };
 $('planet-close').onclick=()=>$('planet-dialog').close();
 $('planet-dialog').addEventListener('close',()=>{planetDialogId=null;$('world').focus();});
+$('black-hole-info-close').onclick=()=>$('black-hole-info-dialog').close();
+$('black-hole-info-dialog').addEventListener('close',()=>$('world').focus());
 $('planet-join').onclick=async()=>{try{await request('planet:join',{planetId:planetDialogId});}catch(e){toast(e.message);}};
 $('planet-leave-dept').onclick=async()=>{try{await request('planet:leave',{planetId:planetDialogId});}catch(e){toast(e.message);}};
 $('planet-enter').onclick=async()=>{
@@ -618,6 +620,7 @@ function doInteract(){
   else if(n.kind==='door')exitPlanet();
   else if(n.kind==='gate')travelTo(n.target);
   else if(n.kind==='black-hole')travelTo(n.target);
+  else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
   else if(n.kind==='shop')openShopDialog();
   else if(n.kind==='pillar')temple.open(n);
   else if(n.kind==='monster')monsterUI.open(n.id);
@@ -701,6 +704,7 @@ $('crew-close').onclick=()=>$('crew-dialog').close();
 $('crew-dialog').addEventListener('close',()=>$('world').focus());
 $('teacher-tools').onclick=()=>{updateShardsTargetOptions();stop();$('teacher-dialog').showModal();};
 $('teacher-close').onclick=()=>$('teacher-dialog').close();
+$('teacher-leave').onclick=()=>{$('teacher-dialog').close();$('leave').click();};
 $('teacher-dialog').addEventListener('close',()=>$('world').focus());
 $('shards-give').onclick=async()=>{
   const playerId=$('shards-target').value,amount=Number($('shards-amount').value);
@@ -833,6 +837,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();if($('trade-dialog').open)$('trade-dialog').close();
 }
 function reset(message){
+  accounts.reset();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();document.querySelector('.top-right').append($('connection'));
   stop();selfId=null;room=null;saveToken(null);world.setRoom(null,null);

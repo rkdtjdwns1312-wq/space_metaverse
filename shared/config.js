@@ -61,7 +61,8 @@ export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',wi
   {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;
-export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
+export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
+  {id:'black-hole-star',name:'검은별',x:600,y:250,radius:80,kind:'black-star',passable:true},
   {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:1560,y:560},passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;

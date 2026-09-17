@@ -17,9 +17,21 @@ async function chat(p){await dock(p,'chat');await p.locator('#open-chat').click(
 try{
   const teacher=await page(),one=await page(),two=await page();
   await teacher.goto(url,{waitUntil:'domcontentloaded',timeout:20000});await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await teacher.locator('#allowed-names').fill('별이, 달이');await teacher.locator('#teacher-form .submit').click();
-  await teacher.locator('#credentials-dialog').waitFor({state:'visible'});
+  await teacher.locator('#lobby').waitFor({state:'hidden'});
+  assert.equal(await teacher.locator('dialog[open]').count(),0);
+  await dock(teacher,'menu');await teacher.locator('#teacher-tools').click();
+  await teacher.locator('#credentials-panel').waitFor({state:'visible'});
+  assert.equal(await teacher.locator('#teacher-dialog > section').last().getAttribute('id'),'credentials-panel');
   const credentials=(await teacher.locator('#credentials-text').inputValue()).split('\n').map(x=>x.split('\t'));
-  const room=[...game.store.rooms.values()][0],code=room.code;assert.equal(credentials.length,2);check('교사가 계정을 만들고 배부용 초기 비밀번호를 받음');
+  const room=[...game.store.rooms.values()][0],code=room.code;assert.equal(credentials.length,2);check('초기 계정 자동 팝업 없이 선생님 도구 맨 아래에서 배부용 목록 확인');
+  const leaveBox=await teacher.locator('#teacher-leave').boundingBox(),closeBox=await teacher.locator('#teacher-close').boundingBox();
+  assert.ok(Math.abs(leaveBox.y-closeBox.y)<3,'선생님 나가기와 닫기는 같은 줄');
+  await teacher.setViewportSize({width:390,height:844});
+  const mobileLeave=await teacher.locator('#teacher-leave').boundingBox(),mobileClose=await teacher.locator('#teacher-close').boundingBox();
+  assert.ok(Math.abs(mobileLeave.y-mobileClose.y)<3,'작은 화면에서도 두 버튼은 같은 줄');
+  await teacher.setViewportSize({width:1440,height:960});
+  await teacher.locator('#teacher-leave').click();await teacher.locator('#leave-dialog').waitFor({state:'visible'});
+  await teacher.locator('#stay').click();check('선생님 나가기와 닫기가 같은 줄이며 나가기는 기존 확인 창으로 이어짐');
   await close(teacher);
   for(const [p,index] of [[one,0],[two,1]]){
     await p.goto(url+'/?class='+code);await p.waitForFunction(()=>document.getElementById('join-code').hidden);
@@ -28,6 +40,8 @@ try{
     await p.locator('#password-offer-dialog').waitFor({state:'visible'});
     if(index===1)await p.locator('#password-offer-no').click();
   }
+  assert.equal(await one.locator('#credentials-panel').isVisible(),false);
+  assert.equal(await one.locator('#credentials-text').inputValue(),'');
   await one.locator('#password-offer-yes').click();await one.locator('#password-current').fill(credentials[0][1]);
   const fresh=credentials[0][1]==='6789'?'7890':'6789';await one.locator('#password-new').fill(fresh);await one.locator('#password-confirm').fill(fresh);await one.locator('#password-save').click();
   await one.locator('#password-dialog').waitFor({state:'hidden'});check('학생은 두 칸으로 로그인하고 본인 비밀번호를 변경함');

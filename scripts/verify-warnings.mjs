@@ -33,8 +33,14 @@ try{
   await actorPage.locator('#warning-target').selectOption(target.id);await actorPage.locator('#warning-reason').fill('약속을 어김');
   await actorPage.locator('#warning-issue').click();await actorPage.locator('#warning-target option').filter({hasText:'경고 1회'}).waitFor({state:'attached'});
   await actorPage.locator('#warning-reason').fill('같은 약속을 다시 어김');await actorPage.locator('#warning-issue').click();
-  await targetPage.locator('#minimap-title').filter({hasText:'블랙홀'}).waitFor();
+  await targetPage.locator('#minimap-title').filter({hasText:'블랙홀 내부'}).waitFor();
   assert.equal(target.mapId,BLACK_HOLE_ID);assert.ok(target.avatar.blackStar);check('두 번째 직접 경고에서 학생이 검은별로 변해 블랙홀로 이동');
+  Object.assign(target,{x:600,y:370});game.io.to(target.socketId).emit('room:state',game.store.snapshot(room,target));
+  await targetPage.locator('#interact-object').filter({hasText:'검은별'}).waitFor();
+  await targetPage.locator('#touch-interact').click();await targetPage.locator('#black-hole-info-dialog').waitFor({state:'visible'});
+  assert.match(await targetPage.locator('#black-hole-info-dialog').textContent(),/검은별 상태가 풀리기 전까지 나갈 수 없습니다/);
+  await targetPage.locator('#black-hole-info-close').click();await targetPage.locator('#black-hole-info-dialog').waitFor({state:'hidden'});
+  check('블랙홀 내부의 검은별에 접근하면 안내와 확인 버튼이 표시됨');
   Object.assign(target,{x:600,y:630});game.io.to(target.socketId).emit('room:state',game.store.snapshot(room,target));
   await targetPage.locator('#interact-object').filter({hasText:'블랙홀 밖으로 나가기'}).waitFor();
   await targetPage.locator('#touch-interact').click();await targetPage.locator('#toast').filter({hasText:'현재 검은별 상태입니다'}).waitFor();
