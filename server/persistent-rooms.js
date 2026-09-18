@@ -4,6 +4,9 @@ import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
 import {validateInteriorDecor} from './interior-decor.js';
+import {validateCardMarkers} from './item-cards.js';
+import {validateRabbitDraw} from './rabbit-draw.js';
+import {validateAbilityState} from './constellation-abilities.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
@@ -48,7 +51,8 @@ export function toRecord(room) {
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,
-      muted:p.muted,notes:p.notes,tasks:p.tasks||[],pin:p.pin
+      muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],
+      rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
@@ -87,7 +91,11 @@ export function fromRecord(r) {
     const avatar=structuredClone(p.avatar);avatar.blackStar=validateBlackStar(avatar.blackStar,new Set(room.planets.keys()));
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
-    room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,role:'student'}));
+    const cardMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
+    if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
+    if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
+    room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+      abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
@@ -107,9 +115,22 @@ export class PersistentRoomStore extends RoomStore {
   }
   newCode(){let code;do{code=super.newCode();}while(this.records.has(code));return code;}
   create(data,socketId){
-    const s=super.create(data,socketId);s.room.createdAt=Date.now();s.room.unattended=this.unattended;
-    if(this.teacherManagedAccounts)s.credentials=[...s.room.allowedNames].map(name=>{
-      const pin=String(randomInt(10000)).padStart(4,'0');this.createStudent(s.room,{nickname:name,pin});return {nickname:name,pin};
+    let accounts=null;
+    if(data.studentAccounts!==undefined){
+      ensure(this.teacherManagedAccounts,'학생 계정 동시 생성은 저장 교실에서만 가능해요.');
+      ensure(Array.isArray(data.studentAccounts)&&data.studentAccounts.length>=1&&data.studentAccounts.length<=29,
+        '학생 수는 1~29명으로 정해주세요.');
+      accounts=data.studentAccounts.map(entry=>{
+        ensure(entry&&typeof entry==='object'&&!Array.isArray(entry),'학생 이름과 비밀번호를 확인해주세요.');
+        const name=nickname(entry.nickname);
+        ensure(typeof entry.pin==='string'&&/^\d{4}$/.test(entry.pin),'학생 비밀번호는 숫자 4자리로 입력해주세요.');
+        return {nickname:name,pin:entry.pin};
+      });
+    }
+    const s=super.create(accounts?{...data,allowedNames:accounts.map(account=>account.nickname)}:data,socketId);
+    s.room.createdAt=Date.now();s.room.unattended=this.unattended;
+    if(this.teacherManagedAccounts)s.credentials=(accounts||[...s.room.allowedNames].map(name=>({nickname:name,pin:String(randomInt(10000)).padStart(4,'0')}))).map(account=>{
+      this.createStudent(s.room,account);return account;
     });
     return s;
   }

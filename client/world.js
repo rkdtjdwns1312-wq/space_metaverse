@@ -6,6 +6,15 @@ import {monsterType} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
+const avatarSprites=new Map();
+function loadedAvatarSprite(path,onLoad){
+  if(!path)return null;
+  let image=avatarSprites.get(path);
+  if(!image){image=new Image();image.src=path;avatarSprites.set(path,image);}
+  if(image.complete&&image.naturalWidth)return image;
+  if(onLoad)image.addEventListener('load',onLoad,{once:true});
+  return null;
+}
 const CHAT=config.CHAT||{maxLength:100,bubbleBaseMs:3000,bubblePerCharMs:90,bubbleMaxMs:12000};
 const NEAR=(config.RULES?.radius||16)+(config.INTERACT?.radius||40);
 // 여러 캔버스(광장 지도·아바타 카드 일러스트)에서 함께 쓰는 별 그리기.
@@ -373,9 +382,11 @@ export function createWorld(canvas) {
       star(0,0,radius,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=3;ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,1);ctx.textBaseline='alphabetic';
     }else if(constellation){
-      const radius=19+(Math.min(p.avatar.level,6)-2)*1.5;
-      star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';
+      const sprite=loadedAvatarSprite(constellation.sprite);
+      if(sprite)ctx.drawImage(sprite,-24,-29,48,48);
+      else{const radius=19+(Math.min(p.avatar.level,6)-2)*1.5;
+        star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
       if(p.avatar.level>=6){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,30,11,-.35,0,Math.PI*2);ctx.stroke();}
     }else{
     ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=16+[1,0,2,-1,1,0,1,-1,0][i];
@@ -453,7 +464,7 @@ export function createWorld(canvas) {
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
       drawMonster(ctx,{...type,...m,...pos},t);
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
-      ctx.fillText(type.name,pos.x,pos.y+37);ctx.restore();
+      ctx.fillText(type.name,pos.x,pos.y+(Number(m.radius)||24)+13);ctx.restore();
     }
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     requestAnimationFrame(frame);
@@ -555,9 +566,11 @@ export function renderPortrait(canvas,player,effects){
     drawStar(ctx,0,0,45,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=4;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,2);ctx.textBaseline='alphabetic';
   }else if(constellation){
-    drawStar(ctx,0,0,43+(Math.min(player.avatar.level,6)-2)*2,constellation.color);
-    ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,2);ctx.textBaseline='alphabetic';
+    const sprite=loadedAvatarSprite(constellation.sprite,()=>renderPortrait(canvas,player,effects));
+    if(sprite)ctx.drawImage(sprite,-59,-59,118,118);
+    else{drawStar(ctx,0,0,43+(Math.min(player.avatar.level,6)-2)*2,constellation.color);
+      ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,2);ctx.textBaseline='alphabetic';}
     if(player.avatar.level>=6){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,62,24,-.35,0,Math.PI*2);ctx.stroke();}
   }else{
   ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=34+[2,0,4,-2,2,0,2,-2,0][i];

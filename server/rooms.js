@@ -2,6 +2,8 @@ import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
 import {monsterViews} from './monsters.js';
+import {cardMarkerViews} from './item-cards.js';
+import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -22,6 +24,9 @@ export function effectsView(effects, viewerIsTeacher) {
     if(viewerIsTeacher){v.fromId=e.fromId;v.fromNickname=e.fromNickname;}
     return v;
   });
+}
+export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
+  return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher)];
 }
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function nickname(value) {
@@ -69,7 +74,7 @@ export class RoomStore {
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], lastItemUseAt:0, notes:[], tasks:[] };
+      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[] };
     room.players.set(p.id,p);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
@@ -104,9 +109,10 @@ export class RoomStore {
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-          effects:effectsView(p.effects,isTeacher)};
+          effects:playerEffectsView(p,isTeacher)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
-        if(viewer && viewer.id===p.id)out.tasks=structuredClone(p.tasks||[]);
+        if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
+          out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
         return out;
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),

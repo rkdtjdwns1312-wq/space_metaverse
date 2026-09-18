@@ -1,4 +1,5 @@
 import { createWorld, renderPortrait } from './world.js';
+import { startClassroomClock } from './classroom-clock.js';
 import { createSocialUI } from './social-ui.js';
 import { createAccountsUI } from './accounts-ui.js';
 import { createUniverseUI } from './universe-ui.js';
@@ -18,6 +19,7 @@ import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
+startClassroomClock($('classroom-clock'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
@@ -79,6 +81,63 @@ try{sessionToken=sessionStorage.getItem('space-session');}catch{}
 const saveToken=token=>{sessionToken=token;try{token?sessionStorage.setItem('space-session',token):sessionStorage.removeItem('space-session');}catch{}};
 const accounts=createAccountsUI({getRoom:()=>room,getSelfId:()=>selfId,request,toast,saveToken});
 const TEACHER_KEY_STORAGE='space-teacher-key';
+const cube=$('ability-cube');
+for(let face=1;face<=6;face++){
+  const side=document.createElement('div');side.className='die-face';side.dataset.face=String(face);
+  for(let star=0;star<face;star++){const dot=document.createElement('span');dot.textContent='★';side.append(dot);}
+  cube.append(side);
+}
+const faceRotation={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateX(90deg)',4:'rotateX(-90deg)',5:'rotateY(90deg)',6:'rotateY(180deg)'};
+let dieTurn=0;
+function showStarDie(roll){
+  $('ability-dice').hidden=false;$('ability-dice-result').textContent='별 주사위가 굴러가요…';
+  dieTurn+=2;cube.style.transition='none';cube.style.transform='rotateX(0deg) rotateY(0deg)';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    cube.style.transition='transform 1.15s cubic-bezier(.16,.8,.22,1)';
+    cube.style.transform=`rotateX(${dieTurn*360}deg) rotateY(${dieTurn*360}deg) ${faceRotation[roll]}`;
+  }));
+  setTimeout(()=>$('ability-dice-result').textContent='결과: '+roll+' ★',1200);
+}
+async function refreshAbilityStatus(){
+  const me=room?.players.find(player=>player.id===selfId),constellation=constellationOf(me?.avatar?.constellationId);
+  if(!constellation?.ability)return;
+  const status=await request('ability:status',{}),ability=constellation.ability;
+  $('ability-title').textContent=constellation.name+' 능력';
+  $('ability-description').textContent=ability.description;
+  $('ability-status').textContent=status.used?'이번 주 능력 사용 완료 · 다음 월요일에 다시 사용할 수 있어요.':'이번 주에 한 번 사용할 수 있어요.';
+  if(status.pending?.mode==='shop-copy')$('ability-status').textContent+=' 다음 Lv2 이하 아이템을 살 때 1개가 더 생겨요.';
+  if(status.pending?.mode==='dice-item')$('ability-status').textContent+=' 주사위 '+status.pending.roll+' · Lv'+status.pending.maxLevel+' 이하 아이템을 골라주세요.';
+  $('ability-use').disabled=status.used;
+  const requiresTarget=['ban-two-days','sleep'].includes(ability.mode)||['cetus','cancer','pisces'].includes(constellation.id);
+  $('ability-target-row').hidden=!requiresTarget;
+  $('ability-target').replaceChildren(...(room?.players||[]).filter(player=>player.role==='student'&&player.connected&&player.id!==selfId)
+    .filter(player=>constellation.id!=='cetus'||player.avatar.level<=2)
+    .map(player=>new Option(player.nickname,player.id)));
+  $('ability-planet-row').hidden=ability.mode!=='warning-one';
+  $('ability-planet').replaceChildren(...status.planets.map(planet=>new Option(planet.name+' · 경고 '+planet.count+'회',planet.id)));
+  $('ability-item-row').hidden=status.pending?.mode!=='dice-item';
+  $('ability-item').replaceChildren(...SHOP.items.filter(item=>item.level<=status.pending?.maxLevel).map(item=>new Option('Lv'+item.level+' '+item.name,item.id)));
+}
+$('self-ability-open').onclick=async()=>{
+  $('avatar-dialog').close();stop();$('ability-dice').hidden=true;
+  try{await refreshAbilityStatus();$('ability-dialog').showModal();}catch(error){toast(error.message);}
+};
+$('ability-close').onclick=()=>$('ability-dialog').close();
+$('ability-use').onclick=async()=>{
+  const button=$('ability-use');button.disabled=true;
+  try{
+    const result=await request('ability:use',{targetId:$('ability-target-row').hidden?null:$('ability-target').value,
+      planetId:$('ability-planet-row').hidden?null:$('ability-planet').value});
+    if(result.roll)showStarDie(result.roll);
+    toast(result.note||'별자리 능력을 사용했어요.');
+    await refreshAbilityStatus();
+  }catch(error){toast(error.message);button.disabled=false;}
+};
+$('ability-choose-item').onclick=async()=>{
+  const button=$('ability-choose-item');button.disabled=true;
+  try{const result=await request('ability:choose-item',{itemId:$('ability-item').value});toast(result.itemName+' 1개를 만들었어요.');await refreshAbilityStatus();}
+  catch(error){toast(error.message);}finally{button.disabled=false;}
+};
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function setMode(value){
   mode=value;$('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
@@ -86,12 +145,52 @@ function setMode(value){
   $('form-message').textContent='';
 }
 $('student-tab').onclick=()=>setMode('student');$('teacher-tab').onclick=()=>setMode('teacher');
-$('class-mode').onchange=()=>{
-  const open=$('class-mode').value==='open';
-  $('open-class-fields').hidden=!open;$('new-class-fields').disabled=open;$('new-class-fields').hidden=open;
+let classMode='';
+function chooseClassMode(value){
+  classMode=value;
+  const open=value==='open',create=value==='new';
+  $('open-class-fields').hidden=!open;$('new-class-fields').disabled=!create;$('new-class-fields').hidden=!create;
   $('open-code').required=open;$('form-message').textContent='';
-  $('teacher-form').querySelector('.submit').textContent=open?'교실 열기 ↗':'교실 만들기 ✦';
-};
+  for(const [id,selected] of [['choose-open-class',open],['choose-new-class',create]]){
+    $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
+  }
+  const submitButton=$('teacher-form').querySelector('.submit');
+  submitButton.hidden=!value;submitButton.textContent=open?'기존 교실 입장하기 ↗':'설정한 교실 생성하기 ✦';
+}
+$('choose-open-class').onclick=()=>chooseClassMode('open');
+$('choose-new-class').onclick=()=>chooseClassMode('new');
+const studentAccountDraft=[];
+function renderStudentAccountRows(){
+  const count=Number($('student-count').value);
+  if(!Number.isInteger(count)||count<1||count>29)return;
+  for(const [index,row] of [...$('student-account-rows').children].entries()){
+    studentAccountDraft[index]={name:row.querySelector('.student-account-name').value,
+      pin:row.querySelector('.student-account-pin').value};
+  }
+  const rows=[];
+  for(let index=0;index<count;index++){
+    const row=document.createElement('div');row.className='student-account-row';
+    const nameLabel=document.createElement('label');nameLabel.textContent=(index+1)+'번 학생 이름';
+    const name=document.createElement('input');name.className='student-account-name';name.maxLength=12;name.required=true;
+    name.autocomplete='off';name.value=studentAccountDraft[index]?.name||'';name.setAttribute('aria-label',(index+1)+'번 학생 이름');
+    const pinLabel=document.createElement('label');pinLabel.textContent='비밀번호';
+    const pin=document.createElement('input');pin.className='student-account-pin';pin.type='password';pin.inputMode='numeric';
+    pin.pattern='[0-9]{4}';pin.minLength=4;pin.maxLength=4;pin.required=true;pin.autocomplete='new-password';
+    pin.value=studentAccountDraft[index]?.pin||'';pin.setAttribute('aria-label',(index+1)+'번 학생 비밀번호 (숫자 4자리)');
+    nameLabel.append(name);pinLabel.append(pin);row.append(nameLabel,pinLabel);rows.push(row);
+  }
+  $('student-account-rows').replaceChildren(...rows);
+}
+function clearStudentAccountPins(){
+  for(const account of studentAccountDraft)if(account)account.pin='';
+  for(const pin of $('student-account-rows').querySelectorAll('.student-account-pin'))pin.value='';
+}
+$('student-count').addEventListener('input',renderStudentAccountRows);
+$('student-count').addEventListener('change',()=>{
+  const normalized=String(Math.min(29,Math.max(1,Number($('student-count').value)||1)));
+  if($('student-count').value!==normalized){$('student-count').value=normalized;renderStudentAccountRows();}
+});
+renderStudentAccountRows();
 $('allowed-names').value=Array.from({length:29},(_,i)=>String(i+1)).join(', ');
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('teacher')){
@@ -154,9 +253,21 @@ function updateRoom(value){
   $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
   $('self-shards').textContent=String(me?.starShards||0);
   $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
+  $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
   const transcendent=myLv>=PROGRESSION.transcendentLevel;
   $('self-level').textContent=transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
+  const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId)?.type:null;
+  $('self-constellation-type').hidden=!constellationType;
+  $('self-constellation-type').textContent=constellationType||'';
+  const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId):null;
+  $('self-ability-panel').hidden=!abilityConstellation?.ability;
+  if(abilityConstellation?.ability){
+    $('self-ability-art').src=abilityConstellation.art;
+    $('self-ability-art').alt=abilityConstellation.name+' 카드 그림';
+    $('self-ability-name').textContent=abilityConstellation.name+' · '+abilityConstellation.type;
+    $('self-ability-description').textContent=abilityConstellation.ability.description;
+  }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
@@ -227,6 +338,18 @@ function renderMyTasks(tasks){
 $('tasks-close').onclick=()=>$('tasks-dialog').close();
 $('tasks-dialog').addEventListener('close',()=>$('world').focus());
 // 레트로 인벤토리 격자: BAG.columns×BAG.rows칸(한 종류당 한 칸). 채워진 칸만 li.slot(검증 스크립트가 세는 '가진 물건 수'), 빈 칸은 div.slot.empty입니다.
+function itemVisual(item){
+  if(!item.art){const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;return icon;}
+  const image=document.createElement('img');image.className='item-art';image.src=item.art;image.alt='';image.loading='lazy';return image;
+}
+function itemUseText(item){
+  if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
+  if(item.mode==='meteor')return '선택한 부서가 나에게 준 활성 경고를 즉시 해제해요.';
+  if(item.mode==='uv')return '지정한 친구가 오늘 자정까지 자외선 상태가 돼요.';
+  if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 다른 카드 효과를 막아요.';
+  if(item.mode==='draw')return '뒷면 카드 10장 중 하나를 골라 별 파편 1~10개를 받아요. 장기 평균은 3개예요.';
+  return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
+}
 function renderBag(inventory){
   const rows=(inventory||[]).map(entry=>({entry,item:itemOf(entry.id)})).filter(row=>row.item);
   const total=BAG.columns*BAG.rows;
@@ -242,7 +365,7 @@ function renderBag(inventory){
     const {entry,item}=row;
     const li=document.createElement('li');li.className='slot'+(selectedSlotId===item.id?' selected':'');li.dataset.itemId=item.id;li.setAttribute('role','gridcell');
     const btn=document.createElement('button');btn.type='button';btn.className='slot-btn';btn.setAttribute('aria-label',item.name+' × '+entry.quantity);
-    const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
+    const icon=itemVisual(item);
     const count=document.createElement('span');count.className='count';count.textContent='×'+entry.quantity;
     btn.append(icon,count);
     if(item.level>myLevel()){const lock=document.createElement('span');lock.className='lock';lock.textContent='LV'+item.level;btn.append(lock);}
@@ -258,17 +381,18 @@ function renderBagDetail(rows){
   if(!row){$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';return;}
   const {entry,item}=row,canUse=item.level<=myLevel();
   const wrap=document.createElement('div');wrap.className='bag-detail-inner';
-  const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
+  const icon=itemVisual(item);
   const info=document.createElement('div');info.className='info';
   const name=document.createElement('strong');name.textContent=item.name;
   const desc=document.createElement('p');desc.className='muted';desc.textContent=item.description;
   const meta=document.createElement('p');meta.className='muted';meta.textContent=(ITEM_TYPES[item.type]||item.type)+' · LV '+item.level+' · × '+entry.quantity;
   info.append(name,desc,meta);
+  if(item.special){const special=document.createElement('p');special.className='muted item-special';special.textContent=item.special;info.append(special);}
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
-  use.textContent='아이템 사용하기';
+  use.textContent=item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
   use.onclick=()=>canUse?openUseDialog(item):toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
   const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보 보기';
-  details.onclick=()=>{$('item-info-title').textContent=item.icon+' '+item.name;$('item-info-text').textContent=item.description+' · 효과: '+item.effect.label+' ('+Math.round(item.effect.durationMs/60000)+'분) · LV '+item.level;$('item-info-dialog').showModal();};
+  details.onclick=()=>{$('item-info-title').textContent=item.icon+' '+item.name;$('item-info-text').textContent=item.description+' · '+itemUseText(item)+(item.special?' · '+item.special:'')+' · LV '+item.level;$('item-info-dialog').showModal();};
   const discard=document.createElement('button');discard.type='button';discard.className='small danger item-discard';discard.textContent='아이템 버리기';
   discard.onclick=()=>{discardItemId=item.id;$('discard-message').textContent=item.name+' 1개를 정말 버리시겠습니까? 버린 아이템은 되돌릴 수 없어요.';$('discard-dialog').showModal();};
   const choices=document.createElement('div');choices.className='item-choices';choices.append(details,use,discard);
@@ -276,6 +400,7 @@ function renderBagDetail(rows){
   $('bag-detail').replaceChildren(wrap);
 }
 function effectText(e){
+  if(e.until===null)return e.icon+' '+e.label+' · 선생님 처리 대기';
   const mins=Math.max(1,Math.ceil((e.until-Date.now())/60000));
   return e.icon+' '+e.label+' · '+mins+'분';
 }
@@ -287,17 +412,40 @@ function renderSelfEffects(me){
   }
   $('self-effects').replaceChildren(...list.map(e=>{const li=document.createElement('li');li.textContent=effectText(e);return li;}));
 }
-function openUseDialog(item){
+async function openUseDialog(item){
   if(item.level>myLevel()){toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');return;}
+  const me=room?.players.find(p=>p.id===selfId);
+  if(me?.effects?.some(effect=>effect.itemId==='little-sun-card'&&(effect.until||0)>Date.now())&&item.mode!=='moon'){
+    toast('자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요. 꼬마 달은 사용할 수 있어요.');return;
+  }
+  if(item.mode==='draw'){
+    stop();$('draw-dialog').showModal();await loadRabbitDraw();return;
+  }
+  if(item.mode==='moon'&&me?.avatar?.blackStar){toast('검은별 상태에서는 꼬마 달을 사용할 수 없어요.');return;}
+  let meteorOptions=[];
+  if(item.mode==='meteor'){
+    try{meteorOptions=(await request('item:meteor:options',{})).planets||[];}catch(error){toast(error.message);return;}
+    if(!meteorOptions.length){toast('다른 부서에서 받은 활성 경고가 없어요.');return;}
+  }
   useItem=item;
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
-  const minutes=Math.max(1,Math.round(item.effect.durationMs/60000));
-  $('use-effect').textContent=item.effect.label+' · '+minutes+'분 동안';
+  $('use-effect').textContent=itemUseText(item);
+  $('use-special').textContent=item.special||'';$('use-special').hidden=!item.special;
   $('use-secret-note').hidden=!item.secret;
-  const others=item.targets==='any'?room.players.filter(p=>p.id!==selfId&&p.connected&&p.role!=='teacher'):[];
-  $('use-target').replaceChildren(...[{value:selfId,label:'나에게'},...others.map(p=>({value:p.id,label:p.nickname}))].map(o=>{
+  const others=['any','other','pair'].includes(item.targets)?room.players.filter(p=>p.id!==selfId&&p.connected&&p.role!=='teacher'):[];
+  if(item.targets==='other'&&!others.length){toast('지금 아이템을 사용할 친구가 없어요.');return;}
+  if(item.targets==='pair'&&others.length+(me?.role==='student'?1:0)<2){toast('자리를 바꿀 학생 친구 2명이 필요해요.');return;}
+  const targets=[...(item.targets==='other'||(item.targets==='pair'&&me?.role!=='student')?[]:[{value:selfId,label:'나에게'}]),...others.map(p=>({value:p.id,label:p.nickname}))];
+  $('use-target').replaceChildren(...targets.map(o=>{
     const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.label;return opt;
+  }));
+  $('use-second-target-row').hidden=item.targets!=='pair';
+  $('use-second-target').replaceChildren(...targets.map(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.label;return opt;}));
+  if(item.targets==='pair')$('use-second-target').value=targets.find(o=>o.value!==$('use-target').value)?.value||'';
+  $('use-planet-row').hidden=item.mode!=='meteor';
+  $('use-planet').replaceChildren(...meteorOptions.map(planet=>{
+    const option=document.createElement('option');option.value=planet.id;option.textContent=planet.name+' · 내 경고 '+planet.count+'건';return option;
   }));
   stop();$('use-dialog').showModal();
 }
@@ -305,7 +453,9 @@ $('use-confirm').onclick=async()=>{
   if(!useItem)return;
   const targetId=$('use-target').value;
   try{
-    const reply=await request('item:use',{itemId:useItem.id,targetId});
+    const reply=await request('item:use',{itemId:useItem.id,targetId,
+      ...(useItem.targets==='pair'?{secondTargetId:$('use-second-target').value}:{}),
+      ...(useItem.mode==='meteor'?{planetId:$('use-planet').value}:{})});
     const me=room?.players.find(p=>p.id===selfId);
     // reply.effects는 '대상'의 효과 목록입니다. 친구에게 썼을 때 이것을 내 효과로 넣으면
     // 다음 스냅샷이 올 때까지 친구의 효과가 내 카드에 잘못 보이므로, 나에게 쓴 경우에만 반영합니다.
@@ -318,6 +468,35 @@ $('use-confirm').onclick=async()=>{
 };
 $('use-cancel').onclick=()=>$('use-dialog').close();
 $('use-dialog').addEventListener('close',()=>{useItem=null;$('world').focus();});
+let rabbitDraw=null,rabbitPicked=false;
+function renderRabbitDraw(){
+  $('draw-start').hidden=!!rabbitDraw||rabbitPicked;
+  $('draw-message').textContent=rabbitPicked?'뽑기를 마쳤어요. 별 파편은 가방에 바로 들어왔어요.':
+    rabbitDraw?'뒷면 카드 10장 중 한 장을 골라보세요. 창을 닫아도 이어서 고를 수 있어요.':
+      '10장 중 한 장을 골라 별 파편 1~10개를 받아요. 장기 평균은 3개예요.';
+  $('draw-spread').replaceChildren(...(rabbitDraw?.cards||[]).map((card,index)=>{
+    const button=document.createElement('button');button.type='button';button.className='draw-card';
+    button.textContent='✦ ?';button.setAttribute('aria-label',`${index+1}번 뒷면 카드`);
+    button.onclick=async()=>{if(!rabbitDraw)return;[...$('draw-spread').children].forEach(child=>child.disabled=true);
+      try{const result=await request('draw:pick',{drawId:rabbitDraw.id,cardId:card.id});
+        rabbitDraw=null;rabbitPicked=true;button.classList.add('revealed');button.textContent='★ '+result.reward;
+        $('draw-message').textContent='별 파편 '+result.reward+'개 당첨! 지금 '+result.starShards+'개를 가지고 있어요.';
+        const me=room?.players.find(p=>p.id===selfId);if(me)me.starShards=result.starShards;
+      }catch(error){toast(error.message);[...$('draw-spread').children].forEach(child=>child.disabled=false);}};
+    return button;
+  }));
+}
+async function loadRabbitDraw(){
+  try{rabbitDraw=(await request('draw:status',{})).draw;rabbitPicked=false;renderRabbitDraw();}
+  catch(error){toast(error.message);$('draw-dialog').close();}
+}
+$('draw-start').onclick=async()=>{const button=$('draw-start');button.disabled=true;
+  try{const result=await request('draw:start',{});rabbitDraw=result.draw;rabbitPicked=false;
+    const me=room?.players.find(p=>p.id===selfId);if(me)me.inventory=result.inventory;renderBag(result.inventory);renderRabbitDraw();}
+  catch(error){toast(error.message);}finally{button.disabled=false;}};
+$('draw-resume').onclick=async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();};
+$('draw-close').onclick=()=>$('draw-dialog').close();
+$('draw-dialog').addEventListener('close',()=>$('world').focus());
 function summarizeTrade(side){
   const parts=[];
   if(side?.shards)parts.push('★'+side.shards);
@@ -769,12 +948,14 @@ function renderShopBuyList(){
   const shards=myShards();
   rerenderList($('shop-buy-list'),()=>SHOP.items.map(item=>{
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
-    const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
+    if(item.art)li.classList.add('ppt-card');
+    const icon=itemVisual(item);
     const info=document.createElement('div');info.className='info';
     const name=document.createElement('strong');name.textContent=item.name;
     const desc=document.createElement('p');desc.className='muted';desc.textContent=item.description;
     const meta=document.createElement('span');meta.className='meta';meta.textContent=(ITEM_TYPES[item.type]||item.type)+' · LV '+item.level;
     info.append(name,desc,meta);
+    if(item.special){const special=document.createElement('p');special.className='muted item-special';special.textContent=item.special;info.append(special);}
     const row=document.createElement('div');row.className='item-actions';
     const price=document.createElement('span');price.className='price';price.textContent='★ '+item.price;
     const qty=document.createElement('input');qty.type='number';qty.min='1';qty.max='10';qty.value='1';qty.className='qty';qty.setAttribute('aria-label','수량');
@@ -798,7 +979,7 @@ function renderShopSellList(){
   rerenderList($('shop-sell-list'),()=>inv.map(entry=>{
     const item=itemOf(entry.id);if(!item)return null;
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
-    const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
+    const icon=itemVisual(item);
     const info=document.createElement('div');info.className='info';
     const name=document.createElement('strong');name.textContent=item.name;
     const count=document.createElement('p');count.className='muted';count.textContent='가진 개수 '+entry.quantity;
@@ -860,6 +1041,7 @@ function enter(result){
 }
 function reset(message){
   accounts.reset();
+  clearStudentAccountPins();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();document.querySelector('.top-right').append($('connection'));
   stop();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
@@ -873,6 +1055,9 @@ function reset(message){
   $('self-shards').textContent='0';$('bag-currency').hidden=false;
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
+  $('self-constellation-type').hidden=true;$('self-constellation-type').textContent='';
+  $('self-ability-panel').hidden=true;
+  if($('ability-dialog').open)$('ability-dialog').close();
   $('avatar-card').style.removeProperty('--card-accent');$('avatar-card').classList.remove('teacher-card');
   {const portrait=$('avatar-portrait');portrait.getContext('2d').clearRect(0,0,portrait.width,portrait.height);}
   $('self-proposal').hidden=true;$('proposals-empty').hidden=false;$('proposals').replaceChildren();lastProposalCount=0;$('pin-panel').hidden=true;$('reset-pin').value='';
@@ -905,10 +1090,19 @@ async function submit(event,handler){
   finally{busy=false;controls();}
 }
 $('student-form').onsubmit=e=>submit(e,async()=>{accounts.checkLink();const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});
-$('teacher-form').onsubmit=e=>submit(e,()=>{
+$('teacher-form').onsubmit=e=>submit(e,async()=>{
   const teacherKey=$('teacher-key').value;
-  if($('class-mode').value==='open')return request('room:open',{teacherKey,code:$('open-code').value});
-  return request('room:create',{teacherKey,title:$('class-title').value,allowedNames:$('allowed-names').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean),seedPlanets:$('seed-planets').checked});
+  if(classMode==='open')return request('room:open',{teacherKey,code:$('open-code').value});
+  if(classMode!=='new')throw new Error('교실 방식을 먼저 골라주세요.');
+  const managed=!$('student-setup-fields').disabled;
+  const studentAccounts=managed?[...$('student-account-rows').children].map(row=>({
+    nickname:row.querySelector('.student-account-name').value.trim(),pin:row.querySelector('.student-account-pin').value
+  })):null;
+  const allowedNames=managed?studentAccounts.map(account=>account.nickname):$('allowed-names').value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean);
+  const result=await request('room:create',{teacherKey,title:$('class-title').value,allowedNames,
+    ...(managed?{studentAccounts}:{}),seedPlanets:$('seed-planets').checked});
+  if(managed)clearStudentAccountPins();
+  return result;
 });
 $('saved-classes-button').onclick=async()=>{
   const teacherKey=$('teacher-key').value;

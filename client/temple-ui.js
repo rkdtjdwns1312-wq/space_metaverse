@@ -4,12 +4,34 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   const dialog=document.createElement('dialog');dialog.id='temple-dialog';dialog.setAttribute('aria-labelledby','temple-title');
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
-  document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;
-  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;});
+  document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;const selectedXp=new Map();
+  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;selectedXp.clear();});
   function renderEffects(){
-    const rows=(getRoom()?.players||[]).flatMap(p=>(p.effects||[]).filter(e=>e.until>Date.now()).map(e=>({nickname:p.nickname,...e})));
+    const rows=(result?.rows||[]).filter(e=>e.until===null||e.until>Date.now());
     const ul=document.createElement('ul');
-    for(const r of rows){const li=document.createElement('li');li.textContent=r.nickname+' · '+(itemOf(r.itemId)?.name||r.label)+' · '+Math.ceil((r.until-Date.now())/1000)+'초 남음';ul.append(li);}
+    for(const r of rows){
+      const li=document.createElement('li');li.className='active-item-row';
+      const item=itemOf(r.itemId),body=document.createElement('span');body.className='active-item-body';
+      const title=document.createElement('strong');title.textContent=(item?.name||r.label)+' · 적용: '+r.nickname+
+        (r.fromNickname?' · 사용: '+r.fromNickname:'');
+      const detail=document.createElement('small');detail.textContent=(r.note?r.note+' · ':'')+(item?.description||r.description||r.label)+
+        (item?.special?' · '+item.special:'')+' · '+(r.until===null?'선생님 처리 대기':Math.ceil((r.until-Date.now())/1000)+'초 남음');
+      body.append(title,detail);li.append(body);
+      if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&r.until===null){
+        let xpSelect=null;
+        if(r.abilityMarkerId&&r.constellationId==='libra'){
+          const label=document.createElement('label');label.textContent='확인한 주차의 경험치 ';label.className='small';
+          xpSelect=document.createElement('select');xpSelect.setAttribute('aria-label',r.nickname+' 천칭자리 경험치');
+          for(const [amount,weeks] of [[0,'1주'],[1,'2~3주'],[2,'4~5주']])xpSelect.append(new Option(weeks+' · '+amount+' XP',String(amount)));
+          xpSelect.value=selectedXp.get(r.abilityMarkerId)||'0';xpSelect.onchange=()=>selectedXp.set(r.abilityMarkerId,xpSelect.value);
+          label.append(xpSelect);li.append(label);
+        }
+        const done=document.createElement('button');done.type='button';done.className='small secondary';done.textContent='처리 완료';
+        done.onclick=async()=>{done.disabled=true;try{await request(r.abilityMarkerId?'ability:complete':'item:complete',{objectId:selected.id,targetId:r.targetId,...(r.abilityMarkerId?{abilityMarkerId:r.abilityMarkerId,...(xpSelect?{xpAmount:Number(xpSelect.value)}:{})}:{markerId:r.markerId})});toast(r.nickname+' 친구의 '+(itemOf(r.itemId)?.name||r.label)+' 처리를 완료했어요.');await load();}
+          catch(error){done.disabled=false;$('error').textContent=error.message;}};li.append(done);
+      }
+      ul.append(li);
+    }
     $('content').replaceChildren(rows.length?ul:Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
   }
   function renumberNoticeRows(){[...$('notice-rows').children].forEach((row,index)=>{row.querySelector('.notice-line').setAttribute('aria-label',`${index+1}번째 알림 내용`);row.querySelector('.notice-task input').setAttribute('aria-label',`${index+1}번째 줄 과제`);row.querySelector('.notice-remove-line').setAttribute('aria-label',`${index+1}번째 줄 삭제`);});}
@@ -67,7 +89,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       $('description').textContent=result.week+' 월요일부터 이번 주에 받은 별 파편 · 잔액과 달라요';const ul=document.createElement('ul');
       for(const r of result.rows){const li=document.createElement('li');li.textContent=r.nickname+' · ★ '+r.total+'개';ul.append(li);}
       $('content').replaceChildren(result.rows.length?ul:Object.assign(document.createElement('p'),{textContent:'아직 등록된 친구가 없어요.'}));
-    }else{$('description').textContent='지금 효과가 남아 있는 아이템이에요.';renderEffects();}
+    }else{$('description').textContent='아이템 효과를 받는 친구와 선생님이 처리할 카드를 확인해요.';renderEffects();}
   }
   async function load(){const rev=++revision;try{const data=await request('temple:read',{objectId:selected.id});if(rev!==revision||!dialog.open)return;result=data;render();}catch(e){if(rev===revision)$('error').textContent=e.message;}}
   $('refresh').onclick=load;

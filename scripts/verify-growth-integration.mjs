@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { createClassroomServer } from '../server/app.js';
-import { createAvatar, VALLEY, VALLEY_ID } from '../shared/config.js';
+import {fillNewClass} from './class-setup.mjs';
+import { VALLEY, VALLEY_ID } from '../shared/config.js';
 
 const game = createClassroomServer({ teacherKey: 'growth-browser-private-key', studentHours: false });
 const address = await game.listen(), url = 'http://127.0.0.1:' + address.port;
@@ -16,7 +17,7 @@ try {
   await teacher.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
   await teacher.locator('#teacher-tab').click();
   await teacher.locator('#teacher-key').fill('growth-browser-private-key');
-  await teacher.locator('#allowed-names').fill('1');
+  await fillNewClass(teacher,['1']);
   await teacher.locator('#teacher-form .submit').click();
   await teacher.locator('#lobby').waitFor({ state: 'hidden' });
   const room = [...game.store.rooms.values()][0];
@@ -29,29 +30,45 @@ try {
   await student.locator('#student-pin').fill('1234');
   await student.locator('#student-form .submit').click();
   await student.locator('#lobby').waitFor({ state: 'hidden' });
+  const clockLayout=await student.evaluate(()=>({text:document.querySelector('#classroom-clock').textContent,
+    clock:document.querySelector('#classroom-clock').getBoundingClientRect().bottom,
+    map:document.querySelector('#world-navigation').getBoundingClientRect().top}));
+  assert.match(clockLayout.text,/^\d{4}년 \d{1,2}월 \d{1,2}일 .+요일 (오전|오후) \d{1,2}:\d{2}$/);
+  assert.ok(clockLayout.clock<=clockLayout.map);
+  check('모바일 중앙 한국 시간 표시·오른쪽 지도와 겹치지 않음');
   const player = [...room.players.values()].find(value => value.role === 'student');
   const growthStar = VALLEY.objects.find(value => value.id === 'growth-star');
   const evolutionStar = VALLEY.objects.find(value => value.id === 'evolution-star');
   const publish = () => game.io.to(player.socketId).emit('room:state', game.store.snapshot(room, player));
 
-  Object.assign(player, { mapId: VALLEY_ID, x: growthStar.x, y: growthStar.y, starShards: 5, avatar: createAvatar() }); publish();
+  await teacher.locator('#dock-menu').click();
+  await teacher.locator('#teacher-tools').click();
+  await teacher.locator('#shards-target').selectOption(player.id);
+  await teacher.locator('#shards-amount').fill('40');
+  await teacher.locator('#shards-give').click();
+  await teacher.locator('#shards-feedback').filter({hasText:'지급되었습니다'}).waitFor();
+  await teacher.locator('#teacher-close').click();
+  assert.equal(player.starShards,40);
+  check('시험용 선생님이 학생 1명에게 별 파편 40개 지급');
+
+  Object.assign(player, { mapId: VALLEY_ID, x: growthStar.x, y: growthStar.y }); publish();
   await student.locator('#interact-object').filter({ hasText: '성장의 별' }).waitFor();
   await student.locator('#touch-interact').tap();
   await student.locator('#growth-dialog').waitFor({ state: 'visible' });
-  await student.locator('#growth-info').filter({ hasText: '구매 가능5 XP' }).waitFor();
+  await student.locator('#growth-info').filter({ hasText: '구매 가능15 XP' }).waitFor();
   await student.waitForFunction(() => Boolean(document.querySelector('link[data-star-ui-style]')));
   assert.equal(await student.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   check('실제 앱 E 상호작용·동적 CSS·390px 성장 창');
 
   await student.locator('#growth-amount').fill('99');
-  assert.equal(await student.locator('#growth-amount').inputValue(), '5');
+  assert.equal(await student.locator('#growth-amount').inputValue(), '15');
   await student.locator('#growth-buy').tap();
-  await student.locator('#growth-error').filter({ hasText: '별 파편' }).waitFor();
-  assert.deepEqual({ level: player.avatar.level, xp: player.avatar.xp, balance: player.starShards }, { level: 1, xp: 5, balance: 0 });
+  await student.locator('#growth-error').filter({ hasText: '진화의 별' }).waitFor();
+  assert.deepEqual({ level: player.avatar.level, xp: player.avatar.xp, balance: player.starShards }, { level: 1, xp: 15, balance: 25 });
   check('실제 소켓 성장 구매 cap·별 파편 차감·자동 진화 없음');
 
   await student.locator('#growth-close').tap();
-  Object.assign(player, { x: evolutionStar.x, y: evolutionStar.y, avatar: { ...createAvatar(), xp: 15 } }); publish();
+  Object.assign(player, { x: evolutionStar.x, y: evolutionStar.y }); publish();
   await student.locator('#interact-object').filter({ hasText: '진화의 별' }).waitFor();
   await student.locator('#touch-interact').tap();
   await student.locator('#evolution-evolve').tap();
@@ -67,6 +84,11 @@ try {
   await student.locator('#evolution-summary').filter({ hasText: 'LV2' }).waitFor();
   assert.deepEqual({ level: player.avatar.level, xp: player.avatar.xp, form: player.avatar.form, constellationId: player.avatar.constellationId },
     { level: 2, xp: 0, form: 'constellation', constellationId: 'aries' });
+  await student.locator('#avatar-dialog').evaluate(dialog=>dialog.showModal());
+  await student.locator('#self-constellation-type').filter({hasText:'특수계'}).waitFor();
+  await student.locator('#self-ability-panel').waitFor({state:'visible'});
+  assert.equal(await student.locator('#self-ability-art').getAttribute('src'),'/assets/constellation-cards/aries.png');
+  await student.locator('[data-close="avatar-dialog"]').click();
   check('실제 소켓 첫 별자리 선택·확인·한 단계 진화');
 
   await student.locator('#evolution-change').tap();
@@ -86,6 +108,17 @@ try {
   assert.deepEqual(VALLEY.objects.filter(value => value.kind === 'evolution' || value.kind === 'growth').map(value => value.id), ['evolution-star', 'growth-star']);
   await student.screenshot({ path: '.local/growth-evolution-valley-desktop.png' });
   check('실제 앱 1440px 창 닫기·은하수계곡 진화의 별과 성장의 별 화면');
+
+  player.avatar.constellationId='corvus';publish();
+  await student.locator('#avatar-dialog').evaluate(dialog=>dialog.showModal());
+  await student.locator('#self-ability-panel').waitFor({state:'visible'});
+  await student.locator('#self-ability-open').click();
+  await student.locator('#ability-dialog').waitFor({state:'visible'});
+  assert.equal(await student.locator('.die-face').count(),6);
+  await student.locator('#ability-use').click();
+  await student.locator('#ability-dice-result').filter({hasText:/결과: [1-6] ★/}).waitFor();
+  await student.screenshot({path:'.local/constellation-star-dice.png'});
+  check('귀여운 별 1~6 육면체 주사위·결과와 주간 사용 제한');
   assert.deepEqual(errors, []);
 } finally {
   await writeFile('.local/growth-integration-result.json', JSON.stringify({ checks, errors }, null, 2));

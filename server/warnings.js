@@ -22,6 +22,27 @@ export function validateBlackStar(value,planetIds){
 export function warningCount(planet,targetId){
   return (planet.warnings?.entries||[]).filter(e=>e.active&&e.targetId===targetId).length;
 }
+export function clearWarningsFromPlanet(room,planet,target){
+  let cleared=0;
+  for(const entry of planet.warnings?.entries||[])if(entry.active&&entry.targetId===target.id){entry.active=false;cleared++;}
+  let released=false;
+  if(cleared&&target.avatar.blackStar?.planetId===planet.id){
+    target.avatar.blackStar=null;released=true;
+    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:1560,y:560}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  }
+  return {cleared,released};
+}
+export function clearOneWarningFromPlanet(room,planet,target){
+  const entry=[...(planet.warnings?.entries||[])].reverse().find(value=>value.active&&value.targetId===target.id);
+  if(!entry)return {cleared:0,released:false};
+  entry.active=false;
+  let released=false;
+  if(target.avatar.blackStar?.planetId===planet.id&&warningCount(planet,target.id)<planet.warnings.threshold){
+    target.avatar.blackStar=null;released=true;
+    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:1560,y:560}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  }
+  return {cleared:1,released};
+}
 export function warningView(room,planet){
   const warnings=planet.warnings||validateWarnings();
   return {planetId:planet.id,planetName:planet.name,threshold:warnings.threshold,

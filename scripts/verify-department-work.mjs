@@ -2,6 +2,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {fillNewClass} from './class-setup.mjs';
 import {createClassroomServer} from '../server/app.js';
 import {addPlanet} from '../server/world.js';
 import {PLAZA_ID,INTERIOR,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
@@ -13,7 +14,7 @@ const check=text=>{checks.push(text);console.log('Department '+checks.length+': 
 try{
  const pages=[];for(let i=0;i<3;i++){const context=await browser.newContext({viewport:{width:1280,height:900}});context.setDefaultTimeout(8000);const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(url,{waitUntil:'domcontentloaded',timeout:20000});pages.push(page);}
  const [teacher,one,two]=pages;
- await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill('department-browser-test-private');await teacher.locator('#allowed-names').fill('1, 2');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+ await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill('department-browser-test-private');await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
  const room=[...game.store.rooms.values()][0];
  for(const [page,name] of [[one,'1'],[two,'2']]){await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});}
  const p1=[...room.players.values()].find(p=>p.nickname==='1'),p2=[...room.players.values()].find(p=>p.nickname==='2'),t=[...room.players.values()].find(p=>p.role==='teacher');

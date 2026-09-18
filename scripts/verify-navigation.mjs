@@ -2,6 +2,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {fillNewClass} from './class-setup.mjs';
 import {createClassroomServer} from '../server/app.js';
 import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
 import {addPlanet} from '../server/world.js';
@@ -13,7 +14,7 @@ const check=t=>{checks.push(t);console.log('Navigation '+checks.length+': '+t);}
 try{
  const context=await browser.newContext({viewport:{width:1440,height:960},hasTouch:true});context.setDefaultTimeout(10000);
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
- await page.goto(url);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);await page.locator('#allowed-names').fill('1');await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ await page.goto(url);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);await fillNewClass(page,['1']);await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
  const room=[...game.store.rooms.values()][0],p=[...room.players.values()][0];
  const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
  const button=await page.locator('#map-overview').boundingBox();assert.ok(button.x>1100&&button.y<35);assert.equal(await page.locator('#menu-dialog #map-overview').count(),0);

@@ -27,10 +27,12 @@ function constellationCount(room, constellationId, exceptId = null) {
 }
 
 function optionsFor(room, player) {
-  return CONSTELLATIONS.map(value => {
+  const currentLegacy=constellationOf(player.avatar?.constellationId);
+  const values=currentLegacy?.legacy?[...CONSTELLATIONS,currentLegacy]:CONSTELLATIONS;
+  return values.map(value => {
     const count = constellationCount(room, value.id);
     const current = player.avatar?.constellationId === value.id;
-    return { ...value, count, available: current || count < CONSTELLATION_LIMIT, current };
+    return { ...value, count, available: !value.legacy && (current || count < CONSTELLATION_LIMIT), current };
   });
 }
 
@@ -52,7 +54,7 @@ export function evolutionInfo(room, player) {
 export function changeConstellation(room, player, { constellationId } = {}) {
   requireStudentAt(player, evolutionStar, '진화의 별');
   const selected = constellationOf(constellationId);
-  ensure(selected, '별자리를 골라주세요.');
+  ensure(selected&&!selected.legacy, '현재 선택할 수 있는 별자리를 골라주세요.');
   ensure(player.avatar.level >= 2, 'LV1은 첫 진화를 할 때 별자리를 고를 수 있어요.');
   ensure(constellationCount(room, selected.id, player.id) < CONSTELLATION_LIMIT,
     selected.name + '는 이미 두 친구가 선택했어요.');
@@ -73,7 +75,7 @@ export function evolveConstellation(room, player, { constellationId } = {}) {
   let selectedId = player.avatar.constellationId;
   if (player.avatar.level === 1) {
     const selected = constellationOf(constellationId);
-    ensure(selected, '첫 진화에 사용할 별자리를 골라주세요.');
+    ensure(selected&&!selected.legacy, '첫 진화에 사용할 별자리를 골라주세요.');
     ensure(constellationCount(room, selected.id, player.id) < CONSTELLATION_LIMIT,
       selected.name + '는 이미 두 친구가 선택했어요.');
     selectedId = selected.id;

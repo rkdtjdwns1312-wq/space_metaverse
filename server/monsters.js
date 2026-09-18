@@ -5,10 +5,15 @@ import {isNear} from './world.js';
 
 export const MONSTER_RULES=Object.freeze({directionMs:1000,speed:36,radius:24});
 const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
+const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
 // 산책 상태는 실행 중인 교실별로 유지합니다. 사냥·보상은 아직 구현하지 않습니다.
 export function monstersOf(room,now=Date.now()){
   if(!room.monsters)room.monsters=new Map(MONSTER_TYPES.map((type,i)=>{
-    const [x,y]=spawns[i%5];return [type.id,{id:type.id,typeId:type.id,mapId:type.mapId,x,y,radius:MONSTER_RULES.radius,
+    const [x,y]=(type.level===3?largeSpawns:spawns)[i%5];
+    // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×8.
+    const multiplier={1:1,2:2,3:8}[type.level]||1;
+    const radius=MONSTER_RULES.radius*multiplier;
+    return [type.id,{id:type.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       dx:0,dy:0,nextDirectionAt:now,lastMoveAt:now}];
   }));
   return room.monsters;
@@ -31,7 +36,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     if(now>=m.nextDirectionAt){const angle=random()*Math.PI*2;m.dx=Math.cos(angle);m.dy=Math.sin(angle);m.nextDirectionAt=now+MONSTER_RULES.directionMs;}
     const x=m.x+m.dx*MONSTER_RULES.speed*dt,y=m.y+m.dy*MONSTER_RULES.speed*dt;
     // 문 주변은 비워 두고, 몬스터끼리 같은 자리에 뭉치지 않게 합니다.
-    const blocked=x<120||x>1080||y<190||y>710||[...monsters.values()].some(o=>o!==m&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<MONSTER_RULES.radius*2+10);
+    const blocked=x<Math.max(120,m.radius)||x>1200-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>900-Math.max(190,m.radius)||[...monsters.values()].some(o=>o!==m&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10);
     if(blocked){m.dx=-m.dx;m.dy=-m.dy;}else{m.x=x;m.y=y;}
   }
 }

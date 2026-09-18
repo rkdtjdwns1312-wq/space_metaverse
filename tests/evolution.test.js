@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { io } from 'socket.io-client';
 import { createAvatar, VALLEY, VALLEY_ID } from '../shared/config.js';
-import { CONSTELLATIONS } from '../shared/constellations.js';
+import { CONSTELLATIONS,CONSTELLATION_TYPES,LEGACY_CONSTELLATIONS,constellationOf } from '../shared/constellations.js';
 import { buyExperience, changeConstellation, evolutionInfo, evolveConstellation, growthInfo } from '../server/evolution.js';
 import { createClassroomServer } from '../server/app.js';
 
@@ -31,6 +31,16 @@ test('16 canonical constellations have unique ids and complete display metadata'
   assert.equal(CONSTELLATIONS.length, 16);
   assert.equal(new Set(CONSTELLATIONS.map(value => value.id)).size, 16);
   for (const value of CONSTELLATIONS) assert.ok(value.id && value.name && value.color && value.icon);
+  assert.deepEqual(new Set(CONSTELLATIONS.map(value=>value.type)),new Set(CONSTELLATION_TYPES));
+  assert.deepEqual(Object.fromEntries(CONSTELLATION_TYPES.map(type=>[type,CONSTELLATIONS.filter(value=>value.type===type).map(value=>value.name)])),{
+    '제작계':['쌍둥이자리','까마귀자리'],
+    '생산계':['물병자리','염소자리','황소자리'],
+    '수호계':['헤라클레스자리','천칭자리','고래자리','사자자리'],
+    '공격계':['뱀주인자리','사수자리','왕관자리'],
+    '특수계':['게자리','백조자리','양자리','물고기자리']
+  });
+  assert.equal(LEGACY_CONSTELLATIONS.length,5);
+  assert.ok(LEGACY_CONSTELLATIONS.every(value=>constellationOf(value.id)?.legacy));
 });
 
 test('quota counts LV2 through transcendent students, including offline players', () => {
@@ -67,8 +77,9 @@ test('two sequential first evolutions fill a constellation and the next request 
 test('constellation change preserves level, xp, form, equipment, and department metadata', () => {
   const me = player({ avatar: { ...createAvatar(), level: 4, xp: 17, constellationId: 'orion', departmentId: 'science', equipment: { pet: 'comet' } } });
   const before = structuredClone(me.avatar);
-  changeConstellation(room(me), me, { constellationId: 'lyra' });
-  assert.deepEqual(me.avatar, { ...before, form: 'constellation', constellationId: 'lyra' });
+  changeConstellation(room(me), me, { constellationId: 'corvus' });
+  assert.deepEqual(me.avatar, { ...before, form: 'constellation', constellationId: 'corvus' });
+  assert.throws(() => changeConstellation(room(me), me, { constellationId: 'lyra' }), /현재 선택할 수 있는/);
   assert.throws(() => changeConstellation(room(player()), player(), { constellationId: 'aries' }), /LV1/);
 });
 

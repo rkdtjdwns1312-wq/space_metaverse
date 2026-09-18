@@ -13,6 +13,23 @@ test('세 맵별 5종·서로 다른 형태·방별 독립된 몬스터 상태',
   assert.notEqual(one.x,two.x);
 });
 
+test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·8배다',()=>{
+  const list=monsterViews({});
+  for(const [level,radius] of [[1,24],[2,48],[3,192]]) {
+    const matches=list.filter(m=>MONSTER_TYPES.find(t=>t.id===m.typeId)?.level===level);
+    assert.equal(matches.length,5);assert.ok(matches.every(m=>m.radius===radius));
+  }
+});
+
+test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',()=>{
+  const room={};monstersOf(room,0);const before=monsterViews(room).filter(m=>m.radius===192).map(m=>({...m}));
+  for(const m of before) for(const other of before) if(other!==m)
+    assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=m.radius+other.radius+10);
+  moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
+  const after=monsterViews(room).filter(m=>m.radius===192);
+  assert.ok(after.some((m,i)=>m.x!==before[i].x||m.y!==before[i].y));
+});
+
 test('산책은 1초에 한 번 방향을 선택하고 사이에는 일정한 속도로 움직인다',()=>{
   const room={};monstersOf(room,0);let calls=0;
   const random=()=>{calls++;return calls<=15?0:.25;};

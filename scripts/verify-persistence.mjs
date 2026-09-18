@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClassroomServer } from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
 import { STREET, STREET_ID, SHOP } from '../shared/config.js';
 
 export async function verifyPersistence(browser){
@@ -31,7 +32,7 @@ export async function verifyPersistence(browser){
   };
   try{
     await start();const teacher=await page(),student=await page();await visit(teacher,true);
-    await teacher.locator('#allowed-names').fill('1, 2');await teacher.locator('#seed-planets').check();
+    await fillNewClass(teacher,['1','2']);await teacher.locator('#seed-planets').check();
     await teacher.locator('#teacher-form button[type=submit]').click();await teacher.locator('#lobby').waitFor({state:'hidden'});await openMenu(teacher);
     const code=(await teacher.locator('#room-code').innerText()).trim();assert.match(code,/^[A-Z2-9]{6}$/);
     await visit(student);await studentJoin(student,code,'2468');await student.locator('#lobby').waitFor({state:'hidden'});
@@ -66,7 +67,7 @@ export async function verifyPersistence(browser){
     await student.locator('#lobby').waitFor({state:'visible'});assert.equal(game.store.rooms.size,0);
     checks.push('수업 마치기 후 학생 입장 화면 복귀와 교실 코드 보존');
     await game.close();game=null;await start();const nextTeacher=await page(),nextStudent=await page();
-    await visit(nextTeacher,true);await nextTeacher.locator('#class-mode').selectOption('open');
+    await visit(nextTeacher,true);await nextTeacher.locator('#choose-open-class').click();
     await nextTeacher.locator('#saved-classes-button').click();await nextTeacher.locator('#saved-classes').waitFor({state:'visible'});
     await nextTeacher.locator('#saved-classes').selectOption(code);assert.equal(await nextTeacher.locator('#open-code').inputValue(),code);
     await nextTeacher.locator('#teacher-form button[type=submit]').click();await nextTeacher.locator('#lobby').waitFor({state:'hidden'});await openMenu(nextTeacher);

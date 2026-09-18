@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
+import {fillNewClass} from './class-setup.mjs';
 import {createClassroomServer} from '../server/app.js';
 import {addPlanet} from '../server/world.js';
 import {INTERIOR,interiorIdOf,PLAZA_ID} from '../shared/config.js';
@@ -13,7 +14,7 @@ const checks=[],errors=[],check=text=>{checks.push(text);console.log(text);};
 await mkdir('.local',{recursive:true});
 try{
   const teacher=await browser.newPage({viewport:{width:1280,height:900}});teacher.on('pageerror',e=>errors.push(e.message));
-  await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await teacher.locator('#allowed-names').fill('1,2');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0];
   async function join(name){const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});return page;}
   const memberPage=await join('1'),outsiderPage=await join('2');

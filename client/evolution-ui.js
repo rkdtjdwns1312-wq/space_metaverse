@@ -16,7 +16,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   dialog.className = 'star-dialog evolution-dialog';
   dialog.setAttribute('aria-labelledby', 'evolution-title');
   dialog.innerHTML = `<header><h2 id="evolution-title">진화의 별</h2><button id="evolution-header-close" class="secondary evolution-close-allowed" type="button">닫기</button></header>
-    <p class="temporary-art-note">별자리 그림은 아직 준비 중이라 지금은 색과 상징으로 표시해요.</p>
+    <p class="temporary-art-note">별자리 그림과 성격을 보고 아바타를 골라요. 선택한 그림으로 진화해요.</p>
     <p id="evolution-summary"></p><p id="evolution-error" role="alert"></p>
     <section id="evolution-menu"><button id="evolution-change" class="primary" type="button">별자리 아바타 변경하기</button><button id="evolution-evolve" class="primary" type="button">별자리 아바타 진화하기</button><button id="evolution-close" class="secondary evolution-close-allowed" type="button">닫기</button></section>
     <section id="evolution-panel" hidden><h3 id="evolution-panel-title"></h3><p id="evolution-help"></p><div id="evolution-grid" class="constellation-grid"></div><div class="dialog-actions"><button id="evolution-refresh" class="secondary" type="button">새로고침</button><button id="evolution-back" class="secondary" type="button">처음으로</button></div></section>
@@ -45,10 +45,13 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     button.style.setProperty('--constellation-color', option.color);
     button.disabled = busy || !option.available;
     if (option.current) button.classList.add('current');
-    const icon = document.createElement('span'); icon.className = 'constellation-icon'; icon.textContent = option.icon;
+    const icon = document.createElement('span'); icon.className = 'constellation-icon';
+    if(option.art){const art=document.createElement('img');art.src=option.art;art.alt='';art.loading='lazy';icon.append(art);
+      const type=document.createElement('small');type.className='constellation-art-type';type.textContent=option.type;icon.append(type);}
+    else icon.textContent=option.icon;
     const name = document.createElement('span'); name.className = 'constellation-name'; name.textContent = option.name;
     const count = document.createElement('span'); count.className = 'constellation-count';
-    count.textContent = option.current ? '현재 · ' + option.count + '/2명' : option.count + '/2명';
+    count.textContent = (option.legacy?'이전 별자리':option.type)+' · '+(option.current ? '현재 · ' : '')+option.count+'/2명';
     button.append(icon, name, count);
     if (!option.available) button.title = '이미 두 친구가 선택했어요.';
     button.onclick = () => onChoose(option);

@@ -5,6 +5,11 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   const issuedPins=new Map();
   const ready=fetch('/api/public-config').then(r=>r.json()).then(config=>{
     managed=config.managedAccounts;
+    $('student-setup-fields').hidden=!managed;
+    $('student-setup-fields').disabled=!managed;
+    $('legacy-names-fields').hidden=managed;
+    $('allowed-names').required=!managed;
+    document.body.dataset.accountMode=managed?'managed':'open';
     if(managed){
       $('join-code').value=classCode;$('join-code').required=false;$('join-code').hidden=true;
       document.querySelector('label[for="join-code"]').hidden=true;
@@ -18,6 +23,11 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   $('account-target').onchange=()=>{
     const p=getRoom()?.players.find(p=>p.id===$('account-target').value);
     $('account-name').value=p?.nickname||'';$('account-pin').value='';$('account-result').textContent='';
+    $('account-save').textContent=p?'변경 저장':'계정 추가하기';
+  };
+  $('account-add').onclick=()=>{
+    $('account-target').value='new';$('account-target').dispatchEvent(new Event('change'));
+    $('account-name').scrollIntoView({block:'nearest'});$('account-name').focus();
   };
   $('account-save').onclick=async()=>{
     const target=$('account-target').value,nickname=$('account-name').value.trim(),pin=$('account-pin').value;

@@ -21,6 +21,9 @@
 .constellation-choice.current { outline: 3px solid #76529f; outline-offset: -3px; }
 .constellation-choice:disabled { filter: grayscale(0.75); opacity: 0.55; }
 .constellation-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 25px; background: var(--constellation-color); color: white; text-shadow: 0 1px 2px #39264c88; }
+.constellation-icon:has(img){position:relative;width:100%;height:auto;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#21183c}
+.constellation-icon img{width:100%;height:100%;object-fit:contain}
+.constellation-art-type{position:absolute;right:2px;bottom:2px;padding:2px 4px;border-radius:6px;background:#211838dc;color:#fff5c9;font-size:10px;line-height:1}
 .constellation-name { font-size: 0.92rem; line-height: 1.15; }
 .constellation-count { font-size: 0.75rem; color: #6f5b7d; }
 .growth-info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }

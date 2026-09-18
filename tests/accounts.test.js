@@ -37,3 +37,31 @@ test('teacher creates accounts; students cannot self-enroll; own password and te
   const back=await call(await connect(),'room:join',{code,nickname:'달이',pin:'4567'});assert.ok(back.ok,back.error);assert.equal(back.selfId,p.id);
   assert.equal(back.room.players.find(x=>x.id===p.id).starShards,8);
 });
+
+test('teacher-chosen student PINs are created with the classroom and remain valid after restart',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'chosen-accounts-')),sockets=[];
+  let game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false}),address=await game.listen();
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();await rm(dir,{recursive:true,force:true});});
+  async function connect(){const socket=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;}
+  const teacher=await connect();
+  const invalid=await call(teacher,'room:create',{teacherKey:key,title:'새 교실',studentAccounts:[
+    {nickname:'별이',pin:'1357'},{nickname:'달이',pin:'12'}
+  ]});
+  assert.equal(invalid.ok,false);assert.equal(game.store.rooms.size,0);assert.equal(game.store.records.size,0);
+  const created=await call(teacher,'room:create',{teacherKey:key,title:'새 교실',studentAccounts:[
+    {nickname:'별이',pin:'1357'},{nickname:'달이',pin:'2468'}
+  ]});
+  assert.ok(created.ok,created.error);
+  assert.deepEqual(created.credentials,[{nickname:'별이',pin:'1357'},{nickname:'달이',pin:'2468'}]);
+  assert.deepEqual([...game.store.rooms.get(created.room.code).allowedNames],['별이','달이']);
+  const code=created.room.code,first=await connect(),second=await connect();
+  assert.equal((await call(first,'room:join',{code,nickname:'별이',pin:'2468'})).ok,false);
+  assert.ok((await call(first,'room:join',{code,nickname:'별이',pin:'1357'})).ok);
+  assert.ok((await call(second,'room:join',{code,nickname:'달이',pin:'2468'})).ok);
+  assert.equal(JSON.stringify(game.store.records.get(code)).includes('1357'),false);
+  const extra=await call(teacher,'student:create',{nickname:'해솔',pin:'9876'});assert.ok(extra.ok,extra.error);
+  await game.close();game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false});address=await game.listen();
+  const reopened=await call(await connect(),'room:open',{teacherKey:key,code});assert.ok(reopened.ok,reopened.error);
+  assert.ok((await call(await connect(),'room:join',{code,nickname:'해솔',pin:'9876'})).ok);
+  assert.ok((await call(await connect(),'room:join',{code,nickname:'별이',pin:'1357'})).ok);
+});

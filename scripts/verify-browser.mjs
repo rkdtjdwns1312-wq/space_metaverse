@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createClassroomServer } from '../server/app.js';
 import { verifyPersistence } from './verify-persistence.mjs';
+import {fillNewClass} from './class-setup.mjs';
 import { BLOCKED_WORDS } from '../server/chat-filter.js';
 import { PLAZA_ID, STREET_ID, STREET, MAP, SHOP, BAG, PLANET_TEMPLATES, RULES } from '../shared/config.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey,studentHours:false});
@@ -111,7 +112,8 @@ try{
  await teacher.screenshot({path:'.local/01-lobby.png',fullPage:true});
  await teacher.getByRole('button',{name:'선생님이에요'}).click();
  await teacher.locator('#teacher-key').fill(teacherKey);
- await teacher.getByRole('button',{name:'교실 만들기'}).click();
+ await fillNewClass(teacher,['1','2']);
+ await teacher.locator('#teacher-form .submit').click();
  await openMenuFromDock(teacher);await teacher.locator('#room-code').filter({hasText:/[A-Z0-9]{6}/}).waitFor({state:'attached'});
  const code=await teacher.locator('#room-code').innerText();check('Teacher creates a room from actual UI');
  await student.goto(url);await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
@@ -521,7 +523,15 @@ try{
  await student.locator('#shop-shards').filter({hasText:'25'}).waitFor({state:'attached'});
  assert.equal(await student.locator('#shop-buy-list li.item').count(),SHOP.items.length);
  check('E near the shop opens #shop-dialog showing 25 star shards and all '+SHOP.items.length+' items for sale');
+ assert.equal(await student.locator('#shop-buy-list li.ppt-card').count(),8);
+ assert.equal(await student.locator('#shop-buy-list li.ppt-card img.item-art').evaluateAll(async images=>{
+   await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);
+ }),true);
+ assert.ok((await student.locator('#shop-buy-list li[data-item-id="little-sun-card"]').innerText()).includes('자외선'));
+ check('PPT에서 가져온 Lv1 카드 8종의 그림과 효과 설명이 상점에 표시됨');
  await student.screenshot({path:'.local/06-street-shop.png',fullPage:true});
+ await student.locator('#shop-buy-list').evaluate(list=>list.scrollTop=list.scrollHeight);
+ await student.screenshot({path:'.local/06b-ppt-item-shop.png',fullPage:true});
 
  const stickerRow=student.locator('#shop-buy-list li.item').first();
  await stickerRow.locator('input.qty').fill('2');
@@ -876,6 +886,31 @@ try{
  await student.locator('#trades-empty').waitFor({state:'visible'});
  check('Student 1 cancels their own outgoing trade proposal to student 2, and #trades-empty shows again on their side');
 
+ // 마지막 달토끼 1장을 써도 진행 중 뽑기는 가방에서 다시 열 수 있어야 합니다.
+ p.inventory=p.inventory.filter(entry=>entry.id!=='moon-rabbit-card');
+ p.inventory.push({id:'moon-rabbit-card',quantity:1});p.lastItemUseAt=0;p.rabbitUsedDay=null;
+ game.io.sockets.sockets.get(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ await openInventoryFromDock(student);
+ await student.locator('#bag-list .slot-btn[aria-label="달토끼 × 1"]').click();
+ await student.locator('#bag-detail .use').click();
+ await student.locator('#draw-dialog').waitFor({state:'visible'});
+ await student.locator('#draw-start').click();
+ await student.locator('#draw-spread .draw-card').first().waitFor({state:'visible'});
+ assert.equal(await student.locator('#draw-spread .draw-card').count(),10);
+ assert.equal(p.inventory.some(entry=>entry.id==='moon-rabbit-card'),false);
+ await student.locator('#draw-close').click();
+ await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await openInventoryFromDock(student);
+ await student.locator('#draw-resume').waitFor({state:'visible'});
+ await student.locator('#draw-resume').click();
+ await student.locator('#draw-spread .draw-card').first().click();
+ await student.locator('#draw-message').filter({hasText:'당첨'}).waitFor({state:'visible'});
+ assert.equal(p.rabbitDraw,null);
+ assert.ok(p.starShards>0);
+ await student.locator('#draw-close').click();
+ await student.locator('#draw-resume').waitFor({state:'hidden'});
+ check('One moon-rabbit card is consumed on start; after closing and reloading, bag resumes the same 10-card draw and only one reward is paid');
+
  // Scenario 9: back to a 390px touch viewport, the bag grid must still fit without horizontal overflow.
  await student.setViewportSize({width:390,height:844});
  assert.ok(await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -899,9 +934,9 @@ try{
  await teacher2.goto(url);await teacher2.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await teacher2.getByRole('button',{name:'선생님이에요'}).click();
  await teacher2.locator('#teacher-key').fill(teacherKey);
- await teacher2.locator('#allowed-names').fill('99');
+ await fillNewClass(teacher2,['99']);
  await teacher2.locator('#seed-planets').check();
- await teacher2.getByRole('button',{name:'교실 만들기'}).click();
+ await teacher2.locator('#teacher-form .submit').click();
  await teacher2.locator('#room-code').filter({hasText:/[A-Z0-9]{6}/}).waitFor({state:'attached'});
  const code2=await teacher2.locator('#room-code').innerText();
  assert.equal(game.store.rooms.size,2);assert.equal(room.players.size,2);

@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
 import {PLAZA_ID} from '../shared/config.js';
 const key=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
@@ -21,7 +22,7 @@ async function interact(page,label){
 try{
   const teacher=await browser.newPage({viewport:{width:1440,height:960}});teacher.on('pageerror',e=>errors.push(e.message));
   await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);
-  await teacher.locator('#allowed-names').fill('가람');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  await fillNewClass(teacher,['가람']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   room=[...game.store.rooms.values()][0];const teacherPlayer=[...room.players.values()].find(p=>p.role==='teacher');
   const student=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});student.on('pageerror',e=>errors.push(e.message));
   await student.goto(url);await student.locator('#join-code').fill(room.code);await student.locator('#nickname').fill('가람');await student.locator('#student-pin').fill('1234');

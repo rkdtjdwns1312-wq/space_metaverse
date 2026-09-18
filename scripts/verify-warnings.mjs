@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
 import {addPlanet} from '../server/world.js';
 import {BLACK_HOLE_ID,INTERIOR,interiorIdOf} from '../shared/config.js';
 
@@ -18,7 +19,7 @@ async function join(name,code){
 try{
   const teacher=await browser.newPage({viewport:{width:1440,height:960}});teacher.on('pageerror',e=>errors.push(e.message));
   await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);
-  await teacher.locator('#allowed-names').fill('1,2');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0],actorPage=await join('1',room.code),targetPage=await join('2',room.code);
   const actor=[...room.players.values()].find(p=>p.nickname==='1'),target=[...room.players.values()].find(p=>p.nickname==='2');
   const planet=addPlanet(room,{name:'규칙행성',description:'',x:300,y:400,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});

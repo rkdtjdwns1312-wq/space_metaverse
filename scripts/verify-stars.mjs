@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
 import {STREET,STREET_ID} from '../shared/config.js';
 import {weekStartKst} from '../server/weekly-ranking.js';
 const key='stars-browser-test-private',game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen();
@@ -9,7 +10,7 @@ const browser=await chromium.launch({headless:true,...(process.platform==='win32
 const check=text=>{checks.push(text);console.log(text);};await mkdir('.local',{recursive:true});
 try{
   const page=await browser.newPage({viewport:{width:1440,height:960}});page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:'+address.port);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);await page.locator('#allowed-names').fill('1');await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  await page.goto('http://127.0.0.1:'+address.port);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);await fillNewClass(page,['1']);await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0],p=[...room.players.values()][0],machine=STREET.objects.find(o=>o.gameId==='stars');
   Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+70});game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
   await page.locator('#interact-prompt').filter({hasText:machine.name}).waitFor();await page.locator('#touch-interact').click();

@@ -2,6 +2,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
 import {mkdir} from 'node:fs/promises';
 const key='chat-browser-test-only-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
@@ -21,7 +22,7 @@ try{
     await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});pages.push(page);
   }
   const [teacher,one,two]=pages;
-  await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await teacher.locator('#allowed-names').fill('1,2');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0];
   for(const [page,nickname] of [[one,'1'],[two,'2']]){await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(nickname);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});}
   const p1=[...room.players.values()].find(p=>p.nickname==='1'),p2=[...room.players.values()].find(p=>p.nickname==='2');

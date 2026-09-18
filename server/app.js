@@ -3,14 +3,14 @@ import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import { RoomStore, ensure, GameError, effectsView, nickname } from './rooms.js';
+import { RoomStore, ensure, GameError, playerEffectsView, nickname } from './rooms.js';
 import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
-import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward} from './temple.js';
+import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,nearbyMonster} from './monsters.js';
 import {monsterType} from '../shared/monsters.js';
@@ -18,7 +18,12 @@ import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
-import {warningView,issueWarning,clearBlackStar,blackStarList} from './warnings.js';
+import {gainExperience} from './progression.js';
+import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
+import {activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight,MAX_CARD_MARKERS} from './item-cards.js';
+import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
+import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
+import {constellationOf} from '../shared/constellations.js';
 import {addTask,completeTask} from './tasks.js';
 import {interiorDecorObject,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
@@ -721,7 +726,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('temple:read',data=>{
       const {room,player,pillar}=templeAccess(data),kind=pillar.service;
       if(kind==='weekly')return {kind,...weeklyRewards(room,clock())};
-      if(kind==='effects')return {kind,rows:[...room.players.values()].flatMap(p=>effectsView(p.effects,player.role==='teacher').filter(e=>e.until>clock()).map(e=>({nickname:p.nickname,...e})))};
+      if(kind==='effects')return {kind,canComplete:player.role==='teacher',rows:[...room.players.values()].flatMap(p=>[
+        ...playerEffectsView(p,player.role==='teacher',clock()).filter(e=>e.until===null||e.until>clock()).map(e=>({targetId:p.id,nickname:p.nickname,...e})),
+        ...(p.abilityState?.markers||[]).map(marker=>({targetId:p.id,nickname:p.nickname,itemId:null,icon:'✦',
+          label:(constellationOf(marker.constellationId)?.name||'별자리')+' 능력',description:constellationOf(marker.constellationId)?.ability?.description||'',
+          note:marker.note,until:null,...(player.role==='teacher'?{abilityMarkerId:marker.id,constellationId:marker.constellationId}:{} )}))])};
       if(kind==='timetable')return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
       return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
     });
@@ -838,17 +847,21 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       const cost=item.price*quantity;
       ensure(p.starShards>=cost,'별 파편이 부족해요. (필요 '+cost+'개, 지금 '+p.starShards+'개)');
+      const copyPending=p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
+        p.abilityState.pending.week===weekStart(clock())&&item.level<=2;
+      const totalQuantity=quantity+(copyPending?1:0);
       const existing=p.inventory.find(i=>i.id===item.id);
       if(existing){
-        ensure(existing.quantity+quantity<=SHOP.maxStack,'한 종류는 99개까지만 가질 수 있어요.');
-        existing.quantity+=quantity;
+        ensure(existing.quantity+totalQuantity<=SHOP.maxStack,'한 종류는 99개까지만 가질 수 있어요.');
+        existing.quantity+=totalQuantity;
       }else{
         ensure(p.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
-        p.inventory.push({id:item.id,quantity});
+        p.inventory.push({id:item.id,quantity:totalQuantity});
       }
       p.starShards-=cost;
+      if(copyPending)p.abilityState.pending=null;
       roster(room);
-      return {starShards:p.starShards,inventory:[...p.inventory]};
+      return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null};
     });
     action('shop:sell',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -871,6 +884,147 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     // 선생님은 취급상 LV5(모든 아이템을 쓰고, 누구에게나 쓸 수 있음). 학생은 아바타 레벨을 그대로 씁니다.
     const levelOf=player=>player.role==='teacher'?ITEM_USE.teacherLevel:player.avatar.level;
+    action('item:meteor:options',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 운석 파편을 사용할 수 있어요.');
+      return {planets:[...s.room.planets.values()].filter(planet=>planet.id!==s.player.avatar.departmentId)
+        .map(planet=>({id:planet.id,name:planet.name,count:warningCount(planet,s.player.id)})).filter(planet=>planet.count>0)};
+    });
+    action('draw:status',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
+      return {draw:rabbitDrawView(s.player.rabbitDraw)};
+    });
+    action('draw:start',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
+      const {room,player:p}=s,now=clock(),item=itemOf('moon-rabbit-card');
+      if(p.rabbitDraw)return {draw:rabbitDrawView(p.rabbitDraw),inventory:[...p.inventory]};
+      const owned=p.inventory.find(entry=>entry.id===item.id&&entry.quantity>0);
+      ensure(owned,'가방에 달토끼 카드가 없어요.');
+      ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
+      ensure(!hasCardStatus(p,'little-sun-card',now),'자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요.');
+      ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
+      ensure(!hasCardStatus(p,'little-moon-card',now),'꼬마 달 보호 중에는 다른 카드 효과를 받을 수 없어요.');
+      ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
+      ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
+      ensure(activeCardMarkers(p,now).length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
+      ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
+      owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
+      p.lastItemUseAt=now;p.rabbitUsedDay=koreaDay(now);
+      const draw=createRabbitDraw(now),marker=addCardMarker(p,item,p,null,'뽑기 진행 중');
+      draw.markerId=marker.id;p.rabbitDraw=draw;
+      room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:p.id,
+        targetNickname:p.nickname,itemId:item.id,itemName:item.name,secret:false});
+      if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
+      roster(room);return {draw:rabbitDrawView(draw),inventory:[...p.inventory]};
+    });
+    action('draw:pick',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
+      const {room,player:p}=s,draw=p.rabbitDraw;
+      ensure(draw&&draw.id===data.drawId,'진행 중인 뽑기가 없어요.');
+      const card=draw.cards.find(entry=>entry.id===data.cardId);
+      ensure(card,'펼쳐진 카드 한 장을 골라주세요.');
+      ensure(p.starShards+card.reward<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
+      p.starShards+=card.reward;p.rabbitDraw=null;
+      const marker=p.cardMarkers?.find(entry=>entry.id===draw.markerId);
+      if(marker)marker.note='당첨: 별 파편 '+card.reward+'개';
+      whisper(room,p,'달토끼 뽑기에서 별 파편 '+card.reward+'개를 받았어요.');
+      roster(room);return {reward:card.reward,starShards:p.starShards};
+    });
+    action('item:complete',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 사용 중인 아이템을 처리 완료할 수 있어요.');
+      const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
+      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&entry.until===null);
+      ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
+      ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
+      target.cardMarkers=target.cardMarkers.filter(entry=>entry.id!==marker.id);
+      roster(room);
+      return {};
+    });
+    action('ability:status',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
+      const {room,player:p}=s,week=weekStart(clock()),state=p.abilityState||freshAbilityState();
+      if(state.pending?.week!==week)state.pending=null;
+      return {week,used:state.usedWeek===week,pending:state.pending,
+        planets:[...room.planets.values()].filter(planet=>planet.id!==p.avatar.departmentId&&warningCount(planet,p.id)>0)
+          .map(planet=>({id:planet.id,name:planet.name,count:warningCount(planet,p.id)}))};
+    });
+    action('ability:use',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
+      const {room,player:p}=s,now=clock(),week=weekStart(now),constellation=constellationOf(p.avatar.constellationId);
+      ensure(p.avatar.level>=2&&constellation&&!constellation.legacy,'LV2 별자리 아바타부터 능력을 사용할 수 있어요.');
+      const state=p.abilityState??=freshAbilityState(),mode=constellation.ability.mode;
+      ensure(state.usedWeek!==week,'이번 주 별자리 능력은 이미 사용했어요. 다음 월요일에 다시 쓸 수 있어요.');
+      if(state.pending?.week!==week)state.pending=null;
+      let target=null,planet=null,roll=null,reward=0,note='';
+      if(['ban-two-days','sleep','manual'].includes(mode)&&typeof data.targetId==='string'&&data.targetId){
+        target=room.players.get(data.targetId);
+        ensure(target?.role==='student'&&target.connected&&target.id!==p.id,'지금 접속 중인 다른 학생 친구를 골라주세요.');
+      }
+      if(['ban-two-days','sleep'].includes(mode)||['cetus','cancer','pisces'].includes(constellation.id))
+        ensure(target,'함께할 학생 친구를 골라주세요.');
+      if(constellation.id==='cetus')ensure(target.avatar.level<=2,'Lv2 이하 별자리 친구를 골라주세요.');
+      if(mode==='warning-one'){
+        planet=typeof data.planetId==='string'?room.planets.get(data.planetId):null;
+        ensure(planet&&planet.id!==p.avatar.departmentId&&warningCount(planet,p.id)>0,'경고를 받은 다른 부서행성을 골라주세요.');
+      }
+      if(['grant-one','dice-shards','dice-risk','sleep'].includes(mode)){
+        const maxReward=mode==='dice-risk'?3:mode==='dice-shards'?2:1;
+        ensure(p.starShards<=SHARDS.max-maxReward,'별 파편을 더 담을 수 없어요.');
+        if(mode==='sleep')ensure(target.starShards<SHARDS.max,'친구가 별 파편을 더 담을 수 없어요.');
+        if(mode==='dice-risk')ensure(p.starShards>=1,'별 파편 1개가 있어야 황소자리 주사위를 던질 수 있어요.');
+      }
+      if(mode==='ban-two-days')ensure((target.abilityState?.blocks||[]).length<20,'친구의 능력 상태 기록이 가득 찼어요.');
+      if(mode==='sleep')ensure((p.abilityState?.blocks||[]).length<20&&(target.abilityState?.blocks||[]).length<20,'능력 상태 기록이 가득 찼어요.');
+      if(mode==='manual')ensure(state.markers.length<30,'처리 대기 중인 능력 기록이 가득 찼어요.');
+      if(['dice-item','dice-shards','dice-risk'].includes(mode))roll=rollStarDie();
+      if(mode==='grant-one')reward=1;
+      if(mode==='dice-shards')reward=roll===1?0:roll===6?2:1;
+      if(mode==='dice-risk')reward=roll%2===1?3:-1;
+      if(mode==='sleep')reward=1;
+      if(reward)p.starShards+=reward;
+      if(mode==='shop-copy'){state.pending={mode,week};note='이번 주 Lv2 이하 아이템 구매 시 1개 복사 대기';}
+      if(mode==='dice-item'&&roll>=2){state.pending={mode,week,maxLevel:Math.floor(roll/2),roll};note='Lv'+state.pending.maxLevel+' 이하 아이템 선택 대기';}
+      if(mode==='dice-item'&&roll===1)note='주사위 1: 만들 수 있는 아이템이 없어요.';
+      if(mode==='warning-one'){const result=clearOneWarningFromPlanet(room,planet,p);note=planet.name+' 경고 1개 해제'+(result.released?' · 검은별 해제':'');}
+      if(mode==='ban-two-days'){addItemBlock(target,'ophiuchus',p,now+2*86400000,1);note=target.nickname+' 아이템 사용 2일 정지 · 해제일 별 1개';}
+      if(mode==='sleep'){addItemBlock(p,'aries',p,nextKoreaMidnight(now));addItemBlock(target,'aries',p,nextKoreaMidnight(now));target.starShards++;note=target.nickname+'와 각각 별 1개 · 오늘 자정까지 수면';}
+      if(mode==='manual'){
+        note=(target?target.nickname+' 대상 · ':'')+constellation.ability.description;
+        state.markers.push({id:randomUUID(),constellationId:constellation.id,at:now,note:note.slice(0,120),targetName:target?.nickname||''});
+      }
+      state.usedWeek=week;
+      whisper(room,p,constellation.name+' 능력을 사용했어요.'+(roll?' 주사위 '+roll+'.':'')+(note?' '+note:''));
+      roster(room);
+      return {week,roll,reward,note,pending:state.pending,starShards:p.starShards,
+        ...(target?{targetNickname:target.nickname}:{} )};
+    });
+    action('ability:choose-item',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
+      const {room,player:p}=s,state=p.abilityState,pending=state?.pending;
+      ensure(p.avatar.constellationId==='corvus'&&pending?.mode==='dice-item'&&pending.week===weekStart(clock()),'진행 중인 까마귀자리 아이템 생성이 없어요.');
+      const item=itemOf(data.itemId);
+      ensure(item&&item.level<=pending.maxLevel,'주사위 눈으로 만들 수 있는 Lv 아이템을 골라주세요.');
+      const owned=p.inventory.find(entry=>entry.id===item.id);
+      if(owned)ensure(owned.quantity<SHOP.maxStack,'그 아이템을 더 담을 수 없어요.');
+      else ensure(p.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
+      if(owned)owned.quantity++;else p.inventory.push({id:item.id,quantity:1});
+      state.pending=null;whisper(room,p,item.name+' 1개를 만들었어요.');roster(room);
+      return {itemName:item.name,inventory:[...p.inventory]};
+    });
+    action('ability:complete',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 별자리 능력 처리를 완료할 수 있어요.');
+      const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
+      const marker=target?.abilityState?.markers?.find(entry=>entry.id===data.abilityMarkerId);
+      ensure(marker,'처리할 별자리 능력 기록을 찾지 못했어요.');
+      if(marker.constellationId==='libra'){
+        ensure(Number.isInteger(data.xpAmount)&&data.xpAmount>=0&&data.xpAmount<=2,'천칭자리 경험치는 0~2 중에서 선택해주세요.');
+        target.avatar=gainExperience(target.avatar,data.xpAmount);
+        whisper(room,target,'선생님이 천칭자리 능력 경험치 '+data.xpAmount+'을 확인했어요.');
+      }else ensure(data.xpAmount===undefined,'이 능력에는 경험치를 지급할 수 없어요.');
+      target.abilityState.markers=target.abilityState.markers.filter(entry=>entry.id!==marker.id);
+      roster(room);return {};
+    });
     action('item:discard',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player}=s,item=itemOf(data.itemId);
@@ -888,36 +1042,70 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const owned=p.inventory.find(i=>i.id===item.id);
       ensure(owned,'가방에 그 물건이 없어요.');
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
+      const now=clock();
+      ensure(!hasCardStatus(p,'little-sun-card',now)||item.mode==='moon','자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요. 꼬마 달은 사용할 수 있어요.');
+      ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
+      ensure(item.mode!=='draw','달토끼 카드는 뽑기 카드 화면에서 사용해주세요.');
       ensure(typeof data.targetId==='string','그 친구는 지금 없어요.');
       const target=room.players.get(data.targetId);
       ensure(target && target.connected,'그 친구는 지금 없어요.');
       ensure(item.targets!=='self' || target.id===p.id,'이 물건은 나에게만 쓸 수 있어요.');
-      ensure(levelOf(p)>=levelOf(target),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-      const now=Date.now();
+      ensure(item.targets!=='other' || target.id!==p.id,'이 물건은 다른 친구에게만 쓸 수 있어요.');
+      const second=item.targets==='pair'&&typeof data.secondTargetId==='string'?room.players.get(data.secondTargetId):null;
+      if(item.targets==='pair')ensure(second&&second.connected&&second.id!==target.id&&second.role==='student'&&target.role==='student','서로 다른 학생 친구 2명을 골라주세요.');
+      const targets=second?[target,second]:[target];
+      for(const recipient of targets){
+        ensure(levelOf(p)>=levelOf(recipient),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
+        ensure(!hasCardStatus(recipient,'little-moon-card',now)||item.mode==='moon','꼬마 달 보호 중인 친구는 다른 카드 효과를 받지 않아요.');
+      }
+      if(item.mode==='moon')ensure(!p.avatar.blackStar,'검은별 상태에서는 꼬마 달을 사용할 수 없어요.');
+      if(item.mode==='uv')ensure(target.role==='student','학생 친구에게만 자외선을 적용할 수 있어요.');
+      let meteorPlanet=null;
+      if(item.mode==='meteor'){
+        ensure(p.role==='student'&&target.id===p.id,'운석 파편은 본인이 받은 경고에만 쓸 수 있어요.');
+        meteorPlanet=typeof data.planetId==='string'?room.planets.get(data.planetId):null;
+        ensure(meteorPlanet&&meteorPlanet.id!==p.avatar.departmentId,'다른 부서행성을 골라주세요.');
+        ensure(warningCount(meteorPlanet,p.id)>0,'그 부서에서 받은 활성 경고가 없어요.');
+      }
+      if(item.mode)for(const recipient of targets){
+        const remaining=activeCardMarkers(recipient,now).filter(marker=>!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
+          !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
+        ensure(remaining.length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
+      }
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       // 소비: 수량 1 소모, 0이 되면 가방에서 완전히 지웁니다.
       owned.quantity-=1;
       if(owned.quantity<=0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
       p.lastItemUseAt=now;
-      // 효과 적용: 같은 아이템이 이미 붙어 있으면 시간과 사용자만 갱신하고, 새로 붙는 경우 한도(maxEffects)를 넘으면
-      // 가장 먼저 끝나는 효과(가장 작은 until)부터 지웁니다.
-      const until=now+item.effect.durationMs;
-      const existingEffect=target.effects.find(e=>e.itemId===item.id);
-      if(existingEffect){
-        existingEffect.until=until;existingEffect.fromId=p.id;existingEffect.fromNickname=p.nickname;
+      if(item.mode){
+        if(item.mode==='meteor'){
+          const cleared=clearWarningsFromPlanet(room,meteorPlanet,p);
+          whisper(room,p,meteorPlanet.name+'에서 받은 경고 '+cleared.cleared+'건이 해제됐어요.'+(cleared.released?' 검은별 상태도 풀렸어요.':''));
+        }
+        for(const recipient of targets){
+          recipient.cardMarkers=activeCardMarkers(recipient,now).filter(marker=>!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
+            !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
+          addCardMarker(recipient,item,p,['moon','uv'].includes(item.mode)?nextKoreaMidnight(now):null,
+            second?'자리 맞교환: '+(recipient.id===target.id?second.nickname:target.nickname):'');
+        }
       }else{
-        target.effects.push({itemId:item.id,icon:item.effect.icon,label:item.effect.label,style:item.effect.style,
-          until,fromId:p.id,fromNickname:p.nickname,secret:item.secret});
-        // 방금 붙인 효과(배열 마지막 칸)는 지울 후보에서 빼고, 원래 있던 것 중 가장 먼저 끝나는 효과를 지웁니다.
-        // 빼지 않으면 지속 시간이 짧은 아이템(예: 우주 간식 5분)을 썼을 때 물건만 없어지고 효과는 바로 사라집니다.
-        if(target.effects.length>ITEM_USE.maxEffects){
-          let oldest=0;
-          for(let i=1;i<target.effects.length-1;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
-          target.effects.splice(oldest,1);
+        // 기존 상점 아이템은 정해진 시간 동안 외형 효과를 표시합니다.
+        const until=now+item.effect.durationMs;
+        const existingEffect=target.effects.find(e=>e.itemId===item.id);
+        if(existingEffect){
+          existingEffect.until=until;existingEffect.fromId=p.id;existingEffect.fromNickname=p.nickname;
+        }else{
+          target.effects.push({itemId:item.id,icon:item.effect.icon,label:item.effect.label,style:item.effect.style,
+            until,fromId:p.id,fromNickname:p.nickname,secret:item.secret});
+          if(target.effects.length>ITEM_USE.maxEffects){
+            let oldest=0;
+            for(let i=1;i<target.effects.length-1;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
+            target.effects.splice(oldest,1);
+          }
         }
       }
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:target.id,
-        targetNickname:target.nickname,itemId:item.id,itemName:item.name,secret:item.secret});
+        targetNickname:second?target.nickname+' · '+second.nickname:target.nickname,itemId:item.id,itemName:item.name,secret:item.secret});
       if(room.itemLog.length>ITEM_USE.logSize) room.itemLog.shift();
       const selfTarget=target.id===p.id;
       const actorPhrase=p.role==='teacher'?'선생님이':p.nickname+' 친구가';
@@ -930,12 +1118,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }else{
         announce(room, selfTarget
           ? actorPhrase+' '+item.name+eul(item.name)+' 썼어요.'
-          : actorPhrase+' '+target.nickname+' 친구에게 '+item.name+eul(item.name)+' 썼어요.');
+          : actorPhrase+' '+(second?target.nickname+'·'+second.nickname:target.nickname)+' 친구에게 '+item.name+eul(item.name)+' 썼어요.');
         const text=actorPhrase+' '+item.name+eul(item.name)+' 썼어요.';
         for(const recipient of room.players.values())if(recipient.connected&&recipient.mapId===PLAZA_ID){const sock=io.sockets.sockets.get(recipient.socketId);if(sock)deliver(()=>sock.emit('item:notice',{text}));}
       }
       roster(room);
-      return {inventory:[...p.inventory],effects:effectsView(target.effects,p.role==='teacher')};
+      return {inventory:[...p.inventory],effects:playerEffectsView(target,p.role==='teacher',now)};
     });
     // 거래 한쪽(주는 것/받고 싶은 것) 검증: 파편 수·아이템 종류·수량이 규칙 안이고, 아이템은 실제로 존재하며 중복이 없어야 합니다.
     const tradeSide=x=>{
@@ -1161,6 +1349,13 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(dodgeSaveFailed)continue;
       // 1초에 한 번(50ms tick 20회) 만료된 아이템 효과를 지웁니다. 하나라도 지웠으면 스냅샷을 다시 보냅니다.
       if(step%20===0){
+        const abilityNow=clock();
+        const abilityDue=[...room.players.values()].some(p=>(p.abilityState?.blocks||[]).some(block=>
+          block.until<=abilityNow&&(!block.reward||p.starShards+block.reward<=SHARDS.max)));
+        if(abilityDue){
+          try{transaction(()=>{let changed=false;for(const p of room.players.values())changed=settleItemBlocks(p,abilityNow)||changed;if(changed)roster(room);});}
+          catch(error){console.error('별자리 능력 만료 저장 실패:',error.message);continue;}
+        }
         // 열린 랭킹 창도 한국 시간 월요일 0시를 지나면 즉시 비웁니다.
         if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
           try{transaction(()=>{
@@ -1171,9 +1366,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         }
         let effectsChanged=false;
         for(const p of room.players.values()){
-          if(!p.effects.length) continue;
           const kept=p.effects.filter(e=>e.until>now);
-          if(kept.length!==p.effects.length){ p.effects=kept; effectsChanged=true; }
+          if(kept.length!==p.effects.length){p.effects=kept;effectsChanged=true;}
+          const active=activeCardMarkers(p,now);
+          if(active.length!==(p.cardMarkers||[]).length){p.cardMarkers=active;effectsChanged=true;}
         }
         if(effectsChanged) roster(room);
       }

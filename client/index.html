@@ -19,6 +19,7 @@
   <section class="space-section" aria-label="우주 광장">
     <div class="map-wrap">
       <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
+      <time id="classroom-clock" class="classroom-clock" aria-label="현재 한국 시간"></time>
       <aside id="world-navigation" aria-label="현재 맵 탐색">
         <button id="map-overview" class="secondary" type="button">전체 우주 지도</button>
         <div id="minimap-title">현재 맵</div>
@@ -44,15 +45,23 @@
         </form>
         <form id="teacher-form" hidden>
           <label for="teacher-key">교사 확인 키</label><input id="teacher-key" type="password" autocomplete="off" minlength="16" required placeholder="교사용 시작 파일을 이용하면 자동 입력돼요">
-          <label for="class-mode">교실 방식</label><select id="class-mode"><option value="new">새 교실 만들기</option><option value="open">기존 교실 열기</option></select>
+          <span class="class-mode-label">교실 방식</span>
+          <div class="class-mode-choices" role="group" aria-label="교실 방식">
+            <button id="choose-open-class" class="secondary" type="button" aria-pressed="false">기존 교실 입장하기</button>
+            <button id="choose-new-class" class="secondary" type="button" aria-pressed="false">교실 만들기</button>
+          </div>
           <div id="open-class-fields" hidden><label for="open-code">기존 교실 코드</label><input id="open-code" autocomplete="off" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="저장된 교실 코드 6자리"><button id="saved-classes-button" class="small secondary" type="button">저장된 교실 목록 불러오기</button><select id="saved-classes" hidden aria-label="저장된 교실"></select></div>
-          <fieldset id="new-class-fields">
+          <fieldset id="new-class-fields" hidden disabled>
           <label for="class-title">교실 이름</label><input id="class-title" maxlength="12" value="우리 우주 교실" required>
-          <label for="allowed-names">허용할 학생 번호 또는 닉네임</label><textarea id="allowed-names" rows="2" required aria-describedby="names-help"></textarea>
-          <small id="names-help">쉼표나 줄바꿈으로 구분 · 최대 29명</small>
+          <fieldset id="student-setup-fields" hidden disabled><legend>학생 계정 함께 만들기</legend>
+            <label for="student-count">학생 수</label><input id="student-count" type="number" min="1" max="29" value="1" required>
+            <small>학생마다 이름과 숫자 4자리 비밀번호를 한 줄씩 입력해 주세요.</small>
+            <div id="student-account-rows"></div>
+          </fieldset>
+          <div id="legacy-names-fields" hidden><label for="allowed-names">허용할 학생 번호 또는 닉네임</label><textarea id="allowed-names" rows="2" aria-describedby="names-help"></textarea><small id="names-help">쉼표나 줄바꿈으로 구분 · 최대 29명</small></div>
           <label class="check"><input type="checkbox" id="seed-planets"> 예시 행성 4개(독서·일기·청소·교과)로 시작하기</label>
           </fieldset>
-          <button class="primary submit" type="submit">교실 만들기 <span aria-hidden="true">✦</span></button>
+          <button class="primary submit" type="submit" hidden>설정한 교실 생성하기 ✦</button>
         </form>
         <p id="form-message" class="form-message" role="alert"></p>
         <p class="privacy-note">학생 이용 시간 07:00~21:00 · 한국 시간<br>회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
@@ -75,21 +84,29 @@
   <section class="hud">
     <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
-      <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas></div>
+      <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><span id="self-constellation-type" class="constellation-type" hidden></span></div>
       <div class="card-attr"><span class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.</span></div>
       <div class="card-desc">
         <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
         <p id="self-proposal" class="muted" hidden></p>
       </div>
+      <section id="self-ability-panel" class="constellation-ability" hidden><img id="self-ability-art" alt="" loading="lazy"><div><strong id="self-ability-name"></strong><p id="self-ability-description"></p><button id="self-ability-open" type="button" class="small primary">별자리 능력 보기</button></div></section>
       <div class="card-effects"><h3>효과</h3><ul id="self-effects" aria-label="지금 내 효과"><li class="muted">지금은 특별한 효과가 없어요.</li></ul></div>
       <p class="card-foot" id="card-foot"></p>
       <section id="experience-panel" aria-label="캐릭터 경험치"><div class="experience-heading"><strong>경험치</strong><span id="self-xp">0 / 15</span></div><progress id="experience-bar" value="0" max="15" aria-label="다음 단계까지 경험치"></progress><p id="experience-next">LV 2까지 15 남았어요.</p></section>
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="avatar-dialog">닫기</button></div></dialog>
+    <dialog id="ability-dialog" aria-labelledby="ability-title"><h2 id="ability-title">별자리 능력</h2><p id="ability-description"></p><p id="ability-status" class="muted"></p>
+      <div id="ability-target-row" hidden><label for="ability-target">함께할 친구</label><select id="ability-target"></select></div>
+      <div id="ability-planet-row" hidden><label for="ability-planet">경고를 지울 부서</label><select id="ability-planet"></select></div>
+      <div id="ability-item-row" hidden><label for="ability-item">만들 아이템</label><select id="ability-item"></select><button id="ability-choose-item" type="button" class="primary">아이템 만들기</button></div>
+      <div id="ability-dice" class="ability-dice" hidden aria-live="polite"><div id="ability-cube" class="ability-cube"></div><p id="ability-dice-result"></p></div>
+      <div class="dialog-actions"><button id="ability-use" type="button" class="primary">이번 주 능력 사용하기</button><button id="ability-close" type="button" class="secondary">닫기</button></div></dialog>
     <dialog id="inventory-dialog" aria-labelledby="inventory-title"><section class="panel actions"><h2 id="inventory-title">가방</h2>
       <div id="bag-panel" role="tabpanel">
         <ul id="bag-list" class="bag-grid" aria-label="내 가방" role="grid"></ul>
         <p id="bag-empty" class="muted">가방이 비었어요. 별빛 거리의 별상점에서 물건을 살 수 있어요.</p>
         <div id="bag-currency" class="bag-currency">★ 별 파편 <strong id="self-shards">0</strong></div>
+        <button id="draw-resume" class="primary" type="button" hidden>🐇 진행 중인 달토끼 뽑기 이어하기</button>
         <div id="bag-detail" class="bag-detail muted">칸을 눌러 물건을 살펴봐요.</div>
         <section id="trade-section"><h3>친구와 거래</h3>
           <button id="trade-new" class="small secondary" type="button">친구와 거래 제안</button>
@@ -149,7 +166,7 @@
     <p id="item-log-empty" class="muted">아직 기록이 없어요.</p>
   </section>
   <section class="black-star-tools"><h3>검은별 관리</h3><button id="black-star-list-button" class="small secondary" type="button">검은별 명단 확인하기</button></section>
-  <section id="accounts-panel" hidden><h3>학생 계정 만들기 · 수정하기</h3><p class="muted">학생은 배부받은 계정으로만 입장해요. 비밀번호는 숫자 4자리예요.</p><label for="account-target">관리할 계정</label><select id="account-target"><option value="new">새 학생 만들기</option></select><label for="account-name">이름</label><input id="account-name" maxlength="12" autocomplete="off"><label for="account-pin">비밀번호</label><input id="account-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" placeholder="수정할 때 비워두면 현재 비밀번호 유지"><button id="account-save" class="primary small">계정 저장</button><p id="account-result" role="status"></p></section><section class="pin-panel" id="pin-panel" hidden><h3>⑤ 학생 비밀번호 바꾸기</h3><label for="pin-target">학생</label><select id="pin-target"></select><label for="reset-pin">새 비밀번호</label><input id="reset-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><button id="pin-save" class="primary small" type="button">비밀번호 저장</button></section>
+  <section id="accounts-panel" hidden><h3>아이들 계정 관리</h3><p class="muted">학생은 배부받은 계정으로만 입장해요. 비밀번호는 숫자 4자리예요.</p><button id="account-add" class="small secondary" type="button">＋ 아이들 계정 추가하기</button><label for="account-target">관리할 계정</label><select id="account-target"><option value="new">새 학생 만들기</option></select><label for="account-name">이름</label><input id="account-name" maxlength="12" autocomplete="off"><label for="account-pin">비밀번호</label><input id="account-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" placeholder="수정할 때 비워두면 현재 비밀번호 유지"><button id="account-save" class="primary small" type="button">계정 추가하기</button><p id="account-result" role="status"></p></section><section class="pin-panel" id="pin-panel" hidden><h3>⑤ 학생 비밀번호 바꾸기</h3><label for="pin-target">학생</label><select id="pin-target"></select><label for="reset-pin">새 비밀번호</label><input id="reset-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required><button id="pin-save" class="primary small" type="button">비밀번호 저장</button></section>
   <section id="credentials-panel" hidden><h3>학생에게 배부할 계정</h3><p class="muted">계정 저장 후 이름과 새 비밀번호가 아래 목록에 반영돼요. 비밀번호는 이 화면에서 발급한 값만 표시해요. 이전 비밀번호를 확인할 수 없거나 학생이 바꿨다면 위에서 새 비밀번호를 지정해주세요. 학생에게는 본인의 계정만 알려주세요.</p><p id="credentials-empty" class="muted">아직 학생 계정이 없어요. 위에서 계정을 만들어주세요.</p><textarea id="credentials-text" rows="10" readonly aria-label="배부용 계정 목록" hidden></textarea><button id="credentials-download" class="primary small" type="button" hidden>목록 파일 저장</button></section>
   <div class="dialog-actions teacher-footer"><button id="teacher-leave" class="secondary" type="button">선생님 나가기</button><button id="teacher-close" class="secondary" type="button">닫기</button></div>
 </dialog>
@@ -173,10 +190,14 @@
 <dialog id="use-dialog" aria-labelledby="use-title"><h2 id="use-title">물건 사용하기</h2>
   <p id="use-description"></p>
   <p id="use-effect" class="muted"></p>
+  <p id="use-special" class="muted" hidden></p>
   <p id="use-secret-note" class="muted" hidden>누가 썼는지 친구들에게는 비밀이에요(선생님은 알아요).</p>
   <label for="use-target">누구에게</label><select id="use-target"></select>
+  <div id="use-second-target-row" hidden><label for="use-second-target">자리를 바꿀 다른 친구</label><select id="use-second-target"></select></div>
+  <div id="use-planet-row" hidden><label for="use-planet">경고를 지울 부서행성</label><select id="use-planet"></select></div>
   <div class="dialog-actions"><button id="use-cancel" class="secondary" type="button">닫기</button><button id="use-confirm" class="primary" type="button">쓰기</button></div>
 </dialog>
+<dialog id="draw-dialog" aria-labelledby="draw-title"><h2 id="draw-title">달토끼 뽑기 카드</h2><p id="draw-message">10장 중 한 장을 골라 별 파편 1~10개를 받아요. 장기 평균은 3개예요.</p><div id="draw-spread" class="draw-spread" aria-label="뽑기 카드 펼침"></div><div class="dialog-actions"><button id="draw-start" class="primary" type="button">달토끼 1장 사용하고 뽑기 시작</button><button id="draw-close" class="secondary" type="button">닫기</button></div></dialog>
 <dialog id="trade-dialog" aria-labelledby="trade-dialog-title"><h2 id="trade-dialog-title">거래 제안하기</h2>
   <p class="muted">친구가 수락하고 선생님이 승인해야 실제로 주고받아요.</p>
   <label for="trade-target">거래할 친구</label><select id="trade-target"></select>

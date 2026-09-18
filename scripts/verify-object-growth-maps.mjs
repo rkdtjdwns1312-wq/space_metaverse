@@ -2,6 +2,7 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {fillNewClass} from './class-setup.mjs';
 import {createClassroomServer} from '../server/app.js';
 import {gainExperience,evolveAvatar} from '../server/progression.js';
 import {createAvatar,MAP,ORIGIN_MAPS,PLAZA_ID,STATIC_MAPS,mapOf} from '../shared/config.js';
@@ -9,7 +10,7 @@ const game=createClassroomServer({teacherKey:'object-growth-maps-test-only-key',
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
 const check=s=>{checks.push(s);console.log(s);};await mkdir('.local',{recursive:true});
 try{
- const teacher=await browser.newPage();await teacher.goto(url,{waitUntil:'domcontentloaded',timeout:25000});await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill('object-growth-maps-test-only-key');await teacher.locator('#allowed-names').fill('1');await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+ const teacher=await browser.newPage();await teacher.goto(url,{waitUntil:'domcontentloaded',timeout:25000});await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill('object-growth-maps-test-only-key');await fillNewClass(teacher,['1']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
  const room=[...game.store.rooms.values()][0],page=await browser.newPage({viewport:{width:1440,height:960},hasTouch:true});page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(8000);await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
  await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill('1');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
  const p=[...room.players.values()].find(p=>p.role==='student'),publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
