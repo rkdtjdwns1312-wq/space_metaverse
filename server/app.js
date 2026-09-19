@@ -259,7 +259,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
     action('combat:attack',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level);
+      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId);
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');

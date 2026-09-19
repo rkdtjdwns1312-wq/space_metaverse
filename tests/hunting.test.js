@@ -4,6 +4,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {monstersOf,monsterViews,moveMonsters,strikeMonster,MONSTER_RULES} from '../server/monsters.js';
 import {vitalsOf} from '../shared/vitals.js';
+import {CONSTELLATIONS} from '../shared/constellations.js';
 
 test('LV1~5 HP/MP 1/10/20/30/40, 범위 밖 단계는 null',()=>{
  for(const [level,max] of [[1,1],[2,10],[3,20],[4,30]])assert.deepEqual(vitalsOf(level),{hp:{current:max,max},mp:{current:max,max}});
@@ -41,4 +42,23 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
  assert.equal(m.hp,before.hp);assert.deepEqual(p.avatar,before.avatar);assert.equal(p.starShards,before.shards);
  now+=500;p.facing={x:0,y:-1};assert.deepEqual((await call(s,'combat:skill')).direction,{x:0,y:-1});
  p.away=true;now+=500;assert.equal((await call(s,'combat:attack')).ok,false);assert.equal((await call(s,'combat:skill')).ok,false);
+});
+
+test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 고정표와 일치하고 입력 위조를 무시한다',async t=>{
+ let now=100000;const game=createClassroomServer({teacherKey:'attack-class-test',studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
+ t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
+ const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
+ const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
+ const created=await call(teacher,'room:create',{teacherKey:'attack-class-test',allowedNames:['1']}),student=await connect();
+ const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('rabbit');
+ const table={'수호계':[1,1,1,2],'제작계':[1,1,2,3],'생산계':[1,1,2,3],'공격계':[2,3,4,5],'특수계':[1,2,3,4]};
+ for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
+   Object.assign(m,{hp:20,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});
+   Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});Object.assign(p.avatar,{level,constellationId:c.id});now+=500;
+   const expected=table[c.type][level-2],visual=new Promise(r=>student.once('combat:hit',r));
+   const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});
+   assert.equal(result.ok,true);assert.equal(result.target.damage,expected,c.id+' LV'+level);assert.equal(m.hp,20-expected);
+   assert.equal((await visual).power,expected);assert.equal(game.store.snapshot(room,p).players.find(v=>v.id===p.id).combat.attackPower,expected);
+ }
+ p.avatar.level=1;now+=500;assert.equal((await call(student,'combat:attack',{level:5,power:999})).ok,false);
 });

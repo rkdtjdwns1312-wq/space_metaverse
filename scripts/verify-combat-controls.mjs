@@ -14,8 +14,15 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:960},hasTouch:true});page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('별이');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
  const room=game.store.rooms.get(created.room.code),p=[...room.players.values()].find(p=>p.nickname==='별이'),publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
- for(const [level,power] of [[2,1],[3,2],[4,3],[5,4]]){p.avatar.level=level;publish();await page.locator('#dock-avatar').click();await page.waitForFunction(power=>document.getElementById('self-attack-power').textContent==='공격력 · '+power,power);await page.keyboard.press('Escape');}
- check('LV2=1·LV3=2·LV4=3·초월체=4 내 정보 공격력 표시');
+ const displayCases=[
+   ['gemini',[1,1,2,3]],['aquarius',[1,1,2,3]],['hercules',[1,1,1,2]],
+   ['ophiuchus',[2,3,4,5]],['cancer',[1,2,3,4]]
+ ];
+ for(const [constellationId,powers] of displayCases)for(const [index,level] of [2,3,4,5].entries()){
+   p.avatar.constellationId=constellationId;p.avatar.level=level;publish();await page.locator('#dock-avatar').click();
+   await page.waitForFunction(({power})=>document.getElementById('self-attack-power').textContent==='공격력 · '+power,{power:powers[index]});await page.keyboard.press('Escape');
+ }
+ check('5계열·LV2~5 공격력 표시 고정표 20값 검증');
  const before={x:p.x,y:p.y,shards:p.starShards,used:p.abilityState.usedWeek};
  await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)>0);assert.equal(await page.locator('#world').getAttribute('data-last-attack-dy'),'1');
  await page.keyboard.down('w');await page.waitForTimeout(350);await page.keyboard.up('w');await page.locator('#toast').filter({hasText:'전투 스킬은 준비 중'}).waitFor();
