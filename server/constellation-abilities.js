@@ -67,5 +67,5 @@ export function settleItemBlocks(player,now=Date.now()){
 
 export function abilityBlockViews(player,now=Date.now()){
   return activeItemBlocks(player,now).map(block=>({itemId:null,icon:block.sourceId==='aries'?'💤':'🐍',
-    label:block.sourceId==='aries'?'수면 · 아이템 사용 불가':'아이템 사용 정지',style:'card',until:block.until}));
+    statusId:block.sourceId==='aries'?'sleep':'item-block',label:block.sourceId==='aries'?'수면 · 아이템 사용 불가':'아이템 사용 정지',style:'card',until:block.until}));
 }

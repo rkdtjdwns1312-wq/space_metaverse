@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP, ITEM_USE, TRADE } from '../shared/config.js';
-import { placementFree } from '../server/world.js';
+import { advance, placementFree } from '../server/world.js';
+import {monsterViews} from '../server/monsters.js';
 import { ORIGIN_MAPS, GARDEN_ID, PARADISE_MAPS, MOON_PARADISE_MAPS, STAR_PARADISE, mapOf } from '../shared/config.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -19,6 +20,28 @@ async function fixture(t,options={}) {
 }
 const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
 const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNames:Array.from({length:29},(_,i)=>String(i+1))});
+
+test('타격 표시는 마지막 실제 이동 방향·간격을 서버가 정하고 같은 맵에만 보이며 피해를 주지 않는다',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
+ const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);
+ const other=await connect();await create(other);
+ const hits=[],peers=[],leaks=[];s.on('combat:hit',e=>hits.push(e));teacher.on('combat:hit',e=>peers.push(e));other.on('combat:hit',e=>leaks.push(e));
+ assert.equal((await call(s,'combat:attack',{level:4})).ok,false,'LV1 위조 공격 차단');
+ Object.assign(p,{mapId:GARDEN_ID,x:600,y:400});p.avatar.level=2;
+ const avatar=JSON.stringify(p.avatar),monsters=JSON.stringify(monsterViews(room).map(({id,alive,busy})=>({id,alive,busy}))),shards=p.starShards;
+ p.input={x:-1,y:0,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};
+ assert.deepEqual(p.facing,{x:-1,y:0});
+ assert.equal((await call(s,'combat:attack',{dx:1,dy:0,x:9999,power:9999,mapId:PLAZA_ID})).target,null);
+ assert.equal((await call(s,'combat:attack',{})).ok,false,'연타 제한');
+ await sleep(40);assert.equal(hits.length,1);assert.equal(hits[0].dx,-1);assert.equal(hits[0].dy,0);assert.equal(hits[0].power,1);assert.equal(hits[0].x,p.x);assert.equal(hits[0].mapId,GARDEN_ID);assert.deepEqual(leaks,[]);assert.deepEqual(peers,[]);
+ // 벽에 막힌 입력은 최근 실제 이동 방향을 덮어쓰지 않습니다.
+ p.x=RULES.radius;p.input={x:-1,y:0,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};assert.deepEqual(p.facing,{x:-1,y:0});
+ await sleep(460);Object.assign(p,{x:600,y:400});p.input={x:1,y:1,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};
+ assert.ok(Math.abs(p.facing.x-Math.SQRT1_2)<1e-9);assert.ok(Math.abs(p.facing.y-Math.SQRT1_2)<1e-9);
+ [...room.players.values()].find(p=>p.role==='teacher').mapId=GARDEN_ID;
+ assert.ok((await call(s,'combat:attack')).ok);await sleep(30);assert.equal(hits.length,2);assert.equal(peers.length,1);assert.deepEqual(leaks,[]);
+ assert.equal(p.starShards,shards);assert.equal(JSON.stringify(p.avatar),avatar);assert.equal(JSON.stringify(monsterViews(room).map(({id,alive,busy})=>({id,alive,busy}))),monsters);
+});
 
 test('낙원 연결은 양방향이며 서버가 레벨·거리·연결을 검사하고 교사 관리를 허용한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();

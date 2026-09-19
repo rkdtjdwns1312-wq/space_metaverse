@@ -32,16 +32,16 @@ export const LEGACY_CONSTELLATIONS=Object.freeze([
 ].map(([id,name,color,icon])=>Object.freeze({id,name,color,icon,type:null,legacy:true})));
 const BY_ID = new Map([...CONSTELLATIONS,...LEGACY_CONSTELLATIONS].map(value => [value.id, value]));
 // 계보 ID는 그대로 저장하고, 그림과 능력만 단계별로 고릅니다.
-// 아직 원본이 없는 Lv5·초월체는 최신 Lv4 자료를 사용합니다.
-const STAGES = new Map(CONSTELLATIONS.map(value => [value.id, [2, 3, 4].map(level =>
-  Object.freeze({ ...value, assetLevel: level,
-    art: level === 2 ? value.art : `/assets/constellation-cards/lv${level}/${value.id}.png`,
-    sprite: level === 2 ? value.sprite : `/assets/avatars/lv${level}/${value.id}.png`,
+// LV5와 초월체는 같은 별빛 원화를 사용하고, 새 능력은 정의될 때까지 기존 규칙을 유지합니다.
+const STAGES = new Map(CONSTELLATIONS.map(value => [value.id, [2, 3, 4, 5, 6].map(level =>
+  Object.freeze({ ...value, assetLevel: level, celestial: level >= 5,
+    art: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.art : `/assets/constellation-cards/lv${level}/${value.id}.png`,
+    sprite: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.sprite : `/assets/avatars/lv${level}/${value.id}.png`,
     ability: abilityForLevel(value.id, level)
   }))]));
 export function constellationOf(id, level = 2) {
   const value = BY_ID.get(id);
   if (!value || value.legacy) return value || null;
-  const stage = Number.isInteger(level) ? Math.max(2, Math.min(4, level)) : 2;
+  const stage = Number.isInteger(level) ? Math.max(2, Math.min(6, level)) : 2;
   return STAGES.get(id)[stage - 2];
 }

@@ -47,7 +47,7 @@ test('16 계보의 Lv2/3/4 그림과 능력은 각각 다르고 PNG 파일이 �
     }
     assert.equal(sprites.size,3,value.id);assert.equal(cards.size,3,value.id);assert.equal(descriptions.size,3,value.id);
   }
-  assert.equal(constellationOf('leo',5).assetLevel,4);assert.equal(constellationOf('orion',4).legacy,true);
+  assert.equal(constellationOf('leo',5).assetLevel,5);assert.equal(constellationOf('orion',4).legacy,true);
 });
 
 test('물병 Lv3/4 지급과 상한을 서버가 결정하고 진화/변경해도 주간 재사용 불가',async t=>{

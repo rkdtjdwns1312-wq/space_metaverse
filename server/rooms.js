@@ -1,3 +1,6 @@
+import {attackPowerOf} from '../shared/combat.js';
+import {vitalsOf} from '../shared/vitals.js';
+import {knownStatus} from '../shared/statuses.js';
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
@@ -20,7 +23,7 @@ export const ensure = (test,message) => { if (!test) throw new GameError(message
 // 아이템 효과를 스냅샷/사용 응답에 실을 때 쓰는 뷰. 누가 썼는지(fromId/fromNickname)는 선생님에게만 보입니다.
 export function effectsView(effects, viewerIsTeacher) {
   return (effects||[]).map(e=>{
-    const v={itemId:e.itemId,icon:e.icon,label:e.label,style:e.style,until:e.until};
+    const v={itemId:e.itemId,icon:e.icon,label:e.label,style:e.style,until:e.until,...(knownStatus(e.statusId)?{statusId:e.statusId}:{})};
     if(viewerIsTeacher){v.fromId=e.fromId;v.fromNickname=e.fromNickname;}
     return v;
   });
@@ -109,7 +112,7 @@ export class RoomStore {
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-          effects:playerEffectsView(p,isTeacher)};
+          effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level)},vitals:vitalsOf(p.avatar.level)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
         if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}

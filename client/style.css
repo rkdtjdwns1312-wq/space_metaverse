@@ -26,6 +26,10 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .card-title h2{margin:0;font-size:16px;color:#fff}
 .card-level{font-size:12px;font-weight:800;color:#ffe59b;white-space:nowrap;flex-shrink:0}
 .card-art{background:#241d40;display:flex;align-items:center;justify-content:center;padding:8px;position:relative}
+.celestial-card .card-art{overflow:hidden}
+.celestial-card .card-art::after{content:"";position:absolute;inset:5%;pointer-events:none;background:radial-gradient(ellipse,var(--celestial-color),transparent 65%);mix-blend-mode:screen;opacity:.12;animation:celestial-breathe 6s ease-in-out infinite alternate}
+@keyframes celestial-breathe{to{opacity:.25;transform:scale(1.1) rotate(6deg)}}
+@media(prefers-reduced-motion:reduce){.celestial-card .card-art::after{animation:none}}
 .constellation-type{position:absolute;right:12px;bottom:10px;padding:3px 7px;border:1px solid #e7dfff9c;border-radius:999px;background:#211838dc;color:#fff5c9;font-size:11px;font-weight:700;letter-spacing:.04em;pointer-events:none}
 .constellation-ability{display:flex;gap:10px;align-items:center;padding:9px;border-radius:12px;background:#f4efff;color:#3c3265}
 .constellation-ability[hidden]{display:none}
@@ -39,6 +43,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .die-face[data-face="4"]{transform:rotateX(90deg) translateZ(37px)}.die-face[data-face="5"]{transform:rotateY(-90deg) translateZ(37px)}.die-face[data-face="6"]{transform:rotateY(180deg) translateZ(37px)}
 #avatar-portrait{display:block;width:100%;height:auto;aspect-ratio:240/150;max-height:none;min-height:0;max-width:240px;object-fit:contain;outline:none;border-radius:8px}
 .card-attr{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 0}
+.card-combat{margin:8px 14px 0;padding:7px 10px;border-radius:10px;background:#fff4e8;color:#8c6a66;font-size:12px;font-weight:700}
 .attr-tag{font-size:11px;font-weight:700;background:#eeeafa;color:#6d5992;border-radius:8px;padding:3px 9px;line-height:1.5}
 .card-desc{padding:6px 14px 0}
 .card-desc p{font-size:13px;line-height:1.7;color:#746881;margin:8px 0 0}
@@ -47,6 +52,18 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .card-effects ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .card-effects li{font-size:12px;color:#5d4795;background:#eeeafa;border-radius:8px;padding:4px 8px}
 .card-effects li.muted{color:#8a879c;background:transparent;padding:0}
+.card-status{padding:10px 14px 0;border-top:1px solid #e1d9f1;margin-top:10px}
+.card-status h3{font-size:12px;margin:0 0 8px;color:#5d4795;font-weight:800}
+.status-grid{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.status-grid li.status-badge{width:72px;min-height:68px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;border-radius:12px;color:#5d4795;text-align:center;overflow:hidden}
+.status-grid .status-icon{font-size:22px;line-height:1}
+.status-grid .status-name{font-size:11px;line-height:1.2;overflow-wrap:anywhere}
+.status-grid li.status-badge[data-tone="warm"]{background:#fff0d8;color:#a56b32}
+.status-grid li.status-badge[data-tone="cool"]{background:#e4f2ff;color:#4d77a3}
+.status-grid li.status-badge[data-tone="violet"]{background:#eee5ff;color:#7254a1}
+.status-grid li.status-badge[data-tone="mint"]{background:#e1f6ed;color:#438875}
+.status-grid li.status-badge[data-tone="dark"]{background:#e4e1ef;color:#4e4966}
+.card-status .muted{margin:0;font-size:12px;color:#8a879c}
 .avatar-card .card-foot{margin:0;padding:8px 14px 12px;font-size:11px;color:#8a879c;text-align:right}
 .panel-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}.panel-heading h2{font-size:15px;margin:0}.panel-heading span{font-size:12px;color:#827694}
 .actions{display:flex;flex-direction:column;gap:12px}
@@ -291,7 +308,11 @@ body.joined #interior-decorate:not([hidden]){position:fixed;left:0;top:0;z-index
 
 /* 모바일 조이스틱은 입장 후에만 표시합니다. */
 #mobile-controls{display:none}
-body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-items:flex-end;gap:8px;right:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:21;touch-action:none}
+body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;flex-direction:column;align-items:center;gap:8px;right:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:21;touch-action:none}
+.combat-buttons{display:flex;gap:8px;width:min(124px,100%);justify-content:center}
+.combat-buttons button{width:56px;height:56px;min-width:56px;padding:0;border:2px solid #f1b7ae;border-radius:50%;background:#fff0e9;color:#865b63;box-shadow:0 6px 14px #42527a26;font-size:14px;font-weight:800;line-height:1.1}
+.combat-buttons button:nth-child(2){border-color:#b9c8ee;background:#eef3ff;color:#5f6f9d}
+.combat-buttons button span{display:block;font-size:10px;font-weight:700;margin-top:2px}
 #joystick{position:relative;width:76px;height:76px;flex:0 0 76px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none}
 #joystick-knob{position:absolute;left:50%;top:50%;width:32px;height:32px;border:2px solid #8b7dbb;background:#e8e0ff;border-radius:50%;box-shadow:0 3px 8px #62548b33;pointer-events:none;transform:translate(-50%,-50%)}
 #touch-interact{position:static;transform:none;min-width:52px;max-width:130px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -308,7 +329,9 @@ body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-ite
   body.joined:not(.placing) .bottom-dock{left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:2px;padding:4px}
   body.joined .dock-button{width:34px;min-height:43px;padding:4px 2px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
-  body.joined:not(.placing) #mobile-controls{right:8px;bottom:max(14px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;gap:4px}
+  body.joined:not(.placing) #mobile-controls{right:8px;bottom:max(14px,env(safe-area-inset-bottom));gap:4px}
+  .combat-buttons{flex-direction:column;width:64px;gap:4px}
+  .combat-buttons button{width:52px;height:52px;min-width:52px}
 }
 @media(max-width:390px){
   body.joined:not(.placing) .bottom-dock{left:50%;right:auto;transform:translateX(-50%)}
@@ -341,3 +364,6 @@ body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-ite
 @media(max-width:520px){body.joined:not(.placing) #world-navigation{top:56px}}
 
 .map-level{font-size:12px;color:#77618e}
+
+/* 학생 메뉴는 다섯 칸이므로 작은 화면에서 왼쪽 화살표와 간격을 둡니다. */
+@media(max-width:520px){body.joined:not(.placing) .bottom-dock{left:calc(50% + 8px)}}

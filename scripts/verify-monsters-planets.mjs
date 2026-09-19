@@ -36,16 +36,21 @@ try{
   assert.ok(samples.some((sample,index)=>index>0&&Math.hypot(sample.monsterX-samples[0].monsterX,sample.monsterY-samples[0].monsterY)>1));
   check('아바타가 움직이는 동안 몬스터의 화면상 월드 좌표도 계속 갱신');
   const m=monstersOf(room).get('rabbit');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
-  await page.locator('#interact-object').filter({hasText:'토끼자리'}).waitFor();await page.locator('#world').focus();await page.keyboard.press('e');
-  await page.locator('#monster-title').filter({hasText:'토끼자리'}).waitFor();await page.locator('#monster-info').click();await page.locator('#monster-description').filter({hasText:'달토끼'}).waitFor();
-  assert.ok(!(await page.locator('#monster-details').textContent()).includes('1초마다 방향을 골라 천천히 산책해요'));
-  assert.equal(await page.locator('#monster-hunt').isDisabled(),true);assert.ok((await page.locator('#monster-hunt').textContent()).includes('준비 중'));assert.equal(p.avatar.xp,0);
-  await page.screenshot({path:'.local/monster-info.png'});await page.keyboard.press('Escape');await page.locator('#monster-dialog').waitFor({state:'hidden'});
-  check('E→몬스터 정보 보기·설명·사냥 준비중 비활성·Esc 닫기·경험치 유지');
-  await page.setViewportSize({width:390,height:844});Object.assign(p,{x:m.x+30,y:m.y});publish();await page.locator('#interact-object').filter({hasText:'토끼자리'}).waitFor();
-  await page.locator('#touch-interact').tap();await page.locator('#monster-dialog').waitFor({state:'visible'});await page.locator('#monster-info').tap();
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'.local/monster-mobile.png'});await page.locator('#monster-close').tap();
-  check('390px 터치E·정보창·닫기·가로 넘침 없음');
+  await page.locator('#world').focus();await page.keyboard.press('e');assert.equal(await page.locator('#monster-dialog').count(),0);
+  assert.ok(!(await page.locator('#interact-object').textContent()).includes('토끼자리'));check('몬스터 E 상호작용·정보 메뉴 제거');
+  for(const [level,max] of [[1,1],[2,10],[3,20],[4,30]]){p.avatar.level=level;publish();await page.locator('.vitals-hp .vitals-label').filter({hasText:`HP ${max}/${max}`}).waitFor();assert.equal(await page.locator('.vitals-mp progress').getAttribute('max'),String(max));}
+  check('LV1~4 HP/MP 1·10·20·30 서버 수치 표시');
+  Object.assign(p.avatar,{constellationId:'leo',form:'constellation'});
+  Object.assign(m,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});Object.assign(p,{x:m.x-62,y:m.y,facing:{x:1,y:0}});publish();
+  await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='17');
+  await page.keyboard.press('w');await page.waitForFunction(()=>document.getElementById('world').dataset.lastSkillDx==='1');assert.equal(m.hp,17);check('Q 직접 타격 HP20→17·W 같은 방향 표시와 HP 무소비');
+  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(500);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='14');
+  await page.locator('#touch-skill').tap();assert.equal(m.hp,14);
+  const hud=await page.locator('#vitals-hud').boundingBox(),dock=await page.locator('#bottom-dock').boundingBox(),hp=await page.locator('.vitals-hp').boundingBox(),mp=await page.locator('.vitals-mp').boundingBox();
+  assert.ok(hud.y+hud.height<dock.y&&Math.abs(hp.y-mp.y)<1&&hud.width===200);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.screenshot({path:'.local/monster-mobile.png'});check('390px 터치 공격/스킬·아이콘 위 일렬 HP/MP·가로 넘침 없음');
+  for(let i=0;i<5;i++){await page.waitForTimeout(500);await page.locator('#touch-attack').tap();}
+  await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='4');assert.equal(m.hp,0);assert.equal(p.avatar.xp,0);check('체력0 처치·화면에서 사라짐·미정 보상 없음');
   const planet=addPlanet(room,{name:'체육행성',description:'친구들과 건강하게 놀아요.',templateId:'sports',x:700,y:400,color:PLANET_COLORS[0],rules:['서로 응원해요.']});
   p.avatar.departmentId=planet.id;Object.assign(p,{mapId:PLAZA_ID,x:planet.x+70,y:planet.y});publish();
   await page.locator('#interact-object').filter({hasText:'체육행성'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#planet-dialog').waitFor({state:'visible'});

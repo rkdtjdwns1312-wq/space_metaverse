@@ -18,7 +18,7 @@
 <main>
   <section class="space-section" aria-label="우주 광장">
     <div class="map-wrap">
-      <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 W A S D로 소행성을 움직여요."></canvas>
+      <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 조이스틱으로 이동하고 Q로 공격, W로 스킬, E로 상호작용해요."></canvas>
       <time id="classroom-clock" class="classroom-clock" aria-label="현재 한국 시간"></time>
       <aside id="world-navigation" aria-label="현재 맵 탐색">
         <button id="map-overview" class="secondary" type="button">전체 우주 지도</button>
@@ -73,24 +73,30 @@
         <button data-dx="1" data-dy="0" class="right" aria-label="오른쪽으로 이동">→</button>
       </div>
       <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
+        <div class="combat-buttons" aria-label="전투 조작">
+          <button id="touch-attack" type="button" aria-label="공격(Q)">Q <span>공격</span></button>
+          <button id="touch-skill" type="button" aria-label="스킬(W)">W <span>스킬</span></button>
+        </div>
         <div id="joystick" role="application" aria-label="터치 조이스틱" tabindex="0">
           <div id="joystick-knob" aria-hidden="true"></div>
         </div>
         <button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기">E <span>조사하기</span></button>
       </div>
     </div>
-    <div class="map-footer"><span>⌨ 방향키 또는 W A S D로 이동</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
+    <div class="map-footer"><span>⌨ 방향키·조이스틱 이동 / Q 공격·W 스킬·E 상호작용</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
   </section>
   <section class="hud">
     <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
       <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><span id="self-constellation-type" class="constellation-type" hidden></span></div>
       <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.</span></div>
+      <p id="self-attack-power" class="card-combat">공격력 · 설정 예정</p>
       <div class="card-desc">
         <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
         <p id="self-proposal" class="muted" hidden></p>
       </div>
       <section id="self-ability-panel" class="constellation-ability" hidden><img id="self-ability-art" alt="" loading="lazy"><div><strong id="self-ability-name"></strong><p id="self-ability-description"></p><button id="self-ability-open" type="button" class="small primary">별자리 능력 보기</button></div></section>
+      <section class="card-status" aria-labelledby="self-status-title"><h3 id="self-status-title">상태</h3><ul id="self-statuses" class="status-grid" aria-label="현재 내 상태" aria-live="polite"></ul><p id="self-status-empty" class="muted">지금은 특별한 상태가 없어요.</p></section>
       <div class="card-effects"><h3>효과</h3><ul id="self-effects" aria-label="지금 내 효과"><li class="muted">지금은 특별한 효과가 없어요.</li></ul></div>
       <p class="card-foot" id="card-foot"></p>
       <section id="experience-panel" aria-label="캐릭터 경험치"><div class="experience-heading"><strong>경험치</strong><span id="self-xp">0 / 15</span></div><progress id="experience-bar" value="0" max="15" aria-label="다음 단계까지 경험치"></progress><p id="experience-next">LV 2까지 15 남았어요.</p></section>

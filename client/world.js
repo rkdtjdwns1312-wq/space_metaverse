@@ -1,3 +1,4 @@
+import {ATTACK_VISUAL} from '/shared/combat.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
 import { drawTemple, drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
@@ -5,8 +6,22 @@ import { createMotionTrack } from './motion.js';
 import {monsterType} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
+import {avatarLabel} from '/shared/avatar-label.js';
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const avatarSprites=new Map();
+const portraitPlayers=new WeakMap();
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+// 원화는 그대로 두고 주변 성운의 밝기·회전만 천천히 바꿉니다.
+function celestialAura(ctx,color,r,time){
+  const phase=reducedMotion.matches?0:time/2400;
+  ctx.save();ctx.rotate(Math.sin(phase)*.12);
+  const glow=ctx.createRadialGradient(0,0,r*.15,0,0,r);
+  glow.addColorStop(0,color+'60');glow.addColorStop(.55,color+'30');glow.addColorStop(1,color+'00');
+  ctx.fillStyle=glow;ctx.globalAlpha*=.8+Math.sin(phase)*.15;
+  ctx.scale(1, .8+Math.sin(phase+.7)*.06);ctx.fillRect(-r,-r,r*2,r*2);
+  for(let i=0;i<5;i++){const a=i*Math.PI*2/5+.2;drawStar(ctx,Math.cos(a)*r*.8,Math.sin(a)*r*.8,1.7+(Math.sin(phase+i)+1)*.5,'#fff3cf');}
+  ctx.restore();
+}
 function loadedAvatarSprite(path,onLoad){
   if(!path)return null;
   let image=avatarSprites.get(path);
@@ -28,6 +43,7 @@ function drawStar(ctx,x,y,r,fill){
 export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
+  let hits=[];
   let monsters=[];const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
@@ -386,7 +402,8 @@ export function createWorld(canvas) {
       ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,1);ctx.textBaseline='alphabetic';
     }else if(constellation){
       const sprite=loadedAvatarSprite(constellation.sprite);
-      if(sprite)ctx.drawImage(sprite,-24,-29,48,48);
+      if(constellation.celestial)celestialAura(ctx,constellation.color,48,time);
+      if(sprite){const size=constellation.celestial?76:48;ctx.drawImage(sprite,-size/2,-size/2-5,size,size);}
       else{const radius=19+(Math.min(p.avatar.level,6)-2)*1.5;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
@@ -410,10 +427,14 @@ export function createWorld(canvas) {
     ctx.translate(-x,-y);
     if(effects.length){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a3450';ctx.fillText(effects.map(e=>e.icon).join(' '),x,y-74);}
     ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Jua","Malgun Gothic",sans-serif';
-    const label=p.nickname+(p.id===selfId?' · 나':'')+(!p.connected?' · 연결 중':'');
-    const w=ctx.measureText(label).width+16;ctx.fillStyle='#ffffffdf';
-    ctx.beginPath();ctx.roundRect(x-w/2,y+29,w,24,9);ctx.fill();
-    ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';ctx.fillText(label,x,y+46);
+    const label=avatarLabel(p),nameWidth=ctx.measureText(label.name).width;
+    ctx.font='11px "Jua","Malgun Gothic",sans-serif';
+    const w=Math.max(nameWidth,ctx.measureText(label.detail).width)+18,top=y+(constellation?.celestial?42:29);
+    ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(x-w/2,top,w,40,9);ctx.fill();
+    ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';
+    ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillText(label.name,x,top+16);
+    ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#726782';ctx.fillText(label.detail,x,top+32);
+    if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=constellation?.sprite||'';}
     if(effects.some(e=>e.style==='happy')){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
     drawBubble(p.id,x,y);
     ctx.restore();
@@ -466,17 +487,34 @@ export function createWorld(canvas) {
     for(const m of visibleMonsters){
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
       drawMonster(ctx,{...type,...m,...pos},t);
+      const barWidth=64,barY=pos.y-(Number(m.radius)||24)-18;
+      ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,9,4);ctx.fill();
+      ctx.fillStyle='#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),7);
+      ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();
+      if(m===firstMonster){canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
       ctx.fillText(type.name,pos.x,pos.y+(Number(m.radius)||24)+13);ctx.restore();
     }
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
+    canvas.dataset.attackCount=String(hits.length);
+    for(const hit of hits){
+      const progress=1-(hit.until-t)/ATTACK_VISUAL.durationMs;
+      const hx=hit.x+hit.dx*ATTACK_VISUAL.reach,hy=hit.y+hit.dy*ATTACK_VISUAL.reach;
+      ctx.save();ctx.translate(hx,hy);ctx.rotate(Math.atan2(hit.dy,hit.dx));ctx.globalAlpha=Math.max(0,1-progress);
+      const radius=12+progress*22;ctx.strokeStyle=hit.kind==='skill'?'#a3caff':'#f1ad69';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(0,0,radius*.7,radius,0,0,Math.PI*2);ctx.stroke();
+      star(0,0,19*(1-progress)+6,hit.kind==='skill'?'#d8eaff':'#fff3be');
+      ctx.strokeStyle='#fffdf0';ctx.lineWidth=4;
+      for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();bubbles.clear();}
+      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();bubbles.clear();hits=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       planets=room?.planets||[];proposals=room?.proposals||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
@@ -488,6 +526,12 @@ export function createWorld(canvas) {
     },
     positions(data){const now=performance.now();for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
+    hit(data){
+      if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
+      hits.push({...data,until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
+      canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
+      if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);}
+    },
     say(playerId,text,ms){
       if(!playerId)return;const str=String(text);
       const limited=Array.from(str).slice(0,CHAT.maxLength??100).join('');
@@ -509,8 +553,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>['gate','shop','arcade','evolution','growth','black-star'].includes(o.kind)),
-          ...monsters.filter(m=>m.alive&&m.mapId===myMapId).map(m=>({...m,name:monsterType(m.typeId)?.name||'별자리',kind:'monster'}))];
+        const candidates=currentMap().objects.filter(o=>['gate','shop','arcade','evolution','growth','black-star'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
@@ -552,6 +595,7 @@ export function createWorld(canvas) {
 // 아바타 카드(.card-art)의 작은 일러스트 캔버스에 그 플레이어의 소행성만 크게 그립니다(이름표 없음).
 // player.deptIcon을 넘기면 오른쪽 위에 소속 행성 아이콘을 함께 그립니다(호출하는 쪽에서 미리 조회해 붙여 줍니다).
 export function renderPortrait(canvas,player,effects){
+  portraitPlayers.set(canvas,player);
   const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
   ctx.clearRect(0,0,w,h);
   const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#2c2350');g.addColorStop(1,'#4a3a7a');
@@ -569,7 +613,8 @@ export function renderPortrait(canvas,player,effects){
     drawStar(ctx,0,0,45,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=4;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,2);ctx.textBaseline='alphabetic';
   }else if(constellation){
-    const sprite=loadedAvatarSprite(constellation.sprite,()=>renderPortrait(canvas,player,effects));
+    const sprite=loadedAvatarSprite(constellation.sprite,()=>{if(portraitPlayers.get(canvas)===player)renderPortrait(canvas,player,effects);});
+    if(constellation.celestial)celestialAura(ctx,constellation.color,76,0);
     if(sprite)ctx.drawImage(sprite,-59,-59,118,118);
     else{drawStar(ctx,0,0,43+(Math.min(player.avatar.level,6)-2)*2,constellation.color);
       ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();

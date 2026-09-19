@@ -1,4 +1,5 @@
 import express from 'express';
+import {attackPowerOf,ATTACK_VISUAL} from '../shared/combat.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -13,8 +14,7 @@ import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } 
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
-import {moveMonsters,monsterViews,nearbyMonster} from './monsters.js';
-import {monsterType} from '../shared/monsters.js';
+import {moveMonsters,monsterViews,strikeMonster} from './monsters.js';
 import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords} from './weekly-ranking.js';
@@ -109,7 +109,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url))));
   app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
   // 교사 키 무작위 대입은 연결을 새로 열어도 제한되도록 주소별로 집계합니다.
-  const authAttempts=new Map();
+  const authAttempts=new Map(),lastAttacks=new WeakMap(),lastSkills=new WeakMap();
   // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
   let pending=null;
   const deliver=fn=>pending?pending.push(fn):fn();
@@ -236,11 +236,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(++rate.count>80){socket.disconnect(true);return;}
       next();
     });
-    const action=(name,handler)=>socket.on(name,(data,ack)=>{
+    const action=(name,handler,save=true)=>socket.on(name,(data,ack)=>{
       if(typeof ack!=='function')return;
       try {
         ensure(data && typeof data==='object' && !Array.isArray(data),'입력 내용을 확인해주세요.');
-        ack({ok:true,...transaction(()=>{
+        const execute=save?transaction:work=>work();
+        ack({ok:true,...execute(()=>{
           const session=socket.data.session;
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
@@ -252,11 +253,36 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         ack({ok:false,error:error instanceof GameError?error.message:'처리하지 못했어요. 다시 시도해주세요.'});
       }
     });
-    action('monster:info',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const monster=nearbyMonster(s.room,s.player,data.monsterId);
-      return {monster:{...monsterType(monster.typeId),radius:monster.radius},huntingEnabled:false};
-    });
+    // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
+    action('combat:attack',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level);
+      ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
+      ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
+      ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');
+      ensure(now-(lastAttacks.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'공격을 조금 천천히 해주세요.');
+      lastAttacks.set(player,now);
+      const direction=player.facing||{x:0,y:1};
+      const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,power};
+      for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
+      const target=strikeMonster(room,player,power,now);
+      return {target};
+    },false);
+    // 이전 클라이언트에도 바로 안내하고, 폐지된 몬스터 상호작용은 실행하지 않습니다.
+    action('combat:skill',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const {room,player}=session,now=clock();
+      ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
+      ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
+      ensure(now-(lastSkills.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'스킬을 조금 천천히 사용해주세요.');
+      lastSkills.set(player,now);
+      const direction=player.facing||{x:0,y:1};
+      const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs};
+      for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
+      // 전투 스킬은 방향 표시만 제공합니다. 주간 카드 능력·마나·HP를 소비하지 않습니다.
+      return {ready:false,direction};
+    },false);
+    action('monster:info',()=>{ensure(false,'몬스터는 Q 공격키로 직접 공격해주세요.');},false);
     const enter=session=>{
       const credentials=session.credentials;delete session.credentials;
       socket.data.session=session;joinChannel(session);roster(session.room);

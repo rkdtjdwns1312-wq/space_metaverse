@@ -77,7 +77,11 @@ export function advance(room, now) {
     if (!length) continue;
     const step=RULES.speed*RULES.tickMs/1000;
     const dx=p.input.x/length*step, dy=p.input.y/length*step;
+    const beforeX=p.x,beforeY=p.y;
     if (isFree(room,p.x+dx,p.y,p.id,p.mapId)) p.x+=dx;
     if (isFree(room,p.x,p.y+dy,p.id,p.mapId)) p.y+=dy;
+    // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
+    const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
+    if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};
   }
 }

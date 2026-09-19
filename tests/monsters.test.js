@@ -48,7 +48,7 @@ test('몬스터는 맵 경계와 문 주변을 벗어나지 않고 같은 위치
   }
 });
 
-test('실제 소켓 정보 요청은 방·지도·근접을 검사하고 사냥 및 보상을 허용하지 않는다',async t=>{
+test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게 실행하지 않는다',async t=>{
   const game=createClassroomServer({teacherKey:'monster-test-only-private',studentHours:false}),address=await game.listen(),sockets=[];
   const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
   t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();});
@@ -60,7 +60,7 @@ test('실제 소켓 정보 요청은 방·지도·근접을 검사하고 사냥 
   assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{mapId:m.mapId,x:1100,y:700});assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{x:m.x+35,y:m.y});const info=await call(student,'monster:info',{monsterId:m.id,xp:999,level:6});
-  assert.ok(info.ok);assert.equal(info.huntingEnabled,false);assert.equal(info.monster.name,'토끼자리');
+  assert.equal(info.ok,false);assert.match(info.error,/Q 공격키/);
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));

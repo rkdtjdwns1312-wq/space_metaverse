@@ -27,7 +27,7 @@ export function addCardMarker(player,item,actor,until=null,note=''){
 export function cardMarkerViews(player,viewerIsTeacher,now=Date.now()){
   return activeCardMarkers(player,now).map(marker=>{
     const item=itemOf(marker.itemId);
-    const view={itemId:item.id,icon:item.icon,label:item.effect.label,style:item.effect.style,until:marker.until};
+    const view={itemId:item.id,icon:item.icon,label:item.effect.label,style:item.effect.style,until:marker.until,...(item.mode==='uv'?{statusId:'uv'}:item.mode==='moon'?{statusId:'moon'}:{})};
     if(viewerIsTeacher){view.markerId=marker.id;view.fromId=marker.fromId;view.fromNickname=marker.fromNickname;view.note=marker.note||'';}
     return view;
   });

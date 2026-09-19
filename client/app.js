@@ -1,3 +1,6 @@
+import {createCombatControls} from './combat-controls.js';
+import {createStatusUI} from './status-ui.js';
+import {createVitalsUI} from './vitals-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
 import { createSocialUI } from './social-ui.js';
@@ -7,7 +10,6 @@ import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
 import { createDepartmentWorkUI } from './department-work-ui.js';
-import {createMonsterUI} from './monster-ui.js';
 import {createPlanetRulesUI} from './planet-rules-ui.js';
 import {createEvolutionUI} from './evolution-ui.js';
 import {createGrowthUI} from './growth-ui.js';
@@ -22,6 +24,9 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 startClassroomClock($('classroom-clock'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
+const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
+const vitals=createVitalsUI($('bottom-dock'));
+createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog[open]'),toast,request});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
 $('avatar-card').append($('experience-panel'));
@@ -46,7 +51,6 @@ const arcade=createArcadeUI({stop,toast,request,
   subscribeDodgeState:listener=>subscribe('dodge:state',listener),
   subscribeDodgeRanking:listener=>subscribe('dodge:ranking',listener)});
 const departmentWork=createDepartmentWorkUI({request,stop,toast});
-const monsterUI=createMonsterUI({request,stop,toast,isJoined:()=>!!selfId});
 const rulesUI=createPlanetRulesUI({request,stop,toast,isJoined:()=>!!selfId});
 const evolutionUI=createEvolutionUI({request,stop,toast,isJoined:()=>!!selfId});
 const growthUI=createGrowthUI({request,stop,toast,isJoined:()=>!!selfId});
@@ -251,6 +255,7 @@ function updateRoom(value){
     return li;
   }));
   $('self-name').textContent=me?.nickname||'나의 소행성';
+  $('self-attack-power').textContent='공격력 · '+(me?.combat?.attackPower??(me?.avatar.level===1?'LV2부터 사용':'설정 예정'));
   $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
   if(me?.role==='student'){
     const constellation=constellationOf(me.avatar.constellationId,me.avatar.level);
@@ -263,6 +268,7 @@ function updateRoom(value){
   $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
+  if(isTeacher)vitals.reset();else vitals.update(me?.vitals);
   // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
   $('self-form-name').textContent=isTeacher?'선생님':myLv>=2?(constellationOf(me?.avatar?.constellationId,myLv)?.name||'별자리'):'소행성';
   const transcendent=myLv>=PROGRESSION.transcendentLevel;
@@ -278,7 +284,7 @@ function updateRoom(value){
     $('self-ability-name').textContent='Lv'+myLv+' '+abilityConstellation.name+' · '+abilityConstellation.type;
     const ability=abilityConstellation.ability;
     $('self-ability-description').textContent=ability.description+(ability.note?' '+ability.note:'')+
-      (ability.mode==='manual'?' · 선생님 확인 후 적용':'')+(myLv>4?' · 현재 Lv4 카드 자료 적용 중':'');
+      (ability.mode==='manual'?' · 선생님 확인 후 적용':'')+(myLv>4?' · 능력 규칙은 현재 Lv4 기준':'');
   }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
@@ -287,6 +293,9 @@ function updateRoom(value){
   $('card-foot').textContent=room.title+' · '+room.code;
   $('avatar-card').style.setProperty('--card-accent',isTeacher?'#d2a454':(myPlanet?.color||'#b9a8f0'));
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
+  $('avatar-card').classList.toggle('celestial-card',!!abilityConstellation?.celestial);
+  $('avatar-card').style.setProperty('--celestial-color',abilityConstellation?.color||'#b9a8f0');
+  $('avatar-portrait').setAttribute('aria-label',myLv>=2?(abilityConstellation?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
   if(me)renderPortrait($('avatar-portrait'),{...me,deptIcon:myPlanetIcon},me.effects);
   $('hint').textContent=isTeacher
     ?(inStreet?'별상점 가까이에서 E · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
@@ -418,7 +427,8 @@ function effectText(e){
   return e.icon+' '+e.label+' · '+mins+'분';
 }
 function renderSelfEffects(me){
-  const list=me?.effects||[];
+  statuses.update(me);
+  const list=(me?.effects||[]).filter(e=>e.until===null||e.until>Date.now());
   if(!list.length){
     const li=document.createElement('li');li.className='muted';li.textContent='지금은 특별한 효과가 없어요.';
     $('self-effects').replaceChildren(li);return;
@@ -818,7 +828,6 @@ function doInteract(){
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
   else if(n.kind==='shop')openShopDialog();
   else if(n.kind==='pillar')temple.open(n);
-  else if(n.kind==='monster')monsterUI.open(n.id);
   else if(n.kind==='board')rulesUI.open(n.id);
   else if(n.kind==='evolution')evolutionUI.open();
   else if(n.kind==='growth')growthUI.open();
@@ -1053,6 +1062,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();if($('trade-dialog').open)$('trade-dialog').close();
 }
 function reset(message){
+  vitals.reset();
   accounts.reset();
   clearStudentAccountPins();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
@@ -1066,6 +1076,7 @@ function reset(message){
   $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
   $('self-shards').textContent='0';$('bag-currency').hidden=false;
+  statuses.update(null);$('self-attack-power').textContent='공격력 · 설정 예정';
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
   $('self-form-name').textContent='소행성';
@@ -1085,7 +1096,6 @@ function reset(message){
   if(placing)stopPlacement();
   document.body.classList.remove('joined');$('form-message').textContent=message||'';
   departmentWork.reset();
-  monsterUI.reset();
   rulesUI.reset();
   interiorDecor.reset();
   evolutionUI.reset();growthUI.reset();
@@ -1137,6 +1147,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';controls();});
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
+socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
 socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
@@ -1182,7 +1193,7 @@ $('confirm-leave').onclick=async()=>{
   try{await request('room:leave',{});reset('다음 여행에서 또 만나요.');}
   catch(e){toast(e.message);}finally{$('leave-dialog').close();}
 };
-const keys={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]};
+const keys={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
 function input(){
   if(!selfId||!socket.connected)return;
   let x=touch.x,y=touch.y;for(const code of held){x+=keys[code][0];y+=keys[code][1];}
@@ -1221,5 +1232,7 @@ for(const button of document.querySelectorAll('[data-dx]')){
 }
 // 입력 전송 간격은 그대로 두고, 물체 안내만 화면 프레임에 맞춰 카메라를 따라갑니다.
 setInterval(input,80);
+// 열린 내 정보만 갱신하여 만료된 배지를 통신 대기 없이 없앱니다.
+setInterval(()=>{if(room&&$('avatar-dialog').open)renderSelfEffects(room.players.find(p=>p.id===selfId));},1000);
 function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
 requestAnimationFrame(interactionFrame);controls();socket.connect();
