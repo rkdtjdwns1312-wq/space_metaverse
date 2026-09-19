@@ -31,12 +31,12 @@ try{
  // 시간이 지난 뒤 터치해 키보드와 같은 안내를 확인합니다.
  await page.waitForTimeout(750);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)>0);await page.locator('#touch-skill').tap();await page.locator('#toast').filter({hasText:'전투 스킬'}).waitFor();check('공격/스킬 원형 터치 버튼 연결');
  await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)===0);
- const avatar=JSON.stringify(p.avatar);await page.locator('#world').focus();await page.keyboard.down('ArrowLeft');await page.waitForTimeout(150);await page.keyboard.up('ArrowLeft');await page.waitForTimeout(500);await page.keyboard.press('q');
+ const avatar=JSON.stringify(p.avatar);await page.locator('#world').focus();await page.keyboard.down('ArrowLeft');await page.waitForTimeout(150);await page.keyboard.up('ArrowLeft');await page.waitForTimeout(1050);await page.keyboard.press('q');
  await page.waitForFunction(()=>document.getElementById('world').dataset.lastAttackDx==='-1');assert.equal(JSON.stringify(p.avatar),avatar);
  await page.screenshot({path:'.local/attack-impact.png'});await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)===0);check('마지막 왼쪽 이동 방향 유지·타격 사라짐·아바타 데이터 불변');
  // 조이스틱 실제 터치로 오른쪽 이동한 뒤 멈추어도 공격 방향은 유지됩니다.
  const cdp=await page.context().newCDPSession(page),box=await page.locator('#joystick').boundingBox(),center={x:box.x+box.width/2,y:box.y+box.height/2,id:1};
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[center]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...center,x:center.x+25}]});await page.waitForTimeout(180);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(500);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[center]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...center,x:center.x+25}]});await page.waitForTimeout(180);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(1050);
  await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.lastAttackDx==='1');check('터치 조이스틱 마지막 오른쪽 방향과 터치 공격 연결');
  const pillar=MAP.objects.find(o=>o.id==='pillar-notice');Object.assign(p,{x:pillar.x+65,y:pillar.y});publish();
  await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor();await page.locator('#world').focus();await page.keyboard.press('e');await page.locator('#temple-dialog').waitFor({state:'visible'});

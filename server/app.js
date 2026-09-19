@@ -1,5 +1,5 @@
 import express from 'express';
-import {attackPowerOf,ATTACK_VISUAL} from '../shared/combat.js';
+import {attackPowerOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -263,7 +263,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');
-      ensure(now-(lastAttacks.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'공격을 조금 천천히 해주세요.');
+      ensure(now-(lastAttacks.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'공격은 1초에 한 번 할 수 있어요.');
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1};
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,power};
@@ -277,7 +277,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player}=session,now=clock();
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
-      ensure(now-(lastSkills.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'스킬을 조금 천천히 사용해주세요.');
+      ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);
       const direction=player.facing||{x:0,y:1};
       const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs};

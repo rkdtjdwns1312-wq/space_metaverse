@@ -1,3 +1,4 @@
+import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
 // Q의 대상·피해는 서버가 결정합니다. W의 전투 스킬은 아직 준비 중입니다.
 export function createCombatControls({getPlayer,canAct,toast,request}){
   const attack=document.getElementById('touch-attack'),skill=document.getElementById('touch-skill');
@@ -5,7 +6,8 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
   async function act(kind){
     const player=getPlayer();if(!player||!canAct())return;
     if(player.vitals?.defeated){toast('체력을 회복하는 중이에요. 잠시 기다려주세요.');return;}
-    const now=performance.now();if(now-last[kind]<450)return;last[kind]=now;
+    const now=performance.now(),cooldown=kind==='attack'?ATTACK_VISUAL.cooldownMs:SKILL_COOLDOWN_MS;
+    if(now-last[kind]<cooldown)return;last[kind]=now;
     if(kind==='skill'){
       try{await request('combat:skill',{});toast('전투 스킬은 준비 중이에요. 마지막 이동 방향으로 사용돼요.');}catch(error){toast(error.message);}return;
     }

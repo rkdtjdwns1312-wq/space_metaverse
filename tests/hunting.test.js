@@ -37,6 +37,8 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
  const r=await call(s,'combat:attack',{power:1000,dx:-1,monsterId:'whale'});assert.equal(r.target.hp,17);assert.equal(r.target.damage,3);assert.equal((await call(s,'combat:attack')).ok,false);
  const peer=await connect(),joinedPeer=await call(peer,'room:join',{code:room.code,nickname:'2'});const p2=room.players.get(joinedPeer.selfId);Object.assign(p2,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p2.avatar.level=3;
  assert.equal((await call(peer,'combat:attack')).target.hp,15);assert.equal(game.store.snapshot(room,p2).monsters.find(m=>m.id==='rabbit').hp,15);
+ now+=999;assert.equal((await call(s,'combat:attack')).ok,false);assert.equal(m.hp,15,'999ms에는 피해 없음');
+ now+=1;assert.equal((await call(s,'combat:attack')).target.hp,12,'정확히1000ms에 다음 공격 허용');
  const before={hp:m.hp,avatar:structuredClone(p.avatar),shards:p.starShards};
  const skill=await call(s,'combat:skill',{dx:-1,power:999});assert.deepEqual(skill.direction,{x:1,y:0});assert.equal(skill.ready,false);assert.equal((await call(s,'combat:skill')).ok,false);
  assert.equal(m.hp,before.hp);assert.deepEqual(p.avatar,before.avatar);assert.equal(p.starShards,before.shards);
@@ -54,7 +56,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
  const table={'수호계':[1,1,1,2],'제작계':[1,1,2,3],'생산계':[1,1,2,3],'공격계':[2,3,4,5],'특수계':[1,2,3,4]};
  for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
    Object.assign(m,{hp:20,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});
-   Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});Object.assign(p.avatar,{level,constellationId:c.id});now+=500;
+   Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});Object.assign(p.avatar,{level,constellationId:c.id});now+=1000;
    const expected=table[c.type][level-2],visual=new Promise(r=>student.once('combat:hit',r));
    const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});
    assert.equal(result.ok,true);assert.equal(result.target.damage,expected,c.id+' LV'+level);assert.equal(m.hp,20-expected);

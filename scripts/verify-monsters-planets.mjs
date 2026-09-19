@@ -44,18 +44,18 @@ try{
   Object.assign(m,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});Object.assign(p,{x:m.x-62,y:m.y,facing:{x:1,y:0}});publish();
   await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='18');
   await page.keyboard.press('w');await page.waitForFunction(()=>document.getElementById('world').dataset.lastSkillDx==='1');assert.equal(m.hp,18);check('제작계 LV4 Q 직접 타격 HP20→18·W 같은 방향 표시와 HP 무소비');
-  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(500);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='16');
+  await page.setViewportSize({width:390,height:844});await page.locator('#touch-attack').tap();await page.waitForTimeout(100);assert.equal(m.hp,18);await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='16');
   await page.locator('#touch-skill').tap();assert.equal(m.hp,16);
   const hud=await page.locator('#vitals-hud').boundingBox(),dock=await page.locator('#bottom-dock').boundingBox(),hp=await page.locator('.vitals-hp').boundingBox(),mp=await page.locator('.vitals-mp').boundingBox();
   assert.ok(hud.y+hud.height<dock.y&&Math.abs(hp.y-mp.y)<1&&hud.width===200);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:'.local/monster-mobile.png'});check('390px 터치 공격/스킬·아이콘 위 일렬 HP/MP·가로 넘침 없음');
-  for(let i=0;i<8;i++){await page.waitForTimeout(500);await page.locator('#touch-attack').tap();}
+  for(let i=0;i<8;i++){await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();}
   await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='4');assert.equal(m.hp,0);assert.equal(p.avatar.xp,0);check('체력0 처치·화면에서 사라짐·미정 보상 없음');
   const lion=monstersOf(room).get('lion');Object.assign(lion,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});
   p.avatar.level=5;Object.assign(p,{mapId:lion.mapId,x:lion.x-62,y:lion.y,facing:{x:1,y:0}});publish();
-  await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 40/40'}).waitFor();await page.waitForTimeout(500);
+  await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 40/40'}).waitFor();await page.waitForTimeout(1050);
   await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='37');
-  await page.waitForTimeout(500);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='34');
+  await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='34');
   assert.equal(lion.hp,34);assert.equal(await page.locator('.vitals-mp .vitals-label').textContent(),'MP 40/40');check('제작계 LV5 Q·터치 공격력3: 몬스터40→37→34·최대 HP/MP40·MP40 유지');
   const planet=addPlanet(room,{name:'체육행성',description:'친구들과 건강하게 놀아요.',templateId:'sports',x:700,y:400,color:PLANET_COLORS[0],rules:['서로 응원해요.']});
   p.avatar.departmentId=planet.id;Object.assign(p,{mapId:PLAZA_ID,x:planet.x+70,y:planet.y});publish();

@@ -36,7 +36,7 @@ test('타격 표시는 마지막 실제 이동 방향·간격을 서버가 정�
  await sleep(40);assert.equal(hits.length,1);assert.equal(hits[0].dx,-1);assert.equal(hits[0].dy,0);assert.equal(hits[0].power,1);assert.equal(hits[0].x,p.x);assert.equal(hits[0].mapId,GARDEN_ID);assert.deepEqual(leaks,[]);assert.deepEqual(peers,[]);
  // 벽에 막힌 입력은 최근 실제 이동 방향을 덮어쓰지 않습니다.
  p.x=RULES.radius;p.input={x:-1,y:0,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};assert.deepEqual(p.facing,{x:-1,y:0});
- await sleep(460);Object.assign(p,{x:600,y:400});p.input={x:1,y:1,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};
+ await sleep(1010);Object.assign(p,{x:600,y:400});p.input={x:1,y:1,at:Date.now()};advance(room,Date.now());p.input={x:0,y:0,at:0};
  assert.ok(Math.abs(p.facing.x-Math.SQRT1_2)<1e-9);assert.ok(Math.abs(p.facing.y-Math.SQRT1_2)<1e-9);
  [...room.players.values()].find(p=>p.role==='teacher').mapId=GARDEN_ID;
  assert.ok((await call(s,'combat:attack')).ok);await sleep(30);assert.equal(hits.length,2);assert.equal(peers.length,1);assert.deepEqual(leaks,[]);

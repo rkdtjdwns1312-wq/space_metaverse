@@ -32,7 +32,7 @@ try{
  sp.mapId=PLAZA_ID;await page.waitForTimeout(150);assert.equal(m.targetId,p.id);assert.ok(m.hp<m.maxHp);check('실제 소켓 공격자 수호→특수→나머지 우선순위·연결/맵 이탈 재선택');
  // 이미 한 번 떠난 특수계가 다시 공격하고 이탈하면 두 번째·세 번째로 집계합니다.
  for(let n=2;n<=3;n++){
-   await page.waitForTimeout(460);Object.assign(sp,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});
+   await page.waitForTimeout(1050);Object.assign(sp,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});
    assert.ok((await call(special,'combat:attack')).target);sp.mapId=PLAZA_ID;await page.waitForTimeout(100);
    assert.equal(m.mapExitCount,n===3?0:n);assert.equal(m.targetId,p.id);
    assert.equal(m.hp===m.maxHp,n===3);
