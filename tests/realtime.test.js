@@ -47,7 +47,7 @@ test('낙원 연결은 양방향이며 서버가 레벨·거리·연결을 검�
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
  const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);
  const path=[PLAZA_ID,GARDEN_ID,...PARADISE_MAPS.map(m=>m.id),STAR_PARADISE.id,...MOON_PARADISE_MAPS.map(m=>m.id).reverse(),GARDEN_ID,PLAZA_ID];
- p.avatar.level=6;
+ p.avatar.level=5;
  assert.equal((await call(s,'map:travel',{to:STAR_PARADISE.id,level:6})).ok,false,'연결 없는 이동 거절');
  for(const route of [path,path.toReversed()])for(const to of route.slice(1)){
    const gate=mapOf(p.mapId).objects.find(o=>o.target===to);assert.ok(gate);
@@ -62,8 +62,8 @@ test('낙원 연결은 양방향이며 서버가 레벨·거리·연결을 검�
    p.avatar.level=minimum;assert.equal((await call(s,'map:travel',{to})).ok,true);assert.equal(p.mapId,to);
    assert.ok(p.x>0&&p.x<mapOf(to).width&&p.y>0&&p.y<mapOf(to).height);
  }
- // 선생님은 LV1이어도 관리 방문이 가능하고, 초월체(LV6)도 LV5 제한에 막히지 않습니다.
- for(const [socket,player,level] of [[teacher,[...room.players.values()].find(p=>p.role==='teacher'),1],[s,p,6]]){
+ // 선생님은 LV1이어도 관리 방문이 가능하고, 초월체(LV5)도 입장합니다.
+ for(const [socket,player,level] of [[teacher,[...room.players.values()].find(p=>p.role==='teacher'),1],[s,p,5]]){
    player.avatar.level=level;const from=PARADISE_MAPS[2],gate=from.objects.find(o=>o.target===STAR_PARADISE.id);
    Object.assign(player,{mapId:from.id,x:gate.x,y:gate.y});assert.equal((await call(socket,'map:travel',{to:STAR_PARADISE.id})).ok,true);
  }

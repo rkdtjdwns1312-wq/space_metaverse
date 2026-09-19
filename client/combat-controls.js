@@ -4,6 +4,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
   const last={attack:-Infinity,skill:-Infinity};
   async function act(kind){
     const player=getPlayer();if(!player||!canAct())return;
+    if(player.vitals?.defeated){toast('체력을 회복하는 중이에요. 잠시 기다려주세요.');return;}
     const now=performance.now();if(now-last[kind]<450)return;last[kind]=now;
     if(kind==='skill'){
       try{await request('combat:skill',{});toast('전투 스킬은 준비 중이에요. 마지막 이동 방향으로 사용돼요.');}catch(error){toast(error.message);}return;

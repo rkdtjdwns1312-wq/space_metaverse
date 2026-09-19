@@ -82,13 +82,15 @@ export function fromRecord(r) {
       !Number.isSafeInteger(p.starShards)||p.starShards<0||!Array.isArray(p.inventory)||
       p.inventory.some(i=>!itemOf(i.id)||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
       !Array.isArray(p.notes)||typeof p.muted!=='boolean'||!p.avatar||
-      !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>PROGRESSION.maxLevel||
+      !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>6||
       !Number.isSafeInteger(p.avatar.xp)||p.avatar.xp<0||
       (p.avatar.departmentId && !room.planets.has(p.avatar.departmentId))||
       !/^[a-f0-9]{32}$/.test(p.pin?.salt)||!/^[a-f0-9]{64}$/.test(p.pin?.hash)||
       !Number.isInteger(p.pin.failures)||p.pin.failures<0||!Number.isFinite(p.pin.lockedUntil))bad();
     names.add(p.nickname);
     const avatar=structuredClone(p.avatar);avatar.blackStar=validateBlackStar(avatar.blackStar,new Set(room.planets.keys()));
+    // 이전 버전의 LV6 초월체도 새 최종 단계 LV5로 읽으며 계보·소유물은 그대로 보존합니다.
+    if(avatar.level>=PROGRESSION.transcendentLevel){avatar.level=PROGRESSION.transcendentLevel;avatar.form='transcendent';avatar.xp=0;}
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
     const cardMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);

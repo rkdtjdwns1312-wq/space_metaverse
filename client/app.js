@@ -256,6 +256,7 @@ function updateRoom(value){
   }));
   $('self-name').textContent=me?.nickname||'나의 소행성';
   $('self-attack-power').textContent='공격력 · '+(me?.combat?.attackPower??(me?.avatar.level===1?'LV2부터 사용':'설정 예정'));
+  $('self-defense-power').textContent='방어력 · '+(me?.combat?.defensePower??0);
   $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
   if(me?.role==='student'){
     const constellation=constellationOf(me.avatar.constellationId,me.avatar.level);
@@ -289,7 +290,7 @@ function updateRoom(value){
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
-  $('experience-next').textContent=transcendent?'초월체에 도달했어요!':(myLv===5?'초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
+  $('experience-next').textContent=transcendent?'초월체에 도달했어요!':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
   $('card-foot').textContent=room.title+' · '+room.code;
   $('avatar-card').style.setProperty('--card-accent',isTeacher?'#d2a454':(myPlanet?.color||'#b9a8f0'));
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
@@ -1148,6 +1149,13 @@ socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
+socket.on('combat:monster-hit',data=>{if(selfId)world.monsterHit(data);});
+socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
+socket.on('combat:vitals',data=>{
+  const player=room?.players.find(p=>p.id===data.playerId);if(!player)return;
+  player.vitals=data.vitals;
+  if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
+});
 socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

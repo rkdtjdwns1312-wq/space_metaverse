@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
+import {isDefeated} from './vitals.js';
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID) {
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
@@ -72,7 +73,7 @@ export function advance(room, now) {
   // 실제 경과 시간이나 클라이언트 좌표 대신 고정 서버 tick으로 속도를 제한합니다.
   if (!room.unattended && ![...room.players.values()].some(p => p.role==='teacher' && p.connected)) return;
   for (const p of room.players.values()) {
-    if (!p.connected || now-p.input.at>RULES.inputExpiryMs) continue;
+    if (!p.connected || isDefeated(p) || now-p.input.at>RULES.inputExpiryMs) continue;
     const length=Math.hypot(p.input.x,p.input.y);
     if (!length) continue;
     const step=RULES.speed*RULES.tickMs/1000;

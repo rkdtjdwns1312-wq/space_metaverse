@@ -1,14 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evolveAvatar, gainExperience } from '../server/progression.js';
+import { PROGRESSION } from '../shared/config.js';
 
 const avatar = (overrides = {}) => ({
   form: 'asteroid', level: 1, xp: 0, constellationId: 'orion',
   equipment: { pet: 'comet', mount: 'moon', decoration: 'ring' }, departmentId: 'science', ...overrides
 });
 
+test('progression ends at LV5 with the four requested XP thresholds', () => {
+  assert.equal(PROGRESSION.maxLevel, 5);
+  assert.equal(PROGRESSION.transcendentLevel, 5);
+  assert.deepEqual(PROGRESSION.nextLevelXp, [15, 20, 25, 30]);
+});
+
 test('each threshold is capped until an explicit one-step evolution', () => {
-  const thresholds = [15, 20, 25, 30, 40];
+  const thresholds = [15, 20, 25, 30];
   let current = avatar();
   for (let i = 0; i < thresholds.length; i += 1) {
     current = gainExperience(current, thresholds[i] + 999);
@@ -18,6 +25,7 @@ test('each threshold is capped until an explicit one-step evolution', () => {
     assert.equal(current.level, i + 2);
     assert.equal(current.xp, 0);
   }
+  assert.equal(current.level, 5);
   assert.equal(current.form, 'transcendent');
 });
 
@@ -35,10 +43,15 @@ test('130 experience still waits for the first manual evolution', () => {
 });
 
 test('further experience at terminal level stays capped', () => {
-  const result = gainExperience(avatar({ level: 6, xp: 0, form: 'asteroid' }), 999);
-  assert.equal(result.level, 6);
+  const result = gainExperience(avatar({ level: 5, xp: 0, form: 'transcendent' }), 999);
+  assert.equal(result.level, 5);
   assert.equal(result.xp, 0);
   assert.equal(result.form, 'transcendent');
+});
+
+test('legacy level six is rejected by progression functions', () => {
+  assert.throws(() => gainExperience(avatar({ level: 6, xp: 0, form: 'transcendent' }), 1), TypeError);
+  assert.throws(() => evolveAvatar(avatar({ level: 6, xp: 0, form: 'transcendent' })), TypeError);
 });
 
 test('invalid input rejects atomically', () => {
@@ -66,16 +79,16 @@ test('manual evolution changes one level, resets xp, and preserves metadata', ()
   const result = evolveAvatar(source);
   assert.equal(result.level, 5);
   assert.equal(result.xp, 0);
-  assert.equal(result.form, 'constellation');
+  assert.equal(result.form, 'transcendent');
   assert.equal(result.constellationId, 'orion');
   assert.deepEqual(result.equipment, source.equipment);
   assert.notEqual(result.equipment, source.equipment);
   assert.deepEqual(source, avatar({ level: 4, xp: 30 }));
 });
 
-test('level five evolves to the terminal transcendent form', () => {
-  const result = evolveAvatar(avatar({ level: 5, xp: 40 }));
-  assert.equal(result.level, 6);
+test('level four evolves to the terminal transcendent form', () => {
+  const result = evolveAvatar(avatar({ level: 4, xp: 30 }));
+  assert.equal(result.level, 5);
   assert.equal(result.xp, 0);
   assert.equal(result.form, 'transcendent');
   assert.throws(() => evolveAvatar(result), /already transcendent/);

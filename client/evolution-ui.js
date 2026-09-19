@@ -1,3 +1,4 @@
+import {PROGRESSION} from '/shared/config.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -34,7 +35,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   function summary() {
     if (!info) return '정보를 불러오는 중…';
     const avatar = info.avatar;
-    if (avatar.level >= 6) return '현재 단계: 초월체 · 경험치 최고 단계';
+    if (avatar.level >= PROGRESSION.transcendentLevel) return '현재 단계: LV5 초월체 · 경험치 최고 단계';
     return '현재 단계: LV' + avatar.level + ' · 경험치 ' + avatar.xp + ' / ' + info.requiredXp;
   }
   function choiceButton(option, onChoose) {
@@ -93,7 +94,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   function renderEvolutionChoice() {
     $('grid').replaceChildren();
     $('panel-title').textContent = '별자리 아바타 진화하기';
-    if (info.avatar.level >= 6) {
+    if (info.avatar.level >= PROGRESSION.transcendentLevel) {
       $('help').textContent = '이미 최고 단계인 초월체예요.';
       return;
     }

@@ -15,6 +15,8 @@ import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonster} from './monsters.js';
+import {isDefeated} from './vitals.js';
+import {recoverDefeated} from './battle-recovery.js';
 import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords} from './weekly-ranking.js';
@@ -243,6 +245,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const execute=save?transaction:work=>work();
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
+          if(session&&['combat:attack','combat:skill','map:travel','evolution:evolve','evolution:change'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
             ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
@@ -1397,7 +1400,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
       advance(room,now);
-      moveMonsters(room,now);
+      for(const p of recoverDefeated(room,clock())){
+        io.to(p.socketId).emit('combat:recovered',{message:'체력과 마나를 회복했어요. 다시 출발해요!'});roster(room);
+      }
+      for(const hit of moveMonsters(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
+          io.to(viewer.socketId).emit('combat:monster-hit',hit);
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
+        }
+      }
       let dodgeSaveFailed=false;
       for(const update of advanceDodgeRuns(room)){
         const player=room.players.get(update.playerId);if(!player?.connected)continue;

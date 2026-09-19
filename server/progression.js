@@ -6,7 +6,7 @@ function invalid(message) {
 
 function validateAvatar(avatar) {
   if (!avatar || typeof avatar !== 'object' || Array.isArray(avatar)) invalid('avatar must be an object');
-  if (!Number.isInteger(avatar.level) || avatar.level < 1 || avatar.level > PROGRESSION.maxLevel) invalid('avatar.level must be an integer from 1 to 6');
+  if (!Number.isInteger(avatar.level) || avatar.level < 1 || avatar.level > PROGRESSION.maxLevel) invalid('avatar.level must be an integer from 1 to '+PROGRESSION.maxLevel);
   if (!Number.isSafeInteger(avatar.xp) || avatar.xp < 0) invalid('avatar.xp must be a non-negative safe integer');
   if (avatar.level < PROGRESSION.transcendentLevel && avatar.xp > PROGRESSION.nextLevelXp[avatar.level - 1]) invalid('avatar.xp must not exceed the current level requirement');
 }

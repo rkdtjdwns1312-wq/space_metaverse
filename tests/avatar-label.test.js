@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { avatarLabel } from '../shared/avatar-label.js';
 import { CONSTELLATIONS, LEGACY_CONSTELLATIONS } from '../shared/constellations.js';
 
-test('avatarLabel keeps the login nickname and labels all 16 constellations from LV2 through LV6', () => {
+test('avatarLabel keeps the login nickname and labels all 16 constellations from LV2 through LV5', () => {
   for (const constellation of CONSTELLATIONS) {
-    for (const level of [2, 3, 4, 5, 6]) {
-      const detail = `LV${level} ${constellation.name}` + (level === 6 ? ' · 초월체' : '');
+    for (const level of [2, 3, 4, 5]) {
+      const detail = `LV${level} ${constellation.name}` + (level === 5 ? ' · 초월체' : '');
       assert.deepEqual(avatarLabel({ nickname: '별이 · 나', avatar: { level, constellationId: constellation.id } }), {
         name: '별이 · 나', detail
       });
@@ -14,12 +14,12 @@ test('avatarLabel keeps the login nickname and labels all 16 constellations from
   }
 });
 
-test('avatarLabel labels LV1 as an asteroid and LV6 as the transcendent form', () => {
+test('avatarLabel labels LV1 as an asteroid and LV5 as the transcendent form', () => {
   assert.deepEqual(avatarLabel({ nickname: '첫별', avatar: { level: 1, constellationId: 'gemini' } }), {
     name: '첫별', detail: 'LV1 소행성'
   });
-  assert.deepEqual(avatarLabel({ nickname: '마지막별', avatar: { level: 6, constellationId: 'gemini' } }), {
-    name: '마지막별', detail: 'LV6 쌍둥이자리 · 초월체'
+  assert.deepEqual(avatarLabel({ nickname: '마지막별', avatar: { level: 5, constellationId: 'gemini' } }), {
+    name: '마지막별', detail: 'LV5 쌍둥이자리 · 초월체'
   });
 });
 
@@ -35,7 +35,7 @@ test('avatarLabel handles empty constellation IDs and legacy constellations', ()
 });
 
 test('avatarLabel keeps teacher and legacy player names intact', () => {
-  assert.deepEqual(avatarLabel({ role: 'teacher', nickname: '담임 · 나', avatar: { level: 6 } }), {
+  assert.deepEqual(avatarLabel({ role: 'teacher', nickname: '담임 · 나', avatar: { level: 5 } }), {
     name: '담임 · 나', detail: '선생님'
   });
   assert.deepEqual(avatarLabel({ nickname: 42, avatar: { level: 1 } }), {

@@ -31,12 +31,12 @@ test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',(
 });
 
 test('산책은 1초에 한 번 방향을 선택하고 사이에는 일정한 속도로 움직인다',()=>{
-  const room={};monstersOf(room,0);let calls=0;
-  const random=()=>{calls++;return calls<=15?0:.25;};
+  const room={};room.monsters=new Map([...monstersOf(room,0)].filter(([,m])=>m.mapId==='star-origin-1'));let calls=0;
+  const random=()=>{calls++;return calls<=5?0:.25;};
   moveMonsters(room,0,random);const m=monstersOf(room).get('rabbit'),start=m.x;
   for(let now=50;now<=950;now+=50)moveMonsters(room,now,random);
-  assert.equal(calls,15);assert.ok(Math.abs(m.x-start-MONSTER_RULES.speed*.95)<1e-6);
-  moveMonsters(room,1000,random);assert.equal(calls,30);assert.ok(m.dy>.99);
+  assert.equal(calls,5);assert.ok(Math.abs(m.x-start-MONSTER_RULES.speed*.95)<1e-6);
+  moveMonsters(room,1000,random);assert.equal(calls,10);assert.ok(m.dy>.99);
 });
 
 test('몬스터는 맵 경계와 문 주변을 벗어나지 않고 같은 위치에 뭉치지 않는다',()=>{

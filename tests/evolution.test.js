@@ -47,8 +47,8 @@ test('quota counts LV2 through transcendent students, including offline players'
   const me = player();
   const low = player({ connected: false, avatar: { ...createAvatar(), level: 1, constellationId: 'aries' } });
   const level2 = player({ connected: false, avatar: { ...createAvatar(), level: 2, constellationId: 'aries' } });
-  const level6 = player({ avatar: { ...createAvatar(), level: 6, form: 'transcendent', constellationId: 'aries' } });
-  const info = evolutionInfo(room(me, low, level2, level6), me);
+  const level5 = player({ avatar: { ...createAvatar(), level: 5, form: 'transcendent', constellationId: 'aries' } });
+  const info = evolutionInfo(room(me, low, level2, level5), me);
   const aries = info.options.find(value => value.id === 'aries');
   assert.equal(aries.count, 2);
   assert.equal(aries.available, false);
@@ -56,7 +56,7 @@ test('quota counts LV2 through transcendent students, including offline players'
 
 test('quota is isolated per room and teachers never occupy a slot', () => {
   const me = player();
-  const teacher = player({ role: 'teacher', avatar: { ...createAvatar(), level: 6, constellationId: 'taurus' } });
+  const teacher = player({ role: 'teacher', avatar: { ...createAvatar(), level: 5, constellationId: 'taurus' } });
   const otherRoomPlayers = [player({ avatar: { ...createAvatar(), level: 2, constellationId: 'taurus' } }), player({ avatar: { ...createAvatar(), level: 5, constellationId: 'taurus' } })];
   assert.equal(evolutionInfo(room(me, teacher), me).options.find(value => value.id === 'taurus').count, 0);
   assert.equal(evolutionInfo(room(me, ...otherRoomPlayers), me).options.find(value => value.id === 'taurus').count, 2);
@@ -97,12 +97,12 @@ test('manual evolution rejects missing xp, resets xp, advances one step, and kee
   assert.equal(me.avatar.constellationId, 'cygnus');
 });
 
-test('level five becomes transcendent and cannot evolve again', () => {
-  const me = player({ avatar: { ...createAvatar(), level: 5, xp: 40, constellationId: 'ursa-major' } });
+test('level four becomes transcendent at level five and cannot evolve again', () => {
+  const me = player({ avatar: { ...createAvatar(), level: 4, xp: 30, constellationId: 'ursa-major' } });
   const classroom = room(me);
   evolveConstellation(classroom, me, {});
   assert.deepEqual({ level: me.avatar.level, xp: me.avatar.xp, form: me.avatar.form, constellationId: me.avatar.constellationId },
-    { level: 6, xp: 0, form: 'transcendent', constellationId: 'ursa-major' });
+    { level: 5, xp: 0, form: 'transcendent', constellationId: 'ursa-major' });
   assert.throws(() => evolveConstellation(classroom, me, {}), /최고 단계/);
 });
 
@@ -140,7 +140,7 @@ test('purchase rejects overbuy, zero, negative, fraction, and insufficient balan
 });
 
 test('transcendent avatars and players on another map cannot buy experience', () => {
-  const top = atGrowth(player({ starShards: 50, avatar: { ...createAvatar(), level: 6, form: 'transcendent' } }));
+  const top = atGrowth(player({ starShards: 50, avatar: { ...createAvatar(), level: 5, form: 'transcendent' } }));
   assert.equal(growthInfo(room(top), top).maxBuy, 0);
   assert.throws(() => buyExperience(room(top), top, { amount: 1 }), /초월체/);
   const elsewhere = player({ mapId: 'space-plaza', starShards: 5 });

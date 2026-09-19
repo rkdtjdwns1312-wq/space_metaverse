@@ -10,5 +10,10 @@ test('16종 별자리 공격력은 서버의 현재 레벨에서 계산하며 �
    player.combat={attackPower:9999};
    assert.equal(store.snapshot(room,player).players[0].combat.attackPower,power);
  }
- for(const level of [1,5,6,0,-1,2.5,'2',null])assert.equal(attackPowerOf(level),null);
+ for(const constellation of CONSTELLATIONS){
+   player.avatar.level=5;player.avatar.constellationId=constellation.id;
+   player.combat={attackPower:9999};
+   assert.equal(store.snapshot(room,player).players[0].combat.attackPower,4);
+ }
+ for(const level of [1,6,0,-1,2.5,'2',null])assert.equal(attackPowerOf(level),null);
 });

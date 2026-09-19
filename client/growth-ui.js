@@ -1,3 +1,4 @@
+import {PROGRESSION} from '/shared/config.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -34,7 +35,7 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
   }
   function render() {
     if (!info) return;
-    const top = info.avatar.level >= 6;
+    const top = info.avatar.level >= PROGRESSION.transcendentLevel;
     $('info').replaceChildren();
     const rows = [
       ['현재 단계', top ? '초월체' : 'LV' + info.avatar.level],

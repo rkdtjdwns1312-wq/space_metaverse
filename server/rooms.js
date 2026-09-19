@@ -1,5 +1,5 @@
-import {attackPowerOf} from '../shared/combat.js';
-import {vitalsOf} from '../shared/vitals.js';
+import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
+import {playerVitals} from './vitals.js';
 import {knownStatus} from '../shared/statuses.js';
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
@@ -112,7 +112,7 @@ export class RoomStore {
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-          effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level)},vitals:vitalsOf(p.avatar.level)};
+          effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
         if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}

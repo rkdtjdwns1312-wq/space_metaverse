@@ -407,7 +407,7 @@ export function createWorld(canvas) {
       else{const radius=19+(Math.min(p.avatar.level,6)-2)*1.5;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
-      if(p.avatar.level>=6){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,30,11,-.35,0,Math.PI*2);ctx.stroke();}
+      if(p.avatar.level>=config.PROGRESSION.transcendentLevel){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,30,11,-.35,0,Math.PI*2);ctx.stroke();}
     }else{
     ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=16+[1,0,2,-1,1,0,1,-1,0][i];
       i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
@@ -500,13 +500,25 @@ export function createWorld(canvas) {
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){
       const progress=1-(hit.until-t)/ATTACK_VISUAL.durationMs;
-      const hx=hit.x+hit.dx*ATTACK_VISUAL.reach,hy=hit.y+hit.dy*ATTACK_VISUAL.reach;
+      const reach=hit.reach??ATTACK_VISUAL.reach;
+      const hx=hit.x+hit.dx*reach,hy=hit.y+hit.dy*reach;
       ctx.save();ctx.translate(hx,hy);ctx.rotate(Math.atan2(hit.dy,hit.dx));ctx.globalAlpha=Math.max(0,1-progress);
-      const radius=12+progress*22;ctx.strokeStyle=hit.kind==='skill'?'#a3caff':'#f1ad69';ctx.lineWidth=3;
+      const monsterHit=hit.kind==='monster';
+      const radius=12+progress*22;ctx.strokeStyle=hit.kind==='skill'?'#a3caff':monsterHit?'#ff8a9d':'#f1ad69';ctx.lineWidth=3;
       ctx.beginPath();ctx.ellipse(0,0,radius*.7,radius,0,0,Math.PI*2);ctx.stroke();
-      star(0,0,19*(1-progress)+6,hit.kind==='skill'?'#d8eaff':'#fff3be');
-      ctx.strokeStyle='#fffdf0';ctx.lineWidth=4;
+      star(0,0,19*(1-progress)+6,hit.kind==='skill'?'#d8eaff':monsterHit?'#ffc078':'#fff3be');
+      ctx.strokeStyle=monsterHit?'#fff0dc':'#fffdf0';ctx.lineWidth=4;
       for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
+    }
+    for(const hit of hits){
+      if(hit.kind!=='monster'||!Number.isFinite(Number(hit.damage))||!hit.targetId)continue;
+      const target=points.get(hit.targetId)||players.find(p=>p.id===hit.targetId);
+      if(!target)continue;
+      const progress=1-(hit.until-t)/ATTACK_VISUAL.durationMs;
+      ctx.save();ctx.globalAlpha=Math.max(0,1-progress);ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';
+      ctx.textAlign='center';ctx.fillStyle='#d65c78';ctx.strokeStyle='#fff4f7';ctx.lineWidth=3;
+      const label=`-${Number(hit.damage)}`;const rise=progress*22;
+      ctx.strokeText(label,target.x,target.y-43-rise);ctx.fillText(label,target.x,target.y-43-rise);ctx.restore();
     }
     requestAnimationFrame(frame);
   }
@@ -531,6 +543,12 @@ export function createWorld(canvas) {
       hits.push({...data,until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
       canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);}
+    },
+    monsterHit(data){
+      if(data.mapId!==myMapId||!monsters.some(monster=>monster.id===data.monsterId))return;
+      hits.push({...data,kind:'monster',until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
+      canvas.dataset.lastMonsterDamage=String(data.damage);
+      canvas.dataset.lastMonsterTarget=String(data.targetId);
     },
     say(playerId,text,ms){
       if(!playerId)return;const str=String(text);
@@ -619,7 +637,7 @@ export function renderPortrait(canvas,player,effects){
     else{drawStar(ctx,0,0,43+(Math.min(player.avatar.level,6)-2)*2,constellation.color);
       ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,2);ctx.textBaseline='alphabetic';}
-    if(player.avatar.level>=6){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,62,24,-.35,0,Math.PI*2);ctx.stroke();}
+    if(player.avatar.level>=config.PROGRESSION.transcendentLevel){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,62,24,-.35,0,Math.PI*2);ctx.stroke();}
   }else{
   ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=34+[2,0,4,-2,2,0,2,-2,0][i];
     i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}

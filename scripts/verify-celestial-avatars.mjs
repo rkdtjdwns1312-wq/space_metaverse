@@ -21,24 +21,23 @@ try{
  const star=VALLEY.objects.find(o=>o.kind==='evolution');
  for(const c of CONSTELLATIONS){
    Object.assign(p,{mapId:VALLEY_ID,x:star.x+star.radius+22,y:star.y});Object.assign(p.avatar,{level:4,xp:30,constellationId:c.id,form:'constellation'});publish();
-   for(const level of [5,6]){
-     if(level===6){p.avatar.xp=40;publish();}
+   for(const level of [5]){
      await page.locator('#world').focus();await page.locator('#interact-prompt').filter({hasText:'진화의 별'}).waitFor();await page.keyboard.press('e');await page.locator('#evolution-evolve').click();await page.locator('#evolution-yes').click();
-     await page.waitForFunction(level=>document.getElementById('evolution-summary').textContent.includes(level===6?'초월체':'LV'+level),level);
+     await page.waitForFunction(level=>document.getElementById('evolution-summary').textContent.includes(level===5?'초월체':'LV'+level),level);
      assert.equal(p.avatar.level,level);assert.equal(p.avatar.xp,0);assert.equal(p.avatar.constellationId,c.id);
      await page.locator('#evolution-header-close').click();await page.locator('#dock-avatar').click();
      const expected=constellationOf(c.id,level);
      await page.waitForFunction(path=>document.getElementById('self-ability-art').getAttribute('src')===path&&document.getElementById('self-ability-art').complete&&document.getElementById('self-ability-art').naturalWidth>0,expected.art);
-     await page.waitForFunction(detail=>document.getElementById('world').dataset.selfLabelDetail===detail,`LV${level} ${c.name}`+(level===6?' · 초월체':''));
+     await page.waitForFunction(detail=>document.getElementById('world').dataset.selfLabelDetail===detail,`LV${level} ${c.name}`+(level===5?' · 초월체':''));
      assert.equal(await page.locator('#world').getAttribute('data-self-sprite'),expected.art);
      assert.equal(await page.locator('#self-form-name').textContent(),c.name);
      assert.ok(await page.locator('#avatar-card').evaluate(e=>e.classList.contains('celestial-card')));
-     if(c.id==='pisces'&&level===6)await page.screenshot({path:'.local/celestial-profile.png'});
+     if(c.id==='pisces'&&level===5)await page.screenshot({path:'.local/celestial-profile.png'});
      await page.keyboard.press('Escape');
    }
  }
- check('16종 모두 실제 진화 UI LV4→LV5→초월체·XP0·계보 보존');
- check('32개 단계의 맵/내정보 이미지·별자리 이름·LV 두 줄 매칭');
+ check('16종 모두 실제 진화 UI LV4→LV5 최종 초월체·XP0·계보 보존');
+ check('16개 단계의 맵/내정보 이미지·별자리 이름·LV 두 줄 매칭');
  await page.screenshot({path:'.local/celestial-world.png'});
  // PNG 실제 알파 채널과 로드 실패를 브라우저에서 확인합니다.
  const alpha=await page.evaluate(async ids=>Promise.all(ids.map(async id=>{

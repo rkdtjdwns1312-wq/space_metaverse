@@ -43,7 +43,7 @@ test('초월체 단계와 경험치가 서버 재시작 뒤에도 복원된다',
   const joined=await join(s,code);assert.ok(joined.ok);
   const p=f.game.store.rooms.get(code).players.get(joined.selfId);
   f.game.store.transact(()=>{
-    for(const amount of [15,20,25,30,40]){
+    for(const amount of [15,20,25,30]){
       p.avatar=gainExperience(p.avatar,amount);
       p.avatar=evolveAvatar(p.avatar);
     }
@@ -51,7 +51,7 @@ test('초월체 단계와 경험치가 서버 재시작 뒤에도 복원된다',
   await f.restart();await open(await f.connect(),code);
   const back=await join(await f.connect(),code);assert.ok(back.ok,back.error);
   const avatar=back.room.players.find(p=>p.id===back.selfId).avatar;
-  assert.equal(avatar.level,6);assert.equal(avatar.form,'transcendent');assert.equal(avatar.xp,0);
+  assert.equal(avatar.level,5);assert.equal(avatar.form,'transcendent');assert.equal(avatar.xp,0);
 });
 
 test('요청을 보내지 않은 브라우저 사전 연결이 있어도 서버 종료와 저장 잠금 해제가 끝난다',async t=>{

@@ -1,5 +1,10 @@
 // 별의 시작점에서 만나는 귀여운 동물별자리 상상 디자인 목록입니다.
 export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100});
+export const MONSTER_COMBAT=Object.freeze({
+  'star-origin-1':Object.freeze({power:2,speedFactor:1}),
+  'star-origin-2':Object.freeze({power:3,speedFactor:1.3}),
+  'star-origin-3':Object.freeze({power:5,speedFactor:1.3*1.3})
+});
 export const MONSTER_TYPES = Object.freeze([
   { id: 'rabbit', name: '토끼자리', description: '긴 귀와 동그란 꼬리를 가진 달토끼 별자리', mapId: 'star-origin-1', shape: 'rabbit', color: '#ffd6e7', level: 1 },
   { id: 'squirrel', name: '다람쥐자리', description: '복슬복슬한 꼬리로 별가루를 모으는 다람쥐', mapId: 'star-origin-1', shape: 'squirrel', color: '#f6c995', level: 1 },

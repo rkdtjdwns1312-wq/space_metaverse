@@ -214,8 +214,8 @@ export function mapOf(mapId, planets = []) {
   return { ...INTERIOR, id: mapId, planetId, name: (planet ? planet.name : '행성') + ' 안', color: planet ? planet.color : '#d9d3f2' };
 }
 // 경험치 계산은 server/progression.js에서 수행합니다. 경험치 획득 활동과 장비·그림은 후속 연결 대상입니다.
-export const PROGRESSION = Object.freeze({ maxLevel: 6, nextLevelXp: Object.freeze([15, 20, 25, 30, 40]),
-  transcendentLevel: 6, transcendentName: '초월체', constellationSlots: 16 });
+export const PROGRESSION = Object.freeze({ maxLevel: 5, nextLevelXp: Object.freeze([15, 20, 25, 30]),
+  transcendentLevel: 5, transcendentName: '초월체', constellationSlots: 16 });
 export function createAvatar() {
   return { form: 'asteroid', level: 1, xp: 0, constellationId: null,
     equipment: { pet: null, mount: null, decoration: null }, departmentId: null, blackStar:null };
