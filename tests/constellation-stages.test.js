@@ -10,6 +10,14 @@ import {freshAbilityState,validateAbilityState} from '../server/constellation-ab
 import {toRecord,fromRecord,pinHash} from '../server/persistent-rooms.js';
 
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
+test('Lv2 고래·게 이미지가 서로 뒤바뀌지 않는다 (원본 대조 후 확정한 그림)',()=>{
+  // 경로 문자열 검사만으로는 내용이 뒤바뀐 PNG를 찾을 수 없어 시각 검수한 두 파일을 고정합니다.
+  // 그림을 새로 제작할 때는 원본 카드와 대조한 뒤 이 해시도 함께 갱신하세요.
+  for(const [id,hash] of [
+    ['cetus','726344231d5225ce76903965ba9df7c6ea4abdc7fc2a0335b02153b3be8be774'],
+    ['cancer','d8e0ee6e029fef1a0cc3534ac21cc045c1c4e990db63b49f7fc0e432e9dce106']
+  ])assert.equal(createHash('sha256').update(readFileSync('client'+constellationOf(id,2).sprite)).digest('hex'),hash,id);
+});
 async function fixture(t){
   let now=Date.parse('2026-09-18T04:00:00Z'),dice=[];
   const game=createClassroomServer({teacherKey:'stage-test-private-key',studentHours:false,clock:()=>now,abilityDie:()=>{

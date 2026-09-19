@@ -197,6 +197,8 @@ node scripts/verify-growth-integration.mjs
 
 추가 검증: `node --test --test-concurrency=1 tests/constellation-stages.test.js`, `node scripts/verify-avatar-stages.mjs`. 후자는 임시 교실의 실제 브라우저 두 개로 Lv3→Lv4 진화·캐릭터 이동·친구 화면 동기화·모바일 선택창·전체32종 로딩을 검사합니다.
 
+전체16종을 Lv1부터 직접 검사하려면 `node scripts/verify-all-constellation-evolution.mjs`를 실행합니다. 시험 계정마다50,000개를 넣어 실제 버튼으로 경험치 구매·진화·취소·이동을 검사합니다. 실제 교실의 보유한도9,999개를 바꾸는 명령이 아니며 실제 저장자료와 분리된 메모리 서버만 사용합니다. 요청123에서 Lv2 고래/게 맵 그림의 뒤바뀜과 진화 후 소행성 태그 잔류를 수정했습니다. [전체 결과와 원본 대조 그림](docs/validation-123/검증결과.md)을 참고하세요.
+
 ### PPT Lv1 카드와 달토끼 뽑기
 
 별상점에 우주 식량(우주급식) 2, 우주 로봇 2, 외계인 4, 우주복 2, 꼬마 해 1, 꼬마 달 2, 달토끼 3, 운석 파편(우주파편) 3 별 파편으로 등록했습니다. 그림·레벨·효과·특수 설명은 첨부 PPT를 바탕으로 합니다. 카드 재판매액은 기존 상점 규칙대로 판매가의 절반을 버림하며, 꼬마 해는 재판매 시 0개입니다.

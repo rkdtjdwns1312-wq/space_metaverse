@@ -263,6 +263,8 @@ function updateRoom(value){
   $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
+  // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
+  $('self-form-name').textContent=isTeacher?'선생님':myLv>=2?(constellationOf(me?.avatar?.constellationId,myLv)?.name||'별자리'):'소행성';
   const transcendent=myLv>=PROGRESSION.transcendentLevel;
   $('self-level').textContent=transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
   const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId,myLv)?.type:null;
@@ -1065,6 +1067,7 @@ function reset(message){
   $('self-shards').textContent='0';$('bag-currency').hidden=false;
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
+  $('self-form-name').textContent='소행성';
   $('self-constellation-type').hidden=true;$('self-constellation-type').textContent='';
   $('self-ability-panel').hidden=true;
   if($('ability-dialog').open)$('ability-dialog').close();

@@ -1,0 +1,1176 @@
+{
+  "testBalance": 50000,
+  "productionBalanceLimit": 9999,
+  "scope": "Isolated in-memory server; UI growth/evolution; no avatar level/XP mutation; original student data unchanged.",
+  "results": [
+    {
+      "id": "gemini",
+      "name": "쌍둥이자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "쌍둥이자리",
+          "art": "/assets/constellation-cards/gemini.png",
+          "sprite": "/assets/avatars/gemini.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "쌍둥이자리",
+          "art": "/assets/constellation-cards/lv3/gemini.png",
+          "sprite": "/assets/avatars/lv3/gemini.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "쌍둥이자리",
+          "art": "/assets/constellation-cards/lv4/gemini.png",
+          "sprite": "/assets/avatars/lv4/gemini.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 59
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 103
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 97
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 68,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 64,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "corvus",
+      "name": "까마귀자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "까마귀자리",
+          "art": "/assets/constellation-cards/corvus.png",
+          "sprite": "/assets/avatars/corvus.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "까마귀자리",
+          "art": "/assets/constellation-cards/lv3/corvus.png",
+          "sprite": "/assets/avatars/lv3/corvus.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "까마귀자리",
+          "art": "/assets/constellation-cards/lv4/corvus.png",
+          "sprite": "/assets/avatars/lv4/corvus.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 58
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 94
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 92
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 63,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "aquarius",
+      "name": "물병자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "물병자리",
+          "art": "/assets/constellation-cards/aquarius.png",
+          "sprite": "/assets/avatars/aquarius.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "물병자리",
+          "art": "/assets/constellation-cards/lv3/aquarius.png",
+          "sprite": "/assets/avatars/lv3/aquarius.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "물병자리",
+          "art": "/assets/constellation-cards/lv4/aquarius.png",
+          "sprite": "/assets/avatars/lv4/aquarius.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 70
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 92
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 91
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 67,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 67,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "capricorn",
+      "name": "염소자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "염소자리",
+          "art": "/assets/constellation-cards/capricorn.png",
+          "sprite": "/assets/avatars/capricorn.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "염소자리",
+          "art": "/assets/constellation-cards/lv3/capricorn.png",
+          "sprite": "/assets/avatars/lv3/capricorn.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "염소자리",
+          "art": "/assets/constellation-cards/lv4/capricorn.png",
+          "sprite": "/assets/avatars/lv4/capricorn.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 130
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 113
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 91
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 64,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 66,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "taurus",
+      "name": "황소자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "황소자리",
+          "art": "/assets/constellation-cards/taurus.png",
+          "sprite": "/assets/avatars/taurus.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "황소자리",
+          "art": "/assets/constellation-cards/lv3/taurus.png",
+          "sprite": "/assets/avatars/lv3/taurus.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "황소자리",
+          "art": "/assets/constellation-cards/lv4/taurus.png",
+          "sprite": "/assets/avatars/lv4/taurus.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 70
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 128
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 116
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 64,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 66,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "hercules",
+      "name": "헤라클레스자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "헤라클레스자리",
+          "art": "/assets/constellation-cards/hercules.png",
+          "sprite": "/assets/avatars/hercules.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "헤라클레스자리",
+          "art": "/assets/constellation-cards/lv3/hercules.png",
+          "sprite": "/assets/avatars/lv3/hercules.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "헤라클레스자리",
+          "art": "/assets/constellation-cards/lv4/hercules.png",
+          "sprite": "/assets/avatars/lv4/hercules.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 71
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 91
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 104
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 66,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "libra",
+      "name": "천칭자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "천칭자리",
+          "art": "/assets/constellation-cards/libra.png",
+          "sprite": "/assets/avatars/libra.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "천칭자리",
+          "art": "/assets/constellation-cards/lv3/libra.png",
+          "sprite": "/assets/avatars/lv3/libra.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "천칭자리",
+          "art": "/assets/constellation-cards/lv4/libra.png",
+          "sprite": "/assets/avatars/lv4/libra.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 71
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 131
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 98
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 64,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 60,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "cetus",
+      "name": "고래자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "고래자리",
+          "art": "/assets/constellation-cards/cetus.png",
+          "sprite": "/assets/avatars/cetus.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "고래자리",
+          "art": "/assets/constellation-cards/lv3/cetus.png",
+          "sprite": "/assets/avatars/lv3/cetus.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "고래자리",
+          "art": "/assets/constellation-cards/lv4/cetus.png",
+          "sprite": "/assets/avatars/lv4/cetus.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 70
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 93
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 99
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 65,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "leo",
+      "name": "사자자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "사자자리",
+          "art": "/assets/constellation-cards/leo.png",
+          "sprite": "/assets/avatars/leo.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "사자자리",
+          "art": "/assets/constellation-cards/lv3/leo.png",
+          "sprite": "/assets/avatars/lv3/leo.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "사자자리",
+          "art": "/assets/constellation-cards/lv4/leo.png",
+          "sprite": "/assets/avatars/lv4/leo.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 59
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 110
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 103
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 64,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 64,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "ophiuchus",
+      "name": "뱀주인자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "뱀주인자리",
+          "art": "/assets/constellation-cards/ophiuchus.png",
+          "sprite": "/assets/avatars/ophiuchus.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "뱀주인자리",
+          "art": "/assets/constellation-cards/lv3/ophiuchus.png",
+          "sprite": "/assets/avatars/lv3/ophiuchus.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "뱀주인자리",
+          "art": "/assets/constellation-cards/lv4/ophiuchus.png",
+          "sprite": "/assets/avatars/lv4/ophiuchus.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 66
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 101
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 133
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 66,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "sagittarius",
+      "name": "사수자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "사수자리",
+          "art": "/assets/constellation-cards/sagittarius.png",
+          "sprite": "/assets/avatars/sagittarius.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "사수자리",
+          "art": "/assets/constellation-cards/lv3/sagittarius.png",
+          "sprite": "/assets/avatars/lv3/sagittarius.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "사수자리",
+          "art": "/assets/constellation-cards/lv4/sagittarius.png",
+          "sprite": "/assets/avatars/lv4/sagittarius.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 92
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 80
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 101
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 63,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 65,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "corona-borealis",
+      "name": "왕관자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "왕관자리",
+          "art": "/assets/constellation-cards/corona-borealis.png",
+          "sprite": "/assets/avatars/corona-borealis.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "왕관자리",
+          "art": "/assets/constellation-cards/lv3/corona-borealis.png",
+          "sprite": "/assets/avatars/lv3/corona-borealis.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "왕관자리",
+          "art": "/assets/constellation-cards/lv4/corona-borealis.png",
+          "sprite": "/assets/avatars/lv4/corona-borealis.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 64
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 79
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 103
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 64,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 65,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "cancer",
+      "name": "게자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "게자리",
+          "art": "/assets/constellation-cards/cancer.png",
+          "sprite": "/assets/avatars/cancer.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "게자리",
+          "art": "/assets/constellation-cards/lv3/cancer.png",
+          "sprite": "/assets/avatars/lv3/cancer.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "게자리",
+          "art": "/assets/constellation-cards/lv4/cancer.png",
+          "sprite": "/assets/avatars/lv4/cancer.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 71
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 102
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 294
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 67,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 65,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "cygnus",
+      "name": "백조자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "백조자리",
+          "art": "/assets/constellation-cards/cygnus.png",
+          "sprite": "/assets/avatars/cygnus.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "백조자리",
+          "art": "/assets/constellation-cards/lv3/cygnus.png",
+          "sprite": "/assets/avatars/lv3/cygnus.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "백조자리",
+          "art": "/assets/constellation-cards/lv4/cygnus.png",
+          "sprite": "/assets/avatars/lv4/cygnus.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 57
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 115
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 82
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 65,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 63,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "aries",
+      "name": "양자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "양자리",
+          "art": "/assets/constellation-cards/aries.png",
+          "sprite": "/assets/avatars/aries.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "양자리",
+          "art": "/assets/constellation-cards/lv3/aries.png",
+          "sprite": "/assets/avatars/lv3/aries.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "양자리",
+          "art": "/assets/constellation-cards/lv4/aries.png",
+          "sprite": "/assets/avatars/lv4/aries.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 113
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 115
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 106
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 66,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 64,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    },
+    {
+      "id": "pisces",
+      "name": "물고기자리",
+      "initialShards": 50000,
+      "stages": [
+        {
+          "level": 1,
+          "displayName": "이름 없는 작은 소행성",
+          "art": null,
+          "sprite": null,
+          "shards": 50000
+        },
+        {
+          "level": 2,
+          "displayName": "물고기자리",
+          "art": "/assets/constellation-cards/pisces.png",
+          "sprite": "/assets/avatars/pisces.png",
+          "shards": 49985
+        },
+        {
+          "level": 3,
+          "displayName": "물고기자리",
+          "art": "/assets/constellation-cards/lv3/pisces.png",
+          "sprite": "/assets/avatars/lv3/pisces.png",
+          "shards": 49965
+        },
+        {
+          "level": 4,
+          "displayName": "물고기자리",
+          "art": "/assets/constellation-cards/lv4/pisces.png",
+          "sprite": "/assets/avatars/lv4/pisces.png",
+          "shards": 49940
+        }
+      ],
+      "evolutions": [
+        {
+          "from": 1,
+          "to": 2,
+          "xpCost": 15,
+          "elapsedMs": 83
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "xpCost": 20,
+          "elapsedMs": 100
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "xpCost": 25,
+          "elapsedMs": 113
+        }
+      ],
+      "movement": [
+        {
+          "level": 2,
+          "samples": 67,
+          "backwards": 0
+        },
+        {
+          "level": 3,
+          "samples": 62,
+          "backwards": 0
+        },
+        {
+          "level": 4,
+          "samples": 66,
+          "backwards": 0
+        }
+      ],
+      "finalShards": 49940
+    }
+  ],
+  "errors": []
+}
