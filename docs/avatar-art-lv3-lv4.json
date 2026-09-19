@@ -1,0 +1,262 @@
+{
+  "generator": "Built-in image_gen, reference-based generation",
+  "source": "User-provided Lv3 and Lv4 PPTX; source card artwork extracted without alteration.",
+  "assets": [
+    {
+      "id": "gemini",
+      "level": 3,
+      "sourceMedia": 5,
+      "sprite": "client/assets/avatars/lv3/gemini.png",
+      "art": "client/assets/constellation-cards/lv3/gemini.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Generate ONE new cute chibi gemini constellation level 3 character using image 1 as identity/costume reference and image 2 as the existing game's chibi rendering style reference (do not copy its character). A close pair of blonde twins: one white-and-gold dress, one deep violet-and-gold dress, soft white feather wings; keep both figures compact together as ONE playable avatar. Friendly elementary-school storybook RPG, soft pastel highlights, rounded forms, clean strong silhouette readable at 48px, 2.5 heads tall, fully clothed. Full body centered, feet included, view from slightly above and front, compact standing/hovering idle pose. Isolated on genuinely transparent alpha background, no floor, no backdrop, no stars around silhouette, no lettering, no grid, no border. Square image. Retain reference hairstyle, key clothing and colors. Entire avatar within canvas with 8 percent padding."
+    },
+    {
+      "id": "corvus",
+      "level": 3,
+      "sourceMedia": 6,
+      "sprite": "client/assets/avatars/lv3/corvus.png",
+      "art": "client/assets/constellation-cards/lv3/corvus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Generate ONE new cute chibi corvus constellation level 3 character using image 1 as identity/costume reference and image 2 as the existing game's chibi rendering style reference (do not copy its character). One tousled black-haired boy, a raven-feather dark purple cloak, small friendly raven perched on shoulder; no large spread wings. Friendly elementary-school storybook RPG, soft pastel highlights, rounded forms, clean strong silhouette readable at 48px, 2.5 heads tall, fully clothed. Full body centered, feet included, view from slightly above and front, compact standing/hovering idle pose. Isolated on genuinely transparent alpha background, no floor, no backdrop, no stars around silhouette, no lettering, no grid, no border. Square image. Retain reference hairstyle, key clothing and colors. Entire avatar within canvas with 8 percent padding."
+    },
+    {
+      "id": "aquarius",
+      "level": 3,
+      "sourceMedia": 9,
+      "sprite": "client/assets/avatars/lv3/aquarius.png",
+      "art": "client/assets/constellation-cards/lv3/aquarius.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi aquarius constellation level 3 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Dark long-haired girl in pale violet dress with a dark blue sash, pouring a small blue stream from golden pitcher. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "capricorn",
+      "level": 3,
+      "sourceMedia": 10,
+      "sprite": "client/assets/avatars/lv3/capricorn.png",
+      "art": "client/assets/constellation-cards/lv3/capricorn.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi capricorn constellation level 3 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Short sandy-haired boy with curved goat horns, cream tunic and navy cape, gold sandals. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "taurus",
+      "level": 3,
+      "sourceMedia": 14,
+      "sprite": "client/assets/avatars/lv3/taurus.png",
+      "art": "client/assets/constellation-cards/lv3/taurus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi taurus constellation Lv3 character. Image1 identity/costume reference, image2 rendering STYLE ONLY. Brown-haired bull-horned boy with cream tunic, fluffy fur collar, gold bull medallion and brown cape. Elementary-school storybook RPG art with pastel highlights, warm friendly expression, compact silhouette legible at48px, 2.5 heads tall, fully clothed. FULL BODY centered including feet, slightly above-front view, compact standing/hovering idle. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border or stray background stars. Preserve primary source hair/clothing colors."
+    },
+    {
+      "id": "hercules",
+      "level": 3,
+      "sourceMedia": 11,
+      "sprite": "client/assets/avatars/lv3/hercules.png",
+      "art": "client/assets/constellation-cards/lv3/hercules.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi hercules constellation Lv3 character. Image1 identity/costume reference, image2 rendering STYLE ONLY. Brown curly-haired hero boy, laurel headband, white tunic covering torso, navy cape and gold bracers, small golden club on shoulder. Elementary-school storybook RPG art with pastel highlights, warm friendly expression, compact silhouette legible at48px, 2.5 heads tall, fully clothed. FULL BODY centered including feet, slightly above-front view, compact standing/hovering idle. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border or stray background stars. Preserve primary source hair/clothing colors."
+    },
+    {
+      "id": "libra",
+      "level": 3,
+      "sourceMedia": 12,
+      "sprite": "client/assets/avatars/lv3/libra.png",
+      "art": "client/assets/constellation-cards/lv3/libra.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi libra constellation Lv3 character. Image1 identity/costume reference, image2 rendering STYLE ONLY. Ash brown long-haired girl in flowing white-and-gold robe, holding a compact golden balancing scale, gentle smile. Elementary-school storybook RPG art with pastel highlights, warm friendly expression, compact silhouette legible at48px, 2.5 heads tall, fully clothed. FULL BODY centered including feet, slightly above-front view, compact standing/hovering idle. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border or stray background stars. Preserve primary source hair/clothing colors."
+    },
+    {
+      "id": "cetus",
+      "level": 3,
+      "sourceMedia": 18,
+      "sprite": "client/assets/avatars/lv3/cetus.png",
+      "art": "client/assets/constellation-cards/lv3/cetus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cetus constellation Lv3 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. ONE friendly round blue whale with pale lavender belly, gold constellation speckles ON the body, small flippers and curved tail, cute large eyes. Animal whale, no human. Elementary-school storybook RPG art, pastel highlights, friendly expression, simple compact silhouette legible at48px, human characters 2.5 heads tall fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Keep source palette."
+    },
+    {
+      "id": "leo",
+      "level": 3,
+      "sourceMedia": 19,
+      "sprite": "client/assets/avatars/lv3/leo.png",
+      "art": "client/assets/constellation-cards/lv3/leo.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi leo constellation Lv3 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. ONE friendly golden lion with soft orange mane, gold circlet, red gold-embroidered cape and gold cuffs, four legs compact standing. Elementary-school storybook RPG art, pastel highlights, friendly expression, simple compact silhouette legible at48px, human characters 2.5 heads tall fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Keep source palette."
+    },
+    {
+      "id": "ophiuchus",
+      "level": 3,
+      "sourceMedia": 7,
+      "sprite": "client/assets/avatars/lv3/ophiuchus.png",
+      "art": "client/assets/constellation-cards/lv3/ophiuchus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi ophiuchus constellation level 3 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Silver-lavender long-haired boy in lavender and black robes with gold edging; two small friendly purple serpents curled compactly by his shoulders. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "sagittarius",
+      "level": 3,
+      "sourceMedia": 8,
+      "sprite": "client/assets/avatars/lv3/sagittarius.png",
+      "art": "client/assets/constellation-cards/lv3/sagittarius.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi sagittarius constellation level 3 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Blonde ponytailed archer girl in cream and gold tunic, gold bow, compact standing pose. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "corona-borealis",
+      "level": 3,
+      "sourceMedia": 17,
+      "sprite": "client/assets/avatars/lv3/corona-borealis.png",
+      "art": "client/assets/constellation-cards/lv3/corona-borealis.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi corona-borealis constellation Lv3 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Brown-haired little prince, small jeweled gold crown, red and gold royal jacket, cream trousers; standing WITHOUT throne or cats. Elementary-school storybook RPG art, pastel highlights, friendly expression, simple compact silhouette legible at48px, human characters 2.5 heads tall fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Keep source palette."
+    },
+    {
+      "id": "cancer",
+      "level": 3,
+      "sourceMedia": 15,
+      "sprite": "client/assets/avatars/lv3/cancer.png",
+      "art": "client/assets/constellation-cards/lv3/cancer.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cancer constellation Lv3 character. Image1 identity/costume reference, image2 rendering STYLE ONLY. Playful purple-haired child in lavender robes and dark violet cape with pearl headband and one tiny cute purple crab companion. Elementary-school storybook RPG art with pastel highlights, warm friendly expression, compact silhouette legible at48px, 2.5 heads tall, fully clothed. FULL BODY centered including feet, slightly above-front view, compact standing/hovering idle. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border or stray background stars. Preserve primary source hair/clothing colors."
+    },
+    {
+      "id": "cygnus",
+      "level": 3,
+      "sourceMedia": 22,
+      "sprite": "client/assets/avatars/lv3/cygnus.png",
+      "art": "client/assets/constellation-cards/lv3/cygnus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cygnus constellation Lv3 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Lavender-silver long-haired swan girl with feather hair ornament and soft lavender white feathered gown, holding hands gently forward, small folded swan wings. Elementary-school storybook RPG art, pastel highlights, friendly expression, simple compact silhouette legible at48px, human characters 2.5 heads tall fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Keep source palette."
+    },
+    {
+      "id": "aries",
+      "level": 3,
+      "sourceMedia": 13,
+      "sprite": "client/assets/avatars/lv3/aries.png",
+      "art": "client/assets/constellation-cards/lv3/aries.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi aries constellation Lv3 character. Image1 identity/costume reference, image2 rendering STYLE ONLY. Sleepy white-haired child with soft curled sheep horns, white pajamas, holding one tiny plush sheep, hovering snugly. Elementary-school storybook RPG art with pastel highlights, warm friendly expression, compact silhouette legible at48px, 2.5 heads tall, fully clothed. FULL BODY centered including feet, slightly above-front view, compact standing/hovering idle. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border or stray background stars. Preserve primary source hair/clothing colors."
+    },
+    {
+      "id": "pisces",
+      "level": 3,
+      "sourceMedia": 21,
+      "sprite": "client/assets/avatars/lv3/pisces.png",
+      "art": "client/assets/constellation-cards/lv3/pisces.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi pisces constellation Lv3 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. A compact pair of blue-haired boy and pink-haired girl with translucent fish-fin ear accessories and blue/pink robes. Together as ONE hovering playable avatar, full body. Elementary-school storybook RPG art, pastel highlights, friendly expression, simple compact silhouette legible at48px, human characters 2.5 heads tall fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure inside canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Keep source palette."
+    },
+    {
+      "id": "gemini",
+      "level": 4,
+      "sourceMedia": 5,
+      "sprite": "client/assets/avatars/lv4/gemini.png",
+      "art": "client/assets/constellation-cards/lv4/gemini.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi gemini constellation level 4 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Two platinum-blonde twin girls BOTH in white-and-gold dresses with larger soft white wings, together forming ONE compact playable avatar. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "corvus",
+      "level": 4,
+      "sourceMedia": 6,
+      "sprite": "client/assets/avatars/lv4/corvus.png",
+      "art": "client/assets/constellation-cards/lv4/corvus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE new cute chibi corvus constellation level 4 character. Image 1 is identity/costume reference; image 2 is chibi rendering style only, do not copy that character. Black-haired raven boy in elegant black-purple feather cloak with large spread raven wings (compact silhouette), violet gem and golden chains. Soft storybook RPG illustration for elementary-school children, rounded friendly face, pastel highlights, clean silhouette readable at 48px, 2.5 heads tall, fully clothed. Centered FULL BODY including feet, slight above-front view, compact standing or floating idle pose. Square image, genuinely TRANSPARENT alpha background, no scenery/floor/text/border/grid. Keep key source colors/hair/accessories. Entire figure within 8% margin."
+    },
+    {
+      "id": "aquarius",
+      "level": 4,
+      "sourceMedia": 12,
+      "sprite": "client/assets/avatars/lv4/aquarius.png",
+      "art": "client/assets/constellation-cards/lv4/aquarius.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi aquarius constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Long black-haired girl wearing gold-and-blue crown, luxurious WHITE and gold layered dress, raised golden-white pitcher pouring a short blue stream, full body. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "capricorn",
+      "level": 4,
+      "sourceMedia": 13,
+      "sprite": "client/assets/avatars/lv4/capricorn.png",
+      "art": "client/assets/constellation-cards/lv4/capricorn.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi capricorn constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Sandy-haired boy with large curved goat horns, cream tunic and dark NAVY and gold mantle, sapphire brooch, compact standing pose. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "taurus",
+      "level": 4,
+      "sourceMedia": 15,
+      "sprite": "client/assets/avatars/lv4/taurus.png",
+      "art": "client/assets/constellation-cards/lv4/taurus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi taurus constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. Bull-horned brown-haired boy with BLACK and gold robes, golden bull medallion, cream fur mantle, fully clothed standing. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "hercules",
+      "level": 4,
+      "sourceMedia": 8,
+      "sprite": "client/assets/avatars/lv4/hercules.png",
+      "art": "client/assets/constellation-cards/lv4/hercules.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi hercules constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Brown wavy-haired hero with a fully covering dark gold cuirass, navy feather mantle, gold bracers and small golden spear. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "libra",
+      "level": 4,
+      "sourceMedia": 9,
+      "sprite": "client/assets/avatars/lv4/libra.png",
+      "art": "client/assets/constellation-cards/lv4/libra.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi libra constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Ash blonde long-haired queen with pointed gold diadem, lavender dress and navy mantle, compact golden balance held in front. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "cetus",
+      "level": 4,
+      "sourceMedia": 10,
+      "sprite": "client/assets/avatars/lv4/cetus.png",
+      "art": "client/assets/constellation-cards/lv4/cetus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cetus constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. ONE rounded friendly navy-blue whale, pale silver belly, gold constellation circle patterns ON its body, curved tail. Animal whale, no humans. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "leo",
+      "level": 4,
+      "sourceMedia": 18,
+      "sprite": "client/assets/avatars/lv4/leo.png",
+      "art": "client/assets/constellation-cards/lv4/leo.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi leo constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. Golden mane-haired human boy with lion ears and small lion tail, gold circlet, white tunic covering torso, red royal cape with white fur collar and golden lion brooch. HUMAN lion prince, not a quadruped. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "ophiuchus",
+      "level": 4,
+      "sourceMedia": 11,
+      "sprite": "client/assets/avatars/lv4/ophiuchus.png",
+      "art": "client/assets/constellation-cards/lv4/ophiuchus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi ophiuchus constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Lavender-silver haired boy with elegant BLACK and purple suit, violet gems, THREE small friendly purple-black serpents curled compactly around shoulders and feet. No throne. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "sagittarius",
+      "level": 4,
+      "sourceMedia": 7,
+      "sprite": "client/assets/avatars/lv4/sagittarius.png",
+      "art": "client/assets/constellation-cards/lv4/sagittarius.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi sagittarius constellation Lv4 avatar. Image1 identity/costume reference, image2 rendering STYLE ONLY. Blonde ponytail archer heroine with black-and-gold armor over cream tunic, gold bow, compact idle stance. Elementary-school storybook RPG art, pastel highlights, friendly expression, compact silhouette legible at48px, human figures 2.5 heads tall and fully clothed. FULL BODY centered including feet/tail, slight above-front view. Entire figure inside canvas with 8% padding. Square PNG, genuinely TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve key source palette and accessories, this is a more evolved Lv4 design."
+    },
+    {
+      "id": "corona-borealis",
+      "level": 4,
+      "sourceMedia": 22,
+      "sprite": "client/assets/avatars/lv4/corona-borealis.png",
+      "art": "client/assets/constellation-cards/lv4/corona-borealis.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi corona-borealis constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. Brown-haired king boy, tall jeweled gold crown, red-white and gold royal robe with fluffy white ermine collar, small gold scepter. Standing, NO THRONE. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "cancer",
+      "level": 4,
+      "sourceMedia": 16,
+      "sprite": "client/assets/avatars/lv4/cancer.png",
+      "art": "client/assets/constellation-cards/lv4/cancer.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cancer constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. Purple-haired boy with black violet robe, gold crab-shaped crown, one tiny smiling purple crab companion tucked beside boots. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "cygnus",
+      "level": 4,
+      "sourceMedia": 17,
+      "sprite": "client/assets/avatars/lv4/cygnus.png",
+      "art": "client/assets/constellation-cards/lv4/cygnus.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi cygnus constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. Silver-lavender long-haired swan queen with gold tiara, white lavender feather gown, larger white swan wings, friendly face and clasped hands. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "aries",
+      "level": 4,
+      "sourceMedia": 21,
+      "sprite": "client/assets/avatars/lv4/aries.png",
+      "art": "client/assets/constellation-cards/lv4/aries.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi aries constellation Lv4 avatar. The first 1 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. White curly-haired sheep child with curled ram horns, delicate gold crown and white gold-embroidered sleeping gown, cradling a tiny lamb, full body compact floating. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    },
+    {
+      "id": "pisces",
+      "level": 4,
+      "sourceMedia": 20,
+      "sprite": "client/assets/avatars/lv4/pisces.png",
+      "art": "client/assets/constellation-cards/lv4/pisces.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent 2D RPG map avatar. Create ONE cute chibi pisces constellation Lv4 avatar. The first 2 image(s) are identity/costume reference; LAST image is rendering STYLE ONLY. A compact pair of merfolk: blonde boy with ornate gold blue tunic and iridescent pale tail, pale blue-haired mermaid girl in blue fully covering bodice with blue tail. Together as ONE avatar, both full tails visible. Elementary-school storybook RPG art, soft pastel highlights, friendly face, clean compact silhouette legible at48px, 2.5-head proportions fully clothed. FULL BODY centered including feet/tail, slight above-front view, compact idle pose. Entire figure within canvas with 8% margin. Square PNG, truly TRANSPARENT alpha background. No floor/scenery/grid/text/border/background stars. Preserve source colors and evolution details."
+    }
+  ]
+}

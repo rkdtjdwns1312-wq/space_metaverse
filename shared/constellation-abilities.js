@@ -1,3 +1,4 @@
+import { STAGE_ABILITIES } from './constellation-stages.js';
 // Lv2 카드 원문을 짧게 정리한 표시 문구. 현실 교실 확인이 필요한 효과는 선생님 처리형입니다.
 export const CONSTELLATION_ABILITIES=Object.freeze({
   gemini:{mode:'shop-copy',description:'Lv2 이하 아이템을 살 때 같은 아이템 1개를 복사해요.'},
@@ -19,5 +20,5 @@ export const CONSTELLATION_ABILITIES=Object.freeze({
 });
 
 export function abilityForLevel(id, level = 2) {
-  return CONSTELLATION_ABILITIES[id] || null;
+  return STAGE_ABILITIES[Math.min(4, level)]?.[id] || CONSTELLATION_ABILITIES[id] || null;
 }

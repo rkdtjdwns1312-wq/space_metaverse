@@ -19,7 +19,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       body.append(title,detail);li.append(body);
       if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&r.until===null){
         let xpSelect=null;
-        if(r.abilityMarkerId&&r.constellationId==='libra'){
+        if(r.abilityMarkerId&&r.constellationId==='libra'&&(r.abilityLevel||2)===2){
           const label=document.createElement('label');label.textContent='확인한 주차의 경험치 ';label.className='small';
           xpSelect=document.createElement('select');xpSelect.setAttribute('aria-label',r.nickname+' 천칭자리 경험치');
           for(const [amount,weeks] of [[0,'1주'],[1,'2~3주'],[2,'4~5주']])xpSelect.append(new Option(weeks+' · '+amount+' XP',String(amount)));

@@ -89,34 +89,42 @@ for(let face=1;face<=6;face++){
 }
 const faceRotation={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateX(90deg)',4:'rotateX(-90deg)',5:'rotateY(90deg)',6:'rotateY(180deg)'};
 let dieTurn=0;
-function showStarDie(roll){
+function showStarDie(roll,rolls=[roll]){
   $('ability-dice').hidden=false;$('ability-dice-result').textContent='별 주사위가 굴러가요…';
   dieTurn+=2;cube.style.transition='none';cube.style.transform='rotateX(0deg) rotateY(0deg)';
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     cube.style.transition='transform 1.15s cubic-bezier(.16,.8,.22,1)';
     cube.style.transform=`rotateX(${dieTurn*360}deg) rotateY(${dieTurn*360}deg) ${faceRotation[roll]}`;
   }));
-  setTimeout(()=>$('ability-dice-result').textContent='결과: '+roll+' ★',1200);
+  setTimeout(()=>$('ability-dice-result').textContent='결과: '+rolls.join(' · ')+' ★',1200);
 }
 async function refreshAbilityStatus(){
   const me=room?.players.find(player=>player.id===selfId),level=me?.avatar?.level||1,constellation=constellationOf(me?.avatar?.constellationId,level);
   if(!constellation?.ability)return;
   const status=await request('ability:status',{}),ability=constellation.ability;
   $('ability-title').textContent='Lv'+level+' '+constellation.name+' 능력';
-  $('ability-description').textContent=ability.description;
+  $('ability-description').textContent=ability.description+(ability.note?' '+ability.note:'')+(ability.mode==='manual'?' · 선생님 확인 후 적용하는 능력이에요.':'');
   $('ability-status').textContent=status.used?'이번 주 능력 사용 완료 · 다음 월요일에 다시 사용할 수 있어요.':'이번 주에 한 번 사용할 수 있어요.';
-  if(status.pending?.mode==='shop-copy')$('ability-status').textContent+=' 다음 Lv2 이하 아이템을 살 때 1개가 더 생겨요.';
+  if(status.pending?.mode==='shop-copy')$('ability-status').textContent+=' 다음 '+(status.pending.maxPrice?'별 '+status.pending.maxPrice+'개 이하':'Lv2 이하')+' 아이템을 살 때 1개가 더 생겨요.';
   if(status.pending?.mode==='dice-item')$('ability-status').textContent+=' 주사위 '+status.pending.roll+' · Lv'+status.pending.maxLevel+' 이하 아이템을 골라주세요.';
-  $('ability-use').disabled=status.used;
-  const requiresTarget=['ban-two-days','sleep'].includes(ability.mode)||['cetus','cancer','pisces'].includes(constellation.id);
+  if(status.pending?.mode==='value-item')$('ability-status').textContent+=' 남은 가치 '+status.pending.budget+'별 · Lv'+status.pending.maxLevel+' 이하 · 최대 '+status.pending.picks+'종';
+  const retry=status.pending?.mode==='dice-retry'&&constellation.id==='libra';
+  $('ability-use').dataset.event=retry?'ability:retry':'ability:use';
+  $('ability-use').textContent=retry?'별 2개로 다시 던지기':ability.mode==='manual'?'이번 주 능력 확인 요청':'이번 주 능력 사용하기';
+  $('ability-use').disabled=status.used&&!retry;
+  const requiresTarget=['ban-two-days','sleep'].includes(ability.mode)||ability.target||
+    (me.avatar.level===2&&['cetus','cancer','pisces'].includes(constellation.id));
   $('ability-target-row').hidden=!requiresTarget;
   $('ability-target').replaceChildren(...(room?.players||[]).filter(player=>player.role==='student'&&player.connected&&player.id!==selfId)
-    .filter(player=>constellation.id!=='cetus'||player.avatar.level<=2)
+    .filter(player=>player.avatar.level<=(ability.targetMaxLevel||(me.avatar.level===2&&constellation.id==='cetus'?2:6)))
     .map(player=>new Option(player.nickname,player.id)));
   $('ability-planet-row').hidden=ability.mode!=='warning-one';
   $('ability-planet').replaceChildren(...status.planets.map(planet=>new Option(planet.name+' · 경고 '+planet.count+'회',planet.id)));
-  $('ability-item-row').hidden=status.pending?.mode!=='dice-item';
-  $('ability-item').replaceChildren(...SHOP.items.filter(item=>item.level<=status.pending?.maxLevel).map(item=>new Option('Lv'+item.level+' '+item.name,item.id)));
+  $('ability-item-row').hidden=!['dice-item','value-item'].includes(status.pending?.mode);
+  $('ability-item').replaceChildren(...SHOP.items.filter(item=>item.level<=status.pending?.maxLevel&&
+    (status.pending?.mode!=='value-item'||item.price<=status.pending.budget&&!status.pending.selected.includes(item.id)))
+    .map(item=>new Option('Lv'+item.level+' '+item.name+' · '+item.price+'별',item.id)));
+  $('ability-choose-item').disabled=!$('ability-item').options.length;
 }
 $('self-ability-open').onclick=async()=>{
   $('avatar-dialog').close();stop();$('ability-dice').hidden=true;
@@ -126,9 +134,9 @@ $('ability-close').onclick=()=>$('ability-dialog').close();
 $('ability-use').onclick=async()=>{
   const button=$('ability-use');button.disabled=true;
   try{
-    const result=await request('ability:use',{targetId:$('ability-target-row').hidden?null:$('ability-target').value,
+    const result=await request(button.dataset.event||'ability:use',{targetId:$('ability-target-row').hidden?null:$('ability-target').value,
       planetId:$('ability-planet-row').hidden?null:$('ability-planet').value});
-    if(result.roll)showStarDie(result.roll);
+    if(result.roll)showStarDie(result.roll,result.rolls||[result.roll]);
     toast(result.note||'별자리 능력을 사용했어요.');
     await refreshAbilityStatus();
   }catch(error){toast(error.message);button.disabled=false;}
@@ -266,7 +274,9 @@ function updateRoom(value){
     $('self-ability-art').src=abilityConstellation.art;
     $('self-ability-art').alt='Lv'+myLv+' '+abilityConstellation.name+' 카드 그림';
     $('self-ability-name').textContent='Lv'+myLv+' '+abilityConstellation.name+' · '+abilityConstellation.type;
-    $('self-ability-description').textContent=abilityConstellation.ability.description;
+    const ability=abilityConstellation.ability;
+    $('self-ability-description').textContent=ability.description+(ability.note?' '+ability.note:'')+
+      (ability.mode==='manual'?' · 선생님 확인 후 적용':'')+(myLv>4?' · 현재 Lv4 카드 자료 적용 중':'');
   }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
