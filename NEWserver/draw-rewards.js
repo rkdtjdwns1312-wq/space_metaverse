@@ -1,0 +1,29 @@
+import {SHARDS,SHOP} from '../shared/config.js';
+import {gainExperience} from '../server/progression.js';
+import {ensure} from '../server/rooms.js';
+import {RABBIT_DRAW_CATALOG} from '../server/rabbit-draw.js';
+
+const items=new Map(RABBIT_DRAW_CATALOG.filter(r=>r.kind==='item').map(r=>[r.itemId,r]));
+const nameOf=id=>items.get(id)?.name||({
+  'asteroid-card':'소행성','spaceship-card':'우주선','android-card':'안드로이드','sun-rabbit-card':'해 토끼','alien-rabbit-card':'외계 토끼','star-card':'별 카드'
+}[id]);
+export function awardDrawReward(player,reward){
+  ensure(player&&reward&&['shards','item','xp','none'].includes(reward.kind),'뽑기 보상을 확인해주세요.');
+  ensure(Number.isSafeInteger(reward.amount)&&reward.amount>=0,'뽑기 보상을 확인해주세요.');
+  ensure(RABBIT_DRAW_CATALOG.some(candidate=>JSON.stringify(candidate)===JSON.stringify(reward)),'뽑기 보상을 확인해주세요.');
+  const nextShards=Number.isSafeInteger(player.starShards)?player.starShards:0;
+  ensure(Array.isArray(player.inventory)&&player.avatar,'플레이어 상태를 확인해주세요.');
+  let shards=0,xp=0,itemId=null,name=reward.name||'';
+  if(reward.kind==='shards'){ensure(reward.amount>0,'뽑기 보상을 확인해주세요.');shards=reward.amount;}
+  if(reward.kind==='item'){ensure(reward.amount===1&&typeof reward.itemId==='string'&&nameOf(reward.itemId)===reward.name,'뽑기 물품을 확인해주세요.');itemId=reward.itemId;name=nameOf(itemId);}
+  if(reward.kind==='xp'){ensure(reward.amount>0,'뽑기 보상을 확인해주세요.');xp=reward.amount;}
+  const avatar=structuredClone(player.avatar);
+  const gained=reward.kind==='xp'?gainExperience(avatar,xp):avatar;
+  const overflow=reward.kind==='xp'?xp-(gained.xp-avatar.xp):0;
+  shards+=overflow;
+  ensure(nextShards+shards<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
+  const inventory=player.inventory.map(i=>({...i}));
+  if(itemId){let entry=inventory.find(i=>i.id===itemId);ensure(!entry||entry.quantity<2,'같은 물품은 최대 2개까지 가질 수 있어요.');if(entry)entry.quantity++;else{ensure(inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');inventory.push({id:itemId,quantity:1});}}
+  player.starShards=nextShards+shards;player.avatar=gained;player.inventory=inventory;
+  return {text:reward.kind==='none'?'우주 먼지예요. 아무런 가치가 없어요.':reward.kind==='shards'?'별 파편 '+reward.amount+'개를 받았어요.':reward.kind==='item'?name+'을(를) 받았어요.':'경험치 '+reward.amount+'을(를) 받았어요.'+' 초과분은 별 파편으로 바뀌었어요.',deltas:{shards,xp:xp-overflow,itemId},reward:structuredClone(reward)};
+}
