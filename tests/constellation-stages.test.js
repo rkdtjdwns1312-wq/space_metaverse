@@ -8,7 +8,6 @@ import {CONSTELLATIONS,constellationOf} from '../shared/constellations.js';
 import {MAP,STREET,STREET_ID,VALLEY,VALLEY_ID,SHARDS} from '../shared/config.js';
 import {freshAbilityState,validateAbilityState} from '../server/constellation-abilities.js';
 import {toRecord,fromRecord,pinHash} from '../server/persistent-rooms.js';
-import {weekStart} from '../server/temple.js';
 
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
 async function fixture(t){
@@ -127,4 +126,3 @@ test('Lv3→4 진화는 경험치0·계보 유지, 저장/복원은 단계와 �
   const invalid=structuredClone(restored.abilityState);invalid.pending.budget=999;assert.throws(()=>validateAbilityState(invalid));
   assert.deepEqual(validateAbilityState(undefined),freshAbilityState());
 });
-
