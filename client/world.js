@@ -1,4 +1,6 @@
 import {ATTACK_VISUAL} from '/shared/combat.js';
+import {skillEffectById} from '/shared/skill-effects.js';
+import {drawSkillEffect} from './skill-effects.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
 import { drawTemple, drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
@@ -7,6 +9,8 @@ import {monsterType} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
 import {avatarLabel} from '/shared/avatar-label.js';
+import {TEACHER_AVATAR} from '/shared/teacher-avatar.js';
+const TEACHER_SPRITE=TEACHER_AVATAR.sprite;
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const avatarSprites=new Map();
 const portraitPlayers=new WeakMap();
@@ -396,7 +400,12 @@ export function createWorld(canvas) {
     if(p.id===selfId){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,p.avatar.level):null;
-    if(p.avatar?.blackStar){
+    if(p.role==='teacher'){
+      celestialAura(ctx,'#e9c77b',58,time);
+      const sprite=loadedAvatarSprite(TEACHER_SPRITE);
+      if(sprite)ctx.drawImage(sprite,-48,-57,96,96);
+      else star(0,0,26,'#e9c77b');
+    }else if(p.avatar?.blackStar){
       const radius=24;
       star(0,0,radius,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=3;ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,1);ctx.textBaseline='alphabetic';
@@ -416,7 +425,6 @@ export function createWorld(canvas) {
     ctx.fillStyle='#524969';ctx.beginPath();ctx.arc(-4,1,1.6,0,Math.PI*2);ctx.arc(4,1,1.6,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#66577e';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,5,3,.15,Math.PI-.15);ctx.stroke();
     }
-    if(p.role==='teacher')star(0,-31,7,'#d2a454');
     if(effects.some(e=>e.style==='sparkle')){
       for(let i=0;i<3;i++){
         const phase=(time||0)/260+i*2.1,r=24+i*3;
@@ -429,12 +437,12 @@ export function createWorld(canvas) {
     ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Jua","Malgun Gothic",sans-serif';
     const label=avatarLabel(p),nameWidth=ctx.measureText(label.name).width;
     ctx.font='11px "Jua","Malgun Gothic",sans-serif';
-    const w=Math.max(nameWidth,ctx.measureText(label.detail).width)+18,top=y+(constellation?.celestial?42:29);
+    const w=Math.max(nameWidth,ctx.measureText(label.detail).width)+18,top=y+(p.role==='teacher'?44:constellation?.celestial?42:29);
     ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(x-w/2,top,w,40,9);ctx.fill();
     ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';
     ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillText(label.name,x,top+16);
     ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#726782';ctx.fillText(label.detail,x,top+32);
-    if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=constellation?.sprite||'';}
+    if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=p.role==='teacher'?TEACHER_SPRITE:constellation?.sprite||'';}
     if(effects.some(e=>e.style==='happy')){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
     drawBubble(p.id,x,y);
     ctx.restore();
@@ -499,7 +507,12 @@ export function createWorld(canvas) {
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){
-      const progress=1-(hit.until-t)/ATTACK_VISUAL.durationMs;
+      const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
+      const progress=1-(hit.until-t)/(effect?.durationMs??ATTACK_VISUAL.durationMs);
+      if(effect){
+        ctx.save();ctx.translate(hit.x,hit.y);ctx.rotate(Math.atan2(hit.dy,hit.dx));
+        drawSkillEffect(ctx,effect,progress,{reducedMotion:reducedMotion.matches,quality:hits.length>18?'low':'full'});ctx.restore();continue;
+      }
       const reach=hit.reach??ATTACK_VISUAL.reach;
       const hx=hit.x+hit.dx*reach,hy=hit.y+hit.dy*reach;
       ctx.save();ctx.translate(hx,hy);ctx.rotate(Math.atan2(hit.dy,hit.dx));ctx.globalAlpha=Math.max(0,1-progress);
@@ -540,9 +553,10 @@ export function createWorld(canvas) {
     monsters(data){setMonsters(data.monsters||[]);},
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
-      hits.push({...data,until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
+      const effect=data.kind==='skill'&&skillEffectById(data.effectId);
+      hits.push({...data,until:performance.now()+(effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
       canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
-      if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);}
+      if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);canvas.dataset.lastSkillEffect=effect?.id||'';}
     },
     monsterHit(data){
       if(data.mapId!==myMapId||!monsters.some(monster=>monster.id===data.monsterId))return;
@@ -627,7 +641,12 @@ export function renderPortrait(canvas,player,effects){
   }
   ctx.save();ctx.translate(cx,cy);
   const constellation=player?.avatar?.level>=2?constellationOf(player.avatar.constellationId,player.avatar.level):null;
-  if(player?.avatar?.blackStar){
+  if(player?.role==='teacher'){
+    celestialAura(ctx,'#e9c77b',76,0);
+    const sprite=loadedAvatarSprite(TEACHER_SPRITE,()=>{if(portraitPlayers.get(canvas)===player)renderPortrait(canvas,player,effects);});
+    if(sprite)ctx.drawImage(sprite,-72,-78,144,144);
+    else drawStar(ctx,0,0,42,'#e9c77b');
+  }else if(player?.avatar?.blackStar){
     drawStar(ctx,0,0,45,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=4;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,2);ctx.textBaseline='alphabetic';
   }else if(constellation){
@@ -646,7 +665,6 @@ export function renderPortrait(canvas,player,effects){
   ctx.fillStyle='#524969';ctx.beginPath();ctx.arc(-8,2,3.2,0,Math.PI*2);ctx.arc(8,2,3.2,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#66577e';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(0,10,6,.15,Math.PI-.15);ctx.stroke();
   }
-  if(player?.role==='teacher')drawStar(ctx,0,-58,13,'#d2a454');
   if(list.some(e=>e.style==='sparkle')){
     for(let i=0;i<3;i++){
       const phase=Date.now()/260+i*2.1,r=46+i*5;

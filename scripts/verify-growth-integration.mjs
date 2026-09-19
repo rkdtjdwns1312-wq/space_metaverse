@@ -58,7 +58,7 @@ try {
   await student.locator('#growth-info').filter({ hasText: '구매 가능15 XP' }).waitFor();
   await student.waitForFunction(() => Boolean(document.querySelector('link[data-star-ui-style]')));
   assert.equal(await student.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  check('실제 앱 E 상호작용·동적 CSS·390px 성장 창');
+  check('실제 앱 F 상호작용·동적 CSS·390px 성장 창');
 
   await student.locator('#growth-amount').fill('99');
   assert.equal(await student.locator('#growth-amount').inputValue(), '15');

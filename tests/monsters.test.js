@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {MONSTER_TYPES} from '../shared/monsters.js';
+import {mapOf} from '../shared/config.js';
 import {monstersOf,monsterViews,moveMonsters,MONSTER_RULES} from '../server/monsters.js';
 import {createClassroomServer} from '../server/app.js';
 
@@ -13,20 +14,20 @@ test('세 맵별 5종·서로 다른 형태·방별 독립된 몬스터 상태',
   assert.notEqual(one.x,two.x);
 });
 
-test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·8배다',()=>{
+test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·4배다',()=>{
   const list=monsterViews({});
-  for(const [level,radius] of [[1,24],[2,48],[3,192]]) {
+  for(const [level,radius] of [[1,24],[2,48],[3,96]]) {
     const matches=list.filter(m=>MONSTER_TYPES.find(t=>t.id===m.typeId)?.level===level);
     assert.equal(matches.length,5);assert.ok(matches.every(m=>m.radius===radius));
   }
 });
 
 test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',()=>{
-  const room={};monstersOf(room,0);const before=monsterViews(room).filter(m=>m.radius===192).map(m=>({...m}));
+  const room={};monstersOf(room,0);const before=monsterViews(room).filter(m=>m.radius===96).map(m=>({...m}));
   for(const m of before) for(const other of before) if(other!==m)
     assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=m.radius+other.radius+10);
   moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
-  const after=monsterViews(room).filter(m=>m.radius===192);
+  const after=monsterViews(room).filter(m=>m.radius===96);
   assert.ok(after.some((m,i)=>m.x!==before[i].x||m.y!==before[i].y));
 });
 
@@ -43,7 +44,7 @@ test('몬스터는 맵 경계와 문 주변을 벗어나지 않고 같은 위치
   const room={};monstersOf(room,0);
   for(let now=0;now<60000;now+=50)moveMonsters(room,now,()=>.125);
   const list=monsterViews(room);
-  for(const m of list){assert.ok(m.x>=120&&m.x<=1080&&m.y>=190&&m.y<=710);
+  for(const m of list){const map=mapOf(m.mapId);assert.ok(m.x>=Math.max(120,m.radius)&&m.x<=map.width-Math.max(120,m.radius)&&m.y>=Math.max(190,m.radius)&&m.y<=map.height-Math.max(190,m.radius));
     for(const other of list)if(other!==m&&other.mapId===m.mapId)assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=58-1e-6);
   }
 });

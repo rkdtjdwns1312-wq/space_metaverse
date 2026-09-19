@@ -63,7 +63,7 @@ async function walk(page,player,targetX){
 }
 async function interact(page,name){
   await page.locator('#interact-object').filter({hasText:name}).waitFor();
-  await page.keyboard.press('KeyE');
+  await page.keyboard.press('KeyF');
 }
 try {
   const teacher=await browser.newPage();await teacher.goto(url);await teacher.locator('#teacher-tab').click();

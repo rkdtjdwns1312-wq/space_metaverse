@@ -117,6 +117,7 @@ try{
  await openMenuFromDock(teacher);await teacher.locator('#room-code').filter({hasText:/[A-Z0-9]{6}/}).waitFor({state:'attached'});
  const code=await teacher.locator('#room-code').innerText();check('Teacher creates a room from actual UI');
  await student.goto(url);await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
+ await student.locator('#student-hours-note').filter({hasText:'시간 제한 없이 접속'}).waitFor();
  await student.locator('#join-code').fill(code);await student.locator('#nickname').fill('허용안됨');await student.locator('#student-pin').fill('1234');
  await student.getByRole('button',{name:'우주 교실 입장하기'}).click();
  await student.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});
@@ -138,31 +139,31 @@ try{
  await student.screenshot({path:'.local/03-mobile.png',fullPage:true});
  const widthOkay=await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
  assert.ok(widthOkay);check('390px touch layout has no horizontal overflow');
- assert.ok(await student.locator('#touch-controls').isVisible());
- check('#touch-controls is visible on a 390px touch viewport');
+ assert.equal(await student.locator('#touch-controls').count(),0);assert.ok(await student.locator('#joystick').isVisible());
+ check('joystick is visible and arrow buttons removed on a 390px touch viewport');
  // Real CDP touch events (not synthetic dispatchEvent) exercise the actual pointer-capture path.
  const oldY=p.y;
- const touch=student.locator('[data-dx="0"][data-dy="1"]');
+ const touch=student.locator('#joystick');
  const touchBox=await touch.boundingBox();
  const cx=touchBox.x+touchBox.width/2,cy=touchBox.y+touchBox.height/2;
  const cdp=await studentContext.newCDPSession(student);
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx,y:cy}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx,y:cy+35}]});
  await student.waitForTimeout(300);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- assert.ok(p.y>oldY);check('Real touch press on on-screen button moves the student');
+ assert.ok(p.y>oldY);check('Real touch press on joystick moves the student');
  // The client sends {x:0,y:0} on release; the server does not keep moving on its own, so
  // movement must have fully stopped a bit after touchend and stay stopped afterwards.
  await student.waitForTimeout(250);const stoppedY=p.y;
  await student.waitForTimeout(300);assert.equal(p.y,stoppedY);
- check('Releasing the on-screen touch button stops the student');
+ check('Releasing the joystick stops the student');
  // Mouse press/hold on the same button exercises the pointerType:"mouse" path.
  const oldX=p.x;
- const rightButton=student.locator('[data-dx="1"][data-dy="0"]');
+ const rightButton=student.locator('#joystick');
  const rightBox=await rightButton.boundingBox();
- await student.mouse.move(rightBox.x+rightBox.width/2,rightBox.y+rightBox.height/2);
+ await student.mouse.move(rightBox.x+rightBox.width/2+35,rightBox.y+rightBox.height/2);
  await student.mouse.down();await student.waitForTimeout(300);await student.mouse.up();
  await student.waitForTimeout(200);
- assert.ok(p.x>oldX);check('Mouse press on on-screen button moves the student');
+ assert.ok(p.x>oldX);check('Mouse press on joystick moves the student');
  // --- Chat (STEP 5), exercised through the dock/social/chat dialog path ---
  await openChatFromDock(student);await openChatFromDock(teacher);
  await student.locator('#chat-input').fill('안녕하세요 선생님');
@@ -309,7 +310,7 @@ try{
  check('Walking the student near the new planet shows the "급식행성 (E)" interact prompt');
 
  // Item 5: E opens the planet dialog for a member.
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#planet-dialog').waitFor({state:'visible'});
  await student.locator('#planet-enter').waitFor({state:'visible'});
  await student.locator('#planet-join').waitFor({state:'hidden'});
@@ -348,7 +349,7 @@ try{
  await teacher.locator('#planet-rules-toggle').click();
  assert.equal(await teacher.locator('#planet-rules-editor').isVisible(),false);
  await walkNear(student,p,{x:600,y:150,radius:80});
- await student.locator('#world').focus();await student.keyboard.press('e');
+ await student.locator('#world').focus();await student.keyboard.press('f');
  await student.locator('#rules-edit-dialog').waitFor({state:'visible'});
  await student.locator('#rules-edit-input').fill('줄을 서지 않으면 경고를 받아요\n급식 도구는 제자리에');
  await student.locator('#rules-edit-save').click();await student.locator('#rules-edit-dialog').waitFor({state:'hidden'});
@@ -492,7 +493,7 @@ try{
  const rosterBeforeTravel=(await teacher.locator('#player-count').innerText()).trim();
  await walkNear(student,p,{x:streetGate.x,y:streetGate.y,radius:streetGate.radius});
  await student.locator('#interact-prompt').filter({hasText:'오색별빛 쉼터로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#map-caption').filter({hasText:'오색별빛 쉼터'}).waitFor({state:'attached'});
  assert.equal(p.mapId,STREET_ID);
  await student.locator('#planet-new').waitFor({state:'hidden'});
@@ -518,7 +519,7 @@ try{
  await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#shop-dialog').waitFor({state:'visible'});
  await student.locator('#shop-shards').filter({hasText:'25'}).waitFor({state:'attached'});
  assert.equal(await student.locator('#shop-buy-list li.item').count(),SHOP.items.length);
@@ -585,7 +586,7 @@ try{
  // 새 도착 위치에서는 이미 귀환문 근처일 수 있다. 아래에서 실제 목표와 거리를 확인한다.
  await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
  await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
  assert.equal(p.mapId,PLAZA_ID);
  assert.ok(Math.hypot(p.x-gateBack.arrival.x,p.y-gateBack.arrival.y)<100,
@@ -786,7 +787,7 @@ try{
  await student.locator('#world').focus();
  await walkNear(student,p,{x:streetGate.x,y:streetGate.y,radius:streetGate.radius});
  await student.locator('#interact-prompt').filter({hasText:'오색별빛 쉼터로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#map-caption').filter({hasText:'오색별빛 쉼터'}).waitFor({state:'attached'});
  // updateInteractPrompt() only refreshes on an 80ms interval, so right after travel the prompt can
  // still show the plaza gate's stale text for a moment; wait for it to clear before walkNear (which
@@ -796,7 +797,7 @@ try{
  await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#shop-dialog').waitFor({state:'visible'});
  const snackBuyRow=student.locator('#shop-buy-list li.item').nth(1);
  await snackBuyRow.locator('input.qty').fill('1');
@@ -809,7 +810,7 @@ try{
  // 귀환문 안내가 이미 켜져 있어도 정상이다. 실제 귀환문 거리와 안내를 아래에서 확인한다.
  await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
  await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('e');
+ await student.keyboard.press('f');
  await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
  await openInventoryFromDock(student);await student.locator('#bag-list li').first().locator('.slot-btn').click();
  await student.locator('#bag-detail .use').waitFor({state:'visible'});

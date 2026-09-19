@@ -5,6 +5,7 @@ import {CONSTELLATIONS} from '../shared/constellations.js';
 import {RoomStore} from '../server/rooms.js';
 test('16종 별자리 공격력은 계열 보정이 적용된 명시적 표와 일치하며 미확정 단계는 null이다',()=>{
  const store=new RoomStore(),{room,player}=store.create({title:'공격력 시험',allowedNames:['1']},'t');
+ player.role='student';
  const expected={
   gemini:[1,1,2,3],corvus:[1,1,2,3],aquarius:[1,1,2,3],capricorn:[1,1,2,3],taurus:[1,1,2,3],
   hercules:[1,1,1,2],libra:[1,1,1,2],cetus:[1,1,1,2],leo:[1,1,1,2],

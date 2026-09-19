@@ -36,14 +36,14 @@ try{
   assert.ok(samples.some((sample,index)=>index>0&&Math.hypot(sample.monsterX-samples[0].monsterX,sample.monsterY-samples[0].monsterY)>1));
   check('아바타가 움직이는 동안 몬스터의 화면상 월드 좌표도 계속 갱신');
   const m=monstersOf(room).get('rabbit');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
-  await page.locator('#world').focus();await page.keyboard.press('e');assert.equal(await page.locator('#monster-dialog').count(),0);
-  assert.ok(!(await page.locator('#interact-object').textContent()).includes('토끼자리'));check('몬스터 E 상호작용·정보 메뉴 제거');
+  await page.locator('#world').focus();await page.keyboard.press('f');assert.equal(await page.locator('#monster-dialog').count(),0);
+  assert.ok(!(await page.locator('#interact-object').textContent()).includes('토끼자리'));check('몬스터 F 상호작용·정보 메뉴 제거');
   for(const [level,max] of [[1,1],[2,10],[3,20],[4,30],[5,40]]){p.avatar.level=level;publish();await page.locator('.vitals-hp .vitals-label').filter({hasText:`HP ${max}/${max}`}).waitFor();assert.equal(await page.locator('.vitals-mp progress').getAttribute('max'),String(max));}
   check('LV1~4 HP/MP 1·10·20·30 및 초월체40 서버 수치 표시');
   Object.assign(p.avatar,{level:4,constellationId:'gemini',form:'constellation'});
   Object.assign(m,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});Object.assign(p,{x:m.x-62,y:m.y,facing:{x:1,y:0}});publish();
   await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='18');
-  await page.keyboard.press('w');await page.waitForFunction(()=>document.getElementById('world').dataset.lastSkillDx==='1');assert.equal(m.hp,18);check('제작계 LV4 Q 직접 타격 HP20→18·W 같은 방향 표시와 HP 무소비');
+  await page.keyboard.press('e');await page.waitForFunction(()=>document.getElementById('world').dataset.lastSkillDx==='1');assert.equal(m.hp,18);check('제작계 LV4 Q 직접 타격 HP20→18·E 같은 방향 표시와 HP 무소비');
   await page.setViewportSize({width:390,height:844});await page.locator('#touch-attack').tap();await page.waitForTimeout(100);assert.equal(m.hp,18);await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='16');
   await page.locator('#touch-skill').tap();assert.equal(m.hp,16);
   const hud=await page.locator('#vitals-hud').boundingBox(),dock=await page.locator('#bottom-dock').boundingBox(),hp=await page.locator('.vitals-hp').boundingBox(),mp=await page.locator('.vitals-mp').boundingBox();

@@ -160,7 +160,6 @@ dialog{border:1px solid var(--line);border-radius:22px;padding:28px;max-width:mi
 .student-account-row input{margin-top:5px;height:39px;padding:8px;font-size:13px}
 #account-add{margin:4px 0 8px}
 #shop-shards{font-size:14px;font-weight:700;color:#8a6d2d;margin:0 0 14px}
-.touch-controls{position:absolute;bottom:18px;left:20px;display:grid;grid-template:44px 44px / 44px 44px 44px;gap:5px;touch-action:none}.touch-controls button{padding:0;background:#ffffffe0;color:#655990;border:1px solid #d4cde7;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.up{grid-area:1/2}.left{grid-area:2/1}.down{grid-area:2/2}.right{grid-area:2/3}
 #planet-dialog h3{font-size:14px;margin:14px 0 8px;color:#5d4795}#planet-members{list-style:none;padding:0;margin:8px 0 0;max-height:140px;overflow:auto;font-size:13px;color:#57536d}#planet-members li{padding:4px 2px}#planet-rules-list{margin:0;padding-left:20px;font-size:13px;color:#57536d;line-height:1.8;max-width:100%}#planet-rules-editor{margin-top:12px}#planet-rules-input{margin-bottom:8px}
 #planet-rename-propose-row,#planet-rename-teacher-row{display:flex;gap:8px;align-items:center;margin-top:6px}#planet-rename-propose-row input,#planet-rename-teacher-row input{flex:1;min-width:0;height:40px}#planet-rename-status{font-size:13px}#planet-rename-votes{display:flex;gap:8px;margin-top:8px}#planet-rename-votes button.selected{outline:2px solid var(--purple);outline-offset:2px}#planet-remove{margin-top:14px}
 #planet-colors{border:0;padding:0;margin:14px 0 0;display:flex;flex-wrap:wrap;gap:10px}#planet-colors legend{font-size:13px;font-weight:700;margin-bottom:6px;width:100%;padding:0}.swatch{width:34px;height:34px;border-radius:50%;position:relative;cursor:pointer;padding:0;min-height:0}.swatch input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.swatch span{display:block;width:100%;height:100%;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #d8d3ea;pointer-events:none}.swatch input:checked+span{box-shadow:0 0 0 3px var(--purple)}.swatch input:focus-visible+span{outline:3px solid #a87810;outline-offset:2px}
@@ -209,14 +208,13 @@ body.joined .space-section{height:100vh}
 body.joined .map-wrap{position:fixed;inset:0;width:100vw;height:100vh;min-height:0;border:0;border-radius:0;box-shadow:none;background:#dfeaf8;z-index:0}
 body.joined #world{width:100%;height:100%;max-height:none;min-height:0;aspect-ratio:auto;object-fit:fill}
 body.joined .map-caption{top:18px;left:22px;color:#596987;background:#ffffffa8;border-radius:999px;padding:7px 12px}
-body.joined .touch-controls{bottom:92px;left:18px;z-index:4}
 .bottom-dock{display:none}
 body.joined .bottom-dock{position:fixed;display:flex;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;gap:8px;padding:8px;background:#fff9;border:1px solid #fff;border-radius:24px;box-shadow:0 10px 28px #42527a26;backdrop-filter:blur(12px)}
 .dock-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:64px;min-height:58px;padding:7px 8px;border-radius:18px;background:#f8f5ff;color:#61538f;font-size:11px}
 .dock-button:nth-child(2){background:#fff0f5;color:#a45d83}.dock-button:nth-child(3){background:#fff5dc;color:#9b7333}.dock-button:nth-child(4){background:#e8f7f3;color:#397e78}.dock-button:nth-child(5){background:#eaf0ff;color:#526da1}
 .dock-button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.dock-button #unread-count{position:absolute;top:3px;right:7px;min-width:17px;padding:2px 4px;border-radius:99px;background:#d95c75;color:white;font-size:10px;font-weight:800}
 dialog{background:#fffdfd;box-shadow:0 22px 70px #41527436;max-height:calc(100vh - 28px);overflow:auto}dialog .panel{box-shadow:none;border:0;padding:0;background:transparent}.chat-routing{padding:0 0 8px}.chat-routing label{margin-top:0}.chat-routing{border-bottom:1px solid var(--line);margin-bottom:8px}.chat-routing select{margin-bottom:6px}.chat-routing #chat-recipient{display:none}.dialog-actions{position:relative}
-@media(max-width:520px){body.joined .touch-controls{bottom:92px;left:10px}.bottom-dock{gap:3px}.dock-button{width:58px}.dialog-actions{margin-top:18px}dialog{padding:20px;max-width:calc(100vw - 20px)}}
+@media(max-width:520px){.bottom-dock{gap:3px}.dock-button{width:58px}.dialog-actions{margin-top:18px}dialog{padding:20px;max-width:calc(100vw - 20px)}}
 /* 공통 그림책 스타일. 폰트 파일도 이 서버에서 제공해 학생 접속 시 외부 폰트 요청이 없습니다. */
 @font-face{font-family:Jua;src:url('/assets/fonts/Jua-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
 body,button,input,select,textarea{font-family:Jua,'Malgun Gothic',sans-serif}
@@ -283,7 +281,6 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 @media(max-width:390px){body.joined:not(.placing) #world-navigation{width:150px;padding:9px;gap:5px}#world-navigation #map-overview{font-size:13px;padding:7px 6px}#minimap-title{font-size:11px}}
 
 /* 요청046 추가: 방향 패드·상호작용·하단 독을 같은 하단 기준선에 맞춥니다. */
-body.joined .touch-controls{bottom:max(14px,env(safe-area-inset-bottom));left:18px;z-index:21}
 body.joined #interact-prompt:not([hidden]){position:fixed;left:0;top:0;bottom:auto;transform:none;will-change:transform;z-index:7;max-width:min(220px,calc(100vw - 16px));padding:8px 14px;border-radius:16px;white-space:normal;text-align:center;font-size:15px}
 body.joined #interact-prompt small{display:block;font-size:11px;color:#857396;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
 body.joined #interact-prompt span{display:block;white-space:nowrap}
@@ -297,46 +294,33 @@ body.joined #interior-decorate:not([hidden]){position:fixed;left:0;top:0;z-index
 .interior-decor-choice input{flex:0 0 auto;width:16px;height:16px;margin:0;padding:0}
 .interior-decor-swatch{flex:0 0 auto;width:17px;height:17px;border:1px solid #9d94a6;border-radius:50%}
 #interior-decor-error{color:#a33e5b}
-@media(max-width:520px){body.joined .touch-controls{left:10px;bottom:max(14px,env(safe-area-inset-bottom))}}
 @media(max-width:390px){
-  body.joined .touch-controls{left:10px;grid-template:30px 30px / 30px 30px 30px;gap:3px}
-  body.joined .touch-controls button{width:30px;height:30px;min-height:30px;font-size:14px}
   body.joined .bottom-dock{left:auto;right:8px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;gap:3px;padding:6px}
   body.joined .dock-button{width:40px;min-height:43px;padding:4px 3px;border-radius:13px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
 }
 
-/* 모바일 조이스틱은 입장 후에만 표시합니다. */
+/* 모바일 조작은 입장 후에만 표시합니다. 각 조작을 고정해 하단 메뉴와 독립적으로 배치합니다. */
 #mobile-controls{display:none}
-body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;flex-direction:column;align-items:center;gap:8px;right:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:21;touch-action:none}
-.combat-buttons{display:flex;gap:8px;width:min(124px,100%);justify-content:center}
-.combat-buttons button{width:56px;height:56px;min-width:56px;padding:0;border:2px solid #f1b7ae;border-radius:50%;background:#fff0e9;color:#865b63;box-shadow:0 6px 14px #42527a26;font-size:14px;font-weight:800;line-height:1.1}
+body.joined:not(.placing) #mobile-controls{display:contents}
+.combat-buttons{position:fixed;left:18px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 122px);display:flex;gap:8px;width:176px;align-items:center;z-index:21;touch-action:none}
+.combat-buttons button{width:84px;height:84px;min-width:84px;padding:0;border:2px solid #f1b7ae;border-radius:50%;background:#fff0e9;color:#865b63;box-shadow:0 6px 14px #42527a26;font-size:16px;font-weight:800;line-height:1.1}
 .combat-buttons button:nth-child(2){border-color:#b9c8ee;background:#eef3ff;color:#5f6f9d}
-.combat-buttons button span{display:block;font-size:10px;font-weight:700;margin-top:2px}
-#joystick{position:relative;width:76px;height:76px;flex:0 0 76px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none}
-#joystick-knob{position:absolute;left:50%;top:50%;width:32px;height:32px;border:2px solid #8b7dbb;background:#e8e0ff;border-radius:50%;box-shadow:0 3px 8px #62548b33;pointer-events:none;transform:translate(-50%,-50%)}
-#touch-interact{position:static;transform:none;min-width:52px;max-width:130px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.combat-buttons button span{display:block;font-size:12px;font-weight:700;margin-top:3px}
+#joystick{position:fixed;left:calc((var(--dock-right, 50vw) + 100vw) / 2 - 57px);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 64px);width:114px;height:114px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none;z-index:21}
+#joystick-knob{position:absolute;left:50%;top:50%;width:48px;height:48px;border:2px solid #8b7dbb;background:#e8e0ff;border-radius:50%;box-shadow:0 3px 8px #62548b33;pointer-events:none;transform:translate(-50%,-50%)}
+#touch-interact{position:fixed;top:auto;right:auto;left:18px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 8px);transform:none!important;box-sizing:border-box;min-width:84px;max-width:84px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:21}
 #touch-interact:disabled{opacity:.55;cursor:default}
-@media(max-width:390px){
-  body.joined:not(.placing) #mobile-controls{right:8px;gap:5px}
-  #joystick{width:64px;height:64px;flex-basis:64px}
-  #joystick-knob{width:27px;height:27px}
-  #touch-interact{min-width:42px;max-width:54px;padding:6px 7px;font-size:11px}
-  #touch-interact span{display:none}
-}
-
 @media(max-width:520px){
   body.joined:not(.placing) .bottom-dock{left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:2px;padding:4px}
   body.joined .dock-button{width:34px;min-height:43px;padding:4px 2px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
-  body.joined:not(.placing) #mobile-controls{right:8px;bottom:max(14px,env(safe-area-inset-bottom));gap:4px}
-  .combat-buttons{flex-direction:column;width:64px;gap:4px}
-  .combat-buttons button{width:52px;height:52px;min-width:52px}
+  .combat-buttons{left:8px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 176px)}
+  #touch-interact{top:auto;right:auto;left:8px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 64px)}
+  #joystick{left:min(calc((var(--dock-right, 50vw) + 100vw) / 2 - 57px),calc(100vw - 122px));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 176px)}
 }
-@media(max-width:390px){
-  body.joined:not(.placing) .bottom-dock{left:50%;right:auto;transform:translateX(-50%)}
-  body.joined .dock-button{width:34px}
-  body.joined:not(.placing) #mobile-controls{right:8px}
+@media (min-width:521px) and (max-width:800px){
+  body.joined:not(.placing) .bottom-dock{left:calc(50% - 40px)}
 }
 #department-work-dialog{width:min(660px,94vw);max-height:88dvh;overflow:auto;color:var(--ink,#615276)}
 .department-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.department-heading h2{margin:0}

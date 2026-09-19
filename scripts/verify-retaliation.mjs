@@ -21,7 +21,11 @@ try{
  await page.locator('#dock-avatar').click();assert.equal(await page.locator('#self-defense-power').textContent(),'방어력 · 0');await page.keyboard.press('Escape');
  await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.lastMonsterDamage==='2');
  await page.waitForFunction(()=>document.querySelector('.vitals-hp .vitals-label').textContent!=='HP 10/10');assert.ok(ensureVitals(p).hp<=8);assert.equal(m.targetId,p.id);check('Q 후 추적·반격2·실시간 HP 감소·방어력0 표시');
- await page.keyboard.down('ArrowLeft');await page.waitForTimeout(300);await page.keyboard.up('ArrowLeft');await page.waitForTimeout(100);
+ // 부하가 있어도 실제로100px 도망간 뒤 추적을 판정합니다. 짧은 고정 대기는 이동 전 끝날 수 있습니다.
+ const escapeX=p.x;await page.keyboard.down('ArrowLeft');
+ try{for(let i=0;i<40&&p.x>escapeX-100;i++)await page.waitForTimeout(50);assert.ok(p.x<=escapeX-100,'추적 검사 전 실제 이동 확인');}
+ finally{await page.keyboard.up('ArrowLeft');}
+ await page.waitForTimeout(100);
  const mx=m.x,hp=ensureVitals(p).hp;await page.waitForTimeout(350);assert.ok(m.x<mx);assert.equal(ensureVitals(p).hp,hp);check('도망간 방향으로 추격·근접 밖에서는 피해 없음');
  const guardian=await connect(),special=await connect(),gj=await call(guardian,'room:join',{code:room.code,nickname:'수호친구'}),sj=await call(special,'room:join',{code:room.code,nickname:'특수친구'});
  const gp=room.players.get(gj.selfId),sp=room.players.get(sj.selfId);
@@ -48,9 +52,9 @@ try{
  await page.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 10/10'}).waitFor();assert.equal(p.mapId,PLAZA_ID);assert.equal(p.starShards,0);check('3초 뒤 광장 복귀·HP/MP 회복·재화 무차감');
  // 같은 레벨에서 계열에 따른 실제 서버 표시를 비교합니다.
  p.avatar.level=5;
- for(const [id,defense] of [['gemini',2],['aquarius',2],['sagittarius',3],['aries',3],['leo',4]]){
+ for(const [id,defense] of [['gemini',2],['aquarius',2],['sagittarius',2],['aries',3],['leo',4]]){
    p.avatar.constellationId=id;publish();await page.locator('#dock-avatar').click();await page.waitForFunction(n=>document.getElementById('self-defense-power').textContent==='방어력 · '+n,defense);await page.keyboard.press('Escape');
  }
- await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 40/40'}).waitFor();check('LV5초월체 HP40·제작/생산2·공격/특수3·수호4 방어 표시');
+ await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 40/40'}).waitFor();check('LV5초월체 HP40·제작/생산/공격2·특수3·수호4 방어 표시');
  assert.deepEqual(errors,[]);await writeFile('.local/retaliation-result.json',JSON.stringify({checks,errors},null,2));
 }finally{sockets.forEach(s=>s.disconnect());await browser.close();await game.close();}

@@ -1,5 +1,6 @@
 import express from 'express';
 import {attackPowerOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
+import {skillEffectOf} from '../shared/skill-effects.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -259,7 +260,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
     action('combat:attack',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId);
+      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');
@@ -280,10 +281,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);
       const direction=player.facing||{x:0,y:1};
-      const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs};
+      const effect=skillEffectOf(player.avatar.constellationId,player.avatar.level);
+      const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,effectId:effect?.id||null,durationMs:effect?.durationMs??ATTACK_VISUAL.durationMs};
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       // 전투 스킬은 방향 표시만 제공합니다. 주간 카드 능력·마나·HP를 소비하지 않습니다.
-      return {ready:false,direction};
+      return {ready:false,direction,effectId:effect?.id||null};
     },false);
     action('monster:info',()=>{ensure(false,'몬스터는 Q 공격키로 직접 공격해주세요.');},false);
     const enter=session=>{

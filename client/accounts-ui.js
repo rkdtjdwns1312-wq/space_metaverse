@@ -4,6 +4,7 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   // 이 교사 화면에서 발급한 비밀번호만 잠시 보관하고, 이름은 서버 명단에서 가져옵니다.
   const issuedPins=new Map();
   const ready=fetch('/api/public-config').then(r=>r.json()).then(config=>{
+    $('student-hours-note').textContent=config.studentHours===false?'테스트 기간 · 시간 제한 없이 접속할 수 있어요.':'학생 이용 시간 07:00~21:00 · 한국 시간';
     managed=config.managedAccounts;
     $('student-setup-fields').hidden=!managed;
     $('student-setup-fields').disabled=!managed;

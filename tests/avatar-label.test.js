@@ -36,7 +36,7 @@ test('avatarLabel handles empty constellation IDs and legacy constellations', ()
 
 test('avatarLabel keeps teacher and legacy player names intact', () => {
   assert.deepEqual(avatarLabel({ role: 'teacher', nickname: '담임 · 나', avatar: { level: 5 } }), {
-    name: '담임 · 나', detail: '선생님'
+    name: '선생님', detail: 'LV6 별의수호자'
   });
   assert.deepEqual(avatarLabel({ nickname: 42, avatar: { level: 1 } }), {
     name: '42', detail: 'LV1 소행성'

@@ -15,12 +15,12 @@ export async function runningClassroom(port) {
   return health;
 }
 
-export async function startLocalClassroom({port,dataDir,teacherKey}) {
+export async function startLocalClassroom({port,dataDir,teacherKey,studentHours=true}) {
   const existing=await runningClassroom(port);
   if(existing)return {existing};
   // ESRCH(실제 종료) 확인이 된 소유자의 잠금만 해제합니다. 살아 있거나 알 수 없으면 실패합니다.
   const recovered=unlockStoppedStore(dataDir);
-  const game=createClassroomServer({teacherKey,dataDir});
+  const game=createClassroomServer({teacherKey,dataDir,studentHours});
   try{await game.listen(port,'127.0.0.1');}
   catch(error){await game.close();if(error.code==='EADDRINUSE')throw new Error('교실 시작 중 다른 서버가 같은 포트를 사용했어요. 다시 실행해주세요.');throw error;}
   return {game,recovered};

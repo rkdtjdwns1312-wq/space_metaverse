@@ -1,3 +1,4 @@
+import {verifyControlsLayout} from './controls-layout-check.mjs';
 // 지도·터치 조작·카메라 회귀 검증. 실제 학급과 분리된 메모리 서버만 사용합니다.
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
@@ -46,7 +47,7 @@ try{
  await touch('touchStart',[{...start,id:1}]);await touch('touchMove',[{x:start.x-20,y:start.y,id:1}]);await page.waitForTimeout(100);await touch('touchCancel',[]);await page.waitForTimeout(100);assert.equal(p.input.x,0);check('실제 터치 조이스틱 이동·손 떼기·터치 취소 후 정지');
  const gate=MAP.objects.find(o=>o.target===GARDEN_ID);Object.assign(p,{x:gate.x,y:gate.y,mapId:PLAZA_ID});publish();
  await page.waitForFunction(()=>!document.getElementById('touch-interact').disabled);await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:'낙원의 갈림길'}).waitFor();assert.equal(p.mapId,GARDEN_ID);
- await page.locator('#map-overview').click();assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),GARDEN_ID);check('오른쪽 터치 E로 실제 맵 이동, 미니맵·전체 지도 현위치 변경');
+ await page.locator('#map-overview').click();assert.equal(await page.locator('[aria-current="location"]').getAttribute('data-map-id'),GARDEN_ID);check('왼쪽 터치 F로 실제 맵 이동, 미니맵·전체 지도 현위치 변경');
  await page.locator('#universe-close').click();
  // 현재 맵의 문에서 이동하고 서버 응답 뒤 목적지 표시까지 확인합니다.
  const path=[GARDEN_ID,...PARADISE_MAPS.map(m=>m.id),STAR_PARADISE.id,...MOON_PARADISE_MAPS.map(m=>m.id).reverse(),GARDEN_ID,PLAZA_ID];
@@ -54,13 +55,13 @@ try{
    const gate=STATIC_MAPS[p.mapId].objects.find(o=>o.target===to);assert.ok(gate,p.mapId+' -> '+to);
    Object.assign(p,{x:gate.x,y:gate.y});publish();
    await page.locator('#interact-prompt').filter({hasText:gate.name}).waitFor({state:'visible'});
-   if(index%2){await page.locator('#world').focus();await page.keyboard.press('e');}else await page.locator('#touch-interact').tap();
+   if(index%2){await page.locator('#world').focus();await page.keyboard.press('f');}else await page.locator('#touch-interact').tap();
    await page.waitForFunction(name=>document.getElementById('minimap-title').textContent===name,STATIC_MAPS[to].name);assert.equal(p.mapId,to);
  }
  // 갈림길에서 한 바퀴, 광장에서 반대 방향 한 바퀴로 모든 연결 문을 확인합니다.
  for(const [i,to] of path.slice(1).entries())await travel(to,i);
  for(const [i,to] of path.slice(0,-1).reverse().entries())await travel(to,i);
- check('태양1·2·3→별들의 낙원→달3·2·1 전체 경로 E/터치 왕복');
+ check('태양1·2·3→별들의 낙원→달3·2·1 전체 경로 F/터치 왕복');
  await page.locator('#map-overview').click();
  const grid=async id=>page.locator('#universe-links [data-map-id="'+id+'"]').evaluate(e=>[Number(e.style.gridRow),Number(e.style.gridColumn)]);
  assert.deepEqual(await grid(STAR_PARADISE.id),[4,1]);assert.deepEqual(await grid(PARADISE_MAPS[2].id),[3,1]);assert.deepEqual(await grid(MOON_PARADISE_MAPS[2].id),[5,1]);
@@ -75,14 +76,8 @@ try{
  p.role='teacher';p.avatar.level=1;publish();check('LV1 학생에게 입장 불가 안내, LV2부터 실제 입장');
  const planet=addPlanet(room,{name:'독서행성',description:'',x:700,y:400,color:PLANET_COLORS[0],rules:[],templateId:'reading'});Object.assign(p,{mapId:interiorIdOf(planet.id),x:600,y:560});publish();
  await page.locator('#map-overview').click();await page.locator('#universe-current').filter({hasText:'독서행성'}).waitFor();assert.equal(await page.locator('#universe-planets [aria-current="location"]').count(),1);await page.locator('#universe-close').click();check('동적으로 만든 부서행성 내부에서도 현위치 표시');
- for(const width of [1440,768,390]){
-   await page.setViewportSize({width,height:844});await page.waitForTimeout(100);
-   const boxes=await Promise.all(['#touch-controls','.bottom-dock','#mobile-controls'].map(id=>page.locator(id).boundingBox()));
-   const overlap=(a,b)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
-   for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)assert.ok(!overlap(boxes[i],boxes[j]),'controls overlap at '+width);
-   assert.ok(Math.abs(boxes[0].y+boxes[0].height-boxes[1].y-boxes[1].height)<2);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- }
- await page.screenshot({path:'.local/navigation-mobile.png'});await page.locator('#map-overview').click();await page.locator('#universe-close').waitFor({state:'visible'});assert.ok(await page.locator('#universe-links').evaluate(e=>e.scrollWidth<=e.clientWidth+2));await page.screenshot({path:'.local/navigation-atlas.png'});check('1440·768·390px 하단 조작 충돌 없음·같은 높이·지도 닫기 접근');
+ for(const width of [1440,768,390])await verifyControlsLayout(page,width);
+ await page.screenshot({path:'.local/navigation-mobile.png'});await page.locator('#map-overview').click();await page.locator('#universe-close').waitFor({state:'visible'});assert.ok(await page.locator('#universe-links').evaluate(e=>e.scrollWidth<=e.clientWidth+2));await page.screenshot({path:'.local/navigation-atlas.png'});check('1440·768·390px 하단 조작 충돌 없음·확대 크기·지도 닫기 접근');
  await page.locator('#universe-close').click();await page.setViewportSize({width:1440,height:960});
  for(const id of ['pillar-notice','pillar-timetable','pillar-effects','pillar-weekly']){
    const pillar=MAP.objects.find(o=>o.id===id);Object.assign(p,{mapId:PLAZA_ID,x:pillar.x+65,y:pillar.y});publish();
@@ -92,7 +87,7 @@ try{
    else await page.locator('#temple-content').filter({hasText:/없어요/}).waitFor();
    await page.locator('#temple-close').click();
  }
- await page.screenshot({path:'.local/navigation-desktop.png'});check('기둥 4개 실제 E 상호작용·알림장/시간표 저장·목록 창 닫기');
+ await page.screenshot({path:'.local/navigation-desktop.png'});check('기둥 4개 실제 F 상호작용·알림장/시간표 저장·목록 창 닫기');
  const valleyGate=MAP.objects.find(o=>o.target===VALLEY_ID);Object.assign(p,{mapId:PLAZA_ID,x:valleyGate.x,y:valleyGate.y});publish();
  await page.locator('#interact-prompt').filter({hasText:'은하수계곡'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:'은하수계곡'}).waitFor();assert.equal(p.mapId,VALLEY_ID);
  await page.screenshot({path:'.local/map-valley.png'});const valleyPicture=await page.locator('#world').evaluate(c=>c.toDataURL());await page.waitForTimeout(250);assert.notEqual(await page.locator('#world').evaluate(c=>c.toDataURL()),valleyPicture);

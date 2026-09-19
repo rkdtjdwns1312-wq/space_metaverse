@@ -1,9 +1,10 @@
 import { constellationOf } from './constellations.js';
 import { PROGRESSION } from './config.js';
+import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
 
 export function avatarLabel(player) {
   const name = String(player?.nickname ?? '');
-  if (player?.role === 'teacher') return { name, detail: '선생님' };
+  if (isTeacher(player)) return { name: TEACHER_AVATAR.nickname, detail: 'LV6 '+TEACHER_AVATAR.name };
 
   const avatar = player?.avatar ?? {};
   const level = Number.isInteger(avatar.level) ? Math.min(PROGRESSION.maxLevel,avatar.level) : 1;

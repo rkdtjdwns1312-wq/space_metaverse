@@ -18,12 +18,18 @@ function fixture(id='rabbit'){
 }
 test('16종 모든 단계 기본 방어력+계열 보정·0하한, 피해1하한, 위조된 방어력 무시',()=>{
  for(const c of CONSTELLATIONS)for(const level of [1,2,3,4,5]){
-   const expected=level===1?0:Math.max(0,[0,0,1,2,3][level-1]+({'제작계':-1,'생산계':-1,'수호계':1}[c.type]||0));
+   const expected=level===1?0:Math.max(0,[0,0,1,2,3][level-1]+({'제작계':-1,'생산계':-1,'공격계':-1,'수호계':1}[c.type]||0));
    assert.equal(defensePowerOf(level,c.id),expected);
    const p=player('p',c.id,level);p.combat={defensePower:999};
    const result=damagePlayer(p,2,0);assert.equal(result.damage,Math.max(1,2-expected));
  }
  assert.equal(damageAfterDefense(5,0),5);assert.equal(damageAfterDefense(5,5),1);assert.equal(damageAfterDefense(5,9),1);
+});
+test('공격계3종의 LV2~5 방어0/0/1/2와 실제 몬스터 공격5의 피해5/5/4/3',()=>{
+ for(const id of ['ophiuchus','sagittarius','corona-borealis'])for(const [level,defense,damage] of [[2,0,5],[3,0,5],[4,1,4],[5,2,3]]){
+   const p=player('p',id,level);assert.equal(defensePowerOf(level,id),defense);
+   const before=playerVitals(p).hp.current;assert.equal(damagePlayer(p,5,0).damage,damage);assert.equal(playerVitals(p).hp.current,before-damage);
+ }
 });
 test('단계별 이동량·방향 주기·공격 간격이 정확히1/1.3/1.69배다',()=>{
  for(const [id,power] of [['rabbit',2],['lion',3],['star-keeper',5]]){

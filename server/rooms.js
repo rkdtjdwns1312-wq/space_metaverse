@@ -7,6 +7,7 @@ import { spawnPosition, addPlanet } from './world.js';
 import {monsterViews} from './monsters.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
+import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -75,7 +76,7 @@ export class RoomStore {
   add(room,name,role,socketId) {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
-      avatar:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
+      avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
       effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[] };
     room.players.set(p.id,p);
@@ -112,7 +113,7 @@ export class RoomStore {
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-          effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId)},vitals:playerVitals(p)};
+          effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
         if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}

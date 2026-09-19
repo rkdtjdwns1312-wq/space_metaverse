@@ -17,11 +17,11 @@ test('garden uses its own map size and collision boundaries, not the enlarged pl
  assert.equal(isFree(room,GARDEN.width+20,400,null,GARDEN_ID),false);
  assert.equal(isFree(room,1000,400,null,GARDEN_ID),true);
 });
-test('all entrants start as level-one asteroids; identities and secrets are separated',()=>{
+test('students start as level-one asteroids, teacher is a guardian; identities and secrets are separated',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'teacher');
  const {player:student}=store.join({code:room.code,nickname:'1',role:'teacher',level:5,x:9999},'student');
  assert.equal(student.role,'student');assert.equal(student.avatar.level,1);assert.equal(student.avatar.constellationId,null);
- assert.equal(student.avatar.form,'asteroid');assert.equal(player.avatar.form,'asteroid');assert.equal(student.starShards,0);
+ assert.equal(student.avatar.form,'asteroid');assert.equal(player.avatar.form,'star-guardian');assert.equal(player.avatar.level,6);assert.equal(student.starShards,0);
  assert.deepEqual(student.inventory,[]);
  const snapshot=JSON.stringify(store.snapshot(room));assert.ok(!snapshot.includes(student.token));assert.ok(!snapshot.includes('allowedNames'));
  assert.throws(()=>store.join({code:room.code,nickname:'1'},'other'));

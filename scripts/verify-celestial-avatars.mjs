@@ -22,7 +22,7 @@ try{
  for(const c of CONSTELLATIONS){
    Object.assign(p,{mapId:VALLEY_ID,x:star.x+star.radius+22,y:star.y});Object.assign(p.avatar,{level:4,xp:30,constellationId:c.id,form:'constellation'});publish();
    for(const level of [5]){
-     await page.locator('#world').focus();await page.locator('#interact-prompt').filter({hasText:'진화의 별'}).waitFor();await page.keyboard.press('e');await page.locator('#evolution-evolve').click();await page.locator('#evolution-yes').click();
+     await page.locator('#world').focus();await page.locator('#interact-prompt').filter({hasText:'진화의 별'}).waitFor();await page.keyboard.press('f');await page.locator('#evolution-evolve').click();await page.locator('#evolution-yes').click();
      await page.waitForFunction(level=>document.getElementById('evolution-summary').textContent.includes(level===5?'초월체':'LV'+level),level);
      assert.equal(p.avatar.level,level);assert.equal(p.avatar.xp,0);assert.equal(p.avatar.constellationId,c.id);
      await page.locator('#evolution-header-close').click();await page.locator('#dock-avatar').click();

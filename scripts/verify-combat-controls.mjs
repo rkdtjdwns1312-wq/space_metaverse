@@ -1,3 +1,4 @@
+import {verifyControlsLayout} from './controls-layout-check.mjs';
 import {chromium} from 'playwright';
 import {io} from 'socket.io-client';
 import assert from 'node:assert/strict';
@@ -25,9 +26,15 @@ try{
  check('5계열·LV2~5 공격력 표시 고정표 20값 검증');
  const before={x:p.x,y:p.y,shards:p.starShards,used:p.abilityState.usedWeek};
  await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)>0);assert.equal(await page.locator('#world').getAttribute('data-last-attack-dy'),'1');
- await page.keyboard.down('w');await page.waitForTimeout(350);await page.keyboard.up('w');await page.locator('#toast').filter({hasText:'전투 스킬은 준비 중'}).waitFor();
- assert.equal(p.x,before.x);assert.equal(p.y,before.y);assert.equal(p.starShards,before.shards);assert.equal(p.abilityState.usedWeek,before.used);check('Q 타격 표시·W 준비 안내, W 이동/보상/주간 능력 소비 없음');
+ await page.keyboard.down('e');await page.waitForTimeout(350);await page.keyboard.up('e');await page.locator('#toast').filter({hasText:'전투 스킬은 준비 중'}).waitFor();
+ assert.equal(p.x,before.x);assert.equal(p.y,before.y);assert.equal(p.starShards,before.shards);assert.equal(p.abilityState.usedWeek,before.used);check('Q 타격 표시·E 준비 안내, E 이동/보상/주간 능력 소비 없음');
  await page.keyboard.down('ArrowDown');await page.waitForTimeout(180);await page.keyboard.up('ArrowDown');assert.ok(p.y>before.y);check('방향키 이동 유지');
+ for(const [key,axis,sign] of [['w','y',-1],['a','x',-1],['s','y',1],['d','x',1]]){
+   const start=p[axis];await page.keyboard.down(key);
+   try{for(let i=0;i<30&&(p[axis]-start)*sign<30;i++)await page.waitForTimeout(50);assert.ok((p[axis]-start)*sign>=30,key+' 이동');}
+   finally{await page.keyboard.up(key);}
+ }
+ check('WASD 네 방향 실제 이동·스킬키와 충돌 없음');
  // 시간이 지난 뒤 터치해 키보드와 같은 안내를 확인합니다.
  await page.waitForTimeout(750);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)>0);await page.locator('#touch-skill').tap();await page.locator('#toast').filter({hasText:'전투 스킬'}).waitFor();check('공격/스킬 원형 터치 버튼 연결');
  await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)===0);
@@ -39,19 +46,12 @@ try{
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[center]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...center,x:center.x+25}]});await page.waitForTimeout(180);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(1050);
  await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.lastAttackDx==='1');check('터치 조이스틱 마지막 오른쪽 방향과 터치 공격 연결');
  const pillar=MAP.objects.find(o=>o.id==='pillar-notice');Object.assign(p,{x:pillar.x+65,y:pillar.y});publish();
- await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor();await page.locator('#world').focus();await page.keyboard.press('e');await page.locator('#temple-dialog').waitFor({state:'visible'});
- const message=await page.locator('#toast').textContent();await page.keyboard.press('q');await page.keyboard.press('w');assert.equal(await page.locator('#toast').textContent(),message);await page.locator('#temple-close').click();check('E 상호작용 유지·열린 창에서 전투키 차단');
- await page.locator('#dock-chat').click();await page.locator('#open-chat').click();await page.locator('#chat-input').fill('');await page.locator('#chat-input').pressSequentially('qw');assert.equal(await page.locator('#chat-input').inputValue(),'qw');assert.equal(await page.locator('#toast').textContent(),message);await page.keyboard.press('Escape');
+ await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor();await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#temple-dialog').waitFor({state:'visible'});
+ const message=await page.locator('#toast').textContent();await page.keyboard.press('q');await page.keyboard.press('e');assert.equal(await page.locator('#toast').textContent(),message);await page.locator('#temple-close').click();check('F 상호작용 유지·열린 창에서 전투키 차단');
+ await page.locator('#dock-chat').click();await page.locator('#open-chat').click();await page.locator('#chat-input').fill('');await page.locator('#chat-input').pressSequentially('wasdqef');assert.equal(await page.locator('#chat-input').inputValue(),'wasdqef');assert.equal(await page.locator('#toast').textContent(),message);await page.keyboard.press('Escape');
  // 대화창은 닫기 버튼으로 닫습니다.
- for(let i=0;i<4&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');check('채팅 입력의 Q/W는 글자로 입력');
- for(const width of [1440,768,390]){
-   await page.setViewportSize({width,height:844});
-   const ids=['#touch-controls','.bottom-dock','#mobile-controls'],boxes=await Promise.all(ids.map(id=>page.locator(id).boundingBox()));
-   const overlap=(a,b)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
-   for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)assert.ok(!overlap(boxes[i],boxes[j]),'control overlap '+width);
-   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-   for(const id of ['#touch-attack','#touch-skill']){const box=await page.locator(id).boundingBox();assert.ok(Math.abs(box.width-box.height)<2&&box.width>=48);}
- }
+ for(let i=0;i<4&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');check('채팅 입력의 WASD/Q/E/F는 글자로 입력');
+ for(const width of [1440,768,390])await verifyControlsLayout(page,width);
  await page.screenshot({path:'.local/combat-mobile.png'});check('1440/768/390px 원형 버튼·조이스틱·하단 메뉴 겹침 없음');
  assert.deepEqual(errors,[]);await writeFile('.local/combat-controls-result.json',JSON.stringify({checks,errors},null,2));
 }catch(e){for(const c of browser.contexts())for(const p of c.pages())await p.screenshot({path:'.local/combat-failure.png'}).catch(()=>{});throw e;}

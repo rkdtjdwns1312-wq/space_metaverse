@@ -4,10 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { spawn } from 'node:child_process';
 import {startLocalClassroom} from './local-state.mjs';
+import {studentHoursFromEnv} from '../server/access-hours.js';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
 if(!existsSync('.env'))writeFileSync('.env','TEACHER_KEY='+randomBytes(32).toString('hex')+'\nPORT=3000\nHOST=127.0.0.1\nPUBLIC_ORIGIN=\n',{mode:0o600});
 process.loadEnvFile('.env');
+const studentHours=studentHoursFromEnv();
+const hoursNotice=studentHours?'학생 이용 시간: 한국 시간 07:00~21:00':'테스트 기간 · 학생은 시간 제한 없이 접속할 수 있어요.';
 const secret=process.env.TEACHER_KEY;
 if(!secret||secret.length<16||secret.startsWith('replace-'))throw new Error('Please set a private TEACHER_KEY in .env (at least 16 characters).');
 const port=Number(process.env.PORT || 3000);
@@ -22,7 +25,7 @@ function openTeacher(target){
  }else console.log('교사 화면: '+address);
 }
 let started;
-try{started=await startLocalClassroom({port,teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes'});}
+try{started=await startLocalClassroom({port,teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes',studentHours});}
 catch(error){console.error('교실을 시작하지 못했어요: '+error.message);process.exit(1);}
 const {existing}=started;
 if(existing){
@@ -50,10 +53,10 @@ if(process.argv.includes('--public')){
     const {startTunnel}=await import('./tunnel.mjs');
     tunnel=await startTunnel({port,onReady:url=>{
       game.setPublicOrigin(url);
-      writeFileSync('.local/student-link.txt',url+'\n학생 이용 시간: 한국 시간 07:00~21:00\n연결 프로그램을 다시 시작하면 주소가 바뀝니다.\n');
+      writeFileSync('.local/student-link.txt',url+'\n'+hoursNotice+'\n연결 프로그램을 다시 시작하면 주소가 바뀝니다.\n');
       console.log('공개 접속 주소: '+url);
       console.log('교사 화면의 메뉴 > 학생 입장 링크 복사를 눌러 교실 정보가 포함된 링크를 배부하세요.');
-      console.log('학생 이용 시간: 한국 시간 오전 7시 ~ 오후 9시 전');
+      console.log(hoursNotice);
       console.log('무료 테스트 주소입니다. 재시작하면 새 주소를 알려주세요.');
     }});
     tunnel.child.once('exit',()=>{if(!closing)console.error('외부 접속 연결이 종료되었습니다. 서버를 재시작해 새 주소를 확인해주세요.');});

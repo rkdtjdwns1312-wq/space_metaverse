@@ -1,6 +1,6 @@
 import {MONSTER_TYPES,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
 import {ATTACK_VISUAL} from '../shared/combat.js';
-import {RULES} from '../shared/config.js';
+import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals,damagePlayer} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 
@@ -11,9 +11,12 @@ const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
 // 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
 export function monstersOf(room,now=Date.now()){
   if(!room.monsters)room.monsters=new Map(MONSTER_TYPES.map((type,i)=>{
-    const [x,y]=(type.level===3?largeSpawns:spawns)[i%5];
-    // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×8.
-    const multiplier={1:1,2:2,3:8}[type.level]||1;
+    const map=mapOf(type.mapId,room.planets?.values?.()||[]);
+    const [baseX,baseY]=(type.level===3?largeSpawns:spawns)[i%5];
+    const x=baseX*map.width/1200,y=baseY*map.height/900;
+    // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×4.
+    // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
+    const multiplier={1:1,2:2,3:4}[type.level]||1;
     const radius=MONSTER_RULES.radius*multiplier;
     return [type.id,{id:type.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       hp:MONSTER_HP[type.mapId],maxHp:MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
@@ -90,7 +93,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):MONSTER_RULES.speed*factor*dt;
     const x=m.x+m.dx*travel,y=m.y+m.dy*travel;
     // 문 주변은 비워 두고, 몬스터끼리 같은 자리에 뭉치지 않게 합니다.
-    const blocked=x<Math.max(120,m.radius)||x>1200-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>900-Math.max(190,m.radius)||[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10);
+    const map=mapOf(m.mapId,room.planets?.values?.()||[]);
+    const blocked=x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10);
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
     if(target&&now>=m.nextAttackAt){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);

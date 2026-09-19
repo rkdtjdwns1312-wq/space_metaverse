@@ -21,6 +21,14 @@ import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
+function updateDockRight(){
+  const dock=$('bottom-dock');
+  if(dock)document.documentElement.style.setProperty('--dock-right',dock.getBoundingClientRect().right+'px');
+}
+const dockResizeObserver=new ResizeObserver(updateDockRight);
+dockResizeObserver.observe($('bottom-dock'));
+window.addEventListener('resize',updateDockRight);
+updateDockRight();
 startClassroomClock($('classroom-clock'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
@@ -254,7 +262,7 @@ function updateRoom(value){
     }
     return li;
   }));
-  $('self-name').textContent=me?.nickname||'나의 소행성';
+  $('self-name').textContent=isTeacher?'선생님':me?.nickname||'나의 소행성';
   $('self-attack-power').textContent='공격력 · '+(me?.combat?.attackPower??(me?.avatar.level===1?'LV2부터 사용':'설정 예정'));
   $('self-defense-power').textContent='방어력 · '+(me?.combat?.defensePower??0);
   $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
@@ -264,16 +272,16 @@ function updateRoom(value){
   }
   if(me?.avatar.blackStar)$('self-description').textContent='현재 검은별 상태입니다. 선생님이 해제하면 블랙홀 밖으로 나갈 수 있어요.';
   const myPlanet=me?.departmentId?planetById(me.departmentId):null,myPlanetIcon=templateOf(myPlanet?.templateId)?.icon;
-  $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
+  $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
   $('self-shards').textContent=String(me?.starShards||0);
   $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
-  if(isTeacher)vitals.reset();else vitals.update(me?.vitals);
+  vitals.update(me?.vitals);
   // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
-  $('self-form-name').textContent=isTeacher?'선생님':myLv>=2?(constellationOf(me?.avatar?.constellationId,myLv)?.name||'별자리'):'소행성';
+  $('self-form-name').textContent=isTeacher?'별의수호자':myLv>=2?(constellationOf(me?.avatar?.constellationId,myLv)?.name||'별자리'):'소행성';
   const transcendent=myLv>=PROGRESSION.transcendentLevel;
-  $('self-level').textContent=transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
+  $('self-level').textContent=isTeacher?'LV6':transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
   const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId,myLv)?.type:null;
   $('self-constellation-type').hidden=!constellationType;
   $('self-constellation-type').textContent=constellationType||'';
@@ -288,19 +296,19 @@ function updateRoom(value){
       (ability.mode==='manual'?' · 선생님 확인 후 적용':'')+(myLv>4?' · 능력 규칙은 현재 Lv4 기준':'');
   }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
-  $('self-xp').textContent=transcendent?'최고 단계':xp+' / '+required;
+  $('self-xp').textContent=isTeacher?'교사 전용':transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
-  $('experience-next').textContent=transcendent?'초월체에 도달했어요!':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
+  $('experience-next').textContent=isTeacher?'모든 맵을 관리할 수 있어요.':transcendent?'초월체에 도달했어요!':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
   $('card-foot').textContent=room.title+' · '+room.code;
   $('avatar-card').style.setProperty('--card-accent',isTeacher?'#d2a454':(myPlanet?.color||'#b9a8f0'));
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
   $('avatar-card').classList.toggle('celestial-card',!!abilityConstellation?.celestial);
   $('avatar-card').style.setProperty('--celestial-color',abilityConstellation?.color||'#b9a8f0');
-  $('avatar-portrait').setAttribute('aria-label',myLv>=2?(abilityConstellation?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
+  $('avatar-portrait').setAttribute('aria-label',isTeacher?'별의수호자 아바타 그림':myLv>=2?(abilityConstellation?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
   if(me)renderPortrait($('avatar-portrait'),{...me,deptIcon:myPlanetIcon},me.effects);
   $('hint').textContent=isTeacher
-    ?(inStreet?'별상점 가까이에서 E · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
-    :(inStreet?'별상점 가까이에서 E · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 E로 광장':'행성 가까이에서 E · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
+    ?(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
+    :(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 F로 광장':'행성 가까이에서 F · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
   renderBag(me?.inventory);
   renderMyTasks(me?.tasks||[]);
   $('dock-tasks').hidden=isTeacher;
@@ -343,7 +351,7 @@ function mapCaption(myMapId){
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 낙원의 갈림길 · 위로 태양, 아래로 달, 오른쪽으로 별의 기원';
-  if(['sun-paradise','moon-paradise','star-paradise'].includes(STATIC_MAPS[myMapId]?.theme))return '✦ '+STATIC_MAPS[myMapId].name+' · 길 끝의 문에서 E로 이동해요';
+  if(['sun-paradise','moon-paradise','star-paradise'].includes(STATIC_MAPS[myMapId]?.theme))return '✦ '+STATIC_MAPS[myMapId].name+' · 길 끝의 문에서 F로 이동해요';
   if(STATIC_MAPS[myMapId]?.theme==='star-origin')return '✧ '+STATIC_MAPS[myMapId].name+' · 작은 별들이 반짝이는 우주';
   return '✦ '+(planetById(planetIdOfMap(myMapId))?.name||'행성')+' 안 · 소속 친구들만의 공간';
 }
@@ -853,7 +861,7 @@ function updateInteractPrompt(){
   if(!n){hide();return;}
   const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.name;
   const caption=$('interact-object');
-  if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · E 상호작용하기');}
+  if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · F 상호작용하기');}
   if(prompt.hidden)prompt.hidden=false;
   if(touchButton.disabled)touchButton.disabled=false;
   const point=world.screenPoint(n),width=prompt.offsetWidth,height=prompt.offsetHeight,gap=12;
@@ -878,7 +886,7 @@ function updateInteractPrompt(){
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
 window.addEventListener('keydown',e=>{
-  if(e.code!=='KeyE'||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]')||['INPUT','TEXTAREA','BUTTON'].includes(e.target.tagName))return;
+  if(e.code!=='KeyF'||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]')||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)||e.target.isContentEditable)return;
   e.preventDefault();doInteract();
 });
 function startPlacement(){world.setPlacing(true);
@@ -1053,10 +1061,10 @@ function clearChat(){$('chat-log').replaceChildren();$('chat-empty').hidden=fals
 function enter(result){
   social.reset();selfId=result.selfId;saveToken(result.token);updateRoom(result.room);$('lobby').hidden=true;
   $('menu-dialog').prepend($('connection'));
-  $('room-badge').hidden=false;$('leave').hidden=false;$('touch-controls').hidden=false;$('chat-panel').hidden=false;
+  $('room-badge').hidden=false;$('leave').hidden=false;$('chat-panel').hidden=false;
   $('crew-button').hidden=false;
   social.seed(result.chat?.messages);
-  document.body.classList.add('joined');$('world').focus();$('form-message').textContent='';
+  document.body.classList.add('joined');updateDockRight();$('world').focus();$('form-message').textContent='';
   $('interact-prompt').hidden=true;$('interior-decorate').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
   knownIncomingTradeIds=new Set();tradeDialogSig='';selectedSlotId=null;
@@ -1069,13 +1077,13 @@ function reset(message){
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();document.querySelector('.top-right').append($('connection'));
   stop();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
-  $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('touch-controls').hidden=true;$('chat-panel').hidden=true;
+  $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   $('players').replaceChildren();$('player-count').textContent='0 / 30';$('crew-count').textContent='0 / 30';$('crew-empty').hidden=false;
   clearChat();$('chat-input').value='';updateChatCount();$('chat-feedback').textContent='';$('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
   $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';
-  $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.';
+  $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
   $('self-shards').textContent='0';$('bag-currency').hidden=false;
   statuses.update(null);$('self-attack-power').textContent='공격력 · 설정 예정';
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
@@ -1201,7 +1209,7 @@ $('confirm-leave').onclick=async()=>{
   try{await request('room:leave',{});reset('다음 여행에서 또 만나요.');}
   catch(e){toast(e.message);}finally{$('leave-dialog').close();}
 };
-const keys={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
+const keys={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],KeyW:[0,-1],KeyS:[0,1],KeyA:[-1,0],KeyD:[1,0]};
 function input(){
   if(!selfId||!socket.connected)return;
   let x=touch.x,y=touch.y;for(const code of held){x+=keys[code][0];y+=keys[code][1];}

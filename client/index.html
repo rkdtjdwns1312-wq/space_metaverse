@@ -18,7 +18,7 @@
 <main>
   <section class="space-section" aria-label="우주 광장">
     <div class="map-wrap">
-      <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. 방향키 또는 조이스틱으로 이동하고 Q로 공격, W로 스킬, E로 상호작용해요."></canvas>
+      <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. WASD 또는 방향키·조이스틱으로 이동하고 Q로 공격, E로 스킬, F로 상호작용해요."></canvas>
       <time id="classroom-clock" class="classroom-clock" aria-label="현재 한국 시간"></time>
       <aside id="world-navigation" aria-label="현재 맵 탐색">
         <button id="map-overview" class="secondary" type="button">전체 우주 지도</button>
@@ -27,7 +27,7 @@
         <button id="minimap-toggle" class="secondary" type="button" aria-controls="minimap" aria-expanded="true">맵 닫기</button>
       </aside>
       <span id="map-caption" class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
-      <button id="interact-prompt" class="interact" type="button" hidden><small id="interact-object"></small><span>E 상호작용하기</span></button>
+      <button id="interact-prompt" class="interact" type="button" hidden><small id="interact-object"></small><span>F 상호작용하기</span></button>
       <button id="interior-decorate" class="small secondary" type="button" hidden>🎨 꾸미기</button>
       <div id="lobby" class="lobby">
         <div class="welcome-mark" aria-hidden="true">✦</div><h2>작은 소행성의<br>첫 여행을 시작해요</h2>
@@ -64,32 +64,26 @@
           <button class="primary submit" type="submit" hidden>설정한 교실 생성하기 ✦</button>
         </form>
         <p id="form-message" class="form-message" role="alert"></p>
-        <p class="privacy-note">학생 이용 시간 07:00~21:00 · 한국 시간<br>회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
-      </div>
-      <div class="touch-controls" id="touch-controls" hidden aria-label="터치 이동">
-        <button data-dx="0" data-dy="-1" class="up" aria-label="위로 이동">↑</button>
-        <button data-dx="-1" data-dy="0" class="left" aria-label="왼쪽으로 이동">←</button>
-        <button data-dx="0" data-dy="1" class="down" aria-label="아래로 이동">↓</button>
-        <button data-dx="1" data-dy="0" class="right" aria-label="오른쪽으로 이동">→</button>
+        <p class="privacy-note"><span id="student-hours-note">학생 이용 시간 확인 중…</span><br>회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
       </div>
       <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
         <div class="combat-buttons" aria-label="전투 조작">
           <button id="touch-attack" type="button" aria-label="공격(Q)">Q <span>공격</span></button>
-          <button id="touch-skill" type="button" aria-label="스킬(W)">W <span>스킬</span></button>
+          <button id="touch-skill" type="button" aria-label="스킬(E)">E <span>스킬</span></button>
         </div>
         <div id="joystick" role="application" aria-label="터치 조이스틱" tabindex="0">
           <div id="joystick-knob" aria-hidden="true"></div>
         </div>
-        <button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기">E <span>조사하기</span></button>
+        <button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기(F)">F <span>조사하기</span></button>
       </div>
     </div>
-    <div class="map-footer"><span>⌨ 방향키·조이스틱 이동 / Q 공격·W 스킬·E 상호작용</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
+    <div class="map-footer"><span>⌨ WASD·방향키·조이스틱 이동 / Q 공격·E 스킬·F 상호작용</span><span>행성과 친구에게는 살짝 멈춰요</span></div>
   </section>
   <section class="hud">
     <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
       <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><span id="self-constellation-type" class="constellation-type" hidden></span></div>
-      <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 E를 눌러보세요.</span></div>
+      <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.</span></div>
         <p id="self-attack-power" class="card-combat">공격력 · 설정 예정</p>
         <p id="self-defense-power" class="card-combat">방어력 · 0</p>
       <div class="card-desc">
@@ -121,7 +115,7 @@
           <p id="trades-empty" class="muted">진행 중인 거래가 없어요.</p>
         </section>
       </div>
-      <p id="hint" class="hint">행성 가까이에서 E · 오른쪽 문으로 별빛 거리</p>
+      <p id="hint" class="hint">행성 가까이에서 F · 오른쪽 문으로 별빛 거리</p>
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="inventory-dialog">닫기</button></div></dialog>
     <dialog id="tasks-dialog" aria-labelledby="tasks-title"><section class="panel actions"><h2 id="tasks-title">나의 과제</h2><ul id="my-tasks" class="task-list" aria-label="나의 과제"></ul><p id="my-tasks-empty" class="muted">아직 담아온 과제가 없어요. 알림장에서 과제를 담아보세요.</p></section><div class="dialog-actions"><button id="tasks-close" class="secondary" type="button">닫기</button></div></dialog>
     <dialog id="chat-dialog" aria-labelledby="chat-title"><section class="panel chat" id="chat-panel"><div class="panel-heading"><h2 id="chat-title">우주 채팅</h2><span id="chat-status">켜짐</span></div>
