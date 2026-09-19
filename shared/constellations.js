@@ -1,4 +1,4 @@
-import {CONSTELLATION_ABILITIES} from './constellation-abilities.js';
+import {CONSTELLATION_ABILITIES, abilityForLevel} from './constellation-abilities.js';
 
 export const CONSTELLATION_LIMIT = 2;
 export const CONSTELLATION_TYPES = Object.freeze(['제작계','생산계','수호계','공격계','특수계']);
@@ -31,4 +31,17 @@ export const LEGACY_CONSTELLATIONS=Object.freeze([
   ['ursa-major','큰곰자리','#b28b6e','✺']
 ].map(([id,name,color,icon])=>Object.freeze({id,name,color,icon,type:null,legacy:true})));
 const BY_ID = new Map([...CONSTELLATIONS,...LEGACY_CONSTELLATIONS].map(value => [value.id, value]));
-export const constellationOf = id => BY_ID.get(id) || null;
+// 계보 ID는 그대로 저장하고, 그림과 능력만 단계별로 고릅니다.
+// 아직 원본이 없는 Lv5·초월체는 최신 Lv4 자료를 사용합니다.
+const STAGES = new Map(CONSTELLATIONS.map(value => [value.id, [2, 3, 4].map(level =>
+  Object.freeze({ ...value, assetLevel: level,
+    art: level === 2 ? value.art : `/assets/constellation-cards/lv${level}/${value.id}.png`,
+    sprite: level === 2 ? value.sprite : `/assets/avatars/lv${level}/${value.id}.png`,
+    ability: abilityForLevel(value.id, level)
+  }))]));
+export function constellationOf(id, level = 2) {
+  const value = BY_ID.get(id);
+  if (!value || value.legacy) return value || null;
+  const stage = Number.isInteger(level) ? Math.max(2, Math.min(4, level)) : 2;
+  return STAGES.get(id)[stage - 2];
+}

@@ -17,3 +17,7 @@ export const CONSTELLATION_ABILITIES=Object.freeze({
   aries:{mode:'sleep',description:'나와 친구가 각각 별 1개를 얻고 하루 동안 수면 상태가 되어 아이템을 못 써요.'},
   pisces:{mode:'manual',description:'친구 1명과 하루 동안 짝이 되어 자리를 함께하고 실적·경고 1회를 공유해요.'}
 });
+
+export function abilityForLevel(id, level = 2) {
+  return CONSTELLATION_ABILITIES[id] || null;
+}

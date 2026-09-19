@@ -99,10 +99,10 @@ function showStarDie(roll){
   setTimeout(()=>$('ability-dice-result').textContent='결과: '+roll+' ★',1200);
 }
 async function refreshAbilityStatus(){
-  const me=room?.players.find(player=>player.id===selfId),constellation=constellationOf(me?.avatar?.constellationId);
+  const me=room?.players.find(player=>player.id===selfId),level=me?.avatar?.level||1,constellation=constellationOf(me?.avatar?.constellationId,level);
   if(!constellation?.ability)return;
   const status=await request('ability:status',{}),ability=constellation.ability;
-  $('ability-title').textContent=constellation.name+' 능력';
+  $('ability-title').textContent='Lv'+level+' '+constellation.name+' 능력';
   $('ability-description').textContent=ability.description;
   $('ability-status').textContent=status.used?'이번 주 능력 사용 완료 · 다음 월요일에 다시 사용할 수 있어요.':'이번 주에 한 번 사용할 수 있어요.';
   if(status.pending?.mode==='shop-copy')$('ability-status').textContent+=' 다음 Lv2 이하 아이템을 살 때 1개가 더 생겨요.';
@@ -245,8 +245,8 @@ function updateRoom(value){
   $('self-name').textContent=me?.nickname||'나의 소행성';
   $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
   if(me?.role==='student'){
-    const constellation=constellationOf(me.avatar.constellationId);
-    $('self-description').textContent=(constellation?constellation.icon+' '+constellation.name:'이름 없는 작은 소행성')+' · 방향키나 조이스틱으로 움직여요.';
+    const constellation=constellationOf(me.avatar.constellationId,me.avatar.level);
+    $('self-description').textContent=(constellation?constellation.icon+' Lv'+me.avatar.level+' '+constellation.name:'이름 없는 작은 소행성')+' · 방향키나 조이스틱으로 움직여요.';
   }
   if(me?.avatar.blackStar)$('self-description').textContent='현재 검은별 상태입니다. 선생님이 해제하면 블랙홀 밖으로 나갈 수 있어요.';
   const myPlanet=me?.departmentId?planetById(me.departmentId):null,myPlanetIcon=templateOf(myPlanet?.templateId)?.icon;
@@ -257,15 +257,15 @@ function updateRoom(value){
   const myLv=myLevel();
   const transcendent=myLv>=PROGRESSION.transcendentLevel;
   $('self-level').textContent=transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
-  const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId)?.type:null;
+  const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId,myLv)?.type:null;
   $('self-constellation-type').hidden=!constellationType;
   $('self-constellation-type').textContent=constellationType||'';
-  const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId):null;
+  const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId,myLv):null;
   $('self-ability-panel').hidden=!abilityConstellation?.ability;
   if(abilityConstellation?.ability){
     $('self-ability-art').src=abilityConstellation.art;
-    $('self-ability-art').alt=abilityConstellation.name+' 카드 그림';
-    $('self-ability-name').textContent=abilityConstellation.name+' · '+abilityConstellation.type;
+    $('self-ability-art').alt='Lv'+myLv+' '+abilityConstellation.name+' 카드 그림';
+    $('self-ability-name').textContent='Lv'+myLv+' '+abilityConstellation.name+' · '+abilityConstellation.type;
     $('self-ability-description').textContent=abilityConstellation.ability.description;
   }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;

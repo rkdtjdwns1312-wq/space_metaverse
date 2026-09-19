@@ -32,7 +32,7 @@ function optionsFor(room, player) {
   return values.map(value => {
     const count = constellationCount(room, value.id);
     const current = player.avatar?.constellationId === value.id;
-    return { ...value, count, available: !value.legacy && (current || count < CONSTELLATION_LIMIT), current };
+    return { ...constellationOf(value.id, player.avatar.level), count, available: !value.legacy && (current || count < CONSTELLATION_LIMIT), current };
   });
 }
 

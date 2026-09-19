@@ -376,7 +376,7 @@ export function createWorld(canvas) {
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
     if(p.id===selfId){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
-    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId):null;
+    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,p.avatar.level):null;
     if(p.avatar?.blackStar){
       const radius=24;
       star(0,0,radius,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=3;ctx.stroke();
@@ -561,7 +561,7 @@ export function renderPortrait(canvas,player,effects){
     ctx.fillStyle=glow;ctx.fillRect(cx-60,cy-60,120,120);
   }
   ctx.save();ctx.translate(cx,cy);
-  const constellation=player?.avatar?.level>=2?constellationOf(player.avatar.constellationId):null;
+  const constellation=player?.avatar?.level>=2?constellationOf(player.avatar.constellationId,player.avatar.level):null;
   if(player?.avatar?.blackStar){
     drawStar(ctx,0,0,45,'#050509');ctx.strokeStyle='#b18cff';ctx.lineWidth=4;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,2);ctx.textBaseline='alphabetic';
