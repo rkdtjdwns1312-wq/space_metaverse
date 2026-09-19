@@ -522,8 +522,8 @@ try{
  await student.keyboard.press('f');
  await student.locator('#shop-dialog').waitFor({state:'visible'});
  await student.locator('#shop-shards').filter({hasText:'25'}).waitFor({state:'attached'});
- assert.equal(await student.locator('#shop-buy-list li.item').count(),SHOP.items.length);
- check('E near the shop opens #shop-dialog showing 25 star shards and all '+SHOP.items.length+' items for sale');
+ assert.equal(await student.locator('#shop-buy-list li.item').count(),SHOP.items.filter(item=>item.forSale!==false&&item.level===1).length);
+ check('F near the shop opens #shop-dialog showing 25 star shards and the LV1 items');
  assert.equal(await student.locator('#shop-buy-list li.ppt-card').count(),8);
  assert.equal(await student.locator('#shop-buy-list li.ppt-card img.item-art').evaluateAll(async images=>{
    await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);
@@ -534,41 +534,41 @@ try{
  await student.locator('#shop-buy-list').evaluate(list=>list.scrollTop=list.scrollHeight);
  await student.screenshot({path:'.local/06b-ppt-item-shop.png',fullPage:true});
 
- const stickerRow=student.locator('#shop-buy-list li.item').first();
- await stickerRow.locator('input.qty').fill('2');
- await stickerRow.locator('button.buy').click();
- await student.locator('#toast').filter({hasText:'반짝 별 스티커 2개를 샀어요'}).waitFor({state:'attached'});
- await student.locator('#shop-shards').filter({hasText:'15'}).waitFor({state:'attached'});
- await student.locator('#self-shards').filter({hasText:'15'}).waitFor({state:'attached'});
- check('Buying 2 star stickers costs 10 shards, leaving 15 in both the shop dialog and the passport');
+ const foodRow=student.locator('#shop-buy-list li[data-item-id="space-food-card"]');
+ await foodRow.locator('input.qty').fill('2');
+ await foodRow.locator('button.buy').click();
+ await student.locator('#toast').filter({hasText:'우주 식량 2개를 샀어요'}).waitFor({state:'attached'});
+ await student.locator('#shop-shards').filter({hasText:'21'}).waitFor({state:'attached'});
+ await student.locator('#self-shards').filter({hasText:'21'}).waitFor({state:'attached'});
+ check('Buying 2 space food cards costs 4 shards, leaving 21 in both the shop dialog and the passport');
 
- const snackRow=student.locator('#shop-buy-list li.item').nth(1);
- await snackRow.locator('input.qty').fill('10');
- await snackRow.locator('button.buy').click();
+ const alienRow=student.locator('#shop-buy-list li[data-item-id="alien-card"]');
+ await alienRow.locator('input.qty').fill('10');
+ await alienRow.locator('button.buy').click();
  await student.locator('#toast').filter({hasText:'별 파편이 부족해요'}).waitFor({state:'attached'});
- check('Buying 10 space snacks (30 shards) is rejected for insufficient funds (15 available)');
+ check('Buying 10 alien cards (40 shards) is rejected for insufficient funds after the card purchase');
 
  await student.locator('#shop-tab-sell').click();
  await student.locator('#shop-sell-list li').first().waitFor({state:'attached'});
  assert.equal(await student.locator('#shop-sell-list li').count(),1);
  const sellRow=student.locator('#shop-sell-list li').first();
- await sellRow.filter({hasText:'반짝 별 스티커'}).waitFor({state:'attached'});
+ await sellRow.filter({hasText:'우주 식량'}).waitFor({state:'attached'});
  await sellRow.locator('.muted').filter({hasText:'가진 개수 2'}).waitFor({state:'attached'});
- await sellRow.locator('.price').filter({hasText:'★ 2'}).waitFor({state:'attached'});
+ await sellRow.locator('.price').filter({hasText:'★ 1'}).waitFor({state:'attached'});
  check('Sell tab lists the one owned item with its held count and sell price');
  await sellRow.locator('input.qty').fill('1');
  await sellRow.locator('button.sell').click();
  await student.locator('#toast').filter({hasText:'팔았어요'}).waitFor({state:'attached'});
- await student.locator('#shop-shards').filter({hasText:'17'}).waitFor({state:'attached'});
- check('Selling 1 star sticker back refunds 2 shards, leaving 17');
+ await student.locator('#shop-shards').filter({hasText:'22'}).waitFor({state:'attached'});
+ check('Selling 1 space food card back refunds 1 shard, leaving 22');
  await student.locator('#shop-close').click();
  await student.locator('#shop-dialog').waitFor({state:'hidden'});
  await openInventoryFromDock(student);
  // #bag-list li only holds an icon + count (see renderBag in client/app.js) - the item name is
  // never rendered as text, only as the slot button's aria-label - so check that instead of hasText.
  assert.equal(await student.locator('#bag-list li').count(),1);
- await student.locator('#bag-list li .slot-btn[aria-label="반짝 별 스티커 × 1"]').waitFor({state:'attached'});
- check('The bag tab shows exactly 1 star sticker remaining after the sale');
+ await student.locator('#bag-list li .slot-btn[aria-label="우주 식량 × 1"]').waitFor({state:'attached'});
+ check('The bag tab shows exactly 1 space food card remaining after the sale');
 
  // Item 5: the street/shop are only reachable from the street; walking back through the plaza gate
  // returns the student near its configured arrival point, with planet-making available again.
@@ -611,9 +611,9 @@ try{
 
  // Item 7: reload keeps the star shards and bag.
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
- await student.locator('#self-shards').filter({hasText:'17'}).waitFor({state:'attached'});
+ await student.locator('#self-shards').filter({hasText:'22'}).waitFor({state:'attached'});
  assert.equal(await student.locator('#bag-list li').count(),1);
- check('Reloading resumes the same session with 17 star shards and the bag intact');
+ check('Reloading resumes the same session with 22 star shards and the bag intact');
  // --- End STEP 7 ----------------------------------------------------------------------------
 
  // Item 11: second student's next proposal is rejected by the teacher.
@@ -751,8 +751,10 @@ try{
  await teacher.locator('#crew-close').click();
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
 
- // Scenario 4: student 1 uses the star sticker on themself - a public (non-secret) item use.
- await openInventoryFromDock(student);await student.locator('#bag-list li').first().locator('.slot-btn').click();
+ // 판매 중단 전 보유품은 삭제되지 않고 계속 사용할 수 있습니다. 시험용 기존 인벤토리를 준비합니다.
+ p.inventory.push({id:'star-sticker',quantity:1});game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ // Scenario 4: student 1 uses the owned star sticker on themself.
+ await openInventoryFromDock(student);await student.locator('#bag-list .slot-btn[aria-label="반짝 별 스티커 × 1"]').click();
  await student.locator('#bag-detail .use').waitFor({state:'visible'});
  const studentCanvasBeforeUse=await student.locator('#world').evaluate(c=>c.toDataURL());
  await student.locator('#bag-detail .use').click();
@@ -772,47 +774,10 @@ try{
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  check('Student 1 uses the star sticker on themself: the effect appears in their passport and avatar canvas, a public chat line announces it, and the teacher item log records it');
 
- // Scenario 5: a secret item used on someone else. Top up student 1's shards, send them to the
- // street shop to buy a space snack (secret item), then use it on student 2. The travel/shop steps
- // in between comfortably clear ITEM_USE.cooldownMs (2s) since Scenario 4's item:use.
- const preBuyShards=p.starShards;
- await clickMenuAction(teacher,'teacher-tools');
- await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
- await teacher.locator('#shards-target').selectOption({value:id});
- await teacher.locator('#shards-amount').fill('10');
- await teacher.locator('#shards-give').click();
- await student.locator('#self-shards').filter({hasText:String(preBuyShards+10)}).waitFor({state:'attached'});
- await teacher.locator('#teacher-close').click();
- await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
- await student.locator('#world').focus();
- await walkNear(student,p,{x:streetGate.x,y:streetGate.y,radius:streetGate.radius});
- await student.locator('#interact-prompt').filter({hasText:'오색별빛 쉼터로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('f');
- await student.locator('#map-caption').filter({hasText:'오색별빛 쉼터'}).waitFor({state:'attached'});
- // updateInteractPrompt() only refreshes on an 80ms interval, so right after travel the prompt can
- // still show the plaza gate's stale text for a moment; wait for it to clear before walkNear (which
- // returns as soon as ANY prompt is visible) so it does not return immediately without moving.
- await holdKey(student,'ArrowRight',400); // 새 도착점은 왼쪽 문 앞이므로 먼저 문에서 떨어집니다.
- await student.locator('#interact-prompt').waitFor({state:'hidden'});
- await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
- await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
- await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
- await student.keyboard.press('f');
- await student.locator('#shop-dialog').waitFor({state:'visible'});
- const snackBuyRow=student.locator('#shop-buy-list li.item').nth(1);
- await snackBuyRow.locator('input.qty').fill('1');
- await snackBuyRow.locator('button.buy').click();
- await student.locator('#toast').filter({hasText:'우주 간식 1개를 샀어요'}).waitFor({state:'attached'});
- await student.locator('#shop-close').click();
- await student.locator('#shop-dialog').waitFor({state:'hidden'});
- await student.locator('#world').focus();
- await clearShopPath(student,p,shopObj);
- // 귀환문 안내가 이미 켜져 있어도 정상이다. 실제 귀환문 거리와 안내를 아래에서 확인한다.
- await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
- await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
- await student.keyboard.press('f');
- await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
- await openInventoryFromDock(student);await student.locator('#bag-list li').first().locator('.slot-btn').click();
+ // Scenario 5: 판매 중단된 비밀 아이템도 기존 보유자는 사용할 수 있습니다.
+ p.inventory.push({id:'space-snack',quantity:1});p.lastItemUseAt=0;
+ game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ await openInventoryFromDock(student);await student.locator('#bag-list .slot-btn[aria-label="우주 간식 × 1"]').click();
  await student.locator('#bag-detail .use').waitFor({state:'visible'});
  await student.locator('#bag-detail .use').click();
  await student.locator('#use-dialog').waitFor({state:'visible'});
@@ -823,7 +788,7 @@ try{
  await student.locator('#chat-log li').filter({hasText:'누군가 2 친구에게 우주 간식을 썼어요.'}).waitFor({state:'attached'});
  await teacher.locator('#chat-log li.private').filter({hasText:'(선생님만) 1 친구가 2 친구에게 우주 간식을 썼어요.'}).waitFor({state:'attached'});
  await student2.locator('#self-effects li').filter({hasText:'냠냠 행복'}).waitFor({state:'attached'});
- check('Student 1 buys a secret space snack at the street shop and uses it on student 2: the public chat only says "누군가" (not naming student 1), the teacher alone gets a private whisper naming student 1, and student 2\'s passport shows the effect');
+ check('Student 1 uses a previously owned secret space snack on student 2: the public chat only says "누군가" (not naming student 1), the teacher alone gets a private whisper naming student 1, and student 2\'s passport shows the effect');
 
  // Scenario 6: trade proposal -> student2 accepts -> teacher approves. Balances are compared to
  // captured "before" snapshots rather than hardcoded numbers.
@@ -897,7 +862,7 @@ try{
  await student.locator('#draw-dialog').waitFor({state:'visible'});
  await student.locator('#draw-start').click();
  await student.locator('#draw-spread .draw-card').first().waitFor({state:'visible'});
- assert.equal(await student.locator('#draw-spread .draw-card').count(),10);
+ assert.equal(await student.locator('#draw-spread .draw-card').count(),54);
  assert.equal(p.inventory.some(entry=>entry.id==='moon-rabbit-card'),false);
  await student.locator('#draw-close').click();
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
@@ -905,12 +870,12 @@ try{
  await student.locator('#draw-resume').waitFor({state:'visible'});
  await student.locator('#draw-resume').click();
  await student.locator('#draw-spread .draw-card').first().click();
- await student.locator('#draw-message').filter({hasText:'당첨'}).waitFor({state:'visible'});
+ await student.locator('#draw-spread .draw-card.revealed').waitFor({state:'visible'});
  assert.equal(p.rabbitDraw,null);
  assert.ok(p.starShards>0);
  await student.locator('#draw-close').click();
  await student.locator('#draw-resume').waitFor({state:'hidden'});
- check('One moon-rabbit card is consumed on start; after closing and reloading, bag resumes the same 10-card draw and only one reward is paid');
+ check('One moon-rabbit card is consumed on start; after closing and reloading, bag resumes the same 54-card draw and only one reward is paid');
 
  // Scenario 9: back to a 390px touch viewport, the bag grid must still fit without horizontal overflow.
  await student.setViewportSize({width:390,height:844});

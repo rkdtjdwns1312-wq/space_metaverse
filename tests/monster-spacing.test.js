@@ -5,7 +5,7 @@ import {ORIGIN_MAPS,STATIC_MAPS} from '../shared/config.js';
 import {monstersOf,monsterViews,moveMonsters,MONSTER_RULES} from '../server/monsters.js';
 
 function assertNoOverlap(room, message) {
-  const alive=monsterViews(room).filter(monster=>monster.alive);
+  const alive=monsterViews(room).filter(monster=>monster.alive&&monster.mapId==='star-origin-3');
   for(const monster of alive) for(const other of alive) {
     if(monster.id>=other.id || monster.mapId!==other.mapId) continue;
     const distance=Math.hypot(monster.x-other.x,monster.y-other.y);
@@ -45,7 +45,7 @@ test('별의 시작점 맵은 1.2배씩 커지고 문과 귀환 좌표가 실제
   }
 });
 
-test('초기화와 장시간 이동 중 같은 맵 살아있는 몬스터가 겹치지 않는다',()=>{
+test('3구역은 초기화와 장시간 이동 중 살아있는 몬스터가 겹치지 않는다',()=>{
   const room={};monstersOf(room,0);assertNoOverlap(room,'초기화');
   for(let now=0;now<=120000;now+=50) {
     moveMonsters(room,now,()=>0.125);

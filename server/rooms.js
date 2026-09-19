@@ -8,6 +8,7 @@ import {monsterViews} from './monsters.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
+import {activeStarCards} from './star-cards.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -25,6 +26,7 @@ export const ensure = (test,message) => { if (!test) throw new GameError(message
 export function effectsView(effects, viewerIsTeacher) {
   return (effects||[]).map(e=>{
     const v={itemId:e.itemId,icon:e.icon,label:e.label,style:e.style,until:e.until,...(knownStatus(e.statusId)?{statusId:e.statusId}:{})};
+    if(Number.isSafeInteger(e.remainingUses)&&e.remainingUses>=0)v.remainingUses=e.remainingUses;
     if(viewerIsTeacher){v.fromId=e.fromId;v.fromNickname=e.fromNickname;}
     return v;
   });
@@ -105,6 +107,7 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room),
+      starCards:activeStarCards(room),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
         templateId:pl.templateId,interiorDecor:structuredClone(pl.interiorDecor||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),

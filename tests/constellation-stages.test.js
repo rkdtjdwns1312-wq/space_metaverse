@@ -76,9 +76,9 @@ test('Lv3 쌍둥이는 레벨 대신 가격4 이하만 복사하며 대기 보�
   assert.ok((await call(f.student,'ability:use')).ok);
   const shop=STREET.objects.find(o=>o.kind==='shop');Object.assign(f.p,{mapId:STREET_ID,x:shop.x,y:shop.y});
   f.p.avatar.level=4;
-  assert.equal((await call(f.student,'shop:buy',{itemId:'star-sticker',quantity:1})).copiedItem,null);
-  assert.equal((await call(f.student,'shop:buy',{itemId:'alien-card',quantity:1})).copiedItem,'외계인');
-  assert.equal(f.p.inventory.find(i=>i.id==='alien-card').quantity,2);assert.equal(f.p.abilityState.pending,null);
+  assert.equal((await call(f.student,'shop:buy',{itemId:'meteor-fragment-card',quantity:1})).copiedItem,'운석 파편');
+  assert.equal((await call(f.student,'shop:buy',{itemId:'alien-card',quantity:1})).copiedItem,null);
+  assert.equal(f.p.inventory.find(i=>i.id==='alien-card').quantity,1);assert.equal(f.p.abilityState.pending,null);
 });
 
 test('Lv3/4 까마귀 제작은 가격·Lv·종류 수·중복 제작 제한과 주간 만료를 지킨다',async t=>{

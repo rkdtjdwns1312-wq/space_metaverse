@@ -1,3 +1,5 @@
+import {LV2_ITEMS} from './lv2-items.js';
+import {GOLD_CARD_ITEMS} from './star-cards.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
 // 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
@@ -20,9 +22,8 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
   '#c5c9f7', '#ffd2a8', '#ffe0b5', '#cfd8e6', '#f7e39b', '#f9c6e0', '#ffcfa3', '#bfe3d6']);
 // 광장의 고정 오브젝트는 가운데 별과 오른쪽의 '오색별빛 쉼터로 가는 문'입니다. 행성은 방마다 다르게 생기므로 mapOf(mapId, planets)로 합쳐서 씁니다.
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
-export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: 2160, height: 1440, spawn:{x:1080,y:800},
+export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: 2160, height: 1440, spawn:{x:1080,y:800},templeCenter:{x:1080,y:700},
   objects: [
-    { id: 'square', name: '별들의 쉼터', x: 1080, y: 540, radius: 58, color: '#ffe59b', kind: 'star' },
     {id:'pillar-notice',name:'오늘의 알림장',x:760,y:594,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
     {id:'pillar-effects',name:'사용 중인 아이템',x:1400,y:594,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:790,y:804,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
@@ -31,10 +32,10 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
     { id: 'gate-garden', name: '← 낙원의 갈림길', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
       arrival:{x:1030,y:380},color:'#bdeade',passable:true },
-    {id:'gate-valley',name:'은하수계곡 ↓',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
-    {id:'gate-origin',name:'별의 시작점 1 ↑',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
+    {id:'gate-valley',name:'은하수계곡',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
+    {id:'gate-origin',name:'별의 시작점 1',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
     {id:'assignment-andromeda',name:'과제안드로메다',x:260,y:260,radius:240,kind:'andromeda',passable:true},
-    {id:'black-hole-portal',name:'블랙홀 입장',x:1900,y:260,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true}
+    {id:'black-hole-portal',name:'블랙홀',x:1900,y:260,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true}
   ] });
 export const PLAZA_ID = MAP.id;
 // 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
@@ -47,29 +48,30 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['stars','반짝별 찾기','#ffdf9c'],['addition','숫자놀이터','#bce8cd'],['dodge','별 피하기','#cfbcf1']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
+    {id:'crafting-machine',name:'별빛 조합기',x:1080,y:380,radius:62,kind:'crafting',color:'#cdb8ef'},
     { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
     { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
 export const GARDEN = Object.freeze({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
-  {id:'gate-plaza',name:'별의 기원 →',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:720},color:'#d9c6f2',passable:true},
-  {id:'gate-paradise',name:'태양이 머무는 낙원 1 ↑',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise',arrival:{x:600,y:590},color:'#ffe6a6',passable:true},
-  {id:'gate-moon-paradise',name:'달이 머무는 낙원 1 ↓',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-1',arrival:{x:600,y:175},color:'#cccafa',passable:true}
+  {id:'gate-plaza',name:'별의 기원',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:720},color:'#d9c6f2',passable:true},
+  {id:'gate-paradise',name:'태양의 낙원 1',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise',arrival:{x:600,y:590},color:'#ffe6a6',passable:true},
+  {id:'gate-moon-paradise',name:'달의 낙원 1',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-1',arrival:{x:600,y:175},color:'#cccafa',passable:true}
 ]});
 export const GARDEN_ID=GARDEN.id;
 // 두 낙원은 1에서 왼쪽으로 2→3, 오른쪽으로 되돌아오는 같은 구조를 사용합니다.
 // vista는 실제 배경과 미니맵이 공유하는 천체 위치/크기입니다(장식이며 충돌 없음).
 function paradiseMaps(moon){
   const idOf=n=>moon?'moon-paradise-'+n:n===1?'sun-paradise':'sun-paradise-'+n;
-  const title=moon?'달이 머무는 낙원':'태양이 머무는 낙원';
+  const title=moon?'달의 낙원':'태양의 낙원';
   return Object.freeze([1,2,3].map(n=>Object.freeze({id:idOf(n),name:title+' '+n,
     theme:moon?'moon-paradise':'sun-paradise',stage:n,minLevel:n+1,width:1200,height:760,
     vista:Object.freeze({bodyX:175,bodyY:140,bodyRadius:[72,140,235][n-1]}),
     spawn:n===1?{x:600,y:moon?175:590}:{x:1030,y:380},objects:[
       ...(n===1?[{id:'gate-garden',name:'낙원의 갈림길 '+(moon?'↑':'↓'),x:600,y:moon?80:680,radius:38,kind:'gate',
         target:GARDEN_ID,arrival:{x:600,y:moon?590:175},color:'#d8d0f3',passable:true}]:[]),
-      ...(n<3?[{id:'gate-next',name:'← '+title+' '+(n+1),x:80,y:380,radius:38,kind:'gate',target:idOf(n+1),arrival:{x:1030,y:380},color:moon?'#c7c9fa':'#ffdfa2',passable:true}]:[]),
+      ...(n<3?[{id:'gate-next',name:''+title+' '+(n+1),x:80,y:380,radius:38,kind:'gate',target:idOf(n+1),arrival:{x:1030,y:380},color:moon?'#c7c9fa':'#ffdfa2',passable:true}]:[]),
       ...(n>1?[{id:'gate-back',name:title+' '+(n-1)+' →',x:1120,y:380,radius:38,kind:'gate',target:idOf(n-1),arrival:{x:170,y:380},color:moon?'#c7c9fa':'#ffdfa2',passable:true}]:[]),
       ...(n===3?[{id:'gate-star-paradise',name:'별들의 낙원 '+(moon?'↑':'↓'),x:600,y:moon?80:680,radius:38,kind:'gate',target:'star-paradise',arrival:{x:600,y:moon?590:175},color:'#e9d5f5',passable:true}]:[])
     ]})));
@@ -80,13 +82,13 @@ export const MOON_PARADISE_MAPS=paradiseMaps(true);
 export const MOON_PARADISE_ID=MOON_PARADISE_MAPS[0].id;
 // 두 여행길의 끝을 연결하는 공간. 지도에서도 태양3과 달3 사이에 놓습니다.
 export const STAR_PARADISE=Object.freeze({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',minLevel:5,width:1200,height:760,spawn:{x:600,y:380},objects:[
-  {id:'gate-sun',name:'태양이 머무는 낙원 3 ↑',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
-  {id:'gate-moon',name:'달이 머무는 낙원 3 ↓',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
+  {id:'gate-sun',name:'태양의 낙원 3',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
+  {id:'gate-moon',name:'달의 낙원 3',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
 ]});
 export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
   {id:'evolution-star',name:'진화의 별',x:205,y:480,radius:105,kind:'evolution',color:'#ffffff'},
   {id:'growth-star',name:'성장의 별',x:1020,y:480,radius:80,kind:'growth',color:'#ffd76d'},
-  {id:'gate-plaza',name:'별의 기원 ↑',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
+  {id:'gate-plaza',name:'별의 기원',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:1080,y:1270},color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;
 export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
@@ -118,31 +120,34 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // effect: 사용하면 대상에게 붙는 표시(아이콘·이름·지속 시간). 지금은 겉모습 표시만 하고 이동 속도 등 실제 능력치는 바꾸지 않습니다.
 // maxKinds 20 = 가방 격자 5×4칸(한 칸에 한 종류). BAG는 화면 격자 크기입니다.
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
-export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 20, items: [
-  { id: 'star-sticker', name: '반짝 별 스티커', description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
+export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 40, items: [
+  { id: 'star-sticker', name: '반짝 별 스티커', forSale: false, description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
-  { id: 'space-snack', name: '우주 간식', description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,
+  { id: 'space-snack', name: '우주 간식', forSale: false, description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,
     targets: 'any', secret: true, effect: { label: '냠냠 행복', icon: '🍬', durationMs: 5 * 60_000, style: 'happy' } },
-  { id: 'asteroid-helmet', name: '소행성 헬멧', description: '튼튼하고 귀여운 우주 헬멧이에요.', icon: '🪖', type: 'decoration', level: 1, price: 6,
+  { id: 'asteroid-helmet', name: '소행성 헬멧', forSale: false, description: '튼튼하고 귀여운 우주 헬멧이에요.', icon: '🪖', type: 'decoration', level: 1, price: 6,
     targets: 'any', secret: false, effect: { label: '튼튼 헬멧', icon: '🪖', durationMs: 30 * 60_000, style: 'helmet' } },
-  { id: 'firefly-lamp', name: '반딧불 램프', description: '어두운 우주를 밝혀 주는 램프예요.', icon: '🏮', type: 'tool', level: 1, price: 8,
+  { id: 'firefly-lamp', name: '반딧불 램프', forSale: false, description: '어두운 우주를 밝혀 주는 램프예요.', icon: '🏮', type: 'tool', level: 1, price: 8,
     targets: 'any', secret: false, effect: { label: '반딧불 빛', icon: '🏮', durationMs: 10 * 60_000, style: 'glow' } },
-  { id: 'rainbow-tail', name: '무지개 꼬리', description: '움직일 때 무지개가 따라와요. (LV2부터)', icon: '🌈', type: 'decoration', level: 2, price: 12,
+  { id: 'rainbow-tail', name: '무지개 꼬리', forSale: false, description: '움직일 때 무지개가 따라와요. (LV2부터)', icon: '🌈', type: 'decoration', level: 2, price: 12,
     targets: 'self', secret: false, effect: { label: '무지개 꼬리', icon: '🌈', durationMs: 30 * 60_000, style: 'trail' } },
-  { id: 'mini-satellite', name: '작은 위성 친구', description: '내 곁을 빙글빙글 도는 귀여운 위성이에요. (LV2부터)', icon: '🛰️', type: 'pet', level: 2, price: 15,
+  { id: 'mini-satellite', name: '작은 위성 친구', forSale: false, description: '내 곁을 빙글빙글 도는 귀여운 위성이에요. (LV2부터)', icon: '🛰️', type: 'pet', level: 2, price: 15,
     targets: 'self', secret: false, effect: { label: '위성 친구', icon: '🛰️', durationMs: 60 * 60_000, style: 'orbit' } },
-  { id: 'starlight-cape', name: '별빛 망토', description: '별빛으로 짠 반짝이는 망토예요. (LV3부터)', icon: '🧣', type: 'decoration', level: 3, price: 25,
+  { id: 'starlight-cape', name: '별빛 망토', forSale: false, description: '별빛으로 짠 반짝이는 망토예요. (LV3부터)', icon: '🧣', type: 'decoration', level: 3, price: 25,
     targets: 'any', secret: false, effect: { label: '별빛 망토', icon: '🧣', durationMs: 30 * 60_000, style: 'cape' } },
-  { id: 'meteor-board', name: '유성 보드', description: '유성을 타고 씽씽 달려요. 누가 태워 줬는지는 비밀! (LV3부터)', icon: '☄️', type: 'mount', level: 3, price: 30,
+  { id: 'meteor-board', name: '유성 보드', forSale: false, description: '유성을 타고 씽씽 달려요. 누가 태워 줬는지는 비밀! (LV3부터)', icon: '☄️', type: 'mount', level: 3, price: 30,
     targets: 'any', secret: true, effect: { label: '유성 질주', icon: '☄️', durationMs: 3 * 60_000, style: 'speed' } },
-  {id:'space-food-card',name:'우주 식량',description:'1명의 급식 위치를 선정합니다.',special:'선생님이 사용 중인 아이템 게시판을 보고 현실 교실에서 진행해요.',art:'/assets/items/space-food.png',icon:'🍱',type:'tool',level:1,price:2,targets:'any',secret:false,mode:'manual',effect:{label:'급식 위치 선정',icon:'🍱',durationMs:0,style:'card'}},
-  {id:'space-robot-card',name:'우주 로봇',description:'모든 마감 기한을 1일 늘립니다.',special:'다음 날이 휴일이면 카드 2장이 필요해요. 선생님이 현실 교실에서 확인해요.',art:'/assets/items/space-robot.png',icon:'🤖',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'manual',effect:{label:'마감 기한 연장',icon:'🤖',durationMs:0,style:'card'}},
-  {id:'alien-card',name:'외계인',description:'일기장 또는 독서록 중 1편을 면제합니다.',special:'선생님이 사용 중인 아이템 게시판을 보고 현실 교실에서 진행해요.',art:'/assets/items/alien.png',icon:'👽',type:'tool',level:1,price:4,targets:'self',secret:false,mode:'manual',effect:{label:'일기장·독서록 면제',icon:'👽',durationMs:0,style:'card'}},
-  {id:'space-suit-card',name:'우주복',description:'1일 동안 선택한 2명의 자리를 맞교환합니다.',special:'자리 이동은 직접 도와야 합니다. 선생님이 현실 교실에서 확인해요.',art:'/assets/items/space-suit.png',icon:'🧑‍🚀',type:'tool',level:1,price:2,targets:'pair',secret:false,mode:'manual',effect:{label:'자리 맞교환',icon:'🧑‍🚀',durationMs:0,style:'card'}},
-  {id:'meteor-fragment-card',name:'운석 파편',description:'선택한 부서행성이 나에게 준 활성 경고를 모두 해제합니다.',special:'다른 학생의 경고와 경고 이력은 그대로 둡니다.',art:'/assets/items/meteor-fragment.png',icon:'☄️',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'meteor',effect:{label:'부서 경고 해제',icon:'☄️',durationMs:0,style:'card'}},
-  {id:'little-sun-card',name:'꼬마 해',description:'친구 1명을 자외선 상태로 만들어 오늘 자정까지 아이템 사용을 막습니다.',special:'꼬마 달로 즉시 해제할 수 있어요. 꼬마 달 보호 중인 친구에게는 사용할 수 없어요.',art:'/assets/items/little-sun.png',icon:'☀️',type:'tool',level:1,price:1,targets:'other',secret:false,mode:'uv',effect:{label:'자외선',icon:'☀️',durationMs:0,style:'uv'}},
-  {id:'little-moon-card',name:'꼬마 달',description:'마치기 전 청소를 면제받고 조금 일찍 갑니다.',special:'자외선을 즉시 해제하고 오늘 자정까지 다른 카드 효과를 받지 않아요. 검은별 상태에서는 사용할 수 없어요.',art:'/assets/items/little-moon.png',icon:'🌙',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'moon',effect:{label:'꼬마 달 보호',icon:'🌙',durationMs:0,style:'moon'}},
-  {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 뒷면 카드 10장 중 하나를 골라 별 파편 1~10개를 받아요.',art:'/assets/items/moon-rabbit.png',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}}
+  {id:'space-food-card',name:'우주 식량',description:'1명의 급식 위치를 선정합니다.',special:'선생님이 사용 중인 아이템 게시판을 보고 현실 교실에서 진행해요.',art:'/assets/items/space-food-pastel.webp',icon:'🍱',type:'tool',level:1,price:2,targets:'any',secret:false,mode:'manual',effect:{label:'급식 위치 선정',icon:'🍱',durationMs:0,style:'card'}},
+  {id:'space-robot-card',name:'우주 로봇',description:'모든 마감 기한을 1일 늘립니다.',special:'다음 날이 휴일이면 카드 2장이 필요해요. 선생님이 현실 교실에서 확인해요.',art:'/assets/items/space-robot-pastel.webp',icon:'🤖',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'manual',effect:{label:'마감 기한 연장',icon:'🤖',durationMs:0,style:'card'}},
+  {id:'alien-card',name:'외계인',description:'일기장 또는 독서록 중 1편을 면제합니다.',special:'선생님이 사용 중인 아이템 게시판을 보고 현실 교실에서 진행해요.',art:'/assets/items/alien-pastel.webp',icon:'👽',type:'tool',level:1,price:4,targets:'self',secret:false,mode:'manual',effect:{label:'일기장·독서록 면제',icon:'👽',durationMs:0,style:'card'}},
+  {id:'space-suit-card',name:'우주복',description:'1일 동안 선택한 2명의 자리를 맞교환합니다.',special:'자리 이동은 직접 도와야 합니다. 선생님이 현실 교실에서 확인해요.',art:'/assets/items/space-suit-pastel.webp',icon:'🧑‍🚀',type:'tool',level:1,price:2,targets:'pair',secret:false,mode:'manual',effect:{label:'자리 맞교환',icon:'🧑‍🚀',durationMs:0,style:'card'}},
+  {id:'meteor-fragment-card',name:'운석 파편',description:'선택한 부서행성이 나에게 준 활성 경고를 모두 해제합니다.',special:'다른 학생의 경고와 경고 이력은 그대로 둡니다.',art:'/assets/items/meteor-fragment-pastel.webp',icon:'☄️',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'meteor',effect:{label:'부서 경고 해제',icon:'☄️',durationMs:0,style:'card'}},
+  {id:'little-sun-card',name:'꼬마 해',description:'친구 1명을 자외선 상태로 만들어 오늘 자정까지 아이템 사용을 막습니다.',special:'꼬마 달로 즉시 해제할 수 있어요. 꼬마 달 보호 중인 친구에게는 사용할 수 없어요.',art:'/assets/items/little-sun-pastel.webp',icon:'☀️',type:'tool',level:1,price:1,targets:'other',secret:false,mode:'uv',effect:{label:'자외선',icon:'☀️',durationMs:0,style:'uv'}},
+  {id:'little-moon-card',name:'꼬마 달',description:'마치기 전 청소를 면제받고 조금 일찍 갑니다.',special:'자외선을 즉시 해제하고 오늘 자정까지 다른 카드 효과를 받지 않아요. 검은별 상태에서는 사용할 수 없어요.',art:'/assets/items/little-moon-pastel.webp',icon:'🌙',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'moon',effect:{label:'꼬마 달 보호',icon:'🌙',durationMs:0,style:'moon'}},
+  {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 뒷면 카드 54장 중 하나를 골라 아이템·별 파편·경험치 보상을 받아요. 우주 먼지는 보상이 없어요.',art:'/assets/items/moon-rabbit-pastel.webp',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}},
+  ...LV2_ITEMS,
+  ...GOLD_CARD_ITEMS,
+  {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}}
 ] });
 // 아이템 사용 규칙: 연속 사용 간격, 한 사람이 동시에 가질 수 있는 효과 수(넘치면 오래된 것부터 사라짐), 선생님용 사용 기록 보관 수, 선생님의 취급 레벨.
 export const ITEM_USE = Object.freeze({ cooldownMs: 2000, maxEffects: 3, logSize: 100, teacherLevel: 5, notesSize: 20 });

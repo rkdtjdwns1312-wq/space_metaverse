@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
-export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID) {
+export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true) {
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
+  if (!avoidPlayers) return true;
   return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
 }
 export function spawnPosition(room) {
@@ -79,8 +80,8 @@ export function advance(room, now) {
     const step=RULES.speed*RULES.tickMs/1000;
     const dx=p.input.x/length*step, dy=p.input.y/length*step;
     const beforeX=p.x,beforeY=p.y;
-    if (isFree(room,p.x+dx,p.y,p.id,p.mapId)) p.x+=dx;
-    if (isFree(room,p.x,p.y+dy,p.id,p.mapId)) p.y+=dy;
+    if (isFree(room,p.x+dx,p.y,p.id,p.mapId,false)) p.x+=dx;
+    if (isFree(room,p.x,p.y+dy,p.id,p.mapId,false)) p.y+=dy;
     // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
     const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
     if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};

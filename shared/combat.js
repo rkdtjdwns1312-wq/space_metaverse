@@ -21,4 +21,4 @@ export function defensePowerOf(level,constellationId,player=null){
 export const damageAfterDefense=(power,defense)=>Math.max(1,power-defense);
 
 export const SKILL_COOLDOWN_MS=450;
-export const ATTACK_VISUAL=Object.freeze({cooldownMs:1000,durationMs:340,reach:62});
+export const ATTACK_VISUAL=Object.freeze({cooldownMs:1000,durationMs:340,reach:62,hitRadius:36});

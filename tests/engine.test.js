@@ -47,17 +47,14 @@ test('movement is normalized and ignores client-selected coordinates or speed',(
  assert.ok(Math.abs(Math.hypot(player.x-start.x,player.y-start.y)-RULES.speed*.05)<1e-8);
  const x=player.x;advance(room,2000);assert.equal(player.x,x);
 });
-test('world boundary, the star and other avatars block movement',()=>{
+test('world boundary and the star block movement',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
  player.x=RULES.radius;player.y=400;player.input={x:-1,y:0,at:0};advance(room,0);assert.equal(player.x,RULES.radius);
  assert.equal(isFree(room,MAP.objects[0].x,MAP.objects[0].y,player.id),false);
- const other=store.join({code:room.code,nickname:'1'},'s').player;
- player.x=400;player.y=400;other.x=436;other.y=400;
- player.input={x:1,y:0,at:0};advance(room,0);assert.equal(player.x,400);
 });
 test('placementFree keeps new planets away from the star, other planets and pending proposals',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'t');
- const star=MAP.objects.find(o=>o.kind==='star');
+ const star=MAP.objects.find(o=>o.kind==='pillar');
  assert.equal(placementFree(room, star.x, star.y), false);
  assert.equal(placementFree(room, 650, 150), true);
  // 예약 구역(왼쪽 아래 이동 버튼 자리)에는 만들 수 없고, 그 밖은 됩니다.

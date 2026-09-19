@@ -40,12 +40,12 @@ test('산책은 1초에 한 번 방향을 선택하고 사이에는 일정한 �
   moveMonsters(room,1000,random);assert.equal(calls,10);assert.ok(m.dy>.99);
 });
 
-test('몬스터는 맵 경계와 문 주변을 벗어나지 않고 같은 위치에 뭉치지 않는다',()=>{
+test('몬스터는 맵 경계와 문 주변을 지키고 3구역에서는 뭉치지 않는다',()=>{
   const room={};monstersOf(room,0);
   for(let now=0;now<60000;now+=50)moveMonsters(room,now,()=>.125);
   const list=monsterViews(room);
   for(const m of list){const map=mapOf(m.mapId);assert.ok(m.x>=Math.max(120,m.radius)&&m.x<=map.width-Math.max(120,m.radius)&&m.y>=Math.max(190,m.radius)&&m.y<=map.height-Math.max(190,m.radius));
-    for(const other of list)if(other!==m&&other.mapId===m.mapId)assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=58-1e-6);
+    for(const other of list)if(other!==m&&m.mapId==='star-origin-3'&&other.mapId===m.mapId)assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=58-1e-6);
   }
 });
 

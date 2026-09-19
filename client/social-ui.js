@@ -1,7 +1,10 @@
+import {createChatWindow} from './chat-window.js';
 // 하단 메뉴와 친구 기능. 게임 렌더러와 서버 권한 로직은 별도 파일에 둡니다.
 export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessage,clearMessages}) {
   const $=id=>document.getElementById(id);
   let messages=[],context='',revision=0,friendId=null,invitationId=null,unread=0;
+  const chatWindow=createChatWindow({stop});
+  let renderedIds='';
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const closeRoots=()=>{for(const id of ['social-dialog','menu-dialog','friend-dialog'])if($(id).open)$(id).close();};
   function open(id){stop();closeRoots();if(!$(id).open)$(id).showModal();}
@@ -18,16 +21,18 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('menu-dialog').addEventListener('click',e=>{if(e.target.closest('#teacher-tools,#planet-new,#planet-exit,#planet-info,#leave'))closeRoots();},true);
   $('crew-button').addEventListener('click',closeRoots,true);
   $('open-chat').onclick=()=>openChat();
+  $('chat-window-toggle').onclick=()=>{$('chat-dialog').open?$('chat-dialog').close():openChat();};
   function render(){
-    clearMessages();const channel=$('chat-channel').value,target=$('chat-recipient').value;
-    for(const msg of messages){
-      const system=msg.role==='system';
-      if(system||msg.channel===channel&&(channel!=='direct'||(msg.playerId===getSelfId()?msg.targetId:msg.playerId)===target))renderMessage(msg);
-    }
+    const channel=$('chat-channel').value,target=$('chat-recipient').value;
+    const visible=messages.filter(msg=>msg.role==='system'||msg.channel===channel&&(channel!=='direct'||(msg.playerId===getSelfId()?msg.targetId:msg.playerId)===target));
+    const signature=channel+'|'+target+'|'+visible.map(m=>m.id).join(',');
+    if(signature===renderedIds)return;
+    const scroll=chatWindow.capture();clearMessages();for(const msg of visible)renderMessage(msg);
+    renderedIds=signature;chatWindow.restore(scroll);
   }
   async function refresh(){
     const rev=++revision;
-    try{const result=await request('chat:history',{});if(rev===revision){messages=[...new Map([...result.messages,...messages].map(m=>[m.id,m])).values()].slice(-200);render();}}
+    try{const result=await request('chat:history',{});if(rev===revision){messages=[...new Map([...result.messages,...messages].map(m=>[m.id,m])).values()].sort((a,b)=>a.at-b.at).slice(-200);render();}}
     catch(e){if(rev===revision)toast(e.message);}
   }
   function routing(){
@@ -39,7 +44,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   }
   function openChat(targetId){
     if(targetId){$('chat-channel').value='direct';$('chat-recipient').value=targetId;}
-    routing();open('chat-dialog');unread=0;$('unread-count').hidden=true;$('chat-input').focus();refresh();
+    routing();closeRoots();chatWindow.open();unread=0;$('unread-count').hidden=true;$('chat-input').focus();refresh();
   }
   $('chat-channel').onchange=routing;$('chat-recipient').onchange=routing;
   function friendState(){
@@ -80,13 +85,16 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
       $('chat-recipient').replaceChildren(...room.players.filter(p=>p.id!==self.id&&p.connected).map(p=>Object.assign(document.createElement('option'),{value:p.id,textContent:p.nickname})));
       if([...$('chat-recipient').options].some(o=>o.value===old))$('chat-recipient').value=old;
       const next=room.code+'|'+self.mapId+'|'+self.departmentId;
-      if(context&&context!==next){messages=[];clearMessages();refresh();}
+      if(context&&context!==next){
+        // 이미 직접 받은 맵 대화는 남깁니다. 새 메시지 전달 권한은 서버가 계속 검사합니다.
+        messages=messages.filter(msg=>msg.channel!=='department'||msg.departmentId===self.departmentId);refresh();
+      }
       context=next;routing();friendState();invitations();
     },
     seed(list){messages=list||[];render();},
     receive(msg){messages.push(msg);if(messages.length>200)messages.shift();render();if(!$('chat-dialog').open&&msg.playerId!==getSelfId()){unread++;$('unread-count').textContent=unread>99?'99+':unread;$('unread-count').hidden=false;}},
     clear(){messages=[];render();},
-    reset(){messages=[];context='';revision++;friendId=null;invitationId=null;unread=0;$('unread-count').hidden=true;$('chat-channel').value='map';for(const d of document.querySelectorAll('dialog[open]'))d.close();},
+    reset(){chatWindow.reset();renderedIds='';messages=[];context='';revision++;friendId=null;invitationId=null;unread=0;$('unread-count').hidden=true;$('chat-channel').value='map';for(const d of document.querySelectorAll('dialog[open]'))d.close();},
     scope(){return {channel:$('chat-channel').value,targetId:$('chat-recipient').value};}
   };
 }

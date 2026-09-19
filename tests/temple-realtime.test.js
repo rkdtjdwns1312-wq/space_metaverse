@@ -50,7 +50,7 @@ test('temple enforces proximity and teacher permissions, preserves daily notices
   refresh();p.starShards=9998;await call(teacher,'shards:give',{playerId:p.id,amount:5});await call(teacher,'shards:give',{playerId:p.id,amount:-2});await call(teacher,'shards:give',{playerId:'all',amount:3});
   // 상한까지 1개, 회수 뒤 상한까지 2개를 실제로 받았습니다. 다른 학생은 3개입니다.
   approach(p,'pillar-weekly');const weekly=await call(student,'temple:read',{objectId:'pillar-weekly'});assert.equal(weekly.rows.find(r=>r.playerId===p.id).total,3);assert.equal(weekly.rows.find(r=>r.nickname==='2').total,3);assert.equal(JSON.stringify(weekly).includes('starShards'),false);
-  p.effects=[{itemId:'star-sticker',icon:'★',label:'반짝임',style:'sparkle',until:Date.now()+10000,fromId:t.id,fromNickname:'비밀발신'}];approach(p,'pillar-effects');
+  p.effects=[{itemId:'space-snack',icon:'★',label:'반짝임',style:'sparkle',until:Date.now()+10000,fromId:t.id,fromNickname:'비밀발신',secret:true}];approach(p,'pillar-effects');
   const active=await call(student,'temple:read',{objectId:'pillar-effects'});assert.equal(active.rows.length,1);assert.equal(JSON.stringify(active).includes('비밀발신'),false);
   p.mapId=GARDEN_ID;assert.equal((await call(student,'temple:read',{objectId:'pillar-effects'})).ok,false);
   for(const s of sockets)s.disconnect();await game.close();game=null;

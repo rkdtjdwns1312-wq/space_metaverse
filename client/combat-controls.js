@@ -14,7 +14,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     if(player.avatar.level<2){toast('LV2부터 공격할 수 있어요.');return;}
     const power=player.combat?.attackPower;
     if(power==null){toast('이 단계의 공격력은 설정 준비 중이에요.');return;}
-    try{const result=await request('combat:attack',{});if(result.target?.defeated)toast('별자리 몬스터를 잡았어요! 잠시 뒤 다시 나타나요.');}catch(error){toast(error.message);}
+    try{const result=await request('combat:attack',{});if((result.targets||[result.target]).some(target=>target?.defeated))toast('별자리 몬스터를 잡았어요! 잠시 뒤 다시 나타나요.');}catch(error){toast(error.message);}
   }
   attack.onclick=()=>act('attack');skill.onclick=()=>act('skill');
   window.addEventListener('keydown',event=>{

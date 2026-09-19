@@ -27,8 +27,7 @@ function cached(map,draw){
 export function drawTemple(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height);
-    const centralStar=map.objects.find(o=>o.id==='square');
-    const x=centralStar?.x??map.width/2,y=(centralStar?.y??map.height/2)+160;
+    const {x,y}=map.templeCenter;
     ellipse(c,x,y+70,455,258,'#887ca62c');
     ellipse(c,x,y+26,443,257,'#bda9d6');ellipse(c,x,y+14,443,246,'#e7d6f0');
     ellipse(c,x,y,421,235,'#c9b7df');ellipse(c,x,y-10,419,229,'#fbf4fc');
@@ -36,8 +35,6 @@ export function drawTemple(ctx,map){
     c.strokeStyle='#bfaed766';c.lineWidth=2;
     for(const r of [120,235,342]){c.beginPath();c.ellipse(x,y-16,r,r*.52,0,0,Math.PI*2);c.stroke();}
     for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(x+Math.cos(a)*120,y-16+Math.sin(a)*62);c.lineTo(x+Math.cos(a)*377,y-16+Math.sin(a)*198);c.stroke();}
-    // 중앙의 낮은 제단 위에는 world.js가 커다란 별을 그립니다.
-    ellipse(c,x,y-122,112,60,'#bba5d2');ellipse(c,x,y-135,114,58,'#fff6e1');ellipse(c,x,y-142,93,42,'#eddaec');
     for(const pillar of map.objects.filter(o=>o.kind==='pillar')){
       const px=pillar.x,py=pillar.y-34;
       ellipse(c,px,py+42,42,17,'#9583af25');
@@ -54,18 +51,16 @@ export function drawTemple(ctx,map){
 export function drawCrossroads(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height,['#c4c3e8','#eadcf3','#cce6df']);
-    ellipse(c,600,425,395,175,'#afa3ce');ellipse(c,600,407,395,175,'#f3eefb');
-    // 북쪽 금빛 길, 남쪽 달빛 길, 동쪽 광장 길이 만나는 휴식처입니다.
-    c.lineCap='round';
-    for(const [x,y,color] of [[600,80,'#fff0c4'],[600,680,'#d6dcff'],[1120,380,'#e0f6eb']]){
-      c.strokeStyle='#b5a8cb';c.lineWidth=66;c.beginPath();c.moveTo(600,400);c.lineTo(x,y);c.stroke();
-      c.strokeStyle=color;c.lineWidth=54;c.stroke();
-    }
-    ellipse(c,600,400,135,76,'#e4d9f1');ellipse(c,600,390,135,76,'#fff8f1');
-    star(c,600,387,42,'#f6d798');
+    const scale=Math.min(map.width/1200,map.height/800),x=map.width*.5,y=map.height*.5;
+    const rx=395*scale,ry=175*scale,depth=18*scale;
+    const shadow=c.createRadialGradient(x,y+depth+ry*.72,rx*.18,x,y+depth+ry*.72,rx*1.2);
+    shadow.addColorStop(0,'#4d466d99');shadow.addColorStop(.72,'#665b8660');shadow.addColorStop(1,'#665b8600');
+    ellipse(c,x,y+depth+8*scale,rx*1.06,ry*.82,shadow);
+    ellipse(c,x,y+depth,rx,ry,'#a79bc2');
+    ellipse(c,x,y,rx,ry,'#f8f1fb');
+    ellipse(c,x,y-5*scale,rx*.975,ry*.935,'#eee8f6');
+    c.strokeStyle='#fffaffd9';c.lineWidth=Math.max(2,3*scale);c.beginPath();c.ellipse(x,y-5*scale,rx*.96,ry*.9,0,0,Math.PI*2);c.stroke();
     for(const [x,y] of [[335,330],[365,535],[860,535]]){ellipse(c,x,y+18,48,20,'#cfebdf');star(c,x,y-4,18,'#fff2c7');}
-    c.textAlign='center';c.font='28px "Jua","Malgun Gothic",sans-serif';c.fillStyle='#786394';c.fillText(map.name,300,160);
-    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText('위로는 햇살, 아래로는 달빛',300,192);
   }),0,0);
 }
 export function drawParadise(ctx,map){
@@ -96,8 +91,6 @@ export function drawParadise(ctx,map){
       c.strokeStyle='#fff2b6aa';c.lineWidth=5;c.lineCap='round';
       for(let i=0;i<16;i++){const a=i*Math.PI/8;c.beginPath();c.moveTo(x+Math.cos(a)*r*1.12,y+Math.sin(a)*r*1.12);c.lineTo(x+Math.cos(a)*r*1.26,y+Math.sin(a)*r*1.26);c.stroke();}
     }
-    c.textAlign='center';c.font='29px "Jua","Malgun Gothic",sans-serif';c.fillStyle=moon?'#5d608d':'#936967';c.fillText(map.name,820,140);
-    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText(moon?'은빛 달의 품으로, 한 걸음 더':'따스한 태양의 품으로, 한 걸음 더',820,174);
   }),0,0);
 }
 // 금빛 햇살과 은빛 달빛이 중앙에서 섞이는 별들의 쉼터입니다.
@@ -117,13 +110,10 @@ export function drawStarParadise(ctx,map){
     const floor=c.createLinearGradient(245,270,955,560);floor.addColorStop(0,'#fff0ce');floor.addColorStop(.5,'#eee1f6');floor.addColorStop(1,'#dce9fc');
     ellipse(c,600,418,331,154,floor);
     c.strokeStyle='#ffffffaa';c.lineWidth=3;for(const r of [112,220,300]){c.beginPath();c.ellipse(600,418,r,r*.45,0,0,Math.PI*2);c.stroke();}
-    star(c,600,415,56,'#fff9e0');star(c,600,415,35,'#e0d4f4');
     for(let i=0;i<12;i++){const a=i*Math.PI/6;star(c,600+Math.cos(a)*282,418+Math.sin(a)*122,10,i%2?'#f4f8ff':'#ffe4a5');}
     ellipse(c,220,180,68,68,'#fff0b1');
     c.strokeStyle='#fff3c5';c.lineWidth=4;for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(220+Math.cos(a)*80,180+Math.sin(a)*80);c.lineTo(220+Math.cos(a)*94,180+Math.sin(a)*94);c.stroke();}
     ellipse(c,970,530,80,80,'#f4f4ff');ellipse(c,994,511,65,65,'#b9c8e1');
-    c.textAlign='center';c.font='30px "Jua","Malgun Gothic",sans-serif';c.fillStyle='#76628e';c.fillText(map.name,815,173);
-    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText('햇살과 달빛이 만나, 별이 쉬어가는 곳',815,208);
   }),0,0);
 }
 export function drawRainbowSpace(ctx,map){
@@ -140,8 +130,6 @@ export function drawValley(ctx,map,time){
     sky(c,map.width,map.height,['#9a9bc5','#bfc9e5','#c6b7df']);
     const path=()=>{c.beginPath();c.moveTo(-120,780);c.bezierCurveTo(450,780,340,210,1320,290);};
     for(const [width,color] of [[200,'#c7dcf22b'],[135,'#dceafd40'],[72,'#f2f5ff55'],[18,'#fff8ff55']]){c.strokeStyle=color;c.lineWidth=width;path();c.stroke();}
-    c.font='29px Jua,sans-serif';c.textAlign='center';c.fillStyle='#6d6494';c.fillText(map.name,600,790);
-    c.font='17px Jua,sans-serif';c.fillText('은하수가 들려주는 조용한 이야기',600,824);
   }),0,0);
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,t=reduced?0:time/90000;
   // 아주 느리게 이동하는 빛만 덧그립니다. 큰 배경은 캐시하고 화면 점멸은 하지 않습니다.

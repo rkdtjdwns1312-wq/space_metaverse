@@ -81,7 +81,7 @@ test('수업 마치기/서버 재시작 후 코드·학생 id·행성·소속·�
   // 위치만 테스트에서 상점 앞으로 옮깁니다. 구매 자체는 실제 서버 요청으로 검사합니다.
   p.mapId=STREET_ID;const shop=STREET.objects.find(o=>o.kind==='shop');
   assert.ok(shop);p.x=shop.x;p.y=shop.y+shop.radius+20;
-  const item=SHOP.items[0];assert.equal((await call(student,'shop:buy',{itemId:item.id,quantity:2})).ok,true);
+  const item=SHOP.items.find(item=>item.forSale!==false);assert.equal((await call(student,'shop:buy',{itemId:item.id,quantity:2})).ok,true);
   assert.equal((await call(student,'chat:send',{text:'내일도 만나요'})).ok,true);
   const balance=p.starShards,bag=structuredClone(p.inventory),oldToken=j.token;
   const persisted=JSON.parse(fs.readFileSync(path.join(f.dir,code+'.json'),'utf8'));

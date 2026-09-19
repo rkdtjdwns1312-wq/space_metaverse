@@ -802,7 +802,7 @@ test('star shop enforces location, funds, stack and bag limits; buying and selli
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const s=await connect(),joined=await call(s,'room:join',{code:r.room.code,nickname:'1'});
  const p=game.store.rooms.get(r.room.code).players.get(joined.selfId);
- const item=SHOP.items[0];
+ const item=SHOP.items.find(item=>item.forSale!==false);
  const fromPlaza=await call(s,'shop:buy',{itemId:item.id,quantity:1});
  assert.equal(fromPlaza.ok,false);assert.equal(fromPlaza.error,'별상점은 오색별빛 쉼터에 있어요.');
  const gate=MAP.objects.find(o=>o.kind==='gate');
@@ -823,6 +823,8 @@ test('star shop enforces location, funds, stack and bag limits; buying and selli
  assert.deepEqual(p.inventory,[{id:item.id,quantity:2}]);
  const badItem=await call(s,'shop:buy',{itemId:'nope',quantity:1});
  assert.equal(badItem.ok,false);assert.equal(badItem.error,'그런 물건은 없어요.');
+ const retired=await call(s,'shop:buy',{itemId:'star-sticker',quantity:1});
+ assert.equal(retired.ok,false);assert.equal(retired.error,'이 물건은 지금 상점에서 판매하지 않아요.');
  for(const quantity of [0,11]){
   const res=await call(s,'shop:buy',{itemId:item.id,quantity});
   assert.equal(res.ok,false);assert.equal(res.error,'1~10개씩 사고팔 수 있어요.');
@@ -831,9 +833,8 @@ test('star shop enforces location, funds, stack and bag limits; buying and selli
  p.inventory=[{id:item.id,quantity:95}];
  const overStack=await call(s,'shop:buy',{itemId:item.id,quantity:5});
  assert.equal(overStack.ok,false);assert.equal(overStack.error,'한 종류는 99개까지만 가질 수 있어요.');
- const otherItem=SHOP.items[1];
- p.inventory=SHOP.items.filter(it=>it.id!==otherItem.id).map(it=>({id:it.id,quantity:1}))
-   .concat(Array.from({length:SHOP.maxKinds-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
+ const otherItem=SHOP.items.find(candidate=>candidate.forSale!==false && candidate.id!==item.id);
+ p.inventory=SHOP.items.filter(it=>it.id!==otherItem.id).slice(0,SHOP.maxKinds).map(it=>({id:it.id,quantity:1}));
  assert.equal(p.inventory.length,SHOP.maxKinds);
  const fullBag=await call(s,'shop:buy',{itemId:otherItem.id,quantity:1});
  assert.equal(fullBag.ok,false);assert.equal(fullBag.error,'가방이 가득 찼어요.');
@@ -857,7 +858,7 @@ test('resume after reconnecting keeps star shards, inventory and the star-street
  assert.equal((await call(teacher,'shards:give',{playerId:joined.selfId,amount:30})).ok,true);
  const shop=STREET.objects.find(o=>o.kind==='shop');
  p.x=shop.x;p.y=shop.y;
- const item=SHOP.items[0];
+ const item=SHOP.items.find(item=>item.forSale!==false);
  assert.equal((await call(s,'shop:buy',{itemId:item.id,quantity:1})).ok,true);
  s.disconnect();await sleep(60);
  const resumed=await connect();
@@ -1172,8 +1173,7 @@ test('trade:approve rejects and logs the trade when holdings changed since accep
  assert.equal(p1.starShards,SHARDS.max-2);assert.equal(p2.starShards,10);
  // 가방 종류 한도(SHOP.maxKinds) 넘침: 1의 가방을 반딧불 램프만 빼고 꽉 채운 뒤 2에게서 반딧불 램프를 받으면 한도를 넘깁니다.
  p1.starShards=10;p2.starShards=10;
- p1.inventory=SHOP.items.filter(it=>it.id!=='firefly-lamp').map(it=>({id:it.id,quantity:1}))
-   .concat(Array.from({length:SHOP.maxKinds-(SHOP.items.length-1)},(_,i)=>({id:'filler'+i,quantity:1})));
+ p1.inventory=SHOP.items.filter(it=>it.id!=='firefly-lamp').slice(0,SHOP.maxKinds).map(it=>({id:it.id,quantity:1}));
  assert.equal(p1.inventory.length,SHOP.maxKinds);
  p2.inventory=[{id:'firefly-lamp',quantity:1}];
  const overflowBag=await call(s2,'trade:propose',{targetId:j1.selfId,give:{shards:0,items:[{id:'firefly-lamp',quantity:1}]},want:{shards:0,items:[]}});

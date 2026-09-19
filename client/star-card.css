@@ -1,0 +1,49 @@
+.star-card-dialog {
+  width: min(92vw, 30rem);
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+  padding: 1rem;
+  overflow-x: hidden;
+}
+
+.star-card-face {
+  box-sizing: border-box;
+  min-height: 24rem;
+  padding: clamp(4.5rem, 19vw, 7rem) clamp(1rem, 8vw, 3rem) 2rem;
+  background: url('/assets/cards/star-card-face.webp') center / cover no-repeat;
+  display: grid;
+  align-content: center;
+  gap: .45rem;
+  color: #111;
+  text-align: center;
+}
+
+.star-card-name,
+.star-card-used-by,
+.star-card-expiry,
+.star-card-description,
+.star-card-effect,
+.star-card-messages,
+.star-card-manual-note {
+  margin: 0;
+  padding: .35rem .65rem;
+  background: rgb(255 248 226 / 82%);
+}
+
+.star-card-name { font-size: clamp(1.6rem, 8vw, 2.4rem); line-height: 1.1; }
+.star-card-used-by, .star-card-expiry { font-weight: 700; }
+.star-card-description p, .star-card-effect p, .star-card-messages p { margin: .25rem 0; line-height: 1.45; }
+.star-card-effect { font-weight: 700; }
+.star-card-manual-note { color: #664400; }
+.star-card-error { color: #a00; min-height: 1.4em; }
+.star-card-remove-confirm { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.star-card-remove-confirm[hidden] { display: none; }
+.star-card-remove-confirm p { flex: 1 0 100%; margin: .25rem 0; }
+.star-card-dialog button { min-height: 2.5rem; max-width: 100%; }
+
+@media (max-width: 390px) {
+  .star-card-dialog { padding: .65rem; }
+  .star-card-face { min-height: 22rem; padding-inline: .5rem; }
+  .star-card-dialog .dialog-actions { flex-wrap: wrap; }
+  .star-card-dialog .dialog-actions button { flex: 1 1 8rem; }
+}

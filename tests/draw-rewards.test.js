@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRabbitDraw,rabbitDrawView,validateRabbitDraw,RABBIT_DRAW_CATALOG} from '../server/rabbit-draw.js';
-import {awardDrawReward} from '../NEWserver/draw-rewards.js';
+import {awardDrawReward} from '../server/draw-rewards.js';
 
 const player=()=>({starShards:0,inventory:[],avatar:{level:1,xp:0,form:'asteroid'}});
 test('new rabbit draw is an exact shuffled 54-card multiset and view does not peek',()=>{
@@ -26,11 +26,11 @@ test('draw reward validates capacity before mutating and applies XP overflow as 
   const result=awardDrawReward(q,{kind:'xp',amount:10,name:'과다 성장'});
   assert.equal(q.avatar.xp,0); assert.equal(q.starShards,10); assert.equal(result.deltas.shards,10);
 });
-test('item reward respects two-owned and twenty-slot limits atomically',()=>{
-  const p=player(); p.inventory=[{id:'space-food-card',quantity:2}];
+test('item reward respects stack and forty-slot limits atomically',()=>{
+  const p=player(); p.inventory=[{id:'space-food-card',quantity:99}];
   assert.throws(()=>awardDrawReward(p,{kind:'item',amount:1,itemId:'space-food-card',name:'우주 식량'}));
-  assert.equal(p.inventory[0].quantity,2);
-  const full=player(); full.inventory=Array.from({length:20},(_,i)=>({id:'x'+i,quantity:1}));
+  assert.equal(p.inventory[0].quantity,99);
+  const full=player(); full.inventory=Array.from({length:40},(_,i)=>({id:'x'+i,quantity:1}));
   assert.throws(()=>awardDrawReward(full,{kind:'item',amount:1,itemId:'space-food-card',name:'우주 식량'}));
-  assert.equal(full.inventory.length,20);
+  assert.equal(full.inventory.length,40);
 });

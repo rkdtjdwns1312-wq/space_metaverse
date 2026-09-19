@@ -10,12 +10,22 @@ import { RoomStore, ensure, GameError, playerEffectsView, nickname } from './roo
 import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
+import { CRAFTING } from '../shared/crafting.js';
+import { attemptCraft } from './crafting.js';
+import { templeItemRows } from './temple-items.js';
+import { loadCraftingRecipes } from './crafting-recipes.js';
+import {sellQuote} from '../shared/item-pricing.js';
+import {awardDrawReward} from './draw-rewards.js';
+import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue,expireStarCards} from './star-cards.js';
+import {starCardOf} from '../shared/star-cards.js';
+import {useLv2Item,settleLv2Items,hasLv2ItemBlock,collectSunTax,syncGalaxyHoldings,lv2ItemsDue} from './lv2-item-effects.js';
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
-import {moveMonsters,monsterViews,strikeMonster} from './monsters.js';
+import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
+import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
 import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
@@ -90,7 +100,7 @@ const planetInput=(room,data) => {
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
   return {name,description,x,y,color:data.color,templateId:data.templateId};
 };
-export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, abilityDie=rollStarDie}={}) {
+export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
   const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts}):new RoomStore();
   const persistent=!!dataDir;
@@ -140,6 +150,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
+    for(const p of room.players.values())syncGalaxyHoldings(p,clock());
     // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
     for(const planet of room.planets.values()) if(planet.work?.distribution) {
       reconcileMembership(room,planet,clock());
@@ -267,10 +278,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(now-(lastAttacks.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'공격은 1초에 한 번 할 수 있어요.');
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1};
-      const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,power};
+      const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,radius:ATTACK_VISUAL.hitRadius,power};
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
-      const target=strikeMonster(room,player,power,now);
-      return {target};
+      const targets=strikeMonsters(room,player,power,now);
+      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*ATTACK_VISUAL.reach,y:player.y+direction.y*ATTACK_VISUAL.reach,radius:ATTACK_VISUAL.hitRadius,sourceId:player.id},power,now);
+      for(const result of playerTargets)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+        io.to(viewer.socketId).emit('combat:player-hit',{...hit,...result});
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:result.targetId,vitals:result.vitals});
+      }
+      return {target:targets[0]||null,targets,playerTargets};
     },false);
     // 이전 클라이언트에도 바로 안내하고, 폐지된 몬스터 상호작용은 실행하지 않습니다.
     action('combat:skill',()=>{
@@ -283,6 +299,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const direction=player.facing||{x:0,y:1};
       const effect=skillEffectOf(player.avatar.constellationId,player.avatar.level);
       const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,effectId:effect?.id||null,durationMs:effect?.durationMs??ATTACK_VISUAL.durationMs};
+      // 아직 효과 수치는 정하지 않았습니다. 이후 스킬도 동일한 다중 대상 판정을 사용할 수 있습니다.
+      hit.playerTargetIds=playersInArea(room,{mapId:player.mapId,x:player.x+direction.x*ATTACK_VISUAL.reach,y:player.y+direction.y*ATTACK_VISUAL.reach,radius:ATTACK_VISUAL.hitRadius,sourceId:player.id}).map(p=>p.id);
+      hit.monsterTargetIds=monstersInAttackArea(room,player,now).map(m=>m.id);
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       // 전투 스킬은 방향 표시만 제공합니다. 주간 카드 능력·마나·HP를 소비하지 않습니다.
       return {ready:false,direction,effectId:effect?.id||null};
@@ -759,11 +778,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('temple:read',data=>{
       const {room,player,pillar}=templeAccess(data),kind=pillar.service;
       if(kind==='weekly')return {kind,...weeklyRewards(room,clock())};
-      if(kind==='effects')return {kind,canComplete:player.role==='teacher',rows:[...room.players.values()].flatMap(p=>[
-        ...playerEffectsView(p,player.role==='teacher',clock()).filter(e=>e.until===null||e.until>clock()).map(e=>({targetId:p.id,nickname:p.nickname,...e})),
-        ...(p.abilityState?.markers||[]).map(marker=>({targetId:p.id,nickname:p.nickname,itemId:null,icon:'✦',
-          label:'Lv'+(marker.level||2)+' '+(constellationOf(marker.constellationId)?.name||'별자리')+' 능력',description:constellationOf(marker.constellationId,marker.level||2)?.ability?.description||'',
-          note:marker.note,until:null,...(player.role==='teacher'?{abilityMarkerId:marker.id,constellationId:marker.constellationId,abilityLevel:marker.level||2}:{} )}))])};
+      if(kind==='effects')return {kind,canComplete:player.role==='teacher',rows:templeItemRows(room,player,clock())};
       if(kind==='timetable')return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
       return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
     });
@@ -865,6 +880,26 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;if(!s||!data||typeof data!=='object'||(s.player.role==='student'&&!studentOpen()))return;
       setDodgeInput(s.room,s.player,data);
     });
+    const requireCrafting=()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const p=s.player,machine=STREET.objects.find(o=>o.kind==='crafting');
+      ensure(p.connected&&!p.away,'먼저 교실에 입장해주세요.');
+      ensure(!isDefeated(p)&&!p.avatar.blackStar,'지금은 조합기를 이용할 수 없어요.');
+      ensure(p.mapId===STREET_ID&&machine&&isNear(p,machine),'별빛 조합기에 더 가까이 가주세요.');
+      return s;
+    };
+    action('crafting:open',()=>{
+      requireCrafting();return {enabled:craftingRecipes.length>0,fee:CRAFTING.fee};
+    },false);
+    action('crafting:combine',data=>{
+      const {room,player}=requireCrafting();
+      // 조합법은 교사가 정한 뒤 추가합니다. 준비 중에는 직접 요청해도 비용이 없습니다.
+      ensure(craftingRecipes.length>0,'조합법과 상위 레벨 아이템을 준비 중이에요. 별 파편과 재료는 그대로예요.');
+      const result=attemptCraft(player,data.ingredients,{recipes:craftingRecipes});
+      const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
+      ensure(!result.error||result.error==='recipe-mismatch',messages[result.error]||'조합할 수 없어요.');
+      roster(room);return {...result,itemId:result.item?.id??null};
+    });
     const requireShop=p=>{
       ensure(p.mapId===STREET_ID,'별상점은 오색별빛 쉼터에 있어요.');
       const shop=STREET.objects.find(o=>o.kind==='shop');
@@ -876,6 +911,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       requireShop(p);
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
+      ensure(item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       const cost=item.price*quantity;
@@ -885,6 +921,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         (p.abilityState.pending.maxPrice!==undefined?item.price<=p.abilityState.pending.maxPrice:item.level<=2);
       const totalQuantity=quantity+(copyPending?1:0);
       const existing=p.inventory.find(i=>i.id===item.id);
+      ensure(!item.maxOwned||(existing?.quantity||0)+totalQuantity<=item.maxOwned,item.name+'은 '+item.maxOwned+'개까지 보유할 수 있어요.');
       if(existing){
         ensure(existing.quantity+totalQuantity<=SHOP.maxStack,'한 종류는 99개까지만 가질 수 있어요.');
         existing.quantity+=totalQuantity;
@@ -907,7 +944,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       const existing=p.inventory.find(i=>i.id===item.id);
       ensure(existing && existing.quantity>=quantity,'그만큼 가지고 있지 않아요.');
-      const gain=Math.floor(item.price*SHOP.sellRate)*quantity;
+      const quote=sellQuote(item,quantity);
+      ensure(!quote.error,quote.error==='quantity-must-be-even'?'이 아이템은 2개씩 묶어 팔아주세요.':'이 아이템은 아직 판매 가격을 정하지 않았어요.');
+      const gain=quote.gain;
       // 상한을 넘기면 아이템만 사라지는 일이 없도록, 담을 수 있을 때만 팝니다.
       ensure(p.starShards+gain<=SHARDS.max,'별 파편을 더 담을 수 없어요. (최대 '+SHARDS.max+'개)');
       p.starShards+=gain;
@@ -936,13 +975,17 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
       ensure(!hasCardStatus(p,'little-sun-card',now),'자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요.');
       ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
+      ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(!hasCardStatus(p,'little-moon-card',now),'꼬마 달 보호 중에는 다른 카드 효과를 받을 수 없어요.');
       ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
       ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
-      ensure(activeCardMarkers(p,now).length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
+      const retainedMarkers=(p.cardMarkers||[]).filter(marker=>marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card');
+      ensure(retainedMarkers.length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
+      collectSunTax(room,p,now);
       owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
       p.lastItemUseAt=now;p.rabbitUsedDay=koreaDay(now);
+      p.cardMarkers=retainedMarkers;
       const draw=createRabbitDraw(now),marker=addCardMarker(p,item,p,null,'뽑기 진행 중');
       draw.markerId=marker.id;p.rabbitDraw=draw;
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:p.id,
@@ -956,21 +999,21 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(draw&&draw.id===data.drawId,'진행 중인 뽑기가 없어요.');
       const card=draw.cards.find(entry=>entry.id===data.cardId);
       ensure(card,'펼쳐진 카드 한 장을 골라주세요.');
-      ensure(p.starShards+card.reward<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
-      p.starShards+=card.reward;p.rabbitDraw=null;
+      const reward=awardDrawReward(p,card.reward);p.rabbitDraw=null;
       const marker=p.cardMarkers?.find(entry=>entry.id===draw.markerId);
-      if(marker)marker.note='당첨: 별 파편 '+card.reward+'개';
-      whisper(room,p,'달토끼 뽑기에서 별 파편 '+card.reward+'개를 받았어요.');
-      roster(room);return {reward:card.reward,starShards:p.starShards};
+      if(marker)marker.note=('당첨: '+reward.text).slice(0,80);
+      whisper(room,p,'달토끼 뽑기: '+reward.text);
+      roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
     action('item:complete',data=>{
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 사용 중인 아이템을 처리 완료할 수 있어요.');
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
-      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&entry.until===null);
+      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&entry.remainingUses>0)));
       ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
       ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
-      target.cardMarkers=target.cardMarkers.filter(entry=>entry.id!==marker.id);
+      if(marker.remainingUses>1)marker.remainingUses--;
+      else target.cardMarkers=target.cardMarkers.filter(entry=>entry.id!==marker.id);
       roster(room);
       return {};
     });
@@ -1064,6 +1107,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         ensure(!pending.selected.includes(item.id),'서로 다른 종류의 아이템을 골라주세요.');
       }
       const owned=p.inventory.find(entry=>entry.id===item.id);
+      ensure(!item.maxOwned||(owned?.quantity||0)+1<=item.maxOwned,item.name+'은 '+item.maxOwned+'개까지 보유할 수 있어요.');
       if(owned)ensure(owned.quantity<SHOP.maxStack,'그 아이템을 더 담을 수 없어요.');
       else ensure(p.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
       if(owned)owned.quantity++;else p.inventory.push({id:item.id,quantity:1});
@@ -1099,6 +1143,23 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       target.abilityState.markers=target.abilityState.markers.filter(entry=>entry.id!==marker.id);
       roster(room);return {};
     });
+    // 학생 입력으로 카드 종류나 보상을 정하지 않습니다. 공개·제거도 같은 저장 트랜잭션에 들어갑니다.
+    const cardReply=(card,canRemove=false)=>{
+      const definition=starCardOf(card.cardId),d=card.data;
+      const messages=[...(d.rewards||[]).map(r=>(itemOf(r.itemId)?.name||r.itemId)+' '+r.quantity+'개 지급'),
+        ...(d.xp?[`경험치 ${d.xp} 지급`]:[]),...(d.shards?[`초과 경험치를 별 파편 ${d.shards}개로 지급`]:[]),
+        ...(d.warningsCleared?[`경고 ${d.warningsCleared}건 해제`]:[]),...(d.blackStarsCleared?[`검은별 ${d.blackStarsCleared}개 해제`]:[])];
+      return {card:{...card,data:{...d,messages,manualNote:(d.manual||[]).join(' ')}},definition,canRemove};
+    };
+    const requireStarCard=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const card=activeStarCards(s.room,clock()).find(c=>c.id===data.id);
+      ensure(card,'이미 종료되었거나 찾을 수 없는 별 카드예요.');
+      ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,{...card,radius:28}),'신전의 별 카드에 더 가까이 가주세요.');
+      return {...s,card};
+    };
+    action('star-card:read',data=>{const {player,card}=requireStarCard(data);return cardReply(card,player.role==='teacher');});
+    action('star-card:remove',data=>{const {room,player,card}=requireStarCard(data);const result=removeStarCard(room,player,card.id);roster(room);return result;});
     action('item:discard',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player}=s,item=itemOf(data.itemId);
@@ -1113,12 +1174,29 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s;
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
+      ensure(item.usable!==false,'별 카드의 종류와 효과는 준비 중이에요.');
+      if(item.mode==='star-card'){
+        const result=item.id==='star-card'?useStarCard(room,p,clock(),starCardRandom):useTypedStarCard(room,p,item.id,clock(),starCardRandom);
+        room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:p.id,targetNickname:p.nickname,itemId:item.id,itemName:result.card.name,secret:false});
+        if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
+        announce(room,p.nickname+' 친구가 '+result.card.name+' 별 카드를 사용했어요.');
+        roster(room);
+        return {message:result.message,inventory:[...p.inventory],starShards:p.starShards,avatar:{...p.avatar},starCard:cardReply(result.record)};
+      }
+      if(item.mode==='lv2'){
+        const outcome=useLv2Item(room,p,item,data,clock(),abilityDie);
+        room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:outcome.targetIds[0],targetNickname:outcome.targetIds.map(id=>room.players.get(id)?.nickname||'').join(' · '),itemId:item.id,itemName:item.name,secret:false});
+        if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
+        announce(room,p.nickname+' 친구가 '+item.name+'을 사용했어요.');
+        roster(room);return {...outcome,inventory:[...p.inventory],effects:playerEffectsView(room.players.get(data.targetId)||p,p.role==='teacher',clock())};
+      }
       const owned=p.inventory.find(i=>i.id===item.id);
       ensure(owned,'가방에 그 물건이 없어요.');
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
       const now=clock();
       ensure(!hasCardStatus(p,'little-sun-card',now)||item.mode==='moon','자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요. 꼬마 달은 사용할 수 있어요.');
       ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
+      ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(item.mode!=='draw','달토끼 카드는 뽑기 카드 화면에서 사용해주세요.');
       ensure(typeof data.targetId==='string','그 친구는 지금 없어요.');
       const target=room.players.get(data.targetId);
@@ -1142,12 +1220,13 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         ensure(warningCount(meteorPlanet,p.id)>0,'그 부서에서 받은 활성 경고가 없어요.');
       }
       if(item.mode)for(const recipient of targets){
-        const remaining=activeCardMarkers(recipient,now).filter(marker=>!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
+        const remaining=(recipient.cardMarkers||[]).filter(marker=>(marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card')&&!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
           !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
         ensure(remaining.length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
       }
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       // 소비: 수량 1 소모, 0이 되면 가방에서 완전히 지웁니다.
+      collectSunTax(room,p,now);
       owned.quantity-=1;
       if(owned.quantity<=0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
       p.lastItemUseAt=now;
@@ -1157,7 +1236,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           whisper(room,p,meteorPlanet.name+'에서 받은 경고 '+cleared.cleared+'건이 해제됐어요.'+(cleared.released?' 검은별 상태도 풀렸어요.':''));
         }
         for(const recipient of targets){
-          recipient.cardMarkers=activeCardMarkers(recipient,now).filter(marker=>!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
+          recipient.cardMarkers=(recipient.cardMarkers||[]).filter(marker=>(marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card')&&!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
             !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
           addCardMarker(recipient,item,p,['moon','uv'].includes(item.mode)?nextKoreaMidnight(now):null,
             second?'자리 맞교환: '+(recipient.id===target.id?second.nickname:target.nickname):'');
@@ -1318,7 +1397,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         }
         for(const it of wantItems){
           const next=(bag.get(it.id)||0)+it.quantity;
-          if(next>SHOP.maxStack) return true;
+          if(next>Math.min(SHOP.maxStack,itemOf(it.id)?.maxOwned||SHOP.maxStack)) return true;
           bag.set(it.id,next);
         }
         return bag.size>SHOP.maxKinds;
@@ -1430,7 +1509,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       // 롤백은 room 객체도 교체하므로 실패 전 참조로 아래 작업을 계속하지 않습니다.
       if(dodgeSaveFailed)continue;
       // 1초에 한 번(50ms tick 20회) 만료된 아이템 효과를 지웁니다. 하나라도 지웠으면 스냅샷을 다시 보냅니다.
-      if(step%20===0){
+        if(step%20===0){
+          if(starCardsDue(room,clock())){
+            try{transaction(()=>{if(expireStarCards(room,clock()))roster(room);});}
+            catch(error){console.error('별 카드 종료 저장 실패:',error.message);continue;}
+          }
+        if(lv2ItemsDue(room,clock())){
+          try{transaction(()=>{if(settleLv2Items(room,clock()))roster(room);});}
+          catch(error){console.error('아이템 기간 보상 저장 실패:',error.message);continue;}
+        }
         const abilityNow=clock();
         const abilityDue=[...room.players.values()].some(p=>(p.abilityState?.blocks||[]).some(block=>
           block.until<=abilityNow&&(!block.reward||p.starShards+block.reward<=SHARDS.max)));
@@ -1450,7 +1537,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         for(const p of room.players.values()){
           const kept=p.effects.filter(e=>e.until>now);
           if(kept.length!==p.effects.length){p.effects=kept;effectsChanged=true;}
-          const active=activeCardMarkers(p,now);
+          const active=(p.cardMarkers||[]).filter(e=>e.until===null||e.until>now||e.itemId==='sun-rabbit-card');
           if(active.length!==(p.cardMarkers||[]).length){p.cardMarkers=active;effectsChanged=true;}
         }
         if(effectsChanged) roster(room);

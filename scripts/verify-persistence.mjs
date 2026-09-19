@@ -57,7 +57,7 @@ export async function verifyPersistence(browser){
     await student.locator('#self-shards').filter({hasText:'40'}).waitFor({state:'attached'});await teacher.locator('#teacher-close').click();
     await student.locator('#interact-prompt').filter({hasText:'별상점'}).click();
     await student.locator('#shop-buy-list li.item').first().getByRole('button',{name:'사기',exact:true}).click();
-    const balance=String(40-SHOP.items[0].price);
+    const balance=String(40-SHOP.items.find(item=>item.forSale!==false&&item.level===1).price);
     await student.locator('#self-shards').filter({hasText:balance}).waitFor({state:'attached'});await student.locator('#shop-close').click();
     await openChat(student);await openChat(teacher);await student.locator('#chat-input').fill('다음 수업에도 만나요');await student.locator('#chat-send').click();
     await student.locator('#chat-log li').filter({hasText:'다음 수업에도 만나요'}).waitFor({state:'attached'});

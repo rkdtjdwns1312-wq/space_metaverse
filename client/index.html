@@ -7,7 +7,12 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/arcade.css">
+  <link rel="stylesheet" href="/crafting.css">
+  <link rel="stylesheet" href="/star-card.css">
   <link rel="stylesheet" href="/planet-dialog.css">
+  <link rel="stylesheet" href="/chat-window.css">
+  <link rel="stylesheet" href="/item-usage.css">
+  <link rel="stylesheet" href="/inventory-pages.css">
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" type="module"></script>
 </head>
@@ -118,16 +123,9 @@
       <p id="hint" class="hint">행성 가까이에서 F · 오른쪽 문으로 별빛 거리</p>
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="inventory-dialog">닫기</button></div></dialog>
     <dialog id="tasks-dialog" aria-labelledby="tasks-title"><section class="panel actions"><h2 id="tasks-title">나의 과제</h2><ul id="my-tasks" class="task-list" aria-label="나의 과제"></ul><p id="my-tasks-empty" class="muted">아직 담아온 과제가 없어요. 알림장에서 과제를 담아보세요.</p></section><div class="dialog-actions"><button id="tasks-close" class="secondary" type="button">닫기</button></div></dialog>
-    <dialog id="chat-dialog" aria-labelledby="chat-title"><section class="panel chat" id="chat-panel"><div class="panel-heading"><h2 id="chat-title">우주 채팅</h2><span id="chat-status">켜짐</span></div>
-      <div class="chat-routing"><label for="chat-channel">대화 범위</label><select id="chat-channel"><option value="map">전체 대화 · 같은 맵</option><option value="department">행성 대화</option><option value="direct">1:1 대화</option></select><select id="chat-recipient" hidden aria-label="대화 상대"></select><p id="chat-context" class="muted">같은 맵에 있는 친구들과 대화해요.</p></div>
-      <div id="chat-teacher-controls" hidden><button id="chat-toggle" class="small secondary" type="button">채팅 끄기</button><button id="chat-clear" class="small secondary" type="button">채팅 지우기</button></div>
-      <ul id="chat-log" aria-live="polite" aria-label="채팅 내용"></ul>
-      <p id="chat-empty" class="muted">아직 대화가 없어요. 인사해볼까요?</p>
-      <form id="chat-form"><input id="chat-input" autocomplete="off" placeholder="친구들에게 말해요 (Enter)" aria-label="채팅 메시지 입력" aria-describedby="chat-count chat-rate-hint"><button id="chat-send" class="primary small" type="submit">보내기</button></form>
-      <p id="chat-count" class="muted">0 / 100자</p><p id="chat-rate-hint" class="muted">1.5초에 한 번 · 10초에 최대 5번 · 같은 말은 10초 뒤에 보내요.</p><p id="chat-feedback" role="status"></p>
-    </section><div class="dialog-actions"><button class="secondary" type="button" data-close="chat-dialog">닫기</button></div></dialog>
   </section>
 </main>
+<button id="chat-window-toggle" class="small secondary" type="button" aria-controls="chat-dialog" aria-expanded="false">채팅창 열기</button>
 <nav id="bottom-dock" class="bottom-dock" aria-label="빠른 메뉴">
   <button id="dock-avatar" class="dock-button" type="button" aria-label="내정보"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>내정보</span></button>
   <button id="dock-tasks" class="dock-button" type="button" aria-label="과제"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16H5V5a2 2 0 0 1 2-2Z"/><path d="M9 3v3h6V3M8 11l1.5 1.5L12 10M8 16l1.5 1.5L12 15M14 12h3M14 17h3"/></svg><span>과제</span></button>
@@ -135,6 +133,14 @@
   <button id="dock-chat" class="dock-button" type="button" aria-label="채팅"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg><span>채팅</span><span id="unread-count" hidden>0</span></button>
   <button id="dock-menu" class="dock-button" type="button" aria-label="메뉴"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><span>메뉴</span></button>
 </nav>
+<dialog id="chat-dialog" aria-labelledby="chat-title"><section class="panel chat" id="chat-panel"><header class="chat-titlebar"><h2 id="chat-title">우주 채팅</h2><span id="chat-status">켜짐</span><div class="chat-window-actions"><button id="chat-shrink" class="small secondary" type="button" aria-label="채팅창 작게">−</button><button id="chat-grow" class="small secondary" type="button" aria-label="채팅창 크게">＋</button><span id="chat-size-label" class="visually-hidden">2 / 3</span><button id="chat-window-close" class="small secondary" type="button">닫기</button></div></header>
+  <div class="chat-routing"><label for="chat-channel">대화 범위</label><select id="chat-channel"><option value="map">전체 대화 · 같은 맵</option><option value="department">행성 대화</option><option value="direct">1:1 대화</option></select><select id="chat-recipient" hidden aria-label="대화 상대"></select><p id="chat-context" class="muted">같은 맵에 있는 친구들과 대화해요.</p></div>
+  <div id="chat-teacher-controls" hidden><button id="chat-toggle" class="small secondary" type="button">채팅 끄기</button><button id="chat-clear" class="small secondary" type="button">채팅 지우기</button></div>
+  <button id="chat-latest" class="small secondary" type="button" hidden>새 대화 ↓</button>
+  <ul id="chat-log" aria-live="polite" aria-label="채팅 내용"></ul><p id="chat-empty" class="muted">아직 대화가 없어요. 인사해볼까요?</p>
+  <form id="chat-form"><input id="chat-input" autocomplete="off" placeholder="친구들에게 말해요 (Enter)" aria-label="채팅 메시지 입력" aria-describedby="chat-count chat-rate-hint"><button id="chat-send" class="primary small" type="submit">보내기</button></form>
+  <p id="chat-count" class="muted">0 / 100자</p><p id="chat-rate-hint" class="muted">1.5초에 한 번 · 10초에 최대 5번 · 같은 말은 10초 뒤에 보내요.</p><p id="chat-feedback" role="status"></p>
+</section></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="social-dialog" aria-labelledby="social-title"><h2 id="social-title">친구와 소통</h2><button id="crew-button" class="icon-button" type="button" hidden aria-label="함께 있는 친구들"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>접속 중인 친구</span><span id="player-count">0 / 30</span></button><button id="open-chat" class="primary" type="button">채팅 열기</button><div class="dialog-actions"><button class="secondary" type="button" data-close="social-dialog">닫기</button></div></dialog>
 <dialog id="menu-dialog" aria-labelledby="menu-title"><h2 id="menu-title">교실 메뉴</h2><button id="my-password" class="secondary" hidden>내 비밀번호 바꾸기</button><div id="menu-content"><div class="topline"><div class="topline-title"><span class="eyebrow">SPACE CLASSROOM</span><h1 id="room-title">우리들의 우주 광장</h1></div><div class="topline-actions"><div id="room-badge" hidden><span>교실 코드</span><strong id="room-code"></strong><button id="copy-student-link" class="small primary" type="button">학생 입장 링크 복사</button><button id="copy-code" class="small secondary" type="button">복사</button></div><button id="teacher-tools" class="small secondary" type="button" hidden>선생님 도구<span id="teacher-badge" class="badge" hidden>0</span></button><button id="planet-new" class="small secondary" type="button" hidden>행성 만들기</button><button id="planet-exit" class="small secondary" type="button" hidden>광장으로 나가기</button><button id="planet-info" class="small secondary" type="button" hidden>우리 행성 정보</button><button id="leave" class="secondary leave" type="button" hidden>교실 나가기</button></div></div><p class="menu-connection">연결 상태: <span id="connection">연결 중…</span></p></div><div class="dialog-actions"><button class="secondary" type="button" data-close="menu-dialog">닫기</button></div></dialog>
@@ -177,13 +183,20 @@
 <dialog id="black-star-dialog" aria-labelledby="black-star-title"><h2 id="black-star-title">검은별 명단</h2><ul id="black-star-students" class="warning-list"></ul><p id="black-star-empty" class="muted">현재 검은별 학생이 없어요.</p><div class="dialog-actions"><button id="black-star-close" class="secondary" type="button">닫기</button></div></dialog>
 <dialog id="black-hole-info-dialog" aria-labelledby="black-hole-info-title"><h2 id="black-hole-info-title">검은별</h2><p>여기는 검은별을 받은 사람들이 머무는 공간입니다. 검은별 상태가 풀리기 전까지 나갈 수 없습니다.</p><div class="dialog-actions"><button id="black-hole-info-close" class="primary" type="button">확인</button></div></dialog>
 <dialog id="planet-create-dialog"><h2 id="planet-create-title">새 행성 신청하기</h2><p id="planet-create-hint" class="muted">행성은 우리 반의 역할이에요. 어떤 역할의 행성인지 이름과 소개를 적어요.</p><fieldset id="planet-types"><legend>행성 종류</legend></fieldset><label for="planet-name">행성 이름</label><input id="planet-name" maxlength="10" required placeholder="예: 급식행성"><label for="planet-desc">행성 소개</label><input id="planet-desc" maxlength="40" placeholder="어떤 친구들의 행성인가요? (선택)"><fieldset id="planet-colors"><legend>행성 색</legend></fieldset><p id="planet-create-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-create-cancel" class="secondary" type="button">취소</button><button id="planet-create-submit" class="primary" type="button">신청하기</button></div></dialog>
-<dialog id="shop-dialog" aria-labelledby="shop-title"><h2 id="shop-title">별상점</h2>
-  <p id="shop-shards">내 별 파편 ★ 0</p>
+<dialog id="shop-dialog" aria-labelledby="shop-title"><div class="shop-heading"><h2 id="shop-title">별상점</h2><p id="shop-shards" role="status" aria-live="polite">내 별 파편 ★ 0</p></div>
   <div class="tabs" role="tablist" aria-label="상점 탭">
     <button id="shop-tab-buy" class="tab selected" role="tab" aria-selected="true" aria-controls="shop-buy-list" type="button">사기</button>
     <button id="shop-tab-sell" class="tab" role="tab" aria-selected="false" aria-controls="shop-sell-list" type="button">팔기</button>
   </div>
+  <div id="shop-level-tabs" class="shop-level-tabs" role="tablist" aria-label="구매 레벨" hidden>
+    <button type="button" role="tab" aria-selected="true" aria-controls="shop-buy-list" data-shop-level="1">LV1</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="shop-buy-list" data-shop-level="2">LV2</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="shop-buy-list" data-shop-level="3">LV3</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="shop-buy-list" data-shop-level="4">LV4</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="shop-buy-list" data-shop-level="5">LV5</button>
+  </div>
   <ul id="shop-buy-list" class="item-list" aria-label="살 수 있는 물건"></ul>
+  <p id="shop-buy-empty" class="muted" hidden>이 레벨 상품은 준비중이에요.</p>
   <ul id="shop-sell-list" class="item-list" aria-label="팔 수 있는 물건" hidden></ul>
   <p id="shop-sell-empty" class="muted" hidden>팔 물건이 없어요.</p>
   <div class="dialog-actions"><button id="shop-close" class="secondary" type="button">닫기</button></div>
@@ -195,6 +208,7 @@
   <p id="use-secret-note" class="muted" hidden>누가 썼는지 친구들에게는 비밀이에요(선생님은 알아요).</p>
   <label for="use-target">누구에게</label><select id="use-target"></select>
   <div id="use-second-target-row" hidden><label for="use-second-target">자리를 바꿀 다른 친구</label><select id="use-second-target"></select></div>
+  <div id="use-third-target-row" hidden><label for="use-third-target">세 번째 친구</label><select id="use-third-target"></select></div>
   <div id="use-planet-row" hidden><label for="use-planet">경고를 지울 부서행성</label><select id="use-planet"></select></div>
   <div class="dialog-actions"><button id="use-cancel" class="secondary" type="button">닫기</button><button id="use-confirm" class="primary" type="button">쓰기</button></div>
 </dialog>

@@ -1,0 +1,11 @@
+#temple-content .effects-grid-wrap{overflow-x:auto;white-space:normal}
+#temple-content .effects-grid{display:grid;grid-template-columns:minmax(120px,1.25fr) minmax(80px,1fr) minmax(80px,1fr) minmax(170px,1.4fr);min-width:540px;align-items:center;gap:0 10px}
+#temple-content .effects-grid-header{padding:6px 9px;color:#665087;font-size:12px;font-weight:800;border-bottom:2px solid #d8cbed}
+#temple-content .effects-grid-list{display:grid;grid-template-columns:minmax(120px,1.25fr) minmax(80px,1fr) minmax(80px,1fr) minmax(170px,1.4fr);min-width:540px}
+#temple-content .effects-grid-list .active-item-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;position:relative;align-items:start;margin:0;padding:10px 9px 30px;border-bottom:1px solid #ded5ef;gap:0 10px}
+#temple-content .effects-grid-list .active-item-body{grid-column:1;min-width:0}
+#temple-content .effects-grid-list .active-item-row>span:not(.active-item-body){overflow-wrap:anywhere}
+#temple-content .effects-grid-list .effects-remaining{color:#6f648b;white-space:nowrap}
+#temple-content .effects-grid-list .effects-detail{grid-column:1/-1;margin-top:7px;color:#766488;line-height:1.4}
+#temple-content .effects-grid-list .active-item-row>button,#temple-content .effects-grid-list .active-item-row>label{grid-column:1/-1;justify-self:start;margin-top:7px}
+@media(max-width:620px){#temple-content .effects-grid{min-width:540px;grid-template-columns:110px 75px 75px 1fr}}

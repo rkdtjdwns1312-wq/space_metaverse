@@ -8,7 +8,7 @@ import {createClassroomServer} from '../server/app.js';
 import {MAP,SHOP,BLACK_HOLE_ID,PLAZA_ID} from '../shared/config.js';
 import {nextKoreaMidnight} from '../server/item-cards.js';
 import {warningCount} from '../server/warnings.js';
-import {RABBIT_REWARD_WEIGHTS,RABBIT_CARD_COUNT,rabbitReward} from '../server/rabbit-draw.js';
+import {RABBIT_DRAW_CATALOG,RABBIT_DRAW_COUNT,RABBIT_REWARD_WEIGHTS,rabbitReward} from '../server/rabbit-draw.js';
 
 const key='ppt-item-card-test-private-key';
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
@@ -27,7 +27,7 @@ async function fixture(t){
 }
 
 test('PPT의 서로 다른 Lv1 카드 8종이 지정 가격과 그림·설명을 가진다',()=>{
-  const cards=SHOP.items.filter(item=>item.art);
+  const cards=SHOP.items.filter(item=>item.art&&item.level===1&&item.type==='tool');
   assert.equal(cards.length,8);assert.ok(cards.every(item=>item.level===1&&item.description&&item.special));
   assert.deepEqual(Object.fromEntries(cards.map(item=>[item.id,item.price])),{
     'space-food-card':2,'space-robot-card':2,'alien-card':4,'space-suit-card':2,
@@ -82,22 +82,28 @@ test('운석 파편은 선택한 다른 부서의 내 활성 경고만 해제한
   assert.equal(student.avatar.blackStar,null);assert.equal(student.mapId,PLAZA_ID);
 });
 
-test('달토끼 10장 뽑기는 기대값 3이고 하루 한 번만 사용한다',async t=>{
-  assert.equal(RABBIT_CARD_COUNT,10);
+test('이전 달토끼 숫자 보상 가중치는 유지된다',()=>{
   assert.equal(RABBIT_REWARD_WEIGHTS.reduce((sum,count)=>sum+count,0),100);
   assert.equal(RABBIT_REWARD_WEIGHTS.reduce((sum,count,index)=>sum+count*(index+1),0),300);
   assert.deepEqual(Array.from({length:100},(_,roll)=>rabbitReward(roll)).reduce((counts,reward)=>{counts[reward-1]++;return counts;},Array(10).fill(0)),RABBIT_REWARD_WEIGHTS);
+});
+
+test('달토끼 54장 보상 객체 뽑기는 하루 한 번만 사용한다',async t=>{
+  assert.equal(RABBIT_DRAW_COUNT,54);
+  assert.equal(RABBIT_DRAW_CATALOG.length,54);
   const {room,first,a}=await fixture(t),student=room.players.get(a.selfId);
   student.inventory=[{id:'moon-rabbit-card',quantity:2}];
   const start=await call(first,'draw:start');assert.ok(start.ok,start.error);
-  assert.equal(start.draw.cards.length,10);assert.equal(start.draw.cards[0].reward,undefined);
+  assert.equal(start.draw.cards.length,RABBIT_DRAW_COUNT);assert.equal(start.draw.cards[0].reward,undefined);
   assert.equal(student.inventory[0].quantity,1);
   const again=await call(first,'draw:start');assert.equal(again.draw.id,start.draw.id);
   const status=await call(first,'draw:status');assert.equal(status.draw.id,start.draw.id);
   assert.equal((await call(first,'item:use',{itemId:'moon-rabbit-card',targetId:a.selfId})).ok,false);
-  const result=await call(first,'draw:pick',{drawId:start.draw.id,cardId:start.draw.cards[0].id});
-  assert.ok(result.ok,result.error);assert.ok(result.reward>=1&&result.reward<=10);
-  assert.equal(student.starShards,result.reward);
+  const serverKnownShards4Card=student.rabbitDraw.cards.find(card=>card.reward.kind==='shards'&&card.reward.amount===4);
+  assert.ok(serverKnownShards4Card);
+  const result=await call(first,'draw:pick',{drawId:start.draw.id,cardId:serverKnownShards4Card.id});
+  assert.ok(result.ok,result.error);assert.deepEqual(result.reward,serverKnownShards4Card.reward);
+  assert.equal(student.starShards,4);
   assert.equal((await call(first,'draw:pick',{drawId:start.draw.id,cardId:start.draw.cards[0].id})).ok,false);
   assert.match((await call(first,'draw:start')).error,/하루에 한 번/);
   assert.equal(student.inventory[0].quantity,1);

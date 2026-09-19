@@ -49,6 +49,10 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.fillRect(-r*.8,-r*.35,r*1.6,r*1.1);ctx.strokeRect(-r*.8,-r*.35,r*1.6,r*1.1);
       ctx.beginPath();ctx.moveTo(-r,-r*.35);ctx.lineTo(0,-r*1.05);ctx.lineTo(r,-r*.35);ctx.closePath();ctx.fill();ctx.stroke();
       ctx.fillStyle='#fff8';ctx.fillRect(-r*.25,r*.05,r*.5,r*.7);
+    }else if(kind==='crafting'){
+      ctx.beginPath();ctx.ellipse(0,r*.15,r*.85,r*.6,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#e6fff5';ctx.beginPath();ctx.ellipse(0,-r*.2,r*.85,r*.22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffe298';ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=(i%2?.22:.48)*r;const px=Math.cos(a)*s,py=-r*.65+Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();
     }else if(kind==='arcade'){
       ctx.beginPath();ctx.roundRect(-r*.65,-r,r*1.3,r*2,r*.18);ctx.fill();ctx.stroke();
       ctx.fillStyle='#ffffffb8';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.55);ctx.fillStyle='#665784';ctx.fillRect(-r*.2,r*.2,r*.4,r*.12);
@@ -87,9 +91,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#c7c9e5':'#e1daf2';
     ctx.fillRect(x,y,w,h);
     if(theme==='plaza'){
-      // scenery.drawTemple의 중심(별 1080,540 기준 아래 160)을 작은 타원 바닥으로 압축합니다.
-      const star=info.objects.find(o=>o.id==='square');
-      const sx=w/info.width,sy=h/info.height,cx=x+(star?.x??info.width/2)*sx,cy=y+((star?.y??info.height/2)+160)*sy;
+      // 본 맵과 같은 신전 바닥 중심을 사용합니다.
+      const sx=w/info.width,sy=h/info.height,cx=x+(info.templeCenter?.x??1080)*sx,cy=y+(info.templeCenter?.y??700)*sy;
       ctx.fillStyle='#bda9d688';ctx.beginPath();ctx.ellipse(cx,cy+26*sy,443*sx,257*sy,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#fbf4fccc';ctx.beginPath();ctx.ellipse(cx,cy-10*sy,419*sx,229*sy,0,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle='#bfaed766';ctx.lineWidth=Math.max(1,2*sx);
@@ -99,9 +102,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
     if(theme==='paradise-crossroads'){
-      ctx.fillStyle='#f3eefb';ctx.beginPath();ctx.ellipse(600,407,395,175,0,0,Math.PI*2);ctx.fill();
-      ctx.lineWidth=54;ctx.lineCap='round';
-      for(const [px,py,color] of [[600,80,'#fff0c4'],[600,680,'#d6dcff'],[1120,380,'#e0f6eb']]){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(600,400);ctx.lineTo(px,py);ctx.stroke();}
+      ctx.fillStyle='#f3eefb';ctx.beginPath();ctx.ellipse(600,375.25,375.25,166.25,0,0,Math.PI*2);ctx.fill();
     }
     if(theme==='sun-paradise'||theme==='moon-paradise'){
       const moon=theme==='moon-paradise',v=info.vista;
@@ -115,7 +116,6 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.fillStyle='#f9eff9';ctx.beginPath();ctx.ellipse(600,425,355,174,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#fff0b1';ctx.beginPath();ctx.arc(220,180,68,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(970,530,80,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b9c8e1';ctx.beginPath();ctx.arc(994,511,65,0,Math.PI*2);ctx.fill();
-      drawSilhouette(ctx,{kind:'star',color:'#ffe4a5'},600,415,56,theme);
     }
     if(theme==='valley'){
       for(const [width,color] of [[135,'#dceafd80'],[40,'#fff8ffaa']]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(-120,780);ctx.bezierCurveTo(450,780,340,210,1320,290);ctx.stroke();}

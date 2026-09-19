@@ -1,23 +1,45 @@
 import {itemOf} from '/shared/config.js';
 
+function formatRemaining(until, remainingUses, now=Date.now()){
+  const parts=[];
+  if(Number.isInteger(remainingUses))parts.push(`남은 ${remainingUses}회`);
+  if(until!==null&&Number.isFinite(until)){
+    let seconds=Math.max(0,Math.ceil((until-now)/1000));
+    const days=Math.floor(seconds/86400);seconds%=86400;
+    const hours=Math.floor(seconds/3600);seconds%=3600;
+    const minutes=Math.floor(seconds/60);seconds%=60;
+    parts.push(`${days}일 ${hours}시간 ${minutes}분 ${seconds}초 남음`);
+  }
+  return parts.join(' · ')||'선생님 처리 대기';
+}
+
 export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   const dialog=document.createElement('dialog');dialog.id='temple-dialog';dialog.setAttribute('aria-labelledby','temple-title');
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
   document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;const selectedXp=new Map();
   $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;selectedXp.clear();});
+  function usableEffectRows(now=Date.now()){
+    return (result?.rows||[]).filter(e=>(e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
+  }
   function renderEffects(){
-    const rows=(result?.rows||[]).filter(e=>e.until===null||e.until>Date.now());
-    const ul=document.createElement('ul');
+    const rows=usableEffectRows();
+    const wrap=document.createElement('div');wrap.className='effects-grid-wrap';
+    const header=document.createElement('div');header.className='effects-grid effects-grid-header';
+    for(const text of ['아이템명','사용자','사용 대상','횟수/기간']){const cell=document.createElement('span');cell.textContent=text;header.append(cell);}wrap.append(header);
+    const ul=document.createElement('ul');ul.className='effects-grid-list';
     for(const r of rows){
       const li=document.createElement('li');li.className='active-item-row';
       const item=itemOf(r.itemId),body=document.createElement('span');body.className='active-item-body';
-      const title=document.createElement('strong');title.textContent=(item?.name||r.label)+' · 적용: '+r.nickname+
-        (r.fromNickname?' · 사용: '+r.fromNickname:'');
+      const title=document.createElement('strong');title.textContent=item?.name||r.label;
       const detail=document.createElement('small');detail.textContent=(r.note?r.note+' · ':'')+(item?.description||r.description||r.label)+
-        (item?.special?' · '+item.special:'')+' · '+(r.until===null?'선생님 처리 대기':Math.ceil((r.until-Date.now())/1000)+'초 남음');
-      body.append(title,detail);li.append(body);
-      if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&r.until===null){
+        (item?.special?' · '+item.special:'');
+      body.append(title);const user=document.createElement('span');user.textContent=r.fromNickname??'비공개';
+      const target=document.createElement('span');target.textContent=r.nickname||'비공개';
+      const remaining=document.createElement('span');remaining.className='effects-remaining';remaining.dataset.until=r.until??'';remaining.dataset.remainingUses=Number.isInteger(r.remainingUses)?String(r.remainingUses):'';remaining.textContent=formatRemaining(r.until,r.remainingUses);
+      li.append(body,user,target,remaining);li.dataset.effectRow='true';
+      const description=document.createElement('small');description.className='effects-detail';description.textContent=detail.textContent;li.append(description);
+      if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&(r.until===null||r.remainingUses>0)){
         let xpSelect=null;
         if(r.abilityMarkerId&&r.constellationId==='libra'&&(r.abilityLevel||2)===2){
           const label=document.createElement('label');label.textContent='확인한 주차의 경험치 ';label.className='small';
@@ -26,13 +48,23 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
           xpSelect.value=selectedXp.get(r.abilityMarkerId)||'0';xpSelect.onchange=()=>selectedXp.set(r.abilityMarkerId,xpSelect.value);
           label.append(xpSelect);li.append(label);
         }
-        const done=document.createElement('button');done.type='button';done.className='small secondary';done.textContent='처리 완료';
+        const done=document.createElement('button');done.type='button';done.className='small secondary';done.textContent=r.remainingUses>0?'1회 사용 처리':'처리 완료';
         done.onclick=async()=>{done.disabled=true;try{await request(r.abilityMarkerId?'ability:complete':'item:complete',{objectId:selected.id,targetId:r.targetId,...(r.abilityMarkerId?{abilityMarkerId:r.abilityMarkerId,...(xpSelect?{xpAmount:Number(xpSelect.value)}:{})}:{markerId:r.markerId})});toast(r.nickname+' 친구의 '+(itemOf(r.itemId)?.name||r.label)+' 처리를 완료했어요.');await load();}
           catch(error){done.disabled=false;$('error').textContent=error.message;}};li.append(done);
       }
       ul.append(li);
     }
-    $('content').replaceChildren(rows.length?ul:Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
+    if(rows.length){wrap.append(ul);$('content').replaceChildren(wrap);}else $('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
+  }
+  function tickEffects(){
+    if(!dialog.open||result?.kind!=='effects')return;
+    const now=Date.now();let expired=false;
+    for(const row of [...$('content').querySelectorAll('[data-effect-row]')]){
+      const until=row.querySelector('.effects-remaining').dataset.until;
+      if((until&&Number(until)<=now)||row.querySelector('.effects-remaining').dataset.remainingUses==='0'){row.remove();expired=true;continue;}
+      const cell=row.querySelector('.effects-remaining');cell.textContent=formatRemaining(until?Number(until):null,cell.dataset.remainingUses?Number(cell.dataset.remainingUses):undefined,now);
+    }
+    if(expired&&!$('content').querySelector('[data-effect-row]'))$('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
   }
   function renumberNoticeRows(){[...$('notice-rows').children].forEach((row,index)=>{row.querySelector('.notice-line').setAttribute('aria-label',`${index+1}번째 알림 내용`);row.querySelector('.notice-task input').setAttribute('aria-label',`${index+1}번째 줄 과제`);row.querySelector('.notice-remove-line').setAttribute('aria-label',`${index+1}번째 줄 삭제`);});}
   function addNoticeRow(value='',checked=false,focus=false){const rows=$('notice-rows'),index=rows.children.length,row=document.createElement('div');row.className='notice-editor-row';
@@ -94,6 +126,6 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   async function load(){const rev=++revision;try{const data=await request('temple:read',{objectId:selected.id});if(rev!==revision||!dialog.open)return;result=data;render();}catch(e){if(rev===revision)$('error').textContent=e.message;}}
   $('refresh').onclick=load;
   $('save').onclick=async()=>{if(!selected)return;const rev=revision;$('save').disabled=true;try{let data;if(result?.kind==='timetable'){const cells=[...$('content').querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(input=>input.value));data=await request('temple:timetable:save',{objectId:selected.id,cells});}else{const rows=[...$('notice-rows').children].map(row=>({text:row.querySelector('.notice-line').value.trim(),task:row.querySelector('.notice-task input').checked})).filter(row=>row.text);const text=rows.map(row=>row.text).join('\n');if(text.length>2000)throw new Error('알림장은 2000자 이내로 적어주세요.');const taskLineIndexes=rows.flatMap((row,index)=>row.task?[index]:[]);data=await request('temple:save',{objectId:selected.id,text,taskLineIndexes});}if(rev===revision&&dialog.open){result=data;render();toast(result.kind==='timetable'?'시간표를 저장했어요.':'오늘의 내용을 저장했어요.');}}catch(e){if(rev===revision)$('error').textContent=e.message;}finally{$('save').disabled=false;}};
-  setInterval(()=>{if(dialog.open&&result?.kind==='effects')renderEffects();},1000);
+  setInterval(tickEffects,1000);
   return {open(pillar){stop();selected=pillar;result=null;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
 }

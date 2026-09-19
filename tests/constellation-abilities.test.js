@@ -57,11 +57,11 @@ test('쌍둥이자리 복사는 Lv2 이하 상점 구매 한 번에만 1개가 �
   const {first,student}=await fixture(t);student.avatar.constellationId='gemini';student.starShards=30;
   assert.ok((await call(first,'ability:use')).ok);
   const shop=STREET.objects.find(object=>object.kind==='shop');student.mapId=STREET_ID;student.x=shop.x;student.y=shop.y;
-  const high=await call(first,'shop:buy',{itemId:'starlight-cape',quantity:1});assert.ok(high.ok,high.error);assert.equal(high.copiedItem,null);
-  const low=await call(first,'shop:buy',{itemId:'space-food-card',quantity:1});assert.ok(low.ok,low.error);assert.equal(low.copiedItem,'우주 식량');
-  assert.equal(student.inventory.find(item=>item.id==='space-food-card').quantity,2);
+  const copied=await call(first,'shop:buy',{itemId:'meteor-fragment-card',quantity:1});assert.ok(copied.ok,copied.error);assert.equal(copied.copiedItem,'운석 파편');
+  assert.equal(student.inventory.find(item=>item.id==='meteor-fragment-card').quantity,2);
   const next=await call(first,'shop:buy',{itemId:'space-food-card',quantity:1});assert.ok(next.ok,next.error);
-  assert.equal(student.inventory.find(item=>item.id==='space-food-card').quantity,3);
+  assert.equal(next.copiedItem,null);
+  assert.equal(student.inventory.find(item=>item.id==='space-food-card').quantity,1);
 });
 
 test('뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 시 보상 1개를 준다',async t=>{

@@ -1,0 +1,28 @@
+.inventory-pages {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0 0 0.65rem;
+}
+
+.inventory-page-tab {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--panel-border, #6d7185);
+  border-radius: 0.35rem;
+  background: var(--panel-surface, #202334);
+  color: inherit;
+  cursor: pointer;
+}
+
+.inventory-page-tab[aria-selected="true"] {
+  border-color: currentColor;
+  background: var(--accent, #5969d9);
+  font-weight: 700;
+}
+
+.inventory-page-tab:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

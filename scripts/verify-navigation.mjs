@@ -72,7 +72,7 @@ try{
  Object.assign(p,{mapId:GARDEN_ID,x:entrance.x,y:entrance.y,role:'student'});p.avatar.level=1;publish();
  await page.locator('#interact-prompt').filter({hasText:entrance.name}).waitFor();await page.locator('#touch-interact').tap();
  await page.locator('#toast').filter({hasText:'LV2부터 입장'}).waitFor();assert.equal(p.mapId,GARDEN_ID);
- p.avatar.level=2;publish();await page.locator('#touch-interact').tap();await page.waitForFunction(()=>document.getElementById('minimap-title').textContent==='태양이 머무는 낙원 1');assert.equal(p.mapId,PARADISE_ID);
+ p.avatar.level=2;publish();await page.locator('#touch-interact').tap();await page.waitForFunction(()=>document.getElementById('minimap-title').textContent==='태양의 낙원 1');assert.equal(p.mapId,PARADISE_ID);
  p.role='teacher';p.avatar.level=1;publish();check('LV1 학생에게 입장 불가 안내, LV2부터 실제 입장');
  const planet=addPlanet(room,{name:'독서행성',description:'',x:700,y:400,color:PLANET_COLORS[0],rules:[],templateId:'reading'});Object.assign(p,{mapId:interiorIdOf(planet.id),x:600,y:560});publish();
  await page.locator('#map-overview').click();await page.locator('#universe-current').filter({hasText:'독서행성'}).waitFor();assert.equal(await page.locator('#universe-planets [aria-current="location"]').count(),1);await page.locator('#universe-close').click();check('동적으로 만든 부서행성 내부에서도 현위치 표시');

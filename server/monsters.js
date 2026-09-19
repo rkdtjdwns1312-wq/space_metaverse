@@ -1,13 +1,15 @@
 import {MONSTER_TYPES,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
 import {ATTACK_VISUAL} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
-import {ensureVitals,damagePlayer} from './vitals.js';
+import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
+import {damagePlayersInArea} from './area-combat.js';
 
 
 export const MONSTER_RULES=Object.freeze({directionMs:1000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
 const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
 const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
+export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
 // 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
 export function monstersOf(room,now=Date.now()){
   if(!room.monsters)room.monsters=new Map(MONSTER_TYPES.map((type,i)=>{
@@ -28,16 +30,18 @@ export function monsterViews(room){
   return [...monstersOf(room).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
     hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,attackPower:MONSTER_COMBAT[m.mapId].power}));
 }
-// 한 공격은 가장 가까운 한 몬스터만 맞힙니다. 클라이언트는 대상/피해량을 지정하지 않습니다.
-export function strikeMonster(room,player,power,now=Date.now()){
+// 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
+export function monstersInAttackArea(room,player,now=Date.now()){
   const facing=player.facing||{x:0,y:1};
   const hx=player.x+facing.x*ATTACK_VISUAL.reach,hy=player.y+facing.y*ATTACK_VISUAL.reach;
-  const candidates=[...monstersOf(room,now).values()].filter(m=>{
+  return [...monstersOf(room,now).values()].filter(m=>{
     const dx=m.x-player.x,dy=m.y-player.y;
     return m.hp>0&&m.mapId===player.mapId&&dx*facing.x+dy*facing.y>0&&
-      Math.hypot(m.x-hx,m.y-hy)<=m.radius+MONSTER_RULES.hitRadius;
+      Math.hypot(m.x-hx,m.y-hy)<=m.radius+ATTACK_VISUAL.hitRadius;
   }).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
-  const target=candidates[0];if(!target)return null;
+}
+export function strikeMonsters(room,player,power,now=Date.now()){
+  return monstersInAttackArea(room,player,now).map(target=>{
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
   target.hp=Math.max(0,target.hp-power);
@@ -47,7 +51,10 @@ export function strikeMonster(room,player,power,now=Date.now()){
     target.attackers.set(player.id,++target.attackOrder);selectMonsterTarget(room,target);
   }
   return {monsterId:target.id,damage:power,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
+  });
 }
+// 이전 서버 테스트/연동의 단수 응답 호환. 실제 적용은 항상 모든 대상입니다.
+export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
 // 같은 순위 안에서는 마지막 공격자가 우선. 공격하지 않은 학생은 후보가 되지 않습니다.
 export function selectMonsterTarget(room,monster){
   const candidates=[],hadAttackers=monster.attackers.size>0;
@@ -77,7 +84,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   for(const m of monsters.values()){
     if(m.hp<=0){
       if(now<m.respawnAt)continue;
-      if([...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
+      if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,nextDirectionAt:now});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
@@ -92,19 +99,20 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     }else if(now>=m.nextDirectionAt){const angle=random()*Math.PI*2;m.dx=Math.cos(angle);m.dy=Math.sin(angle);m.nextDirectionAt=now+MONSTER_RULES.directionMs/factor;}
     const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):MONSTER_RULES.speed*factor*dt;
     const x=m.x+m.dx*travel,y=m.y+m.dy*travel;
-    // 문 주변은 비워 두고, 몬스터끼리 같은 자리에 뭉치지 않게 합니다.
+    // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
-    const blocked=x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10);
+    const blocked=x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
     if(target&&now>=m.nextAttackAt){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
       // 초근접에서도 몸을 뚫고 지나가거나 후방을 원격 공격하지 않도록 몸 앞 근접 거리만 판정합니다.
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){
         if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
-        const result=damagePlayer(target,rule.power,now);
-        if(result){m.nextAttackAt=now+MONSTER_RULES.attackMs/factor;
-          hits.push({monsterId:m.id,mapId:m.mapId,targetId:target.id,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:Math.min(reach,distance),durationMs:ATTACK_VISUAL.durationMs,...result});
-          if(result.defeated)selectMonsterTarget(room,m);
+        const attackReach=Math.min(reach,distance);
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true},rule.power,now);
+        if(results.length){m.nextAttackAt=now+MONSTER_RULES.attackMs/factor;
+          for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:attackReach,durationMs:ATTACK_VISUAL.durationMs,...result});
+          if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
         }
       }
     }

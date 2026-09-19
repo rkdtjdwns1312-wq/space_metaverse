@@ -13,6 +13,7 @@ import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/c
 import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
+import {validateStarCards} from './star-cards.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 export const PIN_RULES = { attempts:5, lockMs:60_000 };
@@ -43,6 +44,7 @@ function offline(p) {
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     temple:structuredClone(room.temple),
+    starCards:validateStarCards(room.starCards),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
@@ -51,7 +53,7 @@ export function toRecord(room) {
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,
-      muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],
+      muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
@@ -66,6 +68,7 @@ export function fromRecord(r) {
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
     temple:validateTemple(r.temple),
+    starCards:validateStarCards(r.starCards),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
@@ -94,10 +97,12 @@ export function fromRecord(r) {
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
     const cardMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
+    const lv2State=p.lv2State||{galaxyNextAt:[]};
+    if(!Array.isArray(lv2State.galaxyNextAt)||lv2State.galaxyNextAt.length>2||lv2State.galaxyNextAt.some(n=>!Number.isSafeInteger(n)||n<0))bad();
     if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
     if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
     room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      abilityState:validateAbilityState(p.abilityState),role:'student'}));
+      lv2State:structuredClone(lv2State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();

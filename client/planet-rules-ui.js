@@ -19,7 +19,7 @@ export function createPlanetRulesUI({request,stop,toast,isJoined}){
       stop();const version=++revision;
       try{
         const result=await request('planet:rules:open',{planetId});
-        if(version!==revision||!isJoined()||document.querySelector('dialog[open]'))return;
+        if(version!==revision||!isJoined()||document.querySelector('dialog:modal'))return;
         selected=result;$('planet').textContent=result.name;$('input').value=result.rules.join('\n');$('error').textContent='';dialog.showModal();
       }catch(e){if(version===revision&&isJoined())toast(e.message);}
     },
