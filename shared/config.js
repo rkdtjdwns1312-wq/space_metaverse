@@ -29,7 +29,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     {id:'pillar-weekly',name:'이번 주 받은 별',x:1370,y:804,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
     { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x: 2080, y: 720, radius: 38, kind: 'gate', target: 'star-street',
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
-    { id: 'gate-garden', name: '← 태양이 머무는 낙원', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
+    { id: 'gate-garden', name: '← 낙원의 갈림길', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
       arrival:{x:1030,y:380},color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡 ↓',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1 ↑',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
@@ -51,10 +51,38 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
     { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true }
   ] });
 export const STREET_ID = STREET.id;
-export const GARDEN = Object.freeze({id:'moon-garden',name:'태양이 머무는 낙원',width:1200,height:760,spawn:{x:1030,y:380},objects:[
-  {id:'gate-plaza',name:'중앙광장 →',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:720},color:'#d9c6f2',passable:true}
+// 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
+export const GARDEN = Object.freeze({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
+  {id:'gate-plaza',name:'별의 기원 →',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:720},color:'#d9c6f2',passable:true},
+  {id:'gate-paradise',name:'태양이 머무는 낙원 1 ↑',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise',arrival:{x:600,y:590},color:'#ffe6a6',passable:true},
+  {id:'gate-moon-paradise',name:'달이 머무는 낙원 1 ↓',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-1',arrival:{x:600,y:175},color:'#cccafa',passable:true}
 ]});
 export const GARDEN_ID=GARDEN.id;
+// 두 낙원은 1에서 왼쪽으로 2→3, 오른쪽으로 되돌아오는 같은 구조를 사용합니다.
+// vista는 실제 배경과 미니맵이 공유하는 천체 위치/크기입니다(장식이며 충돌 없음).
+function paradiseMaps(moon){
+  const idOf=n=>moon?'moon-paradise-'+n:n===1?'sun-paradise':'sun-paradise-'+n;
+  const title=moon?'달이 머무는 낙원':'태양이 머무는 낙원';
+  return Object.freeze([1,2,3].map(n=>Object.freeze({id:idOf(n),name:title+' '+n,
+    theme:moon?'moon-paradise':'sun-paradise',stage:n,minLevel:n+1,width:1200,height:760,
+    vista:Object.freeze({bodyX:175,bodyY:140,bodyRadius:[72,140,235][n-1]}),
+    spawn:n===1?{x:600,y:moon?175:590}:{x:1030,y:380},objects:[
+      ...(n===1?[{id:'gate-garden',name:'낙원의 갈림길 '+(moon?'↑':'↓'),x:600,y:moon?80:680,radius:38,kind:'gate',
+        target:GARDEN_ID,arrival:{x:600,y:moon?590:175},color:'#d8d0f3',passable:true}]:[]),
+      ...(n<3?[{id:'gate-next',name:'← '+title+' '+(n+1),x:80,y:380,radius:38,kind:'gate',target:idOf(n+1),arrival:{x:1030,y:380},color:moon?'#c7c9fa':'#ffdfa2',passable:true}]:[]),
+      ...(n>1?[{id:'gate-back',name:title+' '+(n-1)+' →',x:1120,y:380,radius:38,kind:'gate',target:idOf(n-1),arrival:{x:170,y:380},color:moon?'#c7c9fa':'#ffdfa2',passable:true}]:[]),
+      ...(n===3?[{id:'gate-star-paradise',name:'별들의 낙원 '+(moon?'↑':'↓'),x:600,y:moon?80:680,radius:38,kind:'gate',target:'star-paradise',arrival:{x:600,y:moon?590:175},color:'#e9d5f5',passable:true}]:[])
+    ]})));
+}
+export const PARADISE_MAPS=paradiseMaps(false);
+export const PARADISE=PARADISE_MAPS[0],PARADISE_ID=PARADISE.id;
+export const MOON_PARADISE_MAPS=paradiseMaps(true);
+export const MOON_PARADISE_ID=MOON_PARADISE_MAPS[0].id;
+// 두 여행길의 끝을 연결하는 공간. 지도에서도 태양3과 달3 사이에 놓습니다.
+export const STAR_PARADISE=Object.freeze({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',minLevel:5,width:1200,height:760,spawn:{x:600,y:380},objects:[
+  {id:'gate-sun',name:'태양이 머무는 낙원 3 ↑',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
+  {id:'gate-moon',name:'달이 머무는 낙원 3 ↓',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
+]});
 export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
   {id:'evolution-star',name:'진화의 별',x:205,y:480,radius:105,kind:'evolution',color:'#ffffff'},
   {id:'growth-star',name:'성장의 별',x:1020,y:480,radius:80,kind:'growth',color:'#ffd76d'},
@@ -73,7 +101,7 @@ export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>Object.freeze({id:'star-or
       target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?{x:1080,y:175}:{x:600,y:175},color:'#d2d3ef',passable:true},
     ...(n<3?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:600,y:80,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:600,y:740},color:'#e0d6ff',passable:true}]:[])
   ]})));
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,...Object.fromEntries(ORIGIN_MAPS.map(m=>[m.id,m])) });
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).

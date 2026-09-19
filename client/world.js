@@ -1,5 +1,5 @@
-import { mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
-import { drawTemple, drawGarden, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
+import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
+import { drawTemple, drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
 import {monsterType} from '/shared/monsters.js';
@@ -221,7 +221,10 @@ export function createWorld(canvas) {
     ctx.fillStyle='#c9b7ec';ctx.fill();ctx.strokeStyle='#9d86c9';ctx.lineWidth=3;ctx.stroke();
     ctx.fillStyle='#ffffffb0';ctx.beginPath();ctx.arc(o.x,archY,o.radius*.6,0,Math.PI*2);ctx.fill();
     ctx.font='600 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
-    ctx.fillText(o.name,o.x,archY+o.radius+postH/2+26);
+    const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
+    const labelX=Math.max(140,Math.min(bounds.width-140,o.x)),labelY=o.y>bounds.height-100?o.y-o.radius*2.5:Math.min(bounds.height-30,archY+o.radius+postH/2+26);
+    ctx.fillText(o.name,labelX,labelY,265);
+    if(destination?.minLevel){ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.fillText('LV'+destination.minLevel+' 이상',labelX,labelY+18);}
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.
   function drawShop(o){
@@ -451,8 +454,8 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID){
-      if(myMapId===GARDEN_ID)drawGarden(ctx,map,t);else drawValley(ctx,map,t);
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+      if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawGrowthStar(o,t);}
     }else drawInterior(map,t);
     const visibleMonsters=monsters.filter(m=>m.alive&&m.mapId===myMapId);

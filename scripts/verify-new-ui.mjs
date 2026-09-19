@@ -93,9 +93,9 @@ try{
   for(const to of [GARDEN_ID,STREET_ID]){
     await close(one);const gate=MAP.objects.find(o=>o.target===to);p1.mapId=PLAZA_ID;p1.x=gate.x;p1.y=gate.y;
     await teacher.locator('#shards-give').click();await one.locator('#interact-prompt').waitFor({state:'visible'});await one.locator('#interact-prompt').click();
-    await one.waitForFunction(id=>document.getElementById('map-caption').textContent.includes(id),to===GARDEN_ID?'태양이 머무는 낙원':'별빛');assert.equal(p1.mapId,to);
+    await one.waitForFunction(id=>document.getElementById('map-caption').textContent.includes(id),to===GARDEN_ID?'낙원의 갈림길':'별빛');assert.equal(p1.mapId,to);
   }
-  check('중앙광장 왼쪽 정원과 오른쪽 오색별빛 쉼터 이동');
+  check('중앙광장 왼쪽 낙원의 갈림길과 오른쪽 오색별빛 쉼터 이동');
   await close(one);await one.setViewportSize({width:390,height:844});assert.ok(await one.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await one.screenshot({path:'.local/new-mobile-map.png'});check('작은 화면에서 맵·하단 메뉴 가로 넘침 없음');
   await dock(teacher,'menu');await teacher.locator('#teacher-tools').click();await teacher.locator('#account-target').selectOption(p2.id);
   await teacher.locator('#account-name').fill('달솔');await teacher.locator('#account-pin').fill('4321');await teacher.locator('#account-save').click();

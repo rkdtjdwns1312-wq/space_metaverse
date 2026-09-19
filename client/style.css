@@ -236,10 +236,10 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 #universe-dialog h3{margin:18px 0 8px;color:#5d4795}
 #universe-planets{display:flex;flex-wrap:wrap;gap:8px;max-height:48px;overflow:auto}
 #universe-planets{max-height:180px}
-#universe-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+#universe-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 #universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
-#universe-links .universe-node span{word-break:keep-all}
-#universe-links .universe-node:last-child{grid-column:2}
+#universe-links .universe-node{min-width:0;padding:9px 5px}
+#universe-links .universe-node span{word-break:normal;overflow-wrap:anywhere}
 #universe-links .universe-node::after{display:none}
 #universe-planets .universe-node::after{display:none}
 #temple-dialog{width:min(620px,calc(100vw - 24px))}
@@ -339,3 +339,5 @@ body.joined:not(.placing) #mobile-controls{position:fixed;display:flex;align-ite
 #arcade-board #star-timer,#arcade-board #star-result{font-size:18px}#star-ranking{max-height:180px;overflow:auto;padding-left:24px;font-size:15px}
 .game-start-actions{display:flex;gap:8px;flex-wrap:wrap}#arcade-board #star-ranking-panel p{font-size:14px}
 @media(max-width:520px){body.joined:not(.placing) #world-navigation{top:56px}}
+
+.map-level{font-size:12px;color:#77618e}

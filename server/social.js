@@ -1,3 +1,4 @@
+import {requireMapLevel} from './map-access.js';
 import { randomUUID } from 'node:crypto';
 import { ensure } from './rooms.js';
 import { planetIdOfMap, STATIC_MAPS, BLACK_HOLE_ID } from '../shared/config.js';
@@ -36,6 +37,7 @@ function state(room,now) {
 }
 function canTravel(room,target,host) {
   ensure(!target.avatar.blackStar || host.mapId===BLACK_HOLE_ID,'현재 검은별 상태입니다');
+  requireMapLevel(target,host.mapId);
   const planetId=planetIdOfMap(host.mapId);
   ensure(planetId?room.planets.has(planetId):!!STATIC_MAPS[host.mapId],'친구가 있는 맵을 찾지 못했어요.');
   ensure(!planetId||target.role==='teacher'||target.avatar.departmentId===planetId,'가입한 부서행성으로만 이동할 수 있어요.');

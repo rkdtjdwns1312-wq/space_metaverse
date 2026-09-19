@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP, ITEM_USE, TRADE } from '../shared/config.js';
 import { placementFree } from '../server/world.js';
-import { ORIGIN_MAPS, mapOf } from '../shared/config.js';
+import { ORIGIN_MAPS, GARDEN_ID, PARADISE_MAPS, MOON_PARADISE_MAPS, STAR_PARADISE, mapOf } from '../shared/config.js';
 const key='test-secret-not-for-deployment';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fixture(t,options={}) {
@@ -19,6 +19,46 @@ async function fixture(t,options={}) {
 }
 const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
 const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNames:Array.from({length:29},(_,i)=>String(i+1))});
+
+test('낙원 연결은 양방향이며 서버가 레벨·거리·연결을 검사하고 교사 관리를 허용한다',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
+ const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);
+ const path=[PLAZA_ID,GARDEN_ID,...PARADISE_MAPS.map(m=>m.id),STAR_PARADISE.id,...MOON_PARADISE_MAPS.map(m=>m.id).reverse(),GARDEN_ID,PLAZA_ID];
+ p.avatar.level=6;
+ assert.equal((await call(s,'map:travel',{to:STAR_PARADISE.id,level:6})).ok,false,'연결 없는 이동 거절');
+ for(const route of [path,path.toReversed()])for(const to of route.slice(1)){
+   const gate=mapOf(p.mapId).objects.find(o=>o.target===to);assert.ok(gate);
+   const before=p.mapId;Object.assign(p,{x:600,y:380});
+   assert.equal((await call(s,'map:travel',{to})).ok,false,'먼 문 이동 거절');assert.equal(p.mapId,before);
+   Object.assign(p,{x:gate.x,y:gate.y});
+   const minimum=mapOf(to).minLevel||1;
+   if(minimum>1){
+     p.avatar.level=minimum-1;const denied=await call(s,'map:travel',{to,level:6,role:'teacher'});
+     assert.equal(denied.ok,false);assert.match(denied.error,new RegExp('LV'+minimum));assert.equal(p.mapId,before);
+   }
+   p.avatar.level=minimum;assert.equal((await call(s,'map:travel',{to})).ok,true);assert.equal(p.mapId,to);
+   assert.ok(p.x>0&&p.x<mapOf(to).width&&p.y>0&&p.y<mapOf(to).height);
+ }
+ // 선생님은 LV1이어도 관리 방문이 가능하고, 초월체(LV6)도 LV5 제한에 막히지 않습니다.
+ for(const [socket,player,level] of [[teacher,[...room.players.values()].find(p=>p.role==='teacher'),1],[s,p,6]]){
+   player.avatar.level=level;const from=PARADISE_MAPS[2],gate=from.objects.find(o=>o.target===STAR_PARADISE.id);
+   Object.assign(player,{mapId:from.id,x:gate.x,y:gate.y});assert.equal((await call(socket,'map:travel',{to:STAR_PARADISE.id})).ok,true);
+ }
+});
+
+test('친구 호출은 요청과 수락 시 낙원 레벨을 검사하여 입장 제한 우회를 막는다',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),a=await connect(),b=await connect();
+ const ja=await call(a,'room:join',{code:r.room.code,nickname:'1'}),jb=await call(b,'room:join',{code:r.room.code,nickname:'2'});
+ const room=game.store.rooms.get(r.room.code),host=room.players.get(ja.selfId),guest=room.players.get(jb.selfId);
+ Object.assign(host,{mapId:STAR_PARADISE.id,x:600,y:400});host.avatar.level=5;
+ const denied=await call(a,'social:summon',{targetId:guest.id});assert.equal(denied.ok,false);assert.match(denied.error,/LV5/);
+ host.mapId=PLAZA_ID;host.lastSummonAt=0;
+ const pending=await call(a,'social:summon',{targetId:guest.id});assert.ok(pending.ok);
+ host.mapId=STAR_PARADISE.id;
+ assert.equal((await call(b,'social:respond',{requestId:pending.invitation.id,accept:true})).ok,false);assert.equal(guest.mapId,PLAZA_ID);
+ guest.avatar.level=5;
+ assert.equal((await call(b,'social:respond',{requestId:pending.invitation.id,accept:true})).ok,true);assert.equal(guest.mapId,STAR_PARADISE.id);
+});
 
 test('위쪽 세 맵은 가까운 연결 문으로만 왕복하고 건너뛰기 요청을 거절한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();

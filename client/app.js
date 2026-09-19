@@ -332,7 +332,8 @@ function mapCaption(myMapId){
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
-  if(myMapId===GARDEN_ID)return '✦ 태양이 머무는 낙원 · 오른쪽 문으로 중앙광장';
+  if(myMapId===GARDEN_ID)return '✦ 낙원의 갈림길 · 위로 태양, 아래로 달, 오른쪽으로 별의 기원';
+  if(['sun-paradise','moon-paradise','star-paradise'].includes(STATIC_MAPS[myMapId]?.theme))return '✦ '+STATIC_MAPS[myMapId].name+' · 길 끝의 문에서 E로 이동해요';
   if(STATIC_MAPS[myMapId]?.theme==='star-origin')return '✧ '+STATIC_MAPS[myMapId].name+' · 작은 별들이 반짝이는 우주';
   return '✦ '+(planetById(planetIdOfMap(myMapId))?.name||'행성')+' 안 · 소속 친구들만의 공간';
 }

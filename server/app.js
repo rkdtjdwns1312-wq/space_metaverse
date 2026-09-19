@@ -1,4 +1,5 @@
 import express from 'express';
+import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -652,6 +653,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const gate=here.objects.find(o=>(o.kind==='gate'||o.kind==='black-hole') && o.target===data.to);
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
       ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
+      requireMapLevel(p,data.to);
       Object.assign(p,arrivePosition(room,data.to,gate.arrival),{mapId:data.to,input:{x:0,y:0,at:0}});
       roster(room);
       return {};

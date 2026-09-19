@@ -51,14 +51,79 @@ export function drawTemple(ctx,map){
     for(let i=0;i<7;i++)star(c,x-180+i*60,y-266+Math.abs(i-3)*11,8,'#fff4d1');
   }),0,0);
 }
-export function drawGarden(ctx,map){
+export function drawCrossroads(ctx,map){
   ctx.drawImage(cached(map,c=>{
-    sky(c,map.width,map.height,['#e9b5bd','#ffe1b5','#edc6e7']);ellipse(c,590,475,445,205,'#d6aaa9');ellipse(c,590,450,445,205,'#fff1d4');ellipse(c,590,445,406,179,'#f7dbbc');
-    for(let i=0;i<11;i++){const x=210+(i*113)%750,y=260+(i*79)%320;ellipse(c,x,y,40,16,'#f5fff6');ellipse(c,x-14,y-11,23,23,'#f9fff4');ellipse(c,x+14,y-9,26,26,'#f9fff4');star(c,x,y-34,11,'#ffe7a8');}
-    const sun=c.createRadialGradient(600,165,32,600,165,180);sun.addColorStop(0,'#fff5b6bb');sun.addColorStop(1,'#fff5b600');c.fillStyle=sun;c.fillRect(420,0,360,345);
-    ellipse(c,600,165,62,62,'#fff2ad');c.strokeStyle='#fff4c6';c.lineWidth=4;for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(600+Math.cos(a)*76,165+Math.sin(a)*76);c.lineTo(600+Math.cos(a)*90,165+Math.sin(a)*90);c.stroke();}
-    c.font='28px "Jua","Malgun Gothic",sans-serif';c.textAlign='center';c.fillStyle='#986c6b';c.fillText(map.name,600,640);
-    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText('따뜻한 별빛 아래, 잠시 쉬어가요',600,676);
+    sky(c,map.width,map.height,['#c4c3e8','#eadcf3','#cce6df']);
+    ellipse(c,600,425,395,175,'#afa3ce');ellipse(c,600,407,395,175,'#f3eefb');
+    // 북쪽 금빛 길, 남쪽 달빛 길, 동쪽 광장 길이 만나는 휴식처입니다.
+    c.lineCap='round';
+    for(const [x,y,color] of [[600,80,'#fff0c4'],[600,680,'#d6dcff'],[1120,380,'#e0f6eb']]){
+      c.strokeStyle='#b5a8cb';c.lineWidth=66;c.beginPath();c.moveTo(600,400);c.lineTo(x,y);c.stroke();
+      c.strokeStyle=color;c.lineWidth=54;c.stroke();
+    }
+    ellipse(c,600,400,135,76,'#e4d9f1');ellipse(c,600,390,135,76,'#fff8f1');
+    star(c,600,387,42,'#f6d798');
+    for(const [x,y] of [[335,330],[365,535],[860,535]]){ellipse(c,x,y+18,48,20,'#cfebdf');star(c,x,y-4,18,'#fff2c7');}
+    c.textAlign='center';c.font='28px "Jua","Malgun Gothic",sans-serif';c.fillStyle='#786394';c.fillText(map.name,300,160);
+    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText('위로는 햇살, 아래로는 달빛',300,192);
+  }),0,0);
+}
+export function drawParadise(ctx,map){
+  ctx.drawImage(cached(map,c=>{
+    const moon=map.theme==='moon-paradise',{bodyX:x,bodyY:y,bodyRadius:r}=map.vista;
+    sky(c,map.width,map.height,moon?['#aaa9d9','#c2bae5','#96bdd6']:['#efbfbb','#ffe6be','#edd0e0']);
+    ellipse(c,670,485,425,190,moon?'#9492c0':'#d7afab');
+    ellipse(c,670,466,425,190,moon?'#e8e9fc':'#fff2db');
+    ellipse(c,670,461,390,168,moon?'#cdd8f0':'#f9dfbe');
+    c.strokeStyle=moon?'#f4f7ffb0':'#fffaf0c0';c.lineWidth=3;c.setLineDash([8,16]);c.beginPath();c.ellipse(670,461,366,145,0,0,Math.PI*2);c.stroke();c.setLineDash([]);
+    for(let i=0;i<7;i++){
+      const px=380+i*88,py=440+Math.sin(i*1.8)*75;
+      ellipse(c,px,py+15,29,13,moon?'#b0b9e0':'#ebc9a5');
+      star(c,px,py,moon?10:13,moon?'#f5f5ff':'#fff4ca');
+    }
+    const glow=c.createRadialGradient(x,y,r*.65,x,y,r*1.65);
+    glow.addColorStop(0,moon?'#eeedffbb':'#fff4b9dd');glow.addColorStop(1,'#ffffff00');
+    c.fillStyle=glow;c.fillRect(x-r*1.65,y-r*1.65,r*3.3,r*3.3);
+    const body=c.createRadialGradient(x-r*.3,y-r*.3,r*.08,x,y,r);
+    body.addColorStop(0,moon?'#fffdf7':'#fffde1');body.addColorStop(.65,moon?'#eeeaff':'#fff1ac');body.addColorStop(1,moon?'#bcbce9':'#f8cc79');
+    ellipse(c,x,y,r,r,body);
+    if(moon){
+      for(const [dx,dy,size] of [[-.36,-.25,.15],[.27,-.4,.09],[.3,.29,.2],[-.31,.42,.08]]){
+        ellipse(c,x+dx*r,y+dy*r,size*r,size*r,'#a9afd23d');
+        ellipse(c,x+dx*r+size*r*.16,y+dy*r+size*r*.12,size*r*.76,size*r*.76,'#e5e7fa99');
+      }
+    }else{
+      c.strokeStyle='#fff2b6aa';c.lineWidth=5;c.lineCap='round';
+      for(let i=0;i<16;i++){const a=i*Math.PI/8;c.beginPath();c.moveTo(x+Math.cos(a)*r*1.12,y+Math.sin(a)*r*1.12);c.lineTo(x+Math.cos(a)*r*1.26,y+Math.sin(a)*r*1.26);c.stroke();}
+    }
+    c.textAlign='center';c.font='29px "Jua","Malgun Gothic",sans-serif';c.fillStyle=moon?'#5d608d':'#936967';c.fillText(map.name,820,140);
+    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText(moon?'은빛 달의 품으로, 한 걸음 더':'따스한 태양의 품으로, 한 걸음 더',820,174);
+  }),0,0);
+}
+// 금빛 햇살과 은빛 달빛이 중앙에서 섞이는 별들의 쉼터입니다.
+export function drawStarParadise(ctx,map){
+  ctx.drawImage(cached(map,c=>{
+    sky(c,map.width,map.height,['#bdb0d9','#e4cfe5','#a9c6df']);
+    for(const [x,y,color] of [[220,180,'#ffe5a8'],[970,530,'#d5eaff']]){
+      const light=c.createRadialGradient(x,y,20,x,y,590);light.addColorStop(0,color+'dd');light.addColorStop(1,color+'00');
+      c.fillStyle=light;c.fillRect(x-590,y-590,1180,1180);
+    }
+    // 서로 엇갈리는 빛의 띠와 별 정원은 장식이므로 이동을 막지 않습니다.
+    c.lineCap='round';
+    for(const [i,color] of ['#ffe8b4','#f8e0ee','#dceaff'].entries()){
+      c.strokeStyle=color+'77';c.lineWidth=22;c.beginPath();c.moveTo(-60,190+i*55);c.bezierCurveTo(310,650,760,90,1260,490+i*50);c.stroke();
+    }
+    ellipse(c,600,443,355,174,'#a995c4');ellipse(c,600,425,355,174,'#fff2f8');
+    const floor=c.createLinearGradient(245,270,955,560);floor.addColorStop(0,'#fff0ce');floor.addColorStop(.5,'#eee1f6');floor.addColorStop(1,'#dce9fc');
+    ellipse(c,600,418,331,154,floor);
+    c.strokeStyle='#ffffffaa';c.lineWidth=3;for(const r of [112,220,300]){c.beginPath();c.ellipse(600,418,r,r*.45,0,0,Math.PI*2);c.stroke();}
+    star(c,600,415,56,'#fff9e0');star(c,600,415,35,'#e0d4f4');
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;star(c,600+Math.cos(a)*282,418+Math.sin(a)*122,10,i%2?'#f4f8ff':'#ffe4a5');}
+    ellipse(c,220,180,68,68,'#fff0b1');
+    c.strokeStyle='#fff3c5';c.lineWidth=4;for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(220+Math.cos(a)*80,180+Math.sin(a)*80);c.lineTo(220+Math.cos(a)*94,180+Math.sin(a)*94);c.stroke();}
+    ellipse(c,970,530,80,80,'#f4f4ff');ellipse(c,994,511,65,65,'#b9c8e1');
+    c.textAlign='center';c.font='30px "Jua","Malgun Gothic",sans-serif';c.fillStyle='#76628e';c.fillText(map.name,815,173);
+    c.font='17px "Jua","Malgun Gothic",sans-serif';c.fillText('햇살과 달빛이 만나, 별이 쉬어가는 곳',815,208);
   }),0,0);
 }
 export function drawRainbowSpace(ctx,map){

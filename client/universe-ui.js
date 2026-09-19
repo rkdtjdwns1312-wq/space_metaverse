@@ -1,4 +1,4 @@
-import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
+import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
 export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
@@ -28,6 +28,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   function node(id,icon){
     const button=document.createElement('button');button.type='button';button.className='universe-node';button.dataset.mapId=id;
     const name=document.createElement('span');name.textContent=icon+' '+map(id).name;button.append(name);
+    if(map(id).minLevel){const level=document.createElement('span');level.className='map-level';level.textContent='LV'+map(id).minLevel+' 이상';button.append(level);}
     if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
     button.onclick=()=>{selected=id;signature='';render();};return button;
@@ -81,9 +82,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   function mapBackground(ctx,info,x,y,w,h){
     // 고정 맵 네 곳은 config에 theme을 두지 않으므로 실제 id로 배경을 선택합니다.
     const theme=info.theme||({
-      [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'garden',[VALLEY_ID]:'valley'
+      [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'paradise-crossroads',[VALLEY_ID]:'valley'
     }[info.id]||'default');
-    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='garden'?'#f4d4c5':theme==='valley'?'#c7c9e5':'#e1daf2';
+    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#c7c9e5':'#e1daf2';
     ctx.fillRect(x,y,w,h);
     if(theme==='plaza'){
       // scenery.drawTemple의 중심(별 1080,540 기준 아래 160)을 작은 타원 바닥으로 압축합니다.
@@ -97,10 +98,24 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     if(theme==='star-origin'){ctx.fillStyle='#cfd9ff99';for(let i=0;i<24;i++){ctx.fillRect(x+(i*83%Math.max(1,w)),y+(i*47%Math.max(1,h)),1.5,1.5);}}
     // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
-    if(theme==='garden'){
-      ctx.fillStyle='#fff1d4';ctx.beginPath();ctx.ellipse(590,450,445,205,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#f7dbbc';ctx.beginPath();ctx.ellipse(590,445,406,179,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#fff2ad';ctx.beginPath();ctx.arc(600,165,62,0,Math.PI*2);ctx.fill();
+    if(theme==='paradise-crossroads'){
+      ctx.fillStyle='#f3eefb';ctx.beginPath();ctx.ellipse(600,407,395,175,0,0,Math.PI*2);ctx.fill();
+      ctx.lineWidth=54;ctx.lineCap='round';
+      for(const [px,py,color] of [[600,80,'#fff0c4'],[600,680,'#d6dcff'],[1120,380,'#e0f6eb']]){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(600,400);ctx.lineTo(px,py);ctx.stroke();}
+    }
+    if(theme==='sun-paradise'||theme==='moon-paradise'){
+      const moon=theme==='moon-paradise',v=info.vista;
+      ctx.fillStyle=moon?'#e8e9fc':'#fff2db';ctx.beginPath();ctx.ellipse(670,466,425,190,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=moon?'#cdd8f0':'#f9dfbe';ctx.beginPath();ctx.ellipse(670,461,390,168,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=moon?'#f4f2ff':'#fff2ad';ctx.beginPath();ctx.arc(v.bodyX,v.bodyY,v.bodyRadius,0,Math.PI*2);ctx.fill();
+      if(moon){ctx.fillStyle='#bcc3e5';ctx.beginPath();ctx.arc(v.bodyX+v.bodyRadius*.3,v.bodyY+v.bodyRadius*.29,v.bodyRadius*.2,0,Math.PI*2);ctx.fill();}
+    }
+    if(theme==='star-paradise'){
+      const glow=ctx.createLinearGradient(0,0,1200,760);glow.addColorStop(0,'#f6dbb7');glow.addColorStop(.5,'#e0cce6');glow.addColorStop(1,'#b4c9e9');ctx.fillStyle=glow;ctx.fillRect(0,0,1200,760);
+      ctx.fillStyle='#f9eff9';ctx.beginPath();ctx.ellipse(600,425,355,174,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff0b1';ctx.beginPath();ctx.arc(220,180,68,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(970,530,80,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b9c8e1';ctx.beginPath();ctx.arc(994,511,65,0,Math.PI*2);ctx.fill();
+      drawSilhouette(ctx,{kind:'star',color:'#ffe4a5'},600,415,56,theme);
     }
     if(theme==='valley'){
       for(const [width,color] of [[135,'#dceafd80'],[40,'#fff8ffaa']]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(-120,780);ctx.bezierCurveTo(450,780,340,210,1320,290);ctx.stroke();}
@@ -138,7 +153,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const next=JSON.stringify([p.mapId,selected,planets().map(p=>[p.id,p.name,p.color])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
-      const layout=[...ORIGIN_MAPS.map((m,i)=>[m.id,'✧',3-i,2]).reverse(),[BLACK_HOLE_ID,'◉',3,3],[GARDEN_ID,'☀',4,1],[PLAZA_ID,'★',4,2],[STREET_ID,'✦',4,3],[VALLEY_ID,'≋',5,2]];
+      const layout=[...ORIGIN_MAPS.map((m,i)=>[m.id,'✧',3-i,4]).reverse(),[BLACK_HOLE_ID,'◉',3,5],
+        ...PARADISE_MAPS.map((m,i)=>[m.id,'☀',3,3-i]),...MOON_PARADISE_MAPS.map((m,i)=>[m.id,'☾',5,3-i]),
+        [STAR_PARADISE.id,'✵',4,1],[GARDEN_ID,'✧',4,3],[PLAZA_ID,'★',4,4],[STREET_ID,'✦',4,5],[VALLEY_ID,'≋',5,4]];
       $('universe-links').replaceChildren(...layout.map(([id,icon,row,column])=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
       $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
       if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
