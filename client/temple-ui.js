@@ -121,7 +121,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       $('description').textContent=result.week+' 월요일부터 이번 주에 받은 별 파편 · 잔액과 달라요';const ul=document.createElement('ul');
       for(const r of result.rows){const li=document.createElement('li');li.textContent=r.nickname+' · ★ '+r.total+'개';ul.append(li);}
       $('content').replaceChildren(result.rows.length?ul:Object.assign(document.createElement('p'),{textContent:'아직 등록된 친구가 없어요.'}));
-    }else{$('description').textContent='아이템 효과를 받는 친구와 선생님이 처리할 카드를 확인해요.';renderEffects();}
+    }else{$('description').textContent='아이템 이름순으로 사용자와 사용 대상을 확인해요.';renderEffects();}
   }
   async function load(){const rev=++revision;try{const data=await request('temple:read',{objectId:selected.id});if(rev!==revision||!dialog.open)return;result=data;render();}catch(e){if(rev===revision)$('error').textContent=e.message;}}
   $('refresh').onclick=load;

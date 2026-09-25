@@ -4,7 +4,6 @@ import {ITEM_USE, SHOP, SHARDS} from '../shared/config.js';
 import {LV4_ITEMS} from '../shared/lv4-items.js';
 import {blackHolePreview, confirmLv4, lv4ItemsDue, settleLv4Items,
   syncLv4Holdings, useLv4Holding, useLv4Item, validateLv4State} from '../server/lv4-item-effects.js';
-import {MAX_CARD_MARKERS} from '../server/item-cards.js';
 import {GameError} from '../server/rooms.js';
 
 const NOW = Date.parse('2026-09-21T03:00:00Z');
@@ -186,3 +185,12 @@ test('holding requires an eligible level-four connected owner and rolls back blo
   for(const change of cases){const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};change(f);rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'ineligible'},NOW));}
   const absent=fixture();absent.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};rejectedWithoutMutation(absent,()=>useLv4Holding(absent.room,absent.actor,{reward:'shards',requestId:'no-card'},NOW));
 });
+
+ test('LV4 adds an effect beyond 50 existing records without discarding them',()=>{
+   const f=fixture('total-eclipse-card');
+   f.b.cardMarkers=Array.from({length:75},(_,i)=>marker('alien-card',{id:'old-'+i,until:null}));
+   use(f,'total-eclipse-card',{targetIds:['b']});
+   assert.equal(f.b.cardMarkers.length,76);
+   assert.equal(f.b.cardMarkers.filter(m=>m.id.startsWith('old-')).length,75);
+   assert.equal(f.actor.inventory.length,0);
+ });

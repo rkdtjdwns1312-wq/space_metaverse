@@ -2,7 +2,7 @@ import {randomInt} from 'node:crypto';
 import {hasUnlimitedShards} from '../shared/economy.js';
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV2_ITEMS} from '../shared/lv2-items.js';
-import {addCardMarker, hasCardStatus, MAX_CARD_MARKERS, hasItemImmunity} from './item-cards.js';
+import {addCardMarker, hasCardStatus, hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {clearBlackStar} from './warnings.js';
 import {ensure as fail} from './rooms.js';
@@ -136,7 +136,6 @@ function recipients(room, actor, item, data) {
 function mark(player, item, actor, now, until, note, extra = {}) {
   // Never silently discard an expired rabbit whose reward is still owed.
   player.cardMarkers = (player.cardMarkers || []).filter(marker => active(marker, now) || marker.itemId === 'sun-rabbit-card');
-  fail(player.cardMarkers.length < MAX_CARD_MARKERS, '사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
   return Object.assign(addCardMarker(player, item, actor, until, note), {at: now, fromLevel: levelOf(actor)}, extra);
 }
 

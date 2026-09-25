@@ -24,3 +24,20 @@ test('횟수형 카드 기록은 저장 검사와 기둥 표시를 통과하고 
   const [row]=templeItemRows({players:new Map([['b',p]])},{role:'student'});
   assert.equal(row.remainingUses,2);assert.equal(row.until,null);assert.equal(row.fromNickname,'별이');assert.equal(row.markerId,undefined);
 });
+
+test('게시판은 아이템명, 공개 사용자, 대상 순으로 정렬하며 원본 기록을 바꾸지 않는다',()=>{
+ const now=Date.now(),players=new Map();
+ for(const [id,nickname] of [['b','나래'],['a','가람']])players.set(id,{id,nickname,cardMarkers:[],effects:[
+  {itemId:'space-snack',until:now+60000,fromNickname:id==='b'?'가사용자':'하사용자',secret:true},
+  ...['나사용자','가사용자'].map(fromNickname=>({itemId:'star-sticker',until:now+60000,fromNickname}))
+ ]});
+ const room={players},before=structuredClone(room);
+ const rows=templeItemRows(room,{role:'student'},now);
+ assert.deepEqual(rows.map(r=>[r.itemId,r.fromNickname,r.nickname]),[
+ ['star-sticker','가사용자','가람'],['star-sticker','가사용자','나래'],
+ ['star-sticker','나사용자','가람'],['star-sticker','나사용자','나래'],
+ ['space-snack',undefined,'가람'],['space-snack',undefined,'나래']]);
+ assert.deepEqual(room,before);
+ const teacher=templeItemRows(room,{role:'teacher'},now);
+ assert.deepEqual(teacher.slice(-2).map(r=>r.nickname),['나래','가람']);
+});

@@ -933,7 +933,7 @@ test('item:use lets a player use an owned item on themself or a friend: it is co
  assert.equal(p3.effects.length,1); // 같은 아이템이므로 새로 추가되지 않고 시간만 갱신됩니다.
  assert.ok(p3.effects[0].until>=firstUntil);
 });
-test('item:use caps a player at 3 active effects, dropping the one closest to expiring when a 4th distinct item lands',async t=>{
+test('item:use preserves all four concurrent effects and refreshes repeated items',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const sockets=await Promise.all(Array.from({length:4},()=>connect()));
  const joins=await Promise.all(sockets.map((s,i)=>call(s,'room:join',{code:r.room.code,nickname:String(i+1)})));
@@ -950,18 +950,18 @@ test('item:use caps a player at 3 active effects, dropping the one closest to ex
  give(0,'asteroid-helmet'); // 4번째(30분), 대상 스스로 자기에게 씀(쿨다운 문제 없음)
  const fourth=await call(sockets[0],'item:use',{itemId:'asteroid-helmet',targetId:joins[0].selfId});
  assert.equal(fourth.ok,true);
- assert.equal(target.effects.length,3);
- assert.ok(!target.effects.some(e=>e.itemId==='space-snack')); // 가장 먼저 끝나는 효과가 사라짐
+ assert.equal(target.effects.length,4);
+ assert.ok(target.effects.some(e=>e.itemId==='space-snack')); // 기존 효과도 유지됩니다.
  assert.ok(target.effects.some(e=>e.itemId==='firefly-lamp'));
  assert.ok(target.effects.some(e=>e.itemId==='star-sticker'));
  assert.ok(target.effects.some(e=>e.itemId==='asteroid-helmet'));
- // 방금 쓴 효과는 지속 시간이 가장 짧아도 밀려나지 않습니다. (밀려나면 아이템만 없어지고 효과는 안 붙습니다.)
+ // 같은 아이템은 기존 효과의 시간을 갱신합니다.
  target.effects=target.effects.map(e=>({...e,until:Date.now()+30*60_000}));
- give(1,'space-snack'); // 5분짜리(가장 짧음)를 이미 꽉 찬 대상에게 다시 씀
+ give(1,'space-snack'); // 5분짜리(가장 짧음)를 기존 효과가 있는 대상에게 다시 씀
  room.players.get(joins[1].selfId).lastItemUseAt=0;
  assert.equal((await call(sockets[1],'item:use',{itemId:'space-snack',targetId:joins[0].selfId})).ok,true);
- assert.equal(target.effects.length,3);
- assert.ok(target.effects.some(e=>e.itemId==='space-snack'));
+ assert.equal(target.effects.length,4);
+ assert.equal(target.effects.filter(e=>e.itemId==='space-snack').length,1);
 });
 test('item:use validates ownership, level gates, target existence/connection, and self-only items',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);

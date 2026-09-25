@@ -158,8 +158,8 @@ export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxSt
   ...GOLD_CARD_ITEMS,
   {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}}
 ] });
-// 아이템 사용 규칙: 연속 사용 간격, 한 사람이 동시에 가질 수 있는 효과 수(넘치면 오래된 것부터 사라짐), 선생님용 사용 기록 보관 수, 선생님의 취급 레벨.
-export const ITEM_USE = Object.freeze({ cooldownMs: 2000, maxEffects: 3, logSize: 100, teacherLevel: 5, notesSize: 20 });
+// 아이템 사용 규칙: 연속 사용 간격, 선생님용 사용 기록 보관 수, 선생님의 취급 레벨.
+export const ITEM_USE = Object.freeze({ cooldownMs: 2000, logSize: 100, teacherLevel: 5, notesSize: 20 });
 // 거래: 학생끼리 별 파편·아이템을 주고받을 수 있지만, 상대가 수락한 뒤 선생님이 최종 승인해야 실제로 오갑니다.
 // (힘 있는 아이가 약한 아이의 것을 강제로 뺏는 일을 막기 위한 장치입니다.) 한 사람은 한 번에 하나의 거래만 진행합니다.
 // declineBlockMs: 상대가 거절하면 같은 상대에게 그 시간 동안 다시 제안할 수 없습니다(계속 조르기 방지).

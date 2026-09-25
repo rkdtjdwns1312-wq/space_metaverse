@@ -1,7 +1,7 @@
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV3_ITEMS} from '../shared/lv3-items.js';
 import {ensure} from './rooms.js';
-import {addCardMarker, hasCardStatus, MAX_CARD_MARKERS, hasItemImmunity} from './item-cards.js';
+import {addCardMarker, hasCardStatus, hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax, hasLv2ItemBlock} from './lv2-item-effects.js';
 import {clearBlackStar} from './warnings.js';
@@ -107,7 +107,6 @@ export function useLv3Item(room, actor, item, data = {}, now = Date.now()) {
   if (card.id === 'space-station-card' || card.id === 'great-spaceship-card') {
     for (const id of ids) {
       const target = draft.players.get(id);
-      ensure((target.cardMarkers || []).length < MAX_CARD_MARKERS, '사용 중인 카드 기록이 가득 찼어요.');
       const note = card.id === 'space-station-card'
         ? `책상·급식 자리 교체: ${targets.map(p => p.nickname).join(' / ')} · 전체 자리 변경 때 종료`
         : `급식 자리: ${actor.nickname} · 앞 ${targets[1].nickname} · 뒤 ${targets[2].nickname} · 줄 밀림 면제`;

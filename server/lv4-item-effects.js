@@ -1,7 +1,7 @@
 import {ITEM_USE,SHOP,SHARDS,itemOf,PLAZA_ID,BLACK_HOLE_ID} from '../shared/config.js';
 import {STAR_CARD_CATALOG,goldItemIdOf} from '../shared/star-cards.js';
 import {ensure} from './rooms.js';
-import {addCardMarker,hasCardStatus,MAX_CARD_MARKERS,hasItemImmunity} from './item-cards.js';
+import {addCardMarker,hasCardStatus,hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax,hasLv2ItemBlock} from './lv2-item-effects.js';
 import {arrivePosition} from './world.js';
@@ -30,7 +30,6 @@ export function validateLv4State(value){
 function eligible(p,now){return level(p)>=4&&!p.avatar.blackStar&&!hasCardStatus(p,'little-sun-card',now)&&!hasLv2ItemBlock(p,now)&&!activeItemBlocks(p,now).length;}
 function give(p,id,quantity){const owned=p.inventory.find(e=>e.id===id);ensure((owned?.quantity||0)+quantity<=SHOP.maxStack&&(owned||p.inventory.length<SHOP.maxKinds),'보상 아이템을 받을 가방 공간이 부족해요.');if(owned)owned.quantity+=quantity;else p.inventory.push({id,quantity});}
 function marker(p,card,actor,until,note,now,uses){
-  ensure((p.cardMarkers||[]).length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요.');
   return Object.assign(addCardMarker(p,card,actor,until,note),{at:now,fromLevel:level(actor),...(uses===undefined?{}:{remainingUses:uses})});
 }
 // 재화·아이템·대상 상태를 모두 미리 계산한 뒤 한 번에 반영합니다. 외부 저장 실패는 store.transact가 복구합니다.

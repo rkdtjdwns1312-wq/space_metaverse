@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BLACK_HOLE_ID, PLAZA_ID, SHARDS, SHOP} from '../shared/config.js';
 import {LV2_ITEMS} from '../shared/lv2-items.js';
-import {MAX_CARD_MARKERS} from '../server/item-cards.js';
 import {useLv2Item, settleLv2Items, hasLv2ItemBlock, collectSunTax,
   acquireGalaxy, canPurchaseLv2Item, syncGalaxyHoldings, androidDueAt, lv2ItemsDue} from '../server/lv2-item-effects.js';
 import {GameError} from '../server/rooms.js';
@@ -119,11 +118,15 @@ test('spaceship requires actor plus friend; satellite uses exactly two chosen st
   assert.match(g.c.cardMarkers[0].note, /b/);
 });
 
-test('pair marker capacity failure rolls back first target, tax and consumption', () => {
+test('pair markers beyond 50 preserve existing effects and charge only once', () => {
   const f = fixture('satellite-card');
   f.actor.cardMarkers = [marker('sun-card')];
-  f.c.cardMarkers = Array.from({length: MAX_CARD_MARKERS}, (_, i) => marker('alien-card', {id: '' + i, until: null}));
-  rejectedWithoutMutation(f, () => use(f, 'satellite-card', {targetIds: ['b', 'c']}), /기록이 가득/);
+  f.c.cardMarkers = Array.from({length: 50}, (_, i) => marker('alien-card', {id: '' + i, until: null}));
+  use(f, 'satellite-card', {targetIds: ['b', 'c']});
+  assert.equal(f.b.cardMarkers.length,1);assert.equal(f.c.cardMarkers.length,51);
+  assert.equal(f.c.cardMarkers.filter(m=>m.itemId==='alien-card').length,50);
+  assert.ok(!f.actor.inventory.some(i=>i.id==='satellite-card'));
+  assert.equal(f.actor.starShards,9);assert.equal(f.owner.starShards,11);
 });
 
 test('galaxy grants exactly one placeholder and consumes card with no effect marker', () => {

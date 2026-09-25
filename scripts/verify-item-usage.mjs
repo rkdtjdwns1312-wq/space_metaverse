@@ -38,5 +38,14 @@ try{
   await teacher.getByRole('button',{name:'1회 사용 처리'}).click();
   await teacher.locator('[data-effect-row]').filter({hasText:'우주인'}).filter({hasText:'남은 2회'}).waitFor();
   assert.equal(sp.cardMarkers.find(e=>e.id==='verify-count').remainingUses,2);
-  assert.deepEqual(errors,[]);console.log('verify-item-usage: PASS');
+  // Aggregate limits no longer hide or discard active records. Verify the actual scrollable board.
+  sp.cardMarkers.push(...Array.from({length:75},(_,i)=>({id:'bulk-'+i,itemId:i%2?'alien-card':'space-food-card',until:null,fromId:tp.id,fromNickname:'선생님'})));
+  await teacher.locator('#temple-close').click();await move(tp,teacher);
+  assert.equal(await teacher.locator('[data-effect-row]').count(),78);
+  const names=await teacher.locator('[data-effect-row] > span:first-child').allTextContents();
+  const collator=new Intl.Collator('ko',{numeric:true});
+  assert.deepEqual(names,[...names].sort(collator.compare));
+  await teacher.locator('[data-effect-row]').last().scrollIntoViewIfNeeded();
+  await teacher.screenshot({path:'.local/231-item-board-390.png'});
+  assert.deepEqual(errors,[]);console.log('verify-item-usage: PASS (78 records, name sorting, privacy, completion, counts, mobile scrolling)');
 }finally{await browser.close();await game.close();await rm(dir,{recursive:true,force:true});}

@@ -3,7 +3,6 @@ import {itemOf} from '../shared/config.js';
 
 const KST_MS=9*60*60*1000;
 const DAY_MS=24*60*60*1000;
-export const MAX_CARD_MARKERS=50;
 
 export function nextKoreaMidnight(now=Date.now()){
   return (Math.floor((now+KST_MS)/DAY_MS)+1)*DAY_MS-KST_MS;
@@ -40,7 +39,7 @@ export function cardMarkerViews(player,viewerIsTeacher,now=Date.now()){
 
 export function validateCardMarkers(value){
   if(value===undefined)return [];
-  if(!Array.isArray(value)||value.length>MAX_CARD_MARKERS)throw new Error('아이템 사용 기록이 올바르지 않습니다.');
+  if(!Array.isArray(value))throw new Error('아이템 사용 기록이 올바르지 않습니다.');
   const ids=new Set();
   for(const marker of value){
     const item=marker&&itemOf(marker.itemId);

@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {fromRecord} from '../server/persistent-rooms.js';
-import {validateCardMarkers, MAX_CARD_MARKERS} from '../server/item-cards.js';
+import {validateCardMarkers} from '../server/item-cards.js';
 import {MAP, SHOP, SHARDS, STREET, STREET_ID} from '../shared/config.js';
 import {MARKET} from '../shared/market.js';
 import {PLAZA_ID} from '../shared/config.js';
@@ -264,26 +264,29 @@ test('expired unpaid rabbit reward survives a successful LV1 manual-card use', a
   assert.ok(f.record().students.find(p => p.id === f.actor.id).cardMarkers.some(m => m.id === 'unpaid-rabbit'));
 });
 
-test('draw-start counts pending rabbit rewards toward persistent marker capacity', async t => {
+test('draw-start exceeds 50 records and preserves pending rewards after restart', async t => {
   const f = await fixture(t);
   f.seed(a => {
     a.inventory = [{id: 'star-card', quantity: SHOP.maxStack}, {id: 'moon-rabbit-card', quantity: 1}];
-    a.cardMarkers = Array.from({length: MAX_CARD_MARKERS}, (_, i) => ({id: 'debt-' + i,
+    a.cardMarkers = Array.from({length: 50}, (_, i) => ({id: 'debt-' + i,
       itemId: 'sun-rabbit-card', until: Date.now() - 1, at: Date.now() - WEEK - 1,
       fromId: f.friend.id, fromNickname: f.friend.nickname, fromLevel: 2, pendingGrant: true, note: ''}));
   });
-  const before = structuredClone(f.actor);
   const result = await call(f.first, 'draw:start');
-  assert.equal(result.ok, false, 'draw-start saved more markers than the restart validator permits');
-  assert.equal(f.actor.cardMarkers.length, MAX_CARD_MARKERS);
-  assert.deepEqual(f.actor.inventory, before.inventory);
-  assert.equal(f.actor.rabbitDraw, null);
+  assert.ok(result.ok,result.error);
+  assert.equal(f.actor.cardMarkers.length,51);
+  assert.equal(quantity(f.actor,'moon-rabbit-card'),0);
+  const drawId=f.actor.rabbitDraw.id;
+  await f.restart();
+  assert.equal(f.actor.cardMarkers.length,51);
+  assert.equal(f.actor.cardMarkers.filter(m=>m.pendingGrant).length,50);
+  assert.equal(f.actor.rabbitDraw.id,drawId);
   assert.doesNotThrow(() => fromRecord(f.record()));
 });
 
-test('LV1 capacity includes expired rabbit debts even before pendingGrant was marked', async t => {
+test('LV1 adds unlimited records without dropping unpaid rabbit rewards', async t => {
   const f = await fixture(t);
-  for (const debts of [MAX_CARD_MARKERS, MAX_CARD_MARKERS - 1]) {
+  for (const debts of [50, 75]) {
     f.seed(a => {
       a.inventory = [{id: 'star-card', quantity: SHOP.maxStack}, {id: 'alien-card', quantity: 1}];
       a.lastItemUseAt = 0;
@@ -292,10 +295,10 @@ test('LV1 capacity includes expired rabbit debts even before pendingGrant was ma
         fromId: f.friend.id, fromNickname: f.friend.nickname, fromLevel: 2, note: ''}));
     });
     const result = await call(f.first, 'item:use', {itemId: 'alien-card', targetId: f.actor.id});
-    assert.equal(result.ok, debts < MAX_CARD_MARKERS);
-    assert.equal(quantity(f.actor, 'alien-card'), debts < MAX_CARD_MARKERS ? 0 : 1);
+    assert.ok(result.ok,result.error);
+    assert.equal(quantity(f.actor, 'alien-card'),0);
     assert.equal(f.actor.cardMarkers.filter(m => m.itemId === 'sun-rabbit-card').length, debts);
-    assert.equal(f.actor.cardMarkers.length, MAX_CARD_MARKERS);
+    assert.equal(f.actor.cardMarkers.length,debts+1);
     assert.doesNotThrow(() => fromRecord(f.record()));
   }
 });

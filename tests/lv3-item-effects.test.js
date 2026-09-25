@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {BLACK_HOLE_ID, ITEM_USE, SHOP, SHARDS} from '../shared/config.js';
 import {LV3_ITEMS} from '../shared/lv3-items.js';
 import {availableSupernovas, consumeSupernovas, lv3ItemsDue, settleLv3Items, syncLv3Holdings, useLv3Item, validateLv3State} from '../server/lv3-item-effects.js';
-import {MAX_CARD_MARKERS} from '../server/item-cards.js';
 import {starCardPurchaseQuote, consumeStarCardDiscounts} from '../server/star-cards.js';
 import {weekStart} from '../server/temple.js';
 import {GameError} from '../server/rooms.js';
@@ -114,10 +113,13 @@ test('spaceship requires actor plus exactly two distinct other students', () => 
   assert.match(f.actor.cardMarkers[0].note, /앞 b · 뒤 c/);
 });
 
-test('station marker capacity and sun tax failures roll back every target and item change', () => {
+test('station allows more than 50 effects while tax failures still roll back', () => {
   const full = fixture('space-station-card');
-  full.c.cardMarkers = Array.from({length: MAX_CARD_MARKERS}, (_, i) => marker('alien-card', {id: `full-${i}`, until: null}));
-  rejectedWithoutMutation(full, () => use(full, 'space-station-card', {targetIds: ['b', 'c']}), /가득/);
+  full.c.cardMarkers = Array.from({length: 50}, (_, i) => marker('alien-card', {id: `full-${i}`, until: null}));
+  use(full, 'space-station-card', {targetIds: ['b', 'c']});
+  assert.equal(full.b.cardMarkers.length,1);assert.equal(full.c.cardMarkers.length,51);
+  assert.equal(full.c.cardMarkers.filter(m=>m.itemId==='alien-card').length,50);
+  assert.equal(full.actor.inventory.length,0);
   const tax = fixture('rabbit-princess-card');
   tax.actor.cardMarkers = [marker('sun-card')]; tax.actor.starShards = 0;
   rejectedWithoutMutation(tax, () => use(tax, 'rabbit-princess-card'), /사용료/);

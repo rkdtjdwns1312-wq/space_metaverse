@@ -41,7 +41,7 @@ import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
-import {hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight,MAX_CARD_MARKERS} from './item-cards.js';
+import {hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
 import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -1023,7 +1023,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
       ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
       const retainedMarkers=(p.cardMarkers||[]).filter(marker=>marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card');
-      ensure(retainedMarkers.length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       collectSunTax(room,p,now);
       owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
@@ -1279,11 +1278,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         ensure(meteorPlanet&&meteorPlanet.id!==p.avatar.departmentId,'다른 부서행성을 골라주세요.');
         ensure(warningCount(meteorPlanet,p.id)>0,'그 부서에서 받은 활성 경고가 없어요.');
       }
-      if(item.mode)for(const recipient of targets){
-        const remaining=(recipient.cardMarkers||[]).filter(marker=>(marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card')&&!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
-          !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
-        ensure(remaining.length<MAX_CARD_MARKERS,'사용 중인 카드 기록이 가득 찼어요. 선생님께 알려주세요.');
-      }
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       // 소비: 수량 1 소모, 0이 되면 가방에서 완전히 지웁니다.
       collectSunTax(room,p,now);
@@ -1310,11 +1304,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         }else{
           target.effects.push({itemId:item.id,icon:item.effect.icon,label:item.effect.label,style:item.effect.style,
             until,fromId:p.id,fromNickname:p.nickname,secret:item.secret});
-          if(target.effects.length>ITEM_USE.maxEffects){
-            let oldest=0;
-            for(let i=1;i<target.effects.length-1;i++) if(target.effects[i].until<target.effects[oldest].until) oldest=i;
-            target.effects.splice(oldest,1);
-          }
         }
       }
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:target.id,
