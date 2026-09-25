@@ -1,3 +1,5 @@
+import {createMarketUI} from './market-ui.js';
+import {createAuxiliarySkills} from './auxiliary-skills.js';
 import {createLv4ItemUI} from './lv4-item-ui.js';
 import {createCraftingUI} from './crafting-ui.js';
 import {createStarCardUI} from './star-card-ui.js';
@@ -51,12 +53,14 @@ window.addEventListener('resize',updateControlAlignment);
 updateControlAlignment();
 startClassroomClock($('classroom-clock'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
-let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
+let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
 createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request});
+const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
+const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
 $('avatar-card').append($('experience-panel'));
 let discardItemId=null;
@@ -334,7 +338,6 @@ function updateRoom(value){
   $('teacher-tools').hidden=!isTeacher;$('lv4-teacher-tools').hidden=!isTeacher;
   $('copy-student-link').hidden=!isTeacher;
   $('pin-panel').hidden=!isTeacher||room.persistent!==true||room.managedAccounts;
-  $('trade-section').hidden=isTeacher; // 선생님은 거래 당사자가 아니라 제안 버튼을 숨깁니다.
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent=room.unattended?'우주와 연결되었어요 · 선생님 자리 비움':'선생님 연결 대기 · 잠시 이동을 멈춰요';
   else if(socket.connected)$('connection').textContent='우주와 연결되었어요';
@@ -344,14 +347,12 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
-  updateTradesList();
+  marketUI.update();auxiliarySkills.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
   // 다른 친구의 입퇴장·구매마다 스냅샷이 오므로, 내 잔액·가방이 실제로 바뀐 경우에만 상점 목록을 다시 그립니다(입력 중인 수량 보호).
   if($('shop-dialog').open){const sig=shopSignature();if(sig!==shopSig){shopSig=sig;updateShopShards();renderShopBuyList();renderShopSellList();}}
-  // 거래 대화상자가 열려 있을 때도 내 가방·접속 학생 목록이 실제로 바뀐 경우에만 다시 그립니다(체크·수량 입력 보호).
-  if($('trade-dialog').open){const sig=tradeSignature();if(sig!==tradeDialogSig){tradeDialogSig=sig;renderTradeTargetOptions();renderTradeGiveItems();}}
 }
 let shopSig='';
 function shopSignature(){const me=room?.players.find(p=>p.id===selfId);return myShards()+'|'+(me?.cosmicEnergy??0)+'|'+me?.role+'|'+JSON.stringify(myInventory())+'|'+JSON.stringify(room?.shopDiscounts||{});}
@@ -567,149 +568,18 @@ $('draw-start').onclick=async()=>{const button=$('draw-start');button.disabled=t
 $('draw-resume').onclick=async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();};
 $('draw-close').onclick=()=>$('draw-dialog').close();
 $('draw-dialog').addEventListener('close',()=>$('world').focus());
-function summarizeTrade(side){
-  const parts=[];
-  if(side?.shards)parts.push('★'+side.shards);
-  for(const it of side?.items||[]){const item=itemOf(it.id);if(item)parts.push(item.icon+'×'+it.quantity);}
-  return parts.length?parts.join(' '):'없음';
-}
-function tradeSignature(){return myInventory().map(e=>e.id+':'+e.quantity).join(',')+'|'+(room?.players||[]).filter(p=>p.role!=='teacher').map(p=>p.id+':'+p.connected).join(',');}
-function updateTradesList(){
-  if(!room)return;
-  const trades=room.trades||[];
-  const mine=trades.filter(t=>t.fromId===selfId||t.toId===selfId);
-  const incomingIds=new Set(trades.filter(t=>t.toId===selfId&&t.status==='proposed').map(t=>t.id));
-  for(const id of incomingIds)if(!knownIncomingTradeIds.has(id))toast('친구가 거래를 제안했어요. 가방 탭에서 확인해요.');
-  knownIncomingTradeIds=incomingIds;
-  $('trades-empty').hidden=mine.length>0;
-  $('trades').replaceChildren(...mine.map(t=>{
-    const li=document.createElement('li');
-    const isSender=t.fromId===selfId,otherName=isSender?t.toNickname:t.fromNickname;
-    const title=document.createElement('strong');title.textContent=otherName+' 친구와의 거래';
-    const giveSide=isSender?t.give:t.want,getSide=isSender?t.want:t.give;
-    const giveP=document.createElement('p');giveP.className='muted';giveP.textContent='내가 주는 것: '+summarizeTrade(giveSide);
-    const getP=document.createElement('p');getP.className='muted';getP.textContent='내가 받는 것: '+summarizeTrade(getSide);
-    const status=document.createElement('p');status.className='muted';
-    const actions=document.createElement('div');actions.className='trade-actions';
-    if(t.status==='proposed'&&t.toId===selfId){
-      status.textContent='친구가 제안했어요';
-      const accept=document.createElement('button');accept.type='button';accept.className='small primary trade-accept';accept.textContent='수락';
-      accept.onclick=async()=>{try{await request('trade:respond',{tradeId:t.id,accept:true});}catch(e){toast(e.message);}};
-      const decline=document.createElement('button');decline.type='button';decline.className='small secondary trade-decline';decline.textContent='거절';
-      decline.onclick=async()=>{try{await request('trade:respond',{tradeId:t.id,accept:false});}catch(e){toast(e.message);}};
-      actions.append(accept,decline);
-    }else if(t.status==='proposed'){
-      status.textContent='친구 수락 기다리는 중';
-      const cancel=document.createElement('button');cancel.type='button';cancel.className='small secondary trade-cancel';cancel.textContent='취소';
-      cancel.onclick=async()=>{try{await request('trade:cancel',{tradeId:t.id});}catch(e){toast(e.message);}};
-      actions.append(cancel);
-    }else if(t.status==='accepted'){
-      status.textContent='선생님 승인 기다리는 중';
-      const cancel=document.createElement('button');cancel.type='button';cancel.className='small secondary trade-cancel';cancel.textContent='취소';
-      cancel.onclick=async()=>{try{await request('trade:cancel',{tradeId:t.id});}catch(e){toast(e.message);}};
-      actions.append(cancel);
-    }
-    li.append(title,giveP,getP,status,actions);
-    return li;
-  }));
-}
-function renderTradeTargetOptions(){
-  if(!room)return;
-  const select=$('trade-target'),prev=select.value;
-  const students=room.players.filter(p=>p.id!==selfId&&p.connected&&p.role!=='teacher');
-  select.replaceChildren(...students.map(p=>{const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.nickname;return opt;}));
-  if([...select.options].some(o=>o.value===prev))select.value=prev;
-}
-// 목록을 다시 그릴 때 체크 상태와 입력 중인 수량을 유지합니다.
-function rerenderPickList(list,build){
-  const prev=new Map([...list.querySelectorAll('li.item')].map(li=>[li.dataset.itemId,{checked:li.querySelector('.pick')?.checked,qty:li.querySelector('.qty')?.value}]));
-  list.replaceChildren(...build());
-  for(const li of list.querySelectorAll('li.item')){
-    const p=prev.get(li.dataset.itemId);if(!p)continue;
-    const pick=li.querySelector('.pick');if(pick)pick.checked=Boolean(p.checked);
-    const qty=li.querySelector('.qty');if(qty&&p.qty)qty.value=p.qty;
-  }
-}
-function tradePickRow(item,maxQty){
-  const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
-  const pick=document.createElement('input');pick.type='checkbox';pick.className='pick';pick.setAttribute('aria-label',item.name+' 선택');
-  const icon=document.createElement('span');icon.className='icon';icon.textContent=item.icon;
-  const name=document.createElement('span');name.className='name';name.textContent=item.name;
-  const qty=document.createElement('input');qty.type='number';qty.className='qty';qty.min='1';qty.max=String(maxQty);qty.value='1';qty.setAttribute('aria-label','수량');
-  li.append(pick,icon,name,qty);
-  return li;
-}
-function renderTradeGiveItems(){
-  rerenderPickList($('trade-give-items'),()=>myInventory().map(entry=>{
-    const item=itemOf(entry.id);return item?tradePickRow(item,entry.quantity):null;
-  }).filter(Boolean));
-}
-function renderTradeWantItems(){
-  rerenderPickList($('trade-want-items'),()=>SHOP.items.map(item=>tradePickRow(item,99)));
-}
-function collectPicks(list){
-  return [...list.querySelectorAll('li.item')].filter(li=>li.querySelector('.pick')?.checked)
-    .map(li=>({id:li.dataset.itemId,quantity:Math.max(1,Math.round(Number(li.querySelector('.qty')?.value))||1)}));
-}
-function openTradeDialog(){
-  $('trade-error').textContent='';$('trade-give-shards').value='0';$('trade-want-shards').value='0';
-  renderTradeTargetOptions();renderTradeGiveItems();renderTradeWantItems();
-  tradeDialogSig=tradeSignature();
-  stop();$('trade-dialog').showModal();
-}
-$('trade-new').onclick=()=>openTradeDialog();
-$('trade-submit').onclick=async()=>{
-  $('trade-error').textContent='';
-  const targetId=$('trade-target').value;
-  if(!targetId){$('trade-error').textContent='거래할 친구를 골라주세요.';return;}
-  const give={shards:Number($('trade-give-shards').value)||0,items:collectPicks($('trade-give-items'))};
-  const want={shards:Number($('trade-want-shards').value)||0,items:collectPicks($('trade-want-items'))};
-  if(give.items.length>TRADE.maxItemKinds||want.items.length>TRADE.maxItemKinds){
-    $('trade-error').textContent='한쪽에 최대 '+TRADE.maxItemKinds+'종까지 고를 수 있어요.';return;
-  }
-  try{
-    await request('trade:propose',{targetId,give,want});
-    $('trade-dialog').close();toast('거래를 제안했어요.');
-  }catch(e){$('trade-error').textContent=e.message;}
-};
-$('trade-cancel-btn').onclick=()=>$('trade-dialog').close();
-$('trade-dialog').addEventListener('close',()=>{tradeDialogSig='';$('world').focus();});
 function updateTeacherPanels(isTeacher){
-  const trades=room?.trades||[];
-  $('teacher-trades-empty').hidden=!isTeacher||trades.length>0;
-  $('teacher-trades').replaceChildren(...(!isTeacher?[]:trades.map(t=>{
-    const li=document.createElement('li');
-    const title=document.createElement('strong');title.textContent=t.fromNickname+' → '+t.toNickname;
-    const give=document.createElement('p');give.className='muted';give.textContent='주는 것: '+summarizeTrade(t.give);
-    const want=document.createElement('p');want.className='muted';want.textContent='받는 것: '+summarizeTrade(t.want);
-    const status=document.createElement('p');status.className='muted';status.textContent=t.status==='proposed'?'친구 수락 기다리는 중':'승인 대기';
-    const actions=document.createElement('div');actions.className='trade-actions';
-    // 주는 것 없이 받기만 하는 거래는 강요일 수 있어 선생님에게 눈에 띄게 표시합니다.
-    const oneSided=(t.give?.shards||0)===0&&!(t.give?.items||[]).length&&((t.want?.shards||0)>0||(t.want?.items||[]).length>0);
-    if(oneSided){const warn=document.createElement('p');warn.className='trade-warning';warn.textContent='⚠ 한쪽만 받는 거래예요. 억지로 요구한 것은 아닌지 확인해 주세요.';li.append(warn);}
-    if(t.status==='accepted'){
-      const approve=document.createElement('button');approve.type='button';approve.className='small primary approve-trade';approve.textContent='승인';
-      approve.onclick=async()=>{try{await request('trade:approve',{tradeId:t.id});}catch(e){toast(e.message);}};
-      actions.append(approve);
-    }
-    const reject=document.createElement('button');reject.type='button';reject.className='small secondary reject-trade';reject.textContent='거절';
-    reject.onclick=async()=>{try{await request('trade:reject',{tradeId:t.id});}catch(e){toast(e.message);}};
-    actions.append(reject);
-    li.append(title,give,want,status,actions);
-    return li;
-  })));
   if(!isTeacher){$('item-log').replaceChildren();$('item-log-empty').hidden=true;return;}
   const entries=[
     ...(room?.itemLog||[]).map(e=>({at:e.at,text:fmtTime(e.at)+' '+e.userNickname+' → '+e.targetNickname+': '+e.itemName+(e.secret?' (비밀)':'')})),
-    ...(room?.tradeLog||[]).map(e=>({at:e.at,text:fmtTime(e.at)+' 거래 '+e.fromNickname+'↔'+e.toNickname+': '+(e.result==='approved'?'승인':'거절')}))
   ].sort((a,b)=>b.at-a.at).slice(0,20);
   $('item-log-empty').hidden=entries.length>0;
   $('item-log').replaceChildren(...entries.map(e=>{const li=document.createElement('li');li.textContent=e.text;return li;}));
 }
 function updateTeacherBadge(isTeacher){
   const proposals=room?.proposals||[];
-  const pendingTrades=(room?.trades||[]).filter(t=>t.status==='accepted').length;
-  const total=proposals.length+pendingTrades;
+
+  const total=proposals.length;
   $('teacher-badge').hidden=!isTeacher||total===0;$('teacher-badge').textContent=String(total);
 }
 function updateShardsTargetOptions(){
@@ -869,6 +739,7 @@ function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast('우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
+  else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
   else if(n.kind==='door')exitPlanet();
   else if(n.kind==='gate')travelTo(n.target);
@@ -1142,8 +1013,8 @@ function enter(result){
   document.body.classList.add('joined');updateControlAlignment();$('world').focus();$('form-message').textContent='';
   $('interact-prompt').hidden=true;$('interior-decorate').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
-  knownIncomingTradeIds=new Set();tradeDialogSig='';selectedSlotId=null;
-  if($('use-dialog').open)$('use-dialog').close();if($('trade-dialog').open)$('trade-dialog').close();
+  marketUI.reset();auxiliarySkills.reset();selectedSlotId=null;
+  if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
   craftingUI.reset();
@@ -1175,10 +1046,8 @@ function reset(message){
   $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('interior-decorate').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
   selectedSlotId=null;$('bag-list').replaceChildren();$('bag-empty').hidden=false;$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';
   $('shop-buy-list').replaceChildren();$('shop-sell-list').replaceChildren();$('shop-sell-empty').hidden=true;
-  $('trades').replaceChildren();$('trades-empty').hidden=false;
-  $('teacher-trades').replaceChildren();$('teacher-trades-empty').hidden=false;
   $('item-log').replaceChildren();$('item-log-empty').hidden=false;
-  knownIncomingTradeIds=new Set();tradeDialogSig='';useItem=null;
+  marketUI.reset();auxiliarySkills.reset();useItem=null;
   if(placing)stopPlacement();
   document.body.classList.remove('joined');$('form-message').textContent=message||'';
   departmentWork.reset();
@@ -1192,7 +1061,7 @@ function reset(message){
   if($('teacher-dialog').open)$('teacher-dialog').close();
   if($('shop-dialog').open)$('shop-dialog').close();
   if($('use-dialog').open)$('use-dialog').close();
-  if($('trade-dialog').open)$('trade-dialog').close();
+
 }
 async function submit(event,handler){
   event.preventDefault();if(busy)return;busy=true;controls();$('form-message').textContent='';
@@ -1242,7 +1111,7 @@ socket.on('combat:vitals',data=>{
   player.vitals=data.vitals;
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
+socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

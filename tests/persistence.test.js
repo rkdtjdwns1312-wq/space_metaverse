@@ -10,6 +10,7 @@ import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { PersistentRoomStore } from '../server/persistent-rooms.js';
 import { evolveAvatar, gainExperience } from '../server/progression.js';
+import { MARKET } from '../shared/market.js';
 import { unlockStoppedStore } from '../server/store-lock.js';
 import { PLAZA_ID, STREET_ID, STREET, SHOP, interiorIdOf, mapOf } from '../shared/config.js';
 
@@ -170,33 +171,65 @@ test('학생 퇴장·만료가 행성 소속을 지우지 않고 교사 연결 �
   assert.equal((await join(await f.connect(),code)).selfId,j.selfId);
 });
 
-test('승인/잔액변경으로 거부된 거래는 양쪽 잔액과 기록을 함께 저장하고 미승인 거래는 재시작시 취소한다',async t=>{
+test('상호 확정 거래의 재화·아이템·기록은 함께 저장되며 저장 실패는 확정까지 되돌리고 미완료 거래는 재시작시 취소한다',async t=>{
   const f=await fixture(t),{teacher,code}=await classroom(f),a=await f.connect(),b=await f.connect();
   const ja=await join(a,code),jb=await join(b,code,'2','2222');
-  assert.ok((await call(teacher,'shards:give',{playerId:'all',amount:20})).ok);
-  const proposal=()=>call(a,'trade:propose',{targetId:jb.selfId,give:{shards:10,items:[]},want:{shards:3,items:[]}});
-  let tr=await proposal();assert.ok(tr.ok);assert.ok((await call(b,'trade:respond',{tradeId:tr.tradeId,accept:true})).ok);
-  // 쓰기가 실패하면 양쪽 교환과 알림을 함께 취소합니다. 메모리상의 거래도 재시도 가능한 상태입니다.
+  const room=()=>f.game.store.rooms.get(code),player=id=>room().players.get(id);
+  const balances=()=>[ja.selfId,jb.selfId].map(id=>{
+    const p=player(id);return structuredClone({shards:p.starShards,energy:p.cosmicEnergy,inventory:p.inventory});
+  });
+  f.game.store.transact(()=>{
+    for(const id of [ja.selfId,jb.selfId])Object.assign(player(id),{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y,starShards:20,cosmicEnergy:40});
+    player(ja.selfId).inventory=[{id:'star-sticker',quantity:3}];
+    player(jb.selfId).inventory=[{id:'firefly-lamp',quantity:2}];
+  });
+  const give={shards:10,energy:7,items:[{id:'star-sticker',quantity:1}]};
+  const want={shards:3,energy:11,items:[{id:'firefly-lamp',quantity:1}]};
+  const proposal=async()=>{
+    const tr=await call(a,'trade:propose',{targetId:jb.selfId});assert.ok(tr.ok,tr.error);
+    const tradeId=tr.tradeId;
+    assert.ok((await call(b,'trade:respond',{tradeId,accept:true})).ok);
+    assert.ok((await call(a,'trade:offer',{tradeId,revision:0,offer:give})).ok);
+    assert.ok((await call(b,'trade:offer',{tradeId,revision:1,offer:want})).ok);
+    const ref={tradeId,revision:2};assert.ok((await call(a,'trade:confirm',ref)).ok);return ref;
+  };
+  let ref=await proposal();const before=balances(),pending=structuredClone(room().trades.get(ref.tradeId));
+  const diskBefore=fs.readFileSync(path.join(f.dir,code+'.json'),'utf8');
+  const messages=[];a.on('chat:message',m=>messages.push(m));b.on('chat:message',m=>messages.push(m));
   const save=f.game.store.files.save.bind(f.game.store.files);f.game.store.files.save=()=>{throw new Error('trade write failed');};
-  try{assert.equal((await call(teacher,'trade:approve',{tradeId:tr.tradeId})).ok,false);}
+  try{assert.equal((await call(b,'trade:confirm',ref)).ok,false);}
   finally{f.game.store.files.save=save;}
-  assert.equal(f.game.store.rooms.get(code).players.get(ja.selfId).starShards,20);
-  assert.equal(f.game.store.rooms.get(code).players.get(jb.selfId).starShards,20);
-  assert.ok((await call(teacher,'trade:approve',{tradeId:tr.tradeId})).ok);
-  assert.equal(f.game.store.rooms.get(code).players.get(ja.selfId).starShards,13);
-  assert.equal(f.game.store.rooms.get(code).players.get(jb.selfId).starShards,27);
-  tr=await proposal();assert.ok((await call(b,'trade:respond',{tradeId:tr.tradeId,accept:true})).ok);
-  assert.ok((await call(teacher,'shards:give',{playerId:ja.selfId,amount:-13})).ok);
-  assert.equal((await call(teacher,'trade:approve',{tradeId:tr.tradeId})).ok,false);
-  assert.equal(f.game.store.rooms.get(code).trades.size,0);
+  assert.deepEqual(balances(),before);assert.deepEqual(room().trades.get(ref.tradeId),pending);
+  assert.equal(room().tradeLog.length,0);assert.equal(fs.readFileSync(path.join(f.dir,code+'.json'),'utf8'),diskBefore);
+  await sleep(30);assert.ok(!messages.some(m=>/거래.*완료|교환.*완료/.test(m.text)));
+  assert.ok((await call(b,'trade:confirm',ref)).ok);
+  assert.deepEqual(balances(),[
+    {shards:13,energy:44,inventory:[{id:'star-sticker',quantity:2},{id:'firefly-lamp',quantity:1}]},
+    {shards:27,energy:36,inventory:[{id:'firefly-lamp',quantity:1},{id:'star-sticker',quantity:1}]}
+  ]);
+  const completed=balances();assert.equal((await call(b,'trade:confirm',ref)).ok,false);assert.deepEqual(balances(),completed);
+  // Changed final holdings are a committed failure: no transfer, but removal and failure log survive disk/restart.
+  ref=await proposal();
+  f.game.store.transact(()=>{player(ja.selfId).cosmicEnergy=0;});
+  const changed=balances();assert.equal((await call(b,'trade:confirm',ref)).ok,false);
+  assert.deepEqual(balances(),changed);assert.equal(room().trades.size,0);
   const stored=JSON.parse(fs.readFileSync(path.join(f.dir,code+'.json'),'utf8'));
-  assert.deepEqual(stored.tradeLog.map(t=>t.result),['approved','rejected']);
-  assert.ok((await call(teacher,'shards:give',{playerId:ja.selfId,amount:15})).ok);
-  assert.ok((await proposal()).ok);await f.restart();
+  assert.deepEqual(stored.tradeLog.map(tr=>tr.result),['completed','failed']);
+  for(const entry of stored.tradeLog){assert.deepEqual(entry.give,give);assert.deepEqual(entry.want,want);}
+  for(const id of [ja.selfId,jb.selfId]){
+    const saved=stored.students.find(p=>p.id===id);
+    assert.equal(saved.starShards,player(id).starShards);assert.equal(saved.cosmicEnergy,player(id).cosmicEnergy);
+    assert.deepEqual(saved.inventory,player(id).inventory);
+  }
+  assert.ok((await call(a,'trade:propose',{targetId:jb.selfId})).ok);await f.restart();
   const teacher2=await f.connect(),reopened=await open(teacher2,code);assert.ok(reopened.ok);
-  assert.equal(reopened.room.trades.length,0);assert.equal(reopened.room.tradeLog.length,2);
-  assert.equal(reopened.room.players.find(p=>p.id===ja.selfId).starShards,15);
-  assert.equal(reopened.room.players.find(p=>p.id===jb.selfId).starShards,27);
+  assert.equal(reopened.room.trades.length,0);assert.equal('tradeLog' in reopened.room,false);
+  assert.deepEqual(balances(),changed);assert.deepEqual(room().tradeLog.map(tr=>tr.result),['completed','failed']);
+  assert.equal((await call(teacher2,'trade:history')).ok,false);
+  Object.assign(room().players.get(reopened.selfId),{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});
+  const history=await call(teacher2,'trade:history');assert.ok(history.ok,history.error);
+  assert.deepEqual(history.entries.map(tr=>tr.result),['failed','completed']);
+  assert.deepEqual(history.entries[1].give,give);assert.deepEqual(history.entries[1].want,want);
 });
 
 test('대기 행성 신청과 이름 투표 Map을 복원하며 수업 밖 소속 학생의 표도 유지한다',async t=>{

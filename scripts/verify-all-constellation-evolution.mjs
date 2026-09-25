@@ -120,6 +120,7 @@ try {
       assert.equal(p.avatar.xp,xp);assert.equal(p.avatar.level,level);assert.equal(p.starShards,before-xp);
       await page.locator('#growth-close').click();await walk(page,p,evolveX);
       await interact(page,'진화의 별');await page.locator('#evolution-evolve').click();
+      if(level===1)await page.locator(`[data-constellation-type="${CONSTELLATIONS.find(c=>c.id===id).type}"]`).click();
       if(level===1){
         const choice=page.locator(`[data-constellation-id="${id}"]`);
         assert.equal(await choice.locator('.constellation-name').textContent(),name);
@@ -131,7 +132,7 @@ try {
       // 취소 시 레벨과 구매 XP 유지, 이어서 동일 UI로 실제 진화합니다.
       await page.locator('#evolution-no').click();assert.equal(p.avatar.level,level);assert.equal(p.avatar.xp,xp);
       await page.locator('#evolution-evolve').click();
-      if(level===1)await page.locator(`[data-constellation-id="${id}"]`).click();
+      if(level===1){await page.locator(`[data-constellation-type="${CONSTELLATIONS.find(c=>c.id===id).type}"]`).click();await page.locator(`[data-constellation-id="${id}"]`).click();}
       const started=Date.now();await page.locator('#evolution-yes').click();
       await page.locator('#evolution-summary').filter({hasText:`LV${level+1}`}).waitFor();
       assert.equal(p.avatar.level,level+1);assert.equal(p.avatar.xp,0);assert.equal(p.avatar.constellationId,id);

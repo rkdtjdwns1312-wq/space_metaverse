@@ -1,3 +1,4 @@
+import {MARKET} from '../shared/market.js';
 // 실제 UI 조작으로 검증합니다. pnpm test:browser (Windows: 설치된 Edge 사용)
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -707,7 +708,7 @@ try{
  assert.notEqual(teacherCanvasBeforeTypes,teacherCanvasAfterFirstType);
  await clickMenuAction(teacher,'planet-new');
  await teacher.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(teacher,190,1050);
+ await worldClick(teacher,440,1150);
  await teacher.locator('#planet-create-dialog').waitFor({state:'visible'});
  await teacher.locator('input[name="planet-type"][value="art"]').check();
  await teacher.locator('#planet-create-submit').click();
@@ -795,67 +796,31 @@ try{
  await student2.locator('#self-effects li').filter({hasText:'냠냠 행복'}).waitFor({state:'attached'});
  check('Student 1 uses a previously owned secret space snack on student 2: the public chat only says "누군가" (not naming student 1), the teacher alone gets a private whisper naming student 1, and student 2\'s passport shows the effect');
 
- // Scenario 6: trade proposal -> student2 accepts -> teacher approves. Balances are compared to
- // captured "before" snapshots rather than hardcoded numbers.
+ // 별 시장: 요청 수락 → 각자 제시 → 양쪽 확정. 실제 학급과 무관한 시험 서버입니다.
+ for(const page of [student,student2,teacher])await closeOpenDialogs(page);
+ const marketTeacher=[...room.players.values()].find(v=>v.role==='teacher');
+ for(const actor of [p,p2,marketTeacher]){actor.mapId=PLAZA_ID;actor.x=MARKET.x;actor.y=MARKET.y;actor.input={x:0,y:0,at:Date.now()};}
+ p.cosmicEnergy=10;p2.cosmicEnergy=6;
+ const marketPublish=()=>{for(const actor of [p,p2,marketTeacher])game.io.sockets.sockets.get(actor.socketId).emit('room:state',game.store.snapshot(room,actor));};
+ marketPublish();
+ const enterMarket=async page=>{await closeOpenDialogs(page);await page.locator('#interact-object').filter({hasText:/거래걸기|거래 내역/}).waitFor();await page.locator('#interact-prompt').click();await page.locator('#market-dialog').waitFor({state:'visible'});};
  const preTradeS1Shards=p.starShards,preTradeS2Shards=p2.starShards;
- await openInventoryFromDock(student);await student.locator('#trade-new').click();
- await student.locator('#trade-dialog').waitFor({state:'visible'});
- await student.locator('#trade-target').selectOption({value:p2.id});
- await student.locator('#trade-give-shards').fill('3');
- await student.locator('#trade-submit').click();
- await student.locator('#trade-dialog').waitFor({state:'hidden'});
- await student2.locator('#chat-log li.private').filter({hasText:'1 친구가 거래를 제안했어요. 가방에서 확인해보세요.'}).waitFor({state:'attached'});
- await openInventoryFromDock(student2);await student2.locator('#trades li .trade-accept').click();
- await student.locator('#chat-log li.private').filter({hasText:'2 친구가 수락했어요. 선생님 승인을 기다려요.'}).waitFor({state:'attached'});
- await teacher.waitForFunction(()=>!document.getElementById('teacher-badge').hidden);
- await clickMenuAction(teacher,'teacher-tools');
- await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
- await teacher.locator('#teacher-trades li .approve-trade').click();
- await student.locator('#chat-log li.private').filter({hasText:'선생님이 거래를 승인했어요. 가방을 확인해보세요.'}).waitFor({state:'attached'});
- await student2.locator('#chat-log li.private').filter({hasText:'선생님이 거래를 승인했어요. 가방을 확인해보세요.'}).waitFor({state:'attached'});
- await student.locator('#self-shards').filter({hasText:String(preTradeS1Shards-3)}).waitFor({state:'attached'});
- await student2.locator('#self-shards').filter({hasText:String(preTradeS2Shards+3)}).waitFor({state:'attached'});
- await teacher.locator('#item-log li').filter({hasText:'거래 1↔2: 승인'}).waitFor({state:'attached'});
- await teacher.locator('#teacher-close').click();
- await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
- check('Trade approval flow: student 1 proposes 3 star shards to student 2, who accepts, the teacher approves it from #teacher-trades, both sides get private whispers at each step, balances move by exactly 3, and the teacher item log records the approval');
+ await enterMarket(student);await student.locator('#market-target').selectOption(p2.id);await student.locator('#market-request').click();
+ await student2.locator('#market-incoming-accept').click();await student.locator('#market-shards').fill('3');await student.locator('#market-energy').fill('2');await student.locator('#market-apply').click();
+ await student.locator('#market-confirm').waitFor({state:'visible'});await student.locator('#market-confirm').click();
+ assert.equal(p.starShards,preTradeS1Shards);
+ await student2.locator('#market-confirm').click();await student.locator('#market-dialog').waitFor({state:'hidden'});await student2.locator('#market-dialog').waitFor({state:'hidden'});
+ assert.equal(p.starShards,preTradeS1Shards-3);assert.equal(p2.starShards,preTradeS2Shards+3);assert.equal(p.cosmicEnergy,8);assert.equal(p2.cosmicEnergy,8);
+ await enterMarket(teacher);await teacher.locator('#market-history').filter({hasText:'완료'}).waitFor();await teacher.locator('#market-history').filter({hasText:'우주에너지 2'}).waitFor();await teacher.locator('#market-close').click();
+ check('별 시장에서 학생 양쪽 수락으로 별 파편3·우주에너지2 교환, 교사 승인 없이 완료·시장 내 교사 기록 조회');
 
- // Scenario 7: teacher rejection leaves both balances untouched.
- const preRejectS1Shards=p.starShards,preRejectS2Shards=p2.starShards;
- await openInventoryFromDock(student2);await student2.locator('#trade-new').click();
- await student2.locator('#trade-dialog').waitFor({state:'visible'});
- await student2.locator('#trade-target').selectOption({value:id});
- await student2.locator('#trade-give-shards').fill('1');
- await student2.locator('#trade-submit').click();
- await student2.locator('#trade-dialog').waitFor({state:'hidden'});
- await student.locator('#chat-log li.private').filter({hasText:'2 친구가 거래를 제안했어요. 가방에서 확인해보세요.'}).waitFor({state:'attached'});
- await openInventoryFromDock(student);await student.locator('#trades li .trade-accept').click();
- await student2.locator('#chat-log li.private').filter({hasText:'1 친구가 수락했어요. 선생님 승인을 기다려요.'}).waitFor({state:'attached'});
- await teacher.waitForFunction(()=>!document.getElementById('teacher-badge').hidden);
- await clickMenuAction(teacher,'teacher-tools');
- await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
- await teacher.locator('#teacher-trades li .reject-trade').click();
- await student.locator('#chat-log li.private').filter({hasText:'선생님이 거래를 돌려보냈어요.'}).waitFor({state:'attached'});
- await student2.locator('#chat-log li.private').filter({hasText:'선생님이 거래를 돌려보냈어요.'}).waitFor({state:'attached'});
- assert.equal(p.starShards,preRejectS1Shards);
- assert.equal(p2.starShards,preRejectS2Shards);
- await teacher.locator('#teacher-trades-empty').waitFor({state:'visible'});
- await teacher.locator('#teacher-close').click();
- await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
- check('Teacher rejecting an accepted trade (student 2 -> student 1, 1 shard) sends both sides a private "돌려보냈어요" whisper and leaves both balances unchanged');
-
- // Scenario 8: canceling my own outgoing trade proposal. Reuses the same propose wording as
- // Scenario 6, so wait on the newest ("last") matching private message rather than the first.
- await openInventoryFromDock(student);await student.locator('#trade-new').click();
- await student.locator('#trade-dialog').waitFor({state:'visible'});
- await student.locator('#trade-target').selectOption({value:p2.id});
- await student.locator('#trade-give-shards').fill('1');
- await student.locator('#trade-submit').click();
- await student.locator('#trade-dialog').waitFor({state:'hidden'});
- await student2.locator('#chat-log li.private').filter({hasText:'1 친구가 거래를 제안했어요. 가방에서 확인해보세요.'}).last().waitFor({state:'attached'});
- await openInventoryFromDock(student);await student.locator('#trades li .trade-cancel').click();
- await student.locator('#trades-empty').waitFor({state:'visible'});
- check('Student 1 cancels their own outgoing trade proposal to student 2, and #trades-empty shows again on their side');
+ const beforeDecline=[p.starShards,p2.starShards,p.cosmicEnergy,p2.cosmicEnergy];
+ await enterMarket(student2);await student2.locator('#market-target').selectOption(p.id);await student2.locator('#market-request').click();await student.locator('#market-incoming-decline').click();
+ await student.locator('#market-dialog').waitFor({state:'hidden'});await student2.locator('#market-dialog').waitFor({state:'hidden'});assert.deepEqual([p.starShards,p2.starShards,p.cosmicEnergy,p2.cosmicEnergy],beforeDecline);
+ check('별 시장 거래 요청 거절은 두 재화·아이템을 이동시키지 않음');
+ await enterMarket(student);await student.locator('#market-target').selectOption(p2.id);await student.locator('#market-request').click();await student.locator('#market-cancel').click();
+ await student.locator('#market-dialog').waitFor({state:'hidden'});assert.equal(room.trades.size,0);
+ check('별 시장 요청자가 교환 전 취소하면 재화 보존·양쪽 거래창 종료');
 
  // 마지막 달토끼 1장을 써도 진행 중 뽑기는 가방에서 다시 열 수 있어야 합니다.
  p.inventory=p.inventory.filter(entry=>entry.id!=='moon-rabbit-card');

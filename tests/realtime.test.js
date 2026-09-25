@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { RULES, PLANET, PLANET_COLORS, PLAZA_ID, interiorIdOf, MAP, STREET, STREET_ID, SHARDS, SHOP, ITEM_USE, TRADE } from '../shared/config.js';
+import { MARKET, inMarket } from '../shared/market.js';
 import { advance, placementFree } from '../server/world.js';
 import {monsterViews} from '../server/monsters.js';
 import { ORIGIN_MAPS, GARDEN_ID, PARADISE_MAPS, MOON_PARADISE_MAPS, STAR_PARADISE, mapOf } from '../shared/config.js';
@@ -281,16 +282,27 @@ test('planet:propose/create require a valid templateId (planet kind), and it is 
  assert.ok(states.some(st=>st.planets.some(pl=>pl.id===approved.planetId && pl.templateId==='meal')));
 });
 test('pending-proposal limit blocks a further proposal once maxPending is reached',async t=>{
- const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const room=game.store.rooms.get(r.room.code);
  const students=await Promise.all(Array.from({length:PLANET.maxPending+1},()=>connect()));
- await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
- const positions=Array.from({length:11},(_,i)=>({x:76+i*200,y:1200})).filter(point=>placementFree({planets:new Map(),proposals:new Map()},point.x,point.y)).concat({x:680,y:150},{x:1280,y:150});
+ const joins=await Promise.all(students.map((st,i)=>call(st,'room:join',{code:r.room.code,nickname:String(i+1)})));
+ for(const joined of joins)assert.ok(joined.ok,joined.error);
+ // Recheck the real room after each accepted proposal so pending circles reserve their space.
+ const candidates=[],margin=PLANET.radius+RULES.radius;
+ for(let y=margin;y<=MAP.height-margin;y+=40)
+  for(let x=margin;x<=MAP.width-margin;x+=40)candidates.push({x,y});
  for(let i=0;i<PLANET.maxPending;i++){
-  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',...positions[i],color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
+  const position=candidates.find(({x,y})=>placementFree(room,x,y));
+  assert.ok(position,'no valid position for pending proposal '+i);
+  const res=await call(students[i],'planet:propose',{name:'행성'+i,description:'',...position,color:PLANET_COLORS[i%PLANET_COLORS.length],templateId:'meal'});
   assert.equal(res.ok,true,'propose '+i+' failed: '+res.error);
  }
- const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',x:100,y:600,color:PLANET_COLORS[0]});
+ assert.equal(room.proposals.size,PLANET.maxPending);
+ const position=candidates.find(({x,y})=>placementFree(room,x,y));
+ assert.ok(position,'overflow request must have a valid unoccupied position');
+ const over=await call(students[PLANET.maxPending],'planet:propose',{name:'초과행성',description:'',...position,color:PLANET_COLORS[0],templateId:'meal'});
  assert.equal(over.ok,false);assert.equal(over.error,'승인을 기다리는 행성이 너무 많아요. 잠시 후 다시 신청해주세요.');
+ assert.equal(room.proposals.size,PLANET.maxPending);
 });
 test('the planet limit allows more than 30 separate planets and blocks further creation',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
@@ -1029,241 +1041,213 @@ test('an expired item effect is cleared by the periodic tick and the room is ref
  assert.equal(p1.effects.length,0);
  assert.ok(states.some(st=>st.players.find(p=>p.id===j1.selfId).effects.length===0));
 });
-test('trade:propose validates the give/want shapes, requires a real connected student target, and rejects teachers',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect(),s3=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- const j3=await call(s3,'room:join',{code:r.room.code,nickname:'3'});
- const room=game.store.rooms.get(r.room.code);
- const p1=room.players.get(j1.selfId);
- const empty={shards:0,items:[]};
- assert.equal((await call(teacher,'trade:propose',{targetId:j1.selfId,give:{shards:1,items:[]},want:empty})).error,'선생님은 거래하지 않아요.');
- assert.equal((await call(s1,'trade:propose',{targetId:r.selfId,give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
- assert.equal((await call(s1,'trade:propose',{targetId:j1.selfId,give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
- assert.equal((await call(s1,'trade:propose',{targetId:'nope',give:{shards:1,items:[]},want:empty})).error,'친구를 찾지 못했어요.');
- room.players.get(j3.selfId).connected=false;
- assert.equal((await call(s1,'trade:propose',{targetId:j3.selfId,give:{shards:1,items:[]},want:empty})).error,'그 친구는 지금 없어요.');
- for(const bad of [{shards:-1,items:[]},{shards:1.5,items:[]},{shards:TRADE.maxShards+1,items:[]},
-   {shards:0,items:[{id:'nope',quantity:1}]},{shards:0,items:[{id:'star-sticker',quantity:0}]},
-   {shards:0,items:[{id:'star-sticker',quantity:100}]},
-   {shards:0,items:[{id:'star-sticker',quantity:1},{id:'star-sticker',quantity:1}]},
-   {shards:0,items:Array.from({length:TRADE.maxItemKinds+1},()=>({id:'star-sticker',quantity:1}))}])
-  assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:bad,want:empty})).error,'거래 내용을 확인해주세요.');
- assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:empty,want:empty})).error,'주거나 받을 것을 하나는 적어주세요.');
- assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:empty})).error,
-   '주려는 것을 충분히 가지고 있지 않아요.');
- p1.starShards=5;
- assert.equal((await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:empty})).ok,true);
-});
-test('trade:propose blocks a second trade while one is pending for either side, and enforces the room-wide pending limit',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const count=TRADE.maxPending*2+2;
- const sockets=await Promise.all(Array.from({length:count},()=>connect()));
- const joins=await Promise.all(sockets.map((s,i)=>call(s,'room:join',{code:r.room.code,nickname:String(i+1)})));
- const room=game.store.rooms.get(r.room.code);
- for(const j of joins) room.players.get(j.selfId).starShards=10;
- const give={shards:1,items:[]},empty={shards:0,items:[]};
- const first=await call(sockets[0],'trade:propose',{targetId:joins[1].selfId,give,want:empty});
- assert.equal(first.ok,true);
- assert.equal((await call(sockets[0],'trade:propose',{targetId:joins[2].selfId,give,want:empty})).error,
-   '진행 중인 거래가 있어요. 먼저 끝내주세요.');
- assert.equal((await call(sockets[2],'trade:propose',{targetId:joins[1].selfId,give,want:empty})).error,
-   '진행 중인 거래가 있어요. 먼저 끝내주세요.');
- for(let i=2;i<TRADE.maxPending*2;i+=2){
-  const res=await call(sockets[i],'trade:propose',{targetId:joins[i+1].selfId,give,want:empty});
-  assert.equal(res.ok,true,'pair '+i+' failed: '+res.error);
+
+// Market fixtures place players directly; no teacher movement API bypasses the boundary checks.
+const marketPlace=p=>Object.assign(p,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});
+const emptyTrade=()=>({shards:0,energy:0,items:[]});
+const tradeAssets=p=>structuredClone({shards:p.starShards,energy:p.cosmicEnergy,items:p.inventory});
+async function marketFixture(t,options={}){
+ const f=await fixture(t,options),teacher=await f.connect(),created=await create(teacher);
+ const sockets=[],players=[],room=f.game.store.rooms.get(created.room.code);
+ for(let i=1;i<=3;i++){
+  const socket=await f.connect(),joined=await call(socket,'room:join',{code:room.code,nickname:String(i)});
+  assert.ok(joined.ok,joined.error);sockets.push(socket);players.push(marketPlace(room.players.get(joined.selfId)));
  }
+ marketPlace(room.players.get(created.selfId));
+ return {...f,teacher,room,sockets,players};
+}
+async function negotiate(f,give=emptyTrade(),want=emptyTrade()){
+ const proposed=await call(f.sockets[0],'trade:propose',{targetId:f.players[1].id});
+ assert.ok(proposed.ok,proposed.error);const tradeId=proposed.tradeId;
+ assert.ok((await call(f.sockets[1],'trade:respond',{tradeId,accept:true})).ok);
+ for(const [i,offer] of [give,want].entries()){
+  const result=await call(f.sockets[i],'trade:offer',{tradeId,revision:i,offer});assert.ok(result.ok,result.error);
+ }
+ return {tradeId,revision:2};
+}
+
+test('market boundary is inclusive and requires the plaza map',()=>{
+ assert.equal(MARKET.id,'star-market');assert.equal(MARKET.kind,'market');
+ assert.ok([MARKET.x,MARKET.y,MARKET.radius].every(Number.isFinite));assert.ok(MARKET.radius>0);
+ assert.equal(inMarket({connected:true,mapId:PLAZA_ID,x:MARKET.x+MARKET.radius,y:MARKET.y}),true);
+ assert.equal(inMarket({connected:true,mapId:PLAZA_ID,x:MARKET.x+MARKET.radius+0.01,y:MARKET.y}),false);
+ assert.equal(inMarket({connected:true,mapId:STREET_ID,x:MARKET.x,y:MARKET.y}),false);
+});
+test('trade proposal starts empty and rejects legacy offers, invalid targets and either player outside market',async t=>{
+ const f=await marketFixture(t),[a,b,c]=f.sockets,[p,q,r]=f.players;
+ for(const targetId of [p.id,'missing',[...f.room.players.values()].find(p=>p.role==='teacher').id])
+  assert.equal((await call(a,'trade:propose',{targetId})).ok,false);
+ assert.equal((await call(f.teacher,'trade:propose',{targetId:q.id})).ok,false);
+ for(const field of ['give','want'])assert.equal((await call(a,'trade:propose',{targetId:q.id,[field]:emptyTrade()})).ok,false);
+ r.connected=false;assert.equal((await call(a,'trade:propose',{targetId:r.id})).ok,false);r.connected=true;
+ for(const player of [p,q]){
+  player.x=MARKET.x+MARKET.radius+1;
+  assert.equal((await call(a,'trade:propose',{targetId:q.id})).ok,false);marketPlace(player);
+  player.mapId=STREET_ID;
+  assert.equal((await call(a,'trade:propose',{targetId:q.id})).ok,false);marketPlace(player);
+ }
+ p.x=MARKET.x+MARKET.radius;
+ const proposed=await call(a,'trade:propose',{targetId:q.id});assert.ok(proposed.ok,proposed.error);
+ const trade=f.room.trades.get(proposed.tradeId);
+ assert.equal(trade.status,'proposed');assert.equal(trade.revision,0);assert.deepEqual(trade.confirmed,[]);
+ assert.deepEqual(trade.give,emptyTrade());assert.deepEqual(trade.want,emptyTrade());
+ assert.equal((await call(a,'trade:offer',{tradeId:trade.id,revision:0,offer:emptyTrade()})).ok,false);
+ assert.equal((await call(a,'trade:confirm',{tradeId:trade.id,revision:0})).ok,false);
+ for(const socket of [a,c,f.teacher])assert.equal((await call(socket,'trade:respond',{tradeId:trade.id,accept:true})).ok,false);
+ assert.ok((await call(b,'trade:respond',{tradeId:trade.id,accept:true})).ok);
+ assert.equal(trade.status,'negotiating');assert.deepEqual(trade.confirmed,[]);
+});
+test('trade pending limits apply to both parties and to the whole classroom',async t=>{
+ const {connect,game}=await fixture(t),teacher=await connect(),created=await create(teacher);
+ const room=game.store.rooms.get(created.room.code),sockets=[],ids=[];
+ for(let i=0;i<TRADE.maxPending*2+2;i++){
+  const s=await connect(),j=await call(s,'room:join',{code:room.code,nickname:String(i+1)});
+  assert.ok(j.ok,j.error);sockets.push(s);ids.push(j.selfId);marketPlace(room.players.get(j.selfId));
+ }
+ assert.ok((await call(sockets[0],'trade:propose',{targetId:ids[1]})).ok);
+ assert.equal((await call(sockets[0],'trade:propose',{targetId:ids[2]})).ok,false);
+ assert.equal((await call(sockets[2],'trade:propose',{targetId:ids[1]})).ok,false);
+ for(let i=2;i<TRADE.maxPending*2;i+=2)assert.ok((await call(sockets[i],'trade:propose',{targetId:ids[i+1]})).ok);
  assert.equal(room.trades.size,TRADE.maxPending);
- const overflow=await call(sockets[TRADE.maxPending*2],'trade:propose',
-   {targetId:joins[TRADE.maxPending*2+1].selfId,give,want:empty});
- assert.equal(overflow.ok,false);assert.equal(overflow.error,'기다리는 거래가 너무 많아요.');
+ assert.equal((await call(sockets.at(-2),'trade:propose',{targetId:ids.at(-1)})).ok,false);
 });
-test('trade:respond lets only the recipient answer; declining removes the trade and whispers the proposer',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect(),s3=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- await call(s3,'room:join',{code:r.room.code,nickname:'3'});
- const room=game.store.rooms.get(r.room.code);
- room.players.get(j1.selfId).starShards=10;
- const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:{shards:0,items:[]}});
- assert.equal(propose.ok,true);
- assert.equal((await call(s3,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
- assert.equal((await call(s1,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
- const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
- const declined=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:false});
- assert.equal(declined.ok,true);
- assert.equal(room.trades.size,0);
- await sleep(20);
- assert.ok(msgs1.some(m=>m.text==='2 친구가 거래를 거절했어요.' && m.private===true));
- assert.equal((await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true})).error,'내가 받은 제안이 아니에요.');
- // 거절당한 상대에게 바로 다시 제안하면 막히고(조르기 방지), 다른 친구에게는 제안할 수 있습니다.
- const again=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:5,items:[]},want:{shards:0,items:[]}});
- assert.equal(again.ok,false);assert.ok(again.error.startsWith('그 친구가 거절했어요.'));
- const other=await call(s1,'trade:propose',{targetId:room.players.get([...room.players.keys()].find(id=>room.players.get(id).nickname==='3')).id,give:{shards:5,items:[]},want:{shards:0,items:[]}});
- assert.equal(other.ok,true);
+test('recipient may decline privately and repeated proposals to that recipient remain blocked',async t=>{
+ const f=await marketFixture(t),[a,b,c]=f.sockets,[p,q,r]=f.players,messages=[],other=[];
+ a.on('chat:message',m=>messages.push(m));c.on('chat:message',m=>other.push(m));
+ const proposed=await call(a,'trade:propose',{targetId:q.id});assert.ok(proposed.ok);
+ assert.ok((await call(b,'trade:respond',{tradeId:proposed.tradeId,accept:false})).ok);
+ assert.equal(f.room.trades.size,0);await sleep(30);
+ assert.ok(messages.some(m=>m.private&&/거절/.test(m.text)));assert.equal(other.length,0);
+ assert.equal((await call(b,'trade:respond',{tradeId:proposed.tradeId,accept:true})).ok,false);
+ assert.equal((await call(a,'trade:propose',{targetId:q.id})).ok,false);
+ assert.ok((await call(a,'trade:propose',{targetId:r.id})).ok);
 });
-test('trade:respond accept requires the recipient really has what they promise; teacher approval swaps shards and items atomically and logs it for the teacher',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- const room=game.store.rooms.get(r.room.code);
- const p1=room.players.get(j1.selfId),p2=room.players.get(j2.selfId);
- p1.starShards=20;p1.inventory=[{id:'star-sticker',quantity:3}];
- p2.starShards=3;p2.inventory=[{id:'firefly-lamp',quantity:1}];
- const propose=await call(s1,'trade:propose',
-   {targetId:j2.selfId,give:{shards:10,items:[{id:'star-sticker',quantity:2}]},want:{shards:5,items:[{id:'firefly-lamp',quantity:1}]}});
- assert.equal(propose.ok,true);
- const insufficientWant=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true});
- assert.equal(insufficientWant.ok,false);assert.equal(insufficientWant.error,'받고 싶다는 것을 내가 충분히 가지고 있지 않아요.');
- assert.equal(room.trades.get(propose.tradeId).status,'proposed');
- p2.starShards=5;
- const teacherStates=[];teacher.on('room:state',st=>teacherStates.push(st));
- const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
- const teacherMsgs=[];teacher.on('chat:message',m=>teacherMsgs.push(m));
- const accepted=await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true});
- assert.equal(accepted.ok,true);
- assert.equal(room.trades.get(propose.tradeId).status,'accepted');
- await sleep(20);
- assert.ok(msgs1.some(m=>m.text==='2 친구가 수락했어요. 선생님 승인을 기다려요.'));
- assert.ok(teacherMsgs.some(m=>m.text==='거래 승인 요청: 1 ↔ 2. 선생님 도구에서 확인해주세요.' && m.private===true));
- const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
- assert.equal((await call(s1,'trade:approve',{tradeId:propose.tradeId})).error,'선생님만 할 수 있어요.');
- const done=await call(teacher,'trade:approve',{tradeId:propose.tradeId});
- assert.equal(done.ok,true);
- assert.equal(room.trades.size,0);
- assert.equal(p1.starShards,20-10+5);assert.equal(p2.starShards,5-5+10);
- assert.equal(p1.inventory.find(i=>i.id==='star-sticker').quantity,1);
- assert.equal(p1.inventory.find(i=>i.id==='firefly-lamp').quantity,1);
- assert.equal(p2.inventory.find(i=>i.id==='star-sticker').quantity,2);
- assert.ok(!p2.inventory.some(i=>i.id==='firefly-lamp'));
- await sleep(20);
- assert.ok(msgs1.some(m=>m.text==='선생님이 거래를 승인했어요. 가방을 확인해보세요.'));
- assert.ok(msgs2.some(m=>m.text==='선생님이 거래를 승인했어요. 가방을 확인해보세요.'));
- assert.ok(teacherStates.some(st=>st.tradeLog && st.tradeLog.some(tl=>tl.result==='approved')));
+test('offers validate safe integers, item limits and ownership without changing either side on rejection',async t=>{
+ const f=await marketFixture(t),[a,b,c]=f.sockets,[p,q]=f.players;
+ p.starShards=50;p.cosmicEnergy=50;p.inventory=[{id:'star-sticker',quantity:3}];
+ q.starShards=40;q.cosmicEnergy=40;
+ const ref=await negotiate(f),trade=f.room.trades.get(ref.tradeId);
+ const bad=[{shards:0,items:[]},...[-1,1.5,TRADE.maxShards+1,Number.MAX_SAFE_INTEGER+1,'1'].map(shards=>({...emptyTrade(),shards})),
+  ...[-1,0.5,Number.MAX_SAFE_INTEGER+1,'1'].map(energy=>({...emptyTrade(),energy})),
+  ...[0,-1,1.5,100].map(quantity=>({...emptyTrade(),items:[{id:'star-sticker',quantity}]})),
+  {...emptyTrade(),items:[{id:'nope',quantity:1}]},
+  {...emptyTrade(),items:[{id:'star-sticker',quantity:1},{id:'star-sticker',quantity:1}]},
+  {...emptyTrade(),items:SHOP.items.slice(0,6).map(it=>({id:it.id,quantity:1}))},
+  {...emptyTrade(),shards:51},{...emptyTrade(),energy:51},{...emptyTrade(),items:[{id:'star-sticker',quantity:4}]}];
+ for(const offer of bad){
+  const before=structuredClone(trade);
+  assert.equal((await call(a,'trade:offer',{...ref,offer})).ok,false,JSON.stringify(offer));
+  assert.deepEqual(trade,before);
+ }
+ for(const socket of [c,f.teacher]){
+  assert.equal((await call(socket,'trade:offer',{...ref,offer:emptyTrade()})).ok,false);
+  assert.equal((await call(socket,'trade:confirm',ref)).ok,false);
+ }
+ p.cosmicEnergy=Number.MAX_SAFE_INTEGER;
+ assert.ok((await call(a,'trade:offer',{...ref,offer:{shards:0,energy:Number.MAX_SAFE_INTEGER,items:[]}})).ok);
+ assert.equal(trade.give.energy,Number.MAX_SAFE_INTEGER);assert.deepEqual(trade.want,emptyTrade());
 });
-test('trade:approve rejects and logs the trade when holdings changed since acceptance, or when the swap would overflow shards or the bag',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- const room=game.store.rooms.get(r.room.code);
- const p1=room.players.get(j1.selfId),p2=room.players.get(j2.selfId);
- p1.starShards=10;p2.starShards=10;
- const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:10,items:[]},want:{shards:5,items:[]}});
- assert.equal((await call(s2,'trade:respond',{tradeId:propose.tradeId,accept:true})).ok,true);
- p1.starShards=0; // 승인 전에 1이 가진 것을 다 써버림
- const msgs1a=[];s1.on('chat:message',m=>msgs1a.push(m));
- const msgs2a=[];s2.on('chat:message',m=>msgs2a.push(m));
- const failed=await call(teacher,'trade:approve',{tradeId:propose.tradeId});
- assert.equal(failed.ok,false);assert.equal(failed.error,'가진 것이 바뀌어서 거래할 수 없어요.');
- assert.equal(room.trades.size,0);
- assert.equal(p1.starShards,0);assert.equal(p2.starShards,10);
- await sleep(20);
- assert.ok(msgs1a.some(m=>m.text==='가진 것이 바뀌어서 거래할 수 없어요.'));
- assert.ok(msgs2a.some(m=>m.text==='가진 것이 바뀌어서 거래할 수 없어요.'));
- // 별 파편 상한 넘침
- p1.starShards=SHARDS.max-2;p2.starShards=10;
- const overflowShards=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:0,items:[]},want:{shards:5,items:[]}});
- assert.equal((await call(s2,'trade:respond',{tradeId:overflowShards.tradeId,accept:true})).ok,true);
- const shardFail=await call(teacher,'trade:approve',{tradeId:overflowShards.tradeId});
- assert.equal(shardFail.ok,false);assert.equal(shardFail.error,'별 파편이 넘쳐서 거래할 수 없어요.');
- assert.equal(p1.starShards,SHARDS.max-2);assert.equal(p2.starShards,10);
- // 가방 종류 한도(SHOP.maxKinds) 넘침: 1의 가방을 반딧불 램프만 빼고 꽉 채운 뒤 2에게서 반딧불 램프를 받으면 한도를 넘깁니다.
- p1.starShards=10;p2.starShards=10;
- p1.inventory=SHOP.items.filter(it=>it.id!=='firefly-lamp').slice(0,SHOP.maxKinds).map(it=>({id:it.id,quantity:1}));
- assert.equal(p1.inventory.length,SHOP.maxKinds);
- p2.inventory=[{id:'firefly-lamp',quantity:1}];
- const overflowBag=await call(s2,'trade:propose',{targetId:j1.selfId,give:{shards:0,items:[{id:'firefly-lamp',quantity:1}]},want:{shards:0,items:[]}});
- assert.equal(overflowBag.ok,true);
- assert.equal((await call(s1,'trade:respond',{tradeId:overflowBag.tradeId,accept:true})).ok,true);
- const bagFail=await call(teacher,'trade:approve',{tradeId:overflowBag.tradeId});
- assert.equal(bagFail.ok,false);assert.equal(bagFail.error,'가방이 가득 차서 거래할 수 없어요.');
- assert.equal(p1.inventory.length,SHOP.maxKinds);assert.equal(p2.inventory.length,1);
+test('editing either offer clears confirmations, stale revisions fail, and exact mutual confirmation commits once',async t=>{
+ const f=await marketFixture(t),[a,b]=f.sockets,[p,q]=f.players;
+ Object.assign(p,{starShards:20,cosmicEnergy:30,inventory:[{id:'star-sticker',quantity:3}]});
+ Object.assign(q,{starShards:5,cosmicEnergy:40,inventory:[{id:'firefly-lamp',quantity:1}]});
+ const give={shards:10,energy:7,items:[{id:'star-sticker',quantity:2}]};
+ const want={shards:5,energy:11,items:[{id:'firefly-lamp',quantity:1}]};
+ const ref=await negotiate(f,give,want),trade=f.room.trades.get(ref.tradeId),before=f.players.slice(0,2).map(tradeAssets);
+ assert.ok((await call(a,'trade:confirm',ref)).ok);assert.deepEqual(trade.confirmed,[p.id]);
+ assert.deepEqual(f.players.slice(0,2).map(tradeAssets),before);
+ assert.ok((await call(b,'trade:offer',{...ref,offer:want})).ok);
+ assert.equal(trade.revision,3);assert.deepEqual(trade.confirmed,[]);
+ assert.equal((await call(b,'trade:confirm',ref)).ok,false);
+ assert.equal((await call(a,'trade:offer',{...ref,offer:give})).ok,false);
+ ref.revision=3;assert.ok((await call(b,'trade:confirm',ref)).ok);
+ assert.ok((await call(a,'trade:offer',{...ref,offer:give})).ok);
+ assert.equal(trade.revision,4);assert.deepEqual(trade.confirmed,[]);
+ ref.revision=4;assert.ok((await call(a,'trade:confirm',ref)).ok);
+ // Retries cannot count as confirmation by the other participant.
+ await call(a,'trade:confirm',ref);assert.deepEqual(trade.confirmed,[p.id]);assert.equal(f.room.trades.size,1);
+ assert.ok((await call(b,'trade:confirm',ref)).ok);assert.equal(f.room.trades.size,0);
+ assert.deepEqual([p.starShards,q.starShards,p.cosmicEnergy,q.cosmicEnergy],[15,10,34,36]);
+ assert.equal(p.inventory.find(i=>i.id==='star-sticker').quantity,1);
+ assert.equal(p.inventory.find(i=>i.id==='firefly-lamp').quantity,1);
+ assert.equal(q.inventory.find(i=>i.id==='star-sticker').quantity,2);assert.ok(!q.inventory.some(i=>i.id==='firefly-lamp'));
+ assert.equal(f.room.tradeLog.length,1);assert.equal(f.room.tradeLog[0].result,'completed');
+ assert.deepEqual(f.room.tradeLog[0].give,give);assert.deepEqual(f.room.tradeLog[0].want,want);
+ const after=f.players.slice(0,2).map(tradeAssets);
+ assert.equal((await call(b,'trade:confirm',ref)).ok,false);assert.deepEqual(f.players.slice(0,2).map(tradeAssets),after);
+ assert.equal(f.room.tradeLog.length,1);
 });
-test('trade:cancel lets either party withdraw before teacher approval, notifying the other side only',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect(),s3=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- await call(s3,'room:join',{code:r.room.code,nickname:'3'});
- const room=game.store.rooms.get(r.room.code);
- room.players.get(j1.selfId).starShards=10;
- const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- assert.equal((await call(s3,'trade:cancel',{tradeId:propose.tradeId})).error,'내 거래가 아니에요.');
- const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
- assert.equal((await call(s2,'trade:cancel',{tradeId:propose.tradeId})).ok,true);
- assert.equal(room.trades.size,0);
- await sleep(20);
- assert.ok(msgs1.some(m=>m.text==='2 친구가 거래를 취소했어요.'));
- room.players.get(j1.selfId).starShards=10;
- const propose2=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
- assert.equal((await call(s1,'trade:cancel',{tradeId:propose2.tradeId})).ok,true);
- await sleep(20);
- assert.ok(msgs2.some(m=>m.text==='1 친구가 거래를 취소했어요.'));
+test('final confirmation revalidates holdings and shard, energy, stack and bag caps atomically',async t=>{
+ const f=await marketFixture(t),[a,b]=f.sockets,[p,q]=f.players;
+ const cases=[
+  {give:{shards:10,energy:2,items:[]},change:()=>{p.starShards=0;}},
+  {give:{shards:1,energy:10,items:[]},change:()=>{p.cosmicEnergy=0;}},
+  {give:{shards:1,energy:1,items:[{id:'star-sticker',quantity:1}]},change:()=>{p.inventory=[];}},
+  {give:{shards:5,energy:0,items:[]},change:()=>{q.starShards=SHARDS.max-2;}},
+  {give:{shards:0,energy:5,items:[]},change:()=>{q.cosmicEnergy=Number.MAX_SAFE_INTEGER-2;}},
+  {give:{shards:0,energy:0,items:[{id:'star-sticker',quantity:1}]},change:()=>{q.inventory=[{id:'star-sticker',quantity:SHOP.maxStack}];}},
+  {give:{shards:0,energy:0,items:[{id:'star-sticker',quantity:1}]},change:()=>{
+   q.inventory=SHOP.items.filter(it=>it.id!=='star-sticker').slice(0,SHOP.maxKinds).map(it=>({id:it.id,quantity:1}));assert.equal(q.inventory.length,SHOP.maxKinds);
+  }}
+ ];
+ for(const scenario of cases){
+  for(const player of [p,q])Object.assign(player,{starShards:20,cosmicEnergy:20,inventory:[{id:'star-sticker',quantity:2}]});
+  const ref=await negotiate(f,scenario.give);assert.ok((await call(a,'trade:confirm',ref)).ok);scenario.change();
+  const before=[p,q].map(tradeAssets),logs=f.room.tradeLog.length;
+  assert.equal((await call(b,'trade:confirm',ref)).ok,false);
+  assert.equal(f.room.trades.size,0);assert.deepEqual([p,q].map(tradeAssets),before);
+  assert.equal(f.room.tradeLog.length,logs+1);assert.equal(f.room.tradeLog.at(-1).result,'failed');
+ }
 });
-test('trade:reject works even on a merely proposed trade, and trades stay invisible to non-parties',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect(),s3=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- await call(s3,'room:join',{code:r.room.code,nickname:'3'});
- const room=game.store.rooms.get(r.room.code);
- room.players.get(j1.selfId).starShards=10;
- const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- assert.equal(propose.ok,true); // 아직 'proposed' 상태
- const msgs1=[];s1.on('chat:message',m=>msgs1.push(m));
- const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
- const states3=[];s3.on('room:state',st=>states3.push(st));
- assert.equal((await call(s2,'trade:reject',{tradeId:propose.tradeId})).error,'선생님만 할 수 있어요.');
- const rejected=await call(teacher,'trade:reject',{tradeId:propose.tradeId});
- assert.equal(rejected.ok,true);
- assert.equal(room.trades.size,0);
- await sleep(30);
- assert.ok(msgs1.some(m=>m.text==='선생님이 거래를 돌려보냈어요.'));
- assert.ok(msgs2.some(m=>m.text==='선생님이 거래를 돌려보냈어요.'));
- room.players.get(j1.selfId).starShards=10;
- const states1=[];s1.on('room:state',st=>states1.push(st));
- const propose2=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- assert.equal(propose2.ok,true);
- await sleep(30);
- assert.ok(states1.some(st=>st.trades.some(tr=>tr.id===propose2.tradeId)));
- assert.ok(states3.every(st=>st.trades.length===0)); // 3은 당사자가 아니므로 거래를 보지 못함
+test('only parties can cancel and legacy teacher approval/rejection cannot mutate a trade',async t=>{
+ const f=await marketFixture(t),[a,b,c]=f.sockets;
+ for(const canceler of [a,b]){
+  const ref=await negotiate(f),before=structuredClone(f.room.trades.get(ref.tradeId));
+  for(const socket of [c,f.teacher])assert.equal((await call(socket,'trade:cancel',ref)).ok,false);
+  for(const socket of [a,f.teacher])for(const event of ['trade:approve','trade:reject'])assert.equal((await call(socket,event,ref)).ok,false);
+  assert.deepEqual(f.room.trades.get(ref.tradeId),before);
+  assert.ok((await call(canceler,'trade:cancel',ref)).ok);assert.equal(f.room.trades.size,0);
+ }
 });
-test('a pending trade is cancelled and the other side notified when either party leaves the classroom entirely',async t=>{
- const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const s1=await connect(),s2=await connect();
- const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
- const j2=await call(s2,'room:join',{code:r.room.code,nickname:'2'});
- const room=game.store.rooms.get(r.room.code);
- room.players.get(j1.selfId).starShards=10;
- const propose=await call(s1,'trade:propose',{targetId:j2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- assert.equal(propose.ok,true);
- const msgs2=[];s2.on('chat:message',m=>msgs2.push(m));
- assert.equal((await call(s1,'room:leave')).ok,true);
- await sleep(20);
- assert.equal(room.trades.size,0);
- assert.ok(msgs2.some(m=>m.text.includes('나가서 거래가 취소되었어요.')));
+test('trade snapshots are parties-only; history is explicit, teacher-only, market-only and newest 100 first',async t=>{
+ const f=await marketFixture(t),[a,b,c]=f.sockets,[p,q]=f.players,states=[[],[],[],[]];
+ for(const [i,s] of [a,b,c,f.teacher].entries())s.on('room:state',state=>states[i].push(state));
+ p.cosmicEnergy=1;const ref=await negotiate(f,{shards:0,energy:1,items:[]});assert.ok((await call(a,'trade:confirm',ref)).ok);await sleep(40);
+ for(const list of states){assert.ok(list.length>0);assert.ok(list.every(s=>!('tradeLog' in s)));}
+ for(const list of states.slice(0,2))assert.ok(list.some(s=>s.trades.some(tr=>tr.id===ref.tradeId&&tr.revision===2&&tr.confirmed.includes(p.id))));
+ for(const list of states.slice(2))assert.ok(list.every(s=>s.trades.length===0));
+ f.room.tradeLog=Array.from({length:105},(_,i)=>({id:'history-'+i,at:i,result:'completed',fromNickname:'1',toNickname:'2',give:emptyTrade(),want:emptyTrade()}));
+ for(const s of [a,b,c])assert.equal((await call(s,'trade:history')).ok,false);
+ const teacher=[...f.room.players.values()].find(p=>p.role==='teacher');teacher.x=MARKET.x+MARKET.radius+1;
+ assert.equal((await call(f.teacher,'trade:history')).ok,false);marketPlace(teacher);
+ const history=await call(f.teacher,'trade:history');assert.ok(history.ok,history.error);
+ assert.deepEqual(history.entries.map(e=>e.id),f.room.tradeLog.slice(-100).toReversed().map(e=>e.id));
 });
-test('trades never leak between classrooms',async t=>{
- const {connect,game}=await fixture(t),teacherA=await connect(),teacherB=await connect();
- const ra=await create(teacherA),rb=await create(teacherB);
- const a1=await connect(),a2=await connect(),b1=await connect(),b2=await connect();
- const ja1=await call(a1,'room:join',{code:ra.room.code,nickname:'1'});
- const ja2=await call(a2,'room:join',{code:ra.room.code,nickname:'2'});
- await call(b1,'room:join',{code:rb.room.code,nickname:'1'});
- await call(b2,'room:join',{code:rb.room.code,nickname:'2'});
- const roomA=game.store.rooms.get(ra.room.code),roomB=game.store.rooms.get(rb.room.code);
- roomA.players.get(ja1.selfId).starShards=10;
- let leaked=false;b1.on('chat:message',()=>{leaked=true;});teacherB.on('chat:message',()=>{leaked=true;});
- const propose=await call(a1,'trade:propose',{targetId:ja2.selfId,give:{shards:1,items:[]},want:{shards:0,items:[]}});
- assert.equal(propose.ok,true);
- assert.equal((await call(teacherB,'trade:approve',{tradeId:propose.tradeId})).error,'거래를 찾지 못했어요.');
- await sleep(30);
- assert.equal(leaked,false);
- assert.equal(roomB.trades.size,0);
- assert.equal(roomA.trades.size,1);
+test('market exit, map change, expiry and disconnected players automatically cancel pending trades',async t=>{
+ let now=Date.now();const f=await marketFixture(t,{clock:()=>now}),[a,b]=f.sockets,[p,q]=f.players;
+ for(const change of [()=>{q.x=MARKET.x+MARKET.radius+1;},()=>{q.mapId=STREET_ID;},()=>{now+=5*60_000+1;},()=>{q.connected=false;}]){
+  marketPlace(q);q.connected=true;
+  const ref=await negotiate(f);const before=[p,q].map(tradeAssets);change();
+  const end=Date.now()+2500;while(f.room.trades.size&&Date.now()<end)await sleep(25);
+  assert.equal(f.room.trades.size,0);assert.deepEqual([p,q].map(tradeAssets),before);
+  assert.equal((await call(a,'trade:confirm',ref)).ok,false);
+ }
+ marketPlace(q);q.connected=true;await negotiate(f);b.disconnect();await sleep(150);
+ assert.equal(f.room.trades.size,0);
+});
+test('leaving the classroom cancels a pending market trade and notifies the other party',async t=>{
+ const f=await marketFixture(t),[a,b]=f.sockets,messages=[];b.on('chat:message',m=>messages.push(m));
+ await negotiate(f);assert.ok((await call(a,'room:leave')).ok);await sleep(30);
+ assert.equal(f.room.trades.size,0);assert.ok(messages.some(m=>/나가|취소/.test(m.text)));
+});
+test('trade proposals and actions cannot cross classroom boundaries',async t=>{
+ const f=await marketFixture(t),otherTeacher=await f.connect(),created=await create(otherTeacher),other=await f.connect();
+ const joined=await call(other,'room:join',{code:created.room.code,nickname:'1'}),room=f.game.store.rooms.get(created.room.code);
+ marketPlace(room.players.get(joined.selfId));
+ assert.equal((await call(f.sockets[0],'trade:propose',{targetId:joined.selfId})).ok,false);
+ const messages=[];other.on('chat:message',m=>messages.push(m));otherTeacher.on('chat:message',m=>messages.push(m));
+ const ref=await negotiate(f);
+ for(const event of ['trade:respond','trade:offer','trade:confirm','trade:cancel'])
+  assert.equal((await call(other,event,{...ref,accept:true,offer:emptyTrade()})).ok,false);
+ await sleep(30);assert.equal(messages.length,0);assert.equal(room.trades.size,0);assert.equal(f.room.trades.size,1);
 });

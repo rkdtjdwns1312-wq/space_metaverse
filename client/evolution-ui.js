@@ -17,14 +17,13 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   dialog.className = 'star-dialog evolution-dialog';
   dialog.setAttribute('aria-labelledby', 'evolution-title');
   dialog.innerHTML = `<header><h2 id="evolution-title">진화의 별</h2><button id="evolution-header-close" class="secondary evolution-close-allowed" type="button">닫기</button></header>
-    <p class="temporary-art-note">별자리 그림과 성격을 보고 아바타를 골라요. 선택한 그림으로 진화해요.</p>
     <p id="evolution-summary"></p><p id="evolution-error" role="alert"></p>
     <section id="evolution-menu"><button id="evolution-change" class="primary" type="button">별자리 아바타 변경하기</button><button id="evolution-evolve" class="primary" type="button">별자리 아바타 진화하기</button><button id="evolution-close" class="secondary evolution-close-allowed" type="button">닫기</button></section>
-    <section id="evolution-panel" hidden><h3 id="evolution-panel-title"></h3><p id="evolution-help"></p><div id="evolution-grid" class="constellation-grid"></div><div class="dialog-actions"><button id="evolution-refresh" class="secondary" type="button">새로고침</button><button id="evolution-back" class="secondary" type="button">처음으로</button></div></section>
+    <section id="evolution-panel" hidden><h3 id="evolution-panel-title"></h3><p id="evolution-help"></p><div id="evolution-types" hidden></div><div id="evolution-grid" class="constellation-grid"></div><div class="dialog-actions"><button id="evolution-refresh" class="secondary" type="button">새로고침</button><button id="evolution-back" class="secondary" type="button">처음으로</button></div></section>
     <section id="evolution-confirm" hidden><p id="evolution-confirm-text"></p><div class="dialog-actions"><button id="evolution-no" class="secondary" type="button">아니오</button><button id="evolution-yes" class="primary" type="button">예</button></div></section>`;
   document.body.append(dialog);
   const $ = id => dialog.querySelector('#evolution-' + id);
-  let info = null, mode = 'menu', selectedId = null, busy = false, revision = 0;
+  let info = null, mode = 'menu', selectedId = null, selectedType = null, busy = false, revision = 0;
 
   const joined = () => typeof isJoined !== 'function' || isJoined();
   const active = version => version === revision && dialog.open && joined();
@@ -61,6 +60,23 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   function renderGrid(onChoose) {
     $('grid').replaceChildren(...info.options.map(option => choiceButton(option, onChoose)));
   }
+  const constellationTypes = ['생산계', '제작계', '공격계', '수호계', '특수계'];
+  function renderEvolutionTypes() {
+    const container = $('types');
+    container.hidden = false;
+    container.className = 'evolution-types';
+    container.replaceChildren();
+    for (const type of constellationTypes) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'evolution-type-button';
+      button.dataset.constellationType = type;
+      button.textContent = type;
+      button.disabled = busy;
+      button.onclick = () => { selectedType = type; render(); };
+      container.append(button);
+    }
+  }
   function render() {
     $('summary').textContent = summary();
     $('menu').hidden = mode !== 'menu';
@@ -93,6 +109,8 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   }
   function renderEvolutionChoice() {
     $('grid').replaceChildren();
+    $('types').hidden = true;
+    $('types').replaceChildren();
     $('panel-title').textContent = '별자리 아바타 진화하기';
     if (info.avatar.level >= PROGRESSION.transcendentLevel) {
       $('help').textContent = '이미 최고 단계인 초월체예요.';
@@ -103,8 +121,23 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
       return;
     }
     if (info.avatar.level === 1) {
-      $('help').textContent = '첫 진화에 사용할 별자리 계보를 골라주세요.';
-      renderGrid(option => showConfirmation(option.id));
+      $('help').textContent = '';
+      if (!selectedType) {
+        renderEvolutionTypes();
+      } else {
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.id = 'evolution-types-back';
+        back.className = 'secondary evolution-types-back';
+        back.textContent = '계열 다시 고르기';
+        back.disabled = busy;
+        back.onclick = () => { selectedType = null; render(); };
+        $('types').hidden = false;
+        $('types').className = 'evolution-types';
+        $('types').replaceChildren(back);
+        const options = info.options.filter(option => option.type === selectedType);
+        $('grid').replaceChildren(...options.map(option => choiceButton(option, chosen => showConfirmation(chosen.id))));
+      }
       return;
     }
     const current = info.options.find(option => option.id === info.avatar.constellationId);
@@ -129,7 +162,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     try {
       const value = replyInfo(await request('evolution:change', { constellationId }));
       if (!active(version)) return;
-      info = value; setBusy(false); mode = 'change'; render(); toast('별자리 아바타를 변경했어요.');
+      info = value; selectedType = null; setBusy(false); mode = 'change'; render(); toast('별자리 아바타를 변경했어요.');
     } catch (error) {
       if (active(version)) { setBusy(false); $('error').textContent = error.message; render(); }
     }
@@ -140,7 +173,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     try {
       const value = replyInfo(await request('evolution:evolve', { constellationId }));
       if (!active(version)) return;
-      info = value; selectedId = null; setBusy(false); mode = 'menu'; render(); toast('별자리 아바타가 한 단계 진화했어요.');
+      info = value; selectedId = null; selectedType = null; setBusy(false); mode = 'menu'; render(); toast('별자리 아바타가 한 단계 진화했어요.');
     } catch (error) {
       if (active(version)) { setBusy(false); mode = 'evolve'; selectedId = null; $('error').textContent = error.message; render(); }
     }
@@ -150,19 +183,19 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   $('change').onclick = () => load('change');
   $('evolve').onclick = () => load('evolve');
   $('refresh').onclick = () => load(mode === 'change' ? 'change' : 'evolve');
-  $('back').onclick = () => { if (!busy) { mode = 'menu'; selectedId = null; $('error').textContent = ''; render(); } };
-  $('no').onclick = () => { if (!busy) { selectedId = null; mode = 'menu'; render(); } };
+  $('back').onclick = () => { if (!busy) { mode = 'menu'; selectedId = null; selectedType = null; $('error').textContent = ''; render(); } };
+  $('no').onclick = () => { if (!busy) { selectedId = null; selectedType = null; mode = 'menu'; render(); } };
   $('yes').onclick = evolve;
-  dialog.addEventListener('close', () => { revision++; busy = false; info = null; selectedId = null; mode = 'menu'; });
+  dialog.addEventListener('close', () => { revision++; busy = false; info = null; selectedId = null; selectedType = null; mode = 'menu'; });
 
   return {
     open() {
       if (!joined()) return;
-      stop(); revision++; busy = false; info = null; selectedId = null; mode = 'menu';
+      stop(); revision++; busy = false; info = null; selectedId = null; selectedType = null; mode = 'menu';
       $('error').textContent = ''; $('summary').textContent = '정보를 불러오는 중…';
       if (!dialog.open) dialog.showModal();
       load('menu');
     },
-    reset() { revision++; busy = false; info = null; selectedId = null; if (dialog.open) dialog.close(); }
+    reset() { revision++; busy = false; info = null; selectedId = null; selectedType = null; if (dialog.open) dialog.close(); }
   };
 }

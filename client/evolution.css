@@ -14,8 +14,11 @@
 .star-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .star-dialog h2, .star-dialog h3 { margin: 0.25rem 0; }
 .star-dialog button { min-width: 0; overflow-wrap: anywhere; }
-.temporary-art-note { padding: 8px 10px; border-radius: 10px; background: #f4edf9; color: #6f5a83; }
+#evolution-summary { margin: 12px 0; text-align: center; }
 #evolution-menu { display: grid; gap: 10px; }
+.evolution-types { display: grid; gap: 8px; margin: 12px 0; }
+.evolution-type-button { background: #7542a8; color: #fff; border: 2px solid #5e328b; }
+.evolution-types-back { margin-bottom: 4px; }
 .constellation-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
 .constellation-choice { display: grid; justify-items: center; gap: 3px; padding: 10px 4px; border: 2px solid color-mix(in srgb, var(--constellation-color), #72598e 30%); background: color-mix(in srgb, var(--constellation-color), white 73%); color: #40304f; }
 .constellation-choice.current { outline: 3px solid #76529f; outline-offset: -3px; }

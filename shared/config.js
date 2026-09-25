@@ -1,3 +1,4 @@
+import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
 import {LV3_ITEMS} from './lv3-items.js';
@@ -37,7 +38,8 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     {id:'gate-valley',name:'은하수계곡',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
     {id:'assignment-andromeda',name:'과제안드로메다',x:260,y:260,radius:240,kind:'andromeda',passable:true},
-    {id:'black-hole-portal',name:'블랙홀',x:1900,y:260,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true}
+    {id:'black-hole-portal',name:'블랙홀',x:1900,y:260,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
+    MARKET
   ] });
 export const PLAZA_ID = MAP.id;
 // 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.

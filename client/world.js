@@ -156,6 +156,14 @@ export function createWorld(canvas) {
         drawBlackHole(o,time);continue;
       } else if(o.kind==='andromeda'){
         drawAndromeda(o,time);continue;
+      } else if(o.kind==='market'){
+        // 입장할 수 있는 낮은 원형 장터. 물체가 아니라 바닥 공간입니다.
+        ctx.save();ctx.shadowColor='#5a488777';ctx.shadowBlur=18;ctx.shadowOffsetY=12;
+        ctx.beginPath();ctx.arc(o.x,o.y,o.radius,0,Math.PI*2);ctx.fillStyle='#faf4ff';ctx.fill();
+        ctx.shadowBlur=0;ctx.shadowOffsetY=0;ctx.strokeStyle='#b294d8';ctx.lineWidth=8;ctx.stroke();
+        ctx.beginPath();ctx.arc(o.x,o.y,o.radius-14,0,Math.PI*2);ctx.strokeStyle='#e1cbf4';ctx.lineWidth=3;ctx.stroke();
+        for(let i=0;i<8;i++){const a=i*Math.PI/4;star(o.x+Math.cos(a)*(o.radius-30),o.y+Math.sin(a)*(o.radius-30),8,i%2?'#b5ddfa':'#e6c8f3');}
+        ctx.font='24px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#78559f';ctx.fillText('별 시장',o.x,o.y+8);ctx.restore();continue;
       } else if(o.kind==='pillar'){
         // 기둥 그림은 scenery 배경에 있습니다. 여기서는 역할 이름만 표시합니다.
       } else {
@@ -438,7 +446,7 @@ export function createWorld(canvas) {
     if(p.role==='teacher'){
       celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
-      if(sprite)ctx.drawImage(sprite,-48,-57,96,96);
+      if(sprite)ctx.drawImage(sprite,-48,-48,96,96);
       else star(0,0,26,'#e9c77b');
     }else if(p.avatar?.blackStar){
       const radius=24;
@@ -447,7 +455,8 @@ export function createWorld(canvas) {
     }else if(constellation){
       const sprite=loadedAvatarSprite(constellation.sprite);
       if(constellation.celestial)celestialAura(ctx,constellation.color,size*.63,time);
-      if(sprite){ctx.drawImage(sprite,-size/2,-size/2-5,size,size);}
+      // 몸 그림만 반전합니다. 이름표·말풍선·HP 글자는 원래 방향을 유지합니다.
+      if(sprite){ctx.save();ctx.scale(p.facingX===-1?-1:1,1);ctx.drawImage(sprite,-size/2,-size/2,size,size);ctx.restore();}
       else{const radius=size*.4;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
@@ -477,7 +486,7 @@ export function createWorld(canvas) {
     ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';
     ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillText(label.name,x,top+16);
     ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#726782';ctx.fillText(label.detail,x,top+32);
-    if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=p.role==='teacher'?TEACHER_SPRITE:constellation?.sprite||'';canvas.dataset.selfSize=String(size);canvas.dataset.selfLabelY=String(top);}
+    if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=p.role==='teacher'?TEACHER_SPRITE:constellation?.sprite||'';canvas.dataset.selfSize=String(size);canvas.dataset.selfFacingX=String(p.facingX||1);canvas.dataset.selfLabelY=String(top);}
     if(effects.some(e=>e.style==='happy')){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
     drawBubble(p.id,x,y-Math.max(0,size/2-16));
     ctx.restore();
@@ -561,7 +570,7 @@ export function createWorld(canvas) {
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
       const progress=1-(hit.until-t)/(effect?.durationMs??ATTACK_VISUAL.durationMs);
       if(effect){
-        ctx.save();ctx.translate(hit.x,hit.y);ctx.rotate(Math.atan2(hit.dy,hit.dx));
+        ctx.save();ctx.translate(hit.x+hit.dx*(hit.originOffset||0),hit.y+hit.dy*(hit.originOffset||0));ctx.rotate(Math.atan2(hit.dy,hit.dx));
         drawSkillEffect(ctx,effect,progress,{reducedMotion:reducedMotion.matches,quality:hits.length>18?'low':'full'});ctx.restore();continue;
       }
       const reach=hit.reach??ATTACK_VISUAL.reach;
@@ -604,14 +613,14 @@ export function createWorld(canvas) {
       const now=performance.now();for(const p of players)recordPosition(p,now);
       for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
     },
-    positions(data){const now=performance.now();for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;recordPosition(p,now);}}},
+    positions(data){const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
     energyDrops(data){energyDrops=data.drops||[];},
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
       hits.push({...data,until:performance.now()+(effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
-      canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
+      canvas.dataset.lastAttackReach=String(data.reach??ATTACK_VISUAL.reach);canvas.dataset.lastSkillOrigin=String(data.originOffset||0);canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind!=='skill')canvas.dataset.lastAttackRadius=String(data.radius??ATTACK_VISUAL.hitRadius);
       if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);canvas.dataset.lastSkillEffect=effect?.id||'';}
     },
@@ -644,6 +653,8 @@ export function createWorld(canvas) {
         .sort((a,b)=>Math.hypot(me.x-a.x,me.y-a.y)-Math.hypot(me.x-b.x,me.y-b.y))[0];
       if(drop)return {...drop,kind:'energy-drop',name:'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
       if(myMapId===PLAZA_ID){
+        const market=MAP.objects.find(o=>o.kind==='market');
+        if(market&&Math.hypot(me.x-market.x,me.y-market.y)<=market.radius)return {...market,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
         const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
         let best=null,bestDist=Infinity;

@@ -1,0 +1,112 @@
+/* Scoped styles: market dialogs are created by market-ui.js on demand. */
+dialog.market-dialog {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  padding: 22px;
+  border: 3px solid #ba9ce5;
+  border-radius: 26px;
+  background: #fff;
+  color: #45345e;
+  box-shadow: 0 18px 65px #39245938;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.market-dialog::backdrop { background: #31214370; }
+.market-dialog *, .market-pending * { box-sizing: border-box; }
+.market-dialog [hidden], .market-pending [hidden] { display: none !important; }
+.market-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.market-header h2 { margin: 0; color: #70469e; font-size: 23px; line-height: 1.35; }
+.market-header > button { flex: none; }
+.market-content { min-width: 0; }
+.market-dialog h3 { margin: 0 0 8px; font-size: 18px; color: #694193; }
+.market-dialog p, .market-pending p { margin: 8px 0; line-height: 1.5; overflow-wrap: anywhere; }
+.market-button {
+  appearance: none;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 2px solid #9464c4;
+  border-radius: 14px;
+  background: #8050ae;
+  color: white;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.3;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #6c459322;
+  overflow-wrap: anywhere;
+}
+.market-button.market-secondary { background: #fff; color: #714b98; border-color: #d4bdeb; }
+.market-button:not(:disabled):hover { background: #6b4098; color: #fff; border-color: #8152b1; }
+.market-button:disabled { opacity: .5; cursor: default; box-shadow: none; }
+.market-button:focus-visible, .market-currency-input input:focus-visible { outline: 3px solid #ad79e0; outline-offset: 3px; }
+.market-hint, .market-empty { color: #786789; font-size: 14px; }
+.market-empty { text-align: center; padding: 10px 2px; }
+.market-error { color: #a33156; font-size: 15px; }
+.market-error:empty { display: none; }
+.market-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.market-friends { display: grid; gap: 10px; }
+.market-target-label { display: block; margin: 14px 0 6px; color: #6c4a8e; }
+.market-target { width: 100%; min-width: 0; min-height: 44px; border: 2px solid #d9c2ee; border-radius: 12px; padding: 10px; background: #fff; color: #543c6f; font: inherit; }
+.market-target:focus-visible { outline: 3px solid #ad79e0; outline-offset: 3px; }
+.market-friend { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #e4d6f2; border-radius: 16px; background: #faf6ff; }
+.market-friend strong { overflow-wrap: anywhere; min-width: 0; }
+.market-friend button { flex: none; }
+.market-proposal { padding: 18px; border-radius: 18px; background: #f6effe; font-size: 19px; text-align: center; }
+.market-offers { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.market-offer { min-width: 0; border: 2px solid #dfcef0; border-radius: 19px; padding: 14px; background: #fcfaff; }
+.market-own-offer { border-color: #b990df; background: #f8f1ff; }
+.market-person { font-size: 15px; }
+.market-currencies { font-size: 14px; color: #71528e; font-variant-numeric: tabular-nums; }
+.market-items { display: grid; gap: 6px; align-content: start; }
+.market-item {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #dfd0ed;
+  border-radius: 12px;
+  background: #fff;
+  color: #543c6f;
+  text-align: left;
+  font-size: 14px;
+}
+.market-item-art { flex: none; width: 36px; height: 36px; object-fit: contain; }
+.market-item-icon { flex: none; width: 30px; text-align: center; font-size: 24px; }
+.market-item-name { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.market-item strong { flex: none; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.market-confirmation { padding: 6px 9px; border-radius: 10px; background: #eee7f5; color: #776785; font-size: 14px; }
+.market-confirmation[data-confirmed="true"] { background: #e4f5eb; color: #34694c; }
+.market-editor { margin-top: 16px; padding: 14px; border: 1px dashed #ceb2e8; border-radius: 18px; }
+.market-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; max-height: 200px; overflow: auto; padding: 4px; }
+.market-currency-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+.market-currency-input { display: grid; gap: 5px; min-width: 0; margin: 0; font-size: 15px; color: #6c4a8e; }
+.market-currency-input input { width: 100%; min-width: 0; min-height: 42px; padding: 9px; border: 2px solid #d9c2ee; border-radius: 12px; background: #fff; color: #46305e; font-size: 16px; }
+.market-currency-input input:read-only { background: #f4eff8; }
+.market-draft-state { font-size: 14px; color: #805098; }
+.market-history { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 12px; }
+.market-history-entry { padding: 14px; border: 1px solid #e1d0ef; border-radius: 16px; background: #fcf9ff; overflow-wrap: anywhere; }
+.market-history-entry strong { color: #68418e; }
+.market-history-entry p { font-size: 14px; }
+.market-pending { padding: 14px; border: 2px solid #c5a3e6; border-radius: 18px; background: #fff; color: #614080; margin: 12px 0; box-shadow: 0 5px 22px #41276220; }
+.market-pending-floating { position: fixed; z-index: 200; right: 12px; bottom: 20px; width: min(360px, calc(100vw - 24px)); margin: 0; }
+@media (max-width: 480px) {
+  dialog.market-dialog { padding: 12px; border-radius: 20px; width: calc(100vw - 16px); max-width: calc(100vw - 16px); }
+  .market-header { gap: 6px; }
+  .market-header h2 { font-size: 19px; }
+  .market-button { padding: 9px 11px; font-size: 14px; }
+  .market-offers { gap: 6px; }
+  .market-offer { padding: 8px; border-radius: 14px; }
+  .market-dialog h3 { font-size: 16px; }
+  .market-offer .market-item { flex-wrap: wrap; justify-content: center; gap: 3px; padding: 6px; font-size: 13px; }
+  .market-offer .market-item-name { flex-basis: 100%; text-align: center; }
+  .market-person, .market-currencies, .market-confirmation { font-size: 12px; }
+  .market-confirmation { padding: 5px; }
+  .market-editor { padding: 9px; }
+  .market-bag { grid-template-columns: minmax(0, 1fr); }
+  .market-currency-fields { gap: 8px; }
+  .market-currency-input input { padding: 7px 5px; font-size: 14px; }
+}

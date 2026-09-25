@@ -1,5 +1,5 @@
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
-import {ATTACK_VISUAL} from '../shared/combat.js';
+import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -34,12 +34,12 @@ export function monsterViews(room){
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
 export function monstersInAttackArea(room,player,now=Date.now()){
-  const facing=player.facing||{x:0,y:1};
-  const hx=player.x+facing.x*ATTACK_VISUAL.reach,hy=player.y+facing.y*ATTACK_VISUAL.reach;
+  const facing=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
+  const hx=player.x+facing.x*geometry.reach,hy=player.y+facing.y*geometry.reach;
   return [...monstersOf(room,now).values()].filter(m=>{
     const dx=m.x-player.x,dy=m.y-player.y;
     return m.hp>0&&m.mapId===player.mapId&&dx*facing.x+dy*facing.y>0&&
-      Math.hypot(m.x-hx,m.y-hy)<=m.radius+ATTACK_VISUAL.hitRadius;
+      Math.hypot(m.x-hx,m.y-hy)<=m.radius+geometry.radius;
   }).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
 }
 export function strikeMonsters(room,player,power,now=Date.now()){

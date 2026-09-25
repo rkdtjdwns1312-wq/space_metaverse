@@ -1,8 +1,9 @@
+import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
 import express from 'express';
 import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops.js';
-import {attackPowerOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
+import {attackPowerOf,attackGeometryOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
@@ -284,12 +285,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');
       ensure(now-(lastAttacks.get(player)??-Infinity)>=ATTACK_VISUAL.cooldownMs,'공격은 1초에 한 번 할 수 있어요.');
       lastAttacks.set(player,now);
-      const direction=player.facing||{x:0,y:1};
-      const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,radius:ATTACK_VISUAL.hitRadius,power};
+      const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
+      const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,...geometry,power};
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       const targets=strikeMonsters(room,player,power,now);
       if(targets.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*ATTACK_VISUAL.reach,y:player.y+direction.y*ATTACK_VISUAL.reach,radius:ATTACK_VISUAL.hitRadius,sourceId:player.id},power,now);
+      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id},power,now);
       for(const result of playerTargets)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
         io.to(viewer.socketId).emit('combat:player-hit',{...hit,...result});
         io.to(viewer.socketId).emit('combat:vitals',{playerId:result.targetId,vitals:result.vitals});
@@ -309,11 +310,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);
-      const direction=player.facing||{x:0,y:1};
+      const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
       const effect=skillEffectOf(player.avatar.constellationId,player.avatar.level);
-      const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,effectId:effect?.id||null,durationMs:effect?.durationMs??ATTACK_VISUAL.durationMs};
+      const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,effectId:effect?.id||null,durationMs:effect?.durationMs??ATTACK_VISUAL.durationMs,...geometry};
       // 아직 효과 수치는 정하지 않았습니다. 이후 스킬도 동일한 다중 대상 판정을 사용할 수 있습니다.
-      hit.playerTargetIds=playersInArea(room,{mapId:player.mapId,x:player.x+direction.x*ATTACK_VISUAL.reach,y:player.y+direction.y*ATTACK_VISUAL.reach,radius:ATTACK_VISUAL.hitRadius,sourceId:player.id}).map(p=>p.id);
+      hit.playerTargetIds=playersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id}).map(p=>p.id);
       hit.monsterTargetIds=monstersInAttackArea(room,player,now).map(m=>m.id);
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       // 전투 스킬은 방향 표시만 제공합니다. 주간 카드 능력·마나·HP를 소비하지 않습니다.
@@ -1332,166 +1333,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);
       return {inventory:[...p.inventory],effects:playerEffectsView(target,p.role==='teacher',now)};
     });
-    // 거래 한쪽(주는 것/받고 싶은 것) 검증: 파편 수·아이템 종류·수량이 규칙 안이고, 아이템은 실제로 존재하며 중복이 없어야 합니다.
-    const tradeSide=x=>{
-      ensure(x && typeof x==='object' && !Array.isArray(x),'거래 내용을 확인해주세요.');
-      ensure(Number.isInteger(x.shards) && x.shards>=0 && x.shards<=TRADE.maxShards,'거래 내용을 확인해주세요.');
-      ensure(Array.isArray(x.items) && x.items.length<=TRADE.maxItemKinds,'거래 내용을 확인해주세요.');
-      const seen=new Set(),items=x.items.map(it=>{
-        ensure(it && typeof it==='object','거래 내용을 확인해주세요.');
-        ensure(itemOf(it.id),'거래 내용을 확인해주세요.');
-        ensure(Number.isInteger(it.quantity) && it.quantity>=1 && it.quantity<=99,'거래 내용을 확인해주세요.');
-        ensure(!seen.has(it.id),'거래 내용을 확인해주세요.');
-        seen.add(it.id);
-        return {id:it.id,quantity:it.quantity};
-      });
-      return {shards:x.shards,items};
-    };
-    const sideEmpty=side=>side.shards===0 && side.items.length===0;
-    const hasAssets=(player,side)=>{
-      if(player.starShards<side.shards) return false;
-      return side.items.every(it=>{
-        const owned=player.inventory.find(i=>i.id===it.id);
-        return owned && owned.quantity>=it.quantity;
-      });
-    };
-    const busyWithTrade=(room,playerId)=>[...room.trades.values()].some(t=>t.fromId===playerId||t.toId===playerId);
-    action('trade:propose',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s;
-      ensure(p.role==='student','선생님은 거래하지 않아요.');
-      const target=room.players.get(data.targetId);
-      ensure(target && target.role==='student' && target.id!==p.id,'친구를 찾지 못했어요.');
-      ensure(target.connected,'그 친구는 지금 없어요.');
-      const give=tradeSide(data.give),want=tradeSide(data.want);
-      ensure(!(sideEmpty(give) && sideEmpty(want)),'주거나 받을 것을 하나는 적어주세요.');
-      ensure(!busyWithTrade(room,p.id) && !busyWithTrade(room,target.id),'진행 중인 거래가 있어요. 먼저 끝내주세요.');
-      // 거절당한 상대에게 바로 다시 제안하며 조르는 것을 막습니다(TRADE.declineBlockMs 동안).
-      const blockedUntil=p.tradeBlocks?.get(target.id)||0;
-      ensure(blockedUntil<=Date.now(),'그 친구가 거절했어요. '+Math.ceil(TRADE.declineBlockMs/60_000)+'분 뒤에 다시 제안할 수 있어요.');
-      ensure(room.trades.size<TRADE.maxPending,'기다리는 거래가 너무 많아요.');
-      ensure(hasAssets(p,give),'주려는 것을 충분히 가지고 있지 않아요.');
-      const trade={id:randomUUID(),fromId:p.id,fromNickname:p.nickname,toId:target.id,toNickname:target.nickname,
-        give,want,status:'proposed',at:Date.now()};
-      room.trades.set(trade.id,trade);
-      roster(room);
-      whisper(room,target,p.nickname+' 친구가 거래를 제안했어요. 가방에서 확인해보세요.');
-      return {tradeId:trade.id};
-    });
-    action('trade:respond',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s;
-      const trade=room.trades.get(data.tradeId);
-      ensure(trade && trade.toId===p.id && trade.status==='proposed','내가 받은 제안이 아니에요.');
-      ensure(typeof data.accept==='boolean','입력 내용을 확인해주세요.');
-      const proposer=room.players.get(trade.fromId);
-      if(!data.accept){
-        room.trades.delete(trade.id);
-        if(proposer){
-          if(!proposer.tradeBlocks) proposer.tradeBlocks=new Map();
-          proposer.tradeBlocks.set(p.id,Date.now()+TRADE.declineBlockMs);
-        }
-        roster(room);
-        if(proposer) whisper(room,proposer,trade.toNickname+' 친구가 거래를 거절했어요.');
-        return {};
-      }
-      ensure(hasAssets(p,trade.want),'받고 싶다는 것을 내가 충분히 가지고 있지 않아요.');
-      trade.status='accepted';
-      roster(room);
-      if(proposer) whisper(room,proposer,trade.toNickname+' 친구가 수락했어요. 선생님 승인을 기다려요.');
-      const teacher=[...room.players.values()].find(t=>t.role==='teacher'&&t.connected);
-      if(teacher) whisper(room,teacher,'거래 승인 요청: '+trade.fromNickname+' ↔ '+trade.toNickname+'. 선생님 도구에서 확인해주세요.');
-      return {};
-    });
-    action('trade:cancel',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s;
-      const trade=room.trades.get(data.tradeId);
-      ensure(trade && (trade.fromId===p.id || trade.toId===p.id),'내 거래가 아니에요.');
-      room.trades.delete(trade.id);
-      const otherId=trade.fromId===p.id?trade.toId:trade.fromId;
-      const other=room.players.get(otherId);
-      if(other) whisper(room,other,p.nickname+' 친구가 거래를 취소했어요.');
-      roster(room);
-      return {};
-    });
-    const pushTradeLog=(room,trade,result)=>{
-      room.tradeLog.push({id:randomUUID(),at:Date.now(),fromNickname:trade.fromNickname,toNickname:trade.toNickname,
-        give:trade.give,want:trade.want,result});
-      if(room.tradeLog.length>100) room.tradeLog.shift();
-    };
-    action('trade:approve',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s;
-      ensure(p.role==='teacher','선생님만 할 수 있어요.');
-      const trade=room.trades.get(data.tradeId);
-      ensure(trade,'거래를 찾지 못했어요.');
-      ensure(trade.status==='accepted','아직 친구가 수락하지 않았어요.');
-      const from=room.players.get(trade.fromId),to=room.players.get(trade.toId);
-      const reject=message=>{
-        room.trades.delete(trade.id);
-        if(from) whisper(room,from,message);
-        if(to) whisper(room,to,message);
-        pushTradeLog(room,trade,'rejected');
-        roster(room);
-        // 거래 실패라는 응답과 별개로 취소·안내·교사 기록은 확정해 저장해야 합니다.
-        const error=new GameError(message);error.commitOnError=true;throw error;
-      };
-      if(!from || !to || !hasAssets(from,trade.give) || !hasAssets(to,trade.want))
-        reject('가진 것이 바뀌어서 거래할 수 없어요.');
-      if(from.starShards-trade.give.shards+trade.want.shards>SHARDS.max
-        || to.starShards-trade.want.shards+trade.give.shards>SHARDS.max)
-        reject('별 파편이 넘쳐서 거래할 수 없어요.');
-      // 가방 한도(종류 SHOP.maxKinds=20칸·한 종류 SHOP.maxStack=99개)를 넘기지 않는지 미리 계산으로 확인한 뒤에만 실제로 옮깁니다.
-      const wouldOverflow=(player,giveItems,wantItems)=>{
-        const bag=new Map(player.inventory.map(i=>[i.id,i.quantity]));
-        for(const it of giveItems){
-          const left=(bag.get(it.id)||0)-it.quantity;
-          if(left<=0) bag.delete(it.id); else bag.set(it.id,left);
-        }
-        for(const it of wantItems){
-          const next=(bag.get(it.id)||0)+it.quantity;
-          if(next>Math.min(SHOP.maxStack,itemOf(it.id)?.maxOwned||SHOP.maxStack)) return true;
-          bag.set(it.id,next);
-        }
-        return bag.size>SHOP.maxKinds;
-      };
-      if(wouldOverflow(from,trade.give.items,trade.want.items) || wouldOverflow(to,trade.want.items,trade.give.items))
-        reject('가방이 가득 차서 거래할 수 없어요.');
-      const invAdd=(player,itemId,quantity)=>{
-        const owned=player.inventory.find(i=>i.id===itemId);
-        if(owned) owned.quantity+=quantity; else player.inventory.push({id:itemId,quantity});
-      };
-      const invRemove=(player,itemId,quantity)=>{
-        const owned=player.inventory.find(i=>i.id===itemId);
-        owned.quantity-=quantity;
-        if(owned.quantity<=0) player.inventory=player.inventory.filter(i=>i.id!==itemId);
-      };
-      from.starShards+=trade.want.shards-trade.give.shards;
-      to.starShards+=trade.give.shards-trade.want.shards;
-      for(const it of trade.give.items){ invRemove(from,it.id,it.quantity); invAdd(to,it.id,it.quantity); }
-      for(const it of trade.want.items){ invRemove(to,it.id,it.quantity); invAdd(from,it.id,it.quantity); }
-      room.trades.delete(trade.id);
-      pushTradeLog(room,trade,'approved');
-      roster(room);
-      whisper(room,from,'선생님이 거래를 승인했어요. 가방을 확인해보세요.');
-      whisper(room,to,'선생님이 거래를 승인했어요. 가방을 확인해보세요.');
-      return {};
-    });
-    action('trade:reject',data=>{
-      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s;
-      ensure(p.role==='teacher','선생님만 할 수 있어요.');
-      const trade=room.trades.get(data.tradeId);
-      ensure(trade,'거래를 찾지 못했어요.');
-      room.trades.delete(trade.id);
-      const from=room.players.get(trade.fromId),to=room.players.get(trade.toId);
-      if(from) whisper(room,from,'선생님이 거래를 돌려보냈어요.');
-      if(to) whisper(room,to,'선생님이 거래를 돌려보냈어요.');
-      pushTradeLog(room,trade,'rejected');
-      roster(room);
-      return {};
-    });
+    registerMarketTrades({action,socket,roster,whisper,clock});
     socket.on('player:input',data=>{
       const p=socket.data.session?.player;
       if(!p || !data || typeof data!=='object')return;
@@ -1535,6 +1377,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
       advance(room,now);
+      if(pruneMarketTrades(room,clock(),whisper))roster(room);
       for(const p of recoverDefeated(room,clock())){
         io.to(p.socketId).emit('combat:recovered',{message:'체력과 마나를 회복했어요. 다시 출발해요!'});roster(room);
       }
@@ -1608,10 +1451,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const before=previous.get(room.code)||new Map(),next=new Map(),positions=[];
         for(const p of room.players.values()){
           if(p.away)continue;
-          const point=[p.id,Math.round(p.x*10)/10,Math.round(p.y*10)/10];
+          const point=[p.id,Math.round(p.x*10)/10,Math.round(p.y*10)/10,p.facingX||1];
           next.set(p.id,point);
           const old=before.get(p.id);
-          if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]) positions.push(point);
+          if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]||old[3]!==point[3]) positions.push(point);
         }
         // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.

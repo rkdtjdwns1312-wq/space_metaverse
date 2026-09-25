@@ -1,5 +1,6 @@
 import {constellationOf} from './constellations.js';
 import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
+import {avatarSizeOf} from './avatar-size.js';
 // LV5가 최종 초월체입니다. 단계별 기본값에 계열 보정을 적용합니다.
 export const ATTACK_POWER=Object.freeze({2:1,3:2,4:3,5:4});
 export const ATTACK_MODIFIERS=Object.freeze({'수호계':-2,'제작계':-1,'생산계':-1,'공격계':1,'특수계':0});
@@ -22,3 +23,9 @@ export const damageAfterDefense=(power,defense)=>Math.max(1,power-defense);
 
 export const SKILL_COOLDOWN_MS=450;
 export const ATTACK_VISUAL=Object.freeze({cooldownMs:1000,durationMs:340,reach:62,hitRadius:36});
+// LV2(80px)의 기존 타격 거리62를 기준으로, 몸 중심에서의 거리를 크기에 비례시킵니다.
+// 타격 반경도 같은 배율을 적용하며 스킬은 몸 가장자리에서 출발합니다.
+export function attackGeometryOf(player){
+  const size=avatarSizeOf(player),scale=size/80;
+  return {reach:ATTACK_VISUAL.reach*scale,radius:ATTACK_VISUAL.hitRadius*scale,originOffset:size/2};
+}

@@ -7,6 +7,8 @@ import { chromium } from 'playwright';
 const files = new Map([
   ['/evolution-ui.js', ['client/evolution-ui.js', 'text/javascript; charset=utf-8']],
   ['/growth-ui.js', ['client/growth-ui.js', 'text/javascript; charset=utf-8']],
+  ['/wallet-ui.js', ['client/wallet-ui.js', 'text/javascript; charset=utf-8']],
+  ['/wallet.css', ['client/wallet.css', 'text/css; charset=utf-8']],
   ['/evolution.css', ['client/evolution.css', 'text/css; charset=utf-8']],
   ['/shared/constellations.js', ['shared/constellations.js', 'text/javascript; charset=utf-8']]
 ]);
@@ -14,7 +16,8 @@ const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta n
 const server = createServer(async (request, response) => {
   try {
     if (request.url === '/') { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end(html); return; }
-    const entry = files.get(request.url);
+    const entry = files.get(request.url) || (/^\/shared\/[a-z0-9-]+\.js$/.test(request.url)
+      ? [request.url.slice(1),'text/javascript; charset=utf-8'] : null);
     if (!entry) { response.statusCode = 404; response.end('not found'); return; }
     response.setHeader('content-type', entry[1]); response.end(await readFile(entry[0]));
   } catch (error) { response.statusCode = 500; response.end(error.message); }
@@ -25,6 +28,7 @@ const browser = await chromium.launch({ headless: true, ...(process.platform ===
 const page = await browser.newPage({ viewport: { width: 900, height: 800 } });
 const checks = [], errors = [];
 const check = value => { checks.push(value); console.log(value); };
+page.setDefaultTimeout(12000);
 page.on('pageerror', error => errors.push(error.message));
 await mkdir('.local', { recursive: true });
 
@@ -92,16 +96,24 @@ try {
   check('진화의 별 메뉴·LV1 변경 차단·경험치 표시');
 
   await page.locator('#evolution-evolve').click();
+  await page.locator('#evolution-types [data-constellation-type]').first().waitFor();
+  assert.deepEqual(await page.locator('#evolution-types [data-constellation-type]').allTextContents(), ['생산계', '제작계', '공격계', '수호계', '특수계']);
+  const typeButtonStyle = await page.locator('[data-constellation-type="생산계"]').evaluate(element => ({background: getComputedStyle(element).backgroundColor, color: getComputedStyle(element).color}));
+  assert.deepEqual(typeButtonStyle, {background: 'rgb(117, 66, 168)', color: 'rgb(255, 255, 255)'});
+  await page.locator('[data-constellation-type="제작계"]').click();
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(), true);
+  await page.locator('#evolution-types-back').click();
+  await page.locator('[data-constellation-type="생산계"]').click();
   await page.locator('#evolution-grid .constellation-choice').first().waitFor();
-  assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 16);
-  assert.equal(await page.locator('[data-constellation-id="aries"]').isDisabled(), true);
+  assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 3);
   await page.locator('[data-constellation-id="taurus"]').click();
   await page.locator('#evolution-confirm-text').filter({ hasText: '정말 진화하시겠습니까?' }).waitFor();
   await page.locator('#evolution-no').click();
   assert.equal(await page.evaluate(() => window.evolutionMutations), 0);
-  check('4×4 정원 표시·마감 선택 비활성·아니오 요청 0건');
+  check('계열 버튼 순서·색상·계열 필터·마감 선택 비활성·아니오 요청 0건');
 
   await page.locator('#evolution-evolve').click();
+  await page.locator('[data-constellation-type="생산계"]').click();
   await page.locator('[data-constellation-id="taurus"]').click();
   await page.locator('#evolution-yes').click();
   await page.locator('#evolution-summary').filter({ hasText: 'LV2' }).waitFor();
@@ -111,8 +123,9 @@ try {
   check('예 확인 뒤 한 단계 진화·XP 0·선택 계보 전달');
 
   await page.locator('#evolution-change').click();
-  await page.locator('[data-constellation-id="lyra"]').click();
-  await page.waitForFunction(() => window.evolutionInfo.avatar.constellationId === 'lyra');
+  assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 16);
+  await page.locator('[data-constellation-id="libra"]').click();
+  await page.waitForFunction(() => window.evolutionInfo.avatar.constellationId === 'libra');
   assert.equal(await page.evaluate(() => window.evolutionInfo.avatar.level), 2);
   check('LV2 별자리 변경 즉시 저장·레벨 보존');
 
@@ -153,7 +166,7 @@ try {
     window.growthInfo.avatar.xp = 0; window.growthInfo.starShards = 3; window.growthInfo.remainingXp = 15;
     window.growthInfo.maxBuy = 3; window.growthInfo.canBuy = true; window.growthUI.open();
   });
-  await page.locator('#growth-info').filter({ hasText: '3개' }).waitFor();
+  await page.locator('#growth-info .currency-amount[data-currency="starShards"]').filter({hasText:/^3$/}).waitFor();
   await page.locator('#growth-amount').fill('-7');
   await page.waitForTimeout(0);
   assert.equal(await page.locator('#growth-amount').inputValue(), '1');

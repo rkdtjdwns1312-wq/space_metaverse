@@ -116,7 +116,7 @@ export class RoomStore {
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
-        const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
+        const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory]; }
@@ -126,10 +126,9 @@ export class RoomStore {
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),
       trades:[...room.trades.values()]
-        .filter(t=>isTeacher || (viewer && (t.fromId===viewer.id || t.toId===viewer.id)))
+        .filter(t=>viewer && (t.fromId===viewer.id || t.toId===viewer.id))
         .map(t=>({id:t.id,fromId:t.fromId,fromNickname:t.fromNickname,toId:t.toId,toNickname:t.toNickname,
-          give:t.give,want:t.want,status:t.status,at:t.at})),
-      ...(isTeacher ? {tradeLog:[...room.tradeLog]} : {}),
+          give:t.give,want:t.want,status:t.status,at:t.at,revision:t.revision,confirmed:[...(t.confirmed||[])]})),
       summons:[...(room.summons?.values()||[])].filter(r=>r.expiresAt>Date.now()&&viewer&&(r.toId===viewer.id||r.fromId===viewer.id)),
       summonCooldowns:[...(room.summonCooldowns||[])].filter(([key,until])=>viewer&&key.startsWith(viewer.id+':')&&until>Date.now()).map(([key,until])=>({targetId:key.slice(viewer.id.length+1),until}))
     };

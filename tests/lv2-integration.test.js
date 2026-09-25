@@ -8,6 +8,8 @@ import {createClassroomServer} from '../server/app.js';
 import {fromRecord} from '../server/persistent-rooms.js';
 import {validateCardMarkers, MAX_CARD_MARKERS} from '../server/item-cards.js';
 import {MAP, SHOP, SHARDS, STREET, STREET_ID} from '../shared/config.js';
+import {MARKET} from '../shared/market.js';
+import {PLAZA_ID} from '../shared/config.js';
 import {weekStart} from '../server/temple.js';
 
 const DAY = 86_400_000, WEEK = 7 * DAY;
@@ -224,18 +226,28 @@ test('crafting maxOwned rejection keeps ingredients and fee; successful acquisit
   assert.equal(f.actor.lv2State.galaxyNextAt.length, 2);
 });
 
-test('teacher-approved trade rejects recipient maxOwned overflow without transferring items or shards', async t => {
+test('mutually confirmed market trade rejects recipient maxOwned overflow without transferring items or either currency', async t => {
   const f = await fixture(t);
-  f.seed((a, b) => {a.inventory = [{id: 'galaxy-card', quantity: 1}]; b.inventory = [{id: 'galaxy-card', quantity: 2}];});
-  const offer = await call(f.first, 'trade:propose', {targetId: f.friend.id,
-    give: {shards: 0, items: [{id: 'galaxy-card', quantity: 1}]}, want: {shards: 1, items: []}});
-  assert.ok(offer.ok, offer.error);
-  assert.ok((await call(f.second, 'trade:respond', {tradeId: offer.tradeId, accept: true})).ok);
-  const before = [assets(f.actor), assets(f.friend)];
-  const result = await call(f.teacher, 'trade:approve', {tradeId: offer.tradeId});
+  f.seed((a, b) => {
+    for (const p of [a, b]) Object.assign(p, {mapId: PLAZA_ID, x: MARKET.x, y: MARKET.y, cosmicEnergy: 20});
+    a.inventory = [{id: 'galaxy-card', quantity: 1}]; b.inventory = [{id: 'galaxy-card', quantity: 2}];
+  });
+  const proposed = await call(f.first, 'trade:propose', {targetId: f.friend.id});
+  assert.ok(proposed.ok, proposed.error); const tradeId = proposed.tradeId;
+  assert.ok((await call(f.second, 'trade:respond', {tradeId, accept: true})).ok);
+  assert.ok((await call(f.first, 'trade:offer', {tradeId, revision: 0,
+    offer: {shards: 0, energy: 3, items: [{id: 'galaxy-card', quantity: 1}]}})).ok);
+  assert.ok((await call(f.second, 'trade:offer', {tradeId, revision: 1,
+    offer: {shards: 1, energy: 5, items: []}})).ok);
+  const ref = {tradeId, revision: 2};
+  assert.ok((await call(f.first, 'trade:confirm', ref)).ok);
+  const before = [assets(f.actor), assets(f.friend)], energy = [f.actor.cosmicEnergy, f.friend.cosmicEnergy];
+  const result = await call(f.second, 'trade:confirm', ref);
   assert.equal(result.ok, false);
   assert.deepEqual([assets(f.actor), assets(f.friend)], before);
-  assert.equal(f.room.trades.size, 0);
+  assert.deepEqual([f.actor.cosmicEnergy, f.friend.cosmicEnergy], energy);
+  assert.equal(f.room.trades.size, 0);assert.equal(f.room.tradeLog.at(-1).result, 'failed');
+  assert.equal(f.record().tradeLog.at(-1).result, 'failed');
 });
 
 test('expired unpaid rabbit reward survives a successful LV1 manual-card use', async t => {

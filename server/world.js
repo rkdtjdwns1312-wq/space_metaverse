@@ -85,5 +85,6 @@ export function advance(room, now) {
     // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
     const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
     if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};
+    if(Math.abs(movedX)>1e-6)p.facingX=movedX<0?-1:1;
   }
 }

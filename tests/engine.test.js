@@ -132,12 +132,12 @@ test('snapshot(room, teacher) exposes seeded planets (default rules, no members)
  assert.equal(p.mapId, PLAZA_ID);assert.equal(p.departmentId, null);
  assert.equal(p.starShards, 0);assert.deepEqual(p.inventory, []);
  assert.deepEqual(p.effects, []);
- assert.deepEqual(snap.itemLog, []);assert.deepEqual(snap.trades, []);assert.deepEqual(snap.tradeLog, []);
+ assert.deepEqual(snap.itemLog, []);assert.deepEqual(snap.trades, []);assert.equal(snap.tradeLog, undefined);
  const json=JSON.stringify(snap);
  assert.ok(!json.includes(player.token));assert.ok(!json.includes('socketId'));
  assert.ok(!json.includes('lastChatAt'));assert.ok(!json.includes('"input"'));
 });
-test('snapshot(room, viewer) keeps star shards/inventory/item-user/trade secret between students; the teacher sees everything',()=>{
+test('snapshot(room, viewer) keeps star shards/inventory/item-user/trade secret between students; teacher history is only available through the market endpoint',()=>{
  const store=new RoomStore(),{room,player:teacher}=store.create(roomData,'t');
  const student=store.join({code:room.code,nickname:'1'},'s').player;
  const other=store.join({code:room.code,nickname:'2'},'s2').player;
@@ -162,7 +162,7 @@ test('snapshot(room, viewer) keeps star shards/inventory/item-user/trade secret 
  const asTeacher=store.snapshot(room,teacher);
  const teacherOtherView=asTeacher.players.find(p=>p.id===other.id);
  assert.equal(teacherOtherView.starShards,9);assert.deepEqual(teacherOtherView.inventory,[{id:'space-snack',quantity:1}]);
- assert.equal(asTeacher.itemLog.length,1);assert.equal(asTeacher.trades.length,1);
+ assert.equal(asTeacher.itemLog.length,1);assert.equal(asTeacher.trades.length,0);assert.equal(asTeacher.tradeLog,undefined);
  assert.equal(asTeacher.players.find(p=>p.id===student.id).effects[0].fromId,other.id);
  const asNoone=store.snapshot(room);
  const noneView=asNoone.players.find(p=>p.id===student.id);

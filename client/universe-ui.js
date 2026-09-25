@@ -73,6 +73,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.strokeStyle='#ffffffcc';ctx.lineWidth=Math.max(1,r*.08);ctx.beginPath();
       for(let i=0;i<28;i++){const a=i*.42,rr=r*(.08+i/30);const px=Math.cos(a)*rr,py=Math.sin(a)*rr*.58;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();
       ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r*.18,0,Math.PI*2);ctx.fill();
+    }else if(kind==='market'){
+      ctx.fillStyle='#faf4ff';ctx.strokeStyle='#a68aca';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,r*.75,0,Math.PI*2);ctx.stroke();
     }else if(kind==='lamp'){
       ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.12);ctx.beginPath();ctx.moveTo(0,r*.9);ctx.lineTo(0,-r*.45);ctx.stroke();
       ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,-r*.65,r*.42,0,Math.PI*2);ctx.fill();ctx.stroke();

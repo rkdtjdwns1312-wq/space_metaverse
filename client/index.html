@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/chat-window.css">
   <link rel="stylesheet" href="/item-usage.css">
   <link rel="stylesheet" href="/inventory-pages.css">
+  <link rel="stylesheet" href="/auxiliary-skills.css">
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" type="module"></script>
 <link rel="stylesheet" href="/lv4-item-ui.css">
@@ -116,11 +117,6 @@
         <div id="bag-currency" class="bag-currency">★ 별 파편 <strong id="self-shards">0</strong></div>
         <button id="draw-resume" class="primary" type="button" hidden>🐇 진행 중인 달토끼 뽑기 이어하기</button>
         <div id="bag-detail" class="bag-detail muted">칸을 눌러 물건을 살펴봐요.</div>
-        <section id="trade-section"><h3>친구와 거래</h3>
-          <button id="trade-new" class="small secondary" type="button">친구와 거래 제안</button>
-          <ul id="trades" aria-label="진행 중인 거래"></ul>
-          <p id="trades-empty" class="muted">진행 중인 거래가 없어요.</p>
-        </section>
       </div>
       <p id="hint" class="hint">행성 가까이에서 F · 오른쪽 문으로 별빛 거리</p>
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="inventory-dialog">닫기</button></div></dialog>
@@ -166,12 +162,8 @@
     <p id="shards-feedback" role="status" aria-live="polite"></p>
     <p class="muted">음수를 적으면 거두어요.</p>
   </section>
-  <section class="trade-approve" id="trade-approve-panel"><h3>③ 거래 승인</h3>
-    <ul id="teacher-trades" aria-label="승인 기다리는 거래"></ul>
-    <p id="teacher-trades-empty" class="muted">기다리는 거래가 없어요.</p>
-  </section>
-  <section class="item-log-panel"><h3>④ 사용·거래 기록</h3>
-    <ul id="item-log" aria-label="사용·거래 기록"></ul>
+  <section class="item-log-panel"><h3>③ 아이템 사용 기록</h3>
+    <ul id="item-log" aria-label="아이템 사용 기록"></ul>
     <p id="item-log-empty" class="muted">아직 기록이 없어요.</p>
   </section>
   <section class="black-star-tools"><h3>검은별 관리</h3><button id="black-star-list-button" class="small secondary" type="button">검은별 명단 확인하기</button></section>
@@ -215,19 +207,7 @@
   <div class="dialog-actions"><button id="use-cancel" class="secondary" type="button">닫기</button><button id="use-confirm" class="primary" type="button">쓰기</button></div>
 </dialog>
 <dialog id="draw-dialog" aria-labelledby="draw-title"><h2 id="draw-title">달토끼 뽑기 카드</h2><p id="draw-message">10장 중 한 장을 골라 별 파편 1~10개를 받아요. 장기 평균은 3개예요.</p><div id="draw-spread" class="draw-spread" aria-label="뽑기 카드 펼침"></div><div class="dialog-actions"><button id="draw-start" class="primary" type="button">달토끼 1장 사용하고 뽑기 시작</button><button id="draw-close" class="secondary" type="button">닫기</button></div></dialog>
-<dialog id="trade-dialog" aria-labelledby="trade-dialog-title"><h2 id="trade-dialog-title">거래 제안하기</h2>
-  <p class="muted">친구가 수락하고 선생님이 승인해야 실제로 주고받아요.</p>
-  <label for="trade-target">거래할 친구</label><select id="trade-target"></select>
-  <h3>내가 주는 것</h3>
-  <label for="trade-give-shards">별 파편</label><input id="trade-give-shards" type="number" min="0" max="999" value="0">
-  <ul id="trade-give-items" class="item-list" aria-label="내가 주는 물건"></ul>
-  <h3>내가 받고 싶은 것</h3>
-  <p class="muted">친구가 가지고 있어야 거래돼요.</p>
-  <label for="trade-want-shards">별 파편</label><input id="trade-want-shards" type="number" min="0" max="999" value="0">
-  <ul id="trade-want-items" class="item-list" aria-label="내가 받고 싶은 물건"></ul>
-  <p id="trade-error" class="form-message" role="alert"></p>
-  <div class="dialog-actions"><button id="trade-cancel-btn" class="secondary" type="button">닫기</button><button id="trade-submit" class="primary" type="button">제안 보내기</button></div>
-</dialog>
+
 <dialog id="item-info-dialog"><h2 id="item-info-title">아이템 정보</h2><p id="item-info-text"></p><button class="secondary" data-close="item-info-dialog">닫기</button></dialog>
 <dialog id="discard-dialog"><h2>아이템 버리기</h2><p id="discard-message"></p><div class="dialog-actions"><button id="discard-no" class="secondary">아니오</button><button id="discard-yes" class="danger">예</button></div></dialog>
 <dialog id="password-offer-dialog"><h2>비밀번호를 새로 지정하겠습니까?</h2><p>다른 사람이 내 이름으로 들어오지 못하도록 나만 아는 비밀번호로 바꿀 수 있어요.</p><div class="dialog-actions"><button id="password-offer-no" class="secondary">아니오</button><button id="password-offer-yes" class="primary">예</button></div></dialog>

@@ -23,6 +23,7 @@ try {
   const room = [...game.store.rooms.values()][0];
 
   const student = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  student.setDefaultTimeout(12000);
   student.on('pageerror', error => errors.push(error.message));
   await student.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
   await student.locator('#join-code').fill(room.code);
@@ -72,6 +73,7 @@ try {
   await student.locator('#interact-object').filter({ hasText: '진화의 별' }).waitFor();
   await student.locator('#touch-interact').tap();
   await student.locator('#evolution-evolve').tap();
+  await student.locator('[data-constellation-type="특수계"]').tap();
   await student.locator('[data-constellation-id="aries"]').tap();
   await student.locator('#evolution-confirm-text').filter({ hasText: '정말 진화하시겠습니까?' }).waitFor();
   await student.locator('#evolution-no').tap();
@@ -79,6 +81,7 @@ try {
   check('실제 앱 진화 아니오에서 서버 mutation 0건');
 
   await student.locator('#evolution-evolve').tap();
+  await student.locator('[data-constellation-type="특수계"]').tap();
   await student.locator('[data-constellation-id="aries"]').tap();
   await student.locator('#evolution-yes').tap();
   await student.locator('#evolution-summary').filter({ hasText: 'LV2' }).waitFor();
