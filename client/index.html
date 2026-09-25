@@ -90,14 +90,14 @@
     <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
       <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><span id="self-constellation-type" class="constellation-type" hidden></span></div>
-      <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.</span></div>
+      <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요.</span></div>
         <p id="self-attack-power" class="card-combat">공격력 · 설정 예정</p>
         <p id="self-defense-power" class="card-combat">방어력 · 0</p>
       <div class="card-desc">
-        <p id="self-description">처음엔 모두 같은 작은 소행성이에요.<br>우리의 이야기는 여기서 시작돼요.</p>
+        <p id="self-description" hidden></p>
         <p id="self-proposal" class="muted" hidden></p>
       </div>
-      <section id="self-ability-panel" class="constellation-ability" hidden><img id="self-ability-art" alt="" loading="lazy"><div><strong id="self-ability-name"></strong><p id="self-ability-description"></p><button id="self-ability-open" type="button" class="small primary">별자리 능력 보기</button></div></section>
+      <section id="self-skill-panel" class="card-skills" aria-labelledby="self-skill-title"><h3 id="self-skill-title">별자리 스킬</h3><div id="self-skill-slots" role="list" aria-label="준비 중인 별자리 스킬 4칸"><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 1"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 2"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 3"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 4"></div></div></section>
       <section class="card-status" aria-labelledby="self-status-title"><h3 id="self-status-title">상태</h3><ul id="self-statuses" class="status-grid" aria-label="현재 내 상태" aria-live="polite"></ul><p id="self-status-empty" class="muted">지금은 특별한 상태가 없어요.</p></section>
       <div class="card-effects"><h3>효과</h3><ul id="self-effects" aria-label="지금 내 효과"><li class="muted">지금은 특별한 효과가 없어요.</li></ul></div>
       <p class="card-foot" id="card-foot"></p>

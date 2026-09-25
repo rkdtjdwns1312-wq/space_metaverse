@@ -85,9 +85,11 @@ try {
   assert.deepEqual({ level: player.avatar.level, xp: player.avatar.xp, form: player.avatar.form, constellationId: player.avatar.constellationId },
     { level: 2, xp: 0, form: 'constellation', constellationId: 'aries' });
   await student.locator('#avatar-dialog').evaluate(dialog=>dialog.showModal());
+  await student.locator('#self-form-name').filter({hasText:'양자리'}).waitFor();
   await student.locator('#self-constellation-type').filter({hasText:'특수계'}).waitFor();
-  await student.locator('#self-ability-panel').waitFor({state:'visible'});
-  assert.equal(await student.locator('#self-ability-art').getAttribute('src'),'/assets/constellation-cards/aries.png');
+  await student.locator('#self-skill-panel').waitFor({state:'visible'});
+  assert.equal(await student.locator('#self-skill-title').textContent(),'별자리 스킬');
+  assert.equal(await student.locator('#self-skill-slots .skill-placeholder').count(),4);
   await student.locator('[data-close="avatar-dialog"]').click();
   check('실제 소켓 첫 별자리 선택·확인·한 단계 진화');
 
@@ -109,16 +111,7 @@ try {
   await student.screenshot({ path: '.local/growth-evolution-valley-desktop.png' });
   check('실제 앱 1440px 창 닫기·은하수계곡 진화의 별과 성장의 별 화면');
 
-  player.avatar.constellationId='corvus';publish();
-  await student.locator('#avatar-dialog').evaluate(dialog=>dialog.showModal());
-  await student.locator('#self-ability-panel').waitFor({state:'visible'});
-  await student.locator('#self-ability-open').click();
-  await student.locator('#ability-dialog').waitFor({state:'visible'});
-  assert.equal(await student.locator('.die-face').count(),6);
-  await student.locator('#ability-use').click();
-  await student.locator('#ability-dice-result').filter({hasText:/결과: [1-6] ★/}).waitFor();
-  await student.screenshot({path:'.local/constellation-star-dice.png'});
-  check('귀여운 별 1~6 육면체 주사위·결과와 주간 사용 제한');
+  // 능력 서버 판정은 tests에서 유지하며, 제거된 내정보 버튼으로 능력 창을 여는 검사는 수행하지 않습니다.
   assert.deepEqual(errors, []);
 } finally {
   await writeFile('.local/growth-integration-result.json', JSON.stringify({ checks, errors }, null, 2));

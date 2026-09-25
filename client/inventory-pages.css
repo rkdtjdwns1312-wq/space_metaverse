@@ -1,28 +1,63 @@
 .inventory-pages {
   display: flex;
-  justify-content: center;
-  gap: 0.35rem;
-  margin: 0 0 0.65rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
 }
 
 .inventory-page-tab {
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0.25rem 0.55rem;
-  border: 1px solid var(--panel-border, #6d7185);
-  border-radius: 0.35rem;
-  background: var(--panel-surface, #202334);
-  color: inherit;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.65rem;
+  border: 2px solid #c4abea;
+  border-radius: 15px;
+  background: #fff;
+  color: #7652a9;
+  box-shadow: 0 3px 0 #ece3f8;
   cursor: pointer;
 }
 
 .inventory-page-tab[aria-selected="true"] {
-  border-color: currentColor;
-  background: var(--accent, #5969d9);
-  font-weight: 700;
+  border-color: #8860bf;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #e9dcfb, 0 3px 0 #cfbbea;
+  font-weight: 800;
 }
 
 .inventory-page-tab:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+/* 가방만 밝게 꾸미며 조합기 등에서 공유하는 칸의 모양은 유지합니다. */
+#inventory-dialog .panel { background: #fff; }
+#inventory-dialog #inventory-title { color: #7652a9; }
+#inventory-dialog .bag-grid {
+  background: #fff;
+  border: 2px solid #b99adc;
+  border-radius: 20px;
+  box-shadow: 0 4px 0 #eee5fa;
+}
+#inventory-dialog .slot {
+  background: #fff;
+  border: 2px solid #d0b9eb;
+  border-radius: 12px;
+  box-shadow: 0 2px 0 #eee5f8;
+}
+#inventory-dialog .slot.empty { background: #fff; box-shadow: inset 0 0 0 3px #faf7fe; }
+#inventory-dialog .slot-btn { color: #704d9e; border-radius: 10px; }
+#inventory-dialog .slot.selected {
+  border-color: #8053b8;
+  box-shadow: 0 0 0 2px #d8c4f0;
+}
+#inventory-dialog .slot .item-art { border-radius: 8px; }
+#inventory-dialog .slot .count {
+  color: #70459f;
+  background: #fff;
+  border: 1px solid #d9c8ed;
+  border-radius: 6px;
+  padding: 0 3px;
+  text-shadow: none;
+}
+#inventory-dialog .slot .lock { background: #f4eaf1df; color: #925c82; border-radius: 10px; }
+#inventory-dialog .bag-detail { background: #fff; border: 2px solid #ddccef; }

@@ -74,7 +74,7 @@ try{
   await one.locator('#password-dialog').waitFor({state:'hidden'});check('학생은 두 칸으로 로그인하고 본인 비밀번호를 변경함');
   const box=await one.locator('#world').boundingBox();assert.deepEqual([box.x,box.y,box.width,box.height],[0,0,1440,960]);
   assert.equal(await one.locator('dialog[open]').count(),0);await one.screenshot({path:'.local/new-full-map.png'});check('기본 화면은 전체 맵과 하단 아이콘');
-  await dock(one,'avatar');await one.locator('#skills-panel').waitFor({state:'visible'});check('첫 아이콘에서 내 정보와 스킬 확인');
+  await dock(one,'avatar');await one.locator('#self-skill-panel').waitFor({state:'visible'});check('첫 아이콘에서 내 정보와 스킬 확인');
   const p1=[...room.players.values()].find(p=>p.nickname==='별이'),p2=[...room.players.values()].find(p=>p.nickname==='달이');
   await dock(one,'chat');await one.locator('#crew-button').click();await one.locator('.friend-select[data-player-id="'+p2.id+'"]').click();await one.locator('#friend-whisper').click();
   await one.locator('#chat-input').fill('둘만의 인사');await one.locator('#chat-send').click();

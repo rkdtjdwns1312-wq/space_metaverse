@@ -1,15 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Cosmic energy">
   <defs>
-    <linearGradient id="gem" x1="8" y1="6" x2="39" y2="43" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#9FE8FF"/><stop offset=".52" stop-color="#50B7EF"/><stop offset="1" stop-color="#6A83E8"/>
-    </linearGradient>
-    <linearGradient id="facet" x1="18" y1="16" x2="33" y2="36" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E5FBFF" stop-opacity=".95"/><stop offset="1" stop-color="#A7D8FF" stop-opacity=".25"/>
+    <radialGradient id="orb" cx="32%" cy="25%" r="78%">
+      <stop stop-color="#F5FEFF"/>
+      <stop offset=".28" stop-color="#B9F0FF"/>
+      <stop offset=".68" stop-color="#55B9F2"/>
+      <stop offset="1" stop-color="#5579D8"/>
+    </radialGradient>
+    <linearGradient id="swirl" x1="12" y1="13" x2="37" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF"/>
+      <stop offset=".55" stop-color="#F4FDFF"/>
+      <stop offset="1" stop-color="#D5F4FF"/>
     </linearGradient>
   </defs>
-  <path d="m13 5 22 1 10 14-20 24L3 20 13 5Z" fill="url(#gem)" stroke="#477DBB" stroke-width="2" stroke-linejoin="round"/>
-  <path d="m13 5 4 15h28L35 6 13 5Z" fill="#E9FBFF" fill-opacity=".72"/>
-  <path d="M17 20 25 44 45 20H17Z" fill="url(#facet)"/>
-  <path d="m3 20 14 0 8 24L3 20Z" fill="#BDEEFF" fill-opacity=".58"/>
-  <path d="m9 12 2-3m30 1 2 3" stroke="#FFF" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+  <circle cx="24" cy="24" r="21.5" fill="#416DBD" opacity=".2"/>
+  <circle cx="24" cy="23" r="20" fill="url(#orb)" stroke="#477ABF" stroke-width="2"/>
+  <path d="M12.1 17.4A13.9 13.9 0 0 1 35.8 14" fill="none" stroke="#EAFBFF" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+  <path d="M18.2 12.1c5.7-2.1 12.2 1.1 13 6.4.8 5.1-4.3 7.5-8.4 6.4-3.3-.9-4.3-4.4-2.1-6.2 1.8-1.5 4.5-.7 4.6 1.4.1 1.2-.9 2.1-2.1 2.1" fill="none" stroke="url(#swirl)" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M29.8 25.5c-1.1 4.1-6.4 6.3-10.8 4.1-2.8-1.4-4-4.3-3.2-6.9" fill="none" stroke="#DDF8FF" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M12.4 27.4c1.1 5.6 6.1 9.8 12 9.8 3.5 0 6.6-1.5 8.8-4" fill="none" stroke="#8DDBFF" stroke-width="1.5" stroke-linecap="round" opacity=".9"/>
+  <path d="m12.2 12.8 1.1-2.4 1 2.4 2.4 1-2.4 1-1 2.4-1.1-2.4-2.4-1 2.4-1Z" fill="#FFF" opacity=".95"/>
+  <circle cx="34.3" cy="30.8" r="1.35" fill="#FFF" opacity=".9"/>
 </svg>

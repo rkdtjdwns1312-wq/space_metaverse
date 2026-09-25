@@ -68,22 +68,14 @@ try {
     for (const page of pages) await page.waitForFunction(path=>Boolean(window.avatarDraws[path]),sprite);
     check(`Lv${level} 수동 진화·XP0·내 화면과 친구 화면의 새 2D 그림`);
     await student.locator('#avatar-dialog').evaluate(d=>d.showModal());
-    await student.waitForFunction(l=>{
-      const img=document.querySelector('#self-ability-art');
-      return img?.getAttribute('src')===`/assets/constellation-cards/lv${l}/aquarius.png`&&img.complete&&img.naturalWidth>0;
-    },level);
-    await student.locator('#self-ability-open').click();
-    await student.locator('#ability-dialog').waitFor({state:'visible'});
-    assert.match(await student.locator('#ability-description').textContent(),new RegExp(`별 파편 ${level===3?2:4}개`));
-    // 진화 자체가 주간 한도를 초기화하지 않는지 확인합니다.
-    if(level===3) {
-      await student.locator('#ability-use').click();
-      await student.waitForFunction(()=>document.querySelector('#ability-use').disabled);
-      assert.equal(player.starShards,2);
-    } else assert.ok(await student.locator('#ability-use').isDisabled());
+    await student.locator('#self-form-name').filter({hasText:CONSTELLATIONS.find(c=>c.id==='aquarius').name}).waitFor();
+    await student.locator('#self-skill-panel').waitFor({state:'visible'});
+    assert.equal(await student.locator('#self-skill-title').textContent(),'별자리 스킬');
+    assert.equal(await student.locator('#self-skill-slots .skill-placeholder').count(),4);
+    check(`Lv${level} 내정보 별자리 이름·별자리 스킬 제목·빈칸 4개`);
     await student.screenshot({path:`.local/avatar-stages-lv${level}.png`});
     await student.evaluate(()=>document.querySelectorAll('dialog[open]').forEach(d=>d.close()));
-    check(`Lv${level} 카드 로딩·레벨 능력 표시·주간 재사용 제한`);
+    check(`Lv${level} 내정보 별자리 표기`);
   }
   const oldX=player.x;
   const oldDrawX=await friend.evaluate(()=>window.avatarDraws['/assets/avatars/lv4/aquarius.png'].x);

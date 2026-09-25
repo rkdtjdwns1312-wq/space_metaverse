@@ -43,7 +43,10 @@ export function createInventoryPages({ onChange } = {}) {
     return button;
   });
 
-  list.before(nav);
+  // 페이지 선택은 가방 제목 바로 아래에 고정합니다.
+  const title = document.querySelector('#inventory-title');
+  if (title) title.after(nav);
+  else list.before(nav);
 
   function updateTabs() {
     buttons.forEach((button, index) => {

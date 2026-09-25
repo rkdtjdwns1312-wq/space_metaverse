@@ -164,10 +164,6 @@ async function refreshAbilityStatus(){
     .map(item=>new Option('Lv'+item.level+' '+item.name+' · '+item.price+'별',item.id)));
   $('ability-choose-item').disabled=!$('ability-item').options.length;
 }
-$('self-ability-open').onclick=async()=>{
-  $('avatar-dialog').close();stop();$('ability-dice').hidden=true;
-  try{await refreshAbilityStatus();$('ability-dialog').showModal();}catch(error){toast(error.message);}
-};
 $('ability-close').onclick=()=>$('ability-dialog').close();
 $('ability-use').onclick=async()=>{
   const button=$('ability-use');button.disabled=true;
@@ -291,14 +287,11 @@ function updateRoom(value){
   $('self-name').textContent=isTeacher?'선생님':me?.nickname||'나의 소행성';
   $('self-attack-power').textContent='공격력 · '+(me?.combat?.attackPower??(me?.avatar.level===1?'LV2부터 사용':'설정 예정'));
   $('self-defense-power').textContent='방어력 · '+(me?.combat?.defensePower??0);
-  $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'방향키로 움직여보세요. 이름 옆에 ‘나’라고 표시된 소행성이 바로 나예요.';
-  if(me?.role==='student'){
-    const constellation=constellationOf(me.avatar.constellationId,me.avatar.level);
-    $('self-description').textContent=(constellation?constellation.icon+' Lv'+me.avatar.level+' '+constellation.name:'이름 없는 작은 소행성')+' · 방향키나 조이스틱으로 움직여요.';
-  }
+  $('self-description').textContent=me?.role==='teacher'?'친구들에게 교실 코드를 알려주세요. 학생들은 허용한 번호나 닉네임으로 들어올 수 있어요.':'';
   if(me?.avatar.blackStar)$('self-description').textContent='현재 검은별 상태입니다. 선생님이 해제하면 블랙홀 밖으로 나갈 수 있어요.';
+  $('self-description').hidden=!$('self-description').textContent;
   const myPlanet=me?.departmentId?planetById(me.departmentId):null,myPlanetIcon=templateOf(myPlanet?.templateId)?.icon;
-  $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
+  $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요.';
   renderWallet($('bag-currency'),me,{shardsId:'self-shards',energyId:'self-energy'});
   $('bag-currency').hidden=false;
   $('draw-resume').hidden=!me?.rabbitDrawPending;
@@ -312,15 +305,6 @@ function updateRoom(value){
   $('self-constellation-type').hidden=!constellationType;
   $('self-constellation-type').textContent=constellationType||'';
   const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId,myLv):null;
-  $('self-ability-panel').hidden=!abilityConstellation?.ability;
-  if(abilityConstellation?.ability){
-    $('self-ability-art').src=abilityConstellation.art;
-    $('self-ability-art').alt='Lv'+myLv+' '+abilityConstellation.name+' 카드 그림';
-    $('self-ability-name').textContent='Lv'+myLv+' '+abilityConstellation.name+' · '+abilityConstellation.type;
-    const ability=abilityConstellation.ability;
-    $('self-ability-description').textContent=ability.description+(ability.note?' '+ability.note:'')+
-      (ability.mode==='manual'?' · 선생님 확인 후 적용':'')+(myLv>4?' · 능력 규칙은 현재 Lv4 기준':'');
-  }
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=isTeacher?'교사 전용':transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
@@ -1184,7 +1168,6 @@ function reset(message){
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
   $('self-form-name').textContent='소행성';
   $('self-constellation-type').hidden=true;$('self-constellation-type').textContent='';
-  $('self-ability-panel').hidden=true;
   if($('ability-dialog').open)$('ability-dialog').close();
   $('avatar-card').style.removeProperty('--card-accent');$('avatar-card').classList.remove('teacher-card');
   {const portrait=$('avatar-portrait');portrait.getContext('2d').clearRect(0,0,portrait.width,portrait.height);}

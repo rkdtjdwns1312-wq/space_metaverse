@@ -87,13 +87,13 @@ try {
       await page.locator('#dock-avatar').click();await page.locator('#avatar-dialog').waitFor({state:'visible'});
       assert.match(await page.locator('#self-level').textContent(),new RegExp('LV '+level));
       assert.equal(await page.locator('#self-shards').textContent(),String(50000-[0,0,15,35,60][level]));
-      const description=await page.locator('#self-description').textContent();
-      if(level===1){assert.match(description,/이름 없는 작은 소행성/);assert.ok(await page.locator('#self-ability-panel').isHidden());}
+      assert.ok(await page.locator('#self-description').isHidden());
+      const description=await page.locator('#self-form-name').textContent();
+      assert.equal(await page.locator('#self-skill-slots .skill-placeholder').count(),4);
+      if(level===1){assert.match(description,/소행성/);}
       else{
-        assert.match(description,new RegExp(`Lv${level} ${name}`));
-        assert.match(await page.locator('#self-ability-name').textContent(),new RegExp(`Lv${level} ${name}`));
-        await page.waitForFunction(path=>{const i=document.querySelector('#self-ability-art');return i.getAttribute('src')===path&&i.complete&&i.naturalWidth>0;},art);
-        assert.equal(await page.locator('#self-ability-art').getAttribute('alt'),`Lv${level} ${name} 카드 그림`);
+        assert.match(description,new RegExp(name));
+        assert.equal(await page.locator('#avatar-portrait').getAttribute('aria-label'),`${name} 아바타 그림`);
       }
       // 단계가 바뀌어도 카드의 분류 태그에 소행성이 남아 있으면 잡아냅니다.
       assert.equal(await page.locator('.card-attr .attr-tag').first().textContent(),level===1?'소행성':name);

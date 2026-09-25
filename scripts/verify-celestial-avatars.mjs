@@ -27,7 +27,13 @@ try{
      assert.equal(p.avatar.level,level);assert.equal(p.avatar.xp,0);assert.equal(p.avatar.constellationId,c.id);
      await page.locator('#evolution-header-close').click();await page.locator('#dock-avatar').click();
      const expected=constellationOf(c.id,level);
-     await page.waitForFunction(path=>document.getElementById('self-ability-art').getAttribute('src')===path&&document.getElementById('self-ability-art').complete&&document.getElementById('self-ability-art').naturalWidth>0,expected.art);
+     await page.waitForFunction(name=>document.getElementById('self-form-name').textContent===name,expected.name);
+     await page.waitForFunction(()=>{
+       const panel=document.getElementById('self-skill-panel');
+       return panel&&!panel.hidden&&document.getElementById('self-skill-title')?.textContent==='별자리 스킬'&&panel.querySelectorAll('#self-skill-slots .skill-placeholder').length===4;
+     });
+     const portraitLabel=await page.locator('#avatar-portrait').getAttribute('aria-label');
+     assert.equal(portraitLabel,`${c.name} 아바타 그림`);
      await page.waitForFunction(detail=>document.getElementById('world').dataset.selfLabelDetail===detail,`LV${level} ${c.name}`+(level===5?' · 초월체':''));
      assert.equal(await page.locator('#world').getAttribute('data-self-sprite'),expected.art);
      assert.equal(await page.locator('#self-form-name').textContent(),c.name);
@@ -37,7 +43,7 @@ try{
    }
  }
  check('16종 모두 실제 진화 UI LV4→LV5 최종 초월체·XP0·계보 보존');
- check('16개 단계의 맵/내정보 이미지·별자리 이름·LV 두 줄 매칭');
+ check('16개 단계의 맵 원화·내정보 별자리 이름/스킬 영역·LV 두 줄 매칭');
  await page.screenshot({path:'.local/celestial-world.png'});
  // PNG 실제 알파 채널과 로드 실패를 브라우저에서 확인합니다.
  const alpha=await page.evaluate(async ids=>Promise.all(ids.map(async id=>{
