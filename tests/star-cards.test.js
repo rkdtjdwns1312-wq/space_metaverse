@@ -189,9 +189,9 @@ test('zodiac preserves constellation OR XP choice without rolling dice or awardi
     assert.equal(result.record.data.xp, 0);
     assert.equal(result.record.data.shards, 0);
     assert.equal(result.record.data.roll, null);
-    assert.equal(result.record.data.status, 'manual');
-    assert.deepEqual(result.record.data.automatic, []);
-    assert.match(result.record.data.manual.join(' '), /별자리 교체 또는/);
+    assert.equal(result.record.data.status, 'automatic');
+    assert.equal(result.record.data.automation.choice, null);
+    assert.match(result.record.data.automatic.join(' '), /변경 또는/);
   }
 });
 

@@ -1,5 +1,8 @@
 import {randomInt, randomUUID} from 'node:crypto';
-import {ITEM_USE, MAP, SHOP, SHARDS} from '../shared/config.js';
+import {ITEM_USE, MAP, SHOP, SHARDS, PROGRESSION} from '../shared/config.js';
+import {CONSTELLATIONS} from '../shared/constellations.js';
+import {STAR_CARD_AUTOMATION, discountedPurchase} from '../shared/star-card-automation.js';
+import {gainExperience} from './progression.js';
 import {STAR_CARD_CATALOG, GOLD_CARD_ITEMS, STAR_CARD_LAYOUT, STAR_CARD_ART, MAX_STAR_CARDS, starCardOf, goldItemIdOf} from '../shared/star-cards.js';
 import {ensure} from './rooms.js';
 import {hasCardStatus, nextKoreaMidnight} from './item-cards.js';
@@ -104,6 +107,7 @@ function activate(room, player, itemId, selectedCard, now, chooseIndex) {
   validTime(now);
   ensure(player && room.players.get(player.id) === player && player.connected, '먼저 교실에 입장해주세요.');
   ensure(['student', 'teacher'].includes(player.role) && player.avatar?.level >= 1, '사용자를 확인해주세요.');
+  requireStarCardItemAccess(room, player, now);
   const owned = player.inventory?.find(item => item.id === itemId);
   ensure(owned && int(owned.quantity, 1, SHOP.maxStack), '가방에 그 별 카드가 없어요.');
   ensure(!hasCardStatus(player, 'little-sun-card', now), '자외선 상태에서는 아이템을 사용할 수 없어요.');
@@ -121,8 +125,12 @@ function activate(room, player, itemId, selectedCard, now, chooseIndex) {
   actor.inventory = actor.inventory.filter(item => item.quantity > 0);
   const usedSlots = new Set(draft.starCards.map(record => record.data.slot));
   const slot = Array.from({length: MAX_STAR_CARDS}, (_, i) => i).find(i => !usedSlots.has(i));
-  const data = {slot, status: statusOf(card), automatic: [...card.automatic], manual: [...card.manual],
+  const policy = STAR_CARD_AUTOMATION[card.id] || card;
+  const data = {slot, status: statusOf(policy), automatic: [...policy.automatic], manual: [...policy.manual],
     rewards: [], roll: null, xp: 0, shards: 0, warningsCleared: 0, blackStarsCleared: 0};
+  if (STAR_CARD_AUTOMATION[card.id]) data.automation = card.id === 'zodiac'
+    ? {version: 1, choice: null, constellationId: null}
+    : card.id === 'saturn' ? {version: 1, usedItems: []} : {version: 1};
   applyEffect(draft, actor, card, now, chooseIndex, data);
   const record = {id: randomUUID(), cardId: card.id, userId: actor.id, userNickname: actor.nickname,
     createdAt: now, expiresAt: expiresAt(card, now), data};
@@ -130,7 +138,7 @@ function activate(room, player, itemId, selectedCard, now, chooseIndex) {
   validateStarCards(draft.starCards);
   actor.lastItemUseAt = now;
   commit(room, draft);
-  return {message: `${card.name} 별 카드를 공개했어요.${card.manual.length ? ' 선생님 확인이 필요한 효과가 있어요.' : ' 자동 효과를 적용했어요.'}`,
+  return {message: `${card.name} 별 카드를 공개했어요.${card.id === 'zodiac' ? ' 원하는 효과를 골라주세요.' : policy.manual.length ? ' 선생님 확인이 필요한 효과가 있어요.' : ' 자동 효과를 적용했어요.'}`,
     record: structuredClone(record), card: structuredClone(card), targetIds: [player.id], tax,
     starCard: {card: publicRecord(record), definition: structuredClone(card), canRemove: false}};
 }
@@ -149,7 +157,10 @@ export const STAR_CARD_SLOTS = Object.freeze(Array.from({length: STAR_CARD_LAYOU
 
 function publicRecord(record) {
   const card = starCardOf(record.cardId), position = STAR_CARD_SLOTS[record.data.slot];
-  return {...structuredClone(record), slot: record.data.slot, name: card.name, description: card.description, effect: card.effect,
+  const copy = structuredClone(record);
+  // 할인 사용 목록은 구매 내역입니다. 다른 학생에게 가는 공개 카드에 넣지 않습니다.
+  if (copy.cardId === 'saturn' && copy.data.automation) copy.data.automation = {version: 1};
+  return {...copy, slot: record.data.slot, name: card.name, description: card.description, effect: card.effect,
     durationDays: card.durationDays, mapId: MAP.id, ...position,
     width: STAR_CARD_LAYOUT.width, height: STAR_CARD_LAYOUT.height, art: STAR_CARD_ART.face, backArt: STAR_CARD_ART.back};
 }
@@ -198,8 +209,9 @@ function validOutcome(card, data) {
   } else if (card.id === 'planet-exploration') {
     rewardOK = int(data.roll, 1, 10) && fixedReward(data.roll === 10 ? 'galaxy-card' : goldItemIdOf(PLANETS[data.roll - 1]), 1);
   }
-  const xpOK = data.xp === 0 && data.shards === 0;
-  const rollOK = card.id === 'planet-exploration' || data.roll === null;
+  const zodiacXP = card.id === 'zodiac' && data.automation?.choice === 'xp';
+  const xpOK = zodiacXP ? int(data.roll, 1, 6) && data.xp + data.shards === Math.min(data.roll * 3, 10) : data.xp === 0 && data.shards === 0;
+  const rollOK = card.id === 'planet-exploration' || zodiacXP || data.roll === null;
   const clearedOK = card.id === 'black-hole' || (data.warningsCleared === 0 && data.blackStarsCleared === 0);
   return rewardOK && xpOK && rollOK && clearedOK;
 }
@@ -216,9 +228,12 @@ export function validateStarCards(value) {
     const card = starCardOf(record.cardId), data = record.data;
     if (!card || !text(record.id, 128) || ids.has(record.id) || !text(record.userId, 128) || !text(record.userNickname, 12) ||
       !int(record.createdAt, 0, Number.MAX_SAFE_INTEGER - 7 * DAY) || record.expiresAt !== expiresAt(card, record.createdAt)) fail();
-    if (!exactKeys(data, ['slot', 'status', 'automatic', 'manual', 'rewards', 'roll', 'xp', 'shards', 'warningsCleared', 'blackStarsCleared']) ||
-      !int(data.slot, 0, MAX_STAR_CARDS - 1) || slots.has(data.slot) || data.status !== statusOf(card) ||
-      !same(data.automatic, card.automatic) || !same(data.manual, card.manual) ||
+    const hasAutomation = data && Object.hasOwn(data, 'automation');
+    const policy = hasAutomation ? STAR_CARD_AUTOMATION[card.id] : card;
+    if (!policy || (hasAutomation && !validAutomation(card.id, data.automation))) fail();
+    if (!exactKeys(data, ['slot', 'status', 'automatic', 'manual', 'rewards', 'roll', 'xp', 'shards', 'warningsCleared', 'blackStarsCleared', ...(hasAutomation ? ['automation'] : [])]) ||
+      !int(data.slot, 0, MAX_STAR_CARDS - 1) || slots.has(data.slot) || data.status !== statusOf(policy) ||
+      !same(data.automatic, policy.automatic) || !same(data.manual, policy.manual) ||
       !Array.isArray(data.rewards) || data.rewards.length > 3 || data.rewards.some(reward =>
         !exactKeys(reward, ['itemId', 'quantity']) || !text(reward.itemId, 80) || !int(reward.quantity, 1, 2)) ||
       !int(data.xp, 0, 10) || !int(data.shards, 0, 10) || !int(data.warningsCleared, 0, Number.MAX_SAFE_INTEGER) ||
@@ -226,4 +241,80 @@ export function validateStarCards(value) {
     ids.add(record.id); slots.add(data.slot);
   }
   return structuredClone(value);
+}
+
+function validAutomation(cardId, state) {
+  if (state?.version !== 1) return false;
+  if (cardId === 'pluto') return exactKeys(state, ['version']);
+  if (cardId === 'saturn') return exactKeys(state, ['version', 'usedItems']) && Array.isArray(state.usedItems) &&
+    state.usedItems.length <= SHOP.items.length && new Set(state.usedItems).size === state.usedItems.length &&
+    state.usedItems.every(id => SHOP.items.some(item => item.id === id));
+  if (cardId === 'zodiac') return exactKeys(state, ['version', 'choice', 'constellationId']) &&
+    [null, 'xp', 'constellation'].includes(state.choice) && (state.choice === 'constellation'
+      ? CONSTELLATIONS.some(c => c.id === state.constellationId) : state.constellationId === null);
+  return false;
+}
+
+// Only new, versioned effects participate. Historical manual cards remain manual.
+function automatedCards(room, cardId, now) {
+  return (room.starCards || []).filter(c => c.cardId === cardId && c.data.automation?.version === 1 && active(c, now));
+}
+export function requireStarCardItemAccess(room, player, now = Date.now()) {
+  if (player.role === 'teacher') return;
+  const owner = automatedCards(room, 'pluto', now)[0];
+  ensure(!owner || owner.userId === player.id, '명왕성 효과로 오늘 자정까지 카드 사용자만 아이템을 사용할 수 있어요.');
+}
+
+export function starCardShopDiscounts(room, player, now = Date.now()) {
+  if (!player || room.players.get(player.id) !== player) return {};
+  const cards = automatedCards(room, 'saturn', now).filter(c => c.userId === player.id);
+  return Object.fromEntries(SHOP.items.filter(item => item.forSale !== false).map(item =>
+    [item.id, cards.filter(c => !c.data.automation.usedItems.includes(item.id)).length]).filter(([, count]) => count));
+}
+export function starCardPurchaseQuote(room, player, item, quantity, now = Date.now()) {
+  const cards = automatedCards(room, 'saturn', now).filter(c => c.userId === player.id && !c.data.automation.usedItems.includes(item.id)).slice(0, quantity);
+  return {...discountedPurchase(item.price, quantity, cards.length), cardIds: cards.map(c => c.id)};
+}
+export function consumeStarCardDiscounts(room, itemId, quote) {
+  // Call only after every purchase check succeeds, inside the purchase transaction.
+  for (const id of quote.cardIds) room.starCards.find(c => c.id === id).data.automation.usedItems.push(itemId);
+}
+
+export function starCardChoiceInfo(room, player, record) {
+  const canChoose = record.cardId === 'zodiac' && record.userId === player?.id && player.role === 'student' &&
+    record.data.automation?.version === 1 && record.data.automation.choice === null;
+  return {canChoose, options: canChoose && player.avatar.level >= 2
+    ? CONSTELLATIONS.map(c => ({id: c.id, name: c.name})) : []};
+}
+
+export function chooseStarCard(room, player, {id, choice, constellationId} = {}, now = Date.now(), chooseIndex = randomInt) {
+  validTime(now);
+  ensure(player && room.players.get(player.id) === player && player.connected, '먼저 교실에 입장해주세요.');
+  const draft = draftOf(room), actor = draft.players.get(player.id);
+  const record = draft.starCards.find(c => c.id === id && active(c, now));
+  ensure(record && starCardChoiceInfo(draft, actor, record).canChoose, '본인의 아직 선택하지 않은 황도 12궁 카드만 사용할 수 있어요.');
+  ensure(choice === 'xp' || choice === 'constellation', '원하는 효과 하나를 골라주세요.');
+  if (choice === 'constellation') {
+    ensure(actor.avatar.level >= 2, 'LV2부터 별자리를 바꿀 수 있어요.');
+    const selected = CONSTELLATIONS.find(c => c.id === constellationId);
+    ensure(selected, '현재 선택할 수 있는 별자리를 골라주세요.');
+    ensure(actor.avatar.constellationId !== selected.id, '지금과 다른 별자리를 골라주세요.');
+    actor.avatar = {...actor.avatar, constellationId: selected.id,
+      form: actor.avatar.level >= PROGRESSION.transcendentLevel ? 'transcendent' : 'constellation'};
+    record.data.automation.constellationId = selected.id;
+  } else {
+    ensure(constellationId === undefined, '경험치 받기는 별자리 변경과 함께 선택할 수 없어요.');
+    // Check the largest possible overflow BEFORE rolling: a full wallet cannot be
+    // used to reject only high rolls and retry the dice until a preferred result.
+    const maxAvatar = gainExperience(actor.avatar, 10);
+    ensure(actor.starShards + 10 - (maxAvatar.xp - actor.avatar.xp) <= SHARDS.max, '초과 경험치를 담을 별 파편 공간이 부족해요. 별 파편을 조금 사용한 뒤 다시 선택해주세요.');
+    const roll = pick(chooseIndex, 6) + 1, amount = Math.min(roll * 3, 10);
+    const avatar = gainExperience(actor.avatar, amount), gained = avatar.xp - actor.avatar.xp;
+    record.data.roll = roll; record.data.xp = gained; record.data.shards = amount - gained;
+    actor.avatar = avatar; actor.starShards += record.data.shards;
+  }
+  record.data.automation.choice = choice;
+  validateStarCards(draft.starCards);
+  commit(room, draft);
+  return publicRecord(record);
 }

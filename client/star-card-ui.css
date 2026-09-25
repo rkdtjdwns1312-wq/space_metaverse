@@ -1,0 +1,47 @@
+.star-card-choice {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: .65rem;
+  background: rgb(255 248 226 / 94%);
+  border: 1px solid #b99a55;
+  border-radius: .65rem;
+  color: #211b0e;
+}
+.star-card-choice[hidden],
+.star-card-choice-confirm[hidden],
+.star-card-constellation-options[hidden],
+.star-card-choice-actions[hidden] { display: none !important; }
+.star-card-choice h4 { margin: 0 0 .4rem; font-size: 1rem; }
+.star-card-choice-intro { margin: .25rem 0 .55rem; line-height: 1.4; }
+.star-card-choice-actions,
+.star-card-choice-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  justify-content: center;
+}
+.star-card-choice-confirm p { flex: 1 0 100%; margin: .2rem 0; }
+.star-card-constellation-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .35rem;
+  width: 100%;
+}
+.star-card-choice button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: .45rem .55rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.star-card-constellation-options button { width: 100%; }
+.star-card-choice button:disabled { opacity: .65; }
+@media (max-width: 390px) {
+  .star-card-choice { padding: .45rem; }
+  .star-card-choice-actions > button,
+  .star-card-choice-confirm > button { flex: 1 1 8.5rem; }
+  .star-card-constellation-options { gap: .25rem; }
+  .star-card-constellation-options button { padding-inline: .2rem; font-size: .82rem; }
+}

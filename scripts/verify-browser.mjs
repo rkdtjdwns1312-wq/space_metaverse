@@ -544,9 +544,12 @@ try{
 
  const alienRow=student.locator('#shop-buy-list li[data-item-id="alien-card"]');
  await alienRow.locator('input.qty').fill('10');
- await alienRow.locator('button.buy').click();
- await student.locator('#toast').filter({hasText:'별 파편이 부족해요'}).waitFor({state:'attached'});
- check('Buying 10 alien cards (40 shards) is rejected for insufficient funds after the card purchase');
+ assert.equal(await alienRow.locator('button.buy').isDisabled(),true);
+ assert.equal(await alienRow.locator('button.buy').getAttribute('title'),'별 파편이 부족해요.');
+ assert.match(await alienRow.locator('.price').innerText(),/합계 ★ 40/);
+ assert.equal(p.starShards,21);
+ assert.equal(p.inventory.some(item=>item.id==='alien-card'),false);
+ check('Buying 10 alien cards (40 shards) is disabled at insufficient funds and changes neither wallet nor inventory');
 
  await student.locator('#shop-tab-sell').click();
  await student.locator('#shop-sell-list li').first().waitFor({state:'attached'});

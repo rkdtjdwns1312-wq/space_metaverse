@@ -16,7 +16,8 @@ import { templeItemRows } from './temple-items.js';
 import { loadCraftingRecipes } from './crafting-recipes.js';
 import {sellQuote} from '../shared/item-pricing.js';
 import {awardDrawReward} from './draw-rewards.js';
-import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue,expireStarCards} from './star-cards.js';
+import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue,expireStarCards,
+  chooseStarCard,starCardChoiceInfo,requireStarCardItemAccess,starCardShopDiscounts,starCardPurchaseQuote,consumeStarCardDiscounts} from './star-cards.js';
 import {starCardOf} from '../shared/star-cards.js';
 import {useLv2Item,settleLv2Items,hasLv2ItemBlock,collectSunTax,syncGalaxyHoldings,lv2ItemsDue} from './lv2-item-effects.js';
 import { checkChatRate } from './chat-rate.js';
@@ -914,7 +915,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
-      const cost=item.price*quantity;
+      const quote=starCardPurchaseQuote(room,p,item,quantity,clock()),cost=quote.cost;
       ensure(p.starShards>=cost,'별 파편이 부족해요. (필요 '+cost+'개, 지금 '+p.starShards+'개)');
       const copyPending=p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
         p.abilityState.pending.week===weekStart(clock())&&
@@ -930,9 +931,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         p.inventory.push({id:item.id,quantity:totalQuantity});
       }
       p.starShards-=cost;
+      consumeStarCardDiscounts(room,item.id,quote);
       if(copyPending)p.abilityState.pending=null;
       roster(room);
-      return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null};
+      return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null,
+        cost,discounted:quote.discounted,shopDiscounts:starCardShopDiscounts(room,p,clock())};
     });
     action('shop:sell',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -970,6 +973,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
       const {room,player:p}=s,now=clock(),item=itemOf('moon-rabbit-card');
       if(p.rabbitDraw)return {draw:rabbitDrawView(p.rabbitDraw),inventory:[...p.inventory]};
+      requireStarCardItemAccess(room,p,now);
       const owned=p.inventory.find(entry=>entry.id===item.id&&entry.quantity>0);
       ensure(owned,'가방에 달토끼 카드가 없어요.');
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
@@ -1148,8 +1152,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const definition=starCardOf(card.cardId),d=card.data;
       const messages=[...(d.rewards||[]).map(r=>(itemOf(r.itemId)?.name||r.itemId)+' '+r.quantity+'개 지급'),
         ...(d.xp?[`경험치 ${d.xp} 지급`]:[]),...(d.shards?[`초과 경험치를 별 파편 ${d.shards}개로 지급`]:[]),
-        ...(d.warningsCleared?[`경고 ${d.warningsCleared}건 해제`]:[]),...(d.blackStarsCleared?[`검은별 ${d.blackStarsCleared}개 해제`]:[])];
-      return {card:{...card,data:{...d,messages,manualNote:(d.manual||[]).join(' ')}},definition,canRemove};
+        ...(d.warningsCleared?[`경고 ${d.warningsCleared}건 해제`]:[]),...(d.blackStarsCleared?[`검은별 ${d.blackStarsCleared}개 해제`]:[]),
+        ...(d.automation?.choice==='xp'?[`주사위 ${d.roll} → 경험치 보상 ${Math.min(d.roll*3,10)}`]:[]),
+        ...(d.automation?.choice==='constellation'?[`${constellationOf(d.automation.constellationId)?.name}로 변경 완료`]:[])];
+      const s=socket.data.session;
+      return {card:{...card,data:{...d,messages,manualNote:[...(d.automatic||[]),...(d.manual||[])].join(' ')}},definition,canRemove,
+        ...starCardChoiceInfo(s.room,s.player,card)};
     };
     const requireStarCard=data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1160,6 +1168,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     };
     action('star-card:read',data=>{const {player,card}=requireStarCard(data);return cardReply(card,player.role==='teacher');});
     action('star-card:remove',data=>{const {room,player,card}=requireStarCard(data);const result=removeStarCard(room,player,card.id);roster(room);return result;});
+    action('star-card:choose',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      // 사용 직후 가방에서 열린 창에서도 선택 가능. 카드 소유권은 서버가 재검사합니다.
+      const card=chooseStarCard(s.room,s.player,data,clock(),starCardRandom);
+      roster(s.room);return cardReply(card);
+    });
     action('item:discard',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player}=s,item=itemOf(data.itemId);
@@ -1172,6 +1186,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('item:use',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
+      requireStarCardItemAccess(room,p,clock());
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
       ensure(item.usable!==false,'별 카드의 종류와 효과는 준비 중이에요.');
