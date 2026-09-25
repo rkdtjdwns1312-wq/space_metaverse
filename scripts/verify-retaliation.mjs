@@ -15,7 +15,7 @@ try{
  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'반격 시험',allowedNames:['공격자','수호친구','특수친구']});assert.ok(created.ok);
  const page=await browser.newPage({viewport:{width:1280,height:900},hasTouch:true});page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('공격자');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
- const room=game.store.rooms.get(created.room.code),p=[...room.players.values()].find(p=>p.nickname==='공격자'),publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p)),m=monstersOf(room).get('rabbit');
+ const room=game.store.rooms.get(created.room.code),p=[...room.players.values()].find(p=>p.nickname==='공격자'),publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p)),m=monstersOf(room).get('star-crab');
  Object.assign(m,{x:600,y:400,dx:0,dy:0,nextDirectionAt:Date.now()+60000});Object.assign(p,{mapId:m.mapId,x:538,y:400,facing:{x:1,y:0}});Object.assign(p.avatar,{level:2,constellationId:'gemini',form:'constellation'});publish();
  await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 10/10'}).waitFor();await page.waitForTimeout(1200);assert.equal(ensureVitals(p).hp,10);assert.equal(m.targetId,null);check('공격 전 가까운 학생에게 선공하지 않음');
  await page.locator('#dock-avatar').click();assert.equal(await page.locator('#self-defense-power').textContent(),'방어력 · 0');await page.keyboard.press('Escape');

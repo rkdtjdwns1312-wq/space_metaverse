@@ -35,7 +35,7 @@ try{
   assert.ok(Math.max(...samples.map(sample=>sample.avatar))-Math.min(...samples.map(sample=>sample.avatar))>100);
   assert.ok(samples.some((sample,index)=>index>0&&Math.hypot(sample.monsterX-samples[0].monsterX,sample.monsterY-samples[0].monsterY)>1));
   check('아바타가 움직이는 동안 몬스터의 화면상 월드 좌표도 계속 갱신');
-  const m=monstersOf(room).get('rabbit');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
+  const m=monstersOf(room).get('star-crab');Object.assign(p,{mapId:m.mapId,x:m.x+35,y:m.y});publish();
   await page.locator('#world').focus();await page.keyboard.press('f');assert.equal(await page.locator('#monster-dialog').count(),0);
   assert.ok(!(await page.locator('#interact-object').textContent()).includes('토끼자리'));check('몬스터 F 상호작용·정보 메뉴 제거');
   for(const [level,max] of [[1,1],[2,10],[3,20],[4,30],[5,40]]){p.avatar.level=level;publish();await page.locator('.vitals-hp .vitals-label').filter({hasText:`HP ${max}/${max}`}).waitFor();assert.equal(await page.locator('.vitals-mp progress').getAttribute('max'),String(max));}

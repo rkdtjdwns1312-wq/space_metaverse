@@ -24,8 +24,8 @@ test('Q 공격은 36px 새 범위만 사용하고 뒤쪽·다른 맵을 제외�
 
   const room = { players: new Map() };
   const monsters = monstersOf(room, 0);
-  const rabbit = monsters.get('rabbit');
-  const squirrel = monsters.get('squirrel');
+  const rabbit = monsters.get('star-crab');
+  const squirrel = monsters.get('water-star');
   for (const monster of monsters.values()) {
     if (monster !== rabbit && monster !== squirrel) monster.hp = 0;
   }
@@ -36,7 +36,7 @@ test('Q 공격은 36px 새 범위만 사용하고 뒤쪽·다른 맵을 제외�
   // 중심과 공격 끝점의 거리가 50px: 기존 18px 판정은 빗나가고 새 36px 판정은 명중한다.
   rabbit.x = p.x + 62;
   rabbit.y = p.y + 50;
-  assert.equal(strikeMonster(room, p, 3, 0).monsterId, 'rabbit');
+  assert.equal(strikeMonster(room, p, 3, 0).monsterId, 'star-crab');
   assert.equal(rabbit.hp, before.rabbit - 3);
 
   // 새 판정 반경 밖(61px)은 빗나간다.
@@ -63,7 +63,7 @@ test('Q 공격은 36px 새 범위만 사용하고 뒤쪽·다른 맵을 제외�
   squirrel.x = p.x + 62;
   squirrel.y = p.y;
   const result = strikeMonster(room, p, 3, 4);
-  assert.equal(result.monsterId, 'rabbit');
+  assert.equal(result.monsterId, 'star-crab');
   assert.equal(rabbit.hp, before.rabbit - 3);
   assert.equal(squirrel.hp, before.squirrel - 3);
   assert.deepEqual({ rabbit: rabbit.hp, squirrel: squirrel.hp, rules: { ...MONSTER_RULES } },

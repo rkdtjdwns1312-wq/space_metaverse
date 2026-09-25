@@ -49,6 +49,10 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.fillRect(-r*.8,-r*.35,r*1.6,r*1.1);ctx.strokeRect(-r*.8,-r*.35,r*1.6,r*1.1);
       ctx.beginPath();ctx.moveTo(-r,-r*.35);ctx.lineTo(0,-r*1.05);ctx.lineTo(r,-r*.35);ctx.closePath();ctx.fill();ctx.stroke();
       ctx.fillStyle='#fff8';ctx.fillRect(-r*.25,r*.05,r*.5,r*.7);
+    }else if(kind==='energy-shop'){
+      ctx.beginPath();ctx.roundRect(-r,-r*.6,r*2,r*1.3,r*.4);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#dff9ff';ctx.beginPath();ctx.ellipse(0,-r*.55,r,r*.35,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#559eea';ctx.beginPath();ctx.moveTo(0,-r*1.2);ctx.lineTo(r*.3,-r*.8);ctx.lineTo(0,-r*.4);ctx.lineTo(-r*.3,-r*.8);ctx.closePath();ctx.fill();
     }else if(kind==='crafting'){
       ctx.beginPath();ctx.ellipse(0,r*.15,r*.85,r*.6,0,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.fillStyle='#e6fff5';ctx.beginPath();ctx.ellipse(0,-r*.2,r*.85,r*.22,0,0,Math.PI*2);ctx.fill();ctx.stroke();

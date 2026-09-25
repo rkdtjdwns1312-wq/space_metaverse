@@ -3,6 +3,8 @@ import {createStarCardUI} from './star-card-ui.js';
 import {createInventoryPages} from './inventory-pages.js';
 import {sellQuote,sellPrice} from '/shared/item-pricing.js';
 import {formatShards,hasUnlimitedShards,shardCost} from '/shared/economy.js';
+import {renderWallet} from './wallet-ui.js';
+import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
 import {createStatusUI} from './status-ui.js';
@@ -70,6 +72,7 @@ const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,onAr
 const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
 const temple=createTempleUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
 const craftingUI=createCraftingUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
+const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;renderBag(myInventory());}});
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room});
@@ -294,7 +297,7 @@ function updateRoom(value){
   if(me?.avatar.blackStar)$('self-description').textContent='현재 검은별 상태입니다. 선생님이 해제하면 블랙홀 밖으로 나갈 수 있어요.';
   const myPlanet=me?.departmentId?planetById(me.departmentId):null,myPlanetIcon=templateOf(myPlanet?.templateId)?.icon;
   $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
-  $('self-shards').textContent=formatShards(me);
+  renderWallet($('bag-currency'),me,{shardsId:'self-shards',energyId:'self-energy'});
   $('bag-currency').hidden=false;
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
@@ -350,7 +353,7 @@ function updateRoom(value){
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent=room.unattended?'우주와 연결되었어요 · 선생님 자리 비움':'선생님 연결 대기 · 잠시 이동을 멈춰요';
   else if(socket.connected)$('connection').textContent='우주와 연결되었어요';
   updateChatUI(me,isTeacher);
-  social.update();craftingUI.update();
+  social.update();craftingUI.update();energyShopUI.update();
   accounts.update();
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
@@ -365,7 +368,7 @@ function updateRoom(value){
   if($('trade-dialog').open){const sig=tradeSignature();if(sig!==tradeDialogSig){tradeDialogSig=sig;renderTradeTargetOptions();renderTradeGiveItems();}}
 }
 let shopSig='';
-function shopSignature(){return myShards()+'|'+JSON.stringify(myInventory())+'|'+JSON.stringify(room?.shopDiscounts||{});}
+function shopSignature(){const me=room?.players.find(p=>p.id===selfId);return myShards()+'|'+(me?.cosmicEnergy??0)+'|'+me?.role+'|'+JSON.stringify(myInventory())+'|'+JSON.stringify(room?.shopDiscounts||{});}
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
@@ -874,12 +877,14 @@ async function travelTo(to){try{await request('map:travel',{to});}catch(e){toast
 function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
-  if(n.kind==='planet')openPlanetDialog(n.id);
+  if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast('우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
+  else if(n.kind==='planet')openPlanetDialog(n.id);
   else if(n.kind==='door')exitPlanet();
   else if(n.kind==='gate')travelTo(n.target);
   else if(n.kind==='black-hole')travelTo(n.target);
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
   else if(n.kind==='shop')openShopDialog();
+  else if(n.kind==='energy-shop')energyShopUI.open();
   else if(n.kind==='crafting')craftingUI.open();
   else if(n.kind==='pillar')temple.open(n);
   else if(n.kind==='star-card')starCardUI.open(n.id);
@@ -998,7 +1003,7 @@ $('pin-save').onclick=async()=>{
 };
 function myShards(){return room?.players.find(p=>p.id===selfId)?.starShards||0;}
 function myInventory(){return room?.players.find(p=>p.id===selfId)?.inventory||[];}
-function updateShopShards(){const me=room?.players.find(p=>p.id===selfId);$('shop-shards').textContent='내 별 파편 ★ '+formatShards(me);}
+function updateShopShards(){renderWallet($('shop-shards'),room?.players.find(p=>p.id===selfId));}
 // 목록을 다시 그릴 때 입력 중인 수량과 스크롤 위치를 유지합니다.
 function rerenderList(list,build){
   const prev=new Map([...list.querySelectorAll('li.item')].map(li=>[li.dataset.itemId,li.querySelector('.qty')?.value]));
@@ -1032,7 +1037,7 @@ function applyShopAck(reply){
   const me=room?.players.find(p=>p.id===selfId);
   if(me){me.starShards=reply.starShards;me.inventory=reply.inventory;}
   if(reply.shopDiscounts)room.shopDiscounts=reply.shopDiscounts;
-  $('self-shards').textContent=formatShards(me);
+  renderWallet($('bag-currency'),me,{shardsId:'self-shards',energyId:'self-energy'});
   shopSig=shopSignature();
   updateShopShards();renderShopBuyList();renderShopSellList();renderBag(reply.inventory);
 }
@@ -1151,6 +1156,7 @@ function enter(result){
 }
 function reset(message){
   craftingUI.reset();
+  energyShopUI.reset();
   inventoryPages.reset();
   vitals.reset();
   accounts.reset();
@@ -1165,7 +1171,7 @@ function reset(message){
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
   $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
-  $('self-shards').textContent='0';$('bag-currency').hidden=false;
+  renderWallet($('bag-currency'),null,{shardsId:'self-shards',energyId:'self-energy'});$('bag-currency').hidden=false;
   statuses.update(null);$('self-attack-power').textContent='공격력 · 설정 예정';
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
@@ -1247,6 +1253,7 @@ socket.on('combat:vitals',data=>{
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
 socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);}});
+socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
 // 서버에서 대화 범위에 맞게 전달한 메시지만 말풍선으로 표시합니다.

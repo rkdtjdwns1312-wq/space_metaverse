@@ -1,5 +1,6 @@
 import express from 'express';
 import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
+import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops.js';
 import {attackPowerOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {requireMapLevel} from './map-access.js';
@@ -284,6 +285,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,radius:ATTACK_VISUAL.hitRadius,power};
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       const targets=strikeMonsters(room,player,power,now);
+      if(targets.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
       const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*ATTACK_VISUAL.reach,y:player.y+direction.y*ATTACK_VISUAL.reach,radius:ATTACK_VISUAL.hitRadius,sourceId:player.id},power,now);
       for(const result of playerTargets)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
         io.to(viewer.socketId).emit('combat:player-hit',{...hit,...result});
@@ -291,6 +293,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
       return {target:targets[0]||null,targets,playerTargets};
     },false);
+    action('energy:collect',data=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const result=collectEnergyDrop(session.room,session.player,data.dropId,clock());
+      roster(session.room);return result;
+    });
     // 이전 클라이언트에도 바로 안내하고, 폐지된 몬스터 상호작용은 실행하지 않습니다.
     action('combat:skill',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
@@ -919,6 +926,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const shop=STREET.objects.find(o=>o.kind==='shop');
       ensure(isNear(p,shop),'별상점에 더 가까이 가주세요.');
     };
+    action('shop:energy:open',()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const shop=STREET.objects.find(o=>o.kind==='energy-shop');
+      ensure(s.player.connected&&!s.player.away&&s.player.mapId===STREET_ID&&isNear(s.player,shop),'우주에너지 상점에 더 가까이 가주세요.');
+      return {currency:'cosmicEnergy',items:[]};
+    },false);
     action('shop:buy',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
@@ -1590,6 +1603,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
         // 몬스터는 같은 교실 안에서 공유하되 현재 맵의 그림만 클라이언트가 표시합니다.
+        if(pruneEnergyDrops(room,now))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
         io.to(room.code).volatile.emit('world:positions',{positions,monsters:monsterViews(room)});
         previous.set(room.code,next);
       }

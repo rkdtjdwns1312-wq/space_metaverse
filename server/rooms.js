@@ -8,6 +8,7 @@ import {monsterViews} from './monsters.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
+import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
@@ -78,7 +79,7 @@ export class RoomStore {
   add(room,name,role,socketId) {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
-      avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], starShards:0, connected:true, socketId,
+      avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], starShards:0, cosmicEnergy:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
       effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[] };
     room.players.set(p.id,p);
@@ -106,7 +107,7 @@ export class RoomStore {
     const isTeacher=!!(viewer && viewer.role==='teacher');
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
-      monsters:monsterViews(room),
+      monsters:monsterViews(room),energyDrops:energyDropViews(room),
       starCards:activeStarCards(room),
       shopDiscounts:starCardShopDiscounts(room,viewer),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
@@ -118,7 +119,7 @@ export class RoomStore {
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
-        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.inventory=[...p.inventory]; }
+        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory]; }
         if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
         return out;

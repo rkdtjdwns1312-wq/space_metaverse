@@ -6,11 +6,8 @@ export const MONSTER_COMBAT=Object.freeze({
   'star-origin-3':Object.freeze({power:5,speedFactor:1.3*1.3})
 });
 export const MONSTER_TYPES = Object.freeze([
-  { id: 'rabbit', name: '토끼자리', description: '긴 귀와 동그란 꼬리를 가진 달토끼 별자리', mapId: 'star-origin-1', shape: 'rabbit', color: '#ffd6e7', level: 1 },
-  { id: 'squirrel', name: '다람쥐자리', description: '복슬복슬한 꼬리로 별가루를 모으는 다람쥐', mapId: 'star-origin-1', shape: 'squirrel', color: '#f6c995', level: 1 },
-  { id: 'turtle', name: '거북이자리', description: '별무늬 등껍질을 멘 느긋한 거북이', mapId: 'star-origin-1', shape: 'turtle', color: '#b9e6c3', level: 1 },
-  { id: 'hedgehog', name: '고슴도치자리', description: '가시마다 작은 별이 반짝이는 고슴도치', mapId: 'star-origin-1', shape: 'hedgehog', color: '#e5c6a8', level: 1 },
-  { id: 'butterfly', name: '나비자리', description: '네 장의 날개에 별빛을 담은 나비', mapId: 'star-origin-1', shape: 'butterfly', color: '#cdbbff', level: 1 },
+  { id: 'star-crab', name: 'Lv1 별게', description: '달과 별을 품은 파란 등껍질, 집게에서 작은 물결을 일으키는 별게', mapId: 'star-origin-1', shape: 'star-crab', color: '#96cfff', level: 1 },
+  { id: 'water-star', name: 'Lv1 물별이', description: '별무늬 물병을 메고 물보라를 뿌리는 작은 물별이', mapId: 'star-origin-1', shape: 'water-star', color: '#b6ecff', level: 1 },
   { id: 'lion', name: '사자자리', description: '갈기처럼 별이 둥글게 모인 용감한 사자', mapId: 'star-origin-2', shape: 'lion', color: '#ffe39a', level: 2 },
   { id: 'tiger', name: '호랑이자리', description: '파스텔 줄무늬를 두른 씩씩한 호랑이', mapId: 'star-origin-2', shape: 'tiger', color: '#ffc49b', level: 2 },
   { id: 'wolf', name: '늑대자리', description: '푸른 별빛 털을 가진 다정한 늑대', mapId: 'star-origin-2', shape: 'wolf', color: '#b9d7f2', level: 2 },
@@ -26,3 +23,11 @@ export const MONSTER_TYPES = Object.freeze([
 export function monsterType(id) {
   return MONSTER_TYPES.find(monster => monster.id === id) || null;
 }
+
+// 종류와 개체를 분리합니다. 첫 맵은 두 종류로 기존 다섯 마리 규모를 유지합니다.
+export const MONSTER_SPAWNS=Object.freeze([
+  {id:'star-crab',typeId:'star-crab'}, {id:'water-star',typeId:'water-star'},
+  {id:'star-crab-2',typeId:'star-crab'}, {id:'water-star-2',typeId:'water-star'},
+  {id:'star-crab-3',typeId:'star-crab'},
+  ...MONSTER_TYPES.filter(t=>t.level>1).map(t=>({id:t.id,typeId:t.id}))
+]);

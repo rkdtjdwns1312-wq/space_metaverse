@@ -1,4 +1,6 @@
+import {drawWaterMonster} from './water-monster-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
+import {drawEnergyShop} from './energy-shop-art.js';
 import {drawStarCard} from './star-card-art.js';
 import {ATTACK_VISUAL} from '/shared/combat.js';
 import {skillEffectById} from '/shared/skill-effects.js';
@@ -12,6 +14,7 @@ import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
 import {avatarLabel} from '/shared/avatar-label.js';
 import {TEACHER_AVATAR} from '/shared/teacher-avatar.js';
+import {ENERGY_DROPS} from '/shared/energy-drops.js';
 import {avatarSizeOf} from '/shared/avatar-size.js';
 const TEACHER_SPRITE=TEACHER_AVATAR.sprite;
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
@@ -50,8 +53,9 @@ function drawStar(ctx,x,y,r,fill){
 export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
-  let hits=[],starCards=[];
-  let monsters=[];const monsterTracks=new Map(),monsterPoints=new Map();
+  let hits=[],starCards=[],energyDrops=[];
+  const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
+  let monsters=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
@@ -310,6 +314,7 @@ export function createWorld(canvas) {
     for(const o of map.objects){
       if(o.kind==='gate'){drawGate(o);continue;}
       if(o.kind==='shop'){drawShop(o);continue;}
+      if(o.kind==='energy-shop'){drawEnergyShop(ctx,o);continue;}
       if(o.kind==='crafting'){drawCraftingMachine(ctx,o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
       if(o.kind==='arcade'){
@@ -524,20 +529,35 @@ export function createWorld(canvas) {
     canvas.dataset.monsterRenderY=firstMonsterPoint?.y??'';
     for(const m of visibleMonsters){
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
-      drawMonster(ctx,{...type,...m,...pos},t);
-      const barWidth=64,barY=pos.y-(Number(m.radius)||24)-18;
+      const attack=monsterAttacks.get(m.id);
+      if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
+      if(!drawWaterMonster(ctx,{...type,...m,...pos},t,monsterAttacks.get(m.id)))drawMonster(ctx,{...type,...m,...pos},t);
+      const isWater=['star-crab','water-star'].includes(type.shape);
+      const barWidth=64,barY=pos.y-(Number(m.radius)||24)*(isWater?1.8:1)-18;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,9,4);ctx.fill();
       ctx.fillStyle='#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),7);
       ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();
       if(m===firstMonster){canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
-      ctx.fillText(type.name,pos.x,pos.y+(Number(m.radius)||24)+13);ctx.restore();
+      ctx.fillText(type.name,pos.x,pos.y+(Number(m.radius)||24)*(isWater?1.65:1)+13);ctx.restore();
+    }
+    const visibleDrops=myEnergyDrops();canvas.dataset.energyDropCount=String(visibleDrops.length);
+    for(const drop of visibleDrops){
+      const amount=drop.shares.find(s=>s.playerId===selfId).amount;
+      const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
+      const icon=loadedAvatarSprite('/assets/currencies/cosmic-energy.svg');
+      ctx.save();ctx.shadowColor='#62cfff';ctx.shadowBlur=15;ctx.fillStyle='#8adfff35';
+      ctx.beginPath();ctx.ellipse(drop.x,drop.y+14,22,9,0,0,Math.PI*2);ctx.fill();
+      if(icon)ctx.drawImage(icon,drop.x-18,drop.y-22+bob,36,36);
+      ctx.shadowBlur=0;ctx.textAlign='center';ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e7faff';ctx.strokeStyle='#294776';ctx.lineWidth=3;
+      ctx.strokeText('우주에너지 '+amount,drop.x,drop.y+35);ctx.fillText('우주에너지 '+amount,drop.x,drop.y+35);ctx.restore();
     }
     for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){
       if(hit.kind==='damage')continue;
+      if(hit.kind==='monster'&&['star-crab','water-star'].includes(monsterType(monsters.find(m=>m.id===hit.monsterId)?.typeId)?.shape))continue;
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
       const progress=1-(hit.until-t)/(effect?.durationMs??ATTACK_VISUAL.durationMs);
       if(effect){
@@ -572,10 +592,11 @@ export function createWorld(canvas) {
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();bubbles.clear();hits=[];}
+      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];
+      energyDrops=room?.energyDrops||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
@@ -585,6 +606,7 @@ export function createWorld(canvas) {
     },
     positions(data){const now=performance.now();for(const [id,x,y] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
+    energyDrops(data){energyDrops=data.drops||[];},
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
@@ -595,6 +617,10 @@ export function createWorld(canvas) {
     },
     monsterHit(data){
       if(data.mapId!==myMapId||!monsters.some(monster=>monster.id===data.monsterId))return;
+      // 범위 공격이 여러 명에게 맞아도 같은 물보라 모션은 한 번만 시작합니다.
+      const previous=monsterAttacks.get(data.monsterId),startedAt=performance.now();
+      if(!previous||startedAt-previous.startedAt>80)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs:600});
+      canvas.dataset.lastMonsterEffect=monsterType(monsters.find(m=>m.id===data.monsterId)?.typeId)?.shape||'';
       hits.push({...data,kind:'monster',until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
       canvas.dataset.lastMonsterDamage=String(data.damage);
       canvas.dataset.lastMonsterTarget=String(data.targetId);
@@ -614,6 +640,9 @@ export function createWorld(canvas) {
     },
     nearby(){
       const me=players.find(p=>p.id===selfId);if(!me)return null;
+      const drop=myEnergyDrops().filter(d=>Math.hypot(me.x-d.x,me.y-d.y)<=ENERGY_DROPS.pickupDistance)
+        .sort((a,b)=>Math.hypot(me.x-a.x,me.y-a.y)-Math.hypot(me.x-b.x,me.y-b.y))[0];
+      if(drop)return {...drop,kind:'energy-drop',name:'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
       if(myMapId===PLAZA_ID){
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
         const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
@@ -626,7 +655,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=currentMap().objects.filter(o=>['gate','shop','arcade','crafting','evolution','growth','black-star'].includes(o.kind));
+        const candidates=currentMap().objects.filter(o=>['gate','shop','energy-shop','arcade','crafting','evolution','growth','black-star'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);

@@ -46,7 +46,7 @@ test('실제 소켓 스킬은 16종×4단계에서 서버 효과·방향만 반�
  const joinedPeer=await call(peer,'room:join',{code:created.room.code,nickname:'2'});
  const room=game.store.rooms.get(created.room.code);
  const player=room.players.get(joined.selfId),peerPlayer=room.players.get(joinedPeer.selfId);
- const monster=monstersOf(room).get('rabbit');
+ const monster=monstersOf(room).get('star-crab');
  Object.assign(player,{mapId:monster.mapId,x:monster.x-62,y:monster.y,facing:{x:0,y:-1}});
  Object.assign(peerPlayer,{mapId:'star-origin-2',x:monster.x+300,y:monster.y});
  const teacherPlayer=[...room.players.values()].find(candidate=>candidate.role==='teacher');

@@ -26,7 +26,7 @@ try{
  const image=await page.evaluate(async()=>{const {constellationOf}=await import('/shared/constellations.js');const img=new Image();img.src=constellationOf('pisces',5).sprite;await img.decode();return img.naturalWidth;});assert.ok(image>0);
  await page.waitForTimeout(100);await page.screenshot({path:'.local/163-lv5-avatar.png'});
  const x=p.x;await page.locator('#world').focus();await page.keyboard.down('d');await page.waitForTimeout(250);await page.keyboard.up('d');assert.ok(p.x>x);check('큰아바타WASD이동유지');
- const m=monstersOf(room).get('rabbit');Object.assign(m,{hp:20,dx:0,dy:0,nextDirectionAt:Infinity,nextAttackAt:Infinity});
+ const m=monstersOf(room).get('star-crab');Object.assign(m,{hp:20,dx:0,dy:0,nextDirectionAt:Infinity,nextAttackAt:Infinity});
  Object.assign(p.avatar,{level:2,constellationId:'gemini'});Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y+50,facing:{x:1,y:0}});publish();await page.locator('#minimap-title').filter({hasText:'별의 시작점 1'}).waitFor();await page.locator('#world').focus();await page.keyboard.press('q');
  await page.waitForFunction(()=>document.getElementById('world').dataset.lastAttackRadius==='36');assert.equal(m.hp,19);await page.screenshot({path:'.local/163-q-range.png'});check('기존42px밖50px거리명중·서버판정반경36과원형표시일치');
  await page.setViewportSize({width:390,height:844});Object.assign(p.avatar,{level:5});publish();await page.waitForFunction(()=>Number(document.getElementById('world').dataset.selfSize)>221);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'.local/163-large-mobile.png'});check('390px대형아바타·가로넘침없음');

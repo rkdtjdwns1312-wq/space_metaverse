@@ -1,9 +1,10 @@
-import {MONSTER_TYPES,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
+import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
 import {ATTACK_VISUAL} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
+import {addEnergyDrop} from './energy-drops.js';
 
 
 export const MONSTER_RULES=Object.freeze({directionMs:1000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
@@ -12,7 +13,8 @@ const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
 export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
 // 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
 export function monstersOf(room,now=Date.now()){
-  if(!room.monsters)room.monsters=new Map(MONSTER_TYPES.map((type,i)=>{
+  if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map((spawn,i)=>{
+    const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(type.level===3?largeSpawns:spawns)[i%5];
     const x=baseX*map.width/1200,y=baseY*map.height/900;
@@ -20,15 +22,15 @@ export function monstersOf(room,now=Date.now()){
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
     const multiplier={1:1,2:2,3:4}[type.level]||1;
     const radius=MONSTER_RULES.radius*multiplier;
-    return [type.id,{id:type.id,typeId:type.id,mapId:type.mapId,x,y,radius,
+    return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       hp:MONSTER_HP[type.mapId],maxHp:MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
-      targetId:null,attackers:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,nextDirectionAt:now,lastMoveAt:now}];
+      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,nextDirectionAt:now,lastMoveAt:now}];
   }));
   return room.monsters;
 }
 export function monsterViews(room){
   return [...monstersOf(room).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
-    hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,attackPower:MONSTER_COMBAT[m.mapId].power}));
+    facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,attackPower:MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
 export function monstersInAttackArea(room,player,now=Date.now()){
@@ -44,8 +46,14 @@ export function strikeMonsters(room,player,power,now=Date.now()){
   return monstersInAttackArea(room,player,now).map(target=>{
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
+  // 남은 HP를 넘는 과잉 피해로 마지막 공격자가 소유권을 빼앗지 않도록 실제 감소량만 합산합니다.
+  target.contributors??=new Map();
+  target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(power,target.hp));
   target.hp=Math.max(0,target.hp-power);
-  if(target.hp===0){target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.attackers.clear();target.mapExitCount=0;}
+  if(target.hp===0){
+    addEnergyDrop(room,target,target.contributors,now);
+    target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
+  }
   else{
     if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
     target.attackers.set(player.id,++target.attackOrder);selectMonsterTarget(room,target);
@@ -72,7 +80,7 @@ export function selectMonsterTarget(room,monster){
   candidates.sort((a,b)=>a.priority-b.priority||b.order-a.order);
   const selected=candidates[0]?.player||null;
   if(monster.hp>0&&((hadAttackers&&!selected)||monster.mapExitCount>=MONSTER_RULES.mapExitHealCount)){
-    monster.hp=monster.maxHp;monster.mapExitCount=0;
+    monster.hp=monster.maxHp;monster.mapExitCount=0;monster.contributors?.clear();
     // 3회 이탈 후에도 남은 학생은 계속 추적하며 공격 간격은 유지합니다.
     if(!selected)monster.nextAttackAt=0;
   }
@@ -85,7 +93,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     if(m.hp<=0){
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
-      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,nextDirectionAt:now});
+      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,nextDirectionAt:now});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const rule=MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
@@ -102,6 +110,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
     const blocked=x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
+    m.moving=!blocked&&travel>0.01;
+    if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
     if(target&&now>=m.nextAttackAt){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);

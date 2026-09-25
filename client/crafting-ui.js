@@ -1,5 +1,6 @@
 import {itemOf} from '/shared/config.js';
-import {formatShards,hasUnlimitedShards,shardCost} from '/shared/economy.js';
+import {hasUnlimitedShards,shardCost} from '/shared/economy.js';
+import {renderWallet} from './wallet-ui.js';
 
 // 선택한 재료는 화면에서만 예약합니다. 닫기/실패/연결 종료 때 아이템을 잃지 않습니다.
 export function createCraftingUI({getPlayer,request,stop,toast}) {
@@ -76,7 +77,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
       button.onclick=()=>{if(!selected.has(entry.id)&&selected.size>=16){toast('재료는 16종류까지 넣을 수 있어요.');return;}selected.set(entry.id,count+1);render();};$('crafting-bag').append(button);
     }
     const cost=shardCost(player,fee),teacher=hasUnlimitedShards(player);
-    $('crafting-wallet').textContent='내 별 파편 ★ '+formatShards(player);
+    renderWallet($('crafting-wallet'),player);
     $('crafting-submit').textContent=teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
     $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost;
     $('crafting-clear').disabled=busy||!selected.size;

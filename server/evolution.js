@@ -98,7 +98,7 @@ export function growthInfo(room, player) {
   const starShards = Number.isSafeInteger(player.starShards) && player.starShards >= 0 ? player.starShards : 0;
   const unlimitedShards = hasUnlimitedShards(player);
   const maxBuy = player.avatar.level >= PROGRESSION.transcendentLevel ? 0 : Math.min(remainingXp, unlimitedShards ? remainingXp : starShards);
-  return { avatar: structuredClone(player.avatar), requiredXp, remainingXp, starShards, unlimitedShards, maxBuy, canBuy: maxBuy > 0 };
+  return { avatar: structuredClone(player.avatar), requiredXp, remainingXp, starShards, cosmicEnergy:player.cosmicEnergy??0, unlimitedShards, maxBuy, canBuy: maxBuy > 0 };
 }
 
 export function buyExperience(room, player, { amount } = {}) {

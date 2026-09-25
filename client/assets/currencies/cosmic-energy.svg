@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img">
+  <defs>
+    <linearGradient id="gem" x1="8" y1="6" x2="39" y2="43" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9FE8FF"/><stop offset=".52" stop-color="#50B7EF"/><stop offset="1" stop-color="#6A83E8"/>
+    </linearGradient>
+    <linearGradient id="facet" x1="18" y1="16" x2="33" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E5FBFF" stop-opacity=".95"/><stop offset="1" stop-color="#A7D8FF" stop-opacity=".25"/>
+    </linearGradient>
+  </defs>
+  <path d="m13 5 22 1 10 14-20 24L3 20 13 5Z" fill="url(#gem)" stroke="#477DBB" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m13 5 4 15h28L35 6 13 5Z" fill="#E9FBFF" fill-opacity=".72"/>
+  <path d="M17 20 25 44 45 20H17Z" fill="url(#facet)"/>
+  <path d="m3 20 14 0 8 24L3 20Z" fill="#BDEEFF" fill-opacity=".58"/>
+  <path d="m9 12 2-3m30 1 2 3" stroke="#FFF" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+</svg>

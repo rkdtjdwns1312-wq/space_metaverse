@@ -53,7 +53,7 @@ export function toRecord(room) {
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
-      id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,
+      id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
@@ -83,7 +83,10 @@ export function fromRecord(r) {
   }
   const names=new Set();
   for(const p of r.students){
+    // 이전 저장 파일에 없는 새 재화만 0으로 보완합니다. 잘못된 값은 초기화하지 않습니다.
+    const cosmicEnergy=p.cosmicEnergy===undefined?0:p.cosmicEnergy;
     if(typeof p.id!=='string'||room.players.has(p.id)||!allowedNames.has(p.nickname)||names.has(p.nickname)||
+      !Number.isSafeInteger(cosmicEnergy)||cosmicEnergy<0||
       !Number.isSafeInteger(p.starShards)||p.starShards<0||!Array.isArray(p.inventory)||
       p.inventory.some(i=>!itemOf(i.id)||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
       !Array.isArray(p.notes)||typeof p.muted!=='boolean'||!p.avatar||
@@ -103,7 +106,7 @@ export function fromRecord(r) {
     if(!Array.isArray(lv2State.galaxyNextAt)||lv2State.galaxyNextAt.length>2||lv2State.galaxyNextAt.some(n=>!Number.isSafeInteger(n)||n<0))bad();
     if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
     if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
-    room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+    room.players.set(p.id,offline({...structuredClone(p),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){

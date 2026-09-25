@@ -13,6 +13,16 @@ const browser=await chromium.launch({headless:true,...(process.platform==='win32
 const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[],checks=[];
 page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
 const check=t=>{checks.push(t);console.log('Teacher economy '+checks.length+': '+t);};
+async function walletCheck(page,selector){
+  const wallet=page.locator(selector),chips=wallet.locator(':scope > .currency-chip');
+  assert.equal(await chips.count(),2);
+  assert.equal(await chips.nth(0).getAttribute('data-currency'),'cosmicEnergy');
+  assert.equal(await chips.nth(1).getAttribute('data-currency'),'starShards');
+  const left=await chips.nth(0).boundingBox(),right=await chips.nth(1).boundingBox();
+  assert.ok(Math.abs(left.y-right.y)<1&&left.x+left.width<=right.x+1);
+  for(const icon of await wallet.locator('img').all())assert.ok(await icon.evaluate(img=>img.complete&&img.naturalWidth>0));
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+}
 await mkdir('.local',{recursive:true});
 try{
   await page.goto(url);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);
@@ -25,11 +35,14 @@ try{
     await page.locator('#world').focus();await page.keyboard.press('f');
   }
   await page.locator('#dock-inventory').click();await page.locator('#bag-currency').waitFor({state:'visible'});
+  for(const width of [1440,390,320]){await page.setViewportSize({width,height:960});await walletCheck(page,'#bag-currency');}
+  await page.screenshot({path:'.local/202-wallet-small.png'});await page.setViewportSize({width:1440,height:960});
   assert.match(await page.locator('#self-shards').innerText(),/∞.*무제한/);await page.keyboard.press('Escape');
   check('가방에 선생님 별 파편 무제한 표시');
   await approach(STREET.objects.find(o=>o.kind==='shop'),STREET_ID);
   await page.locator('#shop-dialog').waitFor({state:'visible'});
   assert.match(await page.locator('#shop-shards').innerText(),/∞/);
+  await walletCheck(page,'#shop-shards');
   const row=page.locator('#shop-buy-list li[data-item-id="space-food-card"]');
   await row.locator('.qty').fill('3');assert.match(await row.locator('.price').innerText(),/무료/);
   assert.equal(await row.locator('.buy').isEnabled(),true);await row.locator('.buy').click();
@@ -46,6 +59,7 @@ try{
   await food.click();await page.locator('#crafting-submit').click();await page.locator('#crafting-note').filter({hasText:'실패'}).waitFor();
   assert.equal(p.starShards,0);assert.equal(p.inventory.find(i=>i.id==='space-food-card').quantity,1);
   await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await walletCheck(page,'#crafting-wallet');
   await page.screenshot({path:'.local/201-teacher-free-crafting.png'});await page.locator('#crafting-close').click();
   check('조합 성공·실패 수수료0 및 실패 재료 보존·작은 화면');
   await approach(VALLEY.objects.find(o=>o.kind==='growth'),VALLEY_ID);
@@ -59,9 +73,13 @@ try{
   await student.locator('#join-code').fill(room.code);await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');
   await student.locator('#student-form .submit').click();await student.locator('#lobby').waitFor({state:'hidden'});
   const sp=[...room.players.values()].find(v=>v.role==='student'),shop=STREET.objects.find(o=>o.kind==='shop');
-  Object.assign(sp,{mapId:STREET_ID,x:shop.x,y:shop.y});game.io.to(sp.socketId).emit('room:state',game.store.snapshot(room,sp));
+  Object.assign(sp,{cosmicEnergy:100,mapId:STREET_ID,x:shop.x,y:shop.y});game.io.to(sp.socketId).emit('room:state',game.store.snapshot(room,sp));
   await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor();await student.locator('#world').focus();await student.keyboard.press('f');
   await student.locator('#shop-dialog').waitFor({state:'visible'});
+  await student.setViewportSize({width:390,height:844});await walletCheck(student,'#shop-shards');
+  assert.equal(await student.locator('#shop-shards .currency-amount[data-currency="cosmicEnergy"]').innerText(),'100');
+  assert.equal(await student.locator('#shop-shards .currency-amount[data-currency="starShards"]').innerText(),'0');
+  await student.screenshot({path:'.local/202-student-shop-wallet.png'});
   assert.equal(await student.locator('#shop-buy-list li[data-item-id="space-food-card"] .buy').isDisabled(),true);
   assert.doesNotMatch(await student.locator('#shop-shards').innerText(),/∞/);check('학생 잔액0에서는 구매 불가·일반 잔액 표시 유지');
   assert.deepEqual(errors,[]);await writeFile('.local/201-teacher-economy.json',JSON.stringify({checks,errors},null,2));

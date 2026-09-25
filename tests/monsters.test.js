@@ -6,11 +6,11 @@ import {mapOf} from '../shared/config.js';
 import {monstersOf,monsterViews,moveMonsters,MONSTER_RULES} from '../server/monsters.js';
 import {createClassroomServer} from '../server/app.js';
 
-test('세 맵별 5종·서로 다른 형태·방별 독립된 몬스터 상태',()=>{
+test('세 맵별 5마리·첫 맵 두 종류·방별 독립된 몬스터 상태',()=>{
   const a={},b={};assert.equal(monstersOf(a).size,15);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,15);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,12);
   for(const map of ['star-origin-1','star-origin-2','star-origin-3'])assert.equal(monsterViews(a).filter(m=>m.mapId===map).length,5);
-  const one=monstersOf(a).get('rabbit'),two=monstersOf(b).get('rabbit');one.x=999;
+  const one=monstersOf(a).get('star-crab'),two=monstersOf(b).get('star-crab');one.x=999;
   assert.notEqual(one.x,two.x);
 });
 
@@ -34,7 +34,7 @@ test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',(
 test('산책은 1초에 한 번 방향을 선택하고 사이에는 일정한 속도로 움직인다',()=>{
   const room={};room.monsters=new Map([...monstersOf(room,0)].filter(([,m])=>m.mapId==='star-origin-1'));let calls=0;
   const random=()=>{calls++;return calls<=5?0:.25;};
-  moveMonsters(room,0,random);const m=monstersOf(room).get('rabbit'),start=m.x;
+  moveMonsters(room,0,random);const m=monstersOf(room).get('star-crab'),start=m.x;
   for(let now=50;now<=950;now+=50)moveMonsters(room,now,random);
   assert.equal(calls,5);assert.ok(Math.abs(m.x-start-MONSTER_RULES.speed*.95)<1e-6);
   moveMonsters(room,1000,random);assert.equal(calls,10);assert.ok(m.dy>.99);
@@ -54,10 +54,10 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
   t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();});
   const call=(s,event,data={})=>s.timeout(2000).emitWithAck(event,data),teacher=await connect(),stranger=await connect();
-  assert.equal((await call(stranger,'monster:info',{monsterId:'rabbit'})).ok,false);
+  assert.equal((await call(stranger,'monster:info',{monsterId:'star-crab'})).ok,false);
   const r=await call(teacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['1']}),student=await connect();
   const j=await call(student,'room:join',{code:r.room.code,nickname:'1'});assert.ok(j.ok);
-  const room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId),m=monstersOf(room).get('rabbit');
+  const room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId),m=monstersOf(room).get('star-crab');
   assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{mapId:m.mapId,x:1100,y:700});assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{x:m.x+35,y:m.y});const info=await call(student,'monster:info',{monsterId:m.id,xp:999,level:6});
@@ -87,7 +87,7 @@ test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 �
     });
   }finally{clearInterval(input);student.emit('player:input',{x:0,y:0});}
   const avatarXs=packets.flatMap(packet=>packet.positions.filter(([id])=>id===joined.selfId).map(([,x])=>x));
-  const monsterPoints=packets.map(packet=>packet.monsters?.find(monster=>monster.id==='rabbit'));
+  const monsterPoints=packets.map(packet=>packet.monsters?.find(monster=>monster.id==='star-crab'));
   assert.ok(avatarXs.length>=2&&Math.max(...avatarXs)-Math.min(...avatarXs)>1,'아바타가 움직여야 합니다.');
   assert.ok(monsterPoints.every(monster=>Number.isFinite(monster?.x)&&Number.isFinite(monster?.y))&&monsterPoints.some((monster,index)=>index>0&&Math.hypot(monster.x-monsterPoints[index-1].x,monster.y-monsterPoints[index-1].y)>.1),'아바타 이동 중 몬스터 좌표도 갱신되어야 합니다.');
 });

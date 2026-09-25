@@ -101,8 +101,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .slot .count{position:absolute;right:3px;bottom:2px;font-size:10px;font-weight:800;color:#ffe59b;text-shadow:1px 1px 0 #000}
 .slot .lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000000a0;color:#ffb3b3;font-size:10px;font-weight:800;border-radius:2px}
 .slot.selected{box-shadow:0 0 0 3px #ffe59b,inset -3px -3px 0 #14112a,inset 3px 3px 0 #5844a0}
-.bag-currency{margin-top:10px;background:#1e1b3a;border:3px solid #5b4b8a;box-shadow:inset -3px -3px 0 #14112a,inset 3px 3px 0 #5844a0;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:800;color:#ffe59b;display:flex;align-items:center;gap:6px}
-.bag-currency strong{font-size:16px;color:#fff2c9}
+.bag-currency{margin-top:10px}
 .bag-detail{margin-top:10px;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;min-height:64px}
 .bag-detail-inner{display:flex;gap:10px;align-items:flex-start}
 .bag-detail-inner .icon{font-size:26px;flex-shrink:0}
@@ -160,7 +159,8 @@ dialog{border:1px solid var(--line);border-radius:22px;padding:28px;max-width:mi
 .student-account-row label{min-width:0;margin:0;font-size:11px;color:#635982}
 .student-account-row input{margin-top:5px;height:39px;padding:8px;font-size:13px}
 #account-add{margin:4px 0 8px}
-.shop-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.shop-heading h2{margin:0;white-space:nowrap}#shop-shards{font-size:14px;font-weight:700;color:#785725;margin:0;text-align:right;background:#fff4cd;border:1px solid #eedaa0;border-radius:14px;padding:9px 12px;font-variant-numeric:tabular-nums}
+.shop-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.shop-heading h2{margin:0;white-space:nowrap}#shop-shards{margin:0;min-width:0;flex:1;max-width:370px}
+@media(max-width:520px){.shop-heading{flex-wrap:wrap}.shop-heading #shop-shards{flex-basis:100%;max-width:none}}
 #planet-dialog h3{font-size:14px;margin:14px 0 8px;color:#5d4795}#planet-members{list-style:none;padding:0;margin:8px 0 0;max-height:140px;overflow:auto;font-size:13px;color:#57536d}#planet-members li{padding:4px 2px}#planet-rules-list{margin:0;padding-left:20px;font-size:13px;color:#57536d;line-height:1.8;max-width:100%}#planet-rules-editor{margin-top:12px}#planet-rules-input{margin-bottom:8px}
 #planet-rename-propose-row,#planet-rename-teacher-row{display:flex;gap:8px;align-items:center;margin-top:6px}#planet-rename-propose-row input,#planet-rename-teacher-row input{flex:1;min-width:0;height:40px}#planet-rename-status{font-size:13px}#planet-rename-votes{display:flex;gap:8px;margin-top:8px}#planet-rename-votes button.selected{outline:2px solid var(--purple);outline-offset:2px}#planet-remove{margin-top:14px}
 #planet-colors{border:0;padding:0;margin:14px 0 0;display:flex;flex-wrap:wrap;gap:10px}#planet-colors legend{font-size:13px;font-weight:700;margin-bottom:6px;width:100%;padding:0}.swatch{width:34px;height:34px;border-radius:50%;position:relative;cursor:pointer;padding:0;min-height:0}.swatch input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.swatch span{display:block;width:100%;height:100%;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #d8d3ea;pointer-events:none}.swatch input:checked+span{box-shadow:0 0 0 3px var(--purple)}.swatch input:focus-visible+span{outline:3px solid #a87810;outline-offset:2px}
@@ -358,6 +358,10 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 @media(max-width:520px){body.joined:not(.placing) #world-navigation{top:56px}}
 
 .map-level{font-size:12px;color:#77618e}
+#energy-shop-dialog{width:min(580px,calc(100vw - 24px));box-sizing:border-box;border:2px solid #a7d5f3;background:#f5fbff;color:#355575;border-radius:24px}
+#energy-shop-dialog h2{color:#426da1}
+#energy-shop-dialog p{line-height:1.7}
+.energy-shop-empty{padding:24px 12px;text-align:center;border:1px dashed #aacce7;border-radius:16px;background:#e8f5ff;font-weight:700}
 
 /* 조사하기와 메뉴는 같은 줄이며, 좁은 화면에서는 오른쪽 공간을 활용합니다. */
 @media(max-width:520px){body.joined:not(.placing) .bottom-dock{left:max(calc(50% + 8px), 204px)}}

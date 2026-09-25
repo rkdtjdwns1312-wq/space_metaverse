@@ -44,14 +44,15 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: { x: 1990, y: 720 }, color: '#d9c6f2', passable: true },
-    { id: 'shop', name: '별 상점', x: 600, y: 600, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'shop', name: '별 상점', x: 400, y: 225, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'energy-shop', name: '우주에너지 상점', x: 800, y: 225, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1']
-    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
+    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:510,radius:32,kind:'arcade'})),
     {id:'crafting-machine',name:'별빛 조합기',x:1080,y:380,radius:62,kind:'crafting',color:'#cdb8ef'},
-    { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
-    { id: 'lamp-right', name: '별빛 가로등', x: 820, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true }
+    { id: 'lamp-left', name: '별빛 가로등', x: 220, y: 290, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
+    { id: 'lamp-right', name: '별빛 가로등', x: 980, y: 290, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
@@ -121,7 +122,8 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // effect: 사용하면 대상에게 붙는 표시(아이콘·이름·지속 시간). 지금은 겉모습 표시만 하고 이동 속도 등 실제 능력치는 바꾸지 않습니다.
 // maxKinds 20 = 가방 격자 5×4칸(한 칸에 한 종류). BAG는 화면 격자 크기입니다.
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
-export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 40, items: [
+// 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
+export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 40, items: [
   { id: 'star-sticker', name: '반짝 별 스티커', forSale: false, description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
   { id: 'space-snack', name: '우주 간식', forSale: false, description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,

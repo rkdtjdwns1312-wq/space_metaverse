@@ -12,10 +12,10 @@ test('LV1~5 HP/MP 1/10/20/30/40, 범위 밖 단계는 null',()=>{
  for(const level of [0,6,99,'2'])assert.equal(vitalsOf(level),null);
 });
 test('15마리 체력20/40/100, 방향·거리·맵 검사, 한 마리 타격, 처치/재등장과 방 격리',()=>{
- const room={players:new Map()},other={},monsters=monstersOf(room,0),rabbit=monsters.get('rabbit');
+ const room={players:new Map()},other={},monsters=monstersOf(room,0),rabbit=monsters.get('star-crab');
  for(const m of monsters.values())assert.equal(m.hp,{'star-origin-1':20,'star-origin-2':40,'star-origin-3':100}[m.mapId]);
  const p={id:'hunter',role:'student',connected:true,avatar:{level:4,constellationId:'sagittarius'},mapId:rabbit.mapId,x:rabbit.x-62,y:rabbit.y,facing:{x:1,y:0}};room.players.set(p.id,p);
- assert.equal(strikeMonster(room,p,3,0).hp,17);assert.equal(monstersOf(other).get('rabbit').hp,20);
+ assert.equal(strikeMonster(room,p,3,0).hp,17);assert.equal(monstersOf(other).get('star-crab').hp,20);
  p.facing.x=-1;assert.equal(strikeMonster(room,p,3,0),null);p.facing.x=1;
  p.x-=200;assert.equal(strikeMonster(room,p,3,0),null);p.x+=200;
  p.mapId='plaza';assert.equal(strikeMonster(room,p,3,0),null);p.mapId=rabbit.mapId;
@@ -32,11 +32,11 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
  const created=await call(teacher,'room:create',{teacherKey:'hunting-test-key',allowedNames:['1','2']}),s=await connect(),joined=await call(s,'room:join',{code:created.room.code,nickname:'1'});
- const room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('rabbit');
+ const room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
  Object.assign(m,{dx:0,dy:0,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=4;
  const r=await call(s,'combat:attack',{power:1000,dx:-1,monsterId:'whale'});assert.equal(r.target.hp,17);assert.equal(r.target.damage,3);assert.equal((await call(s,'combat:attack')).ok,false);
  const peer=await connect(),joinedPeer=await call(peer,'room:join',{code:room.code,nickname:'2'});const p2=room.players.get(joinedPeer.selfId);Object.assign(p2,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p2.avatar.level=3;
- assert.equal((await call(peer,'combat:attack')).target.hp,15);assert.equal(game.store.snapshot(room,p2).monsters.find(m=>m.id==='rabbit').hp,15);
+ assert.equal((await call(peer,'combat:attack')).target.hp,15);assert.equal(game.store.snapshot(room,p2).monsters.find(m=>m.id==='star-crab').hp,15);
  now+=999;assert.equal((await call(s,'combat:attack')).ok,false);assert.equal(m.hp,15,'999ms에는 피해 없음');
  now+=1;assert.equal((await call(s,'combat:attack')).target.hp,12,'정확히1000ms에 다음 공격 허용');
  const before={hp:m.hp,avatar:structuredClone(p.avatar),shards:p.starShards};
@@ -52,7 +52,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
  const created=await call(teacher,'room:create',{teacherKey:'attack-class-test',allowedNames:['1']}),student=await connect();
- const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('rabbit');
+ const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
  const table={'수호계':[1,1,1,2],'제작계':[1,1,2,3],'생산계':[1,1,2,3],'공격계':[2,3,4,5],'특수계':[1,2,3,4]};
  for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
    Object.assign(m,{hp:20,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});

@@ -1,5 +1,5 @@
 import {PROGRESSION} from '/shared/config.js';
-import {formatShards} from '/shared/economy.js';
+import {renderWallet} from './wallet-ui.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -46,13 +46,15 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
     const rows = [
       ['현재 단계', top ? (info.unlimitedShards ? '별의 수호자' : '초월체') : 'LV' + info.avatar.level],
       ['현재 경험치', top ? '최고 단계' : info.avatar.xp + ' / ' + info.requiredXp],
-      ['별 파편 잔액', formatShards({role:info.unlimitedShards?'teacher':'student',starShards:info.starShards}) + (info.unlimitedShards?'':'개')],
       ['구매 가능', info.maxBuy + ' XP']
     ];
     for (const [label, value] of rows) {
       const row = document.createElement('p'), strong = document.createElement('strong'), span = document.createElement('span');
       strong.textContent = label; span.textContent = value; row.append(strong, span); $('info').append(row);
     }
+    const wallet=document.createElement('div');
+    renderWallet(wallet,{role:info.unlimitedShards?'teacher':'student',starShards:info.starShards,cosmicEnergy:info.cosmicEnergy});
+    $('info').append(wallet);
     $('amount').max = String(info.maxBuy);
     const disabled = busy || !info.canBuy || info.maxBuy < 1;
     $('amount').disabled = $('max').disabled = $('buy').disabled = disabled;
