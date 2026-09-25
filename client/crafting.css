@@ -7,4 +7,9 @@
 .crafting-slot:disabled{opacity:1;cursor:default}.crafting-slot img{width:100%;height:100%;object-fit:cover;border-radius:8px}.crafting-slot small{position:absolute;right:2px;bottom:2px;border-radius:6px;padding:2px 4px;background:#fffc;color:#6b5589;font-size:11px}
 #crafting-bag{display:grid;gap:7px;max-height:300px;overflow:auto}#crafting-bag button{display:flex;align-items:center;gap:9px;text-align:left;min-width:0;padding:6px;background:#f1f6ff;font-size:12px;color:#67558b}#crafting-bag img{width:44px;height:44px;border-radius:9px}#crafting-bag button:disabled{opacity:.45}
 #crafting-wallet{color:#8b6b28;font-weight:700}#crafting-note{padding:10px;background:#fff5d9;border-radius:12px}
+#crafting-recipes-panel{margin-top:12px;padding:14px;background:#f0f7f1;border-radius:14px;border:1px solid #c9dec9}
+#crafting-recipe-tabs{display:flex;gap:8px}#crafting-recipe-tabs [aria-selected="true"]{background:#806ba9;color:white}
+#crafting-recipes-list{list-style:none;margin:10px 0;padding:0;max-height:280px;overflow:auto}
+#crafting-recipes-list li{background:white;border-radius:10px;padding:10px;margin-bottom:8px;overflow-wrap:anywhere}
+#crafting-recipes-list p{margin:7px 0 0}.recipe-output{display:flex;align-items:center;gap:8px}.recipe-output img{width:42px;height:42px;object-fit:cover;border-radius:8px}
 @media(max-width:520px){.crafting-columns{grid-template-columns:1fr;gap:8px}#crafting-grid{max-width:300px;margin:auto}#crafting-bag{max-height:170px;grid-template-columns:1fr 1fr}#crafting-dialog footer button{font-size:12px;padding:9px}}

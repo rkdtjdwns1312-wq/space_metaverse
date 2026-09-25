@@ -893,6 +893,17 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('crafting:open',()=>{
       requireCrafting();return {enabled:craftingRecipes.length>0,fee:CRAFTING.fee};
     },false);
+    action('crafting:recipes',data=>{
+      const s=socket.data.session;
+      ensure(s?.player.role==='teacher','선생님만 조합법을 볼 수 있어요.');
+      requireCrafting();
+      ensure([2,3,4].includes(data.level),'LV2, LV3, LV4 중 하나를 골라주세요.');
+      // 비공개 파일의 필요한 필드만 인증된 교사에게 응답합니다. 방 방송/공개 스냅샷에는 넣지 않습니다.
+      const recipes=craftingRecipes.filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
+        output:{id:r.output.id,quantity:1},ingredients:r.ingredients.map(p=>({id:p.id,quantity:p.quantity}))
+      }));
+      return {level:data.level,recipes};
+    },false);
     action('crafting:combine',data=>{
       const {room,player}=requireCrafting();
       // 조합법은 교사가 정한 뒤 추가합니다. 준비 중에는 직접 요청해도 비용이 없습니다.

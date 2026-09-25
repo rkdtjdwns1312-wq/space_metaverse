@@ -6,7 +6,8 @@ import { fillNewClass } from './class-setup.mjs';
 import { PLAZA_ID, STREET, STREET_ID } from '../shared/config.js';
 
 const key = 'crafting-isolated-browser-fixture-key';
-const game = createClassroomServer({ teacherKey: key, studentHours: false, craftingRecipes: [] });
+const recipes = []; // 실제 조합 파일을 읽지 않는 테스트 전용 배열
+const game = createClassroomServer({ teacherKey: key, studentHours: false, craftingRecipes: recipes });
 const { port } = await game.listen();
 const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) });
 const checks = [], errors = [], contexts = [];
@@ -42,6 +43,30 @@ try {
   assert.equal(await page.locator('#crafting-grid .crafting-slot').count(), 16);
   assert.equal(await page.locator('#crafting-bag button[data-item-id="space-food-card"]').count(), 1);
   check('1080,380 조합기 근처에서 F로 열리고 4×4 16칸과 가방이 표시됨');
+
+  recipes.push({ingredients:[{id:'space-food-card',quantity:17}],output:{id:'android-card'}},
+    {ingredients:[{id:'android-card',quantity:2}],output:{id:'space-station-card'}});
+  await page.locator('#crafting-recipes-open').click();
+  await page.locator('#crafting-recipes-status').filter({hasText:'LV2 조합법 1개'}).waitFor();
+  assert.match(await page.locator('#crafting-recipes-list').innerText(),/우주 식량 × 17/);
+  await page.locator('[data-recipe-level="3"]').click();
+  await page.locator('#crafting-recipes-status').filter({hasText:'LV3 조합법 1개'}).waitFor();
+  assert.match(await page.locator('#crafting-recipes-list').innerText(),/안드로이드 × 2/);
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:'.local/198-teacher-recipes-mobile.png'});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.locator('[data-recipe-level="4"]').click();
+  await page.locator('#crafting-recipes-status').filter({hasText:'등록된 조합법이 없습니다.'}).waitFor();
+  check('교사 전용 LV2/LV3 탭 재료·수량, LV4 빈 목록, 390px 확인');
+  await page.locator('[data-recipe-level="3"]').click();
+  await page.locator('#crafting-recipes-list li').waitFor();
+  player.role='student';game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player));
+  await page.locator('#crafting-recipes-open').waitFor({state:'hidden'});
+  assert.equal(await page.locator('#crafting-recipes-list li').count(),0);
+  assert.equal(await page.locator('#crafting-recipes-panel').isVisible(),false);
+  check('교사 권한을 잃으면 버튼과 이미 조회한 조합 정보가 즉시 제거됨');
+  player.role='teacher';recipes.length=0;await page.setViewportSize({width:1440,height:960});
+  await openAt(page,player);
 
   const food = page.locator('#crafting-bag button[data-item-id="space-food-card"]');
   await food.click(); await food.click(); await food.click();

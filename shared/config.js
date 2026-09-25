@@ -47,7 +47,7 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
     { id: 'shop', name: '별 상점', x: 600, y: 600, radius: 72, kind: 'shop', color: '#ffe59b' },
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
-      ['stars','반짝별 찾기','#ffdf9c'],['addition','숫자놀이터','#bce8cd'],['dodge','별 피하기','#cfbcf1']
+      ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:150,radius:32,kind:'arcade'})),
     {id:'crafting-machine',name:'별빛 조합기',x:1080,y:380,radius:62,kind:'crafting',color:'#cdb8ef'},
     { id: 'lamp-left', name: '별빛 가로등', x: 380, y: 560, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
