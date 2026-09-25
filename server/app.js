@@ -1,4 +1,5 @@
 import express from 'express';
+import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {attackPowerOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {requireMapLevel} from './map-access.js';
@@ -891,7 +892,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return s;
     };
     action('crafting:open',()=>{
-      requireCrafting();return {enabled:craftingRecipes.length>0,fee:CRAFTING.fee};
+      const {player}=requireCrafting();return {enabled:craftingRecipes.length>0,fee:shardCost(player,CRAFTING.fee)};
     },false);
     action('crafting:recipes',data=>{
       const s=socket.data.session;
@@ -928,7 +929,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 구매 가격이 정해지지 않았어요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
-      const quote=starCardPurchaseQuote(room,p,item,quantity,clock()),cost=quote.cost;
+      // 교사 무료 구매는 학생/학급에 주어진 할인 기회도 소모하지 않습니다.
+      const quote=hasUnlimitedShards(p)?{cost:0,discounted:0}:starCardPurchaseQuote(room,p,item,quantity,clock()),cost=quote.cost;
       ensure(p.starShards>=cost,'별 파편이 부족해요. (필요 '+cost+'개, 지금 '+p.starShards+'개)');
       const copyPending=p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
         p.abilityState.pending.week===weekStart(clock())&&
@@ -944,7 +946,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         p.inventory.push({id:item.id,quantity:totalQuantity});
       }
       p.starShards-=cost;
-      consumeStarCardDiscounts(room,item.id,quote,p,clock());
+      if(!hasUnlimitedShards(p))consumeStarCardDiscounts(room,item.id,quote,p,clock());
       if(copyPending)p.abilityState.pending=null;
       roster(room);
       return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null,
@@ -964,8 +966,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!quote.error,quote.error==='quantity-must-be-even'?'이 아이템은 2개씩 묶어 팔아주세요.':'이 아이템은 아직 판매 가격을 정하지 않았어요.');
       const gain=quote.gain;
       // 상한을 넘기면 아이템만 사라지는 일이 없도록, 담을 수 있을 때만 팝니다.
-      ensure(p.starShards+gain<=SHARDS.max,'별 파편을 더 담을 수 없어요. (최대 '+SHARDS.max+'개)');
-      p.starShards+=gain;
+      if(!hasUnlimitedShards(p)){
+        ensure(p.starShards+gain<=SHARDS.max,'별 파편을 더 담을 수 없어요. (최대 '+SHARDS.max+'개)');
+        p.starShards+=gain;
+      }
       existing.quantity-=quantity;
       if(existing.quantity===0) p.inventory=p.inventory.filter(i=>i.id!==item.id);
       roster(room);

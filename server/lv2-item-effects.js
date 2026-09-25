@@ -1,4 +1,5 @@
 import {randomInt} from 'node:crypto';
+import {hasUnlimitedShards} from '../shared/economy.js';
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV2_ITEMS} from '../shared/lv2-items.js';
 import {addCardMarker, hasCardStatus, MAX_CARD_MARKERS} from './item-cards.js';
@@ -87,6 +88,7 @@ function sunWinner(player, now) {
 export function collectSunTax(room, actor, now = Date.now()) {
   validNow(now);
   fail(room.players.get(actor.id) === actor, '교실의 사용자를 확인해주세요.');
+  if (hasUnlimitedShards(actor)) return {amount: 0, ownerIds: []};
   const marker = sunWinner(actor, now);
   const owner = marker && room.players.get(marker.fromId);
   if (!owner || owner.id === actor.id) return {amount: 0, ownerIds: []};

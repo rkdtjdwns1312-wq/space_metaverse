@@ -1,5 +1,6 @@
 import { CRAFTING } from '../shared/crafting.js';
 import { SHOP } from '../shared/config.js';
+import {shardCost} from '../shared/economy.js';
 
 const validId = value => typeof value === 'string' && value.length > 0;
 const levelOf = item => Number.isSafeInteger(item?.level) ? item.level : null;
@@ -62,9 +63,10 @@ export function attemptCraft(player, input, { recipes = [], catalog = SHOP.items
   const validRecipes = recipes.map(recipe => validRecipe(recipe, catalog, CRAFTING.maxQuantity)).filter(Boolean);
   if (validRecipes.length === 0) return fail(player, 'invalid-recipe');
   const match = validRecipes.find(recipe => sameMultiset(recipe.ingredients, ingredients));
+  const fee = shardCost(player, CRAFTING.fee);
   if (!match) {
-    if (player.starShards < CRAFTING.fee) return fail(player, 'insufficient-fee');
-    player.starShards -= CRAFTING.fee;
+    if (player.starShards < fee) return fail(player, 'insufficient-fee');
+    player.starShards -= fee;
     return { success: false, item: null, error: 'recipe-mismatch', balance: player.starShards, inventory: player.inventory };
   }
   const outputEntry = owned.get(match.output.id);
@@ -73,7 +75,7 @@ export function attemptCraft(player, input, { recipes = [], catalog = SHOP.items
   const consumedKinds = ingredients.reduce((count, part) => count + (owned.get(part.id).quantity === part.quantity ? 1 : 0), 0);
   const resultingKinds = player.inventory.length - consumedKinds + (outputEntry ? 0 : 1);
   if (resultingKinds > SHOP.maxKinds) return fail(player, 'inventory-full');
-  if (player.starShards < CRAFTING.fee) return fail(player, 'insufficient-fee');
+  if (player.starShards < fee) return fail(player, 'insufficient-fee');
   for (const part of ingredients) {
     const entry = owned.get(part.id);
     entry.quantity -= part.quantity;
@@ -81,6 +83,6 @@ export function attemptCraft(player, input, { recipes = [], catalog = SHOP.items
   }
   if (outputEntry && outputEntry.quantity < CRAFTING.maxQuantity) outputEntry.quantity += 1;
   else player.inventory.push({ id: match.output.id, quantity: 1 });
-  player.starShards -= CRAFTING.fee;
+  player.starShards -= fee;
   return { success: true, item: match.output, error: null, balance: player.starShards, inventory: player.inventory };
 }

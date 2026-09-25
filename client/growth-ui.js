@@ -1,4 +1,5 @@
 import {PROGRESSION} from '/shared/config.js';
+import {formatShards} from '/shared/economy.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -17,7 +18,7 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
   dialog.className = 'star-dialog growth-dialog';
   dialog.setAttribute('aria-labelledby', 'growth-title');
   dialog.innerHTML = `<header><h2 id="growth-title">성장의 별</h2><button id="growth-header-close" class="secondary growth-close-allowed" type="button">닫기</button></header>
-    <p>별 파편 1개로 경험치 1을 살 수 있어요. 경험치가 가득 차도 자동으로 진화하지 않아요.</p>
+    <p id="growth-price">별 파편 1개로 경험치 1을 살 수 있어요. 경험치가 가득 차도 자동으로 진화하지 않아요.</p>
     <div id="growth-info" class="growth-info"></div><p id="growth-error" role="alert"></p>
     <label for="growth-amount">구매할 경험치</label><input id="growth-amount" type="number" min="1" step="1" inputmode="numeric">
     <div class="dialog-actions"><button id="growth-max" class="secondary" type="button">최대 구매</button><button id="growth-buy" class="primary" type="button">구매</button><button id="growth-close" class="secondary growth-close-allowed" type="button">닫기</button></div>`;
@@ -36,11 +37,16 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
   function render() {
     if (!info) return;
     const top = info.avatar.level >= PROGRESSION.transcendentLevel;
+    $('price').textContent = info.unlimitedShards && top
+      ? '선생님은 이미 최고 단계예요. 경험치를 구매할 필요가 없어요.'
+      : info.unlimitedShards
+        ? '선생님은 낮은 단계에서 별 파편 없이 경험치를 살 수 있어요. 경험치가 가득 차도 자동으로 진화하지 않아요.'
+      : '별 파편 1개로 경험치 1을 살 수 있어요. 경험치가 가득 차도 자동으로 진화하지 않아요.';
     $('info').replaceChildren();
     const rows = [
-      ['현재 단계', top ? '초월체' : 'LV' + info.avatar.level],
+      ['현재 단계', top ? (info.unlimitedShards ? '별의 수호자' : '초월체') : 'LV' + info.avatar.level],
       ['현재 경험치', top ? '최고 단계' : info.avatar.xp + ' / ' + info.requiredXp],
-      ['별 파편 잔액', info.starShards + '개'],
+      ['별 파편 잔액', formatShards({role:info.unlimitedShards?'teacher':'student',starShards:info.starShards}) + (info.unlimitedShards?'':'개')],
       ['구매 가능', info.maxBuy + ' XP']
     ];
     for (const [label, value] of rows) {
@@ -54,7 +60,9 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
     else { if (!$('amount').value) $('amount').value = '1'; clamp(); }
     if (!busy && info.maxBuy === 0 && !top) {
       $('error').textContent = info.remainingXp === 0 ? '현재 단계의 경험치를 모두 채웠어요. 진화의 별로 가주세요.' : '별 파편이 부족해요.';
-    } else if (!busy && top) $('error').textContent = '초월체는 경험치를 더 살 수 없어요.';
+    } else if (!busy && top) $('error').textContent = info.unlimitedShards
+      ? '선생님은 이미 최고 단계예요. 경험치를 구매할 필요가 없어요.'
+      : '초월체는 경험치를 더 살 수 없어요.';
   }
   function setBusy(value) {
     busy = value;

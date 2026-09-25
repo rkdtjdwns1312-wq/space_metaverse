@@ -1,4 +1,5 @@
 import { PROGRESSION, VALLEY, VALLEY_ID } from '../shared/config.js';
+import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import { CONSTELLATIONS, CONSTELLATION_LIMIT, constellationOf } from '../shared/constellations.js';
 import { ensure } from './rooms.js';
 import { isNear } from './world.js';
@@ -7,8 +8,8 @@ import { evolveAvatar, gainExperience } from './progression.js';
 const evolutionStar = VALLEY.objects.find(object => object.id === 'evolution-star');
 const growthStar = VALLEY.objects.find(object => object.id === 'growth-star');
 
-function requireStudentAt(player, object, label) {
-  ensure(player?.role === 'student', '학생만 ' + label + '을 이용할 수 있어요.');
+function requireStudentAt(player, object, label, allowTeacher = false) {
+  ensure(player?.role === 'student' || (allowTeacher && hasUnlimitedShards(player)), '학생만 ' + label + '을 이용할 수 있어요.');
   ensure(player.mapId === VALLEY_ID, '은하수계곡에서 ' + label + ' 가까이 가주세요.');
   ensure(object && isNear(player, object), label + ' 가까이 가주세요.');
 }
@@ -91,26 +92,28 @@ export function evolveConstellation(room, player, { constellationId } = {}) {
 }
 
 export function growthInfo(room, player) {
-  requireStudentAt(player, growthStar, '성장의 별');
+  requireStudentAt(player, growthStar, '성장의 별', true);
   const requiredXp = requirement(player.avatar);
   const remainingXp = Math.max(0, requiredXp - player.avatar.xp);
   const starShards = Number.isSafeInteger(player.starShards) && player.starShards >= 0 ? player.starShards : 0;
-  const maxBuy = player.avatar.level === PROGRESSION.transcendentLevel ? 0 : Math.min(remainingXp, starShards);
-  return { avatar: structuredClone(player.avatar), requiredXp, remainingXp, starShards, maxBuy, canBuy: maxBuy > 0 };
+  const unlimitedShards = hasUnlimitedShards(player);
+  const maxBuy = player.avatar.level >= PROGRESSION.transcendentLevel ? 0 : Math.min(remainingXp, unlimitedShards ? remainingXp : starShards);
+  return { avatar: structuredClone(player.avatar), requiredXp, remainingXp, starShards, unlimitedShards, maxBuy, canBuy: maxBuy > 0 };
 }
 
 export function buyExperience(room, player, { amount } = {}) {
-  requireStudentAt(player, growthStar, '성장의 별');
+  requireStudentAt(player, growthStar, '성장의 별', true);
   ensure(player.avatar.level < PROGRESSION.transcendentLevel, '초월체는 경험치를 더 살 수 없어요.');
   ensure(Number.isSafeInteger(player.starShards) && player.starShards >= 0, '별 파편 잔액을 확인해주세요.');
   ensure(Number.isSafeInteger(amount) && amount > 0, '구매할 경험치는 1 이상의 정수로 입력해주세요.');
   const requiredXp = requirement(player.avatar);
-  const maxBuy = Math.min(Math.max(0, requiredXp - player.avatar.xp), player.starShards);
+  const remainingXp = Math.max(0, requiredXp - player.avatar.xp);
+  const maxBuy = hasUnlimitedShards(player) ? remainingXp : Math.min(remainingXp, player.starShards);
   ensure(maxBuy > 0, player.avatar.xp >= requiredXp ? '현재 단계의 경험치를 모두 채웠어요. 진화의 별로 가주세요.' : '별 파편이 부족해요.');
   ensure(amount <= maxBuy, '지금은 경험치를 최대 ' + maxBuy + '까지 살 수 있어요.');
 
   const nextAvatar = gainExperience(player.avatar, amount);
-  player.starShards -= amount;
+  player.starShards -= shardCost(player, amount);
   player.avatar = nextAvatar;
   return growthInfo(room, player);
 }

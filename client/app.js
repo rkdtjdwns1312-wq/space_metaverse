@@ -2,6 +2,7 @@ import {createCraftingUI} from './crafting-ui.js';
 import {createStarCardUI} from './star-card-ui.js';
 import {createInventoryPages} from './inventory-pages.js';
 import {sellQuote,sellPrice} from '/shared/item-pricing.js';
+import {formatShards,hasUnlimitedShards,shardCost} from '/shared/economy.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
 import {createStatusUI} from './status-ui.js';
@@ -293,8 +294,8 @@ function updateRoom(value){
   if(me?.avatar.blackStar)$('self-description').textContent='현재 검은별 상태입니다. 선생님이 해제하면 블랙홀 밖으로 나갈 수 있어요.';
   const myPlanet=me?.departmentId?planetById(me.departmentId):null,myPlanetIcon=templateOf(myPlanet?.templateId)?.icon;
   $('self-department').textContent=isTeacher?'선생님은 모든 행성에 들어갈 수 있어요.':myPlanet?'소속: '+(myPlanetIcon?myPlanetIcon+' ':'')+(myPlanet.name||''):'아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
-  $('self-shards').textContent=String(me?.starShards||0);
-  $('bag-currency').hidden=isTeacher; // 선생님은 지급하는 사람이라 잔액을 보여 주지 않습니다.
+  $('self-shards').textContent=formatShards(me);
+  $('bag-currency').hidden=false;
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
   vitals.update(me?.vitals);
@@ -997,7 +998,7 @@ $('pin-save').onclick=async()=>{
 };
 function myShards(){return room?.players.find(p=>p.id===selfId)?.starShards||0;}
 function myInventory(){return room?.players.find(p=>p.id===selfId)?.inventory||[];}
-function updateShopShards(){const n=myShards();$('shop-shards').textContent='내 별 파편 ★ '+n.toLocaleString('ko-KR');}
+function updateShopShards(){const me=room?.players.find(p=>p.id===selfId);$('shop-shards').textContent='내 별 파편 ★ '+formatShards(me);}
 // 목록을 다시 그릴 때 입력 중인 수량과 스크롤 위치를 유지합니다.
 function rerenderList(list,build){
   const prev=new Map([...list.querySelectorAll('li.item')].map(li=>[li.dataset.itemId,li.querySelector('.qty')?.value]));
@@ -1031,12 +1032,12 @@ function applyShopAck(reply){
   const me=room?.players.find(p=>p.id===selfId);
   if(me){me.starShards=reply.starShards;me.inventory=reply.inventory;}
   if(reply.shopDiscounts)room.shopDiscounts=reply.shopDiscounts;
-  $('self-shards').textContent=String(reply.starShards);
+  $('self-shards').textContent=formatShards(me);
   shopSig=shopSignature();
   updateShopShards();renderShopBuyList();renderShopSellList();renderBag(reply.inventory);
 }
 function renderShopBuyList(){
-  const shards=myShards();
+  const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=hasUnlimitedShards(me);
   const items=SHOP.items.filter(item=>shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
@@ -1061,15 +1062,16 @@ function renderShopBuyList(){
     const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='사기';
     const updatePrice=()=>{
       const quote=discountedPurchase(item.price,shopQty(qty),discounts);
-      price.textContent='합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
-      buy.disabled=shards<quote.cost;buy.title=buy.disabled?'별 파편이 부족해요.':'';
+      const cost=shardCost(me,quote.cost);
+      price.textContent=teacher?'교사 무료 · 합계 ★ 0':'합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
+      buy.disabled=shards<cost;buy.title=buy.disabled?'별 파편이 부족해요.':'';
     };
     qty.oninput=updatePrice;updatePrice();
     buy.onclick=async()=>{
       const quantity=shopQty(qty);
       try{
         const reply=await request('shop:buy',{itemId:item.id,quantity});
-        toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 반값 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+reply.starShards);
+        toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 반값 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+formatShards({...room?.players.find(p=>p.id===selfId),starShards:reply.starShards}));
         applyShopAck(reply);
       }catch(e){toast(e.message);}
     };
@@ -1101,7 +1103,7 @@ function renderShopSellList(){
       if(sellQuote(item,quantity).error){toast(pairOnly?'2개씩 묶어 팔아주세요.':'이 아이템의 판매 가격은 준비 중이에요.');return;}
       try{
         const reply=await request('shop:sell',{itemId:item.id,quantity});
-        toast(item.name+' '+quantity+'개를 팔았어요. 별 파편 ★ '+reply.starShards);
+        toast(item.name+' '+quantity+'개를 팔았어요. 별 파편 ★ '+formatShards({...room?.players.find(p=>p.id===selfId),starShards:reply.starShards}));
         applyShopAck(reply);
       }catch(e){toast(e.message);}
     };
