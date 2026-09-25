@@ -92,8 +92,10 @@ async function clearShopPath(page,p,shop){
   const direction=p.x<shop.x?'ArrowLeft':'ArrowRight';
   for(let i=0;i<12&&Math.abs(p.x-shop.x)<shop.radius+90;i++)await holdKey(page,direction,120);
   assert.ok(Math.abs(p.x-shop.x)>=shop.radius+90,'상점 옆 통로로 나와야 합니다');
-  for(let i=0;i<15&&p.y<460;i++)await holdKey(page,'ArrowDown',120);
-  assert.ok(p.y>=460,'상점 아래쪽 통로에 도착해야 합니다');
+  // 상점은 북쪽, 게임기는 남쪽에 있어 귀환문과 같은 높이의 통로가 비어 있습니다.
+  const corridorY=STREET.objects.find(o=>o.id==='gate-plaza').y;
+  for(let i=0;i<20&&Math.abs(p.y-corridorY)>25;i++)await holdKey(page,p.y<corridorY?'ArrowDown':'ArrowUp',70);
+  assert.ok(Math.abs(p.y-corridorY)<=25,'상점과 게임기 사이 통로에 도착해야 합니다');
   for(let i=0;i<25&&p.x>300;i++)await holdKey(page,'ArrowLeft',120);
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}

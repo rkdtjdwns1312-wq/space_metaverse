@@ -1,3 +1,5 @@
+import {useLv4Item,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,setLv4RewardMode,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
+import {LV4_HOLDING_READY} from '../shared/lv4-items.js';
 import express from 'express';
 import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops.js';
@@ -38,7 +40,7 @@ import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
-import {activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight,MAX_CARD_MARKERS} from './item-cards.js';
+import {hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight,MAX_CARD_MARKERS} from './item-cards.js';
 import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -154,7 +156,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
-    for(const p of room.players.values()){syncGalaxyHoldings(p,clock());syncLv3Holdings(p,clock());}
+    for(const p of room.players.values()){syncGalaxyHoldings(p,clock());syncLv3Holdings(p,clock());syncLv4Holdings(p,clock());}
     // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
     for(const planet of room.planets.values()) if(planet.work?.distribution) {
       reconcileMembership(room,planet,clock());
@@ -1039,11 +1041,17 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       whisper(room,p,'달토끼 뽑기: '+reward.text);
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
+    action('lv4:info',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return lv4Info(s.room,s.player);},false);
+    action('lv4:black-hole:preview',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');ensure(levelOf(s.player)>=4,'LV4부터 사용할 수 있어요.');return blackHolePreview(s.room,s.player,data.planetIds,clock());},false);
+    action('lv4:reward-mode',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');ensure(LV4_HOLDING_READY,'보유 보상 방식은 선생님 확인 후 열릴 예정이에요.');const r=setLv4RewardMode(s.player,data.mode,clock());roster(s.room);return r;});
+    action('lv4:teacher:end',data=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 종료할 수 있어요.');const p=s.room.players.get(data.targetId),m=p?.cardMarkers?.find(m=>m.id===data.markerId&&itemOf(m.itemId)?.mode==='lv4');ensure(m,'사용 기록을 찾지 못했어요.');p.cardMarkers=p.cardMarkers.filter(e=>e.id!==m.id);roster(s.room);return {message:'효과를 종료했어요.'};});
+    action('lv4:teacher:info',()=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 확인할 수 있어요.');return lv4TeacherInfo(s.room);},false);
+    action('lv4:teacher:confirm',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=confirmLv4(s.room,s.player,data,clock());roster(s.room);return r;});
     action('item:complete',data=>{
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 사용 중인 아이템을 처리 완료할 수 있어요.');
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
-      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&entry.remainingUses>0)));
+      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||itemOf(entry.itemId)?.mode==='lv4'))));
       ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
       ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
       if(marker.remainingUses>1)marker.remainingUses--;
@@ -1228,8 +1236,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         roster(room);
         return {message:result.message,inventory:[...p.inventory],starShards:p.starShards,avatar:{...p.avatar},starCard:cardReply(result.record)};
       }
-      if(item.mode==='lv2'||item.mode==='lv3'){
-        const outcome=item.mode==='lv3'?useLv3Item(room,p,item,data,clock()):useLv2Item(room,p,item,data,clock(),abilityDie);
+      if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='lv4'){
+        const outcome=item.mode==='lv4'?useLv4Item(room,p,item,data,clock()):item.mode==='lv3'?useLv3Item(room,p,item,data,clock()):useLv2Item(room,p,item,data,clock(),abilityDie);
         room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:outcome.targetIds[0],targetNickname:outcome.targetIds.map(id=>room.players.get(id)?.nickname||'').join(' · '),itemId:item.id,itemName:item.name,secret:false});
         if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
         announce(room,p.nickname+' 친구가 '+item.name+'을 사용했어요.');
@@ -1253,7 +1261,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const targets=second?[target,second]:[target];
       for(const recipient of targets){
         ensure(levelOf(p)>=levelOf(recipient),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-        ensure(!hasCardStatus(recipient,'little-moon-card',now)||item.mode==='moon','꼬마 달 보호 중인 친구는 다른 카드 효과를 받지 않아요.');
+        ensure(!hasItemImmunity(recipient,now)&&(!hasCardStatus(recipient,'little-moon-card',now)||item.mode==='moon'),'꼬마 달 보호 중인 친구는 다른 카드 효과를 받지 않아요.');
       }
       if(item.mode==='moon')ensure(!p.avatar.blackStar,'검은별 상태에서는 꼬마 달을 사용할 수 없어요.');
       if(item.mode==='uv')ensure(target.role==='student','학생 친구에게만 자외선을 적용할 수 있어요.');
@@ -1562,6 +1570,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         if(lv2ItemsDue(room,clock())){
           try{transaction(()=>{if(settleLv2Items(room,clock()))roster(room);});}
           catch(error){console.error('아이템 기간 보상 저장 실패:',error.message);continue;}
+        }
+        if(LV4_HOLDING_READY&&lv4ItemsDue(room,clock())){
+          try{transaction(()=>{if(settleLv4Items(room,clock()))roster(room);});}
+          catch(error){console.error('LV4 보유 보상 저장 실패:',error.message);continue;}
         }
         if(lv3ItemsDue(room,clock())){
           try{transaction(()=>{if(settleLv3Items(room,clock()))roster(room);});}

@@ -1,0 +1,30 @@
+.lv4-item-dialog{width:min(720px,calc(100vw - 24px));max-width:none;max-height:min(88dvh,900px);padding:0;border:1px solid #f0b0a6;border-radius:22px;background:#fffaf8;color:#44313a;box-shadow:0 24px 90px #321b2c55;overflow:hidden}
+.lv4-item-dialog::backdrop{background:#1c1538a8;backdrop-filter:blur(3px)}
+.lv4-body{box-sizing:border-box;max-height:88dvh;overflow:auto;padding:clamp(14px,4vw,26px);overscroll-behavior:contain}
+.lv4-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.lv4-header h2{margin:0;color:#a84f55;font-size:clamp(20px,5vw,27px);overflow-wrap:anywhere}
+.lv4-header button{border-color:#f0c0b4;background:#fff0eb;color:#914a50}
+.lv4-card,.lv4-controls,.lv4-teacher-row{min-width:0;margin:12px 0;padding:14px;border:1px solid #f0d0c6;border-radius:16px;background:#fff}
+.lv4-card{display:grid;grid-template-columns:minmax(100px,170px) minmax(0,1fr);align-items:center;gap:14px;background:linear-gradient(135deg,#fff0eb,#fff 60%,#fff7ed)}
+.lv4-card img{display:block;width:100%;max-height:180px;object-fit:contain;border-radius:12px}
+.lv4-card p,.lv4-body>p{margin:0;line-height:1.6;overflow-wrap:anywhere}
+.lv4-card>.lv4-note{grid-column:1/-1}
+.lv4-classification{grid-column:1/-1;color:#776789;font-size:13px}
+.lv4-body h3{margin:15px 0 6px;color:#a3555e;font-size:16px}
+.lv4-body ul{margin:5px 0 14px;padding-left:22px;line-height:1.6;overflow-wrap:anywhere}
+.lv4-controls{display:grid;gap:10px}
+.lv4-controls button,.lv4-header button,.lv4-teacher-row button{min-height:42px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.lv4-controls button.primary,.lv4-teacher-row button.primary{background:#c66b69;border-color:#b95c60;color:#fff}
+.lv4-controls select,.lv4-controls input,.lv4-teacher-row select,.lv4-teacher-row input{box-sizing:border-box;min-width:0;width:100%;height:44px}
+.lv4-field{display:grid;gap:5px;margin:0;color:#5b4c70;font-size:13px;font-weight:700;min-width:0}
+.lv4-role-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.lv4-check-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:7px;margin:0;padding:10px;border:1px solid #f0d0c6;border-radius:12px;min-width:0}
+.lv4-check-group legend{padding:0 5px;color:#5b4c70;font-weight:700;font-size:13px;white-space:normal}
+.lv4-check-option{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:7px;border-radius:9px;background:#fff6f2;font-size:13px;overflow-wrap:anywhere}
+.lv4-check-option input{flex:0 0 18px;width:18px;height:18px;margin:1px 0 0}
+.lv4-holding-date,.lv4-note{margin:0;color:#80636b;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.lv4-use-fee{margin:0;padding:10px 12px;border-left:4px solid #d47770;border-radius:8px;background:#fff0eb;color:#713e45;font-size:14px;font-weight:700;line-height:1.55;overflow-wrap:anywhere}
+.lv4-teacher-row h3{margin:0 0 6px;overflow-wrap:anywhere}
+.lv4-teacher-row p{margin:4px 0 10px;color:#75668a;line-height:1.5;overflow-wrap:anywhere}
+.lv4-teacher-row{display:grid;gap:9px}
+@media(max-width:420px){.lv4-item-dialog{width:calc(100vw - 16px);max-height:92dvh;border-radius:16px}.lv4-body{max-height:92dvh;padding:12px}.lv4-card{grid-template-columns:84px minmax(0,1fr);gap:10px;padding:10px}.lv4-card img{max-height:112px}.lv4-role-row{grid-template-columns:minmax(0,1fr)}.lv4-check-group{grid-template-columns:minmax(0,1fr)}.lv4-controls,.lv4-teacher-row{padding:10px}}

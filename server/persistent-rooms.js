@@ -1,3 +1,4 @@
+import {validateLv4State} from './lv4-item-effects.js';
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
@@ -55,7 +56,7 @@ export function toRecord(room) {
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
-      lv3State:validateLv3State(p.lv3State),
+      lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
@@ -107,7 +108,7 @@ export function fromRecord(r) {
     if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
     if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
     room.players.set(p.id,offline({...structuredClone(p),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
+      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();

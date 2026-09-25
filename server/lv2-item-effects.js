@@ -2,7 +2,7 @@ import {randomInt} from 'node:crypto';
 import {hasUnlimitedShards} from '../shared/economy.js';
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV2_ITEMS} from '../shared/lv2-items.js';
-import {addCardMarker, hasCardStatus, MAX_CARD_MARKERS} from './item-cards.js';
+import {addCardMarker, hasCardStatus, MAX_CARD_MARKERS, hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {clearBlackStar} from './warnings.js';
 import {ensure as fail} from './rooms.js';
@@ -77,7 +77,7 @@ export function hasLv2ItemBlock(player, now = Date.now()) {
 
 function sunWinner(player, now) {
   // One controlling effect per target; legacy duplicate markers cannot double tax.
-  return (player.cardMarkers || []).filter(marker => marker.itemId === 'sun-card' && active(marker, now))
+  return (player.cardMarkers || []).filter(marker => ['sun-card','total-eclipse-card'].includes(marker.itemId) && active(marker, now))
     .reduce((best, marker) => !best || (marker.fromLevel || 0) > (best.fromLevel || 0) ||
       ((marker.fromLevel || 0) === (best.fromLevel || 0) && (marker.at || 0) >= (best.at || 0)) ? marker : best, null);
 }
@@ -91,8 +91,9 @@ export function collectSunTax(room, actor, now = Date.now()) {
   if (hasUnlimitedShards(actor)) return {amount: 0, ownerIds: []};
   const marker = sunWinner(actor, now);
   const owner = marker && room.players.get(marker.fromId);
+  fail(marker?.itemId!=='total-eclipse-card'||(owner&&owner.id!==actor.id), '개기 일식 사용자를 찾지 못했어요. 선생님께 금지 효과 확인을 요청해주세요.');
   if (!owner || owner.id === actor.id) return {amount: 0, ownerIds: []};
-  fail(actor.starShards >= 1, '해 효과의 사용료 별 파편 1개가 부족해요.');
+  fail(actor.starShards >= 1, (marker.itemId==='total-eclipse-card'?'개기 일식 금지 상태입니다. 이번 한 번을 허용받을 ':'해 효과의 ')+'사용료 별 파편 1개가 부족해요.');
   fail(owner.starShards < SHARDS.max, '해 효과 사용자에게 별 파편을 더 보낼 수 없어요.');
   actor.starShards--;
   owner.starShards++;
@@ -127,7 +128,7 @@ function recipients(room, actor, item, data) {
   if (item.id === 'spaceship-card') fail(ids.includes(actor.id), '우주선은 나와 친구에게 함께 사용해요.');
   for (const target of targets) {
     fail(levelOf(actor) >= levelOf(target), '나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-    fail(!hasCardStatus(target, 'little-moon-card', data.now), '꼬마 달 보호 중에는 다른 카드 효과를 받지 않아요.');
+    fail(!hasCardStatus(target, 'little-moon-card', data.now) && !hasItemImmunity(target, data.now), '꼬마 달 보호 중에는 다른 카드 효과를 받지 않아요.');
   }
   return targets;
 }

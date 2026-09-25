@@ -1,4 +1,5 @@
 import {LV2_ITEMS} from './lv2-items.js';
+import {LV4_ITEMS} from './lv4-items.js';
 import {LV3_ITEMS} from './lv3-items.js';
 import {GOLD_CARD_ITEMS} from './star-cards.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
@@ -150,6 +151,7 @@ export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxSt
   {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 뒷면 카드 54장 중 하나를 골라 아이템·별 파편·경험치 보상을 받아요. 우주 먼지는 보상이 없어요.',art:'/assets/items/moon-rabbit-pastel.webp',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}},
   ...LV2_ITEMS,
   ...LV3_ITEMS,
+  ...LV4_ITEMS,
   ...GOLD_CARD_ITEMS,
   {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}}
 ] });

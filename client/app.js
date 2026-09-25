@@ -1,3 +1,4 @@
+import {createLv4ItemUI} from './lv4-item-ui.js';
 import {createCraftingUI} from './crafting-ui.js';
 import {createStarCardUI} from './star-card-ui.js';
 import {createInventoryPages} from './inventory-pages.js';
@@ -72,6 +73,7 @@ const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,onAr
 const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
 const temple=createTempleUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
 const craftingUI=createCraftingUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
+const lv4UI=createLv4ItemUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),stop,toast});
 const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;renderBag(myInventory());}});
@@ -345,7 +347,7 @@ function updateRoom(value){
   // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
   if(placing&&myMapId!==PLAZA_ID)stopPlacement();
-  $('teacher-tools').hidden=!isTeacher;
+  $('teacher-tools').hidden=!isTeacher;$('lv4-teacher-tools').hidden=!isTeacher;
   $('copy-student-link').hidden=!isTeacher;
   $('pin-panel').hidden=!isTeacher||room.persistent!==true||room.managedAccounts;
   $('trade-section').hidden=isTeacher; // 선생님은 거래 당사자가 아니라 제안 버튼을 숨깁니다.
@@ -405,7 +407,7 @@ function itemUseText(item){
   if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 다른 카드 효과를 막아요.';
   if(item.mode==='draw')return '뒷면 카드 54장 중 하나를 골라요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요.';
   if(item.usable===false)return '이 아이템의 사용 효과는 준비 중이에요.';
-  if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='star-card')return item.description;
+  if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='lv4'||item.mode==='star-card')return item.description;
   return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
 }
 function renderBag(inventory){
@@ -480,6 +482,7 @@ async function openUseDialog(item){
   if(me?.effects?.some(effect=>effect.itemId==='little-sun-card'&&(effect.until||0)>Date.now())&&item.mode!=='moon'){
     toast('자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요. 꼬마 달은 사용할 수 있어요.');return;
   }
+  if(item.mode==='lv4'){await lv4UI.open(item);return;}
   if(item.mode==='draw'){
     stop();$('draw-dialog').showModal();await loadRabbitDraw();return;
   }
@@ -492,7 +495,7 @@ async function openUseDialog(item){
   useItem=item;
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
-  $('use-effect').textContent=itemUseText(item);
+  $('use-effect').textContent=itemUseText(item)+(me?.effects?.some(e=>e.itemId==='total-eclipse-card'&&e.until>Date.now())?' · 개기 일식 금지 상태: 이번 아이템 1회 사용료로 별 파편 1개를 내요.':'');
   $('use-special').textContent=item.special||'';$('use-special').hidden=!item.special;
   $('use-secret-note').hidden=!item.secret;
   if(item.targets==='self-and-two'&&me?.role==='teacher'){toast('선생님은 이 아이템을 사용할 수 없어요.');return;}
@@ -1156,7 +1159,7 @@ function enter(result){
 }
 function reset(message){
   craftingUI.reset();
-  energyShopUI.reset();
+  energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();
   vitals.reset();
   accounts.reset();
@@ -1341,3 +1344,5 @@ setInterval(input,80);
 setInterval(()=>{if(room&&$('avatar-dialog').open)renderSelfEffects(room.players.find(p=>p.id===selfId));},1000);
 function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
 requestAnimationFrame(interactionFrame);controls();socket.connect();
+
+$('lv4-teacher-tools').onclick=()=>lv4UI.openTeacher();
