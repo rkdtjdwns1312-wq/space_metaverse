@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveLv2Price, deriveSellPrice, sellPrice, sellQuote } from '../shared/item-pricing.js';
+import { deriveLv2Price, deriveLv3Price, deriveSellPrice, sellPrice, sellQuote } from '../shared/item-pricing.js';
 
 test('LV1 price 1 sells only in even pairs and cannot lose on odd quantities', () => {
   assert.deepEqual(sellQuote({ level: 1, price: 1 }, 2), { gain: 1, quantity: 2 });
@@ -24,6 +24,26 @@ test('quantity is restricted to 1 through 10', () => {
 test('LV2 buy and sell use ingredient buy prices plus the fixed metadata rules', () => {
   assert.equal(deriveLv2Price(10), 15);
   assert.equal(deriveSellPrice(10), 5);
+});
+
+test('LV3 buy price adds ten to a safe non-negative ingredient total', () => {
+  assert.equal(deriveLv3Price(0), 10);
+  assert.equal(deriveLv3Price(25), 35);
+  assert.equal(deriveLv3Price(-1), null);
+  assert.equal(deriveLv3Price(1.5), null);
+  assert.equal(deriveLv3Price(Number.MAX_SAFE_INTEGER - 9), null);
+  assert.equal(deriveLv3Price(Number.MAX_SAFE_INTEGER - 10), Number.MAX_SAFE_INTEGER);
+});
+
+test('LV2 and resale formulas reject invalid inputs and unsafe addition overflow', () => {
+  for (const total of [-1, 1.5, Number.MAX_SAFE_INTEGER - 4, Number.MAX_SAFE_INTEGER]) {
+    assert.equal(deriveLv2Price(total), null);
+  }
+  for (const total of [-1, 1.5, Number.MAX_SAFE_INTEGER]) {
+    assert.equal(deriveSellPrice(total), null);
+  }
+  assert.equal(deriveSellPrice(0), 0);
+  assert.equal(deriveSellPrice(11), 6);
 });
 
 test('LV2 through LV4 sell prices use weighted ingredient totals and unit floor', () => {

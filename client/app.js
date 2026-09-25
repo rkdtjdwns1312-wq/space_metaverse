@@ -382,12 +382,14 @@ function itemVisual(item){
   const image=document.createElement('img');image.className='item-art';image.src=item.art;image.alt='';image.loading='lazy';return image;
 }
 function itemUseText(item){
+  if(item.passiveOnly)return item.description;
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
   if(item.mode==='meteor')return '선택한 부서가 나에게 준 활성 경고를 즉시 해제해요.';
   if(item.mode==='uv')return '지정한 친구가 오늘 자정까지 자외선 상태가 돼요.';
   if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 다른 카드 효과를 막아요.';
   if(item.mode==='draw')return '뒷면 카드 54장 중 하나를 골라요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요.';
-  if(item.mode==='lv2'||item.mode==='star-card'||item.usable===false)return item.description;
+  if(item.usable===false)return '이 아이템의 사용 효과는 준비 중이에요.';
+  if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='star-card')return item.description;
   return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
 }
 function renderBag(inventory){
@@ -431,7 +433,7 @@ function renderBagDetail(rows){
   if(item.special){const special=document.createElement('p');special.className='muted item-special';special.textContent=item.special;info.append(special);}
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
   use.textContent=item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
-  if(item.usable===false){use.disabled=true;use.textContent='효과 준비 중';}
+  if(item.usable===false){use.disabled=true;use.textContent=item.passiveOnly?'보유 중 자동 적용':'효과 준비 중';}
   use.onclick=()=>canUse?openUseDialog(item):toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
   const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보 보기';
   details.onclick=()=>{$('item-info-title').textContent=item.icon+' '+item.name;$('item-info-text').textContent=item.description+' · '+itemUseText(item)+(item.special?' · '+item.special:'')+' · LV '+item.level;$('item-info-dialog').showModal();};
@@ -456,7 +458,7 @@ function renderSelfEffects(me){
   $('self-effects').replaceChildren(...list.map(e=>{const li=document.createElement('li');li.textContent=effectText(e);return li;}));
 }
 async function openUseDialog(item){
-  if(item.usable===false){toast('별 카드의 종류와 효과는 준비 중이에요.');return;}
+  if(item.usable===false){toast('이 아이템의 사용 효과는 준비 중이에요.');return;}
   if(item.level>myLevel()){toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');return;}
   const me=room?.players.find(p=>p.id===selfId);
   if(me?.effects?.some(effect=>effect.itemId==='little-sun-card'&&(effect.until||0)>Date.now())&&item.mode!=='moon'){
@@ -477,20 +479,31 @@ async function openUseDialog(item){
   $('use-effect').textContent=itemUseText(item);
   $('use-special').textContent=item.special||'';$('use-special').hidden=!item.special;
   $('use-secret-note').hidden=!item.secret;
-  const others=['any','other','pair','three'].includes(item.targets)?room.players.filter(p=>p.id!==selfId&&p.connected&&p.role!=='teacher'):[];
+  if(item.targets==='self-and-two'&&me?.role==='teacher'){toast('선생님은 이 아이템을 사용할 수 없어요.');return;}
+  const others=['any','other','pair','three','self-and-two'].includes(item.targets)?room.players.filter(p=>p.id!==selfId&&p.connected&&p.role!=='teacher'):[];
   if(item.targets==='three'&&others.length<3){toast('사용할 학생 친구 3명이 필요해요.');return;}
   if(item.targets==='other'&&!others.length){toast('지금 아이템을 사용할 친구가 없어요.');return;}
   if(item.targets==='pair'&&others.length+(me?.role==='student'?1:0)<2){toast('자리를 바꿀 학생 친구 2명이 필요해요.');return;}
-  const targets=[...(item.targets==='other'||item.targets==='three'||(item.targets==='pair'&&me?.role!=='student')?[]:[{value:selfId,label:'나에게'}]),...others.map(p=>({value:p.id,label:p.nickname}))];
+  if(item.targets==='self-and-two'&&others.length<2){toast('함께 지정할 접속 학생 친구 2명이 필요해요.');return;}
+  const selfAndTwo=item.targets==='self-and-two';
+  const targets=[...(item.targets==='other'||item.targets==='three'||selfAndTwo||(item.targets==='pair'&&me?.role!=='student')?[]:[{value:selfId,label:'나에게'}]),...others.map(p=>({value:p.id,label:p.nickname}))];
   $('use-target').replaceChildren(...targets.map(o=>{
     const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.label;return opt;
   }));
-  $('use-second-target-row').hidden=!['pair','three'].includes(item.targets);
+  $('use-second-target-row').hidden=!['pair','three','self-and-two'].includes(item.targets);
+  document.querySelector('label[for="use-target"]').textContent=selfAndTwo?'내 앞의 친구':'누구에게';
+  $('use-second-target-row').querySelector('label').textContent=selfAndTwo?'내 뒤의 친구':'자리를 바꿀 다른 친구';
   $('use-second-target').replaceChildren(...targets.map(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.label;return opt;}));
   if(['pair','three'].includes(item.targets))$('use-second-target').value=targets.find(o=>o.value!==$('use-target').value)?.value||'';
+  if(selfAndTwo){$('use-target').value=targets.find(o=>o.value!==selfId)?.value||'';$('use-second-target').value=targets.find(o=>o.value!==selfId&&o.value!==$('use-target').value)?.value||'';}
+  $('use-target').disabled=false;
+  $('use-target').onchange=()=>{if(selfAndTwo&&$('use-target').value===$('use-second-target').value){$('use-second-target').value=targets.find(o=>o.value!==selfId&&o.value!==$('use-target').value)?.value||'';}};
+  $('use-second-target').onchange=()=>{if(selfAndTwo&&$('use-second-target').value===$('use-target').value){$('use-second-target').value=targets.find(o=>o.value!==selfId&&o.value!==$('use-target').value)?.value||'';}};
   $('use-third-target-row').hidden=item.targets!=='three';
+  $('use-third-target-row').querySelector('label').textContent='세 번째 친구';
   $('use-third-target').replaceChildren(...targets.map(o=>new Option(o.label,o.value)));
   if(item.targets==='three')$('use-third-target').value=targets[2]?.value||'';
+  $('use-third-target').onchange=null;
   $('use-planet-row').hidden=item.mode!=='meteor';
   $('use-planet').replaceChildren(...meteorOptions.map(planet=>{
     const option=document.createElement('option');option.value=planet.id;option.textContent=planet.name+' · 내 경고 '+planet.count+'건';return option;
@@ -502,7 +515,7 @@ $('use-confirm').onclick=async()=>{
   const targetId=$('use-target').value;
   try{
     const reply=await request('item:use',{itemId:useItem.id,targetId,
-      ...(['pair','three'].includes(useItem.targets)?{secondTargetId:$('use-second-target').value}:{}),
+      ...(['pair','three','self-and-two'].includes(useItem.targets)?{secondTargetId:$('use-second-target').value}:{}),
       ...(useItem.targets==='three'?{targetIds:[targetId,$('use-second-target').value,$('use-third-target').value]}:{}),
       ...(useItem.mode==='meteor'?{planetId:$('use-planet').value}:{})});
     const me=room?.players.find(p=>p.id===selfId);
@@ -1012,7 +1025,7 @@ function applyShopAck(reply){
 }
 function renderShopBuyList(){
   const shards=myShards();
-  const items=SHOP.items.filter(item=>item.forSale!==false&&shopItemLevel(item)===shopLevel);
+  const items=SHOP.items.filter(item=>shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
@@ -1025,13 +1038,18 @@ function renderShopBuyList(){
     info.append(name,desc);
     if(item.special){const special=document.createElement('p');special.className='muted item-special';special.textContent=item.special;info.append(special);}
     const row=document.createElement('div');row.className='item-actions';
+    if(item.pricePending===true&&item.forSale===false){
+      const pending=document.createElement('span');pending.className='price';pending.textContent='가격 준비 중';
+      const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='가격 준비 중';buy.disabled=true;
+      row.append(pending,buy);li.append(icon,info,row);return li;
+    }
     const discounts=room?.shopDiscounts?.[item.id]||0;
     const price=document.createElement('span');price.className='price';
     const qty=document.createElement('input');qty.type='number';qty.min='1';qty.max='10';qty.value='1';qty.className='qty';qty.setAttribute('aria-label','수량');
     const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='사기';
     const updatePrice=()=>{
       const quote=discountedPurchase(item.price,shopQty(qty),discounts);
-      price.textContent='합계 ★ '+quote.cost+(quote.discounted?' · 토성 할인 '+quote.discounted+'개':'');
+      price.textContent='합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
       buy.disabled=shards<quote.cost;buy.title=buy.disabled?'별 파편이 부족해요.':'';
     };
     qty.oninput=updatePrice;updatePrice();
@@ -1039,7 +1057,7 @@ function renderShopBuyList(){
       const quantity=shopQty(qty);
       try{
         const reply=await request('shop:buy',{itemId:item.id,quantity});
-        toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 토성 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+reply.starShards);
+        toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 반값 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+reply.starShards);
         applyShopAck(reply);
       }catch(e){toast(e.message);}
     };

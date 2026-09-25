@@ -14,6 +14,7 @@ import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
 import {validateStarCards} from './star-cards.js';
+import {validateLv3State} from './lv3-item-effects.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 export const PIN_RULES = { attempts:5, lockMs:60_000 };
@@ -54,6 +55,7 @@ export function toRecord(room) {
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
+      lv3State:validateLv3State(p.lv3State),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
@@ -102,7 +104,7 @@ export function fromRecord(r) {
     if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
     if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
     room.players.set(p.id,offline({...structuredClone(p),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      lv2State:structuredClone(lv2State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
+      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();

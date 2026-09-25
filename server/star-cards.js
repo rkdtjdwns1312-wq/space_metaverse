@@ -9,6 +9,7 @@ import {hasCardStatus, nextKoreaMidnight} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {hasLv2ItemBlock, collectSunTax, acquireGalaxy} from './lv2-item-effects.js';
 import {clearBlackStar} from './warnings.js';
+import {availableSupernovas, consumeSupernovas} from './lv3-item-effects.js';
 
 const DAY = 86_400_000;
 const PLANETS = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
@@ -269,15 +270,17 @@ export function starCardShopDiscounts(room, player, now = Date.now()) {
   if (!player || room.players.get(player.id) !== player) return {};
   const cards = automatedCards(room, 'saturn', now).filter(c => c.userId === player.id);
   return Object.fromEntries(SHOP.items.filter(item => item.forSale !== false).map(item =>
-    [item.id, cards.filter(c => !c.data.automation.usedItems.includes(item.id)).length]).filter(([, count]) => count));
+    [item.id, cards.filter(c => !c.data.automation.usedItems.includes(item.id)).length + availableSupernovas(player, now).length]).filter(([, count]) => count));
 }
 export function starCardPurchaseQuote(room, player, item, quantity, now = Date.now()) {
   const cards = automatedCards(room, 'saturn', now).filter(c => c.userId === player.id && !c.data.automation.usedItems.includes(item.id)).slice(0, quantity);
-  return {...discountedPurchase(item.price, quantity, cards.length), cardIds: cards.map(c => c.id)};
+  const supernovaIds = availableSupernovas(player, now).slice(0, Math.max(0, quantity - cards.length));
+  return {...discountedPurchase(item.price, quantity, cards.length + supernovaIds.length), cardIds: cards.map(c => c.id), supernovaIds};
 }
-export function consumeStarCardDiscounts(room, itemId, quote) {
+export function consumeStarCardDiscounts(room, itemId, quote, player, now = Date.now()) {
   // Call only after every purchase check succeeds, inside the purchase transaction.
   for (const id of quote.cardIds) room.starCards.find(c => c.id === id).data.automation.usedItems.push(itemId);
+  if (player) consumeSupernovas(player, quote.supernovaIds || [], now);
 }
 
 export function starCardChoiceInfo(room, player, record) {

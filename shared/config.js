@@ -1,4 +1,5 @@
 import {LV2_ITEMS} from './lv2-items.js';
+import {LV3_ITEMS} from './lv3-items.js';
 import {GOLD_CARD_ITEMS} from './star-cards.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
@@ -146,6 +147,7 @@ export const SHOP = Object.freeze({ sellRate: 0.5, maxStack: 99, maxKinds: 40, i
   {id:'little-moon-card',name:'꼬마 달',description:'마치기 전 청소를 면제받고 조금 일찍 갑니다.',special:'자외선을 즉시 해제하고 오늘 자정까지 다른 카드 효과를 받지 않아요. 검은별 상태에서는 사용할 수 없어요.',art:'/assets/items/little-moon-pastel.webp',icon:'🌙',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'moon',effect:{label:'꼬마 달 보호',icon:'🌙',durationMs:0,style:'moon'}},
   {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 뒷면 카드 54장 중 하나를 골라 아이템·별 파편·경험치 보상을 받아요. 우주 먼지는 보상이 없어요.',art:'/assets/items/moon-rabbit-pastel.webp',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}},
   ...LV2_ITEMS,
+  ...LV3_ITEMS,
   ...GOLD_CARD_ITEMS,
   {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}}
 ] });

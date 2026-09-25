@@ -26,11 +26,21 @@ export function sellPrice(item) {
 }
 
 export function deriveLv2Price(ingredientBuyTotal) {
-  return integer(ingredientBuyTotal) ? ingredientBuyTotal + 5 : null;
+  if (!integer(ingredientBuyTotal)) return null;
+  const price = ingredientBuyTotal + 5;
+  return integer(price) ? price : null;
+}
+
+export function deriveLv3Price(ingredientBuyTotal) {
+  if (!integer(ingredientBuyTotal)) return null;
+  const price = ingredientBuyTotal + 10;
+  return integer(price) ? price : null;
 }
 
 export function deriveSellPrice(ingredientBuyTotal) {
-  return integer(ingredientBuyTotal) ? Math.floor((ingredientBuyTotal + 1) / 2) : null;
+  if (!integer(ingredientBuyTotal)) return null;
+  const roundedTotal = ingredientBuyTotal + 1;
+  return integer(roundedTotal) ? Math.floor(roundedTotal / 2) : null;
 }
 
 export function sellQuote(item, quantity) {

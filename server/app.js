@@ -20,6 +20,7 @@ import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue
   chooseStarCard,starCardChoiceInfo,requireStarCardItemAccess,starCardShopDiscounts,starCardPurchaseQuote,consumeStarCardDiscounts} from './star-cards.js';
 import {starCardOf} from '../shared/star-cards.js';
 import {useLv2Item,settleLv2Items,hasLv2ItemBlock,collectSunTax,syncGalaxyHoldings,lv2ItemsDue} from './lv2-item-effects.js';
+import {useLv3Item, syncLv3Holdings, settleLv3Items, lv3ItemsDue} from './lv3-item-effects.js';
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
@@ -151,7 +152,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
-    for(const p of room.players.values())syncGalaxyHoldings(p,clock());
+    for(const p of room.players.values()){syncGalaxyHoldings(p,clock());syncLv3Holdings(p,clock());}
     // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
     for(const planet of room.planets.values()) if(planet.work?.distribution) {
       reconcileMembership(room,planet,clock());
@@ -913,6 +914,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
       ensure(item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
+      ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 구매 가격이 정해지지 않았어요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       const quote=starCardPurchaseQuote(room,p,item,quantity,clock()),cost=quote.cost;
@@ -931,7 +933,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         p.inventory.push({id:item.id,quantity:totalQuantity});
       }
       p.starShards-=cost;
-      consumeStarCardDiscounts(room,item.id,quote);
+      consumeStarCardDiscounts(room,item.id,quote,p,clock());
       if(copyPending)p.abilityState.pending=null;
       roster(room);
       return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null,
@@ -1189,7 +1191,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       requireStarCardItemAccess(room,p,clock());
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
-      ensure(item.usable!==false,'별 카드의 종류와 효과는 준비 중이에요.');
+      ensure(item.usable!==false,'이 아이템의 사용 효과는 준비 중이에요.');
       if(item.mode==='star-card'){
         const result=item.id==='star-card'?useStarCard(room,p,clock(),starCardRandom):useTypedStarCard(room,p,item.id,clock(),starCardRandom);
         room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:p.id,targetNickname:p.nickname,itemId:item.id,itemName:result.card.name,secret:false});
@@ -1198,8 +1200,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         roster(room);
         return {message:result.message,inventory:[...p.inventory],starShards:p.starShards,avatar:{...p.avatar},starCard:cardReply(result.record)};
       }
-      if(item.mode==='lv2'){
-        const outcome=useLv2Item(room,p,item,data,clock(),abilityDie);
+      if(item.mode==='lv2'||item.mode==='lv3'){
+        const outcome=item.mode==='lv3'?useLv3Item(room,p,item,data,clock()):useLv2Item(room,p,item,data,clock(),abilityDie);
         room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:outcome.targetIds[0],targetNickname:outcome.targetIds.map(id=>room.players.get(id)?.nickname||'').join(' · '),itemId:item.id,itemName:item.name,secret:false});
         if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
         announce(room,p.nickname+' 친구가 '+item.name+'을 사용했어요.');
@@ -1532,6 +1534,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         if(lv2ItemsDue(room,clock())){
           try{transaction(()=>{if(settleLv2Items(room,clock()))roster(room);});}
           catch(error){console.error('아이템 기간 보상 저장 실패:',error.message);continue;}
+        }
+        if(lv3ItemsDue(room,clock())){
+          try{transaction(()=>{if(settleLv3Items(room,clock()))roster(room);});}
+          catch(error){console.error('LV3 아이템 기간 보상 저장 실패:',error.message);continue;}
         }
         const abilityNow=clock();
         const abilityDue=[...room.players.values()].some(p=>(p.abilityState?.blocks||[]).some(block=>

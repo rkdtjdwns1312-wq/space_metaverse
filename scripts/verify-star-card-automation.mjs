@@ -103,7 +103,7 @@ try {
   const row = page.locator(`#shop-buy-list [data-item-id="${item.id}"]`).first();
   await row.locator('.qty').fill('2');
   const cost = Math.floor(item.price / 2) + item.price;
-  assert.match(await row.locator('.price').innerText(), new RegExp(`합계 ★ ${cost} · 토성 할인 1개`));
+  assert.match(await row.locator('.price').innerText(), new RegExp(`합계 ★ ${cost} · 반값 할인 1개`));
   publish(); await page.waitForTimeout(200);
   await row.locator('.buy').click();
   await page.waitForFunction(balance => document.getElementById('self-shards').textContent === String(balance), 100 - cost);
