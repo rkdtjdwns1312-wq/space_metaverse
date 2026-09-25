@@ -9,7 +9,7 @@ export function nextKoreaMidnight(now=Date.now()){
 }
 
 export function activeCardMarkers(player,now=Date.now()){
-  return (player.cardMarkers||[]).filter(marker=>marker.until===null||marker.until>now);
+  return (player.cardMarkers||[]).filter(marker=>marker.itemId!=='moon-rabbit-card'&&(marker.until===null||marker.until>now));
 }
 
 export function hasCardStatus(player,itemId,now=Date.now()){

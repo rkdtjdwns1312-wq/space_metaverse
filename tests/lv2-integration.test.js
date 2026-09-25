@@ -264,7 +264,7 @@ test('expired unpaid rabbit reward survives a successful LV1 manual-card use', a
   assert.ok(f.record().students.find(p => p.id === f.actor.id).cardMarkers.some(m => m.id === 'unpaid-rabbit'));
 });
 
-test('draw-start exceeds 50 records and preserves pending rewards after restart', async t => {
+test('instant draw adds no effect record and preserves 50 pending rewards after restart', async t => {
   const f = await fixture(t);
   f.seed(a => {
     a.inventory = [{id: 'star-card', quantity: SHOP.maxStack}, {id: 'moon-rabbit-card', quantity: 1}];
@@ -274,11 +274,11 @@ test('draw-start exceeds 50 records and preserves pending rewards after restart'
   });
   const result = await call(f.first, 'draw:start');
   assert.ok(result.ok,result.error);
-  assert.equal(f.actor.cardMarkers.length,51);
+  assert.equal(f.actor.cardMarkers.length,50);
   assert.equal(quantity(f.actor,'moon-rabbit-card'),0);
   const drawId=f.actor.rabbitDraw.id;
   await f.restart();
-  assert.equal(f.actor.cardMarkers.length,51);
+  assert.equal(f.actor.cardMarkers.length,50);
   assert.equal(f.actor.cardMarkers.filter(m=>m.pendingGrant).length,50);
   assert.equal(f.actor.rabbitDraw.id,drawId);
   assert.doesNotThrow(() => fromRecord(f.record()));

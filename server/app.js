@@ -1050,14 +1050,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
       ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
-      const retainedMarkers=(p.cardMarkers||[]).filter(marker=>marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card');
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       collectSunTax(room,p,now);
       owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
       p.lastItemUseAt=now;p.rabbitUsedDay=koreaDay(now);
-      p.cardMarkers=retainedMarkers;
-      const draw=createRabbitDraw(now),marker=addCardMarker(p,item,p,null,'뽑기 진행 중');
-      draw.markerId=marker.id;p.rabbitDraw=draw;
+      // 즉시 뽑기는 지속 효과가 아닙니다. 미완료 뽑기는 별도 상태로만 저장합니다.
+      const draw=createRabbitDraw(now);p.rabbitDraw=draw;
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:p.id,
         targetNickname:p.nickname,itemId:item.id,itemName:item.name,secret:false});
       if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
@@ -1072,8 +1070,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const card=draw.cards[0];
       ensure(card,'뽑기 카드를 찾지 못했어요.');
       const reward=awardDrawReward(p,card.reward);p.rabbitDraw=null;
-      const marker=p.cardMarkers?.find(entry=>entry.id===draw.markerId);
-      if(marker)marker.note=('당첨: '+reward.text).slice(0,80);
+      p.cardMarkers=(p.cardMarkers||[]).filter(marker=>marker.itemId!=='moon-rabbit-card');
       whisper(room,p,'달토끼 뽑기: '+reward.text);
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
@@ -1087,7 +1084,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 사용 중인 아이템을 처리 완료할 수 있어요.');
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
-      const marker=target?.cardMarkers?.find(entry=>entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||itemOf(entry.itemId)?.mode==='lv4'))));
+      const marker=target?.cardMarkers?.find(entry=>entry.itemId!=='moon-rabbit-card'&&entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||itemOf(entry.itemId)?.mode==='lv4'))));
       ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
       ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
       if(marker.remainingUses>1)marker.remainingUses--;

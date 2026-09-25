@@ -394,3 +394,7 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 
 /* 교실 메뉴: 운영 버튼은 한 줄에 하나씩, 교실 코드 영역은 별도 묶음. */
 body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#menu-dialog .topline-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}#menu-dialog .topline-actions>button{width:100%;justify-content:center}#menu-dialog #room-badge{flex-wrap:wrap;justify-content:center;max-width:100%;margin-bottom:8px}#menu-dialog #my-password{width:100%;margin-bottom:12px}
+
+/* 운영 도구의 번호 제목은 상단 제목과 동일한 크기를 사용합니다. */
+#teacher-dialog{--teacher-heading-size:24px}
+#teacher-dialog>h2,#teacher-dialog>section>h3{font-size:var(--teacher-heading-size);line-height:1.4;overflow-wrap:anywhere}

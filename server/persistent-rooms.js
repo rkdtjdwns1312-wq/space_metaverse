@@ -103,11 +103,14 @@ export function fromRecord(r) {
     if(avatar.level>=PROGRESSION.transcendentLevel){avatar.level=PROGRESSION.transcendentLevel;avatar.form='transcendent';avatar.xp=0;}
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
-    const cardMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
+    const savedMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
     const lv2State=p.lv2State||{galaxyNextAt:[]};
     if(!Array.isArray(lv2State.galaxyNextAt)||lv2State.galaxyNextAt.length>2||lv2State.galaxyNextAt.some(n=>!Number.isSafeInteger(n)||n<0))bad();
     if(p.rabbitUsedDay!==undefined&&p.rabbitUsedDay!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(p.rabbitUsedDay))bad();
-    if(rabbitDraw&&!cardMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
+    if(rabbitDraw?.markerId&&!savedMarkers.some(marker=>marker.id===rabbitDraw.markerId&&marker.itemId==='moon-rabbit-card'))bad();
+    // 옛 달토끼 효과 기록만 정리하고 진행 중인 뽑기·보상 순서는 보존합니다.
+    const cardMarkers=savedMarkers.filter(marker=>marker.itemId!=='moon-rabbit-card');
+    if(rabbitDraw)rabbitDraw.markerId=null;
     room.players.set(p.id,offline({...structuredClone(p),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }

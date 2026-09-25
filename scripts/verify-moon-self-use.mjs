@@ -41,6 +41,7 @@ try{
  const pillar=MAP.objects.find(o=>o.id==='pillar-effects');Object.assign(p,{mapId:PLAZA_ID,x:pillar.x,y:pillar.y});publish();
  await page.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor();await page.locator('#touch-interact').click();
  await page.locator('#temple-dialog').waitFor({state:'visible'});
+ await page.locator('[data-effect-row]').filter({hasText:'우주 식량'}).nth(1).waitFor();
  assert.equal(await page.locator('[data-effect-row]').filter({hasText:'우주 식량'}).count(),2);
  await page.screenshot({path:'.local/235-food-moon-board.png'});assert.deepEqual(errors,[]);
  await page.locator('#temple-close').click();p.inventory.push({id:'moon-rabbit-card',quantity:1});p.lastItemUseAt=0;publish();
@@ -51,6 +52,13 @@ try{
  await page.locator('#draw-spread .draw-deck').evaluate(button=>{button.click();button.click();});
  await page.locator('#draw-spread .revealed').waitFor();assert.equal(p.rabbitDraw,null);assert.equal(p.inventory.some(i=>i.id==='moon-rabbit-card'),false);
  await page.screenshot({path:'.local/236-rabbit-result.png'});assert.deepEqual(errors,[]);
+ assert.equal(p.cardMarkers.some(m=>m.itemId==='moon-rabbit-card'),false);
+ await page.locator('#draw-close').click();await page.locator('[data-close="inventory-dialog"]').click();await page.setViewportSize({width:1440,height:960});
+ const teacherPlayer=[...room.players.values()].find(p=>p.role==='teacher');Object.assign(teacherPlayer,{mapId:PLAZA_ID,x:pillar.x,y:pillar.y});game.io.to(teacherPlayer.socketId).emit('room:state',game.store.snapshot(room,teacherPlayer));
+ await teacher.locator('#interact-prompt').filter({hasText:pillar.name}).waitFor();await teacher.locator('#touch-interact').click();await teacher.locator('#temple-dialog').waitFor();
+ await teacher.locator('[data-effect-row]').filter({hasText:'우주 식량'}).nth(1).waitFor();
+ assert.equal(await teacher.locator('[data-effect-row]').filter({hasText:'달토끼'}).count(),0);assert.equal(await teacher.locator('[data-effect-row]').filter({hasText:'우주 식량'}).count(),2);
+ await teacher.screenshot({path:'.local/244-rabbit-not-active.png'});assert.deepEqual(errors,[]);console.log('PASS: 달토끼 즉시 완료, 교사 사용중 목록 제외, 기존 음식 처리 기록 보존');
  console.log('PASS: 달 보호 중에도 카드 더미 하나 클릭으로 뽑기·보상, 연속 클릭 중복 소모 없음, 390px 화면');
  console.log('PASS: 실제 가방 우주식량 사용 → 꼬마달 → 우주식량 재사용, 수량소모·보호유지·기둥2건·오류0');
 }finally{await browser.close();await game.close();await rm(dir,{recursive:true,force:true});}

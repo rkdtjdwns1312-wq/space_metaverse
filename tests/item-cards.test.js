@@ -96,6 +96,7 @@ test('달토끼 54장 보상 객체 뽑기는 하루 한 번만 사용한다',as
   const start=await call(first,'draw:start');assert.ok(start.ok,start.error);
   assert.equal(start.draw.count,RABBIT_DRAW_COUNT);assert.equal(start.draw.cards,undefined);
   assert.equal(student.inventory[0].quantity,1);
+  assert.equal(student.rabbitDraw.markerId,null);assert.equal(student.cardMarkers.some(m=>m.itemId==='moon-rabbit-card'),false);
   const again=await call(first,'draw:start');assert.equal(again.draw.id,start.draw.id);
   const status=await call(first,'draw:status');assert.equal(status.draw.id,start.draw.id);
   assert.equal((await call(first,'item:use',{itemId:'moon-rabbit-card',targetId:a.selfId})).ok,false);
@@ -108,7 +109,7 @@ test('달토끼 54장 보상 객체 뽑기는 하루 한 번만 사용한다',as
   assert.equal((await call(first,'draw:pick',{drawId:start.draw.id,cardId:serverKnownShards4Card.id})).ok,false);
   assert.match((await call(first,'draw:start')).error,/하루에 한 번/);
   assert.equal(student.inventory[0].quantity,1);
-  assert.match(student.cardMarkers[0].note,/당첨/);
+  assert.equal(student.cardMarkers.some(m=>m.itemId==='moon-rabbit-card'),false);
 });
 
 test('우주복은 두 명을 지정해야 하며 양쪽 사용 기록에 상대 이름이 남는다',async t=>{
@@ -138,12 +139,20 @@ test('자외선과 현실 교실 처리 대기 카드는 교실 재시작 뒤에
   assert.ok((await call(first,'item:use',{itemId:'little-sun-card',targetId:b.selfId})).ok);
   sender.inventory=[{id:'moon-rabbit-card',quantity:2}];sender.lastItemUseAt=0;
   const pending=await call(first,'draw:start');assert.ok(pending.ok,pending.error);
+  // 이전 버전의 진행 중/완료된 달토끼 기록이 섞인 저장을 재현합니다.
+  game.store.transact(()=>{
+    sender.rabbitDraw.markerId='legacy-pending';
+    sender.cardMarkers.push({id:'legacy-pending',itemId:'moon-rabbit-card',until:null,fromId:sender.id,fromNickname:sender.nickname,note:'뽑기 진행 중'});
+    target.cardMarkers.push({id:'legacy-done',itemId:'moon-rabbit-card',until:null,fromId:target.id,fromNickname:target.nickname,note:'당첨: 별 파편'});
+  });
   await game.close();game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false});address=await game.listen();
   assert.ok((await call(await connect(),'room:open',{teacherKey:key,code:created.room.code})).ok);
   const rabbitSocket=await connect(),rabbitJoined=await call(rabbitSocket,'room:join',{code:created.room.code,nickname:'별이',pin:'1234'});
   assert.ok(rabbitJoined.ok,rabbitJoined.error);
   const resumed=await call(rabbitSocket,'draw:status');assert.equal(resumed.draw.id,pending.draw.id);
   assert.deepEqual(resumed.draw,pending.draw);
+  const resumedPlayer=game.store.rooms.get(created.room.code).players.get(rabbitJoined.selfId);
+  assert.equal(resumedPlayer.rabbitDraw.markerId,null);assert.equal(resumedPlayer.cardMarkers.some(m=>m.itemId==='moon-rabbit-card'),false);
   const picked=await call(rabbitSocket,'draw:pick',{drawId:pending.draw.id});
   assert.ok(picked.ok,picked.error);assert.match((await call(rabbitSocket,'draw:start')).error,/하루에 한 번/);
   const returning=await connect(),joined=await call(returning,'room:join',{code:created.room.code,nickname:'달이',pin:'5678'});
@@ -179,4 +188,13 @@ test('카드 더미 보상 실패는 같은 카드를 유지하고 중복 클릭
  p.inventory.find(i=>i.id==='space-food-card').quantity=98;
  const replies=await Promise.all([call(first,'draw:pick',{drawId:start.draw.id}),call(first,'draw:pick',{drawId:start.draw.id})]);
  assert.equal(replies.filter(r=>r.ok).length,1);assert.equal(p.inventory[0].quantity,99);assert.equal(p.rabbitDraw,null);
+});
+
+
+test('달토끼의 옛 지속 기록은 학생·교사 효과 목록과 교사 완료 대상에서 제외한다',async t=>{
+ const {game,room,teacher,a}=await fixture(t),student=room.players.get(a.selfId),teacherPlayer=[...room.players.values()].find(p=>p.role==='teacher');
+ student.cardMarkers=[{id:'old-rabbit',itemId:'moon-rabbit-card',until:null,fromId:student.id,fromNickname:student.nickname,note:'당첨 완료'}];
+ for(const viewer of [student,teacherPlayer])assert.equal(game.store.snapshot(room,viewer).players.find(p=>p.id===student.id).effects.some(e=>e.itemId==='moon-rabbit-card'),false);
+ const pillar=MAP.objects.find(o=>o.id==='pillar-effects');Object.assign(teacherPlayer,{mapId:PLAZA_ID,x:pillar.x,y:pillar.y});
+ assert.equal((await call(teacher,'item:complete',{objectId:pillar.id,targetId:student.id,markerId:'old-rabbit'})).ok,false);
 });
