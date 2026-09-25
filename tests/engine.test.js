@@ -47,10 +47,10 @@ test('movement is normalized and ignores client-selected coordinates or speed',(
  assert.ok(Math.abs(Math.hypot(player.x-start.x,player.y-start.y)-RULES.speed*.05)<1e-8);
  const x=player.x;advance(room,2000);assert.equal(player.x,x);
 });
-test('world boundary and the star block movement',()=>{
+test('world boundary and a temple pillar block movement',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
  player.x=RULES.radius;player.y=400;player.input={x:-1,y:0,at:0};advance(room,0);assert.equal(player.x,RULES.radius);
- assert.equal(isFree(room,MAP.objects[0].x,MAP.objects[0].y,player.id),false);
+ assert.equal(isFree(room,MAP.objects.find(o=>o.id==='pillar-notice').x,MAP.objects.find(o=>o.id==='pillar-notice').y,player.id),false);
 });
 test('placementFree keeps new planets away from the star, other planets and pending proposals',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'t');

@@ -5,8 +5,8 @@ import {currentWeekRecords} from './weekly-ranking.js';
 
 export const DODGE_RULES=Object.freeze({
   width:600,height:420,playerRadius:14,playerSpeed:230,starRadius:10,
-  baseWaveCount:2,waveMs:5000,baseStarSpeed:82,speedStep:7,
-  inputStaleMs:300,maxStepMs:50,maxActiveStars:120,top:10
+  baseWaveCount:2,waveMs:4000,baseStarSpeed:82,speedStep:7,
+  inputStaleMs:300,maxStepMs:50,broadcastMs:50,maxActiveStars:120,top:10
 });
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -102,7 +102,7 @@ export function startDodgeRun(room,player,now=performance.now()){
   ensure(room.dodgeRuns.get(player.id)?.status!=='pending','끝난 기록을 저장하는 중이에요. 잠시만 기다려주세요.');
   const run={
     runId:randomUUID(),playerId:player.id,status:'running',startedAt:now,lastAdvancedAt:now,
-    elapsedMs:0,lastBroadcastElapsedMs:0,waveIndex:0,starSpeed:DODGE_RULES.baseStarSpeed,starSerial:0,stars:[],
+    elapsedMs:0,lastBroadcastAt:now,waveIndex:0,starSpeed:DODGE_RULES.baseStarSpeed,starSerial:0,stars:[],
     playerBody:{x:DODGE_RULES.width/2,y:DODGE_RULES.height/2,radius:DODGE_RULES.playerRadius},
     input:{x:0,y:0,at:now}
   };
@@ -164,8 +164,9 @@ export function advanceDodgeRuns(room,now=performance.now()){
       continue;
     }
     run.stars=run.stars.filter(star=>!naturallyGone(star));
-    if(run.elapsedMs-run.lastBroadcastElapsedMs>=100){
-      run.lastBroadcastElapsedMs=run.elapsedMs;
+    // Allow sub-millisecond timer jitter without skipping an otherwise 50ms broadcast.
+    if(now-run.lastBroadcastAt>=DODGE_RULES.broadcastMs-0.5){
+      run.lastBroadcastAt=now;
       updates.push({playerId,state:stateOf(run),finished:false});
     }
   }

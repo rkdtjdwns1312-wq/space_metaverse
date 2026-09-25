@@ -739,6 +739,7 @@ function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast('우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
+  else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
   else if(n.kind==='door')exitPlanet();
@@ -1106,6 +1107,7 @@ socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});
 socket.on('combat:monster-hit',data=>{if(selfId)world.monsterHit(data);});
 socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
+socket.on('life-star:complete',()=>{if(selfId)toast('체력과 마나가 가득 찼어요!');});
 socket.on('combat:vitals',data=>{
   const player=room?.players.find(p=>p.id===data.playerId);if(!player)return;
   player.vitals=data.vitals;

@@ -1,3 +1,4 @@
+import {drawLifeStar} from './life-star-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
 import {drawEnergyShop} from './energy-shop-art.js';
@@ -147,7 +148,9 @@ export function createWorld(canvas) {
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
-      if(o.kind==='star'){
+      if(o.kind==='life-star'){
+        drawLifeStar(ctx,o,time,reducedMotion.matches);
+      } else if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');
         ctx.fillStyle=glow;ctx.fillRect(o.x-110,o.y-110,220,220);star(o.x,o.y,o.radius,'#fff2c9');star(o.x,o.y,o.radius-7,o.color);
       } else if(o.kind==='gate'){
@@ -300,8 +303,10 @@ export function createWorld(canvas) {
     // 줄무늬 차양과 정확한 간판 글자.
     ctx.fillStyle='#fff3d4';ctx.strokeStyle='#d09bb5';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(o.x-72,topY+46,144,18,7);ctx.fill();ctx.stroke();
     for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#f39eb7':'#fff5d7';ctx.beginPath();ctx.moveTo(o.x+i*20-10,topY+47);ctx.lineTo(o.x+i*20+10,topY+47);ctx.lineTo(o.x+i*20+5,topY+62);ctx.lineTo(o.x+i*20-5,topY+62);ctx.closePath();ctx.fill();}
-    ctx.fillStyle='#725b9c';ctx.strokeStyle='#a78cc5';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(o.x-58,topY-28,116,35,11);ctx.fill();ctx.stroke();
-    ctx.font='700 19px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=1;ctx.fillStyle='#fffdfd';ctx.fillText('별 상점',o.x,topY-10);
+    // 우주에너지 상점과 같은 낮고 둥근 밝은 간판. 별 상점은 연분홍 테두리로 구분합니다.
+    ctx.save();ctx.shadowColor='#f4d2e7';ctx.shadowBlur=6;
+    ctx.fillStyle='#fff7fc';ctx.strokeStyle='#b78ca8';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(o.x-78,topY-22,156,25,8);ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;ctx.font='700 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#6b487b';ctx.fillText('별 상점',o.x,topY-9,150);ctx.restore();
     ctx.textBaseline='alphabetic';ctx.restore();
   }
   // 가로등: 기둥 + 빛 번짐.
@@ -456,7 +461,7 @@ export function createWorld(canvas) {
       const sprite=loadedAvatarSprite(constellation.sprite);
       if(constellation.celestial)celestialAura(ctx,constellation.color,size*.63,time);
       // 몸 그림만 반전합니다. 이름표·말풍선·HP 글자는 원래 방향을 유지합니다.
-      if(sprite){ctx.save();ctx.scale(p.facingX===-1?-1:1,1);ctx.drawImage(sprite,-size/2,-size/2,size,size);ctx.restore();}
+      if(sprite){ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);ctx.drawImage(sprite,-size/2,-size/2,size,size);ctx.restore();}
       else{const radius=size*.4;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
@@ -656,7 +661,7 @@ export function createWorld(canvas) {
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&Math.hypot(me.x-market.x,me.y-market.y)<=market.radius)return {...market,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
+        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);

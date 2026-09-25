@@ -1,3 +1,4 @@
+import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
 import express from 'express';
@@ -277,6 +278,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
     });
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
+    action('life-star:recover',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      return startLifeRecovery(session.player,clock());
+    },false);
     action('combat:attack',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
@@ -1386,6 +1391,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           io.to(viewer.socketId).emit('combat:monster-hit',hit);
           io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
         }
+      }
+      for(const update of advanceLifeRecovery(room,clock())){
+        const player=room.players.get(update.playerId);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+          io.to(viewer.socketId).emit('combat:vitals',update);
+        if(update.complete)io.to(player.socketId).emit('life-star:complete');
       }
       let dodgeSaveFailed=false;
       for(const update of advanceDodgeRuns(room)){

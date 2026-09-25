@@ -39,7 +39,10 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const color=o.color|| (theme==='black-hole'?'#a995d8':'#fff0b6');
     const kind=o.kind||'planet';
     ctx.save();ctx.translate(x,y);ctx.fillStyle=color;ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.08);
-    if(kind==='pillar'){
+    if(kind==='life-star'){
+      ctx.fillStyle='#ffffff';ctx.shadowColor='#adf9dc';ctx.shadowBlur=5;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;ctx.strokeStyle='#b3e2cf';ctx.beginPath();ctx.ellipse(0,0,r*1.5,r*.55,-.35,0,Math.PI*2);ctx.stroke();
+    }else if(kind==='pillar'){
       ctx.beginPath();ctx.roundRect(-r*.35,-r*1.15,r*.7,r*1.8,r*.18);ctx.fill();ctx.stroke();
       ctx.fillRect(-r*.55,-r*1.25,r*1.1,r*.2);ctx.fillRect(-r*.55,r*.62,r*1.1,r*.2);
     }else if(kind==='gate'||kind==='door'){

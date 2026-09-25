@@ -27,6 +27,7 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
 export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: 2160, height: 1440, spawn:{x:1080,y:800},templeCenter:{x:1080,y:700},
   objects: [
+    {id:'life-star',name:'생명의별',x:1080,y:684,radius:26,kind:'life-star',color:'#ffffff',passable:true},
     {id:'pillar-notice',name:'오늘의 알림장',x:760,y:594,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
     {id:'pillar-effects',name:'사용 중인 아이템',x:1400,y:594,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:790,y:804,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},

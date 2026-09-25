@@ -49,3 +49,20 @@ test('잘못된 좌표와 순서가 뒤집힌 패킷은 현재 이동을 오염�
   track.push(NaN,0,'plaza',200);track.push(10,0,'plaza',50);
   assert.deepEqual(track.at(400),{x:62,y:0});
 });
+
+test('별 피하기50ms 수신은60/120Hz에서 일정하게 이어지고 마지막 위치를 넘지 않는다',()=>{
+  for(const frameMs of [1000/60,1000/120]){
+    const track=createMotionTrack({delayMs:75,intervalMs:50});track.push(0,0,'run',0);
+    let next=50,previous=null;
+    for(let time=frameMs;time<600;time+=frameMs){
+      while(next<=time){track.push(next*.23,0,'run',next);next+=50;}
+      const point=track.at(time);if(time>150&&previous)assert.ok(Math.abs((point.x-previous.x)/frameMs-.23)<1e-8);previous=point;
+    }
+    const last=(next-50)*.23;assert.equal(track.at(5000).x,last);
+  }
+});
+test('별 피하기 방향 반전·다시 시작 시 이전 위치를 넘거나 이전 경기를 이어 그리지 않는다',()=>{
+  const track=createMotionTrack({delayMs:75,intervalMs:50});track.push(0,0,'run',0);track.push(11.5,0,'run',50);track.push(23,0,'run',100);track.push(11.5,0,'run',150);
+  assert.equal(track.at(175).x,23);assert.equal(track.at(200).x,17.25);assert.equal(track.at(225).x,11.5);
+  track.push(300,210,'next-run',250);assert.deepEqual(track.at(250),{x:300,y:210});
+});

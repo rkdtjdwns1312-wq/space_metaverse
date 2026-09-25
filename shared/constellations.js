@@ -31,10 +31,14 @@ export const LEGACY_CONSTELLATIONS=Object.freeze([
   ['ursa-major','큰곰자리','#b28b6e','✺']
 ].map(([id,name,color,icon])=>Object.freeze({id,name,color,icon,type:null,legacy:true})));
 const BY_ID = new Map([...CONSTELLATIONS,...LEGACY_CONSTELLATIONS].map(value => [value.id, value]));
+// 이 LV2 원화는 왼쪽을 바라봅니다. 이동 방향과 곱해 그림의 기본 방향을 보정합니다.
+// 다른 레벨은 서로 다른 원화이므로 계보 전체에 반전을 적용하지 않습니다.
+const LV2_LEFT_FACING = new Set(['corvus','taurus','leo','ophiuchus','cancer','cygnus','aries']);
 // 계보 ID는 그대로 저장하고, 그림과 능력만 단계별로 고릅니다.
 // LV5 초월체는 별빛 원화를 사용하고, 새 능력은 정의될 때까지 기존 규칙을 유지합니다.
 const STAGES = new Map(CONSTELLATIONS.map(value => [value.id, [2, 3, 4, 5].map(level =>
   Object.freeze({ ...value, assetLevel: level, celestial: level >= 5,
+    spriteFacingX: level === 2 && LV2_LEFT_FACING.has(value.id) ? -1 : 1,
     art: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.art : `/assets/constellation-cards/lv${level}/${value.id}.png`,
     sprite: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.sprite : `/assets/avatars/lv${level}/${value.id}.png`,
     ability: abilityForLevel(value.id, level)

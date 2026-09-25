@@ -1,4 +1,7 @@
+import {createMotionTrack} from './motion.js';
 const WIDTH=600,HEIGHT=420,INPUT_INTERVAL_MS=100;
+// 서버의 50ms 간격 좌표를 75ms 버퍼로 이어 그립니다. 판정 좌표는 예측/수정하지 않습니다.
+const newTrack=()=>createMotionTrack({delayMs:75,intervalMs:50});
 
 export function createDodgeGame({board,request,sendInput,subscribeState,subscribeRanking,toast=()=>{}}={}){
   if(!board)throw new TypeError('board가 필요합니다.');
@@ -26,6 +29,17 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
   const find=id=>root.querySelector('#dodge-'+id),canvas=find('canvas'),context=canvas.getContext('2d');
   const startButton=find('start'),rankingButton=find('ranking-toggle'),rankingPanel=find('ranking-panel');
   let alive=true,running=false,runId=null,state=null,stateReceivedAt=0,frame=0,pointerId=null,touchTarget=null;
+  let playerTrack=newTrack();const starTracks=new Map();
+  function trackState(next,now,reset=false){
+    if(reset){playerTrack=newTrack();starTracks.clear();}
+    if(next.player)playerTrack.push(next.player.x,next.player.y,next.runId,now);
+    const active=new Set();
+    for(const star of next.stars||[]){
+      active.add(star.id);if(!starTracks.has(star.id))starTracks.set(star.id,newTrack());
+      starTracks.get(star.id).push(star.x,star.y,next.runId,now);
+    }
+    for(const id of starTracks.keys())if(!active.has(id))starTracks.delete(id);
+  }
   const keys=new Set(),keyDirections={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]};
 
   function normalized(x,y){const length=Math.hypot(x,y);return length>1?{x:x/length,y:y/length}:{x,y};}
@@ -44,10 +58,12 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
   }
   function draw(){
     if(!alive)return;
+    const now=performance.now();
     const gradient=context.createLinearGradient(0,0,WIDTH,HEIGHT);gradient.addColorStop(0,'#171233');gradient.addColorStop(1,'#382b68');context.fillStyle=gradient;context.fillRect(0,0,WIDTH,HEIGHT);
     context.fillStyle='#ffffff55';for(let i=0;i<32;i++)context.fillRect((i*83)%WIDTH,(i*47)%HEIGHT,2,2);
-    for(const star of state?.stars||[]){context.save();context.shadowColor='#fff4a8';context.shadowBlur=12;context.fillStyle='#ffe98c';starPath(star.x,star.y,star.radius||10);context.fill();context.restore();}
-    const player=state?.player||{x:WIDTH/2,y:HEIGHT/2,radius:14};
+    for(const star of state?.stars||[]){const point=starTracks.get(star.id)?.at(now)||star;context.save();context.shadowColor='#fff4a8';context.shadowBlur=12;context.fillStyle='#ffe98c';starPath(point.x,point.y,star.radius||10);context.fill();context.restore();}
+    const player={...(state?.player||{x:WIDTH/2,y:HEIGHT/2,radius:14}),...playerTrack.at(now)};
+    canvas.dataset.playerX=String(player.x);canvas.dataset.playerY=String(player.y);
     context.save();context.shadowColor='#b7f3ff';context.shadowBlur=14;context.fillStyle='#9ce7f2';context.beginPath();context.arc(player.x,player.y,player.radius||14,0,Math.PI*2);context.fill();context.fillStyle='#d7f7fa';context.beginPath();context.arc(player.x-4,player.y-4,(player.radius||14)*.35,0,Math.PI*2);context.fill();context.restore();
     const shown=state?.elapsedMs||0,elapsed=running?shown+Math.max(0,performance.now()-stateReceivedAt):shown;
     find('stopwatch').textContent=(elapsed/1000).toFixed(2)+'초';
@@ -62,6 +78,8 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
   function receive(event){
     if(!alive||!event?.state)return;if(runId&&event.state.runId!==runId)return;
     runId=event.state.runId;state=event.state;stateReceivedAt=performance.now();
+    // 끝난 경기/재시작은 보간을 즉시 지워 실제 충돌 위치에 멈춥니다.
+    trackState(state,stateReceivedAt,!!event.finished);
     if(event.finished){
       stopInput();running=false;
       if(event.error){
@@ -87,7 +105,8 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
       const result=await request('dodge:start',{});
       if(!alive){if(result?.runId)request('dodge:cancel',{runId:result.runId}).catch(()=>{});return;}
       runId=result.runId;state=result;stateReceivedAt=performance.now();running=true;startButton.textContent='진행 중';
-      find('status').textContent='별을 피하세요! 5초마다 별이 하나씩 더 많이 나타나요.';canvas.focus();send();
+      trackState(state,stateReceivedAt,true);
+      find('status').textContent='별을 피하세요! 4초마다 별이 하나씩 더 많이 나타나요.';canvas.focus();send();
     }catch(error){if(alive){startButton.disabled=false;find('status').textContent=error.message;}}
   });
   rankingButton.addEventListener('click',()=>{
@@ -112,6 +131,6 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
     if(!alive)return;const activeRun=running?runId:null;stopInput();alive=false;running=false;clearInterval(heartbeat);cancelAnimationFrame(frame);
     unsubscribeState();unsubscribeRanking();window.removeEventListener('blur',loseFocus);root.remove();board.classList.remove('dodge-game-host');if(ownsStylesheet)stylesheet.remove();
     if(activeRun)request('dodge:cancel',{runId:activeRun}).catch(()=>{});
-    state=null;runId=null;
+    state=null;runId=null;starTracks.clear();playerTrack=newTrack();
   }};
 }

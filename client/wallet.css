@@ -62,8 +62,8 @@
 }
 .growth-info > .currency-wallet{grid-column:1 / -1}
 
-/* Bag and growth wallets keep each currency on one horizontally scrollable row. */
-#bag-currency.currency-wallet,
+/* 가방·성장·두 상점·조합기는 아이콘 / 이름 / 보유량을 같은 가로 순서로 표시합니다. */
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet).currency-wallet,
 #growth-info > .currency-wallet{
   --compact-currency-icon-size:clamp(14px,1.4vw,20px);
   display:flex;
@@ -73,7 +73,7 @@
   width:100%;
   min-width:0;
 }
-#bag-currency.currency-wallet > .currency-chip,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet).currency-wallet > .currency-chip,
 #growth-info > .currency-wallet > .currency-chip{
   display:flex;
   flex:1 1 0;
@@ -86,15 +86,15 @@
   overflow-x:auto;
   scrollbar-width:none;
 }
-#bag-currency.currency-wallet > .currency-chip::-webkit-scrollbar,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet).currency-wallet > .currency-chip::-webkit-scrollbar,
 #growth-info > .currency-wallet > .currency-chip::-webkit-scrollbar{display:none}
-#bag-currency .currency-icon,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet) .currency-icon,
 #growth-info > .currency-wallet .currency-icon{
   width:var(--compact-currency-icon-size);
   height:var(--compact-currency-icon-size);
 }
-#bag-currency .currency-label,
-#bag-currency .currency-amount,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet) .currency-label,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet) .currency-amount,
 #growth-info > .currency-wallet .currency-label,
 #growth-info > .currency-wallet .currency-amount{
   flex:0 0 auto;
@@ -104,7 +104,7 @@
   letter-spacing:-.045em;
   white-space:nowrap;
 }
-#bag-currency .currency-amount,
+:is(#bag-currency,#shop-shards,#energy-shop-wallet,#crafting-wallet) .currency-amount,
 #growth-info > .currency-wallet .currency-amount{
   font-size:clamp(12px,3.75vw,14px);
 }

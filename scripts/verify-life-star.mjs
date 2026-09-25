@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {MAP} from '../shared/config.js';
+import {ensureVitals} from '../server/vitals.js';
+import {mkdir} from 'node:fs/promises';
+
+let now=Date.now();const key='life-star-browser-key';
+const game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now});
+const {port}=await game.listen(),url='http://127.0.0.1:'+port;
+const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const socket=io(url,{transports:['websocket'],reconnection:false}),errors=[];
+await mkdir('.local',{recursive:true});
+try{
+  await new Promise((r,j)=>{socket.once('connect',r);socket.once('connect_error',j);});
+  const created=await socket.timeout(5000).emitWithAck('room:create',{teacherKey:key,title:'생명의별',allowedNames:['별이']});assert.ok(created.ok);
+  const page=await browser.newPage({viewport:{width:1440,height:1000},hasTouch:true});page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(url);await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('별이');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  const room=game.store.rooms.get(created.room.code),p=[...room.players.values()].find(p=>p.role==='student'),star=MAP.objects.find(o=>o.kind==='life-star');
+  const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+  Object.assign(p.avatar,{level:2,constellationId:'aries'});Object.assign(p,{x:star.x+70,y:star.y});Object.assign(ensureVitals(p),{hp:2,mp:0});publish();
+  await page.locator('#interact-object').filter({hasText:'생명의별'}).waitFor();await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 2/10'}).waitFor();
+  await page.waitForTimeout(250);await page.screenshot({path:'.local/225-life-star-desktop.png'});
+  await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#toast').filter({hasText:'10초 동안'}).waitFor();
+  assert.equal(p.battleVitals.hp,2);assert.equal(p.battleVitals.mp,0);
+  console.log('PASS 중앙 생명의별 F 조사·즉시 전체회복 없음');
+  now+=5000;await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 6/10'}).waitFor();await page.locator('.vitals-mp .vitals-label').filter({hasText:'MP 5/10'}).waitFor();
+  await page.keyboard.press('f');assert.equal(p.battleVitals.lifeRecovery.startedAt,now-5000);
+  now+=5000;await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 10/10'}).waitFor();await page.locator('.vitals-mp .vitals-label').filter({hasText:'MP 10/10'}).waitFor();await page.locator('#toast').filter({hasText:'가득 찼어요'}).waitFor();
+  console.log('PASS 5초 절반·10초 최대 HP/MP 및 완료 안내·재조사 시간 유지');
+  await page.setViewportSize({width:390,height:844});Object.assign(ensureVitals(p),{hp:1,mp:1});publish();
+  await page.locator('#touch-interact').tap();await page.locator('#toast').filter({hasText:'10초 동안'}).waitFor();
+  await page.screenshot({path:'.local/225-life-star-mobile.png'});now+=10000;
+  await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 10/10'}).waitFor();await page.locator('.vitals-mp .vitals-label').filter({hasText:'MP 10/10'}).waitFor();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.locator('#touch-interact').tap();await page.locator('#toast').filter({hasText:'이미 가득해요'}).waitFor();
+  assert.equal(p.battleVitals.lifeRecovery,undefined);assert.deepEqual(errors,[]);
+  console.log('PASS 390px 터치 조사·회복·가득 찬 경우 안내·화면 오류 없음');
+}finally{socket.disconnect();await browser.close();await game.close();}

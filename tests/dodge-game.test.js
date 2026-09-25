@@ -46,38 +46,85 @@ test('start creates an isolated 600x420 authoritative run for connected students
 test('input is normalized, movement stays inside the arena, and a stale heartbeat stops movement',()=>{
   const {room,player}=fixture(),state=startDodgeRun(room,player,0),run=harmless(room.dodgeRuns.get(player.id));
   setDodgeInput(room,player,{runId:state.runId,x:3,y:4},0);
-  assert.deepEqual(advanceDodgeRuns(room,50),[]);assert.ok(Math.abs(run.playerBody.x-306.9)<1e-9);
+  assert.equal(advanceDodgeRuns(room,50).length,1);assert.ok(Math.abs(run.playerBody.x-306.9)<1e-9);
   let update=advanceDodgeRuns(room,100)[0];
   assert.ok(Math.abs(update.state.player.x-313.8)<1e-9);assert.ok(Math.abs(update.state.player.y-228.4)<1e-9);
-  const stopped={...update.state.player};assert.deepEqual(advanceDodgeRuns(room,351),[]);update=advanceDodgeRuns(room,401)[0];
+  const stopped={...update.state.player};update=advanceDodgeRuns(room,351)[0];
+  assert.equal(update.state.player.x,stopped.x);assert.equal(update.state.player.y,stopped.y);
+  update=advanceDodgeRuns(room,401)[0];
   assert.equal(update.state.player.x,stopped.x);assert.equal(update.state.player.y,stopped.y);
   run.playerBody.x=run.playerBody.radius;run.playerBody.y=run.playerBody.radius;
-  setDodgeInput(room,player,{runId:state.runId,x:-1,y:-1},401);assert.deepEqual(advanceDodgeRuns(room,451),[]);update=advanceDodgeRuns(room,501)[0];
+  setDodgeInput(room,player,{runId:state.runId,x:-1,y:-1},401);assert.equal(advanceDodgeRuns(room,451).length,1);update=advanceDodgeRuns(room,501)[0];
   assert.equal(update.state.player.x,run.playerBody.radius);assert.equal(update.state.player.y,run.playerBody.radius);
   const before={...run.input};setDodgeInput(room,player,{runId:'wrong',x:1,y:0},402);assert.deepEqual(run.input,before);
   setDodgeInput(room,player,{runId:state.runId,x:Infinity,y:NaN},402);assert.deepEqual(run.input,{x:0,y:0,at:402});
 });
 
-test('real five-second stages increase wave size and speed',()=>{
-  const {room,player}=fixture(),start=startDodgeRun(room,player,0),run=harmless(room.dodgeRuns.get(player.id));
-  assert.deepEqual(advanceDodgeRuns(room,5000),[]);assert.equal(run.elapsedMs,50);assert.equal(run.waveIndex,0);
-  run.lastAdvancedAt=0;run.elapsedMs=0;run.lastBroadcastElapsedMs=0;
-  const first=advanceUntil(room,run,0,5000,{parkStars:true}).state;
-  assert.equal(first.runId,start.runId);assert.equal(first.wave,2);assert.equal(first.waveCount,3);
-  assert.equal(first.starSpeed,DODGE_RULES.baseStarSpeed+DODGE_RULES.speedStep);assert.equal(first.stars.length,3);
-  const second=advanceUntil(room,run,5000,10000,{parkStars:true}).state;
-  assert.equal(second.wave,3);assert.equal(second.waveCount,4);assert.equal(second.stars.length,7);
-  assert.ok(second.starSpeed>first.starSpeed);
+for(const boundary of [4000,8000])test(`difficulty increases exactly at ${boundary}ms, not before or again after`,()=>{
+  const {room,player}=fixture();startDodgeRun(room,player,0);
+  const run=harmless(room.dodgeRuns.get(player.id)),waveIndex=boundary/4000;
+  advanceUntil(room,run,0,boundary-50,{parkStars:true});
+  // Keep existing stars safely away while checking that their speed also increases.
+  for(const star of run.stars){star.x=30;star.y=30;star.vx=1;star.vy=0;}
+  advanceDodgeRuns(room,boundary-1);
+  assert.equal(run.elapsedMs,boundary-1);assert.equal(run.waveIndex,waveIndex-1);
+  assert.equal(run.starSpeed,82+7*(waveIndex-1));
+  const countBefore=run.stars.length;
+  advanceDodgeRuns(room,boundary);
+  assert.equal(run.elapsedMs,boundary);assert.equal(run.waveIndex,waveIndex);
+  assert.equal(run.starSpeed,82+7*waveIndex);
+  assert.equal(run.stars.length,countBefore+2+waveIndex);
+  assert.equal(run.stars.length,waveIndex===1?3:7);
+  for(const star of run.stars)assert.ok(Math.abs(Math.hypot(star.vx,star.vy)-run.starSpeed)<1e-9);
+  advanceDodgeRuns(room,boundary+1);
+  assert.equal(run.elapsedMs,boundary+1);assert.equal(run.waveIndex,waveIndex);
+  assert.equal(run.starSpeed,82+7*waveIndex);assert.equal(run.stars.length,countBefore+2+waveIndex);
+});
+
+test('broadcasts every 50ms, suppressing intervening calls and duplicate timestamps',()=>{
+  const {room,player}=fixture();startDodgeRun(room,player,1000);
+  const run=harmless(room.dodgeRuns.get(player.id));
+  assert.equal(DODGE_RULES.broadcastMs,50);
+  for(let now=1050;now<=1500;now+=50){
+    assert.deepEqual(advanceDodgeRuns(room,now-1),[]);
+    const updates=advanceDodgeRuns(room,now);
+    assert.equal(updates.length,1);assert.equal(updates[0].finished,false);
+    assert.equal(updates[0].state.elapsedMs,now-1000);assert.equal(run.lastBroadcastAt,now);
+    assert.deepEqual(advanceDodgeRuns(room,now),[]);
+  }
+});
+
+test('49.999ms main ticks each broadcast within the 0.5ms tolerance',()=>{
+  const {room,player}=fixture(),startAt=1000.123;startDodgeRun(room,player,startAt);
+  const run=harmless(room.dodgeRuns.get(player.id));
+  assert.deepEqual(advanceDodgeRuns(room,startAt+49.49),[]);
+  for(let tick=1;tick<=20;tick++){
+    const now=startAt+tick*49.999,updates=advanceDodgeRuns(room,now);
+    assert.equal(updates.length,1,`tick ${tick} must not wait another 50ms`);
+    assert.equal(run.lastBroadcastAt,now);
+    assert.ok(Math.abs(updates[0].state.elapsedMs-tick*49.999)<1e-8);
+  }
+});
+
+test('broadcast cadence uses server time while lagged physics remains capped at 50ms',()=>{
+  const {room,player}=fixture();startDodgeRun(room,player,0);
+  const run=harmless(room.dodgeRuns.get(player.id));
+  assert.equal(advanceDodgeRuns(room,49.5).length,1);
+  assert.deepEqual(advanceDodgeRuns(room,50),[]);
+  const update=advanceDodgeRuns(room,99)[0];
+  assert.equal(update.finished,false);assert.equal(run.lastBroadcastAt,99);
+  assert.equal(advanceDodgeRuns(room,5000).length,1);
+  assert.equal(run.elapsedMs,149);assert.equal(run.waveIndex,0);assert.equal(run.lastBroadcastAt,5000);
 });
 
 test('the active-star ceiling never deletes a live star and only limits later spawning after natural exit',()=>{
   const {room,player}=fixture(),start=startDodgeRun(room,player,0),run=room.dodgeRuns.get(player.id);
   run.stars=Array.from({length:DODGE_RULES.maxActiveStars},(_,i)=>({id:'kept-'+i,x:30+i%100,y:30+(i%20)*10,vx:0,vy:0,radius:1}));
-  let state=advanceUntil(room,run,0,5000).state;
+  let state=advanceUntil(room,run,0,4000).state;
   assert.equal(state.stars.length,120);assert.deepEqual(state.stars.map(s=>s.id),run.stars.map(s=>s.id));
   run.stars[0].x=DODGE_RULES.width+2;run.stars[0].vx=1;
-  assert.deepEqual(advanceDodgeRuns(room,5050),[]);assert.equal(run.stars.length,119);assert.ok(!run.stars.some(s=>s.id==='kept-0'));
-  state=advanceUntil(room,run,5050,10000).state;assert.equal(state.stars.length,120);
+  assert.equal(advanceDodgeRuns(room,4050).length,1);assert.equal(run.stars.length,119);assert.ok(!run.stars.some(s=>s.id==='kept-0'));
+  state=advanceUntil(room,run,4050,8000).state;assert.equal(state.stars.length,120);
   assert.equal(state.stars.filter(s=>s.id.startsWith('kept-')).length,119);
   cancelDodgeRun(room,player,start.runId);assert.equal(room.dodgeRuns.size,0);
 });

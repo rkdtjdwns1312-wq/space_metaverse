@@ -4,6 +4,7 @@ import {chromium} from 'playwright';
 import {createClassroomServer} from '../server/app.js';
 import {fillNewClass} from './class-setup.mjs';
 import {CONSTELLATIONS,constellationOf} from '../shared/constellations.js';
+const LV2_LEFT_FACING=new Set(['corvus','taurus','leo','ophiuchus','cancer','cygnus','aries']);
 const key='facing-layout-isolated-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const url=`http://127.0.0.1:${(await game.listen()).port}`;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),errors=[];
@@ -18,11 +19,12 @@ try{
  const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
  await teacher.evaluate(()=>{const old=CanvasRenderingContext2D.prototype.drawImage;window.spriteTransforms={};CanvasRenderingContext2D.prototype.drawImage=function(image,...args){if(this.canvas.id==='world'&&image?.src)window.spriteTransforms[new URL(image.src).pathname]=this.getTransform().a;return old.call(this,image,...args);};});
  for(const c of CONSTELLATIONS)for(const level of [2,3,4,5])for(const sign of [-1,1]){
-  p.avatar.level=level;p.avatar.constellationId=c.id;p.facingX=sign;const sprite=constellationOf(c.id,level).sprite;
+  p.avatar.level=level;p.avatar.constellationId=c.id;p.facingX=sign;const stage=constellationOf(c.id,level),sprite=stage.sprite;
+  const expectedSign=sign*(level===2&&LV2_LEFT_FACING.has(c.id)?-1:1);
   await page.evaluate(path=>{delete window.spriteTransforms[path]},sprite);publish();
-  await page.waitForFunction(({sprite,sign})=>Math.sign(window.spriteTransforms[sprite])===sign,{sprite,sign});
+  await page.waitForFunction(({sprite,expectedSign})=>Math.sign(window.spriteTransforms[sprite])===expectedSign,{sprite,expectedSign});
  }
- console.log('PASS: all 16 constellations × LV2-5 × left/right: actual canvas drawImage transform verified');
+ console.log('PASS: all 16 constellations × LV2-5 × left/right: actual canvas drawImage transform matches independent LV2 golden set');
  Object.assign(p,{x:1100,y:1150,facingX:1});p.avatar.level=5;p.avatar.constellationId='aries';publish();const observer=[...room.players.values()].find(p=>p.role==='teacher');game.io.to(observer.socketId).emit('room:state',game.store.snapshot(room,observer));
  await page.locator('#world').focus();await page.keyboard.down('a');await page.waitForTimeout(160);await page.keyboard.up('a');await page.waitForFunction(()=>document.getElementById('world').dataset.selfFacingX==='-1');
  await teacher.waitForFunction(path=>Math.sign(window.spriteTransforms[path])===-1,constellationOf('aries',5).sprite);
