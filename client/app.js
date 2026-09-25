@@ -26,19 +26,31 @@ import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
-function updateDockRight(){
+// 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
+function updateControlAlignment(){
   const dock=$('bottom-dock');
-  if(dock)document.documentElement.style.setProperty('--dock-right',dock.getBoundingClientRect().right+'px');
+  const hud=$('vitals-hud'),style=document.documentElement.style;
+  if(!dock)return;
+  const box=dock.getBoundingClientRect();
+  if(!box.width)return;
+  style.setProperty('--dock-right',box.right+'px');
+  style.setProperty('--dock-left',box.left+'px');
+  style.setProperty('--dock-center-y',box.top+box.height/2+'px');
+  if(hud&&!hud.hidden){
+    const vitalBox=hud.getBoundingClientRect();
+    style.setProperty('--vitals-center-y',vitalBox.top+vitalBox.height/2+'px');
+  }
 }
-const dockResizeObserver=new ResizeObserver(updateDockRight);
+const dockResizeObserver=new ResizeObserver(updateControlAlignment);
 dockResizeObserver.observe($('bottom-dock'));
-window.addEventListener('resize',updateDockRight);
-updateDockRight();
+window.addEventListener('resize',updateControlAlignment);
+updateControlAlignment();
 startClassroomClock($('classroom-clock'));
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,tradeDialogSig='',knownIncomingTradeIds=new Set(),selectedSlotId=null;
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const vitals=createVitalsUI($('bottom-dock'));
+dockResizeObserver.observe($('vitals-hud'));
 createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
@@ -1129,7 +1141,7 @@ function enter(result){
   $('room-badge').hidden=false;$('leave').hidden=false;$('chat-panel').hidden=false;
   $('crew-button').hidden=false;
   social.seed(result.chat?.messages);
-  document.body.classList.add('joined');updateDockRight();$('world').focus();$('form-message').textContent='';
+  document.body.classList.add('joined');updateControlAlignment();$('world').focus();$('form-message').textContent='';
   $('interact-prompt').hidden=true;$('interior-decorate').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
   knownIncomingTradeIds=new Set();tradeDialogSig='';selectedSlotId=null;

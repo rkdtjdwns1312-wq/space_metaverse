@@ -1,7 +1,7 @@
 #vitals-hud {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 26px);
   transform: translateX(-50%);
   z-index: 1;
   display: flex;
@@ -70,10 +70,17 @@
   border-radius: 999px;
 }
 
+@media (max-width: 800px) {
+  #vitals-hud { width: 200px; }
+}
+
 @media (max-width: 520px) {
   #vitals-hud {
-    width: min(200px, calc(100vw - 16px));
+    /* 좁은 화면에서도 왼쪽 공격과 오른쪽 이동 영역 사이에 둡니다. */
+    left: calc(50vw - var(--dock-left, 0px) - 1px);
+    width: min(200px, calc(100vw - 208px));
     gap: 6px;
+    padding-inline: 4px;
   }
 }
 

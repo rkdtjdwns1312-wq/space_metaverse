@@ -304,24 +304,33 @@ body.joined #interior-decorate:not([hidden]){position:fixed;left:0;top:0;z-index
 /* 모바일 조작은 입장 후에만 표시합니다. 각 조작을 고정해 하단 메뉴와 독립적으로 배치합니다. */
 #mobile-controls{display:none}
 body.joined:not(.placing) #mobile-controls{display:contents}
-.combat-buttons{position:fixed;left:18px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 214px);display:flex;gap:8px;width:176px;align-items:center;z-index:21;touch-action:none}
+.combat-buttons{position:fixed;left:18px;top:var(--vitals-center-y,calc(100% - 150px));transform:translateY(-50%);display:flex;gap:8px;width:176px;align-items:center;z-index:21;touch-action:none}
 .combat-buttons button{width:84px;height:84px;min-width:84px;padding:0;border:2px solid #f1b7ae;border-radius:50%;background:#fff0e9;color:#865b63;box-shadow:0 6px 14px #42527a26;font-size:16px;font-weight:800;line-height:1.1}
 .combat-buttons button:nth-child(2){border-color:#b9c8ee;background:#eef3ff;color:#5f6f9d}
 .combat-buttons button span{display:block;font-size:12px;font-weight:700;margin-top:3px}
-#joystick{position:fixed;left:calc((var(--dock-right, 50vw) + 100vw) / 2 - 57px);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 199px);width:114px;height:114px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none;z-index:21}
+#joystick{position:fixed;left:calc((var(--dock-right, 50vw) + 100vw) / 2 - 57px);top:var(--vitals-center-y,calc(100% - 150px));transform:translateY(-50%);width:114px;height:114px;border:1px solid #fff;background:#fff9f5d9;border-radius:50%;box-shadow:0 8px 20px #42527a26;touch-action:none;user-select:none;z-index:21}
 #joystick-knob{position:absolute;left:50%;top:50%;width:48px;height:48px;border:2px solid #8b7dbb;background:#e8e0ff;border-radius:50%;box-shadow:0 3px 8px #62548b33;pointer-events:none;transform:translate(-50%,-50%)}
-#touch-interact{position:fixed;top:auto;right:auto;left:43px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 120px);transform:none!important;box-sizing:border-box;width:126px;min-width:126px;max-width:126px;height:63px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:21}
+body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 52px));right:auto;left:43px;bottom:auto;transform:translateY(-50%);box-sizing:border-box;width:126px;min-width:126px;max-width:126px;height:63px;margin:0;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:21}
 #touch-interact:disabled{opacity:.55;cursor:default}
+@media(max-width:800px){
+  .combat-buttons{left:8px;width:128px}
+  .combat-buttons button{width:60px;height:60px;min-width:60px}
+  body.joined #touch-interact{left:19px;width:106px;min-width:106px;max-width:106px;height:53px}
+  #joystick{width:90px;height:90px;left:calc((var(--dock-right,50vw) + 100vw) / 2 - 45px)}
+}
 @media(max-width:520px){
   body.joined:not(.placing) .bottom-dock{left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:2px;padding:4px}
   body.joined .dock-button{width:34px;min-height:43px;padding:4px 2px;font-size:10px}
   body.joined .dock-button svg{width:19px;height:19px}
-  .combat-buttons{left:8px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 223px)}
-  #touch-interact{top:auto;right:auto;left:33px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 150px)}
-  #joystick{left:min(calc((var(--dock-right, 50vw) + 100vw) / 2 - 57px),calc(100vw - 122px));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 208px)}
+  .combat-buttons{width:94px;gap:6px}
+  .combat-buttons button{width:44px;height:44px;min-width:44px;font-size:13px}
+  .combat-buttons button span{font-size:11px;margin-top:1px}
+  body.joined #touch-interact{left:8px;width:94px;min-width:94px;max-width:94px;height:43px;padding:6px;font-size:12px}
+  #joystick{left:auto;right:8px;width:80px;height:80px}
+  #joystick-knob{width:36px;height:36px}
 }
-@media (min-width:521px) and (max-width:800px){
-  body.joined:not(.placing) .bottom-dock{left:calc(50% - 40px)}
+@media (min-width:521px) and (max-width:680px){
+  body.joined .dock-button{width:44px}
 }
 #department-work-dialog{width:min(660px,94vw);max-height:88dvh;overflow:auto;color:var(--ink,#615276)}
 .department-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.department-heading h2{margin:0}
@@ -350,5 +359,5 @@ body.joined:not(.placing) #mobile-controls{display:contents}
 
 .map-level{font-size:12px;color:#77618e}
 
-/* 학생 메뉴는 다섯 칸이므로 작은 화면에서 왼쪽 화살표와 간격을 둡니다. */
-@media(max-width:520px){body.joined:not(.placing) .bottom-dock{left:calc(50% + 8px)}}
+/* 조사하기와 메뉴는 같은 줄이며, 좁은 화면에서는 오른쪽 공간을 활용합니다. */
+@media(max-width:520px){body.joined:not(.placing) .bottom-dock{left:max(calc(50% + 8px), 204px)}}

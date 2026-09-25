@@ -51,8 +51,8 @@ try{
  await page.locator('#dock-chat').click();await page.locator('#open-chat').click();await page.locator('#chat-input').fill('');await page.locator('#chat-input').pressSequentially('wasdqef');assert.equal(await page.locator('#chat-input').inputValue(),'wasdqef');assert.equal(await page.locator('#toast').textContent(),message);await page.keyboard.press('Escape');
  // 대화창은 닫기 버튼으로 닫습니다.
  for(let i=0;i<4&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');check('채팅 입력의 WASD/Q/E/F는 글자로 입력');
- for(const width of [1440,768,390])await verifyControlsLayout(page,width);
- await page.screenshot({path:'.local/combat-mobile.png'});check('1440/768/390px 원형 버튼·조이스틱·하단 메뉴 겹침 없음');
+ for(const width of [1440,801,768,680,521,520,320,390])await verifyControlsLayout(page,width);
+ await page.screenshot({path:'.local/combat-mobile.png'});check('320~1440px 8개 폭에서 두 줄 중심 정렬·조작 영역 겹침 없음');
  assert.deepEqual(errors,[]);await writeFile('.local/combat-controls-result.json',JSON.stringify({checks,errors},null,2));
 }catch(e){for(const c of browser.contexts())for(const p of c.pages())await p.screenshot({path:'.local/combat-failure.png'}).catch(()=>{});throw e;}
 finally{socket.disconnect();await browser.close();await game.close();}
