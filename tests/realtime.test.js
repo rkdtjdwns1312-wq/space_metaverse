@@ -1,3 +1,4 @@
+import {approveJoinFixture} from './membership-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
@@ -549,7 +550,7 @@ test('rename vote is rejected when a second member votes no (2 members)',async t
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(s1,'planet:join',{planetId:created.planetId});
- await call(s2,'planet:join',{planetId:created.planetId});
+ await call(s2,'planet:join',{planetId:created.planetId});await approveJoinFixture(game,s1,s2,created.planetId);
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
  const proposed=await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'기록행성'});
  assert.equal(proposed.ok,true);
@@ -568,7 +569,7 @@ test('rename vote passes once 2 of 3 members agree, without waiting for the thir
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(s3,'room:join',{code:r.room.code,nickname:'3'});
- for(const s of [s1,s2,s3]) await call(s,'planet:join',{planetId:created.planetId});
+ for(const s of [s1,s2,s3]){const joined=await call(s,'planet:join',{planetId:created.planetId});if(joined.pending)await approveJoinFixture(game,s1,s,created.planetId);}
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
  assert.equal((await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'청소행성'})).error,'지금 이름과 같아요.');
  const proposed=await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'청결행성'});
@@ -583,14 +584,14 @@ test('rename vote passes once 2 of 3 members agree, without waiting for the thir
  assert.equal((await call(s3,'planet:rename:vote',{planetId:created.planetId,agree:true})).error,'진행 중인 투표가 없어요.');
 });
 test('a non-member cannot vote on a planet rename',async t=>{
- const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
+ const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const created=await call(teacher,'planet:create',{name:'교과행성',description:'',x:1870,y:900,color:PLANET_COLORS[3],templateId:'subject'});
  const s1=await connect(),s2=await connect(),outsider=await connect();
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(outsider,'room:join',{code:r.room.code,nickname:'3'});
  await call(s1,'planet:join',{planetId:created.planetId});
- await call(s2,'planet:join',{planetId:created.planetId});
+ await call(s2,'planet:join',{planetId:created.planetId});await approveJoinFixture(game,s1,s2,created.planetId);
  // 멤버가 2명이라 제안자 혼자 찬성한 상태로는 즉시 통과하지 않고 투표가 진행 중으로 남습니다.
  await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'수업행성'});
  const rejected=await call(outsider,'planet:rename:vote',{planetId:created.planetId,agree:true});
@@ -603,7 +604,7 @@ test('rename re-evaluates when membership shrinks (a member leaving the planet c
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(s1,'planet:join',{planetId:created.planetId});
- await call(s2,'planet:join',{planetId:created.planetId});
+ await call(s2,'planet:join',{planetId:created.planetId});await approveJoinFixture(game,s1,s2,created.planetId);
  const proposed=await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'책읽기행성'});
  assert.equal(proposed.ok,true);
  let planet=game.store.rooms.get(r.room.code).planets.get(created.planetId);
@@ -623,7 +624,7 @@ test('a member leaving the classroom entirely also re-evaluates a pending rename
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(s1,'planet:join',{planetId:created.planetId});
- await call(s2,'planet:join',{planetId:created.planetId});
+ await call(s2,'planet:join',{planetId:created.planetId});await approveJoinFixture(game,s1,s2,created.planetId);
  await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'책읽기행성'});
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));
  assert.ok((await call(s2,'room:leave')).ok);
@@ -639,7 +640,7 @@ test('teacher can rename a planet directly, clearing any pending vote',async t=>
  await call(s1,'room:join',{code:r.room.code,nickname:'1'});
  await call(s2,'room:join',{code:r.room.code,nickname:'2'});
  await call(s1,'planet:join',{planetId:created.planetId});
- await call(s2,'planet:join',{planetId:created.planetId});
+ await call(s2,'planet:join',{planetId:created.planetId});await approveJoinFixture(game,s1,s2,created.planetId);
  await call(s1,'planet:rename:propose',{planetId:created.planetId,name:'기록행성'});
  assert.equal((await call(s1,'planet:rename:set',{planetId:created.planetId,name:'새이름'})).error,'선생님만 할 수 있어요.');
  const sysMsgs=[];teacher.on('chat:message',m=>sysMsgs.push(m));

@@ -310,3 +310,10 @@ test('Saturn and supernova opportunities discount each purchased item at most on
   assert.equal(quote.cost, Math.floor(item.price / 2) * 2);
   assert.equal(quote.cardIds.length + quote.supernovaIds.length, 2);
 });
+
+test('little moon allows LV3 self reward and shared self effects',()=>{
+ const f=fixture('rabbit-princess-card');f.actor.cardMarkers=[marker('little-moon-card')];use(f,'rabbit-princess-card');
+ assert.deepEqual(f.actor.inventory,[{id:'star-card',quantity:1}]);
+ const g=fixture('great-spaceship-card');g.actor.cardMarkers=[marker('little-moon-card')];use(g,'great-spaceship-card',{targetIds:['b','c']});
+ assert.ok(g.actor.cardMarkers.some(m=>m.itemId==='great-spaceship-card'));
+});

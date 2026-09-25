@@ -8,7 +8,7 @@ test('new rabbit draw is an exact shuffled 54-card multiset and view does not pe
   const draw=createRabbitDraw(1),view=rabbitDrawView(draw);
   assert.equal(draw.cards.length,54); assert.equal(RABBIT_DRAW_CATALOG.length,54);
   assert.deepEqual(draw.cards.map(c=>JSON.stringify(c.reward)).sort(),RABBIT_DRAW_CATALOG.map(JSON.stringify).sort());
-  assert.ok(view.cards.every(c=>Object.keys(c).length===1&&typeof c.id==='string'));
+  assert.deepEqual(view,{id:draw.id,count:54});
 });
 test('old numeric ten-card draws remain valid and new draws validate after cloning',()=>{
   const old={id:'old',startedAt:1,markerId:'m',cards:Array.from({length:10},(_,i)=>({id:'c'+i,reward:i+1}))};

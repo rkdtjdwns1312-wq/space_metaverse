@@ -34,7 +34,8 @@ export function createRabbitDraw(now=Date.now()){
 }
 
 export function rabbitDrawView(draw){
-  return draw?{id:draw.id,cards:draw.cards.map(card=>({id:card.id}))}:null;
+  // 보상과 카드별 id/순서는 서버에만 남깁니다.
+  return draw?{id:draw.id,count:draw.cards.length}:null;
 }
 
 function validNewReward(reward){

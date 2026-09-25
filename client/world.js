@@ -367,7 +367,19 @@ export function createWorld(canvas) {
         while(size>10&&rules.some(line=>{ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';return ctx.measureText(line).width>w-32;}))size--;
         ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#6b5c3c';
         rules.forEach((line,i)=>ctx.fillText(line,o.x,by+56+i*19));
+      } else if(o.kind==='mailbox'){
+        // 동글동글한 별 우체통: 규칙판의 왼쪽, 봉투와 별 장식을 함께 그립니다.
+        ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#7d639e';ctx.fillRect(-7,18,14,49);
+        ctx.fillStyle='#ad94cf';ctx.beginPath();ctx.ellipse(0,65,26,8,0,0,Math.PI*2);ctx.fill();
+        ctx.shadowColor='#b1a3ec';ctx.shadowBlur=12;ctx.fillStyle='#ded0fa';ctx.strokeStyle='#8860ae';ctx.lineWidth=3;
+        ctx.beginPath();ctx.roundRect(-42,-44,84,70,[28,28,12,12]);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+        ctx.fillStyle='#fffaf6';ctx.beginPath();ctx.roundRect(-26,-16,52,30,6);ctx.fill();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-24,-13);ctx.lineTo(0,4);ctx.lineTo(24,-13);ctx.stroke();
+        ctx.fillStyle='#825fa6';ctx.fillRect(-24,-29,48,5);drawStar(ctx,35,-43,13,'#ffe692');
+        const count=planet?.mailboxCount||0;if(count){ctx.fillStyle='#d66b91';ctx.beginPath();ctx.arc(40,-25,15,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='16px "Jua",sans-serif';ctx.textAlign='center';ctx.fillText(String(count),40,-20);}
+        ctx.font='17px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#725788';ctx.fillText('가입 신청 우체통',0,92);ctx.restore();
       } else if(o.kind==='report-board'){
+
         ctx.fillStyle=chosen||'#fffaf0';ctx.strokeStyle='#9c83bb';ctx.lineWidth=3;
         if(style.shapeId==='hex'){
           ctx.beginPath();ctx.moveTo(o.x-21,o.y-32);ctx.lineTo(o.x+21,o.y-32);ctx.lineTo(o.x+32,o.y);ctx.lineTo(o.x+21,o.y+32);ctx.lineTo(o.x-21,o.y+32);ctx.lineTo(o.x-32,o.y);ctx.closePath();ctx.fill();ctx.stroke();
@@ -683,6 +695,8 @@ export function createWorld(canvas) {
       if(door&&Math.hypot(me.x-door.x,me.y-door.y)<=door.radius+NEAR)return {...door};
       const document=mapOf(myMapId,planets).objects.find(o=>o.kind==='report-board');
       if(document&&Math.hypot(me.x-document.x,me.y-document.y)<=document.radius+NEAR)return {...document,id:planetIdOfMap(myMapId)};
+      const mailbox=mapOf(myMapId,planets).objects.find(o=>o.kind==='mailbox');
+      if(mailbox&&Math.hypot(me.x-mailbox.x,me.y-mailbox.y)<=mailbox.radius+NEAR)return {...mailbox,id:planetIdOfMap(myMapId)};
       const board=mapOf(myMapId,planets).objects.find(o=>o.kind==='board');
       if(board&&(me.role==='teacher'||me.departmentId===planetIdOfMap(myMapId))&&Math.hypot(me.x-board.x,me.y-board.y)<=board.radius+NEAR)
         return {...board,id:planetIdOfMap(myMapId),name:'규칙 수정하기'};

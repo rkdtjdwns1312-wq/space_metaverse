@@ -1,3 +1,4 @@
+import {validateJoinRequests} from './planet-membership.js';
 import {validateLv4State} from './lv4-item-effects.js';
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import {validateTemple} from './temple.js';
@@ -80,7 +81,7 @@ export function fromRecord(r) {
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,joinRequests:validateJoinRequests(pl.joinRequests),work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){

@@ -150,8 +150,8 @@ export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxSt
   {id:'space-suit-card',name:'우주복',description:'1일 동안 선택한 2명의 자리를 맞교환합니다.',special:'자리 이동은 직접 도와야 합니다. 선생님이 현실 교실에서 확인해요.',art:'/assets/items/space-suit-pastel.webp',icon:'🧑‍🚀',type:'tool',level:1,price:2,targets:'pair',secret:false,mode:'manual',effect:{label:'자리 맞교환',icon:'🧑‍🚀',durationMs:0,style:'card'}},
   {id:'meteor-fragment-card',name:'운석 파편',description:'선택한 부서행성이 나에게 준 활성 경고를 모두 해제합니다.',special:'다른 학생의 경고와 경고 이력은 그대로 둡니다.',art:'/assets/items/meteor-fragment-pastel.webp',icon:'☄️',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'meteor',effect:{label:'부서 경고 해제',icon:'☄️',durationMs:0,style:'card'}},
   {id:'little-sun-card',name:'꼬마 해',description:'친구 1명을 자외선 상태로 만들어 오늘 자정까지 아이템 사용을 막습니다.',special:'꼬마 달로 즉시 해제할 수 있어요. 꼬마 달 보호 중인 친구에게는 사용할 수 없어요.',art:'/assets/items/little-sun-pastel.webp',icon:'☀️',type:'tool',level:1,price:1,targets:'other',secret:false,mode:'uv',effect:{label:'자외선',icon:'☀️',durationMs:0,style:'uv'}},
-  {id:'little-moon-card',name:'꼬마 달',description:'마치기 전 청소를 면제받고 조금 일찍 갑니다.',special:'자외선을 즉시 해제하고 오늘 자정까지 다른 카드 효과를 받지 않아요. 검은별 상태에서는 사용할 수 없어요.',art:'/assets/items/little-moon-pastel.webp',icon:'🌙',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'moon',effect:{label:'꼬마 달 보호',icon:'🌙',durationMs:0,style:'moon'}},
-  {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 뒷면 카드 54장 중 하나를 골라 아이템·별 파편·경험치 보상을 받아요. 우주 먼지는 보상이 없어요.',art:'/assets/items/moon-rabbit-pastel.webp',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}},
+  {id:'little-moon-card',name:'꼬마 달',description:'마치기 전 청소를 면제받고 조금 일찍 갑니다.',special:'자외선을 즉시 해제하고 오늘 자정까지 타인이 사용하는 효과의 대상이 되지 않아요. 나에게 아이템을 사용할 수 있어요. 검은별 상태에서는 사용할 수 없어요.',art:'/assets/items/little-moon-pastel.webp',icon:'🌙',type:'tool',level:1,price:2,targets:'self',secret:false,mode:'moon',effect:{label:'꼬마 달 보호',icon:'🌙',durationMs:0,style:'moon'}},
+  {id:'moon-rabbit-card',name:'달토끼',description:'사용한 날 마칠 때 뽑기 카드 기회 1회를 받습니다.',special:'하루에 2장을 사용할 수 없어요. 54장 구성의 카드 더미에서 무작위로 한 장을 뽑아 아이템·별 파편·경험치 보상을 받아요. 우주 먼지는 보상이 없어요.',art:'/assets/items/moon-rabbit-pastel.webp',icon:'🐇',type:'tool',level:1,price:3,targets:'self',secret:false,mode:'draw',effect:{label:'뽑기 카드',icon:'🐇',durationMs:0,style:'card'}},
   ...LV2_ITEMS,
   ...LV3_ITEMS,
   ...LV4_ITEMS,
@@ -219,6 +219,7 @@ export const EXAMPLE_PLANETS = Object.freeze([
 export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 600, y: 560 },
   objects: [
     { id: 'board', name: '행성 규칙 게시판', x: 600, y: 150, radius: 80, kind: 'board', color: '#fff6d6' },
+    { id: 'mailbox', name: '가입 신청 우체통', x: 220, y: 150, radius: 42, kind: 'mailbox', color: '#d5c4fa' },
     { id: 'report-board', name: '부서실적 작성하기', x: 960, y: 170, radius: 28, kind: 'report-board', color: '#fff6d6' },
     { id: 'warning-rock', name: '경고 돌덩이', x: 260, y: 590, radius: 48, kind: 'warning-rock', color: '#696477' },
     { id: 'door', name: '광장으로 나가는 문', x: 600, y: 690, radius: 34, kind: 'door', color: '#d9d3f2', passable: true }

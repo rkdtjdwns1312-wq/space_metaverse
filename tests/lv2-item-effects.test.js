@@ -354,8 +354,8 @@ test('moon removes sun and rewards two after paying use tax, not on ordinary use
   assert.equal(g.actor.starShards, 10);
 });
 
-test('moon cannot bypass UV/little-moon or black star; new black star cancels moon without reward', () => {
-  for (const status of ['black', 'little-sun-card', 'little-moon-card']) {
+test('moon cannot bypass UV or black star; new black star cancels moon without reward', () => {
+  for (const status of ['black', 'little-sun-card']) {
     const f = fixture('moon-card');
     if (status === 'black') f.actor.avatar.blackStar = {planetId: 'p', at: NOW};
     else f.actor.cardMarkers = [marker(status)];
@@ -411,4 +411,15 @@ test('due predicate is read-only and matches settlement at boundaries and blocke
   const j = fixture('moon-card'); use(j, 'moon-card');
   j.actor.avatar.blackStar = {planetId: 'p', at: NOW};
   check(j, NOW + 1, true);
+});
+
+test('little moon allows LV2 self and shared self effects but protects other recipients',()=>{
+ for(const id of ['moon-card','spaceman-card','spaceship-card']){
+ const f=fixture(id);f.actor.cardMarkers=[marker('little-moon-card')];
+ use(f,id,id==='spaceship-card'?{targetId:'b'}:{});
+ assert.ok(f.actor.cardMarkers.some(m=>m.itemId===id));
+ assert.ok(f.actor.cardMarkers.some(m=>m.itemId==='little-moon-card'));
+ }
+ const f=fixture('spaceship-card');f.b.cardMarkers=[marker('little-moon-card')];
+ rejectedWithoutMutation(f,()=>use(f,'spaceship-card',{targetId:'b'}),/꼬마 달/);
 });

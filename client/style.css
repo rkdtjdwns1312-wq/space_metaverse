@@ -121,11 +121,17 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .bag-detail-inner{display:flex;gap:10px;align-items:flex-start}
 .bag-detail-inner .icon{font-size:26px;flex-shrink:0}
 .bag-detail-inner .item-art{width:68px;height:68px;object-fit:cover;border-radius:8px;flex-shrink:0}
-.draw-spread{display:grid;grid-template-columns:repeat(5,minmax(48px,1fr));gap:8px;max-width:470px;margin:16px auto}
-.draw-card{min-height:76px;border:2px solid #a6dafa;border-radius:12px;background:linear-gradient(145deg,#182347,#34245d);color:#fff8c7;font-size:1.3rem;box-shadow:0 4px 10px #070b2590;cursor:pointer}
-.draw-card:hover:not(:disabled){transform:translateY(-4px)}
-.draw-card.revealed{background:linear-gradient(145deg,#fef2b1,#e1a955);color:#442a28;font-weight:700}
-@media(max-width:450px){.draw-spread{grid-template-columns:repeat(5,minmax(38px,1fr));gap:5px}.draw-card{min-height:62px}}
+.draw-spread{display:flex;justify-content:center;align-items:center;min-height:265px;margin:20px auto;max-width:100%}
+.draw-card{box-sizing:border-box;width:172px;min-height:228px;padding:20px 12px;border:3px solid #cdb7ed;border-radius:22px;background:linear-gradient(145deg,#f8f4ff,#ddcefa);color:#695094;font-size:1.1rem;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;text-align:center}
+.draw-deck{cursor:pointer;box-shadow:7px 7px 0 #c4b0e3,13px 13px 0 #ebe3f5,0 14px 26px #74609630;transition:transform .2s}
+.draw-deck-star{font-size:4.2rem;line-height:1;color:#e8b653;text-shadow:0 0 15px #fff}
+.draw-deck:hover:not(:disabled){transform:translateY(-5px)}
+.draw-deck.drawing{animation:draw-pulse .65s ease-in-out infinite alternate}
+.draw-card.revealed{background:linear-gradient(145deg,#fffbed,#ffe7aa);border-color:#edc86c;color:#69532c;box-shadow:0 8px 24px #d9b75e40;animation:draw-reveal .4s ease-out}
+@keyframes draw-pulse{to{transform:translateY(-5px) rotate(3deg)}}
+@keyframes draw-reveal{from{transform:translateY(16px) scale(.88);opacity:.3}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.draw-deck,.draw-card.revealed{animation:none!important;transition:none}}
+
 .bag-detail-inner .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .bag-detail-inner .info strong{font-size:13px;color:#3a3450}
 .bag-detail-inner .info p{margin:0;font-size:12px;color:#847ca0}
@@ -379,3 +385,12 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 
 /* 조사하기와 메뉴는 같은 줄이며, 좁은 화면에서는 오른쪽 공간을 활용합니다. */
 @media(max-width:520px){body.joined:not(.placing) .bottom-dock{left:max(calc(50% + 8px), 204px)}}
+
+#warning-confirm-dialog{width:min(440px,calc(100vw - 32px))} .warning-confirm-detail{padding:16px;border:2px solid #dfd0f6;border-radius:16px;background:#faf6ff} #warning-confirm-reason{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}
+
+.mailbox-list{list-style:none;padding:0;max-height:55vh;overflow:auto}.mailbox-list li{padding:14px;margin:10px 0;border:2px solid #d8c7f2;border-radius:16px;background:#faf7ff}.mailbox-list li>div{display:flex;gap:8px;margin-top:10px}#planet-warning-status section{padding:10px 14px;border:1px solid #dfd0f6;border-radius:12px;margin-top:8px}#planet-warning-status h4{margin:0;color:#7651ac}#planet-warning-status p{margin:6px 0 0;overflow-wrap:anywhere}
+
+.social-friends-row{display:flex;align-items:center;justify-content:space-between;gap:16px}.social-friends-row>div{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.social-friends-row button{flex-shrink:0}.social-chat-row{display:flex;justify-content:flex-start;margin-top:16px}
+
+/* 교실 메뉴: 운영 버튼은 한 줄에 하나씩, 교실 코드 영역은 별도 묶음. */
+body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#menu-dialog .topline-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}#menu-dialog .topline-actions>button{width:100%;justify-content:center}#menu-dialog #room-badge{flex-wrap:wrap;justify-content:center;max-width:100%;margin-bottom:8px}#menu-dialog #my-password{width:100%;margin-bottom:12px}

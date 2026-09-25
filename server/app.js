@@ -1,3 +1,4 @@
+import {requestMembership,clearJoinRequests,mailboxView} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
@@ -41,7 +42,7 @@ import {currentWeekRecords} from './weekly-ranking.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
-import {hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
+import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
 import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -157,8 +158,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
+    deliver(()=>io.to(room.code).emit('planet:mailbox:changed',{}));
     for(const p of room.players.values()){syncGalaxyHoldings(p,clock());syncLv3Holdings(p,clock());syncLv4Holdings(p,clock());}
     // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
+    for(const planet of room.planets.values())planet.joinRequests=(planet.joinRequests||[]).filter(r=>room.players.get(r.playerId)?.role==='student'&&room.players.get(r.playerId).avatar.departmentId!==planet.id);
     for(const planet of room.planets.values()) if(planet.work?.distribution) {
       reconcileMembership(room,planet,clock());
       if(!planet.work.distribution) deliver(()=>io.to(room.code).emit('department:changed',{planetId:planet.id}));
@@ -559,6 +562,13 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       announce(room,'선생님이 "'+planet.name+'" 행성을 없앴어요.');
       return {};
     });
+    const completeMembership=(room,planet,p)=>{
+      const previous=room.planets.get(p.avatar.departmentId);
+      if(previous&&p.mapId===interiorIdOf(previous.id))Object.assign(p,exitPosition(room,previous),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      p.avatar.departmentId=planet.id;clearJoinRequests(room,p.id);
+      if(previous){previous.rename?.votes.delete(p.id);evaluateRename(room,previous);}
+      roster(room);announce(room,previous?p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+ro(planet.name)+' 옮겼어요.':p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
+    };
     action('planet:join',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
@@ -567,14 +577,33 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.mapId===PLAZA_ID,'광장에서만 행성에 가입할 수 있어요.');
       const previousId=p.avatar.departmentId;
       ensure(previousId!==planet.id,'이미 '+planet.name+' 소속이에요.');
-      const previous=previousId?room.planets.get(previousId):null;
-      p.avatar.departmentId=planet.id;
-      if(previous){ previous.rename?.votes.delete(p.id); evaluateRename(room,previous); }
-      roster(room);
-      announce(room, previous
-        ? p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+ro(planet.name)+' 옮겼어요.'
-        : p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
-      return {};
+      const result=requestMembership(room,planet,p,clock());
+      if(result.pending){roster(room);return {pending:true,message:'가입 신청을 보냈어요. 부원의 승인을 기다려주세요.'};}
+      completeMembership(room,planet,p);return {pending:false,message:planet.name+'에 가입했어요.'};
+    });
+    // 우체통은 내부의 실제 위치와 서버에 저장된 소속을 함께 확인합니다.
+    const mailboxAccess=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const planet=requirePlanet(s.room,data),p=s.player;
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'소속 부원만 가입 신청을 확인할 수 있어요.');
+      const object=mapOf(interiorIdOf(planet.id)).objects.find(o=>o.kind==='mailbox');
+      ensure(p.mapId===interiorIdOf(planet.id)&&isNear(p,object),'행성 안 우체통에 가까이 가주세요.');
+      return {...s,planet};
+    };
+    action('planet:mailbox:get',data=>{const {room,planet}=mailboxAccess(data);return mailboxView(room,planet);},false);
+    action('planet:mailbox:decide',data=>{
+      const {room,planet}=mailboxAccess(data);
+      ensure(typeof data.accept==='boolean','승인 또는 거절을 골라주세요.');
+      const pending=(planet.joinRequests||[]).find(r=>r.playerId===data.playerId);
+      ensure(pending,'이미 처리되었거나 취소된 가입 신청이에요.');
+      const applicant=room.players.get(pending.playerId);ensure(applicant?.role==='student','신청자를 찾지 못했어요.');
+      if(data.accept)completeMembership(room,planet,applicant);
+      else{planet.joinRequests=planet.joinRequests.filter(r=>r!==pending);roster(room);whisper(room,applicant,planet.name+' 가입 신청이 거절되었어요.');}
+      return {...mailboxView(room,planet),message:data.accept?'가입을 승인했어요.':'가입 신청을 거절했어요.'};
+    });
+    action('planet:join:cancel',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const planet=requirePlanet(s.room,data);
+      planet.joinRequests=(planet.joinRequests||[]).filter(r=>r.playerId!==s.player.id);roster(s.room);return {};
     });
     action('planet:leave',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1019,7 +1048,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!hasCardStatus(p,'little-sun-card',now),'자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요.');
       ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
-      ensure(!hasCardStatus(p,'little-moon-card',now),'꼬마 달 보호 중에는 다른 카드 효과를 받을 수 없어요.');
       ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
       ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
       const retainedMarkers=(p.cardMarkers||[]).filter(marker=>marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card');
@@ -1039,8 +1067,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
       const {room,player:p}=s,draw=p.rabbitDraw;
       ensure(draw&&draw.id===data.drawId,'진행 중인 뽑기가 없어요.');
-      const card=draw.cards.find(entry=>entry.id===data.cardId);
-      ensure(card,'펼쳐진 카드 한 장을 골라주세요.');
+      // 시작 시 서버에서 무작위로 섞은 더미의 맨 위 카드를 뽑습니다.
+      // 클라이언트 cardId는 무시하며 실패/재접속 뒤에도 같은 결과를 유지합니다.
+      const card=draw.cards[0];
+      ensure(card,'뽑기 카드를 찾지 못했어요.');
       const reward=awardDrawReward(p,card.reward);p.rabbitDraw=null;
       const marker=p.cardMarkers?.find(entry=>entry.id===draw.markerId);
       if(marker)marker.note=('당첨: '+reward.text).slice(0,80);
@@ -1267,7 +1297,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const targets=second?[target,second]:[target];
       for(const recipient of targets){
         ensure(levelOf(p)>=levelOf(recipient),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-        ensure(!hasItemImmunity(recipient,now)&&(!hasCardStatus(recipient,'little-moon-card',now)||item.mode==='moon'),'꼬마 달 보호 중인 친구는 다른 카드 효과를 받지 않아요.');
+        ensure(!hasItemImmunity(recipient,now)&&!hasMoonProtectionFrom(recipient,p,now),'꼬마 달 보호 중인 친구는 타인이 사용하는 효과의 대상이 되지 않아요.');
       }
       if(item.mode==='moon')ensure(!p.avatar.blackStar,'검은별 상태에서는 꼬마 달을 사용할 수 없어요.');
       if(item.mode==='uv')ensure(target.role==='student','학생 친구에게만 자외선을 적용할 수 있어요.');

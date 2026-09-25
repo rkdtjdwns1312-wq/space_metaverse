@@ -1,3 +1,4 @@
+import {approveJoinFixture} from './membership-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -237,7 +238,7 @@ test('대기 행성 신청과 이름 투표 Map을 복원하며 수업 밖 소�
   const ja=await join(a,code),jb=await join(b,code,'2','2222');await join(c,code,'3','3333');
   const planet=[...f.game.store.rooms.get(code).planets.values()][0];
   assert.ok((await call(a,'planet:join',{planetId:planet.id})).ok);
-  assert.ok((await call(b,'planet:join',{planetId:planet.id})).ok);
+  assert.ok((await call(b,'planet:join',{planetId:planet.id})).ok);await approveJoinFixture(f.game,a,b,planet.id);
   assert.ok((await call(a,'planet:rename:propose',{planetId:planet.id,name:'책읽는행성'})).ok);
   const proposed=await call(c,'planet:propose',{name:'새행성',description:'내일 이어서',x:1870,y:1050,color:'#98dfd2',templateId:'reading'});
   assert.equal(proposed.ok,true,proposed.error);

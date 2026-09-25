@@ -1,7 +1,7 @@
 import {ITEM_USE,SHOP,SHARDS,itemOf,PLAZA_ID,BLACK_HOLE_ID} from '../shared/config.js';
 import {STAR_CARD_CATALOG,goldItemIdOf} from '../shared/star-cards.js';
 import {ensure} from './rooms.js';
-import {addCardMarker,hasCardStatus,hasItemImmunity} from './item-cards.js';
+import {hasMoonProtectionFrom,addCardMarker,hasCardStatus,hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax,hasLv2ItemBlock} from './lv2-item-effects.js';
 import {arrivePosition} from './world.js';
@@ -77,7 +77,7 @@ function targets(room,actor,ids,min,max,now){
   ensure(Array.isArray(ids)&&ids.length>=min&&ids.length<=max&&new Set(ids).size===ids.length,'서로 다른 사용 대상을 골라주세요.');
   return ids.map(id=>{const p=room.players.get(id);ensure(p?.role==='student'&&p.connected&&!p.away,'접속 중인 학생 친구를 골라주세요.');
     ensure(level(p)<=level(actor),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-    ensure(!hasCardStatus(p,'little-moon-card',now)&&!hasItemImmunity(p,now),'아이템 보호 중인 친구예요.');return p;});
+    ensure(!hasMoonProtectionFrom(p,actor,now)&&!hasItemImmunity(p,now),'아이템 보호 중인 친구예요.');return p;});
 }
 export function blackHolePreview(room,actor,ids,now=Date.now()){
   ensure(Array.isArray(ids)&&ids.length===3&&new Set(ids).size===3&&ids.every(id=>room.planets.has(id)),'서로 다른 부서 행성 3개를 골라주세요.');
@@ -87,7 +87,7 @@ export function blackHolePreview(room,actor,ids,now=Date.now()){
     const black=!!p.avatar.blackStar&&ids.includes(p.avatar.blackStar.planetId),amount=warnings.length+(black?3:0);
     if(!amount)continue;
     ensure(level(p)<=level(actor),'대상 중 나보다 레벨이 높은 친구가 있어요.');
-    ensure(!hasItemImmunity(p,now)&&!hasCardStatus(p,'little-moon-card',now),'대상 중 아이템 보호 중인 친구가 있어요.');
+    ensure(!hasItemImmunity(p,now)&&!hasMoonProtectionFrom(p,actor,now),'대상 중 아이템 보호 중인 친구가 있어요.');
     ensure(p.starShards>=amount,p.nickname+' 친구의 별 파편이 부족해요.');costs.push({playerId:p.id,nickname:p.nickname,amount});
   }
   const total=costs.reduce((n,p)=>n+p.amount,0);ensure(total>0,'선택한 부서에 해제할 경고나 검은별이 없어요.');
@@ -149,7 +149,7 @@ export function confirmLv4(room,teacher,data,now=Date.now()){
     ensure(m?.itemId==='nebula-card','사용 중인 성운 기록을 찾지 못했어요.');const target=draft.players.get(data.targetId);
     ensure(target?.role==='student'&&target!==p,'징수할 다른 학생을 골라주세요.');
     ensure(level(target)<=(m.fromLevel||level(p)),'카드 사용자보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-    ensure(!hasItemImmunity(target,now)&&!hasCardStatus(target,'little-moon-card',now),'아이템 보호 중인 친구예요.');
+    ensure(!hasItemImmunity(target,now)&&!hasMoonProtectionFrom(target,p,now),'아이템 보호 중인 친구예요.');
     ensure(target.starShards>=1&&p.starShards<SHARDS.max,'별 파편을 옮길 잔액 여유가 부족해요.');target.starShards--;p.starShards++;message='침입 확인 완료. 별 파편 1개를 옮겼어요.';
   }else if(data.action==='exploration'){
     ensure(m?.itemId==='betelgeuse-card'&&m.remainingUses>0,'남은 탐험 기회가 없어요.');ensure(Number.isInteger(data.steps)&&data.steps>=1&&data.steps<=99,'이동한 칸 수는 1~99로 적어주세요.');

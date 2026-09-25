@@ -8,17 +8,17 @@ import {BLACK_HOLE_ID,INTERIOR,interiorIdOf} from '../shared/config.js';
 
 const key=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const errors=[],checks=[];
 const check=text=>{checks.push(text);console.log(text);};
 async function join(name,code){
   const page=await browser.newPage({viewport:{width:1440,height:960}});page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(url);await page.locator('#join-code').fill(code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');
+  await page.goto(url,{waitUntil:'domcontentloaded'});await page.locator('#join-code').fill(code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');
   await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});return page;
 }
 try{
   const teacher=await browser.newPage({viewport:{width:1440,height:960}});teacher.on('pageerror',e=>errors.push(e.message));
-  await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);
+  await teacher.goto(url,{waitUntil:'domcontentloaded'});await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);
   await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0],actorPage=await join('1',room.code),targetPage=await join('2',room.code);
   const actor=[...room.players.values()].find(p=>p.nickname==='1'),target=[...room.players.values()].find(p=>p.nickname==='2');
@@ -31,10 +31,27 @@ try{
   assert.match(await actorPage.locator('#warning-title').textContent(),/규칙행성/);
   await actorPage.locator('#warning-threshold').fill('2');await actorPage.locator('#warning-threshold-save').click();
   await actorPage.locator('#warning-summary').filter({hasText:'2회'}).waitFor();check('부서 소속 학생이 경고 돌에서 기준 횟수를 정함');
-  actorPage.on('dialog',dialog=>dialog.accept());
+  const nativeDialogs=[];actorPage.on('dialog',dialog=>{nativeDialogs.push(dialog.message());dialog.dismiss();});
   await actorPage.locator('#warning-target').selectOption(target.id);await actorPage.locator('#warning-reason').fill('약속을 어김');
-  await actorPage.locator('#warning-issue').click();await actorPage.locator('#warning-target option').filter({hasText:'경고 1회'}).waitFor({state:'attached'});
-  await actorPage.locator('#warning-reason').fill('같은 약속을 다시 어김');await actorPage.locator('#warning-issue').click();
+  await actorPage.locator('#warning-issue').click();await actorPage.locator('#warning-confirm-dialog').waitFor({state:'visible'});
+  assert.match(await actorPage.locator('#warning-confirm-target').textContent(),/2에게/);
+  assert.equal(await actorPage.locator('#warning-confirm-reason').textContent(),'약속을 어김');
+  const entriesBefore=await actorPage.locator('#warning-entries').textContent();
+  await actorPage.locator('#warning-confirm-cancel').click();await actorPage.locator('#warning-confirm-dialog').waitFor({state:'hidden'});
+  assert.equal(await actorPage.locator('#warning-reason').inputValue(),'약속을 어김');
+  assert.equal(await actorPage.locator('#warning-entries').textContent(),entriesBefore);
+  await actorPage.locator('#warning-issue').click();await actorPage.keyboard.press('Escape');await actorPage.locator('#warning-confirm-dialog').waitFor({state:'hidden'});
+  assert.equal(await actorPage.locator('#warning-entries').textContent(),entriesBefore);
+  check('게임 확인창에 대상과 이유 표시, 취소와 Esc는 경고 없이 입력 유지');
+  await actorPage.locator('#warning-issue').click();await actorPage.screenshot({path:'.local/237-warning-confirm.png'});
+  await actorPage.setViewportSize({width:390,height:844});
+  const bounds=await actorPage.locator('#warning-confirm-dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390);
+  await actorPage.screenshot({path:'.local/237-warning-confirm-mobile.png'});
+  await actorPage.locator('#warning-confirm-yes').evaluate(button=>{button.click();button.click();});
+  await actorPage.locator('#warning-target option').filter({hasText:'경고 1회'}).waitFor({state:'attached'});
+  assert.equal(await actorPage.locator('#warning-entries li').count(),1);assert.deepEqual(nativeDialogs,[]);
+  await actorPage.setViewportSize({width:1440,height:960});check('좁은 화면 확인창 정상, 확인 연속 클릭은 한 번만 지급, 브라우저 팝업 없음');
+  await actorPage.locator('#warning-reason').fill('같은 약속을 다시 어김');await actorPage.locator('#warning-issue').click();await actorPage.locator('#warning-confirm-yes').click();
   await targetPage.locator('#minimap-title').filter({hasText:'블랙홀 내부'}).waitFor();
   assert.equal(target.mapId,BLACK_HOLE_ID);assert.ok(target.avatar.blackStar);check('두 번째 직접 경고에서 학생이 검은별로 변해 블랙홀로 이동');
   Object.assign(target,{x:600,y:370});game.io.to(target.socketId).emit('room:state',game.store.snapshot(room,target));
@@ -50,7 +67,13 @@ try{
   await teacher.locator('#dock-menu').click();await teacher.locator('#teacher-tools').click();
   await teacher.locator('#black-star-list-button').click();await teacher.locator('#black-star-dialog').waitFor({state:'visible'});
   assert.match(await teacher.locator('#black-star-students').textContent(),/2 · 규칙행성 경고/);
-  teacher.on('dialog',dialog=>dialog.accept());await teacher.locator('#black-star-students button').click();
+  teacher.on('dialog',dialog=>{nativeDialogs.push(dialog.message());dialog.dismiss();});await teacher.locator('#black-star-students button').click();
+  await teacher.locator('#black-star-confirm-dialog').waitFor({state:'visible'});assert.match(await teacher.locator('#black-star-confirm-message').textContent(),/2 친구/);
+  await teacher.locator('#black-star-confirm-cancel').click();assert.ok(target.avatar.blackStar);
+  await teacher.locator('#black-star-students button').click();await teacher.keyboard.press('Escape');await teacher.locator('#black-star-confirm-dialog').waitFor({state:'hidden'});assert.ok(target.avatar.blackStar);
+  await teacher.locator('#black-star-students button').click();await teacher.setViewportSize({width:390,height:844});await teacher.screenshot({path:'.local/242-black-star-confirm.png'});
+  await teacher.locator('#black-star-confirm-yes').evaluate(button=>{button.click();button.click();});assert.deepEqual(nativeDialogs,[]);
+  check('검은별 해제도 게임 확인창·대상 이름·취소와 Esc 보존·확인 연속 클릭 1회·브라우저 팝업 없음');
   await teacher.locator('#black-star-empty').waitFor({state:'visible'});
   await targetPage.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();
   assert.equal(target.avatar.blackStar,null);check('선생님 명단에 경고 부서가 표시되고 해제 시 학생이 광장으로 돌아옴');

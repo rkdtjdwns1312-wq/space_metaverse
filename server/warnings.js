@@ -75,3 +75,8 @@ export function blackStarList(room){
   return [...room.players.values()].filter(p=>p.role==='student'&&p.avatar.blackStar).map(p=>({id:p.id,nickname:p.nickname,
     planetId:p.avatar.blackStar.planetId,planetName:room.planets.get(p.avatar.blackStar.planetId)?.name||'없어진 부서',at:p.avatar.blackStar.at}));
 }
+
+// 외부 행성 정보에는 횟수와 이름만 공개하고 경고 사유·작성자는 보내지 않습니다.
+export function warningSummary(room,planet){
+  return [...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,nickname:p.nickname,count:warningCount(planet,p.id),blackStar:p.avatar.blackStar?.planetId===planet.id})).filter(p=>p.count>0||p.blackStar);
+}

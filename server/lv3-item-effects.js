@@ -1,7 +1,7 @@
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV3_ITEMS} from '../shared/lv3-items.js';
 import {ensure} from './rooms.js';
-import {addCardMarker, hasCardStatus, hasItemImmunity} from './item-cards.js';
+import {hasMoonProtectionFrom,addCardMarker, hasCardStatus, hasItemImmunity} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax, hasLv2ItemBlock} from './lv2-item-effects.js';
 import {clearBlackStar} from './warnings.js';
@@ -91,7 +91,7 @@ export function useLv3Item(room, actor, item, data = {}, now = Date.now()) {
   if (expected > 1) ensure(targets.every(p => p.role === 'student'), '학생 친구를 골라주세요.');
   for (const target of targets) {
     ensure(level(actor) >= level(target), '나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
-    ensure(!hasCardStatus(target, 'little-moon-card', now) && !hasItemImmunity(target, now), '꼬마 달 보호 중에는 다른 카드 효과를 받지 않아요.');
+    ensure(!hasMoonProtectionFrom(target,actor,now) && !hasItemImmunity(target, now), '꼬마 달 보호 중인 친구는 타인이 사용하는 효과의 대상이 되지 않아요.');
   }
 
   // 보상 공간 부족, 사용료 실패 등이 나면 원본을 그대로 보존합니다.

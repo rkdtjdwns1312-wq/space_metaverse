@@ -65,6 +65,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.fillStyle='#ffffffb8';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.55);ctx.fillStyle='#665784';ctx.fillRect(-r*.2,r*.2,r*.4,r*.12);
     }else if(kind==='star'||kind==='growth'||kind==='evolution'||kind==='black-star'){
       ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.42:r;const px=Math.cos(a)*s,py=Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
+    }else if(kind==='mailbox'){
+      ctx.beginPath();ctx.roundRect(-r,-r,r*2,r*1.5,r*.4);ctx.fill();ctx.stroke();ctx.fillStyle='#fffaf6';ctx.fillRect(-r*.6,-r*.4,r*1.2,r*.55);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
     }else if(kind==='board'||kind==='report-board'){
       ctx.fillRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.strokeRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
       ctx.strokeStyle='#ffffffaa';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-r*.55,i*r*.25);ctx.lineTo(r*.55,i*r*.25);ctx.stroke();}

@@ -1,3 +1,4 @@
+import {createMailboxUI} from './mailbox-ui.js';
 import {createMarketUI} from './market-ui.js';
 import {createAuxiliarySkills} from './auxiliary-skills.js';
 import {createLv4ItemUI} from './lv4-item-ui.js';
@@ -92,6 +93,7 @@ const departmentWork=createDepartmentWorkUI({request,stop,toast});
 const rulesUI=createPlanetRulesUI({request,stop,toast,isJoined:()=>!!selfId});
 const evolutionUI=createEvolutionUI({request,stop,toast,isJoined:()=>!!selfId});
 const growthUI=createGrowthUI({request,stop,toast,isJoined:()=>!!selfId});
+const mailboxUI=createMailboxUI({request,stop,toast});
 const warningUI=createWarningUI({request,stop,toast,getSelfId:()=>selfId});
 const assignmentUI=createAssignmentUI({request,stop,toast});
 socket.on('department:changed',event=>departmentWork.changed(event));
@@ -389,8 +391,8 @@ function itemUseText(item){
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
   if(item.mode==='meteor')return '선택한 부서가 나에게 준 활성 경고를 즉시 해제해요.';
   if(item.mode==='uv')return '지정한 친구가 오늘 자정까지 자외선 상태가 돼요.';
-  if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 다른 카드 효과를 막아요.';
-  if(item.mode==='draw')return '뒷면 카드 54장 중 하나를 골라요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요.';
+  if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 타인이 사용하는 효과의 대상이 되지 않아요. 나에게 쓰는 아이템은 사용할 수 있어요.';
+  if(item.mode==='draw')return '카드 더미를 누르면 무작위로 한 장을 뽑아요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요.';
   if(item.usable===false)return '이 아이템의 사용 효과는 준비 중이에요.';
   if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='lv4'||item.mode==='star-card')return item.description;
   return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
@@ -539,32 +541,40 @@ $('use-confirm').onclick=async()=>{
 };
 $('use-cancel').onclick=()=>$('use-dialog').close();
 $('use-dialog').addEventListener('close',()=>{useItem=null;$('world').focus();});
-let rabbitDraw=null,rabbitPicked=false;
+let rabbitDraw=null,rabbitPicked=false,rabbitDrawing=false;
 function renderRabbitDraw(){
-  $('draw-start').hidden=!!rabbitDraw||rabbitPicked;
-  $('draw-message').textContent=rabbitPicked?'뽑기를 마쳤어요. 보상이 반영되었어요.':
-    rabbitDraw?'뒷면 카드 '+rabbitDraw.cards.length+'장 중 한 장을 골라보세요. 창을 닫아도 이어서 고를 수 있어요.':
-      '54장 중 한 장을 골라요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요. 초과 경험치는 1당 별 파편 1개로 바뀌어요.';
-  $('draw-spread').replaceChildren(...(rabbitDraw?.cards||[]).map((card,index)=>{
-    const button=document.createElement('button');button.type='button';button.className='draw-card';
-    button.textContent='✦ ?';button.setAttribute('aria-label',`${index+1}번 뒷면 카드`);
-    button.onclick=async()=>{if(!rabbitDraw)return;[...$('draw-spread').children].forEach(child=>child.disabled=true);
-      try{const result=await request('draw:pick',{drawId:rabbitDraw.id,cardId:card.id});
-        rabbitDraw=null;rabbitPicked=true;button.classList.add('revealed');button.textContent=result.reward.name;
-        $('draw-message').textContent=result.text;
-        const me=room?.players.find(p=>p.id===selfId);if(me){me.starShards=result.starShards;me.inventory=result.inventory;me.avatar=result.avatar;}renderBag(result.inventory);
-      }catch(error){toast(error.message);[...$('draw-spread').children].forEach(child=>child.disabled=false);}};
-    return button;
-  }));
+  $('draw-message').textContent=rabbitDraw?'카드 더미를 눌러 한 장을 뽑아보세요. 진행 중인 뽑기를 이어갈 수 있어요.':
+    '카드 더미를 누르면 달토끼 1장을 사용하고 무작위로 한 장을 뽑아요. 초과 경험치는 별 파편으로 받아요.';
+  const button=document.createElement('button');button.type='button';button.className='draw-card draw-deck';
+  button.setAttribute('aria-label','카드 더미에서 한 장 뽑기');button.disabled=rabbitDrawing;
+  const star=document.createElement('span');star.className='draw-deck-star';star.textContent='✦';
+  const label=document.createElement('span');label.textContent='한 장 뽑기';button.append(star,label);
+  button.onclick=async()=>{
+    if(rabbitDrawing||rabbitPicked)return;
+    rabbitDrawing=true;button.disabled=true;button.classList.add('drawing');$('draw-message').textContent='별빛 카드를 뽑고 있어요…';
+    try{
+      if(!rabbitDraw){
+        const started=await request('draw:start',{});rabbitDraw=started.draw;
+        const me=room?.players.find(p=>p.id===selfId);if(me)me.inventory=started.inventory;renderBag(started.inventory);
+      }
+      const result=await request('draw:pick',{drawId:rabbitDraw.id});
+      rabbitDraw=null;rabbitPicked=true;
+      // 창을 닫았다 다시 열었어도 현재 화면의 카드에 결과를 표시합니다.
+      const revealed=document.createElement('div');revealed.className='draw-card revealed';revealed.setAttribute('role','status');
+      const icon=document.createElement('span');icon.className='draw-deck-star';icon.textContent=result.reward.kind==='none'?'✧':'✦';
+      const name=document.createElement('strong');name.textContent=result.reward.name;revealed.append(icon,name);
+      $('draw-spread').replaceChildren(revealed);$('draw-message').textContent=result.text;
+      const me=room?.players.find(p=>p.id===selfId);if(me){me.starShards=result.starShards;me.inventory=result.inventory;me.avatar=result.avatar;}renderBag(result.inventory);
+    }catch(error){$('draw-message').textContent=error.message;toast(error.message);}
+    finally{rabbitDrawing=false;for(const card of $('draw-spread').querySelectorAll('button')){card.disabled=false;card.classList.remove('drawing');}}
+  };
+  $('draw-spread').replaceChildren(button);
 }
 async function loadRabbitDraw(){
+  if(rabbitDrawing)return;
   try{rabbitDraw=(await request('draw:status',{})).draw;rabbitPicked=false;renderRabbitDraw();}
   catch(error){toast(error.message);$('draw-dialog').close();}
 }
-$('draw-start').onclick=async()=>{const button=$('draw-start');button.disabled=true;
-  try{const result=await request('draw:start',{});rabbitDraw=result.draw;rabbitPicked=false;
-    const me=room?.players.find(p=>p.id===selfId);if(me)me.inventory=result.inventory;renderBag(result.inventory);renderRabbitDraw();}
-  catch(error){toast(error.message);}finally{button.disabled=false;}};
 $('draw-resume').onclick=async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();};
 $('draw-close').onclick=()=>$('draw-dialog').close();
 $('draw-dialog').addEventListener('close',()=>$('world').focus());
@@ -662,7 +672,17 @@ function renderPlanetDialog(planetId){
   $('planet-rules-editor').hidden=true; // 외부/행성 정보는 읽기 전용, 내부 규칙판에서만 편집합니다.
   $('planet-enter').hidden=!(isTeacher||me?.departmentId===planetId)||me?.mapId!==PLAZA_ID;
   $('planet-join').hidden=isTeacher||me?.departmentId===planetId;
-  $('planet-join').textContent=(!isTeacher&&me?.departmentId&&me.departmentId!==planetId)?(planetById(me.departmentId)?.name||'')+'에서 옮겨오기':'가입하기';
+  $('planet-join').textContent=planet.joinPending?'가입 승인 대기 중':planet.memberCount?'가입 신청하기':'가입하기';
+  $('planet-join').disabled=!!planet.joinPending;
+  $('planet-join-cancel').hidden=!planet.joinPending;
+  const warningGroups=[{label:'1회',count:1},{label:'2회',count:2},{label:'3회',count:3}];
+  for(const count of [...new Set((planet.warningStatus||[]).filter(p=>!p.blackStar&&p.count>3).map(p=>p.count))].sort((a,b)=>a-b))warningGroups.push({label:count+'회',count});
+  warningGroups.push({label:'검은별',blackStar:true});
+  $('planet-warning-status').replaceChildren(...warningGroups.map(group=>{
+    const section=document.createElement('section'),heading=document.createElement('h4'),names=document.createElement('p');
+    heading.textContent=group.label;names.textContent=(planet.warningStatus||[]).filter(p=>group.blackStar?p.blackStar:!p.blackStar&&p.count===group.count).map(p=>p.nickname).join(', ')||'없어요';
+    section.append(heading,names);return section;
+  }));
   $('planet-leave-dept').hidden=isTeacher||me?.departmentId!==planetId;
   renderPlanetRename(planet,me,isTeacher);
 }
@@ -721,7 +741,8 @@ $('planet-close').onclick=()=>$('planet-dialog').close();
 $('planet-dialog').addEventListener('close',()=>{planetDialogId=null;$('world').focus();});
 $('black-hole-info-close').onclick=()=>$('black-hole-info-dialog').close();
 $('black-hole-info-dialog').addEventListener('close',()=>$('world').focus());
-$('planet-join').onclick=async()=>{try{await request('planet:join',{planetId:planetDialogId});}catch(e){toast(e.message);}};
+$('planet-join').onclick=async()=>{try{const reply=await request('planet:join',{planetId:planetDialogId});toast(reply.message);}catch(e){toast(e.message);}};
+$('planet-join-cancel').onclick=async()=>{try{await request('planet:join:cancel',{planetId:planetDialogId});toast('가입 신청을 취소했어요.');}catch(e){toast(e.message);}};
 $('planet-leave-dept').onclick=async()=>{try{await request('planet:leave',{planetId:planetDialogId});}catch(e){toast(e.message);}};
 $('planet-enter').onclick=async()=>{
   try{await request('planet:enter',{planetId:planetDialogId});$('planet-dialog').close();}
@@ -755,6 +776,7 @@ function doInteract(){
   else if(n.kind==='evolution')evolutionUI.open();
   else if(n.kind==='growth')growthUI.open();
   else if(n.kind==='report-board')departmentWork.open(n.id);
+  else if(n.kind==='mailbox')mailboxUI.open(n.id);
   else if(n.kind==='warning-rock')warningUI.open(n.id,room?.players.find(p=>p.id===selfId)?.role==='student');
   else if(n.kind==='andromeda')assignmentUI.open();
   else if(n.kind==='arcade'){stop();request('arcade:open',{objectId:n.id}).then(r=>{if(selfId&&!document.querySelector('dialog:modal'))arcade.open(r.gameId);}).catch(e=>toast(e.message));}
@@ -1053,6 +1075,7 @@ function reset(message){
   document.body.classList.remove('joined');$('form-message').textContent=message||'';
   departmentWork.reset();
   rulesUI.reset();
+  warningUI.reset();mailboxUI.reset();
   interiorDecor.reset();
   evolutionUI.reset();growthUI.reset();
   if($('leave-dialog').open)$('leave-dialog').close();
@@ -1101,6 +1124,7 @@ socket.on('connect',async()=>{
     catch(e){reset(e.message);}finally{busy=false;controls();}}
 });
 socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';controls();});
+socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:hit',data=>{if(selfId)world.hit(data);});

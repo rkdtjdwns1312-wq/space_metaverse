@@ -319,7 +319,8 @@ test('sun tax applies once to LV1, LV2 and draw start; rejected use leaves disk/
   assert.ok((await call(f.first, 'draw:start')).ok);
   assert.equal(f.actor.starShards, 97, 'resuming a draw must not tax twice');
   const noReward = f.actor.rabbitDraw.cards.find(card => card.reward.kind === 'none');
-  assert.ok((await call(f.first, 'draw:pick', {drawId: started.draw.id, cardId: noReward.id})).ok);
+  f.seed(a=>{a.rabbitDraw.cards=[noReward,...a.rabbitDraw.cards.filter(c=>c.id!==noReward.id)];});
+  assert.ok((await call(f.first, 'draw:pick', {drawId: started.draw.id})).ok);
   assert.equal(f.actor.starShards, 97); assert.equal(f.friend.starShards, 103);
   f.seed((_a, b) => {b.starShards = SHARDS.max;});
   f.setNow(f.now + 2000);

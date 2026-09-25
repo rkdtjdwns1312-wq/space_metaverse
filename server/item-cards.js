@@ -16,6 +16,11 @@ export function hasCardStatus(player,itemId,now=Date.now()){
   return activeCardMarkers(player,now).some(marker=>marker.itemId===itemId);
 }
 
+// 달빛은 다른 사용자가 보낸 아이템만 막습니다. 사용자 id는 서버 세션에서 가져옵니다.
+export function hasMoonProtectionFrom(player,actor,now=Date.now()){
+  return player.id!==actor.id && hasCardStatus(player,'little-moon-card',now);
+}
+
 export function hasItemImmunity(player,now=Date.now()){
   return activeCardMarkers(player,now).some(m=>m.itemId==='black-hole-card');
 }

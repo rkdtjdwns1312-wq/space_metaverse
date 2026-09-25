@@ -194,3 +194,12 @@ test('holding requires an eligible level-four connected owner and rolls back blo
    assert.equal(f.b.cardMarkers.filter(m=>m.id.startsWith('old-')).length,75);
    assert.equal(f.actor.inventory.length,0);
  });
+
+test('little moon allows LV4 own use and own black-hole costs but protects friends',()=>{
+ const f=fixture('nebula-card');f.actor.cardMarkers=[marker('little-moon-card')];use(f,'nebula-card');assert.equal(f.actor.cardMarkers.length,2);
+ const g=fixture('black-hole-card');planets(g);g.actor.cardMarkers=[marker('little-moon-card')];
+ g.room.planets.get('p1').warnings.entries=[{active:true,targetId:'a'}];
+ assert.equal(blackHolePreview(g.room,g.actor,['p1','p2','p3'],NOW).total,1);
+ g.b.cardMarkers=[marker('little-moon-card')];g.room.planets.get('p2').warnings.entries=[{active:true,targetId:'b'}];
+ assert.throws(()=>blackHolePreview(g.room,g.actor,['p1','p2','p3'],NOW),/보호/);
+});

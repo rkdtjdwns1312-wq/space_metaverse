@@ -94,17 +94,18 @@ test('달토끼 54장 보상 객체 뽑기는 하루 한 번만 사용한다',as
   const {room,first,a}=await fixture(t),student=room.players.get(a.selfId);
   student.inventory=[{id:'moon-rabbit-card',quantity:2}];
   const start=await call(first,'draw:start');assert.ok(start.ok,start.error);
-  assert.equal(start.draw.cards.length,RABBIT_DRAW_COUNT);assert.equal(start.draw.cards[0].reward,undefined);
+  assert.equal(start.draw.count,RABBIT_DRAW_COUNT);assert.equal(start.draw.cards,undefined);
   assert.equal(student.inventory[0].quantity,1);
   const again=await call(first,'draw:start');assert.equal(again.draw.id,start.draw.id);
   const status=await call(first,'draw:status');assert.equal(status.draw.id,start.draw.id);
   assert.equal((await call(first,'item:use',{itemId:'moon-rabbit-card',targetId:a.selfId})).ok,false);
   const serverKnownShards4Card=student.rabbitDraw.cards.find(card=>card.reward.kind==='shards'&&card.reward.amount===4);
   assert.ok(serverKnownShards4Card);
-  const result=await call(first,'draw:pick',{drawId:start.draw.id,cardId:serverKnownShards4Card.id});
+  student.rabbitDraw.cards=[serverKnownShards4Card,...student.rabbitDraw.cards.filter(c=>c!==serverKnownShards4Card)];
+  const result=await call(first,'draw:pick',{drawId:start.draw.id,cardId:'client-cannot-select-a-card'});
   assert.ok(result.ok,result.error);assert.deepEqual(result.reward,serverKnownShards4Card.reward);
   assert.equal(student.starShards,4);
-  assert.equal((await call(first,'draw:pick',{drawId:start.draw.id,cardId:start.draw.cards[0].id})).ok,false);
+  assert.equal((await call(first,'draw:pick',{drawId:start.draw.id,cardId:serverKnownShards4Card.id})).ok,false);
   assert.match((await call(first,'draw:start')).error,/하루에 한 번/);
   assert.equal(student.inventory[0].quantity,1);
   assert.match(student.cardMarkers[0].note,/당첨/);
@@ -142,8 +143,8 @@ test('자외선과 현실 교실 처리 대기 카드는 교실 재시작 뒤에
   const rabbitSocket=await connect(),rabbitJoined=await call(rabbitSocket,'room:join',{code:created.room.code,nickname:'별이',pin:'1234'});
   assert.ok(rabbitJoined.ok,rabbitJoined.error);
   const resumed=await call(rabbitSocket,'draw:status');assert.equal(resumed.draw.id,pending.draw.id);
-  assert.deepEqual(resumed.draw.cards,pending.draw.cards);
-  const picked=await call(rabbitSocket,'draw:pick',{drawId:pending.draw.id,cardId:pending.draw.cards[1].id});
+  assert.deepEqual(resumed.draw,pending.draw);
+  const picked=await call(rabbitSocket,'draw:pick',{drawId:pending.draw.id});
   assert.ok(picked.ok,picked.error);assert.match((await call(rabbitSocket,'draw:start')).error,/하루에 한 번/);
   const returning=await connect(),joined=await call(returning,'room:join',{code:created.room.code,nickname:'달이',pin:'5678'});
   assert.ok(joined.ok,joined.error);
@@ -152,4 +153,30 @@ test('자외선과 현실 교실 처리 대기 카드는 교실 재시작 뒤에
   assert.match((await call(returning,'item:use',{itemId:'star-sticker',targetId:joined.selfId})).error,/가방에/);
   const back=game.store.rooms.get(created.room.code).players.get(joined.selfId);back.inventory=[{id:'star-sticker',quantity:1}];
   assert.match((await call(returning,'item:use',{itemId:'star-sticker',targetId:joined.selfId})).error,/자외선/);
+});
+
+test('꼬마 달 보호 중 우주 식량은 자신에게 사용 가능하고 다른 사용자의 효과만 막는다',async t=>{
+ const {room,first,second,a,b}=await fixture(t),p=room.players.get(a.selfId),q=room.players.get(b.selfId);
+ p.cardMarkers=[{id:'moon',itemId:'little-moon-card',until:Date.now()+60000,fromId:p.id,fromNickname:p.nickname}];
+ p.inventory=[{id:'space-food-card',quantity:2},{id:'moon-rabbit-card',quantity:1}];q.inventory=[{id:'space-food-card',quantity:1}];
+ const used=await call(first,'item:use',{itemId:'space-food-card',targetId:p.id});assert.ok(used.ok,used.error);
+ assert.equal(p.inventory.find(i=>i.id==='space-food-card').quantity,1);
+ assert.ok(p.cardMarkers.some(m=>m.itemId==='space-food-card'&&m.fromId===p.id));
+ const blocked=await call(second,'item:use',{itemId:'space-food-card',targetId:p.id,actorId:p.id});assert.match(blocked.error,/타인이/);
+ assert.equal(q.inventory[0].quantity,1);
+ p.lastItemUseAt=0;assert.ok((await call(first,'draw:start')).ok);
+});
+
+test('카드 더미 보상 실패는 같은 카드를 유지하고 중복 클릭은 한 번만 지급한다',async t=>{
+ const {room,first,second,a}=await fixture(t),p=room.players.get(a.selfId);
+ p.inventory=[{id:'moon-rabbit-card',quantity:1},{id:'space-food-card',quantity:99}];
+ const start=await call(first,'draw:start');assert.ok(start.ok);
+ const chosen=p.rabbitDraw.cards.find(c=>c.reward.itemId==='space-food-card');
+ p.rabbitDraw.cards=[chosen,...p.rabbitDraw.cards.filter(c=>c!==chosen)];
+ assert.equal((await call(second,'draw:pick',{drawId:start.draw.id})).ok,false);
+ const denied=await call(first,'draw:pick',{drawId:start.draw.id});assert.equal(denied.ok,false);
+ assert.equal(p.rabbitDraw.cards[0].id,chosen.id);assert.equal(p.inventory.find(i=>i.id==='space-food-card').quantity,99);
+ p.inventory.find(i=>i.id==='space-food-card').quantity=98;
+ const replies=await Promise.all([call(first,'draw:pick',{drawId:start.draw.id}),call(first,'draw:pick',{drawId:start.draw.id})]);
+ assert.equal(replies.filter(r=>r.ok).length,1);assert.equal(p.inventory[0].quantity,99);assert.equal(p.rabbitDraw,null);
 });
