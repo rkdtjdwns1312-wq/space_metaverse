@@ -36,11 +36,13 @@ const BY_ID = new Map([...CONSTELLATIONS,...LEGACY_CONSTELLATIONS].map(value => 
 const LV2_LEFT_FACING = new Set(['corvus','taurus','leo','ophiuchus','cancer','cygnus','aries']);
 const LV3_LEFT_FACING = new Set(['taurus','leo','cancer']);
 const LV4_LEFT_FACING = new Set(['ophiuchus','corvus']);
+const LV5_LEFT_FACING = new Set(['aquarius','taurus','cetus','ophiuchus']);
+const LEFT_FACING_BY_LEVEL = {2:LV2_LEFT_FACING,3:LV3_LEFT_FACING,4:LV4_LEFT_FACING,5:LV5_LEFT_FACING};
 // 계보 ID는 그대로 저장하고, 그림과 능력만 단계별로 고릅니다.
 // LV5 초월체는 별빛 원화를 사용하고, 새 능력은 정의될 때까지 기존 규칙을 유지합니다.
 const STAGES = new Map(CONSTELLATIONS.map(value => [value.id, [2, 3, 4, 5].map(level =>
   Object.freeze({ ...value, assetLevel: level, celestial: level >= 5,
-    spriteFacingX: (level === 2 && LV2_LEFT_FACING.has(value.id)) || (level === 3 && LV3_LEFT_FACING.has(value.id)) || (level === 4 && LV4_LEFT_FACING.has(value.id)) ? -1 : 1,
+    spriteFacingX: LEFT_FACING_BY_LEVEL[level].has(value.id) ? -1 : 1,
     art: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.art : `/assets/constellation-cards/lv${level}/${value.id}.png`,
     sprite: level >= 5 ? `/assets/avatars/celestial/${value.id}.png` : level === 2 ? value.sprite : `/assets/avatars/lv${level}/${value.id}.png`,
     ability: abilityForLevel(value.id, level)

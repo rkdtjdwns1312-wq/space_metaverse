@@ -445,7 +445,7 @@ export function createWorld(canvas) {
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
-    if(p.id===selfId){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
+    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,p.avatar.level):null;
     if(p.role==='teacher'){
@@ -465,7 +465,6 @@ export function createWorld(canvas) {
       else{const radius=size*.4;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
-      if(p.avatar.level>=config.PROGRESSION.transcendentLevel){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,size*.4,size*.145,-.35,0,Math.PI*2);ctx.stroke();}
     }else{
     ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=16+[1,0,2,-1,1,0,1,-1,0][i];
       i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
@@ -742,7 +741,6 @@ export function renderPortrait(canvas,player,effects){
     else{drawStar(ctx,0,0,43+(Math.min(player.avatar.level,6)-2)*2,constellation.color);
       ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,2);ctx.textBaseline='alphabetic';}
-    if(player.avatar.level>=config.PROGRESSION.transcendentLevel){ctx.strokeStyle='#ffe8a3';ctx.beginPath();ctx.ellipse(0,0,62,24,-.35,0,Math.PI*2);ctx.stroke();}
   }else{
   ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=34+[2,0,4,-2,2,0,2,-2,0][i];
     i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}

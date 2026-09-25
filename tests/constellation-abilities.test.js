@@ -72,7 +72,11 @@ test('뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 �
   setNow(start+2*86400000+1000);
   assert.equal((await call(second,'ability:status')).ok,true);
   // 만료 정산은 교실 서버의 1초 tick에서 반영됩니다.
-  await new Promise(resolve=>setTimeout(resolve,1200));
+  // 고정1200ms 대신 실제 정산 완료를 기다립니다. 병렬 검사로 tick이 늦어져도 결과로 판정합니다.
+  await new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{clearInterval(poll);reject(new Error('만료 보상 정산이 완료되지 않았습니다'));},5000);
+    const poll=setInterval(()=>{if(friend.starShards===1){clearInterval(poll);clearTimeout(timeout);resolve();}},25);
+  });
   assert.equal(friend.starShards,1);
   assert.equal(friend.abilityState.blocks.length,0);
 });
