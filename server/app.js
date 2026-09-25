@@ -1,5 +1,4 @@
-import {useLv4Item,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,setLv4RewardMode,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
-import {LV4_HOLDING_READY} from '../shared/lv4-items.js';
+import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
 import express from 'express';
 import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops.js';
@@ -267,6 +266,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
             ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
+          // 인벤토리가 바뀌기 전에 보유 기간을 정산해, 마지막 카드를 팔 때 지난 주의 스택을 잃지 않습니다.
+          if(save&&session)settleLv4Items(session.room,clock());
           return handler(data);
         })});
       }catch(error){
@@ -1041,9 +1042,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       whisper(room,p,'달토끼 뽑기: '+reward.text);
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
-    action('lv4:info',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return lv4Info(s.room,s.player);},false);
+    action('lv4:info',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return lv4Info(s.room,s.player);});
     action('lv4:black-hole:preview',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');ensure(levelOf(s.player)>=4,'LV4부터 사용할 수 있어요.');return blackHolePreview(s.room,s.player,data.planetIds,clock());},false);
-    action('lv4:reward-mode',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');ensure(LV4_HOLDING_READY,'보유 보상 방식은 선생님 확인 후 열릴 예정이에요.');const r=setLv4RewardMode(s.player,data.mode,clock());roster(s.room);return r;});
+    action('lv4:holding:use',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=useLv4Holding(s.room,s.player,data,clock());roster(s.room);return r;});
     action('lv4:teacher:end',data=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 종료할 수 있어요.');const p=s.room.players.get(data.targetId),m=p?.cardMarkers?.find(m=>m.id===data.markerId&&itemOf(m.itemId)?.mode==='lv4');ensure(m,'사용 기록을 찾지 못했어요.');p.cardMarkers=p.cardMarkers.filter(e=>e.id!==m.id);roster(s.room);return {message:'효과를 종료했어요.'};});
     action('lv4:teacher:info',()=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 확인할 수 있어요.');return lv4TeacherInfo(s.room);},false);
     action('lv4:teacher:confirm',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=confirmLv4(s.room,s.player,data,clock());roster(s.room);return r;});
@@ -1571,7 +1572,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           try{transaction(()=>{if(settleLv2Items(room,clock()))roster(room);});}
           catch(error){console.error('아이템 기간 보상 저장 실패:',error.message);continue;}
         }
-        if(LV4_HOLDING_READY&&lv4ItemsDue(room,clock())){
+        if(lv4ItemsDue(room,clock())){
           try{transaction(()=>{if(settleLv4Items(room,clock()))roster(room);});}
           catch(error){console.error('LV4 보유 보상 저장 실패:',error.message);continue;}
         }

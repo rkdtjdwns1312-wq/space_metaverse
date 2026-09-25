@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ITEM_USE, SHOP, SHARDS} from '../shared/config.js';
 import {LV4_ITEMS} from '../shared/lv4-items.js';
-import {blackHolePreview, confirmLv4, lv4ItemsDue, setLv4RewardMode, settleLv4Items,
-  syncLv4Holdings, useLv4Item, validateLv4State} from '../server/lv4-item-effects.js';
+import {blackHolePreview, confirmLv4, lv4ItemsDue, settleLv4Items,
+  syncLv4Holdings, useLv4Holding, useLv4Item, validateLv4State} from '../server/lv4-item-effects.js';
 import {MAX_CARD_MARKERS} from '../server/item-cards.js';
 import {GameError} from '../server/rooms.js';
 
@@ -122,29 +122,67 @@ test('Betelgeuse records three confirmed trips and duration, then rejects a four
   assert.throws(()=>confirmLv4(invalid.room,invalid.teacher,{playerId:'b',action:'exploration',reference:'bad',markerId:invalid.b.cardMarkers[0].id,steps:100},NOW),/1~99/);
 });
 
-test('LV4 state validator defaults old saves and rejects malformed state while cloning valid data', () => {
-  assert.deepEqual(validateLv4State(),{rewardMode:null,nextRewardAt:null,receipts:[],priorityUntil:null});
-  for(const value of [{rewardMode:'bad',nextRewardAt:null,receipts:[],priorityUntil:null},
-    {rewardMode:null,nextRewardAt:-1,receipts:[],priorityUntil:null},
-    {rewardMode:null,nextRewardAt:null,receipts:[{key:'x',at:-1}],priorityUntil:null}])assert.throws(()=>validateLv4State(value),/저장 데이터/);
-  const old={rewardMode:'shards',nextRewardAt:NOW,receipts:[{key:'x',at:NOW}],priorityUntil:null};
-  const cloned=validateLv4State(old);cloned.receipts[0].key='changed';assert.equal(old.receipts[0].key,'x');
+test('LV4 state validator defaults new saves and clones valid stacks, claims, receipts, and priority data', () => {
+  assert.deepEqual(validateLv4State(),{stacks:0,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null});
+  for(const value of [{stacks:-1,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null},
+    {stacks:0,nextStackAt:-1,claimIds:[],receipts:[],priorityUntil:null},
+    {stacks:0,nextStackAt:null,claimIds:['x','x'],receipts:[],priorityUntil:null},
+    {stacks:0,nextStackAt:null,claimIds:[],receipts:[{key:'x',at:-1}],priorityUntil:null}])assert.throws(()=>validateLv4State(value),/저장 데이터/);
+  const old={stacks:2,nextStackAt:NOW,claimIds:['claim'],receipts:[{key:'x',at:NOW}],priorityUntil:NOW};
+  const cloned=validateLv4State(old);cloned.claimIds[0]='changed';cloned.receipts[0].key='changed';assert.deepEqual(old,{stacks:2,nextStackAt:NOW,claimIds:['claim'],receipts:[{key:'x',at:NOW}],priorityUntil:NOW});
 });
 
-test('supercluster has no default payout, selectable seven-day shard or fourteen-day card mode, and pays only while held', () => {
-  const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];
-  assert.equal(settleLv4Items(f.room,NOW),false);assert.equal(f.actor.starShards,20);
-  assert.throws(()=>setLv4RewardMode(f.actor,'invalid',NOW),/골라주세요/);
-  const shards=setLv4RewardMode(f.actor,'shards',NOW);assert.equal(shards.nextAt,NOW+WEEK);
-  assert.equal(lv4ItemsDue(f.room,NOW+WEEK),true);settleLv4Items(f.room,NOW+WEEK);assert.equal(f.actor.starShards,24);
-  const cards=setLv4RewardMode(f.actor,'card',NOW+WEEK);assert.equal(cards.nextAt,NOW+3*WEEK);
-  settleLv4Items(f.room,NOW+3*WEEK);assert.ok(f.actor.inventory.some(x=>x.id==='star-card'&&x.quantity===1));
-  f.actor.inventory=[];syncLv4Holdings(f.actor,NOW+4*WEEK);assert.equal(f.actor.lv4State.nextRewardAt,null);
+test('supercluster accrues one stack per seven days independent of card quantity, including offline periods', () => {
+  const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:4}];
+  assert.equal(settleLv4Items(f.room,NOW),true);assert.equal(f.actor.lv4State.nextStackAt,NOW+WEEK);assert.equal(f.actor.lv4State.stacks,0);
+  assert.equal(settleLv4Items(f.room,NOW+3*WEEK+DAY),true);assert.equal(f.actor.lv4State.stacks,3);assert.equal(f.actor.lv4State.nextStackAt,NOW+4*WEEK);
+  assert.equal(f.actor.starShards,20);assert.equal(f.actor.inventory[0].quantity,4);
+  assert.equal(lv4ItemsDue(f.room,NOW+3*WEEK+DAY),false);
+  f.actor.inventory=[];assert.equal(syncLv4Holdings(f.actor,NOW+4*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,null);assert.equal(f.actor.lv4State.stacks,3);
+  assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),false);assert.equal(f.actor.lv4State.stacks,3);
+  f.actor.inventory=[{id:'supercluster-card',quantity:2}];assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,NOW+11*WEEK);
 });
 
-test('settlement respects wallet and card-stack caps without advancing unpaid periods', () => {
-  const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.starShards=SHARDS.max;
-  setLv4RewardMode(f.actor,'shards',NOW);assert.equal(settleLv4Items(f.room,NOW+WEEK),false);assert.equal(f.actor.lv4State.nextRewardAt,NOW+WEEK);
-  f.actor.inventory.push({id:'star-card',quantity:SHOP.maxStack});setLv4RewardMode(f.actor,'card',NOW+WEEK);
-  assert.equal(settleLv4Items(f.room,NOW+3*WEEK),false);assert.equal(f.actor.lv4State.nextRewardAt,NOW+3*WEEK);
+test('previous disabled LV4 reward state migrates without invented stacks or losing teacher receipts',()=>{
+  const receipts=[{key:'queen-writing::old',at:NOW}];
+  assert.deepEqual(validateLv4State({rewardMode:null,nextRewardAt:null,receipts,priorityUntil:NOW}),
+    {stacks:0,nextStackAt:null,claimIds:[],receipts,priorityUntil:NOW});
+  assert.equal(validateLv4State({rewardMode:'card',nextRewardAt:NOW+2*WEEK,receipts:[],priorityUntil:null}).nextStackAt,NOW+WEEK);
+  assert.throws(()=>validateLv4State({rewardMode:'invalid',nextRewardAt:null,receipts:[],priorityUntil:null}),/저장 데이터/);
+});
+
+test('holding exchange spends one stack for four shards or two for one star card without consuming supercluster', () => {
+  const shards=fixture();shards.actor.inventory=[{id:'supercluster-card',quantity:3}];shards.actor.lv4State={stacks:2,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
+  const result=useLv4Holding(shards.room,shards.actor,{reward:'shards',requestId:'shards-1'},NOW);
+  assert.equal(shards.actor.starShards,24);assert.equal(shards.actor.lv4State.stacks,1);assert.equal(shards.actor.inventory[0].quantity,3);assert.equal(result.holding.stacks,1);
+  const cards=fixture();cards.actor.inventory=[{id:'supercluster-card',quantity:2}];cards.actor.lv4State={stacks:2,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
+  useLv4Holding(cards.room,cards.actor,{reward:'card',requestId:'card-1'},NOW);
+  assert.deepEqual(cards.actor.inventory,[{id:'supercluster-card',quantity:2},{id:'star-card',quantity:1}]);assert.equal(cards.actor.lv4State.stacks,0);assert.equal(cards.actor.lv4State.nextStackAt,NOW+WEEK);
+});
+
+test('holding retries preserve request id semantics and successful requests cannot consume twice', () => {
+  const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
+  const noStack=structuredClone(f.room);
+  assert.throws(()=>useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW),/보유 스택이 부족/);assert.deepEqual(f.room,noStack);
+  f.actor.lv4State.stacks=3;
+  useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW);
+  assert.deepEqual(f.actor.lv4State.claimIds,['retry-1']);
+  const after=structuredClone(f.room);
+  const duplicate=useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW);assert.match(duplicate.message,/이미 처리/);assert.deepEqual(f.room,after);
+  useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'retry-2'},NOW);
+  assert.deepEqual(f.actor.lv4State.claimIds,['retry-1','retry-2']);
+});
+
+test('holding rejects invalid rewards, insufficient stacks, wallet and inventory caps atomically', () => {
+  const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
+  for(const data of [{reward:'coins',requestId:'bad'}, {reward:'shards',requestId:''}, {reward:'card',requestId:'few'}])rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,data,NOW));
+  f.actor.starShards=SHARDS.max;rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'wallet'},NOW),/가득/);
+  f.actor.inventory.push({id:'star-card',quantity:SHOP.maxStack});f.actor.lv4State.stacks=2;
+  rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,{reward:'card',requestId:'bag'},NOW),/가방 공간/);
+});
+
+test('holding requires an eligible level-four connected owner and rolls back blocked attempts', () => {
+  const cases=[f=>{f.actor.avatar.level=3;},f=>{f.actor.avatar.blackStar={planetId:'p1'};},f=>{f.actor.connected=false;},f=>{f.actor.away=true;},f=>{f.actor.cardMarkers=[marker('total-eclipse-card')];}];
+  for(const change of cases){const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};change(f);rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'ineligible'},NOW));}
+  const absent=fixture();absent.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};rejectedWithoutMutation(absent,()=>useLv4Holding(absent.room,absent.actor,{reward:'shards',requestId:'no-card'},NOW));
 });

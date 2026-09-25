@@ -458,6 +458,10 @@ function renderBagDetail(rows){
   const discard=document.createElement('button');discard.type='button';discard.className='small danger item-discard';discard.textContent='아이템 버리기';
   discard.onclick=()=>{discardItemId=item.id;$('discard-message').textContent=item.name+' 1개를 정말 버리시겠습니까? 버린 아이템은 되돌릴 수 없어요.';$('discard-dialog').showModal();};
   const choices=document.createElement('div');choices.className='item-choices';choices.append(details,use,discard);
+  if(item.id==='supercluster-card'){
+    const holding=document.createElement('button');holding.type='button';holding.className='small secondary holding-use';holding.textContent='보유효과 사용';
+    holding.onclick=()=>canUse?lv4UI.openHolding():toast('LV4부터 보유효과를 사용할 수 있어요.');choices.append(holding);
+  }
   wrap.append(icon,info,choices);
   $('bag-detail').replaceChildren(wrap);
 }

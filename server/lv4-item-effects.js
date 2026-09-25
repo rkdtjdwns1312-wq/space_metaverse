@@ -5,21 +5,27 @@ import {addCardMarker,hasCardStatus,MAX_CARD_MARKERS,hasItemImmunity} from './it
 import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax,hasLv2ItemBlock} from './lv2-item-effects.js';
 import {arrivePosition} from './world.js';
-import {LV4_HOLDING_READY} from '../shared/lv4-items.js';
 
 const DAY=86400000,WEEK=7*DAY,MAX_RECEIPTS=600;
 const count=(p,id)=>p.inventory?.find(e=>e.id===id)?.quantity||0;
 const level=p=>p.role==='teacher'?ITEM_USE.teacherLevel:p.avatar.level;
 const date=n=>Number.isSafeInteger(n)&&n>=0;
-const state=p=>p.lv4State??=validateLv4State();
+const state=p=>{if(!p.lv4State||!Object.hasOwn(p.lv4State,'stacks'))p.lv4State=validateLv4State(p.lv4State);return p.lv4State;};
 const living=m=>m.until===null||m.until>Date.now();
 export function validateLv4State(value){
-  if(value===undefined)return {rewardMode:null,nextRewardAt:null,receipts:[],priorityUntil:null};
-  const {rewardMode,nextRewardAt,receipts,priorityUntil}=value||{};
-  if(![null,'shards','card'].includes(rewardMode)||(nextRewardAt!==null&&!date(nextRewardAt))||
+  if(value===undefined)return {stacks:0,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null};
+  let {stacks,nextStackAt,claimIds,receipts,priorityUntil}=value||{};
+  // 이전에는 비활성 상태였던 자동 보상 설정을 새 스택 형식으로 안전하게 읽습니다.
+  if(value&&!Object.hasOwn(value,'stacks')){
+    const {rewardMode,nextRewardAt}=value;
+    if(![null,'shards','card'].includes(rewardMode)||(nextRewardAt!==null&&!date(nextRewardAt)))throw Error('LV4 아이템 저장 데이터가 올바르지 않습니다.');
+    stacks=0;claimIds=[];nextStackAt=nextRewardAt===null?null:Math.max(0,nextRewardAt-(rewardMode==='card'?WEEK:0));
+  }
+  if(!date(stacks)||(nextStackAt!==null&&!date(nextStackAt))||!Array.isArray(claimIds)||claimIds.length>MAX_RECEIPTS||
+    claimIds.some(id=>typeof id!=='string'||id.length<1||id.length>80)||new Set(claimIds).size!==claimIds.length||
     (priorityUntil!==null&&!date(priorityUntil))||!Array.isArray(receipts)||receipts.length>MAX_RECEIPTS||
     receipts.some(r=>!r||typeof r.key!=='string'||r.key.length>220||!date(r.at)))throw Error('LV4 아이템 저장 데이터가 올바르지 않습니다.');
-  return {rewardMode,nextRewardAt,priorityUntil,receipts:structuredClone(receipts)};
+  return {stacks,nextStackAt,claimIds:[...claimIds],priorityUntil,receipts:structuredClone(receipts)};
 }
 function eligible(p,now){return level(p)>=4&&!p.avatar.blackStar&&!hasCardStatus(p,'little-sun-card',now)&&!hasLv2ItemBlock(p,now)&&!activeItemBlocks(p,now).length;}
 function give(p,id,quantity){const owned=p.inventory.find(e=>e.id===id);ensure((owned?.quantity||0)+quantity<=SHOP.maxStack&&(owned||p.inventory.length<SHOP.maxKinds),'보상 아이템을 받을 가방 공간이 부족해요.');if(owned)owned.quantity+=quantity;else p.inventory.push({id,quantity});}
@@ -32,30 +38,41 @@ function draftOf(room){return {...room,players:new Map([...room.players].map(([i
 function commit(room,draft){for(const [id,p] of draft.players)Object.assign(room.players.get(id),p);for(const [id,p] of draft.planets)Object.assign(room.planets.get(id),p);}
 
 export function syncLv4Holdings(p,now=Date.now()){
-  const s=state(p),before=s.nextRewardAt;
-  if(!count(p,'supercluster-card'))s.nextRewardAt=null;
-  else if(s.rewardMode&&s.nextRewardAt===null)s.nextRewardAt=now+(s.rewardMode==='card'?2:1)*WEEK;
-  return before!==s.nextRewardAt;
-}
-export function setLv4RewardMode(p,mode,now=Date.now()){
-  ensure(['shards','card'].includes(mode),'보유 보상 종류를 골라주세요.');
-  ensure(count(p,'supercluster-card')&&level(p)>=4,'LV4부터 초은하단을 보유하고 선택할 수 있어요.');
-  const s=state(p);if(s.rewardMode!==mode){s.rewardMode=mode;s.nextRewardAt=now+(mode==='card'?2:1)*WEEK;}
-  return {message:'보유 보상을 선택했어요. 변경한 날부터 기간을 새로 셉니다.',mode:s.rewardMode,nextAt:s.nextRewardAt};
+  ensure(date(now)&&now<=Number.MAX_SAFE_INTEGER-WEEK,'적립 시각을 확인해주세요.');
+  const s=state(p),before=s.nextStackAt,beforeStacks=s.stacks;
+  if(!count(p,'supercluster-card'))s.nextStackAt=null;
+  else if(s.nextStackAt===null)s.nextStackAt=now+WEEK;
+  else if(s.nextStackAt<=now){
+    const weeks=Math.floor((now-s.nextStackAt)/WEEK)+1;
+    s.stacks+=Math.min(weeks,Number.MAX_SAFE_INTEGER-s.stacks);s.nextStackAt+=weeks*WEEK;
+  }
+  return before!==s.nextStackAt||beforeStacks!==s.stacks;
 }
 export function lv4ItemsDue(room,now=Date.now()){
-  return [...room.players.values()].some(p=>{const s=state(p);return count(p,'supercluster-card')&&s.nextRewardAt!==null&&s.nextRewardAt<=now&&eligible(p,now)&&
-    (s.rewardMode==='shards'?p.starShards<=SHARDS.max-4:count(p,'star-card')<SHOP.maxStack&&(count(p,'star-card')||p.inventory.length<SHOP.maxKinds));});
+  return [...room.players.values()].some(p=>count(p,'supercluster-card')?
+    p.lv4State?.nextStackAt==null||p.lv4State.nextStackAt<=now:p.lv4State?.nextStackAt!=null);
 }
 export function settleLv4Items(room,now=Date.now()){
-  let changed=false;for(const p of room.players.values()){
-    syncLv4Holdings(p,now);const s=state(p);if(!eligible(p,now)||s.nextRewardAt===null||s.nextRewardAt>now)continue;
-    const period=(s.rewardMode==='card'?2:1)*WEEK,due=Math.floor((now-s.nextRewardAt)/period)+1;
-    const capacity=s.rewardMode==='shards'?Math.floor((SHARDS.max-p.starShards)/4):((count(p,'star-card')||p.inventory.length<SHOP.maxKinds)?SHOP.maxStack-count(p,'star-card'):0);
-    const amount=Math.min(due,capacity);if(amount<=0)continue;
-    if(s.rewardMode==='shards')p.starShards+=amount*4;else give(p,'star-card',amount);
-    s.nextRewardAt+=amount*period;changed=true;
-  }return changed;
+  let changed=false;for(const p of room.players.values())changed=syncLv4Holdings(p,now)||changed;return changed;
+}
+const holdingView=p=>({stacks:state(p).stacks,nextAt:state(p).nextStackAt});
+
+// 보유 카드는 소모하지 않습니다. 스택 차감과 보상/사용료 이전은 한 저장 작업으로 묶습니다.
+export function useLv4Holding(room,actor,data={},now=Date.now()){
+  ensure(room.players.get(actor?.id)===actor&&actor.connected&&!actor.away,'먼저 교실에 입장해주세요.');
+  ensure(count(actor,'supercluster-card')>0,'초은하단을 보유해야 사용할 수 있어요.');
+  ensure(eligible(actor,now),'LV4부터 아이템을 사용할 수 있는 상태에서 보유효과를 쓸 수 있어요.');
+  ensure(['shards','card'].includes(data.reward),'받을 보상을 골라주세요.');
+  ensure(typeof data.requestId==='string'&&data.requestId.length>=1&&data.requestId.length<=80,'사용 요청을 확인해주세요.');
+  const draft=draftOf(room),p=draft.players.get(actor.id);syncLv4Holdings(p,now);const s=state(p);
+  if(s.claimIds.includes(data.requestId)){commit(room,draft);return {message:'이미 처리한 보유효과 요청이에요. 보상은 한 번만 지급했어요.',holding:holdingView(p)};}
+  const cost=data.reward==='shards'?1:2;ensure(s.stacks>=cost,'보유 스택이 부족해요.');
+  collectSunTax(draft,p,now);
+  if(data.reward==='shards'){ensure(p.starShards<=SHARDS.max-4,'별 파편 잔액이 가득 찼어요.');p.starShards+=4;}
+  else give(p,'star-card',1);
+  s.stacks-=cost;s.claimIds.push(data.requestId);if(s.claimIds.length>MAX_RECEIPTS)s.claimIds.shift();
+  const result={message:data.reward==='shards'?'1스택을 사용해 별 파편 4개를 받았어요.':'2스택을 사용해 별 카드 1장을 받았어요.',holding:holdingView(p)};
+  commit(room,draft);return result;
 }
 function targets(room,actor,ids,min,max,now){
   ensure(Array.isArray(ids)&&ids.length>=min&&ids.length<=max&&new Set(ids).size===ids.length,'서로 다른 사용 대상을 골라주세요.');
@@ -83,7 +100,7 @@ export function useLv4Item(room,actor,card,data={},now=Date.now()){
   ensure(level(actor)>=4,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
   ensure(eligible(actor,now),'지금은 아이템을 사용할 수 없어요.');
   ensure(now-(actor.lastItemUseAt??-Infinity)>=ITEM_USE.cooldownMs,'아이템을 조금 천천히 사용해주세요.');
-  const draft=draftOf(room),user=draft.players.get(actor.id);collectSunTax(draft,user,now);if(LV4_HOLDING_READY)settleLv4Items(draft,now);
+  const draft=draftOf(room),user=draft.players.get(actor.id);collectSunTax(draft,user,now);settleLv4Items(draft,now);
   let ids=[actor.id],message='사용 내용을 기록했어요. 실제 활동은 선생님이 확인해요.';
   if(card.id==='solar-system-card'){
     const people=targets(draft,user,data.targetIds,7,7,now);ensure(people.every(p=>p.id!==user.id),'다른 친구 7명을 골라주세요.');ids=people.map(p=>p.id);
@@ -113,7 +130,7 @@ export function useLv4Item(room,actor,card,data={},now=Date.now()){
   commit(room,draft);return {message,targetIds:ids};
 }
 export function lv4Info(room,p){return {useFeeText:hasCardStatus(p,'total-eclipse-card')?'개기 일식 금지 상태: 아이템을 한 번 사용할 때 별 파편 1개를 내요. 금지 상태는 계속 유지돼요.':'',players:[...room.players.values()].filter(q=>q.role==='student'&&q.connected&&!q.away).map(q=>({id:q.id,nickname:q.nickname,level:q.avatar.level})),
-  planets:[...room.planets.values()].map(q=>({id:q.id,name:q.name})),cards:STAR_CARD_CATALOG.map(c=>({id:c.id,name:c.name})),holding:{mode:state(p).rewardMode,nextAt:state(p).nextRewardAt},teacher:p.role==='teacher'};}
+  planets:[...room.planets.values()].map(q=>({id:q.id,name:q.name})),cards:STAR_CARD_CATALOG.map(c=>({id:c.id,name:c.name})),holding:holdingView(p),teacher:p.role==='teacher'};}
 export function lv4TeacherInfo(room){return {students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,nickname:p.nickname})),
   owners:[...room.players.values()].filter(p=>p.role==='student'&&count(p,'alien-queen-card')).map(p=>({id:p.id,nickname:p.nickname})),
   records:[...room.players.values()].flatMap(p=>(p.cardMarkers||[]).filter(m=>itemOf(m.itemId)?.mode==='lv4'&&living(m)).map(m=>({...m,playerId:p.id,nickname:p.nickname,name:itemOf(m.itemId).name})))};}

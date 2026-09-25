@@ -1,4 +1,4 @@
-import { LV4_ITEMS, LV4_HOLDING_READY } from '../shared/lv4-items.js';
+import { LV4_ITEMS } from '../shared/lv4-items.js';
 
 const byId = new Map(LV4_ITEMS.map(item => [item.id, item]));
 
@@ -12,6 +12,8 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
   let generation = 0;
   let closed = true;
   let roster = { players: [], planets: [], cards: [], holding: {}, teacher: false };
+  let holdingButtons = [];
+  const holdingRequestIds = new Map();
 
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -103,6 +105,11 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
 
   function setBusy(value) {
     for (const control of dialog.querySelectorAll('button, input, select')) control.disabled = value;
+    updateHoldingButtons();
+  }
+  function updateHoldingButtons(){
+    const stacks=Number(roster.holding?.stacks||0);
+    for(const entry of holdingButtons)entry.button.disabled=busy||stacks<entry.cost;
   }
 
   const personOptions = () => roster.players.map(player => ({
@@ -169,27 +176,7 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
       const card1 = select('첫 번째 금별 카드', (roster.cards || []).map(c => ({ value: c.id, label: c.name })), '카드 선택');
       const card2 = select('두 번째 금별 카드', (roster.cards || []).map(c => ({ value: c.id, label: c.name })), '카드 선택');
       form.append(field('보상 카드 1', card1), field('보상 카드 2', card2));
-      if(LV4_HOLDING_READY){
-      const mode = select('보유 보상 방식', [
-        { value: 'shards', label: '7일마다 별 파편 4개' },
-        { value: 'card', label: '14일마다 별 카드 1장' }
-      ], '보유 보상 방식 선택');
-      const holding = el('p', roster.holding?.nextAt != null ? `다음 보유 보상 예정: ${new Date(roster.holding.nextAt).toLocaleString('ko-KR')}` : '다음 보유 보상 날짜가 아직 없어요.', 'lv4-holding-date');
-      form.append(field('보유 보상', mode), holding);
-      form.append(button('보유 보상 방식 저장', async () => {
-        if (!mode.value) { toast?.('보유 보상 방식을 직접 선택해 주세요.'); return; }
-        if (busy) return;
-        busy = true; setBusy(true);
-        try {
-          const result = await request('lv4:reward-mode', { mode: mode.value });
-          toast?.(result?.message || '보유 보상 방식을 저장했어요.');
-          const date = result?.nextAt || result?.holding?.nextAt;
-          holding.textContent = date != null ? `다음 보유 보상 예정: ${new Date(date).toLocaleString('ko-KR')}` : '다음 보유 보상 날짜가 아직 없어요.';
-          window.dispatchEvent(new CustomEvent('player:updated'));
-        } catch (error) { toast?.(error?.message || '보유 보상 방식을 저장하지 못했어요.'); }
-        finally { busy = false; setBusy(false); }
-      }));
-      }else form.append(el('p','보유 보상은 방식 확인 후 열릴 예정이에요. 카드 사용 시 선택한 별 카드 2장은 지금 받을 수 있어요.','lv4-note'));
+      form.append(button('보유 효과 사용', () => void openHolding(), 'secondary'));
       form.append(button('초은하단 사용', () => {
         if (!card1.value || !card2.value) { toast?.('금별 카드 두 장을 선택해 주세요.'); return; }
         void submitUse(item, { cardIds: [card1.value, card2.value] });
@@ -224,6 +211,60 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
     stop?.();if (!dialog.open) dialog.showModal();
   }
 
+  async function openHolding() {
+    const token = ++generation;
+    closed = false;
+    let info;
+    try { info = await request('lv4:info', {}); }
+    catch (error) { closed = true; toast?.(error?.message || '보유 효과 정보를 불러오지 못했어요.'); return; }
+    if (token !== generation || closed) return;
+    roster = { ...roster, ...info, holding: info?.holding || { stacks: 0, nextAt: null } };
+    dialog.replaceChildren();
+    holdingButtons = [];
+    const body = el('div', undefined, 'lv4-body lv4-holding');
+    const header = el('header', undefined, 'lv4-header');
+    header.append(el('h2', '초은하단 보유 효과'), button('닫기', close));
+    body.append(header);
+    if (typeof roster.useFeeText === 'string' && roster.useFeeText.trim()) body.append(el('p', roster.useFeeText, 'lv4-use-fee'));
+    const status = el('section', undefined, 'lv4-controls');
+    const updateStatus = () => {
+      const stacks = Number(roster.holding?.stacks || 0);
+      status.querySelector('.lv4-holding-count').textContent = `보유 스택: ${stacks}개`;
+      const nextAt = roster.holding?.nextAt;
+      status.querySelector('.lv4-holding-date').textContent = nextAt != null ? `다음 적립: ${new Date(nextAt).toLocaleString('ko-KR')}` : '다음 적립일이 아직 없어요.';
+      updateHoldingButtons();
+    };
+    status.append(el('p', '', 'lv4-holding-count'), el('p', '', 'lv4-holding-date'));
+    const redeem = (reward, cost) => {
+      const control = button(reward === 'shards' ? '1스택 → 별 파편 4개' : '2스택 → 별 카드 1장', async () => {
+        if (busy || Number(roster.holding?.stacks || 0) < cost) return;
+        let requestId = holdingRequestIds.get(reward);
+        if (!requestId) { requestId = crypto.randomUUID(); holdingRequestIds.set(reward, requestId); }
+        busy = true; setBusy(true);
+        try {
+          const result = await request('lv4:holding:use', { reward, requestId });
+          roster.holding = result?.holding || roster.holding;
+          holdingRequestIds.delete(reward);
+          updateStatus();
+          toast?.(result?.message || '보유 효과를 사용했어요.');
+          window.dispatchEvent(new CustomEvent('player:updated'));
+        } catch (error) {
+          toast?.(error?.message || '보유 효과를 사용하지 못했어요. 다시 시도해 주세요.');
+        } finally {
+          busy = false; setBusy(false); updateStatus();
+        }
+      }, 'primary');
+      holdingButtons.push({ button: control, cost });
+      status.append(control);
+    };
+    redeem('shards', 1);
+    redeem('card', 2);
+    updateStatus();
+    body.append(status);
+    dialog.append(body);
+    stop?.();
+    if (!dialog.open) dialog.showModal();
+  }
   async function openTeacher() {
     const token = ++generation;
     closed = false;
@@ -311,11 +352,12 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
   function reset() {
     generation++;
     busy = false;
+    holdingButtons=[];holdingRequestIds.clear();
     if (dialog.open) dialog.close();
     dialog.replaceChildren();
     closed = true;
     stop?.();
   }
 
-  return { open, openTeacher, reset };
+  return { open, openHolding, openTeacher, reset };
 }

@@ -53,6 +53,17 @@ try{
   assert.ok(player('달이').cardMarkers.some(m=>m.itemId==='total-eclipse-card'&&m.until>Date.now()));check('개기 일식 학생 선택·7일 금지 적용');
   await use('supercluster-card');await page.getByLabel('첫 번째 금별 카드',{exact:true}).selectOption('polaris');await page.getByLabel('두 번째 금별 카드',{exact:true}).selectOption('polaris');
   await page.getByRole('button',{name:'초은하단 사용',exact:true}).click();await page.locator('#lv4-item-dialog').waitFor({state:'hidden'});assert.equal(player('별이').inventory.find(i=>i.id==='gold-polaris-card').quantity,2);check('초은하단 선택한 별 카드 2장 지급');
+  await close();game.store.transact(()=>{player('별이').lv4State.stacks=3;});publish();
+  await page.locator('#dock-inventory').click();if(!await page.locator('#bag-detail .holding-use').isVisible())await page.locator('[data-item-id="supercluster-card"] .slot-btn').click();await page.locator('#bag-detail .holding-use').click();
+  await page.getByText('보유 스택: 3개',{exact:true}).waitFor();const beforeHolding=player('별이').starShards;
+  await page.setViewportSize({width:320,height:740});await page.screenshot({path:'.local/209-holding-mobile.png'});
+  assert.ok(await page.locator('#lv4-item-dialog').evaluate(d=>d.scrollWidth<=d.clientWidth));
+  await page.getByRole('button',{name:'1스택 → 별 파편 4개',exact:true}).click();await page.getByText('보유 스택: 2개',{exact:true}).waitFor();assert.equal(player('별이').starShards,beforeHolding+4);
+  await page.getByRole('button',{name:'2스택 → 별 카드 1장',exact:true}).click();await page.getByText('보유 스택: 0개',{exact:true}).waitFor();
+  assert.equal(player('별이').inventory.find(i=>i.id==='supercluster-card').quantity,1);assert.equal(player('별이').inventory.find(i=>i.id==='star-card').quantity,1);
+  assert.ok(await page.getByRole('button',{name:'1스택 → 별 파편 4개',exact:true}).isDisabled());assert.ok(await page.getByRole('button',{name:'2스택 → 별 카드 1장',exact:true}).isDisabled());
+  await close();await page.reload();await page.locator('#lobby').waitFor({state:'hidden'});assert.equal(player('별이').lv4State.stacks,0);assert.equal(player('별이').starShards,beforeHolding+4);check('보유효과 버튼·두 스택교환·원본 유지·부족 차단·재접속·320px');
+  await page.setViewportSize({width:1440,height:960});
   await use('betelgeuse-card');await page.getByRole('button',{name:'탐험 기회 3회 받기',exact:true}).click();await page.locator('#lv4-item-dialog').waitFor({state:'hidden'});
   await teacherTools();const exploration=teacher.locator('.lv4-teacher-row').filter({has:teacher.getByRole('heading',{name:'별이 · 베텔기우스',exact:true})});
   await exploration.getByLabel('확인한 탐험 걸음 수',{exact:true}).fill('2');await exploration.getByLabel('실제 탐험 활동 확인 기록',{exact:true}).fill('테스트 탐험 1');await exploration.getByRole('button',{name:'탐험 확인 · 3회 중 1회 처리',exact:true}).click();
