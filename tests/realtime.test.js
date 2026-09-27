@@ -311,9 +311,8 @@ test('the planet limit allows more than 30 separate planets and blocks further c
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const room=game.store.rooms.get(r.room.code);
  let created=0,colorIndex=0;
- outer: for(let y=76,row=0;y<=MAP.height-76;y+=184,row++)
-  for(let x=76+(row%2?100:0);x<=MAP.width-76;x+=200){
-   if(created>=PLANET.maxPerRoom) break outer;
+ outer: for(const {x,y} of departmentSlots()){
+   if(room.planets.size>=PLANET.maxPerRoom) break outer;
    if(!placementFree(room,x,y)) continue;
    const res=await call(teacher,'planet:create',{name:'행성'+created,description:'',x,y,color:PLANET_COLORS[colorIndex%PLANET_COLORS.length],templateId:'meal'});
    assert.equal(res.ok,true,'create '+created+' failed: '+res.error);

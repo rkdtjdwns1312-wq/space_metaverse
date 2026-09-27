@@ -35,7 +35,7 @@ test('선생님이 체크한 알림장 줄만 학생 과제로 가져와 완료�
   assert.equal((await call(first,'task:complete',{taskId:aTask})).tasks.length,0);
   assert.equal((await call(second,'task:complete',{taskId:bTask})).tasks.length,0);
   assert.equal((await call(first,'task:complete',{taskId:aTask})).ok,false);
-  Object.assign(teacherPlayer,{x:portal.x+260,y:portal.y});
+  Object.assign(teacherPlayer,{x:portal.x+portal.radius+20,y:portal.y});
   const gallery=await call(teacher,'assignment:read',{});
   assert.equal(gallery.weeks.length,3);assert.equal(gallery.weeks[0].assignments.length,1);
   assert.deepEqual(gallery.weeks[0].assignments[0].completed,['가은','다희']);
@@ -71,6 +71,6 @@ test('개인 과제와 완료 명단은 서버 재시작 뒤에도 보존된다'
   const reopened=await connect();assert.equal((await call(reopened,'room:open',{teacherKey:key,code:created.room.code})).ok,true);
   room=game.store.rooms.get(created.room.code);assert.equal(room.players.get(joined.selfId).tasks.length,0);
   const portal=MAP.objects.find(o=>o.kind==='andromeda'),newTeacher=[...room.players.values()].find(p=>p.role==='teacher');
-  Object.assign(newTeacher,{mapId:PLAZA_ID,x:portal.x+260,y:portal.y});
+  Object.assign(newTeacher,{mapId:PLAZA_ID,x:portal.x+portal.radius+20,y:portal.y});
   assert.deepEqual((await call(reopened,'assignment:read',{})).weeks[0].assignments[0].completed,['가람']);
 });

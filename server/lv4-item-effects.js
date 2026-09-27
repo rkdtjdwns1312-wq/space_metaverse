@@ -110,7 +110,7 @@ export function useLv4Item(room,actor,card,data={},now=Date.now()){
     const preview=blackHolePreview(draft,user,data.planetIds,now);ids=preview.costs.map(c=>c.playerId);
     for(const c of preview.costs){const p=draft.players.get(c.playerId);p.starShards-=c.amount;
       for(const id of data.planetIds)for(const e of draft.planets.get(id).warnings?.entries||[])if(e.targetId===p.id)e.active=false;
-      if(p.avatar.blackStar&&data.planetIds.includes(p.avatar.blackStar.planetId)){p.avatar.blackStar=null;if(p.mapId===BLACK_HOLE_ID)Object.assign(p,arrivePosition(draft,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+380}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});}
+      if(p.avatar.blackStar&&data.planetIds.includes(p.avatar.blackStar.planetId)){p.avatar.blackStar=null;if(p.mapId===BLACK_HOLE_ID)Object.assign(p,arrivePosition(draft,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});}
     }
     marker(user,card,user,now+Math.round(preview.total*DAY/10),'다른 아이템의 대상이 되지 않음 · 소멸 '+preview.total+'파편',now);
     message=`경고와 검은별을 해제하고 ${preview.total}파편을 소멸시켰어요. 아이템 보호 ${preview.durationDays}일.`;

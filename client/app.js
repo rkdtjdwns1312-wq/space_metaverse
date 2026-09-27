@@ -1,6 +1,6 @@
 import {createMailboxUI} from './mailbox-ui.js';
 import {createMarketUI} from './market-ui.js';
-import {createAuxiliarySkills} from './auxiliary-skills.js';
+import {createAuxiliarySkills,createSkillGatedRequest} from './auxiliary-skills.js';
 import {createLv4ItemUI} from './lv4-item-ui.js';
 import {createCraftingUI} from './crafting-ui.js';
 import {createStarCardUI} from './star-card-ui.js';
@@ -58,7 +58,7 @@ let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),to
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
-createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request});
+createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request})});
 const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});

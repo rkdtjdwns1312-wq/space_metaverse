@@ -1,9 +1,9 @@
 import {PLAZA_LAYOUT as L,PLAZA_POLYGONS,PLAZA_EDGES,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
-// 원화는 로드 후 재사용합니다. 6200px 전체 배경 캔버스를 만들지 않고 화면에 보이는
+// 원화는 로드 후 재사용합니다. 3720px 전체 배경 캔버스를 만들지 않고 화면에 보이는
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
 const images={},tiles=new Map(),SIZE=768,LIMIT=16;
 let overview=null;
-for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png'})){
+for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png',temple:'plaza-temple.png'})){
   const image=new Image();image.onload=()=>{tiles.clear();overview=null;};image.src='/assets/maps/'+path;images[id]=image;
 }
 const ready=img=>img.complete&&img.naturalWidth>0;
@@ -26,8 +26,8 @@ function ground(ctx){
   for(const z of L.islands){ctx.fillStyle=z.color+'55';ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx,z.ry,0,0,Math.PI*2);ctx.fill();ring(ctx,z,58,'#bca6c780',3);}
   ctx.font='28px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#728878';
   ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
-  // 중앙 석판의 금속 테두리 장식. 다리 연결부에는 바깥 난간을 그리지 않습니다.
-  const c=L.center;for(const r of [260,430,570]){ctx.beginPath();ctx.ellipse(c.x,c.y,r,r*.57,0,0,Math.PI*2);ctx.lineWidth=r===570?8:3;ctx.strokeStyle=r===570?'#cbb686aa':'#c4aed18a';ctx.stroke();}
+  // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
+  const c=L.center;if(ready(images.temple))ctx.drawImage(images.temple,c.x-360,c.y-250,720,480);
   for(const z of [L.center,...L.islands])for(let i=0;i<20;i++){
     const a=(i+.5)*Math.PI/10,p={x:z.x+Math.cos(a)*(z.rx-90),y:z.y+Math.sin(a)*(z.ry-70)};
     // 다리 접속 방향은 비워 둡니다.
@@ -56,7 +56,7 @@ export function drawPlazaPillar(ctx,o){
   ctx.save();ctx.fillStyle='#53436735';ctx.beginPath();ctx.ellipse(o.x+14,o.y+5,38,13,.18,0,Math.PI*2);ctx.fill();
   if(ready(images.pillar)){
     // 투명 원본의 발끝은 높이 약94%에 있습니다. 발 기준을 실제 충돌 원에 맞춥니다.
-    ctx.drawImage(images.pillar,o.x-80,o.y-216,160,230);
+    ctx.drawImage(images.pillar,o.x-64,o.y-174,128,185);
   }else{ctx.fillStyle='#f6ecff';ctx.fillRect(o.x-19,o.y-145,38,145);}
   ctx.font='17px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#fffaf3';ctx.lineWidth=4;ctx.lineJoin='round';ctx.strokeText(o.name,o.x,o.y+9);ctx.fillStyle='#695382';ctx.fillText(o.name,o.x,o.y+9);ctx.restore();
 }

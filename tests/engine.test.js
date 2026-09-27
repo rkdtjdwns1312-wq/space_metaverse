@@ -6,9 +6,9 @@ import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interio
 import {departmentSlots} from '../shared/plaza-layout.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
 test('the enlarged plaza exposes its real objects and department placement slots',()=>{
- assert.deepEqual([MAP.width,MAP.height],[6200,4400]);
- assert.deepEqual(MAP.spawn,{x:3000,y:2340});
- assert.deepEqual(MAP.templeCenter,{x:3000,y:2200});
+ assert.deepEqual([MAP.width,MAP.height],[3720,2640]);
+ assert.deepEqual(MAP.spawn,{x:1800,y:1404});
+ const {x,y}=MAP.templeCenter;assert.deepEqual({x,y},{x:1800,y:1320});
  assert.equal(departmentSlots().length,50);
  assert.ok(departmentSlots().every(p=>p.x>=0&&p.x<=MAP.width&&p.y>=0&&p.y<=MAP.height));
  for(const object of MAP.objects)assert.ok(object.x>=0&&object.x<=MAP.width&&object.y>=0&&object.y<=MAP.height);

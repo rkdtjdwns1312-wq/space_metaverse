@@ -11,9 +11,9 @@ test('LV1~5 HP/MP 1/10/20/30/40, 범위 밖 단계는 null',()=>{
  assert.deepEqual(vitalsOf(5),{hp:{current:40,max:40},mp:{current:40,max:40}});
  for(const level of [0,6,99,'2'])assert.equal(vitalsOf(level),null);
 });
-test('15마리 체력20/40/100, 방향·거리·맵 검사, 한 마리 타격, 처치/재등장과 방 격리',()=>{
+test('25마리 체력20/40/100, 방향·거리·맵 검사, 한 마리 타격, 처치/재등장과 방 격리',()=>{
  const room={players:new Map()},other={},monsters=monstersOf(room,0),rabbit=monsters.get('star-crab');
- for(const m of monsters.values())assert.equal(m.hp,{'star-origin-1':20,'star-origin-2':40,'star-origin-3':100}[m.mapId]);
+ for(const m of monsters.values())assert.equal(m.hp,{'star-origin-1':20,'star-origin-2':40,'star-origin-3':100,'sun-paradise':40,'sun-paradise-2':100}[m.mapId]);
  const p={id:'hunter',role:'student',connected:true,avatar:{level:4,constellationId:'sagittarius'},mapId:rabbit.mapId,x:rabbit.x-62,y:rabbit.y,facing:{x:1,y:0}};room.players.set(p.id,p);
  assert.equal(strikeMonster(room,p,3,0).hp,17);assert.equal(monstersOf(other).get('star-crab').hp,20);
  p.facing.x=-1;assert.equal(strikeMonster(room,p,3,0),null);p.facing.x=1;

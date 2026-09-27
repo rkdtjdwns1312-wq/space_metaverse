@@ -1,8 +1,11 @@
 import {drawParadiseFloor} from './paradise-floor.js';
+import {drawValleyGround} from './valley-art.js';
+import {onParadiseArtReady,paradiseArtCacheKey,drawParadiseBackdrop} from './paradise-art.js';
 // 동화풍 배경은 한 번 그려 보관합니다. 매 프레임 복잡한 성운을 다시 그리지 않아
 // 크롬북에서도 이동·채팅에 쓸 여유를 남깁니다. 외부 이미지로 교체하기 쉬운 모듈입니다.
 const backgrounds=new Map();
 document.fonts.load('20px Jua').then(()=>backgrounds.clear());
+onParadiseArtReady(()=>backgrounds.clear());
 function ellipse(ctx,x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();}
 function star(ctx,x,y,r,color){
   ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,d=i%2?r*.48:r;i?ctx.lineTo(x+Math.cos(a)*d,y+Math.sin(a)*d):ctx.moveTo(x+Math.cos(a)*d,y+Math.sin(a)*d);}ctx.closePath();ctx.fillStyle=color;ctx.fill();
@@ -22,8 +25,9 @@ function sky(ctx,w,h,colors=['#b8b7e3','#d5c3e5','#a9cddf']){
   for(let i=0;i<8;i++){const x=160+i*430,y=230+i%3*670;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+45,y+70);ctx.lineTo(x+125,y+45);ctx.stroke();}
 }
 function cached(map,draw){
-  if(!backgrounds.has(map.id)){const canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));backgrounds.set(map.id,canvas);}
-  return backgrounds.get(map.id);
+  const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}`;
+  if(!backgrounds.has(key)){const canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));backgrounds.set(key,canvas);}
+  return backgrounds.get(key);
 }
 export function drawTemple(ctx,map){
   ctx.drawImage(cached(map,c=>{
@@ -49,53 +53,11 @@ export function drawTemple(ctx,map){
     for(let i=0;i<7;i++)star(c,x-180+i*60,y-266+Math.abs(i-3)*11,8,'#fff4d1');
   }),0,0);
 }
-export function drawCrossroads(ctx,map){
-  ctx.drawImage(cached(map,c=>{
-    sky(c,map.width,map.height,['#c4c3e8','#eadcf3','#cce6df']);
-    drawParadiseFloor(c,map);
-  }),0,0);
-}
-export function drawParadise(ctx,map){
-  ctx.drawImage(cached(map,c=>{
-    const moon=map.theme==='moon-paradise',{bodyX:x,bodyY:y,bodyRadius:r}=map.vista;
-    sky(c,map.width,map.height,moon?['#aaa9d9','#c2bae5','#96bdd6']:['#efbfbb','#ffe6be','#edd0e0']);
-    const glow=c.createRadialGradient(x,y,r*.65,x,y,r*1.65);
-    glow.addColorStop(0,moon?'#eeedffbb':'#fff4b9dd');glow.addColorStop(1,'#ffffff00');
-    c.fillStyle=glow;c.fillRect(x-r*1.65,y-r*1.65,r*3.3,r*3.3);
-    const body=c.createRadialGradient(x-r*.3,y-r*.3,r*.08,x,y,r);
-    body.addColorStop(0,moon?'#fffdf7':'#fffde1');body.addColorStop(.65,moon?'#eeeaff':'#fff1ac');body.addColorStop(1,moon?'#bcbce9':'#f8cc79');
-    ellipse(c,x,y,r,r,body);
-    if(moon){
-      for(const [dx,dy,size] of [[-.36,-.25,.15],[.27,-.4,.09],[.3,.29,.2],[-.31,.42,.08]]){
-        ellipse(c,x+dx*r,y+dy*r,size*r,size*r,'#a9afd23d');
-        ellipse(c,x+dx*r+size*r*.16,y+dy*r+size*r*.12,size*r*.76,size*r*.76,'#e5e7fa99');
-      }
-    }else{
-      c.strokeStyle='#fff2b6aa';c.lineWidth=5;c.lineCap='round';
-      for(let i=0;i<16;i++){const a=i*Math.PI/8;c.beginPath();c.moveTo(x+Math.cos(a)*r*1.12,y+Math.sin(a)*r*1.12);c.lineTo(x+Math.cos(a)*r*1.26,y+Math.sin(a)*r*1.26);c.stroke();}
-    }
-    drawParadiseFloor(c,map);
-  }),0,0);
-}
-// 금빛 햇살과 은빛 달빛이 중앙에서 섞이는 별들의 쉼터입니다.
-export function drawStarParadise(ctx,map){
-  ctx.drawImage(cached(map,c=>{
-    sky(c,map.width,map.height,['#bdb0d9','#e4cfe5','#a9c6df']);
-    for(const [x,y,color] of [[220,180,'#ffe5a8'],[1580,960,'#d5eaff']]){
-      const light=c.createRadialGradient(x,y,20,x,y,590);light.addColorStop(0,color+'dd');light.addColorStop(1,color+'00');
-      c.fillStyle=light;c.fillRect(x-590,y-590,1180,1180);
-    }
-    // 서로 엇갈리는 빛의 띠와 별 정원은 장식이므로 이동을 막지 않습니다.
-    c.lineCap='round';
-    for(const [i,color] of ['#ffe8b4','#f8e0ee','#dceaff'].entries()){
-      c.strokeStyle=color+'77';c.lineWidth=22;c.beginPath();c.moveTo(-60,190+i*55);c.bezierCurveTo(310,650,760,90,1260,490+i*50);c.stroke();
-    }
-    ellipse(c,220,180,68,68,'#fff0b1');
-    c.strokeStyle='#fff3c5';c.lineWidth=4;for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(220+Math.cos(a)*80,180+Math.sin(a)*80);c.lineTo(220+Math.cos(a)*94,180+Math.sin(a)*94);c.stroke();}
-    ellipse(c,1580,960,80,80,'#f4f4ff');ellipse(c,1604,941,65,65,'#b9c8e1');
-    drawParadiseFloor(c,map);
-  }),0,0);
-}
+// 낙원8맵: 같은 손그림 하늘/석판 계열, 각 천체의 위치·크기는 맵 설정 유지.
+function drawPaintedParadise(ctx,map){ctx.drawImage(cached(map,c=>{drawParadiseBackdrop(c,map);drawParadiseFloor(c,map);}),0,0);}
+export function drawCrossroads(ctx,map){drawPaintedParadise(ctx,map);}
+export function drawParadise(ctx,map){drawPaintedParadise(ctx,map);}
+export function drawStarParadise(ctx,map){drawPaintedParadise(ctx,map);}
 export function drawRainbowSpace(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height,['#7771ad','#a78bbb','#647da6']);
@@ -105,20 +67,7 @@ export function drawRainbowSpace(ctx,map){
     }
   }),0,0);
 }
-export function drawValley(ctx,map,time){
-  ctx.drawImage(cached(map,c=>{
-    sky(c,map.width,map.height,['#9a9bc5','#bfc9e5','#c6b7df']);
-    const path=()=>{c.beginPath();c.moveTo(-120,780);c.bezierCurveTo(450,780,340,210,1320,290);};
-    for(const [width,color] of [[200,'#c7dcf22b'],[135,'#dceafd40'],[72,'#f2f5ff55'],[18,'#fff8ff55']]){c.strokeStyle=color;c.lineWidth=width;path();c.stroke();}
-  }),0,0);
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,t=reduced?0:time/90000;
-  // 아주 느리게 이동하는 빛만 덧그립니다. 큰 배경은 캐시하고 화면 점멸은 하지 않습니다.
-  ctx.save();for(let i=0;i<38;i++){
-    const u=(i/38+t)%1,v=1-u,x=v*v*v*-120+3*v*v*u*450+3*v*u*u*340+u*u*u*1320;
-    const y=v*v*v*780+3*v*v*u*780+3*v*u*u*210+u*u*u*290+(i%5-2)*12;
-    ctx.globalAlpha=reduced?.55:.4+.25*Math.sin(time/1900+i);star(ctx,x,y,2.5+i%3,'#fffdf6');
-  }ctx.restore();
-}
+export function drawValley(ctx,map,time){drawValleyGround(ctx,map,time);}
 
 // 별의 시작점은 거의 검은 공간 위에 별을 드문드문 놓습니다. 위치와 색은
 // 맵 이름으로 만든 시드에서 결정해 캐시된 배경이 매번 달라지지 않게 합니다.

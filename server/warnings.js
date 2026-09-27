@@ -29,7 +29,7 @@ export function clearWarningsFromPlanet(room,planet,target){
   let released=false;
   if(cleared&&target.avatar.blackStar?.planetId===planet.id){
     target.avatar.blackStar=null;released=true;
-    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+380}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
   }
   return {cleared,released};
 }
@@ -40,7 +40,7 @@ export function clearOneWarningFromPlanet(room,planet,target){
   let released=false;
   if(target.avatar.blackStar?.planetId===planet.id&&warningCount(planet,target.id)<planet.warnings.threshold){
     target.avatar.blackStar=null;released=true;
-    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+380}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
   }
   return {cleared:1,released};
 }
@@ -70,7 +70,7 @@ export function clearBlackStar(room,target){
   ensure(target&&target.role==='student'&&target.avatar.blackStar,'검은별 상태인 학생을 골라주세요.');
   for(const planet of room.planets.values())for(const entry of planet.warnings?.entries||[])if(entry.targetId===target.id)entry.active=false;
   target.avatar.blackStar=null;
-  if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+380}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
 }
 export function blackStarList(room){
   return [...room.players.values()].filter(p=>p.role==='student'&&p.avatar.blackStar).map(p=>({id:p.id,nickname:p.nickname,

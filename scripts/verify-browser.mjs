@@ -59,8 +59,15 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
   // 새 광장의 원형 구역 사이에서는 허공을 가로지르지 않고 실제 다리로 걷습니다.
   const route=[];
   if(player.mapId===PLAZA_ID){
-    const nodes=[{x:player.x,y:player.y},target,PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands,...Object.values(PLAZA_LAYOUT.gates)];
-    const clear=(a,b)=>{const steps=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/35);for(let i=0;i<=steps;i++)if(!onPlazaFloor(MAP,a.x+(b.x-a.x)*i/steps,a.y+(b.y-a.y)*i/steps,16))return false;return true;};
+    const room=[...game.store.rooms.values()].find(r=>r.players.has(player.id));
+    const obstacles=[...MAP.objects,...room.planets.values()].filter(o=>!o.passable&&Math.hypot(o.x-target.x,o.y-target.y)>1);
+    const detours=obstacles.flatMap(o=>Array.from({length:8},(_,i)=>({x:o.x+Math.cos(i*Math.PI/4)*(o.radius+110),y:o.y+Math.sin(i*Math.PI/4)*(o.radius+110)})));
+    const nodes=[{x:player.x,y:player.y},target,PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands,...Object.values(PLAZA_LAYOUT.gates),...detours];
+    // 실제 벽뿐 아니라 재배치한 기둥과 행성도 걸어서 우회합니다.
+    const clear=(a,b)=>{const steps=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/20));for(let i=0;i<=steps;i++){
+      const x=a.x+(b.x-a.x)*i/steps,y=a.y+(b.y-a.y)*i/steps;
+      if(!onPlazaFloor(MAP,x,y,16)||obstacles.some(o=>Math.hypot(x-o.x,y-o.y)<o.radius+RULES.radius))return false;
+    }return true;};
     const queue=[[0]],seen=new Set([0]);let found=null;
     while(queue.length){const path=queue.shift(),last=path.at(-1);if(last===1){found=path;break;}for(let i=1;i<nodes.length;i++)if(!seen.has(i)&&clear(nodes[last],nodes[i])){seen.add(i);queue.push([...path,i]);}}
     assert.ok(found,'광장 바닥에서 다리 경로를 찾을 수 있어야 합니다.');
@@ -157,6 +164,8 @@ try{
  assert.ok(widthOkay);check('390px touch layout has no horizontal overflow');
  assert.equal(await student.locator('#touch-controls').count(),0);assert.ok(await student.locator('#joystick').isVisible());
  check('joystick is visible and arrow buttons removed on a 390px touch viewport');
+ // 터치 자체를 검증하기 전에 장애물 없는 중앙 아래로 실제 키보드 이동합니다.
+ await walkNear(student,p,{x:MAP.templeCenter.x,y:MAP.templeCenter.y+250},{waypoint:true});
  // Real CDP touch events (not synthetic dispatchEvent) exercise the actual pointer-capture path.
  const oldY=p.y;
  const touch=student.locator('#joystick');

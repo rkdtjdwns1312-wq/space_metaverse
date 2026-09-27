@@ -1,5 +1,6 @@
 import {drawParadiseFloor} from './paradise-floor.js';
 import {drawPlazaMiniFloor} from './plaza-art.js';
+import {drawValleyMiniFloor} from './valley-art.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
@@ -65,7 +66,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     }else if(kind==='arcade'){
       ctx.beginPath();ctx.roundRect(-r*.65,-r,r*1.3,r*2,r*.18);ctx.fill();ctx.stroke();
       ctx.fillStyle='#ffffffb8';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.55);ctx.fillStyle='#665784';ctx.fillRect(-r*.2,r*.2,r*.4,r*.12);
-    }else if(kind==='star'||kind==='growth'||kind==='evolution'||kind==='black-star'){
+    }else if(kind==='growth'||kind==='evolution'){
+      ctx.fillStyle=kind==='growth'?'#e7c478':'#e1e7f9';
+      ctx.fillRect(-r*.38,-r*.25,r*.76,r*1.1);ctx.strokeRect(-r*.38,-r*.25,r*.76,r*1.1);
+      ctx.beginPath();ctx.ellipse(0,r*.8,r*.85,r*.25,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(0,-r*.65,r*.57,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }else if(kind==='star'||kind==='black-star'){
       ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.42:r;const px=Math.cos(a)*s,py=Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
     }else if(kind==='mailbox'){
       ctx.beginPath();ctx.roundRect(-r,-r,r*2,r*1.5,r*.4);ctx.fill();ctx.stroke();ctx.fillStyle='#fffaf6';ctx.fillRect(-r*.6,-r*.4,r*1.2,r*.55);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
@@ -75,14 +81,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     }else if(kind==='black-hole'){
       ctx.beginPath();ctx.arc(0,0,r*.85,0,Math.PI*2);ctx.fillStyle='#080610';ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,r*1.15,.2,Math.PI*1.35);ctx.stroke();
     }else if(kind==='andromeda'){
-      // 실제 광장 그림의 부드러운 성운 대신, 작은 지도에서는 중심과 나선 팔만 남깁니다.
-      ctx.fillStyle='#dff5ff99';ctx.beginPath();ctx.ellipse(0,0,r*.9,r*.55,-.25,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#ffffffcc';ctx.lineWidth=Math.max(1,r*.08);ctx.beginPath();
-      for(let i=0;i<28;i++){const a=i*.42,rr=r*(.08+i/30);const px=Math.cos(a)*rr,py=Math.sin(a)*rr*.58;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();
-      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r*.18,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#e2f0e7';ctx.beginPath();ctx.arc(0,-r*.2,r*.8,Math.PI,0);ctx.lineTo(r*.8,r*.7);ctx.lineTo(-r*.8,r*.7);ctx.closePath();ctx.fill();ctx.stroke();
     }else if(kind==='market'){
-      ctx.fillStyle='#faf4ff';ctx.strokeStyle='#a68aca';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.arc(0,0,r*.75,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#e6bfd8';ctx.fillRect(-r*.8,-r*.35,r*1.6,r*.35);ctx.strokeRect(-r*.65,0,r*1.3,r*.65);
     }else if(kind==='lamp'){
       ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.12);ctx.beginPath();ctx.moveTo(0,r*.9);ctx.lineTo(0,-r*.45);ctx.stroke();
       ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,-r*.65,r*.42,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -102,16 +103,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const theme=info.theme||({
       [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'paradise-crossroads',[VALLEY_ID]:'valley'
     }[info.id]||'default');
-    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#c7c9e5':'#e1daf2';
+    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#3e436c':'#e1daf2';
     ctx.fillRect(x,y,w,h);
     if(theme==='plaza'){
       ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawPlazaMiniFloor(ctx);ctx.restore();
-      // 본 맵과 같은 신전 바닥 중심을 사용합니다.
-      const sx=w/info.width,sy=h/info.height,cx=x+(info.templeCenter?.x??1080)*sx,cy=y+(info.templeCenter?.y??700)*sy;
-      ctx.fillStyle='#bda9d688';ctx.beginPath();ctx.ellipse(cx,cy+26*sy,443*sx,257*sy,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#fbf4fccc';ctx.beginPath();ctx.ellipse(cx,cy-10*sy,419*sx,229*sy,0,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#bfaed766';ctx.lineWidth=Math.max(1,2*sx);
-      for(const r of [120,235,342]){ctx.beginPath();ctx.ellipse(cx,cy-16*sy,r*sx,r*.52*sy,0,0,Math.PI*2);ctx.stroke();}
+      const sx=w/info.width,sy=h/info.height,cx=x+info.templeCenter.x*sx,cy=y+info.templeCenter.y*sy;
+      ctx.fillStyle='#fff9ee';ctx.fillRect(cx-320*sx,cy-170*sy,640*sx,340*sy);
     }
     if(theme==='star-origin'){ctx.fillStyle='#cfd9ff99';for(let i=0;i<24;i++){ctx.fillRect(x+(i*83%Math.max(1,w)),y+(i*47%Math.max(1,h)),1.5,1.5);}}
     // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
@@ -125,9 +122,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(1580,960,80,0,Math.PI*2);ctx.fill();
     }
     drawParadiseFloor(ctx,info,true);
-    if(theme==='valley'){
-      for(const [width,color] of [[135,'#dceafd80'],[40,'#fff8ffaa']]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(-120,780);ctx.bezierCurveTo(450,780,340,210,1320,290);ctx.stroke();}
-    }
+    if(theme==='valley')drawValleyMiniFloor(ctx);
     if(theme==='rainbow-space'){
       for(const [i,color] of ['#ffbbd9','#ffdba2','#bceacc','#b9deff','#ddc0ff'].entries()){ctx.strokeStyle=color+'90';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-50,560+i*20);ctx.bezierCurveTo(300,80+i*42,720,720-i*38,1250,180+i*30);ctx.stroke();}
     }

@@ -5,11 +5,13 @@ import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
 import {addEnergyDrop} from './energy-drops.js';
+import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 
 
-export const MONSTER_RULES=Object.freeze({directionMs:1000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
+export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
 const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
 const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
+const sunSpawns=[[-330,-110],[0,-170],[330,-110],[-240,140],[240,140]];
 export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
 // 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
 export function monstersOf(room,now=Date.now()){
@@ -17,14 +19,15 @@ export function monstersOf(room,now=Date.now()){
     const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(type.level===3?largeSpawns:spawns)[i%5];
-    const x=baseX*map.width/1200,y=baseY*map.height/900;
+    const [sx,sy]=sunSpawns[i%5];
+    const x=isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×4.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
     const multiplier={1:1,2:2,3:4}[type.level]||1;
     const radius=MONSTER_RULES.radius*multiplier;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       hp:MONSTER_HP[type.mapId],maxHp:MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
-      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,nextDirectionAt:now,lastMoveAt:now}];
+      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,patrolStartedAt:now,patrolCycle:-1,nextDirectionAt:now,lastMoveAt:now}];
   }));
   return room.monsters;
 }
@@ -93,23 +96,33 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     if(m.hp<=0){
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
-      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,nextDirectionAt:now});
+      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt:now,patrolCycle:-1,nextDirectionAt:now});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const rule=MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
-    if(previousTarget&&!target)m.nextDirectionAt=now;
+    if(previousTarget&&!target){m.patrolStartedAt=now;m.patrolCycle=-1;m.nextDirectionAt=now;}
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
+    let resting=false;
     if(target){
       const dx=target.x-m.x,dy=target.y-m.y;distance=Math.hypot(dx,dy);
       if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
-    }else if(now>=m.nextDirectionAt){const angle=random()*Math.PI*2;m.dx=Math.cos(angle);m.dy=Math.sin(angle);m.nextDirectionAt=now+MONSTER_RULES.directionMs/factor;}
-    const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):MONSTER_RULES.speed*factor*dt;
+    }else{
+      // 레벨별 속도와 무관하게 실제 2초 이동/2초 휴식. 추격은 이 주기를 건너뜁니다.
+      const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
+      const elapsed=Math.max(0,now-(m.patrolStartedAt??now)),cycle=Math.floor(elapsed/cycleMs);
+      resting=elapsed%cycleMs>=MONSTER_RULES.walkMs;
+      if(!resting&&cycle!==m.patrolCycle&&now>=m.nextDirectionAt){
+        const angle=random()*Math.PI*2;m.dx=Math.cos(angle);m.dy=Math.sin(angle);
+        m.patrolCycle=cycle;m.nextDirectionAt=m.patrolStartedAt+(cycle+1)*cycleMs;
+      }
+    }
+    const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):resting?0:MONSTER_RULES.speed*factor*dt;
     const x=m.x+m.dx*travel,y=m.y+m.dy*travel;
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
-    const blocked=x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
+    const blocked=!onParadiseFloor(map,x,y,m.radius)||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}

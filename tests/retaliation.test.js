@@ -31,12 +31,12 @@ test('공격계3종의 LV2~5 방어0/0/1/2와 실제 몬스터 공격5의 피해
    const before=playerVitals(p).hp.current;assert.equal(damagePlayer(p,5,0).damage,damage);assert.equal(playerVitals(p).hp.current,before-damage);
  }
 });
-test('단계별 이동량·방향 주기·공격 간격이 정확히1/1.3/1.69배다',()=>{
+test('단계별 이동량·공격 속도는1/1.3/1.69배이며 산책 주기는4초로 같다',()=>{
  for(const [id,power] of [['star-crab',2],['star-scorpion-1',3],['star-keeper',5]]){
    const {room,m}=fixture(id),factor=MONSTER_COMBAT[m.mapId].speedFactor;Object.assign(m,{x:600,y:450});
    moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
    assert.ok(Math.abs(m.x-600-MONSTER_RULES.speed*factor*.05)<1e-8);
-   assert.ok(Math.abs(m.nextDirectionAt-1000/factor)<1e-8);
+   assert.equal(m.nextDirectionAt,MONSTER_RULES.walkMs+MONSTER_RULES.restMs);
    const p=player('p','gemini');Object.assign(p,{mapId:m.mapId,x:m.x+m.radius+24,y:m.y});room.players.set(p.id,p);
    m.attackers.set(p.id,1);const hit=moveMonsters(room,100,()=>0)[0];assert.ok(hit);assert.equal(hit.damage,Math.max(1,power-2));
    assert.equal(m.nextAttackAt,100+1000/factor);

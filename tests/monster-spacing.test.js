@@ -16,7 +16,7 @@ function assertNoOverlap(room, message) {
 
 test('별의 시작점 3 몬스터는 반경과 그림 크기가 기존의 정확히 절반이다',()=>{
   const room={};const list=monsterViews(room);
-  const level3=list.filter(monster=>MONSTER_TYPES.find(type=>type.id===monster.typeId)?.level===3);
+  const level3=list.filter(monster=>monster.mapId==='star-origin-3'&&MONSTER_TYPES.find(type=>type.id===monster.typeId)?.level===3);
   assert.equal(level3.length,5);
   assert.ok(level3.every(monster=>monster.radius===96));
   assert.ok(level3.every(monster=>monster.radius===MONSTER_RULES.radius*4));

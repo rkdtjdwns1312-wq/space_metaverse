@@ -13,7 +13,7 @@ function fixture(){
   return {player,room:{players:new Map([[player.id,player]])}};
 }
 test('생명의별은 광장 정중앙의 작은 통과 가능한 흰 별이다',()=>{
-  assert.deepEqual([star.x,star.y],[MAP.templeCenter.x,MAP.templeCenter.y-16]);
+  assert.deepEqual([star.x,star.y],[MAP.templeCenter.x,MAP.templeCenter.y+Math.round(-16*.6)]);
   assert.equal(star.name,'생명의별');assert.equal(star.color,'#ffffff');assert.equal(star.passable,true);
 });
 test('서버 시간 10초에 걸쳐 HP/MP 회복, 5초는 절반, 10초 직전은 미완료',()=>{

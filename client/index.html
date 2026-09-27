@@ -76,8 +76,15 @@
       </div>
       <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
         <div class="combat-buttons" aria-label="전투 조작">
-          <button id="touch-attack" type="button" aria-label="공격(Q)">Q <span>공격</span></button>
-          <button id="touch-skill" type="button" aria-label="스킬(E)">E <span>스킬</span></button>
+          <button id="touch-attack" type="button" aria-label="공격(Q)" title="공격 (Q)">
+            <span class="combat-slot-icon" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><path d="M24 39 45 10 56 8 54 20 30 44Z" fill="#d9f2ff" stroke="#796792" stroke-width="3" stroke-linejoin="round"/><path d="m30 37 19-22" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="m18 37 10 9-10 11-9-8Z" fill="#c5a7ec" stroke="#796792" stroke-width="3" stroke-linejoin="round"/><path d="m17 34 17 15" stroke="#796792" stroke-width="8" stroke-linecap="round"/><path d="m17 34 17 15" stroke="#ffd58d" stroke-width="5" stroke-linecap="round"/><circle cx="12" cy="53" r="5" fill="#ffd58d" stroke="#796792" stroke-width="3"/><path d="m14 13 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" fill="#ffe49f"/></svg></span>
+            <span class="combat-key-badge" aria-hidden="true">Q</span>
+          </button>
+          <button id="touch-skill" type="button" class="is-locked" data-skill-slot="special" aria-label="특수 공격(E), LV2부터 해금" aria-disabled="true" disabled>
+            <span class="combat-slot-icon" aria-hidden="true"><span class="combat-slot-placeholder">✧</span><img alt="" decoding="async" hidden></span>
+            <span class="combat-slot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="4" y="9" width="16" height="13" rx="4" fill="currentColor"/><circle cx="12" cy="15" r="2" fill="#f3edf9"/></svg><span>LV2</span></span>
+            <span class="combat-key-badge" aria-hidden="true">E</span>
+          </button>
         </div>
         <div id="joystick" role="application" aria-label="터치 조이스틱" tabindex="0">
           <div id="joystick-knob" aria-hidden="true"></div>

@@ -69,6 +69,6 @@ try{
   check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·경고 횟수 현황·닫기');
   Object.assign(p,{mapId:PLAZA_ID,x:300,y:1100});publish();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='0');
   check('광장에서는 몬스터 표시 없음');
-  assert.equal(MONSTER_TYPES.length,9);assert.deepEqual(errors,[]);
+  assert.equal(MONSTER_TYPES.length,11);assert.deepEqual(errors,[]);
 }finally{await writeFile('.local/monsters-planets-result.json',JSON.stringify({checks,errors},null,2));await browser.close();await game.close();}
 console.log(JSON.stringify({checks:checks.length,errors}));

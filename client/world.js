@@ -1,9 +1,13 @@
+import {inMarket} from '/shared/market.js';
+import {drawPlazaLandmark,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {floorRenderPoint} from '/shared/paradise-floor.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide} from './plaza-art.js';
 import {drawLifeStar} from './life-star-art.js';
+import {drawValleyAltar} from './valley-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
+import {drawSunMonster} from './sun-monster-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
 import {drawEnergyShop} from './energy-shop-art.js';
 import {drawStarCard} from './star-card-art.js';
@@ -136,17 +140,7 @@ export function createWorld(canvas) {
   }
   // 광장 지도의 행성 하나(구체+하이라이트+내 소속 테두리+종류별 장식+가운데 아이콘)를 그립니다.
   function drawPlanet(o,myDept,time){
-    const fill=ctx.createRadialGradient(o.x-22,o.y-25,5,o.x,o.y,o.radius);
-    fill.addColorStop(0,'#ffffff');fill.addColorStop(.3,o.color);fill.addColorStop(1,o.color);
-    ctx.fillStyle=fill;ctx.beginPath();ctx.arc(o.x,o.y,o.radius,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#ffffff77';ctx.lineWidth=8;ctx.beginPath();ctx.ellipse(o.x,o.y+10,o.radius+18,19,-.22,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle='#ffffff38';ctx.beginPath();ctx.arc(o.x+20,o.y-13,12,0,Math.PI*2);ctx.fill();
-    if(o.id===myDept){ctx.strokeStyle='#ffffffc5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(o.x,o.y,o.radius+9,0,Math.PI*2);ctx.stroke();}
-    const template=templateOf(o.templateId);
-    if(template){
-      drawPlanetLook(o,template,time);
-      ctx.save();ctx.font='28px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x,o.y);ctx.restore();
-    }
+    drawDepartmentHome(ctx,o,myDept,templateOf(o.templateId));
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
@@ -165,13 +159,7 @@ export function createWorld(canvas) {
       } else if(o.kind==='andromeda'){
         drawAndromeda(o,time);continue;
       } else if(o.kind==='market'){
-        // 입장할 수 있는 낮은 원형 장터. 물체가 아니라 바닥 공간입니다.
-        ctx.save();ctx.shadowColor='#5a488777';ctx.shadowBlur=18;ctx.shadowOffsetY=12;
-        ctx.beginPath();ctx.arc(o.x,o.y,o.radius,0,Math.PI*2);ctx.fillStyle='#faf4ff';ctx.fill();
-        ctx.shadowBlur=0;ctx.shadowOffsetY=0;ctx.strokeStyle='#b294d8';ctx.lineWidth=8;ctx.stroke();
-        ctx.beginPath();ctx.arc(o.x,o.y,o.radius-14,0,Math.PI*2);ctx.strokeStyle='#e1cbf4';ctx.lineWidth=3;ctx.stroke();
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;star(o.x+Math.cos(a)*(o.radius-30),o.y+Math.sin(a)*(o.radius-30),8,i%2?'#b5ddfa':'#e6c8f3');}
-        ctx.font='24px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#78559f';ctx.fillText('별 시장',o.x,o.y+8);ctx.restore();continue;
+        drawBazaar(ctx,o);continue;
       } else if(o.kind==='pillar'){
         // 기둥은 아래에서 아바타와 발 위치 순서로 함께 그립니다.
         continue;
@@ -223,34 +211,9 @@ export function createWorld(canvas) {
     }
   }
   function drawBlackHole(o,time){
-    const pulse=1+Math.sin((time||0)/900)*.025;
-    ctx.save();
-    const glow=ctx.createRadialGradient(o.x,o.y,o.radius*.35,o.x,o.y,o.radius*1.45);
-    glow.addColorStop(0,'#020108');glow.addColorStop(.55,'#09051b');glow.addColorStop(1,'#9b6cff00');
-    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(o.x,o.y,o.radius*1.45,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#b58cffaa';ctx.lineWidth=9;ctx.beginPath();ctx.arc(o.x,o.y,o.radius*pulse,0,Math.PI*2);ctx.stroke();
-    ctx.strokeStyle='#4b2b82aa';ctx.lineWidth=18;ctx.beginPath();ctx.arc(o.x,o.y,o.radius*1.12,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(o.x,o.y,o.radius*.72,0,Math.PI*2);ctx.fill();
-    ctx.font='700 22px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e8dcff';ctx.fillText(o.name||'블랙홀',o.x,o.y+o.radius+38);
-    ctx.restore();
+    drawPlazaLandmark(ctx,o);
   }
-  // 과제안드로메다: 광장 왼쪽 위의 거대한 흰빛 행. 검은홀과 겹치지 않는 부드러운 성운형 원으로 표시합니다.
-  function drawAndromeda(o,time){
-    const pulse=1+Math.sin((time||0)/1100)*.035;
-    ctx.save();
-    const glow=ctx.createRadialGradient(o.x,o.y,12,o.x,o.y,o.radius*1.5);
-    glow.addColorStop(0,'#ffffffcc');glow.addColorStop(.28,'#fffefea8');glow.addColorStop(.72,'#dff5ff38');glow.addColorStop(1,'#dff5ff00');
-    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(o.x,o.y,o.radius*1.5,0,Math.PI*2);ctx.fill();
-    const core=ctx.createRadialGradient(o.x-o.radius*.28,o.y-o.radius*.3,8,o.x,o.y,o.radius*pulse);
-    core.addColorStop(0,'#ffffff');core.addColorStop(.58,'#fffefa');core.addColorStop(1,'#e9f8ff');
-    ctx.fillStyle=core;
-    ctx.beginPath();ctx.arc(o.x,o.y,o.radius*pulse,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#ffffffdd';ctx.lineWidth=5;ctx.beginPath();ctx.arc(o.x,o.y,o.radius*pulse+7,0,Math.PI*2);ctx.stroke();
-    for(let i=0;i<8;i++){const a=(time||0)/3600+i*Math.PI/4,rr=o.radius*(.62+.1*(i%2));star(o.x+Math.cos(a)*rr,o.y+Math.sin(a)*rr, i%2?5:7,'#ffffffcc');}
-    ctx.font='700 26px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#5d6682';ctx.strokeStyle='#ffffff';ctx.lineWidth=7;ctx.strokeText(o.name||'과제안드로메다',o.x,o.y+o.radius+48);ctx.fillText(o.name||'과제안드로메다',o.x,o.y+o.radius+48);
-    ctx.font='15px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#7e88a3';ctx.fillText('과제 확인하기',o.x,o.y+o.radius+72);
-    ctx.restore();
-  }
+  function drawAndromeda(o,time){drawPlazaLandmark(ctx,o);}
   // 두 맵(광장·오색별빛 쉼터) 공통 문 그림: 보라 아치 + 은은한 빛 + 이름표.
   function drawGate(o){
     const glowR=o.radius*2.4;
@@ -279,44 +242,8 @@ export function createWorld(canvas) {
     if(destination?.minLevel){ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.strokeText('LV'+destination.minLevel+' 이상',labelX,labelY+18,width);ctx.fillText('LV'+destination.minLevel+' 이상',labelX,labelY+18,width);}
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.
-  function drawShop(o){
-    const w=190,h=150,x=o.x-w/2,topY=o.y-h/2;
-    ctx.save();
-    ctx.fillStyle='#00000020';ctx.beginPath();ctx.ellipse(o.x,o.y+h*.43,w*.56,13,0,0,Math.PI*2);ctx.fill();
-    // 둥근 벽체와 따뜻한 가장자리 그림자.
-    const wall=ctx.createLinearGradient(x,topY+30,x+w,topY+h);wall.addColorStop(0,'#fffaf0');wall.addColorStop(.72,'#fff4df');wall.addColorStop(1,'#f0d7d2');
-    ctx.fillStyle=wall;ctx.strokeStyle='#d9a9b8';ctx.lineWidth=3;
-    ctx.beginPath();ctx.roundRect(x,topY+32,w,h-32,17);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#e6c5c0';ctx.fillRect(x+8,topY+48,7,h-58);ctx.fillStyle='#fff7e8';ctx.fillRect(x+w-15,topY+48,7,h-58);
-    // 겹친 곡선 지붕과 다섯 개의 알록달록한 별 장식.
-    ctx.fillStyle='#d99dbc';ctx.strokeStyle='#b97d9f';ctx.lineWidth=3;
-    ctx.beginPath();ctx.moveTo(x-13,topY+40);ctx.quadraticCurveTo(o.x,topY-31,x+w+13,topY+40);ctx.lineTo(x+w+5,topY+51);ctx.quadraticCurveTo(o.x,topY-19,x-5,topY+51);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle='#f0b7ce';ctx.beginPath();ctx.moveTo(x-9,topY+38);ctx.quadraticCurveTo(o.x,topY-23,x+w+9,topY+38);ctx.lineTo(x+w+9,topY+49);ctx.quadraticCurveTo(o.x,topY-12,x-9,topY+49);ctx.closePath();ctx.fill();
-    const scallopColors=['#ffd88f','#b8e4e8','#cbb8ee','#ffb8b6','#aee0c1'];
-    for(let i=0;i<9;i++){const sx=x+12+i*21;ctx.fillStyle=i%2?'#f6c7d7':'#eaa9c1';ctx.beginPath();ctx.arc(sx,topY+43,12,0,Math.PI);ctx.fill();ctx.strokeStyle='#c989aa';ctx.lineWidth=1.5;ctx.stroke();}
-    [[x+18,topY+29,scallopColors[0]],[x+54,topY+17,scallopColors[1]],[o.x,topY+12,scallopColors[2]],[x+w-54,topY+17,scallopColors[3]],[x+w-18,topY+29,scallopColors[4]]].forEach(([sx,sy,color])=>star(sx,sy,7,color));
-    // 창 안의 노란 불빛과 작은 차양.
-    for(const dx of [-62,62]){
-      const wx=o.x+dx,wy=o.y-2;ctx.fillStyle='#ffe8a5';ctx.strokeStyle='#b68ca9';ctx.lineWidth=3;
-      ctx.beginPath();ctx.roundRect(wx-19,wy-18,38,36,10);ctx.fill();ctx.stroke();
-      ctx.strokeStyle='#fff5c8';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(wx,wy-15);ctx.lineTo(wx,wy+15);ctx.moveTo(wx-16,wy);ctx.lineTo(wx+16,wy);ctx.stroke();
-      ctx.fillStyle='#e8a8c0';ctx.beginPath();ctx.arc(wx-14,wy-20,7,Math.PI,0);ctx.arc(wx,wy-24,7,Math.PI,0);ctx.arc(wx+14,wy-20,7,Math.PI,0);ctx.fill();
-    }
-    // 포근한 아치형 문, 손잡이와 앞쪽 하이라이트.
-    const doorY=o.y+17;ctx.fillStyle='#a995d0';ctx.strokeStyle='#8172ae';ctx.lineWidth=3;
-    ctx.beginPath();ctx.arc(o.x,doorY,25,Math.PI,0);ctx.lineTo(o.x+25,o.y+55);ctx.lineTo(o.x-25,o.y+55);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle='#c8b8e9';ctx.beginPath();ctx.arc(o.x-7,doorY+3,10,Math.PI,0);ctx.lineTo(o.x+3,doorY+34);ctx.lineTo(o.x-17,doorY+34);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#ffe6a0';ctx.beginPath();ctx.arc(o.x+14,doorY+18,3,0,Math.PI*2);ctx.fill();
-    // 줄무늬 차양과 정확한 간판 글자.
-    ctx.fillStyle='#fff3d4';ctx.strokeStyle='#d09bb5';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(o.x-72,topY+46,144,18,7);ctx.fill();ctx.stroke();
-    for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#f39eb7':'#fff5d7';ctx.beginPath();ctx.moveTo(o.x+i*20-10,topY+47);ctx.lineTo(o.x+i*20+10,topY+47);ctx.lineTo(o.x+i*20+5,topY+62);ctx.lineTo(o.x+i*20-5,topY+62);ctx.closePath();ctx.fill();}
-    // 우주에너지 상점과 같은 낮고 둥근 밝은 간판. 별 상점은 연분홍 테두리로 구분합니다.
-    ctx.save();ctx.shadowColor='#f4d2e7';ctx.shadowBlur=6;
-    ctx.fillStyle='#fff7fc';ctx.strokeStyle='#b78ca8';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(o.x-78,topY-22,156,25,8);ctx.fill();ctx.stroke();
-    ctx.shadowBlur=0;ctx.font='700 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#6b487b';ctx.fillText('별 상점',o.x,topY-9,150);ctx.restore();
-    ctx.textBaseline='alphabetic';ctx.restore();
-  }
-  // 가로등: 기둥 + 빛 번짐.
+  function drawShop(o){drawPaintedStarShop(ctx,o);}
+
   function drawLamp(o){
     const poleTop=o.y-o.radius*1.6;
     ctx.strokeStyle='#c8bde8';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(o.x,o.y+o.radius*.6);ctx.lineTo(o.x,poleTop);ctx.stroke();
@@ -514,21 +441,6 @@ export function createWorld(canvas) {
     drawBubble(p.id,x,y-Math.max(0,size/2-16));
     ctx.restore();
   }
-  function drawGrowthStar(o,time){
-    const golden=o.kind==='growth',r=o.radius;
-    const pulse=window.matchMedia('(prefers-reduced-motion: reduce)').matches?1:1+Math.sin(time/1600)*.035;
-    ctx.save();
-    const glow=ctx.createRadialGradient(o.x,o.y,r*.25,o.x,o.y,r*1.8);
-    glow.addColorStop(0,golden?'#ffe9a6a8':'#ffffffac');glow.addColorStop(.5,golden?'#ffd55b45':'#dbe9ff50');glow.addColorStop(1,'#ffffff00');
-    ctx.fillStyle=glow;ctx.fillRect(o.x-r*1.8,o.y-r*1.8,r*3.6,r*3.6);
-    ctx.strokeStyle=golden?'#f9df8a85':'#e6edff90';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(o.x,o.y+r*.7,r*1.14,r*.29,-.12,0,Math.PI*2);ctx.stroke();
-    star(o.x,o.y,r*pulse,golden?'#ffce62':'#dce9ff');star(o.x,o.y-3,r*.89*pulse,golden?'#fff0ae':'#ffffff');
-    ctx.fillStyle=golden?'#bc8840':'#a7afd1';ctx.beginPath();ctx.arc(o.x-r*.15,o.y,3,0,Math.PI*2);ctx.arc(o.x+r*.15,o.y,3,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=golden?'#bc8840':'#a7afd1';ctx.beginPath();ctx.arc(o.x,o.y+r*.1,r*.08,.1,Math.PI-.1);ctx.stroke();
-    for(let i=0;i<4;i++){const a=i*Math.PI/2+.4;star(o.x+Math.cos(a)*r*1.35,o.y+Math.sin(a)*r*1.2,5,golden?'#fff2b9':'#ffffff');}
-    ctx.font='20px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='#46426cc0';ctx.strokeText(o.name,o.x,o.y+r+31);ctx.fillStyle=golden?'#fff0b1':'#ffffff';ctx.fillText(o.name,o.x,o.y+r+31);
-    ctx.restore();
-  }
   function frame(t){
     // 도착한 위치를 시간순으로 재생합니다. 화면 프레임 수와 관계없이 같은 시각은
     // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
@@ -554,7 +466,7 @@ export function createWorld(canvas) {
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
     if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
-      for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawGrowthStar(o,t);}
+      for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
     const visibleMonsters=monsters.filter(m=>m.alive&&m.mapId===myMapId);
     canvas.dataset.monsterCount=String(visibleMonsters.length);
@@ -566,17 +478,19 @@ export function createWorld(canvas) {
       const attack=monsterAttacks.get(m.id);
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
       const body={...type,...m,...pos},activeAttack=monsterAttacks.get(m.id);
-      if(!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
+      if(!drawSunMonster(ctx,body,t,activeAttack)&&!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
       const isWater=['star-crab','water-star'].includes(type.shape);
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
-      const barScale=type.shape==='star-scorpion'?2.15:isWater?1.8:1;
+      const barScale=type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?1.3:isWater?1.8:1;
       const barWidth=64,barY=pos.y-(Number(m.radius)||24)*barScale-18;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,9,4);ctx.fill();
       ctx.fillStyle='#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),7);
-      ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();
+      ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();
       if(m===firstMonster){canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
-      ctx.fillText(type.name,pos.x,pos.y+(Number(m.radius)||24)*(isWater?1.65:1)+13);ctx.restore();
+      const nameY=pos.y+(Number(m.radius)||24)*(type.shape==='grown-warm-star'?.55:isWater?1.65:1)+13;
+      ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x,nameY);
+      ctx.fillText(type.name,pos.x,nameY);ctx.restore();
     }
     const visibleDrops=myEnergyDrops();canvas.dataset.energyDropCount=String(visibleDrops.length);
     for(const drop of visibleDrops){
@@ -592,7 +506,8 @@ export function createWorld(canvas) {
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
-        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
+        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)})),
+        ...PLAZA_SIGNS.map(s=>({y:s.y,draw:()=>drawPlazaSign(ctx,s)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
@@ -687,7 +602,7 @@ export function createWorld(canvas) {
       if(drop)return {...drop,kind:'energy-drop',name:'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
       if(myMapId===PLAZA_ID){
         const market=MAP.objects.find(o=>o.kind==='market');
-        if(market&&Math.hypot(me.x-market.x,me.y-market.y)<=market.radius)return {...market,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
+        if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
         const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
         let best=null,bestDist=Infinity;

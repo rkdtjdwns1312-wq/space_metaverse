@@ -1,5 +1,6 @@
 import {onParadiseFloor} from '../shared/paradise-floor.js';
 import {onPlazaFloor,departmentSite} from '../shared/plaza-layout.js';
+import {onValleyFloor} from '../shared/valley-layout.js';
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
@@ -8,6 +9,7 @@ export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlaye
   if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
   if (!onParadiseFloor(map,x,y,r)) return false;
   if (!onPlazaFloor(map,x,y,r)) return false;
+  if (!onValleyFloor(map,x,y,r)) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
   if (!avoidPlayers) return true;
   return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);

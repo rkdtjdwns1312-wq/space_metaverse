@@ -1,11 +1,15 @@
 // 별의 시작점에서 만나는 귀여운 동물별자리 상상 디자인 목록입니다.
-export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100});
+export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100,'sun-paradise':40,'sun-paradise-2':100});
 export const MONSTER_COMBAT=Object.freeze({
   'star-origin-1':Object.freeze({power:2,speedFactor:1}),
   'star-origin-2':Object.freeze({power:3,speedFactor:1.3}),
-  'star-origin-3':Object.freeze({power:5,speedFactor:1.3*1.3})
+  'star-origin-3':Object.freeze({power:5,speedFactor:1.3*1.3}),
+  'sun-paradise':Object.freeze({power:3,speedFactor:1.3}),
+  'sun-paradise-2':Object.freeze({power:5,speedFactor:1.3*1.3})
 });
 export const MONSTER_TYPES = Object.freeze([
+  { id:'warm-star', name:'Lv2 따뜻한별', description:'작은 햇살을 나누는 따뜻한별. 공격받으면 금빛으로 몸을 부딪쳐 반격해요.', mapId:'sun-paradise', shape:'warm-star', color:'#ffd16a', level:2 },
+  { id:'grown-warm-star', name:'Lv3 성장한따뜻한별', description:'별의 궤도를 품고 성장한 따뜻한별. 황금빛을 모아 몸통으로 반격해요.', mapId:'sun-paradise-2', shape:'grown-warm-star', color:'#ffba4f', level:3 },
   { id: 'star-crab', name: 'Lv1 별게', description: '달과 별을 품은 파란 등껍질, 집게에서 작은 물결을 일으키는 별게', mapId: 'star-origin-1', shape: 'star-crab', color: '#96cfff', level: 1 },
   { id: 'water-star', name: 'Lv1 물별이', description: '별무늬 물병을 메고 물보라를 뿌리는 작은 물별이', mapId: 'star-origin-1', shape: 'water-star', color: '#b6ecff', level: 1 },
   { id: 'star-scorpion', name: 'Lv2 별전갈', description: '보랏빛 별가루를 품은 별전갈', mapId: 'star-origin-2', shape: 'star-scorpion', color: '#a875d8', level: 2 },
@@ -29,5 +33,6 @@ export const MONSTER_SPAWNS=Object.freeze([
   {id:'star-scorpion-1',typeId:'star-scorpion'}, {id:'star-scorpion-2',typeId:'star-scorpion'},
   {id:'star-scorpion-3',typeId:'star-scorpion'}, {id:'chameleon-star-1',typeId:'chameleon-star'},
   {id:'chameleon-star-2',typeId:'chameleon-star'},
-  ...MONSTER_TYPES.filter(t=>t.level===3).map(t=>({id:t.id,typeId:t.id}))
+  ...MONSTER_TYPES.filter(t=>t.mapId==='star-origin-3').map(t=>({id:t.id,typeId:t.id})),
+  ...['warm-star','grown-warm-star'].flatMap(typeId=>Array.from({length:5},(_,i)=>({id:`${typeId}-${i+1}`,typeId})))
 ]);

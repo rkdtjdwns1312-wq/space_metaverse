@@ -9,7 +9,7 @@ import {CONSTELLATIONS} from '../shared/constellations.js';
 // 실제 학급 파일 대신 메모리 교실에서 서로 다른 브라우저의 교환을 검증합니다.
 const game=createClassroomServer({teacherKey:'market-browser-test-key',studentHours:false});
 const url=`http://127.0.0.1:${(await game.listen()).port}`;
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const errors=[],checks=[],check=s=>{checks.push(s);console.log(s);};
 await mkdir('.local',{recursive:true});
 try{
@@ -23,12 +23,12 @@ try{
   const p=[...room.players.values()].find(v=>v.nickname==='1'),q=[...room.players.values()].find(v=>v.nickname==='2'),t=[...room.players.values()].find(v=>v.role==='teacher');
   const publish=()=>{for(const v of room.players.values())game.io.to(v.socketId).emit('room:state',game.store.snapshot(room,v));};
   const close=async page=>{for(let i=0;i<5&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');};
-  const interact=async(page,label)=>{await close(page);await page.locator('#interact-object').filter({hasText:label}).waitFor();await page.locator('#interact-prompt').click();};
+  const interact=async(page,label)=>{await close(page);await page.locator('#interact-object').filter({hasText:label}).waitFor();await page.locator('#interact-prompt').evaluate(node=>node.click());};
   p.starShards=q.starShards=30;p.cosmicEnergy=q.cosmicEnergy=20;
   p.inventory=[{id:'space-food-card',quantity:3}];q.inventory=[{id:'moon-rabbit-card',quantity:2}];
   // Both parties must be inside; the location prompt must not appear just outside the circle.
   for(const v of [p,q,t])Object.assign(v,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});
-  p.x=MARKET.x+MARKET.radius+10;publish();await a.waitForTimeout(150);assert.ok(!(await a.locator('#interact-object').textContent()).includes('거래걸기'));
+  p.x=MARKET.x+MARKET.rx-10+1;publish();await a.waitForTimeout(150);assert.ok(!(await a.locator('#interact-object').textContent()).includes('거래걸기'));
   p.x=MARKET.x;publish();await interact(a,'거래걸기');await a.locator('#market-target').selectOption(q.id);await a.locator('#market-request').click();await b.locator('#market-incoming-accept').click();
   await a.locator('#market-inventory [data-item-id="space-food-card"]').click();
   await a.locator('#market-shards').fill('4');await a.locator('#market-energy').fill('3');assert.ok(await a.locator('#market-confirm').isDisabled());await a.locator('#market-apply').click();
@@ -41,6 +41,15 @@ try{
   assert.deepEqual([p.starShards,q.starShards,p.cosmicEnergy,q.cosmicEnergy],[28,32,22,18]);assert.equal(p.inventory[0].quantity,2);assert.equal(q.inventory.find(i=>i.id==='space-food-card').quantity,1);
   await interact(teacher,'거래 내역');await teacher.locator('#market-history').filter({hasText:'교환 완료'}).waitFor();await teacher.locator('#market-history').filter({hasText:'우주 식량'}).waitFor();await teacher.screenshot({path:'.local/212-market-history.png'});await close(teacher);
   assert.equal(game.store.snapshot(room,p).tradeLog,undefined);check('양쪽 실제 수락으로 아이템/두 재화 교환·교사 시장내 내역 조회·320px 넘침 없음');
+  // One party's confirmation is not enough; leaving the island cancels the pending exchange without moving assets.
+  Object.assign(p,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});Object.assign(q,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});publish();
+  const beforeExit=[p.starShards,q.starShards,p.cosmicEnergy,q.cosmicEnergy,structuredClone(p.inventory),structuredClone(q.inventory)];
+  await interact(a,'거래걸기');await a.locator('#market-target').selectOption(q.id);await a.locator('#market-request').click();await b.locator('#market-incoming-accept').click();
+  await a.locator('#market-shards').fill('1');await a.locator('#market-apply').click();await b.locator('#market-shards').fill('1');await b.locator('#market-apply').click();
+  await a.locator('#market-confirm').click();assert.equal([...room.trades.values()][0].confirmed.length,1);
+  q.x=MARKET.x+MARKET.rx-10+1;publish();await a.waitForFunction(()=>document.querySelector('#market-dialog')?.open===false,{timeout:4000});
+  assert.equal(room.trades.size,0);assert.deepEqual([p.starShards,q.starShards,p.cosmicEnergy,q.cosmicEnergy,p.inventory,q.inventory],beforeExit);
+  check('한쪽만 수락한 거래 중 시장 외곽으로 이동하면 자동 취소·재화/아이템 보존');
   // Wallet text matches the icon size, and amount is to the right in both UI locations.
   const walletCheck=async(page,selector)=>{
     const values=await page.locator(selector+' .currency-chip').evaluateAll(chips=>chips.map(c=>{

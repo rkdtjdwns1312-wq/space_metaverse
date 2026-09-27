@@ -315,6 +315,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const {room,player}=session,now=clock();
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
+      ensure(player.role==='teacher'||player.avatar.level>=2,'특수 스킬은 LV2부터 사용할 수 있어요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);

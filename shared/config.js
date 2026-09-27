@@ -1,5 +1,6 @@
 import {enlargeParadise,paradisePoint} from './paradise-floor.js';
-import {PLAZA_LAYOUT,departmentSlots} from './plaza-layout.js';
+import {PLAZA_LAYOUT,departmentSlots,plazaPoint,DEPARTMENT_RADIUS,DEPARTMENT_GAP} from './plaza-layout.js';
+import {VALLEY_LAYOUT} from './valley-layout.js';
 import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
@@ -18,7 +19,7 @@ export const WARNING_RULES = Object.freeze({defaultThreshold:3,minThreshold:1,ma
 // 행성(부서)은 아이들이 직접 만듭니다. 학생이 지도에서 자리를 고르고 이름·소개·색을 정해 신청하면 선생님이 승인합니다.
 // 선생님은 바로 만들 수도, 없앨 수도 있습니다. 이름은 소속 학생들의 과반 투표로 바꿀 수 있습니다.
 // 행성 설치는 plaza-layout의 부서행성 전용 공간으로 제한합니다. reserved는 추가 제외 구역용입니다.
-export const PLANET = Object.freeze({ radius: 60, minGap: 80, maxPerRoom: 48, maxPending: 12,
+export const PLANET = Object.freeze({ radius: DEPARTMENT_RADIUS, minGap: DEPARTMENT_GAP, maxPerRoom: 48, maxPending: 12,
   nameMin: 2, nameMax: 10, descriptionMax: 40, defaultRules: ['서로 존중하고 친절하게 말해요'],
   reserved: [] });
 // 행성 색 팔레트. 뒤의 8색은 행성 종류(PLANET_TEMPLATES)의 기본색으로, 종류를 고르면 자동 선택됩니다. 목록에 없는 색은 서버가 거부합니다.
@@ -26,21 +27,21 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
   '#c5c9f7', '#ffd2a8', '#ffe0b5', '#cfd8e6', '#f7e39b', '#f9c6e0', '#ffcfa3', '#bfe3d6']);
 // 광장의 기둥·생명의 별·과제·블랙홀·출입문은 고정 배치입니다. 방별 부서행성은 mapOf로 합칩니다.
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
-export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:{x:3000,y:2340},templeCenter:{x:3000,y:2200},
+export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:plazaPoint({x:3000,y:2340}),templeCenter:PLAZA_LAYOUT.center,
   objects: [
-    {id:'life-star',name:'생명의별',x:3000,y:2184,radius:26,kind:'life-star',color:'#ffffff',passable:true},
-    {id:'pillar-notice',name:'오늘의 알림장',x:2680,y:2094,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
-    {id:'pillar-effects',name:'사용 중인 아이템',x:3320,y:2094,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
-    {id:'pillar-timetable',name:'오늘의 시간표',x:2710,y:2304,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
-    {id:'pillar-weekly',name:'이번 주 받은 별',x:3290,y:2304,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
-    { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x: 6070, y: 2200, radius: 38, kind: 'gate', target: 'star-street',
+    {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
+    {id:'pillar-notice',name:'오늘의 알림장',x:1580,y:1210,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
+    {id:'pillar-effects',name:'사용 중인 아이템',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
+    {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
+    {id:'pillar-weekly',name:'이번 주 받은 별',x:2020,y:1430,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
+    { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x:3642,y:1320,radius: 38, kind: 'gate', target: 'star-street',
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
-    { id: 'gate-garden', name: '낙원의 갈림길', x: 130, y: 2200, radius: 38, kind: 'gate', target:'moon-garden',
+    { id: 'gate-garden', name: '낙원의 갈림길', x:78,y:1320,radius: 38, kind: 'gate', target:'moon-garden',
       arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
-    {id:'gate-valley',name:'은하수계곡',x:3000,y:4270,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
-    {id:'gate-origin',name:'별의 시작점 1',x:3000,y:130,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
-    {id:'assignment-andromeda',name:'과제안드로메다',x:1000,y:850,radius:240,kind:'andromeda',passable:true},
-    {id:'black-hole-portal',name:'블랙홀',x:5150,y:850,radius:240,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
+    {id:'gate-valley',name:'은하수계곡',x:1800,y:2562,radius:38,kind:'gate',target:'milky-valley',arrival:VALLEY_LAYOUT.spawn,color:'#c5cff8',passable:true},
+    {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
+    {id:'assignment-andromeda',name:'과제안드로메다',x:600,y:510,radius:144,kind:'andromeda',passable:true},
+    {id:'black-hole-portal',name:'블랙홀',x:3090,y:510,radius:144,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
     MARKET
   ] });
 export const PLAZA_ID = MAP.id;
@@ -48,7 +49,7 @@ export const PLAZA_ID = MAP.id;
 export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼터', width: 1200, height: 760, spawn: { x: 170, y: 380 },
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
-      arrival: { x: 5950, y: 2200 }, color: '#d9c6f2', passable: true },
+      arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
     { id: 'shop', name: '별 상점', x: 400, y: 225, radius: 72, kind: 'shop', color: '#ffe59b' },
     { id: 'energy-shop', name: '우주에너지 상점', x: 800, y: 225, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     ...[
@@ -62,7 +63,7 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
 export const GARDEN = enlargeParadise({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
-  {id:'gate-plaza',name:'별의 기원',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:250,y:2200},color:'#d9c6f2',passable:true},
+  {id:'gate-plaza',name:'별의 기원',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:250,y:2200}),color:'#d9c6f2',passable:true},
   {id:'gate-paradise',name:'태양의 낙원 1',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise',arrival:{x:600,y:590},color:'#ffe6a6',passable:true},
   {id:'gate-moon-paradise',name:'달의 낙원 1',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-1',arrival:{x:600,y:175},color:'#cccafa',passable:true}
 ]});
@@ -92,15 +93,15 @@ export const STAR_PARADISE=enlargeParadise({id:'star-paradise',name:'별들의 �
   {id:'gate-sun',name:'태양의 낙원 3',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
   {id:'gate-moon',name:'달의 낙원 3',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
 ]});
-export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:1200,height:900,spawn:{x:600,y:180},objects:[
-  {id:'evolution-star',name:'진화의 별',x:205,y:480,radius:105,kind:'evolution',color:'#ffffff'},
-  {id:'growth-star',name:'성장의 별',x:1020,y:480,radius:80,kind:'growth',color:'#ffd76d'},
-  {id:'gate-plaza',name:'별의 기원',x:600,y:80,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:3000,y:4150},color:'#f4deaa',passable:true}
+export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',width:VALLEY_LAYOUT.width,height:VALLEY_LAYOUT.height,spawn:VALLEY_LAYOUT.spawn,objects:[
+  {id:'evolution-star',name:'진화의 별',x:VALLEY_LAYOUT.temples[0].x,y:VALLEY_LAYOUT.temples[0].y-40,radius:65,kind:'evolution',color:'#ffffff'},
+  {id:'growth-star',name:'성장의 별',x:VALLEY_LAYOUT.temples[1].x,y:VALLEY_LAYOUT.temples[1].y-40,radius:65,kind:'growth',color:'#ffd76d'},
+  {id:'gate-plaza',name:'별의 기원',x:VALLEY_LAYOUT.gate.x,y:VALLEY_LAYOUT.gate.y,radius:38,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:3000,y:4150}),color:'#f4deaa',passable:true}
 ]});
 export const VALLEY_ID=VALLEY.id;
 export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
   {id:'black-hole-star',name:'검은별',x:600,y:250,radius:80,kind:'black-star',passable:true},
-  {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:5150,y:1230},passable:true}
+  {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:5150,y:1230}),passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 위쪽 맵은 1→2→3으로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
@@ -113,7 +114,7 @@ export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>{
   return Object.freeze({id:'star-origin-'+n,name:'별의 시작점 '+n,theme:'star-origin',width,height,
     spawn:{x:width/2,y:height-160*factor},objects:[
       {id:'gate-back',name:(n===1?'별의 기원':'별의 시작점 '+(n-1))+' ↓',x:width/2,y:height-80*factor,radius:38,kind:'gate',
-        target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?{x:3000,y:250}:{x:previousWidth/2,y:175*previousFactor},color:'#d2d3ef',passable:true},
+        target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?plazaPoint({x:3000,y:250}):{x:previousWidth/2,y:175*previousFactor},color:'#d2d3ef',passable:true},
       ...(n<3?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:width/2,y:80*factor,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:nextWidth/2,y:nextHeight-160*nextFactor},color:'#e0d6ff',passable:true}]:[])
     ]});
 }));
