@@ -1,34 +1,34 @@
-// 각 캐릭터의 [E, 보조1, 보조2, 보조3] 아이콘 URL. 원화가 정해지면 빈 문자열만 채웁니다.
+// 각 캐릭터의 [E, 보조1, 보조2] 아이콘 URL. 원화가 정해지면 빈 문자열만 채웁니다.
 // 이 설정은 그림만 바꾸며 실제 스킬이나 해금 레벨을 추가하지 않습니다.
-import {SAGITTARIUS_SKILLS,isSagittarius} from '/shared/sagittarius-skills.js';
+import {SAGITTARIUS_SKILLS,SAGITTARIUS_ATTACK,isSagittarius} from '/shared/sagittarius-skills.js';
 export const CHARACTER_SKILL_ICON_URLS = Object.freeze({
-  gemini: ['', '', '', ''],
-  corvus: ['', '', '', ''],
-  aquarius: ['', '', '', ''],
-  capricorn: ['', '', '', ''],
-  taurus: ['', '', '', ''],
-  hercules: ['', '', '', ''],
-  libra: ['', '', '', ''],
-  cetus: ['', '', '', ''],
-  leo: ['', '', '', ''],
-  ophiuchus: ['', '', '', ''],
+  gemini: ['', '', ''],
+  corvus: ['', '', ''],
+  aquarius: ['', '', ''],
+  capricorn: ['', '', ''],
+  taurus: ['', '', ''],
+  hercules: ['', '', ''],
+  libra: ['', '', ''],
+  cetus: ['', '', ''],
+  leo: ['', '', ''],
+  ophiuchus: ['', '', ''],
   sagittarius: SAGITTARIUS_SKILLS.map(skill=>skill.iconUrl),
-  'corona-borealis': ['', '', '', ''],
-  cancer: ['', '', '', ''],
-  cygnus: ['', '', '', ''],
-  aries: ['', '', '', ''],
-  pisces: ['', '', '', ''],
+  'corona-borealis': ['', '', ''],
+  cancer: ['', '', ''],
+  cygnus: ['', '', ''],
+  aries: ['', '', ''],
+  pisces: ['', '', ''],
 });
 
 export function canUseSpecialSkill(player) {
-  return !!player && (player.role === 'teacher' || Number(player.avatar?.level || 1) >= 2);
+  return !!player && (player.role === 'teacher' || Number(player.avatar?.level || 1) >= (isSagittarius(player)?3:2));
 }
 
 // 기존 Q/E 조작 모듈의 키보드·터치 요청 모두 동일한 경계에서 확인합니다.
 export function createSkillGatedRequest({ getPlayer, request }) {
   return async (event, payload) => {
     if (event === 'combat:skill' && !canUseSpecialSkill(getPlayer())) {
-      throw new Error('특수 공격은 LV2부터 사용할 수 있어요.');
+      throw new Error(`특수 공격은 LV${isSagittarius(getPlayer())?3:2}부터 사용할 수 있어요.`);
     }
     return request(event, payload);
   };
@@ -50,6 +50,16 @@ function setSlotIcon(button, url = '') {
 export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
   const controls = document.querySelector('.combat-buttons');
   const skill = document.getElementById('touch-skill');
+  const attack = document.getElementById('touch-attack');
+  const defaultAttackIcon = attack?.querySelector('.combat-slot-icon')?.innerHTML || '';
+  let attackMode = '';
+  function updateAttackIcon(player){
+    const mode=isSagittarius(player)&&player.avatar.level>=2?'arrow':'sword';
+    if(mode===attackMode||!attack)return;attackMode=mode;
+    const container=attack.querySelector('.combat-slot-icon');
+    container.innerHTML=mode==='arrow'?'<img alt="" src="'+SAGITTARIUS_ATTACK.iconUrl+'">':defaultAttackIcon;
+    attack.title=mode==='arrow'?'빛의 화살 (Q)':'공격 (Q)';attack.setAttribute('aria-label',attack.title);
+  }
   if (!controls || !skill) return { update() {}, reset() {} };
 
   const group = document.createElement('div');
@@ -60,7 +70,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, ico
   const heldNumberKeys = new Set();
 
   function skillIndexForCode(code) {
-    const match = /^(?:Digit|Numpad)([1-3])$/.exec(code);
+    const match = /^(?:Digit|Numpad)([1-2])$/.exec(code);
     return match ? Number(match[1]) - 1 : -1;
   }
 
@@ -118,17 +128,19 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, ico
   function update() {
     const player = getPlayer();
     const unlocked = canUseSpecialSkill(player);
+    updateAttackIcon(player);
+    const requiredLevel=isSagittarius(player)?3:2;
     skill.disabled = !unlocked;
     skill.classList.toggle('is-locked', !unlocked);
     skill.setAttribute('aria-disabled', String(!unlocked));
-    skill.setAttribute('aria-label', unlocked ? '특수 공격(E)' : '특수 공격(E), LV2부터 해금');
-    skill.title = unlocked ? '특수 공격 (E)' : 'LV2부터 특수 공격을 사용할 수 있어요';
-    if(unlocked&&isSagittarius(player)){skill.title='빛의 화살 (E)';skill.setAttribute('aria-label',skill.title);}
+    skill.setAttribute('aria-label', unlocked ? '특수 공격(E)' : `특수 공격(E), LV${requiredLevel}부터 해금`);
+    skill.title = unlocked ? '특수 공격 (E)' : `LV${requiredLevel}부터 특수 공격을 사용할 수 있어요`;
+    if(unlocked&&isSagittarius(player)){skill.title='유성화살 (E)';skill.setAttribute('aria-label',skill.title);}
     const lock = skill.querySelector('.combat-slot-lock');
-    if (lock) lock.hidden = unlocked;
+    if (lock) {lock.hidden = unlocked;lock.querySelector('span').textContent=`LV${requiredLevel}`;}
     const urls = iconUrls[player?.avatar?.constellationId] || [];
     setSlotIcon(skill, unlocked ? urls[0] || '' : '');
-    const wanted = player ? Math.max(0, Math.min(3, levelOf(player) - 2)) : 0;
+    const wanted = player ? Math.max(0, Math.min(2, levelOf(player) - (isSagittarius(player)?3:2))) : 0;
     if (wanted !== count) {
       count = wanted;
       group.replaceChildren();

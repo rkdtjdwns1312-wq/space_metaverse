@@ -8,7 +8,7 @@ import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops
 import {attackPowerOf,attackGeometryOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {isSagittarius} from '../shared/sagittarius-skills.js';
-import {castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns} from './sagittarius-skills.js';
+import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns} from './sagittarius-skills.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -297,6 +297,20 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,...geometry,power};
+      if(isSagittarius(player)){
+        const result=attackSagittarius(room,player,now);
+        // 기존 공격 알림은 유지하되 원형 타격 대신 화살만 그립니다.
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+          io.to(viewer.socketId).emit('combat:hit',{...hit,kind:'sagittarius-arrow'});
+          for(const effect of result.effects)io.to(viewer.socketId).emit('sagittarius:effect',effect);
+          for(const target of result.playerTargets){
+            io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});
+            io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});
+          }
+        }
+        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+        return {...result,target:result.targets[0]||null};
+      }
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       const targets=strikeMonsters(room,player,power,now);
       if(targets.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});

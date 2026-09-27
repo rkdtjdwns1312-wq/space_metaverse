@@ -1,16 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Meteor arrow">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Comet arrow">
   <defs>
-    <radialGradient id="sky" cx="35%" cy="24%" r="82%"><stop stop-color="#263967"/><stop offset="1" stop-color="#10172F"/></radialGradient>
-    <linearGradient id="trail" x1="24" y1="83" x2="88" y2="43" gradientUnits="userSpaceOnUse"><stop stop-color="#F17846" stop-opacity="0"/><stop offset=".38" stop-color="#F7A444" stop-opacity=".5"/><stop offset="1" stop-color="#FFF1A0"/></linearGradient>
-    <linearGradient id="head" x1="57" y1="71" x2="99" y2="31" gradientUnits="userSpaceOnUse"><stop stop-color="#F6AD45"/><stop offset=".55" stop-color="#FFE38A"/><stop offset="1" stop-color="#FFFCE2"/></linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="paper" x2=".9" y2="1"><stop stop-color="#FFF8E9"/><stop offset="1" stop-color="#F1E5F7"/></linearGradient>
+    <linearGradient id="tail" x1="27" y1="91" x2="87" y2="48" gradientUnits="userSpaceOnUse"><stop stop-color="#C9B2DD" stop-opacity="0"/><stop offset=".55" stop-color="#D9C4EA"/><stop offset="1" stop-color="#F1D79A"/></linearGradient>
+    <linearGradient id="body" x1="56" y1="77" x2="99" y2="31" gradientUnits="userSpaceOnUse"><stop stop-color="#E8C48C"/><stop offset=".52" stop-color="#F8E5B6"/><stop offset="1" stop-color="#FFF9E8"/></linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <circle cx="64" cy="64" r="56" fill="url(#sky)" stroke="#D79A46" stroke-width="2.5"/>
-  <path d="M24 91c20-1 39-12 59-36" fill="none" stroke="#F27C45" stroke-width="15" stroke-linecap="round" opacity=".18"/>
-  <path d="M27 90c22-2 42-15 63-42" fill="none" stroke="url(#trail)" stroke-width="10" stroke-linecap="round"/>
-  <path d="m51 72 22-24 19-20-5 26-23 22-13-4Z" fill="url(#head)" stroke="#FFF5C7" stroke-width="2" stroke-linejoin="round" filter="url(#glow)"/>
-  <path d="m77 48 15-20-4 26-14 14 3-20Z" fill="#FFF9D8" opacity=".9"/>
-  <path d="m54 75-5 12 13-5m-22-5-4 9 12-4m-3-17-7 2 4 6" fill="none" stroke="#FFC765" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m42 42 1.5 4.2 4.3 1.5-4.3 1.5-1.5 4.3-1.5-4.3-4.2-1.5 4.2-1.5L42 42Zm52 38 1.2 3.1 3.1 1.2-3.1 1.1-1.2 3.2-1.1-3.2-3.2-1.1 3.2-1.2 1.1-3.1Z" fill="#FFF4BF"/>
-  <circle cx="58" cy="31" r="1.5" fill="#A9D8FF"/><circle cx="101" cy="64" r="1.4" fill="#A9D8FF"/><circle cx="40" cy="103" r="1.4" fill="#A9D8FF"/>
+  <circle cx="64" cy="64" r="56" fill="url(#paper)" stroke="#D7C4E7" stroke-width="3"/><circle cx="64" cy="64" r="49" fill="none" stroke="#EADCBF" stroke-width="1.5"/>
+  <path d="M27 91c23-4 43-17 65-47" fill="none" stroke="#D8C5E8" stroke-width="17" opacity=".5" stroke-linecap="round"/>
+  <path d="M27 91c23-4 43-17 65-47" fill="none" stroke="url(#tail)" stroke-width="10" stroke-linecap="round"/>
+  <path d="m54 75 18-27 24-20-6 31-23 23-13-7Z" fill="url(#body)" stroke="#C8A66F" stroke-width="2" stroke-linejoin="round" filter="url(#soft)"/>
+  <path d="m77 50 19-22-6 31-18 17 5-26Z" fill="#FFFDF2" opacity=".9"/>
+  <path d="m55 77-8 11 14-4m-23-6-5 9 14-4m-6-20-8 2 5 7" fill="none" stroke="#D4AD76" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m40 39 1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5 1.5-4Zm57 43 1.3 3.2 3.2 1.3-3.2 1.2-1.3 3.3-1.2-3.3-3.3-1.2 3.3-1.3 1.2-3.2Z" fill="#C8ADD9"/>
+  <circle cx="57" cy="29" r="2" fill="#E6BD6E"/><circle cx="104" cy="66" r="1.8" fill="#C5A8D9"/><circle cx="42" cy="105" r="1.8" fill="#E6BD6E"/>
 </svg>

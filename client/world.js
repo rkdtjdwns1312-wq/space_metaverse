@@ -452,7 +452,7 @@ export function createWorld(canvas) {
       cast.displayX+=(cast.x-cast.displayX)*mix;cast.displayY+=(cast.y-cast.displayY)*mix;
       drawSagittarius(ctx,{...cast,x:cast.displayX,y:cast.displayY},0,t,reducedMotion.matches);
     }
-    for(const effect of sagittariusEffects)drawSagittarius(ctx,effect,1-(effect.until-t)/effect.durationMs,t,reducedMotion.matches);
+    for(const effect of sagittariusEffects)if(t>=effect.startsAt)drawSagittarius(ctx,effect,1-(effect.until-t)/effect.durationMs,t,reducedMotion.matches);
     canvas.dataset.sagittariusCasts=String(sagittariusCasts.length);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
     canvas.dataset.attackCount=String(hits.length);
@@ -516,14 +516,15 @@ export function createWorld(canvas) {
     },
     sagittariusEffect(data){
       if(data.mapId!==myMapId)return;
-      sagittariusEffects.push({...data,until:performance.now()+data.durationMs});
+      const startsAt=performance.now()+(data.delayMs||0);
+      sagittariusEffects.push({...data,startsAt,until:startsAt+data.durationMs});
       if(sagittariusEffects.length>80)sagittariusEffects.shift();
       canvas.dataset.lastSagittariusEffect=data.kind;canvas.dataset.lastSagittariusSlot=String(data.slot);
     },
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
-      hits.push({...data,until:performance.now()+(effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
       canvas.dataset.lastAttackReach=String(data.reach??ATTACK_VISUAL.reach);canvas.dataset.lastSkillOrigin=String(data.originOffset||0);canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind!=='skill')canvas.dataset.lastAttackRadius=String(data.radius??ATTACK_VISUAL.hitRadius);
       if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);canvas.dataset.lastSkillEffect=effect?.id||'';}

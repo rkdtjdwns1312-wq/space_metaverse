@@ -1,20 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Celestial hunt">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Arrow constellation">
   <defs>
-    <radialGradient id="sky" cx="35%" cy="24%" r="82%"><stop stop-color="#263967"/><stop offset="1" stop-color="#10172F"/></radialGradient>
-    <linearGradient id="gold" x1="24" y1="98" x2="101" y2="31" gradientUnits="userSpaceOnUse"><stop stop-color="#E89A3D"/><stop offset=".5" stop-color="#FFDA72"/><stop offset="1" stop-color="#FFF6C8"/></linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="paper" x2=".9" y2="1"><stop stop-color="#FFF8E9"/><stop offset="1" stop-color="#F1E5F7"/></linearGradient>
+    <linearGradient id="gold" x1="29" y1="98" x2="100" y2="29" gradientUnits="userSpaceOnUse"><stop stop-color="#D5B174"/><stop offset=".55" stop-color="#F1D795"/><stop offset="1" stop-color="#FFF5D9"/></linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <circle cx="64" cy="64" r="56" fill="url(#sky)" stroke="#D79A46" stroke-width="2.5"/>
-  <circle cx="64" cy="64" r="42" fill="none" stroke="#DBAA58" stroke-width="1.7" opacity=".75"/>
-  <circle cx="64" cy="64" r="34" fill="none" stroke="#8F9BC5" stroke-width="1" stroke-dasharray="2 5" opacity=".6"/>
-  <path d="M35 45 45 35m38 0 10 10M35 83l10 10m38 0 10-10" fill="none" stroke="#FFE69A" stroke-width="1.5" opacity=".75"/>
-  <path d="m64 24 2.2 6.1 6.1 2.2-6.1 2.2-2.2 6.1-2.2-6.1-6.1-2.2 6.1-2.2 2.2-6.1Z" fill="#FFF4BD"/>
-  <path d="m45 40 1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6 1.6-4.4Zm38 0 1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6 1.6-4.4Z" fill="#FFE68E"/>
-  <path d="m37 57 2.5 6.5 6.5 2.5-6.5 2.5-2.5 6.5-2.5-6.5L28 66l6.5-2.5L37 57Zm54 0 2.5 6.5L100 66l-6.5 2.5L91 75l-2.5-6.5L82 66l6.5-2.5L91 57Z" fill="url(#gold)" filter="url(#glow)"/>
-  <path d="M49 55 54 69m25-14-5 14M53 65l11 9 11-9m-20 9-5 11m25-11 5 11" fill="none" stroke="#FFE69A" stroke-width="1.5" opacity=".65"/>
-  <path d="m46 86 12 4m24-4-12 4M52 96l8-2m16 2-8-2" fill="none" stroke="url(#gold)" stroke-width="4.5" stroke-linecap="round"/>
-  <path d="m57 76 7-8 7 8-3 5h-8l-3-5Z" fill="#FFF1B0" stroke="#E6A94E" stroke-width="1.6"/>
-  <path d="m56 51 8 8 8-8m-8 8v9" fill="none" stroke="#FFF8D7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m52 49 12 11 12-11" fill="none" stroke="#F5B84C" stroke-width="2" stroke-linecap="round"/>
-  <path d="m28 31 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Zm72 65 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Z" fill="#FFF1AE"/>
+  <circle cx="64" cy="64" r="56" fill="url(#paper)" stroke="#D7C4E7" stroke-width="3"/><circle cx="64" cy="64" r="49" fill="none" stroke="#EADCBF" stroke-width="1.5"/>
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#C9B3DD" stroke-width="1.3" stroke-dasharray="2 5"/>
+  <path d="m25 70 18-26 18 16 19-28 24 19-11 29-23 14-25-7-20 13" fill="none" stroke="#C5ABD9" stroke-width="1.7" opacity=".9"/>
+  <path d="m42 43 12-9m29-2 9 12M27 67l-5-8m77 22 8 7" fill="none" stroke="#D8BC82" stroke-width="1.5"/>
+  <g fill="url(#gold)" stroke="#B8945E" stroke-width="1.7" stroke-linejoin="round" filter="url(#soft)">
+    <path d="m25 65 3 8 8 .5-6.5 5 2.5 8-7-4.5-7 4.5 2.5-8-6.5-5 8-.5 3-8Z"/>
+    <path d="m43 38 2.2 5.7 5.8.5-4.5 3.7 1.4 5.7-4.9-3-4.9 3 1.4-5.7-4.5-3.7 5.8-.5 2.2-5.7Z"/>
+    <path d="m62 54 2.8 7 7.2.6-5.5 4.6 1.7 7-6.2-3.7-6.2 3.7 1.7-7-5.5-4.6 7.2-.6 2.8-7Z"/>
+    <path d="m82 25 2.4 6.2 6.3.5-4.8 4 1.5 6.2-5.4-3.3-5.4 3.3 1.5-6.2-4.8-4 6.3-.5 2.4-6.2Z"/>
+    <path d="m99 45 2.1 5.4 5.5.5-4.2 3.5 1.3 5.4-4.7-2.9-4.7 2.9 1.3-5.4-4.2-3.5 5.5-.5 2.1-5.4Z"/>
+  </g>
+  <path d="m61 76 19-24m-14 28 20-25" stroke="#FFFDF4" stroke-width="4" stroke-linecap="round"/>
+  <path d="m77 48 15-19-4 24-15 15 4-20Z" fill="#F2D68E" stroke="#B8945E" stroke-width="1.7" stroke-linejoin="round"/>
+  <path d="m81 45 11-16-4 24" fill="#FFF9E8" opacity=".8"/>
+  <path d="m31 31 1.3 3.2 3.2 1.3-3.2 1.2-1.3 3.3-1.2-3.3-3.3-1.2 3.3-1.3 1.2-3.2Zm72 66 1.3 3.2 3.2 1.3-3.2 1.2-1.3 3.3-1.2-3.3-3.3-1.2 3.3-1.3 1.2-3.2Z" fill="#C4A7D9"/>
 </svg>

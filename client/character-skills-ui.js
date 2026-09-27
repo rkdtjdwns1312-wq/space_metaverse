@@ -1,4 +1,4 @@
-import {SAGITTARIUS_SKILLS,isSagittarius} from '/shared/sagittarius-skills.js';
+import {SAGITTARIUS_ABILITIES,isSagittarius} from '/shared/sagittarius-skills.js';
 // 별자리별 설명 UI의 첫 구현. 아직 정하지 않은 별자리 칸은 빈 상태로 둡니다.
 export function createCharacterSkillsUI(){
   const container=document.getElementById('self-skill-slots');
@@ -10,7 +10,7 @@ export function createCharacterSkillsUI(){
   return {update(player){
     const next=[player?.avatar?.constellationId,player?.avatar?.level].join(':');if(next===signature)return;signature=next;
     container.replaceChildren();container.setAttribute('aria-label','별자리 스킬 4칸');
-    for(const spec of SAGITTARIUS_SKILLS){
+    for(const spec of SAGITTARIUS_ABILITIES){
       const available=isSagittarius(player)&&player.avatar.level>=spec.level;
       const button=document.createElement('button');button.type='button';button.className='skill-placeholder';button.disabled=!available;
       button.dataset.slot=String(spec.slot);button.setAttribute('aria-label',available?`${spec.name} 설명 보기`:`LV${spec.level} 스킬 미해금`);

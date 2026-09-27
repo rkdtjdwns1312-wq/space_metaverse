@@ -96,14 +96,14 @@ try {
     state.player.avatar.level = 5;
     state.instance.update();
   });
-  assert.equal(await page.locator('.auxiliary-skills[data-verification="true"] button').count(), 3);
+  assert.equal(await page.locator('.auxiliary-skills[data-verification="true"] button').count(), 2);
   await page.keyboard.press('1');
   await page.keyboard.press('Numpad2');
   await page.keyboard.press('3');
-  await page.locator('.auxiliary-skills[data-verification="true"] button').nth(2).evaluate(button => button.click());
-  assert.equal(await page.evaluate(() => window.__auxiliarySkillVerification.toasts.length), 6);
+  await page.locator('.auxiliary-skills[data-verification="true"] button').nth(1).evaluate(button => button.click());
+  assert.equal(await page.evaluate(() => window.__auxiliarySkillVerification.toasts.length), 5);
   assert.ok((await page.evaluate(() => window.__auxiliarySkillVerification.toasts)).every(message => message === '보조 스킬은 준비 중이에요.'));
-  check('LV5의 숫자열·숫자패드와 3번 버튼 클릭이 같은 안내 경로로 연결');
+  check('LV5의 숫자열·숫자패드와 2번 버튼 클릭(3번 제거)이 같은 안내 경로로 연결');
 
   await page.evaluate(() => {
     const dialog = document.createElement('dialog');
@@ -122,21 +122,21 @@ try {
   await page.evaluate(() => { window.__auxiliarySkillVerification.canAct = false; });
   await page.locator('#auxiliary-skill-world-focus').focus();
   await page.keyboard.press('1');
-  assert.equal(await page.evaluate(() => window.__auxiliarySkillVerification.toasts.length), 6);
+  assert.equal(await page.evaluate(() => window.__auxiliarySkillVerification.toasts.length), 5);
   assert.deepEqual(pageErrors, []);
   check('모달·채팅 입력·버튼 포커스·행동 불가 상태에서는 키 입력을 가로채지 않음');
 
   // URL 설정은 효과 호출 없이 각 슬롯의 그림만 갱신합니다.
   await page.evaluate(() => {
     const state = window.__auxiliarySkillVerification;
-    state.iconUrls.example = [0, 1, 2, 3].map(slot => `/favicon.svg?skill-slot=${slot}`);
+    state.iconUrls.example = [0, 1, 2].map(slot => `/favicon.svg?skill-slot=${slot}`);
     state.player.avatar.constellationId = 'example';
     state.instance.update();
   });
   await page.waitForFunction(() => [document.getElementById('touch-skill'), ...window.__auxiliarySkillVerification.group.children]
     .every(button => !button.querySelector('img').hidden && button.querySelector('img').naturalWidth > 0));
   assert.deepEqual(await page.evaluate(() => [document.getElementById('touch-skill'), ...window.__auxiliarySkillVerification.group.children]
-    .map(button => button.querySelector('img').getAttribute('src'))), [0, 1, 2, 3].map(slot => `/favicon.svg?skill-slot=${slot}`));
+    .map(button => button.querySelector('img').getAttribute('src'))), [0, 1, 2].map(slot => `/favicon.svg?skill-slot=${slot}`));
   await page.evaluate(() => {
     const state = window.__auxiliarySkillVerification;
     state.iconUrls.example[0] = '/missing-skill-icon-for-verification.png';
@@ -146,7 +146,7 @@ try {
     const image = document.querySelector('#touch-skill img');
     return image.complete && !image.naturalWidth && image.hidden && !document.querySelector('#touch-skill .combat-slot-placeholder').hidden;
   });
-  check('캐릭터별 E·보조1·2·3 URL 연결 및 없는 그림의 빈 슬롯 복원');
+  check('캐릭터별 E·보조1·2 URL 연결 및 없는 그림의 빈 슬롯 복원');
   await page.close();
 
   // 여기부터는 별도 UI 인스턴스 없이 실제 앱 로그인과 소켓 요청을 확인합니다.
@@ -175,7 +175,7 @@ try {
     actor.avatar = { ...actor.avatar, level, form: level >= 2 ? 'constellation' : 'asteroid', constellationId: level >= 2 ? 'aries' : null };
     publish();
     await live.waitForFunction(({ level, role }) => {
-      const expected = role === 'teacher' ? 3 : Math.max(0, Math.min(3, level - 2));
+      const expected = role === 'teacher' ? 2 : Math.max(0, Math.min(2, level - 2));
       return document.querySelectorAll('.auxiliary-skill').length === expected &&
         document.getElementById('touch-skill').disabled === (level < 2 && role !== 'teacher');
     }, { level, role });
@@ -220,12 +220,12 @@ try {
     await setLevel(level);
     await live.evaluate(() => { window.__auxiliaryClicks = []; });
     for (const key of ['1', '2', '3']) await live.keyboard.press(key);
-    assert.deepEqual(await live.evaluate(() => window.__auxiliaryClicks), Array.from({ length: Math.max(0, level - 2) }, (_, index) => `auxiliary-${index + 1}`));
+    assert.deepEqual(await live.evaluate(() => window.__auxiliaryClicks), Array.from({ length: Math.max(0, Math.min(2, level - 2)) }, (_, index) => `auxiliary-${index + 1}`));
   }
   await live.evaluate(() => { window.__auxiliaryClicks = []; });
   for (const key of ['Numpad1', 'Numpad2', 'Numpad3']) await live.keyboard.press(key);
-  assert.deepEqual(await live.evaluate(() => window.__auxiliaryClicks), ['auxiliary-1', 'auxiliary-2', 'auxiliary-3']);
-  check('실제 앱 LV3·4·5에서 보조1·2·3 순서대로 해금·같은 버튼 클릭 경로');
+  assert.deepEqual(await live.evaluate(() => window.__auxiliaryClicks), ['auxiliary-1', 'auxiliary-2']);
+  check('실제 앱 LV3·4에서 보조1·2 해금, LV5도 최대2개·같은 버튼 클릭 경로');
 
   await live.locator('#toast').waitFor({ state: 'hidden' });
   const frame = () => live.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -260,7 +260,7 @@ try {
         badgeOverlaps: badge.left > box.left + box.width / 2 && badge.top > box.top + box.height / 2 && badge.right > box.right && badge.bottom > box.bottom,
         onScreen: badge.left >= 0 && badge.right <= innerWidth && badge.bottom <= innerHeight };
     }));
-    assert.equal(slots.length, 5);
+    assert.equal(slots.length, 4);
     assert.equal(slots[0].width, width === 390 ? 44 : 84);
     assert.equal(slots[0].width, slots[1].width);
     assert.ok(slots.every(slot => slot.width === slot.height && slot.round === '50%' && slot.badgeRound === '50%' && slot.label && slot.badgeOverlaps && slot.onScreen));
@@ -268,7 +268,7 @@ try {
     await live.screenshot({ path: `.local/260-skills-${width}.png` });
     const region = await live.locator('.combat-buttons').boundingBox();
     await live.screenshot({ path: `.local/260-skills-${width}-detail.png`, clip: { x: 0, y: Math.max(0, region.y - 100), width: Math.min(width, 460), height: Math.min(height - Math.max(0, region.y - 100), 250) } });
-    check(`${width}px 실제 화면: Q/E 동일 크기·5개 우하단 원형 배지·조작/체력 위치 크기 보존`);
+    check(`${width}px 실제 화면: Q/E 동일 크기·4개 우하단 원형 배지·조작/체력 위치 크기 보존`);
   }
   assert.deepEqual(pageErrors, []);
 
