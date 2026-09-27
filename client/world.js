@@ -22,6 +22,7 @@ import {drawStarCard} from './star-card-art.js';
 import {ATTACK_VISUAL} from '/shared/combat.js';
 import {skillEffectById} from '/shared/skill-effects.js';
 import {drawSkillEffect} from './skill-effects.js';
+import {drawSagittarius} from './sagittarius-effects.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
@@ -72,6 +73,7 @@ export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
   let hits=[],starCards=[],energyDrops=[];
+  let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
   let monsters=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
@@ -443,6 +445,15 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    sagittariusEffects=sagittariusEffects.filter(e=>e.until>t&&e.mapId===myMapId);
+    sagittariusCasts=sagittariusCasts.filter(e=>e.until>t&&e.mapId===myMapId);
+    for(const cast of sagittariusCasts){
+      const mix=1-Math.exp(-Math.min(100,t-(cast.frameAt||t))/70);cast.frameAt=t;
+      cast.displayX+=(cast.x-cast.displayX)*mix;cast.displayY+=(cast.y-cast.displayY)*mix;
+      drawSagittarius(ctx,{...cast,x:cast.displayX,y:cast.displayY},0,t,reducedMotion.matches);
+    }
+    for(const effect of sagittariusEffects)drawSagittarius(ctx,effect,1-(effect.until-t)/effect.durationMs,t,reducedMotion.matches);
+    canvas.dataset.sagittariusCasts=String(sagittariusCasts.length);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){
@@ -482,7 +493,7 @@ export function createWorld(canvas) {
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];}
+      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];
@@ -497,6 +508,18 @@ export function createWorld(canvas) {
     positions(data){const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
     energyDrops(data){energyDrops=data.drops||[];},
+    sagittariusState(data){
+      const previous=new Map(sagittariusCasts.map(c=>[c.id,c])),now=performance.now();
+      sagittariusCasts=(data.casts||[]).filter(e=>e.mapId===myMapId).map(e=>{
+        const old=previous.get(e.id);return {...e,displayX:old?.displayX??e.x,displayY:old?.displayY??e.y,frameAt:old?.frameAt??now,until:now+e.remainingMs};
+      });
+    },
+    sagittariusEffect(data){
+      if(data.mapId!==myMapId)return;
+      sagittariusEffects.push({...data,until:performance.now()+data.durationMs});
+      if(sagittariusEffects.length>80)sagittariusEffects.shift();
+      canvas.dataset.lastSagittariusEffect=data.kind;canvas.dataset.lastSagittariusSlot=String(data.slot);
+    },
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);

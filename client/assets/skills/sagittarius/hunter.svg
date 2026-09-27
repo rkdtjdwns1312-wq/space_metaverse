@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Star hunter">
+  <defs>
+    <radialGradient id="sky" cx="35%" cy="24%" r="82%"><stop stop-color="#263967"/><stop offset="1" stop-color="#10172F"/></radialGradient>
+    <linearGradient id="gold" x1="37" y1="99" x2="91" y2="37" gradientUnits="userSpaceOnUse"><stop stop-color="#E99A39"/><stop offset=".55" stop-color="#FFD96E"/><stop offset="1" stop-color="#FFF2B3"/></linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#sky)" stroke="#D79A46" stroke-width="2.5"/>
+  <path d="m33 93 19-28 12 9 18-28 13 19" fill="none" stroke="#F7D875" stroke-width="1.8" opacity=".58"/>
+  <circle cx="33" cy="93" r="3.5" fill="#FFF0A1"/><circle cx="52" cy="65" r="3" fill="#FFF0A1"/><circle cx="64" cy="74" r="3.5" fill="#FFF0A1"/><circle cx="82" cy="46" r="3.5" fill="#FFF0A1"/><circle cx="95" cy="65" r="3" fill="#FFF0A1"/>
+  <path d="m34 61 5-18 15 11 10-14 10 14 15-11 5 18c1 5 0 11-3 17l10 9-18 1-7 14-10-8-11 8-7-14-18-1 10-9c-3-6-4-12-3-17Z" fill="url(#gold)" stroke="#FFF1B5" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="m39 48 11 10 4 8-11-5-5-13Zm50 0L78 58l-4 8 11-5 4-13Z" fill="#F28A42" stroke="#FFE9A0" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M43 66c5-5 12-4 16 1l-7 7-9-1m42-7c-5-5-12-4-16 1l7 7 9-1" fill="#182448" stroke="#7C4E31" stroke-width="1.7" stroke-linejoin="round"/>
+  <path d="m64 72 7 7-7 5-7-5 7-7Z" fill="#FFF5CE" stroke="#BA7138" stroke-width="1.5"/>
+  <path d="m64 84-6 8m6-8 6 8" fill="none" stroke="#A86035" stroke-width="2" stroke-linecap="round"/>
+  <path d="m26 38 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Zm77 42 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Z" fill="#FFF3B9"/>
+</svg>

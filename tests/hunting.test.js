@@ -33,7 +33,8 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
  const created=await call(teacher,'room:create',{teacherKey:'hunting-test-key',allowedNames:['1','2']}),s=await connect(),joined=await call(s,'room:join',{code:created.room.code,nickname:'1'});
  const room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
- Object.assign(m,{dx:0,dy:0,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=4;
+ // 확대된 LV4 몸이 바닥 보정으로 순간 이동하지 않도록 중앙의 실제 보행 영역에서 검사합니다.
+ Object.assign(m,{x:700,y:500,dx:0,dy:0,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=4;
  const r=await call(s,'combat:attack',{power:1000,dx:-1,monsterId:'star-dragon-1'});assert.equal(r.target.hp,17);assert.equal(r.target.damage,3);assert.equal((await call(s,'combat:attack')).ok,false);
  const peer=await connect(),joinedPeer=await call(peer,'room:join',{code:room.code,nickname:'2'});const p2=room.players.get(joinedPeer.selfId);Object.assign(p2,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p2.avatar.level=3;
  assert.equal((await call(peer,'combat:attack')).target.hp,15);assert.equal(game.store.snapshot(room,p2).monsters.find(m=>m.id==='star-crab').hp,15);
@@ -55,7 +56,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
  const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
  const table={'수호계':[1,1,1,2],'제작계':[1,1,2,3],'생산계':[1,1,2,3],'공격계':[2,3,4,5],'특수계':[1,2,3,4]};
  for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
-   Object.assign(m,{hp:20,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});
+   Object.assign(m,{x:700,y:500,hp:20,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});
    Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});Object.assign(p.avatar,{level,constellationId:c.id});now+=1000;
    const expected=table[c.type][level-2],visual=new Promise(r=>student.once('combat:hit',r));
    const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});

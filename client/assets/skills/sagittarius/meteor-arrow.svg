@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Meteor arrow">
+  <defs>
+    <radialGradient id="sky" cx="35%" cy="24%" r="82%"><stop stop-color="#263967"/><stop offset="1" stop-color="#10172F"/></radialGradient>
+    <linearGradient id="trail" x1="24" y1="83" x2="88" y2="43" gradientUnits="userSpaceOnUse"><stop stop-color="#F17846" stop-opacity="0"/><stop offset=".38" stop-color="#F7A444" stop-opacity=".5"/><stop offset="1" stop-color="#FFF1A0"/></linearGradient>
+    <linearGradient id="head" x1="57" y1="71" x2="99" y2="31" gradientUnits="userSpaceOnUse"><stop stop-color="#F6AD45"/><stop offset=".55" stop-color="#FFE38A"/><stop offset="1" stop-color="#FFFCE2"/></linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#sky)" stroke="#D79A46" stroke-width="2.5"/>
+  <path d="M24 91c20-1 39-12 59-36" fill="none" stroke="#F27C45" stroke-width="15" stroke-linecap="round" opacity=".18"/>
+  <path d="M27 90c22-2 42-15 63-42" fill="none" stroke="url(#trail)" stroke-width="10" stroke-linecap="round"/>
+  <path d="m51 72 22-24 19-20-5 26-23 22-13-4Z" fill="url(#head)" stroke="#FFF5C7" stroke-width="2" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="m77 48 15-20-4 26-14 14 3-20Z" fill="#FFF9D8" opacity=".9"/>
+  <path d="m54 75-5 12 13-5m-22-5-4 9 12-4m-3-17-7 2 4 6" fill="none" stroke="#FFC765" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m42 42 1.5 4.2 4.3 1.5-4.3 1.5-1.5 4.3-1.5-4.3-4.2-1.5 4.2-1.5L42 42Zm52 38 1.2 3.1 3.1 1.2-3.1 1.1-1.2 3.2-1.1-3.2-3.2-1.1 3.2-1.2 1.1-3.1Z" fill="#FFF4BF"/>
+  <circle cx="58" cy="31" r="1.5" fill="#A9D8FF"/><circle cx="101" cy="64" r="1.4" fill="#A9D8FF"/><circle cx="40" cy="103" r="1.4" fill="#A9D8FF"/>
+</svg>

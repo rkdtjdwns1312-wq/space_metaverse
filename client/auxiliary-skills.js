@@ -1,5 +1,6 @@
 // 각 캐릭터의 [E, 보조1, 보조2, 보조3] 아이콘 URL. 원화가 정해지면 빈 문자열만 채웁니다.
 // 이 설정은 그림만 바꾸며 실제 스킬이나 해금 레벨을 추가하지 않습니다.
+import {SAGITTARIUS_SKILLS,isSagittarius} from '/shared/sagittarius-skills.js';
 export const CHARACTER_SKILL_ICON_URLS = Object.freeze({
   gemini: ['', '', '', ''],
   corvus: ['', '', '', ''],
@@ -11,7 +12,7 @@ export const CHARACTER_SKILL_ICON_URLS = Object.freeze({
   cetus: ['', '', '', ''],
   leo: ['', '', '', ''],
   ophiuchus: ['', '', '', ''],
-  sagittarius: ['', '', '', ''],
+  sagittarius: SAGITTARIUS_SKILLS.map(skill=>skill.iconUrl),
   'corona-borealis': ['', '', '', ''],
   cancer: ['', '', '', ''],
   cygnus: ['', '', '', ''],
@@ -46,7 +47,7 @@ function setSlotIcon(button, url = '') {
   else { image.onload = null; image.removeAttribute('src'); }
 }
 
-export function createAuxiliarySkills({ getPlayer, canAct, toast, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
+export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
   const controls = document.querySelector('.combat-buttons');
   const skill = document.getElementById('touch-skill');
   if (!controls || !skill) return { update() {}, reset() {} };
@@ -122,6 +123,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, iconUrls = CHA
     skill.setAttribute('aria-disabled', String(!unlocked));
     skill.setAttribute('aria-label', unlocked ? '특수 공격(E)' : '특수 공격(E), LV2부터 해금');
     skill.title = unlocked ? '특수 공격 (E)' : 'LV2부터 특수 공격을 사용할 수 있어요';
+    if(unlocked&&isSagittarius(player)){skill.title='빛의 화살 (E)';skill.setAttribute('aria-label',skill.title);}
     const lock = skill.querySelector('.combat-slot-lock');
     if (lock) lock.hidden = unlocked;
     const urls = iconUrls[player?.avatar?.constellationId] || [];
@@ -140,12 +142,16 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, iconUrls = CHA
           `<span class="combat-key-badge" aria-hidden="true">${index}</span>`;
         button.setAttribute('aria-label', `보조 스킬 ${index} (준비 중)`);
         button.addEventListener('click', () => {
-          if (canAct()) toast('보조 스킬은 준비 중이에요.');
+          if (canAct()) {if(castSkill)castSkill(index);else toast('보조 스킬은 준비 중이에요.');}
         });
         group.append(button);
       }
     }
-    [...group.children].forEach((button, index) => setSlotIcon(button, urls[index + 1] || ''));
+    [...group.children].forEach((button, index) => {
+      setSlotIcon(button, urls[index + 1] || '');
+      button.setAttribute('aria-label',isSagittarius(player)?`${SAGITTARIUS_SKILLS[index+1].name} (${index+1})`:`보조 스킬 ${index+1} (준비 중)`);
+      button.title=button.getAttribute('aria-label');
+    });
     layout();
   }
 

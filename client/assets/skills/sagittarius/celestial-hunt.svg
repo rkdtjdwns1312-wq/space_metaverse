@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Celestial hunt">
+  <defs>
+    <radialGradient id="sky" cx="35%" cy="24%" r="82%"><stop stop-color="#263967"/><stop offset="1" stop-color="#10172F"/></radialGradient>
+    <linearGradient id="gold" x1="24" y1="98" x2="101" y2="31" gradientUnits="userSpaceOnUse"><stop stop-color="#E89A3D"/><stop offset=".5" stop-color="#FFDA72"/><stop offset="1" stop-color="#FFF6C8"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#sky)" stroke="#D79A46" stroke-width="2.5"/>
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#DBAA58" stroke-width="1.7" opacity=".75"/>
+  <circle cx="64" cy="64" r="34" fill="none" stroke="#8F9BC5" stroke-width="1" stroke-dasharray="2 5" opacity=".6"/>
+  <path d="M35 45 45 35m38 0 10 10M35 83l10 10m38 0 10-10" fill="none" stroke="#FFE69A" stroke-width="1.5" opacity=".75"/>
+  <path d="m64 24 2.2 6.1 6.1 2.2-6.1 2.2-2.2 6.1-2.2-6.1-6.1-2.2 6.1-2.2 2.2-6.1Z" fill="#FFF4BD"/>
+  <path d="m45 40 1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6 1.6-4.4Zm38 0 1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6 1.6-4.4Z" fill="#FFE68E"/>
+  <path d="m37 57 2.5 6.5 6.5 2.5-6.5 2.5-2.5 6.5-2.5-6.5L28 66l6.5-2.5L37 57Zm54 0 2.5 6.5L100 66l-6.5 2.5L91 75l-2.5-6.5L82 66l6.5-2.5L91 57Z" fill="url(#gold)" filter="url(#glow)"/>
+  <path d="M49 55 54 69m25-14-5 14M53 65l11 9 11-9m-20 9-5 11m25-11 5 11" fill="none" stroke="#FFE69A" stroke-width="1.5" opacity=".65"/>
+  <path d="m46 86 12 4m24-4-12 4M52 96l8-2m16 2-8-2" fill="none" stroke="url(#gold)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="m57 76 7-8 7 8-3 5h-8l-3-5Z" fill="#FFF1B0" stroke="#E6A94E" stroke-width="1.6"/>
+  <path d="m56 51 8 8 8-8m-8 8v9" fill="none" stroke="#FFF8D7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m52 49 12 11 12-11" fill="none" stroke="#F5B84C" stroke-width="2" stroke-linecap="round"/>
+  <path d="m28 31 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Zm72 65 1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2 1.2-3.2Z" fill="#FFF1AE"/>
+</svg>

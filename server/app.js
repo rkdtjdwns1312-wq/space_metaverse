@@ -7,6 +7,8 @@ import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops.js';
 import {attackPowerOf,attackGeometryOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
+import {isSagittarius} from '../shared/sagittarius-skills.js';
+import {castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns} from './sagittarius-skills.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -311,12 +313,26 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(session.room);return result;
     });
     // 이전 클라이언트에도 바로 안내하고, 폐지된 몬스터 상호작용은 실행하지 않습니다.
-    action('combat:skill',()=>{
+    action('combat:skill',data=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const {room,player}=session,now=clock();
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(player.role==='teacher'||player.avatar.level>=2,'특수 스킬은 LV2부터 사용할 수 있어요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
+      if(isSagittarius(player)){
+        const result=castSagittarius(room,player,data.slot??0,now);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+          for(const effect of result.effects)io.to(viewer.socketId).emit('sagittarius:effect',effect);
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+          for(const hit of result.playerTargets){
+            io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...hit});
+            io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
+          }
+        }
+        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+        return result;
+      }
+      ensure((data.slot??0)===0,'이 별자리의 보조 스킬은 준비 중이에요.');
       ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
@@ -1412,6 +1428,17 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
         }
       }
+      for(const hit of advanceSagittarius(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
+          const {targets,playerTargets,...visual}=hit;
+          io.to(viewer.socketId).emit('sagittarius:effect',visual);
+          for(const result of playerTargets){
+            io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...result});
+            io.to(viewer.socketId).emit('combat:vitals',{playerId:result.targetId,vitals:result.vitals});
+          }
+        }
+        if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
       for(const update of advanceLifeRecovery(room,clock())){
         const player=room.players.get(update.playerId);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
@@ -1491,7 +1518,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
         // 몬스터는 같은 교실 안에서 공유하되 현재 맵의 그림만 클라이언트가 표시합니다.
         if(pruneEnergyDrops(room,now))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-        io.to(room.code).volatile.emit('world:positions',{positions,monsters:monsterViews(room)});
+        const visibleMonsters=monsterViews(room);
+        // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
+        // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,
+            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }
     }

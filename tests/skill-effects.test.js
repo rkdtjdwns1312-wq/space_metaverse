@@ -58,7 +58,8 @@ test('실제 소켓 스킬은 16종×4단계에서 서버 효과·방향만 반�
  const otherRoomSocket=await connect();
  await call(otherRoomSocket,'room:join',{code:otherCreated.room.code,nickname:'1'});
  const before={hp:player.hp,mp:player.mp,xp:player.avatar.xp,inventory:structuredClone(player.inventory),shards:player.starShards,targetId:monster.targetId,monsterHp:monster.hp};
- for(const constellation of CONSTELLATIONS)for(const level of [2,3,4,5]){
+ // 사수자리는 실제 MP/피해 스킬로 승격되어 별도 전투 테스트에서 검증합니다.
+ for(const constellation of CONSTELLATIONS.filter(c=>c.id!=='sagittarius'))for(const level of [2,3,4,5]){
   player.avatar.constellationId=constellation.id;player.avatar.level=level;
   now+=500;
   const effect=skillEffectOf(constellation.id,level);

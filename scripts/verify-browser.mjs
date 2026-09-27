@@ -1,4 +1,5 @@
 import {PLAZA_LAYOUT,departmentSlots,onPlazaFloor} from '../shared/plaza-layout.js';
+import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 const sites=departmentSlots();
 import {MARKET} from '../shared/market.js';
 // 실제 UI 조작으로 검증합니다. pnpm test:browser (Windows: 설치된 Edge 사용)
@@ -66,7 +67,7 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
     // 실제 벽뿐 아니라 재배치한 기둥과 행성도 걸어서 우회합니다.
     const clear=(a,b)=>{const steps=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/20));for(let i=0;i<=steps;i++){
       const x=a.x+(b.x-a.x)*i/steps,y=a.y+(b.y-a.y)*i/steps;
-      if(!onPlazaFloor(MAP,x,y,16)||obstacles.some(o=>Math.hypot(x-o.x,y-o.y)<o.radius+RULES.radius))return false;
+      if(!avatarFitsFloor(MAP,x,y,player)||obstacles.some(o=>Math.hypot(x-o.x,y-o.y)<o.radius+RULES.radius))return false;
     }return true;};
     const queue=[[0]],seen=new Set([0]);let found=null;
     while(queue.length){const path=queue.shift(),last=path.at(-1);if(last===1){found=path;break;}for(let i=1;i<nodes.length;i++)if(!seen.has(i)&&clear(nodes[last],nodes[i])){seen.add(i);queue.push([...path,i]);}}
@@ -75,7 +76,8 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
   }
   const held=new Set();
   const wanted=()=>{
-    while(route.length>1&&Math.hypot(player.x-route[0].x,player.y-route[0].y)<50)route.shift();
+    // 큰 아바타는 경계 여유가 작습니다. 모서리를 50px 앞에서 잘라 가지 않습니다.
+    while(route.length>1&&Math.hypot(player.x-route[0].x,player.y-route[0].y)<20)route.shift();
     const aim=route[0]||target,dx=aim.x-player.x,dy=aim.y-player.y,codes=new Set();
     if(Math.abs(dx)>4)codes.add(dx<0?'ArrowLeft':'ArrowRight');
     if(Math.abs(dy)>4)codes.add(dy<0?'ArrowUp':'ArrowDown');
@@ -89,7 +91,7 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
       for(const code of [...held])if(!need.has(code)){await page.keyboard.up(code);held.delete(code);}
       const distance=Math.hypot(player.x-target.x,player.y-target.y);
       if(waypoint?distance<45:distance<130&&await page.evaluate(()=>!document.getElementById('interact-prompt').hidden))return;
-      await page.waitForTimeout(100);
+      await page.waitForTimeout(25);
     }
     throw new Error('걷기 경로를 확인해주세요: '+JSON.stringify({at:{x:player.x,y:player.y,mapId:player.mapId},target}));
   }finally{

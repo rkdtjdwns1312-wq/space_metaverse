@@ -1,0 +1,83 @@
+import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {mkdir} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {monstersOf} from '../server/monsters.js';
+import {ensureVitals} from '../server/vitals.js';
+import {attackPowerOf} from '../shared/combat.js';
+
+let time=Date.now(),checks=0;
+const teacherKey=randomBytes(24).toString('hex'),game=createClassroomServer({teacherKey,studentHours:false,clock:()=>time});
+const {port}=await game.listen(),url=`http://127.0.0.1:${port}`;
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
+const teacher=io(url,{transports:['websocket'],reconnection:false,autoConnect:false});
+const page=await browser.newPage({viewport:{width:1440,height:960},hasTouch:true});page.setDefaultTimeout(10000);
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const check=text=>console.log(`Sagittarius ${++checks}: ${text}`);
+try{
+  await new Promise((r,j)=>{teacher.once('connect',r);teacher.once('connect_error',j);teacher.connect();});
+  const made=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey,allowedNames:['궁수검사']});assert.equal(made.ok,true);
+  await page.goto(url,{waitUntil:'domcontentloaded'});
+  await page.locator('#join-code').fill(made.room.code);await page.locator('#nickname').fill('궁수검사');
+  await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();
+  await page.locator('#lobby').waitFor({state:'hidden'});
+  const room=game.store.rooms.get(made.room.code),player=[...room.players.values()].find(p=>p.nickname==='궁수검사');
+  const monster=[...monstersOf(room).values()][0];
+  for(const m of room.monsters.values()){m.nextAttackAt=Number.MAX_SAFE_INTEGER;m.x=1300;m.y=1000;}
+  const publish=()=>game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player));
+  const level=async n=>{
+    Object.assign(player,{mapId:'star-origin-1',x:650,y:700,facing:{x:1,y:0}});
+    Object.assign(player.avatar,{level:n,constellationId:'sagittarius',form:'constellation'});player.battleVitals=null;
+    player.sagittariusCooldowns={};room.sagittariusCasts?.clear();ensureVitals(player);
+    Object.assign(monster,{x:830,y:700,hp:10000,maxHp:10000,nextAttackAt:Number.MAX_SAFE_INTEGER});
+    publish();await page.waitForFunction(n=>document.querySelectorAll('#self-skill-slots img').length===Math.max(0,n-1),n);
+    await page.locator('#world').focus();
+  };
+  for(let n=1;n<=5;n++){
+    await level(n);assert.equal(await page.locator('.auxiliary-skill').count(),Math.max(0,n-2));
+    assert.equal(await page.locator('#self-skill-slots button:disabled').count(),5-n);
+  }
+  check('LV1~5 내 정보 아이콘 0/1/2/3/4개, E·숫자키 단계 해금');
+  await page.waitForFunction(()=>[...document.querySelectorAll('#self-skill-slots img')].every(i=>i.complete&&i.naturalWidth>0));
+  await page.evaluate(()=>document.getElementById('avatar-dialog').showModal());
+  await page.locator('#self-skill-slots button').nth(1).click();
+  await page.locator('#skill-description-dialog').waitFor({state:'visible'});
+  assert.match(await page.locator('#skill-description-text').textContent(),/300%.*마나 5.*5초/);
+  await mkdir('.local',{recursive:true});await page.screenshot({path:'.local/286-skill-description.png'});
+  await page.locator('#skill-description-dialog button').click();
+  await page.screenshot({path:'.local/286-character-skills.png'});
+  await page.evaluate(()=>document.getElementById('avatar-dialog').close());
+  check('4종 SVG 표시·내 정보 클릭 설명·유성화살 300% 표기');
+  await level(2);await page.keyboard.press('e');
+  await page.waitForFunction(()=>document.querySelector('#world').dataset.lastSagittariusSlot==='0');
+  assert.equal(ensureVitals(player).mp,9);await page.locator('#touch-skill').tap();
+  await page.waitForTimeout(120);assert.equal(ensureVitals(player).mp,8);
+  check('E 키와 터치 모두 빛의 화살·MP1·쿨타임 없음');
+  await level(3);const hp=monster.hp;
+  await page.keyboard.press('1');await page.waitForFunction(()=>document.querySelector('#world').dataset.lastSagittariusSlot==='1');
+  assert.equal(ensureVitals(player).mp,15);assert.equal(hp-monster.hp,attackPowerOf(3,'sagittarius')*3);
+  await page.keyboard.press('1');await page.waitForTimeout(100);assert.equal(ensureVitals(player).mp,15);
+  assert.equal(await page.locator('.auxiliary-skill .skill-cooldown').textContent(),'5');
+  time+=5000;await page.waitForTimeout(150);await page.keyboard.press('1');await page.waitForTimeout(120);
+  assert.equal(ensureVitals(player).mp,10);check('1번 300% 실제 피해·5초 중복 차단·쿨타임 숫자');
+  await level(4);await page.keyboard.press('2');await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.sagittariusCasts)===1);
+  assert.equal(ensureVitals(player).mp,20);const hunterHp=monster.hp;
+  time+=2000;await page.waitForTimeout(150);assert.equal(hunterHp-monster.hp,attackPowerOf(4,'sagittarius'));
+  await page.screenshot({path:'.local/286-hunter.png'});
+  time+=8000;await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.sagittariusCasts)===0);
+  check('2번 사냥꾼 추적·반복 피해·10초 종료');
+  await level(5);await page.keyboard.press('3');await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.sagittariusCasts)===1);
+  assert.equal(ensureVitals(player).mp,20);await page.screenshot({path:'.local/286-ultimate.png'});
+  const rainHp=monster.hp;time+=5000;await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.sagittariusCasts)===0);
+  assert.equal(rainHp-monster.hp,attackPowerOf(5,'sagittarius')*15);check('3번 화살비 5회+폭발·MP20·종료');
+  await level(3);ensureVitals(player).mp=4;publish();await page.waitForTimeout(120);await page.keyboard.press('1');
+  await page.locator('#toast').filter({hasText:'마나가 부족'}).waitFor();assert.equal(ensureVitals(player).mp,4);
+  check('MP 부족 시 안내·소모 없음');
+  await level(5);await page.setViewportSize({width:430,height:932});await page.waitForTimeout(300);
+  await page.locator('.auxiliary-skill').nth(1).tap();await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.sagittariusCasts)===1);
+  await page.screenshot({path:'.local/286-mobile-skills.png'});
+  assert.deepEqual(errors,[]);check('모바일 보조 스킬 터치·오류 없음');
+  console.log(`PASS ${checks}`);
+}finally{teacher.disconnect();await browser.close();await game.close();}

@@ -11,6 +11,7 @@ import {renderWallet} from './wallet-ui.js';
 import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
+import {createCharacterSkillsUI} from './character-skills-ui.js';
 import {createStatusUI} from './status-ui.js';
 import {createVitalsUI} from './vitals-ui.js';
 import { createWorld, renderPortrait } from './world.js';
@@ -57,8 +58,9 @@ let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),to
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
-createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request})});
-const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast});
+const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request})});
+const characterSkills=createCharacterSkillsUI();
+const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
@@ -348,7 +350,7 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
-  marketUI.update();auxiliarySkills.update();
+  marketUI.update();auxiliarySkills.update();characterSkills.update(me);
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
@@ -1026,6 +1028,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
+  characterSkills.reset();
   craftingUI.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();
@@ -1114,6 +1117,7 @@ socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
+socket.on('sagittarius:effect',data=>{if(selfId)world.sagittariusEffect(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});
 socket.on('combat:monster-hit',data=>{if(selfId)world.monsterHit(data);});
 socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
@@ -1123,7 +1127,7 @@ socket.on('combat:vitals',data=>{
   player.vitals=data.vitals;
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

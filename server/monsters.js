@@ -49,7 +49,11 @@ export function monstersInAttackArea(room,player,now=Date.now()){
   }).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
 }
 export function strikeMonsters(room,player,power,now=Date.now()){
-  return monstersInAttackArea(room,player,now).map(target=>{
+  return monstersInAttackArea(room,player,now).map(target=>damageMonster(room,target,player,power,now));
+}
+// Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
+export function damageMonster(room,target,player,power,now=Date.now()){
+  if(target.hp<=0||!(power>0)||!Number.isFinite(power))return null;
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
   // 남은 HP를 넘는 과잉 피해로 마지막 공격자가 소유권을 빼앗지 않도록 실제 감소량만 합산합니다.
@@ -65,7 +69,6 @@ export function strikeMonsters(room,player,power,now=Date.now()){
     target.attackers.set(player.id,++target.attackOrder);selectMonsterTarget(room,target);
   }
   return {monsterId:target.id,damage:power,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
-  });
 }
 // 이전 서버 테스트/연동의 단수 응답 호환. 실제 적용은 항상 모든 대상입니다.
 export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
