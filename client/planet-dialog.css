@@ -16,6 +16,7 @@
 #planet-dialog > #planet-members-empty { order: 5; }
 #planet-dialog > #planet-rules-toggle { order: 6; width: 100%; }
 #planet-dialog > #planet-rules { order: 7; }
+#planet-dialog > #planet-warnings-toggle { order: 8; width: 100%; }
 #planet-dialog > #planet-warnings { order: 8; }
 #planet-dialog > #planet-rename { order: 9; }
 #planet-dialog > #planet-work { order: 10; width: 100%; }
@@ -29,7 +30,6 @@
 }
 
 #planet-dialog > #planet-warnings { padding: 10px 12px; background: #f7f2ff; border-radius: 12px; }
-#planet-dialog > #planet-warnings summary { cursor: pointer; font-weight: 700; }
 #planet-dialog > #planet-warnings p { margin: 8px 0 0; color: #57536d; font-size: 13px; }
 #planet-dialog > #planet-rules-list { max-width: 100%; }
 #planet-dialog > .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }

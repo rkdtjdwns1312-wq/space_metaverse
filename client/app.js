@@ -83,7 +83,7 @@ const lv4UI=createLv4ItemUI({request,getPlayer:()=>room?.players.find(p=>p.id===
 const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;renderBag(myInventory());}});
-const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room});
+const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const subscribe=(event,listener)=>{socket.on(event,listener);return()=>socket.off(event,listener);};
 const arcade=createArcadeUI({stop,toast,request,
   subscribeStarRanking:listener=>subscribe('stars:ranking',listener),
@@ -673,8 +673,9 @@ function renderPlanetDialog(planetId){
   $('planet-rules-editor').hidden=true; // 외부/행성 정보는 읽기 전용, 내부 규칙판에서만 편집합니다.
   $('planet-enter').hidden=!(isTeacher||me?.departmentId===planetId)||me?.mapId!==PLAZA_ID;
   $('planet-join').hidden=isTeacher||me?.departmentId===planetId;
-  $('planet-join').textContent=planet.joinPending?'가입 승인 대기 중':planet.memberCount?'가입 신청하기':'가입하기';
-  $('planet-join').disabled=!!planet.joinPending;
+  const mustLeave=!!me?.departmentId&&me.departmentId!==planetId;
+  $('planet-join').textContent=mustLeave?'현재 부서에서 먼저 탈퇴해주세요':planet.joinPending?'가입 승인 대기 중':planet.memberCount?'가입 신청하기':'가입하기';
+  $('planet-join').disabled=mustLeave||!!planet.joinPending;
   $('planet-join-cancel').hidden=!planet.joinPending;
   const warningGroups=[{label:'1회',count:1},{label:'2회',count:2},{label:'3회',count:3}];
   for(const count of [...new Set((planet.warningStatus||[]).filter(p=>!p.blackStar&&p.count>3).map(p=>p.count))].sort((a,b)=>a-b))warningGroups.push({label:count+'회',count});
@@ -708,6 +709,8 @@ function renderPlanetRename(planet,me,isTeacher){
 function openPlanetDialog(planetId){
   if(!planetById(planetId))return;
   planetDialogId=planetId;$('planet-rules').hidden=true;$('planet-rename-input').value='';$('planet-rename-teacher').value='';
+  $('planet-rules-toggle').setAttribute('aria-expanded','false');
+  $('planet-warnings').hidden=true;$('planet-warnings-toggle').setAttribute('aria-expanded','false');
   renderPlanetDialog(planetId);stop();
   if(!$('planet-dialog').open)$('planet-dialog').showModal();
 }
@@ -736,7 +739,12 @@ $('planet-remove').onclick=async()=>{
 };
 $('planet-rules-toggle').onclick=()=>{
   const show=$('planet-rules').hidden;$('planet-rules').hidden=!show;
+  $('planet-rules-toggle').setAttribute('aria-expanded',String(show));
   if(show&&planetDialogId)renderPlanetDialog(planetDialogId);
+};
+$('planet-warnings-toggle').onclick=()=>{
+  const show=$('planet-warnings').hidden;$('planet-warnings').hidden=!show;
+  $('planet-warnings-toggle').setAttribute('aria-expanded',String(show));
 };
 $('planet-close').onclick=()=>$('planet-dialog').close();
 $('planet-dialog').addEventListener('close',()=>{planetDialogId=null;$('world').focus();});

@@ -20,10 +20,7 @@ export function createInteriorBoardUI(canvas){
     const left=rect.left+(board.x-222-view.x)*view.scale;
     // 작은 화면에서도 오른쪽 스크롤 손잡이가 화면 밖으로 밀리지 않게 합니다.
     const top=rect.top+(board.y-39-view.y)*view.scale;
-    const visibleLeft=Math.max(rect.left+8,left);let visibleRight=Math.min(rect.right-8,left+444*view.scale);
-    const navigation=document.getElementById('world-navigation')?.getBoundingClientRect();
-    if(navigation&&navigation.width&&top<navigation.bottom&&top+124*view.scale>navigation.top&&visibleLeft<navigation.left-40)
-      visibleRight=Math.min(visibleRight,navigation.left-8);
+    const visibleLeft=Math.max(rect.left+8,left),visibleRight=Math.min(rect.right-8,left+444*view.scale);
     panel.style.width=Math.max(0,(visibleRight-visibleLeft)/view.scale)+'px';
     panel.style.transform=`translate3d(${visibleLeft}px,${top}px,0) scale(${view.scale})`;
   }};

@@ -45,6 +45,7 @@ try{
     assert.deepEqual(planet.interiorDecor[target],{colorId,shapeId});
   }check('제어장치의 세로 탭5개에서 내부공간·우체통·게시판·실적작성표·경고제어돌 꾸미기 저장');
   move(teacherPlayer,machine.id);await teacher.locator('#interact-object').filter({hasText:'부서행성 제어장치'}).waitFor();await teacher.keyboard.press('f');await teacher.locator('#interior-decor-dialog').waitFor({state:'visible'});
+  assert.equal(await teacher.locator('#interior-decor-leave').isVisible(),false);
   await teacher.getByRole('tab',{name:'내부공간',exact:true}).focus();await teacher.keyboard.press('ArrowDown');assert.equal(await teacher.getByRole('tab',{name:'우체통',exact:true}).getAttribute('aria-selected'),'true');
   await teacher.getByRole('tab',{name:'실적작성표',exact:true}).click();await teacher.getByRole('radio',{name:'복숭아빛'}).check();await teacher.getByRole('radio',{name:'육각 보드'}).check();await teacher.locator('#interior-decor-save').click();await teacher.locator('#interior-decor-dialog').waitFor({state:'hidden'});
   assert.deepEqual(planet.interiorDecor['report-board'],{colorId:'peach',shapeId:'hex'});check('교사 저장·탭 키보드 방향 이동도 정상');
@@ -64,10 +65,31 @@ try{
   await memberPage.waitForFunction(()=>Math.abs(Number(document.querySelector('#world').dataset.selfRenderX)-600)<2&&Math.abs(Number(document.querySelector('#world').dataset.selfRenderY)-250)<2);
   assert.ok(await memberPage.locator('#interior-board-rules').evaluate(el=>el.scrollWidth<=el.clientWidth));assert.ok(await memberPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.ok(await memberPage.locator('#interior-board-rules').evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth;}),'모바일 오른쪽 스크롤 손잡이가 화면 안에 있어야 합니다.');
-  await memberPage.screenshot({path:'.local/285-board-mobile.png'});check('390px에서 규칙 줄바꿈·오른쪽 스크롤·페이지 가로 넘침 없음');
+  const boardGeometry=()=>memberPage.locator('#interior-board-content').evaluate(el=>{const r=el.getBoundingClientRect();return {width:r.width,x:r.x,y:r.y,lines:[...el.querySelectorAll('li')].map(li=>li.offsetHeight)};});
+  const expanded=await boardGeometry();await memberPage.locator('#minimap-toggle').click();await memberPage.waitForTimeout(100);const collapsed=await boardGeometry();
+  assert.deepEqual(collapsed,expanded,'미니맵 열기/접기로 게시판 글 위치·폭·줄바꿈을 바꾸지 않음');
+  await memberPage.locator('#minimap-toggle').click();await memberPage.waitForTimeout(100);
+  const layered=await memberPage.evaluate(()=>{
+    const board=document.querySelector('#interior-board-content').getBoundingClientRect(),nav=document.querySelector('#world-navigation'),before=nav.getAttribute('style');
+    nav.style.left=board.left+'px';nav.style.top=board.top+'px';nav.style.right='auto';
+    const hit=document.elementFromPoint(board.left+8,board.top+8),result=nav.contains(hit);if(before===null)nav.removeAttribute('style');else nav.setAttribute('style',before);return result;
+  });assert.equal(layered,true);check('미니맵 크기가 달라도 게시판 글 위치/줄바꿈 유지, 겹치면 미니맵이 위에 표시');
+  await memberPage.screenshot({path:'.local/290-board-mobile.png'});check('390px에서 규칙 줄바꿈·오른쪽 스크롤·페이지 가로 넘침 없음');
   await teacher.locator('#world').focus();await teacher.keyboard.press('f');await teacher.locator('#rules-edit-dialog').waitFor({state:'visible'});await teacher.locator('#rules-edit-input').fill('새 규칙을 함께 지켜요.');await teacher.locator('#rules-edit-save').click();await teacher.locator('#rules-edit-dialog').waitFor({state:'hidden'});
   await teacher.locator('#interior-board-rules').filter({hasText:'새 규칙을 함께 지켜요.'}).waitFor();assert.equal(await teacher.locator('#interior-board-rules li').count(),1);check('규칙 수정 후 게시판 내용을 실시간 갱신');
   Object.assign(member,{mapId:PLAZA_ID,...MAP.spawn});publish(member);await memberPage.locator('#interior-board-content').waitFor({state:'hidden'});check('행성 밖에서는 게시판 스크롤 영역 숨김');
+  // 실제 학생 제어장치에서 취소/탈퇴/가입 버튼을 확인합니다.
+  move(member,machine.id);await memberPage.locator('#interact-object').filter({hasText:'부서행성 제어장치'}).waitFor();await memberPage.locator('#touch-interact').click();
+  await memberPage.locator('#interior-decor-dialog').waitFor({state:'visible'});
+  const actionBoxes=await memberPage.locator('#interior-decor-dialog .dialog-actions button').evaluateAll(nodes=>nodes.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width};}));
+  assert.equal(actionBoxes.length,3);assert.ok(actionBoxes[0].x<actionBoxes[1].x&&actionBoxes[1].x<actionBoxes[2].x);
+  assert.ok(actionBoxes.every(r=>Math.abs(r.y-actionBoxes[0].y)<2));
+  await memberPage.screenshot({path:'.local/290-control-leave-mobile.png'});
+  await memberPage.locator('#interior-decor-leave').click();await memberPage.locator('#department-leave-dialog').waitFor({state:'visible'});
+  await memberPage.locator('#department-leave-cancel').click();assert.equal(member.avatar.departmentId,planet.id);
+  await memberPage.locator('#interior-decor-leave').click();await memberPage.locator('#department-leave-confirm').click();
+  await memberPage.locator('#interior-decor-dialog').waitFor({state:'hidden'});assert.equal(member.avatar.departmentId,null);assert.equal(member.mapId,PLAZA_ID);
+  check('390px 제어장치 같은줄 왼쪽 탈퇴·게임내 확인 취소 소속유지·확인 후 무소속/광장');
   assert.deepEqual(errors,[]);
 }finally{await browser.close();await game.close();}
 console.log(JSON.stringify({checks:checks.length,errors}));

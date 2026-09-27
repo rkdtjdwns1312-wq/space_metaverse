@@ -1,4 +1,4 @@
-import {requestMembership,clearJoinRequests,mailboxView} from './planet-membership.js';
+import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
@@ -594,11 +594,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return {};
     });
     const completeMembership=(room,planet,p)=>{
-      const previous=room.planets.get(p.avatar.departmentId);
-      if(previous&&p.mapId===interiorIdOf(previous.id))Object.assign(p,exitPosition(room,previous,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      // 승인 대기 중 다른 행성에 가입했거나 옛 신청이 복원된 경우에도 재검사합니다.
+      requireNoDepartment(p);
       p.avatar.departmentId=planet.id;clearJoinRequests(room,p.id);
-      if(previous){previous.rename?.votes.delete(p.id);evaluateRename(room,previous);}
-      roster(room);announce(room,previous?p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+ro(planet.name)+' 옮겼어요.':p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
+      roster(room);announce(room,p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
     };
     action('planet:join',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -643,6 +642,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.avatar.departmentId===planet.id,planet.name+' 소속이 아니에요.');
       if(p.mapId===interiorIdOf(planet.id)) Object.assign(p,exitPosition(room,planet,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
       p.avatar.departmentId=null;
+      clearJoinRequests(room,p.id);
       planet.rename?.votes.delete(p.id); evaluateRename(room,planet);
       roster(room);
       announce(room,p.nickname+' 친구가 '+planet.name+'에서 탈퇴했어요.');

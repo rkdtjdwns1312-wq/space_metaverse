@@ -396,7 +396,7 @@ test('teacher can remove a planet: interior occupants return to the plaza and me
  assert.ok(sysMsgs.some(m=>m.text==='선생님이 "독서행성" 행성을 없앴어요.'));
  assert.equal((await call(teacher,'planet:remove',{planetId:created.planetId})).error,'행성을 찾지 못했어요.');
 });
-test('students join and transfer planets; teachers cannot join and re-joining the same planet is rejected',async t=>{
+test('students must explicitly leave before joining another planet; teacher and same-planet guards remain',async t=>{
  const {connect}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const reading=await call(teacher,'planet:create',{name:'독서행성',description:'',...site(0),color:PLANET_COLORS[0],templateId:'reading'});
  const diary=await call(teacher,'planet:create',{name:'일기행성',description:'',...site(1),color:PLANET_COLORS[1],templateId:'diary'});
@@ -411,10 +411,12 @@ test('students join and transfer planets; teachers cannot join and re-joining th
  const again=await call(s,'planet:join',{planetId:reading.planetId});
  assert.equal(again.ok,false);assert.equal(again.error,'이미 독서행성 소속이에요.');
  const moved=await call(s,'planet:join',{planetId:diary.planetId});
- assert.equal(moved.ok,true);
+ assert.equal(moved.ok,false);assert.match(moved.error,/먼저 탈퇴/);
+ assert.equal((await call(s,'planet:leave',{planetId:reading.planetId})).ok,true);
+ assert.equal((await call(s,'planet:join',{planetId:diary.planetId})).ok,true);
  await sleep(30);
  assert.ok(states.some(st=>st.players.some(p=>p.nickname==='1'&&p.departmentId===diary.planetId)));
- assert.ok(sysMsgs.some(m=>m.text==='1 친구가 독서행성에서 일기행성으로 옮겼어요.'));
+ assert.ok(sysMsgs.some(m=>m.text==='1 친구가 일기행성에 가입했어요.'));
 });
 test('entering a planet requires membership (or teacher) and proximity; success moves the player inside',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);

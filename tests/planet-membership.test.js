@@ -29,18 +29,33 @@ test('가입: 빈 행성 즉시, 부원 있는 행성 승인 전 출입 금지·
  assert.equal(results.filter(r=>r.ok).length,1);assert.equal(f.player(1).avatar.departmentId,id);assert.equal(f.planet.joinRequests.length,0);
  assert.equal(f.game.store.snapshot(f.room(),f.player(2)).planets[0].mailboxCount,0);
 });
-test('가입: 신청 취소·거절·이동 승인 전 기존 소속 유지, 실내 이동 승인 후 이전 방에서 나옴',async t=>{
+test('가입: 빈/유인 행성 모두 선탈퇴 필수, 승인 시에도 현재 소속 재검증',async t=>{
  const f=await fixture(t),[a,b]=f.students,id=f.planet.id;
  await call(a.socket,'planet:join',{planetId:id});
- const previous=addPlanet(f.room(),{name:'이전행성',description:'',x:1450,y:175,color:'#ccccff',rules:[]});f.player(1).avatar.departmentId=previous.id;
- await call(b.socket,'planet:join',{planetId:id});assert.equal(f.player(1).avatar.departmentId,previous.id);
- await call(b.socket,'planet:join:cancel',{planetId:id});assert.equal(f.planet.joinRequests.length,0);
- await call(b.socket,'planet:join',{planetId:id});f.mailbox(0);
- assert.ok((await call(a.socket,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:false})).ok);assert.equal(f.player(1).avatar.departmentId,previous.id);
- await call(b.socket,'planet:join',{planetId:id});f.player(1).mapId=interiorIdOf(previous.id);
- assert.ok((await call(a.socket,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:true})).ok);
- assert.equal(f.player(1).avatar.departmentId,id);assert.equal(f.player(1).mapId,PLAZA_ID);
+ const previous=addPlanet(f.room(),{name:'이전행성',description:'',x:1450,y:175,color:'#ccccff',rules:[]});
+ const empty=addPlanet(f.room(),{name:'빈행성',description:'',x:2000,y:175,color:'#ccccff',rules:[]});
+ f.player(1).avatar.departmentId=previous.id;
+ for(const target of [id,empty.id]){
+  const blocked=await call(b.socket,'planet:join',{planetId:target});assert.equal(blocked.ok,false);assert.match(blocked.error,/먼저 탈퇴/);
+  assert.equal(f.player(1).avatar.departmentId,previous.id);
+ }
+ // 구버전에 저장되었던 신청이 남아도 승인으로 소속을 바꾸지 못합니다.
+ f.planet.joinRequests=[{playerId:b.id,at:Date.now()}];f.mailbox(0);
+ assert.equal((await call(a.socket,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:true})).ok,false);
+ assert.equal(f.player(1).avatar.departmentId,previous.id);
+ f.player(1).mapId=interiorIdOf(previous.id);
+ assert.equal((await call(b.socket,'planet:leave',{planetId:previous.id})).ok,true);
+ assert.equal(f.player(1).avatar.departmentId,null);assert.equal(f.player(1).mapId,PLAZA_ID);assert.equal(f.planet.joinRequests.length,0);
+ assert.equal((await call(b.socket,'planet:join',{planetId:empty.id})).pending,false);
+ assert.equal(f.player(1).avatar.departmentId,empty.id);
+ await call(b.socket,'planet:leave',{planetId:empty.id});
+ await call(b.socket,'planet:join',{planetId:id});await call(b.socket,'planet:join:cancel',{planetId:id});assert.equal(f.planet.joinRequests.length,0);
+ await call(b.socket,'planet:join',{planetId:id});
+ assert.ok((await call(a.socket,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:false})).ok);assert.equal(f.player(1).avatar.departmentId,null);
+ await call(b.socket,'planet:join',{planetId:id});
+ assert.ok((await call(a.socket,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:true})).ok);assert.equal(f.player(1).avatar.departmentId,id);
 });
+
 test('가입: 재시작 후 신청·오프라인 소속 유지 및 오프라인 신청자 승인 저장',async t=>{
  const f=await fixture(t,true),[a,b]=f.students,id=f.planet.id;
  await call(a.socket,'planet:join',{planetId:id});await call(b.socket,'planet:join',{planetId:id});await f.restart();

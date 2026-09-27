@@ -61,9 +61,9 @@ try{
   const planet=addPlanet(room,{name:'체육행성',description:'친구들과 건강하게 놀아요.',templateId:'sports',x:700,y:400,color:PLANET_COLORS[0],rules:['서로 응원해요.']});
   p.avatar.departmentId=planet.id;Object.assign(p,{mapId:PLAZA_ID,x:planet.x+70,y:planet.y});publish();
   await page.locator('#interact-object').filter({hasText:'체육행성'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#planet-dialog').waitFor({state:'visible'});
-  const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings','#planet-rename'];
+  const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings-toggle','#planet-rename'];
   const boxes=await Promise.all(selectors.map(selector=>page.locator(selector).boundingBox()));for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].y>=boxes[i-1].y+boxes[i-1].height-1);
-  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();
+  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings-toggle').tap();
   for(const label of ['1회','2회','3회','검은별'])assert.ok((await page.locator('#planet-warning-status').textContent()).includes(label));
   await page.screenshot({path:'.local/planet-menu-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#planet-close').tap();
   check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·경고 횟수 현황·닫기');

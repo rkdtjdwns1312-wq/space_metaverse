@@ -437,3 +437,8 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 .combat-buttons>.auxiliary-skills>button.auxiliary-skill .combat-key-badge{right:-5px;bottom:-4px;border-width:1.5px;font-size:10px}
 @media(max-width:800px){.combat-buttons>button{--key-size:19px}.combat-buttons button .combat-slot-placeholder{font-size:34px}}
 @media(max-width:520px){.combat-buttons>button{--key-size:16px}.combat-buttons button .combat-key-badge{font-size:10px}.combat-buttons button .combat-slot-placeholder{font-size:26px}.combat-buttons>.auxiliary-skills>button.auxiliary-skill{--key-size:13px}.combat-buttons>.auxiliary-skills>button.auxiliary-skill .combat-slot-placeholder{font-size:20px}.combat-buttons>button .combat-slot-lock span{font-size:8px}}
+
+/* 탈퇴는 왼쪽, 취소·저장은 오른쪽 같은 줄에 둡니다. */
+#interior-decor-dialog .dialog-actions{flex-wrap:nowrap;gap:8px;align-items:center}
+#interior-decor-leave{margin-right:auto}
+@media(max-width:520px){#interior-decor-dialog .dialog-actions button{padding:10px 8px;font-size:13px;white-space:nowrap}}

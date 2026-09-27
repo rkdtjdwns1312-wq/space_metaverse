@@ -18,7 +18,18 @@ try{
  await pages[0].locator('#mailbox-close').click();await pages[1].locator('#planet-close').click();console.log('PASS: 빈 행성 즉시가입·신청취소·우체통 오브젝트·가입 승인 후 입장');
  // 경고 사유는 외부 명단에 노출되지 않고, 각 횟수별 이름과 검은별만 표시합니다.
  planet.warnings={threshold:4,entries:[]};issueWarning(room,planet,players[0],players[1],'테스트 이유');for(let i=0;i<2;i++)issueWarning(room,planet,players[0],players[2],'테스트 이유');for(let i=0;i<3;i++)issueWarning(room,planet,players[0],players[3],'테스트 이유');sendAll();
- await visit(0);await pages[0].locator('#planet-warnings summary').click();const group=pages[0].locator('#planet-warning-status section');assert.deepEqual(await group.locator('h4').allTextContents(),['1회','2회','3회','검은별']);assert.deepEqual(await group.locator('p').allTextContents(),['별빛','달빛','은하','없어요']);
+ await visit(0);
+ for(const width of [1440,390]){
+  await pages[0].setViewportSize({width,height:960});
+  const designs=await pages[0].locator('#planet-rules-toggle,#planet-warnings-toggle,#planet-work').evaluateAll(nodes=>nodes.map(el=>{const c=getComputedStyle(el);return {background:c.backgroundColor,color:c.color,border:c.borderRadius,padding:c.padding,font:c.fontSize,width:el.getBoundingClientRect().width};}));
+  assert.equal(designs.length,3);assert.deepEqual(designs[0],designs[2]);assert.deepEqual(designs[1],designs[2]);
+  assert.equal(await pages[0].locator('#planet-warnings-toggle').textContent(),'경고 및 검은별 현황');
+  assert.equal(await pages[0].locator('#planet-warnings summary').count(),0);
+  await pages[0].screenshot({path:'.local/291-planet-buttons-'+width+'.png'});
+ }
+ await pages[0].locator('#planet-rules-toggle').click();assert.equal(await pages[0].locator('#planet-rules-toggle').getAttribute('aria-expanded'),'true');
+ await pages[0].locator('#planet-rules-toggle').click();assert.equal(await pages[0].locator('#planet-rules').isVisible(),false);
+ await pages[0].locator('#planet-warnings-toggle').click();assert.equal(await pages[0].locator('#planet-warnings-toggle').getAttribute('aria-expanded'),'true');const group=pages[0].locator('#planet-warning-status section');assert.deepEqual(await group.locator('h4').allTextContents(),['1회','2회','3회','검은별']);assert.deepEqual(await group.locator('p').allTextContents(),['별빛','달빛','은하','없어요']);
  issueWarning(room,planet,players[0],players[3],'테스트 이유');send(0);await group.nth(3).locator('p').filter({hasText:'은하'}).waitFor();assert.equal(await group.nth(2).locator('p').textContent(),'없어요');assert.equal((await pages[0].locator('#planet-warning-status').textContent()).includes('테스트 이유'),false);
  await pages[0].screenshot({path:'.local/239-warning-status.png'});await pages[0].locator('#planet-close').click();console.log('PASS: 경고1·2·3회·검은별 세로 목록과 실시간 변동, 이유 비공개');
  const p=pages[0];assert.equal(await p.locator('#dock-chat').getAttribute('aria-label'),'소통');await p.locator('#dock-chat').click();
