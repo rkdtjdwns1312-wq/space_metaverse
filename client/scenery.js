@@ -1,3 +1,4 @@
+import {drawParadiseFloor} from './paradise-floor.js';
 // 동화풍 배경은 한 번 그려 보관합니다. 매 프레임 복잡한 성운을 다시 그리지 않아
 // 크롬북에서도 이동·채팅에 쓸 여유를 남깁니다. 외부 이미지로 교체하기 쉬운 모듈입니다.
 const backgrounds=new Map();
@@ -51,31 +52,13 @@ export function drawTemple(ctx,map){
 export function drawCrossroads(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height,['#c4c3e8','#eadcf3','#cce6df']);
-    const scale=Math.min(map.width/1200,map.height/800),x=map.width*.5,y=map.height*.5;
-    const rx=395*scale,ry=175*scale,depth=18*scale;
-    const shadow=c.createRadialGradient(x,y+depth+ry*.72,rx*.18,x,y+depth+ry*.72,rx*1.2);
-    shadow.addColorStop(0,'#4d466d99');shadow.addColorStop(.72,'#665b8660');shadow.addColorStop(1,'#665b8600');
-    ellipse(c,x,y+depth+8*scale,rx*1.06,ry*.82,shadow);
-    ellipse(c,x,y+depth,rx,ry,'#a79bc2');
-    ellipse(c,x,y,rx,ry,'#f8f1fb');
-    ellipse(c,x,y-5*scale,rx*.975,ry*.935,'#eee8f6');
-    c.strokeStyle='#fffaffd9';c.lineWidth=Math.max(2,3*scale);c.beginPath();c.ellipse(x,y-5*scale,rx*.96,ry*.9,0,0,Math.PI*2);c.stroke();
-    for(const [x,y] of [[335,330],[365,535],[860,535]]){ellipse(c,x,y+18,48,20,'#cfebdf');star(c,x,y-4,18,'#fff2c7');}
+    drawParadiseFloor(c,map);
   }),0,0);
 }
 export function drawParadise(ctx,map){
   ctx.drawImage(cached(map,c=>{
     const moon=map.theme==='moon-paradise',{bodyX:x,bodyY:y,bodyRadius:r}=map.vista;
     sky(c,map.width,map.height,moon?['#aaa9d9','#c2bae5','#96bdd6']:['#efbfbb','#ffe6be','#edd0e0']);
-    ellipse(c,670,485,425,190,moon?'#9492c0':'#d7afab');
-    ellipse(c,670,466,425,190,moon?'#e8e9fc':'#fff2db');
-    ellipse(c,670,461,390,168,moon?'#cdd8f0':'#f9dfbe');
-    c.strokeStyle=moon?'#f4f7ffb0':'#fffaf0c0';c.lineWidth=3;c.setLineDash([8,16]);c.beginPath();c.ellipse(670,461,366,145,0,0,Math.PI*2);c.stroke();c.setLineDash([]);
-    for(let i=0;i<7;i++){
-      const px=380+i*88,py=440+Math.sin(i*1.8)*75;
-      ellipse(c,px,py+15,29,13,moon?'#b0b9e0':'#ebc9a5');
-      star(c,px,py,moon?10:13,moon?'#f5f5ff':'#fff4ca');
-    }
     const glow=c.createRadialGradient(x,y,r*.65,x,y,r*1.65);
     glow.addColorStop(0,moon?'#eeedffbb':'#fff4b9dd');glow.addColorStop(1,'#ffffff00');
     c.fillStyle=glow;c.fillRect(x-r*1.65,y-r*1.65,r*3.3,r*3.3);
@@ -91,13 +74,14 @@ export function drawParadise(ctx,map){
       c.strokeStyle='#fff2b6aa';c.lineWidth=5;c.lineCap='round';
       for(let i=0;i<16;i++){const a=i*Math.PI/8;c.beginPath();c.moveTo(x+Math.cos(a)*r*1.12,y+Math.sin(a)*r*1.12);c.lineTo(x+Math.cos(a)*r*1.26,y+Math.sin(a)*r*1.26);c.stroke();}
     }
+    drawParadiseFloor(c,map);
   }),0,0);
 }
 // 금빛 햇살과 은빛 달빛이 중앙에서 섞이는 별들의 쉼터입니다.
 export function drawStarParadise(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height,['#bdb0d9','#e4cfe5','#a9c6df']);
-    for(const [x,y,color] of [[220,180,'#ffe5a8'],[970,530,'#d5eaff']]){
+    for(const [x,y,color] of [[220,180,'#ffe5a8'],[1580,960,'#d5eaff']]){
       const light=c.createRadialGradient(x,y,20,x,y,590);light.addColorStop(0,color+'dd');light.addColorStop(1,color+'00');
       c.fillStyle=light;c.fillRect(x-590,y-590,1180,1180);
     }
@@ -106,14 +90,10 @@ export function drawStarParadise(ctx,map){
     for(const [i,color] of ['#ffe8b4','#f8e0ee','#dceaff'].entries()){
       c.strokeStyle=color+'77';c.lineWidth=22;c.beginPath();c.moveTo(-60,190+i*55);c.bezierCurveTo(310,650,760,90,1260,490+i*50);c.stroke();
     }
-    ellipse(c,600,443,355,174,'#a995c4');ellipse(c,600,425,355,174,'#fff2f8');
-    const floor=c.createLinearGradient(245,270,955,560);floor.addColorStop(0,'#fff0ce');floor.addColorStop(.5,'#eee1f6');floor.addColorStop(1,'#dce9fc');
-    ellipse(c,600,418,331,154,floor);
-    c.strokeStyle='#ffffffaa';c.lineWidth=3;for(const r of [112,220,300]){c.beginPath();c.ellipse(600,418,r,r*.45,0,0,Math.PI*2);c.stroke();}
-    for(let i=0;i<12;i++){const a=i*Math.PI/6;star(c,600+Math.cos(a)*282,418+Math.sin(a)*122,10,i%2?'#f4f8ff':'#ffe4a5');}
     ellipse(c,220,180,68,68,'#fff0b1');
     c.strokeStyle='#fff3c5';c.lineWidth=4;for(let i=0;i<12;i++){const a=i*Math.PI/6;c.beginPath();c.moveTo(220+Math.cos(a)*80,180+Math.sin(a)*80);c.lineTo(220+Math.cos(a)*94,180+Math.sin(a)*94);c.stroke();}
-    ellipse(c,970,530,80,80,'#f4f4ff');ellipse(c,994,511,65,65,'#b9c8e1');
+    ellipse(c,1580,960,80,80,'#f4f4ff');ellipse(c,1604,941,65,65,'#b9c8e1');
+    drawParadiseFloor(c,map);
   }),0,0);
 }
 export function drawRainbowSpace(ctx,map){

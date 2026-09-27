@@ -1,3 +1,4 @@
+import {drawParadiseFloor} from './paradise-floor.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
@@ -113,22 +114,15 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     if(theme==='star-origin'){ctx.fillStyle='#cfd9ff99';for(let i=0;i<24;i++){ctx.fillRect(x+(i*83%Math.max(1,w)),y+(i*47%Math.max(1,h)),1.5,1.5);}}
     // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
-    if(theme==='paradise-crossroads'){
-      ctx.fillStyle='#f3eefb';ctx.beginPath();ctx.ellipse(600,375.25,375.25,166.25,0,0,Math.PI*2);ctx.fill();
-    }
     if(theme==='sun-paradise'||theme==='moon-paradise'){
-      const moon=theme==='moon-paradise',v=info.vista;
-      ctx.fillStyle=moon?'#e8e9fc':'#fff2db';ctx.beginPath();ctx.ellipse(670,466,425,190,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=moon?'#cdd8f0':'#f9dfbe';ctx.beginPath();ctx.ellipse(670,461,390,168,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=moon?'#f4f2ff':'#fff2ad';ctx.beginPath();ctx.arc(v.bodyX,v.bodyY,v.bodyRadius,0,Math.PI*2);ctx.fill();
-      if(moon){ctx.fillStyle='#bcc3e5';ctx.beginPath();ctx.arc(v.bodyX+v.bodyRadius*.3,v.bodyY+v.bodyRadius*.29,v.bodyRadius*.2,0,Math.PI*2);ctx.fill();}
+      const v=info.vista;ctx.fillStyle=theme==='moon-paradise'?'#f4f2ff':'#fff2ad';
+      ctx.beginPath();ctx.arc(v.bodyX,v.bodyY,v.bodyRadius,0,Math.PI*2);ctx.fill();
     }
     if(theme==='star-paradise'){
-      const glow=ctx.createLinearGradient(0,0,1200,760);glow.addColorStop(0,'#f6dbb7');glow.addColorStop(.5,'#e0cce6');glow.addColorStop(1,'#b4c9e9');ctx.fillStyle=glow;ctx.fillRect(0,0,1200,760);
-      ctx.fillStyle='#f9eff9';ctx.beginPath();ctx.ellipse(600,425,355,174,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#fff0b1';ctx.beginPath();ctx.arc(220,180,68,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(970,530,80,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b9c8e1';ctx.beginPath();ctx.arc(994,511,65,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(1580,960,80,0,Math.PI*2);ctx.fill();
     }
+    drawParadiseFloor(ctx,info,true);
     if(theme==='valley'){
       for(const [width,color] of [[135,'#dceafd80'],[40,'#fff8ffaa']]){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(-120,780);ctx.bezierCurveTo(450,780,340,210,1320,290);ctx.stroke();}
     }

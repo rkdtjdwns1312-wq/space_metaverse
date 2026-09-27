@@ -1,3 +1,4 @@
+import {enlargeParadise,paradisePoint} from './paradise-floor.js';
 import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
@@ -35,7 +36,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x: 2080, y: 720, radius: 38, kind: 'gate', target: 'star-street',
       arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
     { id: 'gate-garden', name: '← 낙원의 갈림길', x: 80, y: 720, radius: 38, kind: 'gate', target:'moon-garden',
-      arrival:{x:1030,y:380},color:'#bdeade',passable:true },
+      arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡',x:1080,y:1360,radius:38,kind:'gate',target:'milky-valley',arrival:{x:600,y:180},color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1',x:1080,y:80,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
     {id:'assignment-andromeda',name:'과제안드로메다',x:260,y:260,radius:240,kind:'andromeda',passable:true},
@@ -60,7 +61,7 @@ export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
-export const GARDEN = Object.freeze({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
+export const GARDEN = enlargeParadise({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
   {id:'gate-plaza',name:'별의 기원',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:{x:170,y:720},color:'#d9c6f2',passable:true},
   {id:'gate-paradise',name:'태양의 낙원 1',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise',arrival:{x:600,y:590},color:'#ffe6a6',passable:true},
   {id:'gate-moon-paradise',name:'달의 낙원 1',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-1',arrival:{x:600,y:175},color:'#cccafa',passable:true}
@@ -71,7 +72,7 @@ export const GARDEN_ID=GARDEN.id;
 function paradiseMaps(moon){
   const idOf=n=>moon?'moon-paradise-'+n:n===1?'sun-paradise':'sun-paradise-'+n;
   const title=moon?'달의 낙원':'태양의 낙원';
-  return Object.freeze([1,2,3].map(n=>Object.freeze({id:idOf(n),name:title+' '+n,
+  return Object.freeze([1,2,3].map(n=>enlargeParadise({id:idOf(n),name:title+' '+n,
     theme:moon?'moon-paradise':'sun-paradise',stage:n,minLevel:n+1,width:1200,height:760,
     vista:Object.freeze({bodyX:175,bodyY:140,bodyRadius:[72,140,235][n-1]}),
     spawn:n===1?{x:600,y:moon?175:590}:{x:1030,y:380},objects:[
@@ -87,7 +88,7 @@ export const PARADISE=PARADISE_MAPS[0],PARADISE_ID=PARADISE.id;
 export const MOON_PARADISE_MAPS=paradiseMaps(true);
 export const MOON_PARADISE_ID=MOON_PARADISE_MAPS[0].id;
 // 두 여행길의 끝을 연결하는 공간. 지도에서도 태양3과 달3 사이에 놓습니다.
-export const STAR_PARADISE=Object.freeze({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',minLevel:5,width:1200,height:760,spawn:{x:600,y:380},objects:[
+export const STAR_PARADISE=enlargeParadise({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',minLevel:5,width:1200,height:760,spawn:{x:600,y:380},objects:[
   {id:'gate-sun',name:'태양의 낙원 3',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
   {id:'gate-moon',name:'달의 낙원 3',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
 ]});

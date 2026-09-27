@@ -478,3 +478,13 @@ HP와 MP는 하단 메뉴 바로 위에 가로로 나란히 보입니다. 교사
 - 하단 ‘소통’ 메뉴: 접속 중인 친구 오른쪽 ‘자세히 보기’, 다음 줄 왼쪽 ‘채팅 열기’. 선생님 메뉴 버튼은 세로로 정렬됩니다.
 - 꼬마 달은 타인이 나에게 쓰는 효과를 막습니다. 자신에게 쓰는 우주 식량·다른 아이템·달토끼 뽑기는 허용하며 기존 레벨·기간·다른 상태 조건은 유지합니다.
 - 추가 검증: `node scripts/verify-moon-self-use.mjs`, `node scripts/verify-warnings.mjs`, `node scripts/verify-department-mailbox.mjs`. 검증용 브라우저는 프록시를 사용하지 않고 임시 로컬 서버에 직접 연결합니다.
+
+## 낙원 원형 공간과 다리 (요청245)
+
+낙원의 갈림길·태양의 낙원1~3·달의 낙원1~3·별들의 낙원은 1800×1140이며, 중앙 바닥은 반지름660×370의 쿼터뷰 원형 공간입니다. 기존 최대 바닥보다 면적이 약3배 커졌습니다. 출입구가 있는 방향에만 폭180의 직선 다리를 만들고, 낮은 벽으로 우주 배경과 분리합니다. 캐릭터는 중앙과 다리 안에서만 움직입니다.
+
+- `shared/paradise-floor.js`: 크기·다리 폭·외곽선·이동 경계. 실제 맵과 미니맵이 같은 외곽선을 사용합니다.
+- `client/paradise-floor.js`: 테마별 바닥·벽·그림자. 중앙/다리 접합부에는 벽을 그리지 않습니다.
+- `server/world.js`: 서버에서 경계 차단. 친구 호출과 입장 자리도 같은 경계를 검사합니다.
+- 원래의 맵 연결 방향·입장 레벨은 유지하며, 확대된 도착 좌표를 적용합니다.
+- 검증: `node --test tests/paradise-floor.test.js`, `node scripts/verify-paradise-floor.mjs`, `node scripts/verify-navigation.mjs`.

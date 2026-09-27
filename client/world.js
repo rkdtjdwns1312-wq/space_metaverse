@@ -1,3 +1,4 @@
+import {floorRenderPoint} from '/shared/paradise-floor.js';
 import {drawLifeStar} from './life-star-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
@@ -526,7 +527,8 @@ export function createWorld(canvas) {
     // 도착한 위치를 시간순으로 재생합니다. 화면 프레임 수와 관계없이 같은 시각은
     // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
     for(const p of players){
-      points.set(p.id,tracks.get(p.id)?.at(t)||{x:p.x,y:p.y});
+      const position=tracks.get(p.id)?.at(t)||{x:p.x,y:p.y};
+      points.set(p.id,floorRenderPoint(mapOf(p.mapId,planets),position,{x:p.x,y:p.y},config.RULES.radius));
     }
     for(const m of monsters)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.

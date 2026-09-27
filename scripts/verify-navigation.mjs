@@ -9,7 +9,7 @@ import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,GARDEN_ID,PARADISE_ID,P
 import {addPlanet} from '../server/world.js';
 const key='navigation-test-only-private-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const checks=[],errors=[];await mkdir('.local',{recursive:true});
 const check=t=>{checks.push(t);console.log('Navigation '+checks.length+': '+t);};
 try{
