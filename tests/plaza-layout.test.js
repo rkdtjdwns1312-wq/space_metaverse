@@ -13,9 +13,10 @@ test('광장 중앙과 대각선 네 원형 구역·네 방향 출입구가 끊�
   for(const source of Object.values(STATIC_MAPS))for(const g of source.objects||[])if(g.target===PLAZA_ID)assert.ok(isFree(room(),g.arrival.x,g.arrival.y,null,PLAZA_ID,false),source.id);
 });
 test('본광장·다리 테두리 밖을 서버가 차단하고 매 틱 이동에도 반영한다',()=>{
-  assert.equal(onPlazaFloor(MAP,18,18,16),false);assert.equal(onPlazaFloor(MAP,1890,240,16),false);
-  const r=room(),p={id:'s',role:'student',mapId:PLAZA_ID,x:1866,y:240,connected:true,input:{x:1,y:0,at:100},avatar:{level:2},facing:{x:0,y:1}};r.players.set(p.id,p);
-  assert.equal(isFree(r,p.x,p.y,null,PLAZA_ID,false),false);p.x=1854;
+  const right=L.center.x+L.bridgeWidth/2;
+  assert.equal(onPlazaFloor(MAP,18,18,16),false);assert.equal(onPlazaFloor(MAP,right+12,240,16),false);
+  const r=room(),p={id:'s',role:'student',mapId:PLAZA_ID,x:right-12,y:240,connected:true,input:{x:1,y:0,at:100},avatar:{level:2},facing:{x:0,y:1}};r.players.set(p.id,p);
+  assert.equal(isFree(r,p.x,p.y,null,PLAZA_ID,false),false);p.x=right-55;
   for(let i=0;i<20;i++){p.input.at=100+i;advance(r,100+i);assert.ok(onPlazaFloor(MAP,p.x,p.y,16));}
   assert.ok(PLAZA_EDGES.length>500);
 });

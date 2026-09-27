@@ -569,3 +569,9 @@ Q 공격은 기존대로입니다. 사수자리로 진화하면 아래 스킬이
 - 시전자가 죽거나 맵을 나가거나 접속을 끊거나 별자리/단계를 바꾸면 지속 스킬을 종료합니다. 전투 상태는 서버 실행 중만 유지합니다. 재화·아이템의 기존 저장은 유지됩니다.
 - 수치·문구: `shared/sagittarius-skills.js`, 서버 판정: `server/sagittarius-skills.js`, 효과: `client/sagittarius-effects.js`, 아이콘: `client/assets/skills/sagittarius/`.
 - 검사: `node --test tests/sagittarius-skills.test.js`, `node scripts/verify-sagittarius.mjs`. 실제 학생 데이터 대신 테스트 교실을 사용합니다.
+
+## 다리 폭 넓히기 (요청287)
+
+광장, 낙원, 별의 시작점1~3, 은하수계곡, 오색별빛쉼터의 다리와 연결부 폭을 40% 넓혔습니다. 바닥 그림·미니맵·충돌 판정에 같은 폭을 적용하며, 기존 아바타 크기와 맵 입장 레벨은 유지합니다. 변경된 화면은 Ctrl+F5로 새로고침해 확인하세요.
+
+공통 배율은 `shared/floor-geometry.js`의 `BRIDGE_WIDTH_SCALE`입니다. `node scripts/verify-wide-bridges.mjs`로 LV5의 실제 조이스틱 통행과 출입문 이동을 검사합니다.

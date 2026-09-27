@@ -1,5 +1,6 @@
 // 은하수계곡의 충돌·배경 렌더링이 함께 쓰는 연속 바닥 도형입니다.
-export const VALLEY_LAYOUT=Object.freeze({width:2400,height:1400,wall:10,bridgeWidth:160,
+import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
+export const VALLEY_LAYOUT=Object.freeze({width:2400,height:1400,wall:10,bridgeWidth:160*BRIDGE_WIDTH_SCALE,
   center:Object.freeze({x:1200,y:420,rx:200,ry:145}),
   temples:Object.freeze([
     Object.freeze({id:'evolution',x:480,y:820,rx:350,ry:235}),

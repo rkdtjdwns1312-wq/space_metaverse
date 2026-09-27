@@ -1,6 +1,6 @@
-import {gateFloorGeometry,insideGateFloor} from './floor-geometry.js';
+import {gateFloorGeometry,insideGateFloor,BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 
-export const ORIGIN_FLOOR_RULES=Object.freeze({rx:.40,ry:.32,bridgeWidth:.14,landing:.06,wallWidth:12});
+export const ORIGIN_FLOOR_RULES=Object.freeze({rx:.40,ry:.32,bridgeWidth:.14*BRIDGE_WIDTH_SCALE,landing:.06,wallWidth:12});
 export const isStarOrigin=id=>/^star-origin-[123]$/.test(id||'');
 const cache=new WeakMap();
 export function originFloor(map){

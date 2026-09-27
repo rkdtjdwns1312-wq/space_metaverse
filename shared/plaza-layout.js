@@ -1,8 +1,9 @@
 // 광장 바닥/벽/지도/행성 배치가 같은 도형을 사용합니다. 좌표는 서버가 확정합니다.
+import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const PLAZA_SCALE=.6;
 export const plazaPoint=({x,y})=>({x:Math.round(x*PLAZA_SCALE),y:Math.round(y*PLAZA_SCALE)});
 export const DEPARTMENT_RADIUS=36,DEPARTMENT_GAP=48,DEPARTMENT_SPACING=132;
-export const PLAZA_LAYOUT=Object.freeze({width:3720,height:2640,wall:10,bridgeWidth:156,
+export const PLAZA_LAYOUT=Object.freeze({width:3720,height:2640,wall:10,bridgeWidth:156*BRIDGE_WIDTH_SCALE,
   center:{x:1800,y:1320,rx:780,ry:480},
   islands:[
     {id:'assignment',name:'과제별서고',x:600,y:510,rx:432,ry:336,color:'#e9e2ff'},

@@ -1,4 +1,6 @@
 // 여러 맵에서 같은 타원형 마당과 문으로 이어지는 직선 다리 외곽선을 씁니다.
+// LV5 몸 전체가 대각선 연결부에서도 지나가도록 모든 길목의 폭을 함께 조절합니다.
+export const BRIDGE_WIDTH_SCALE=1.4;
 export function gateFloorGeometry(map,{rx,ry,bridgeWidth,landing}){
   const cx=map.width/2,cy=map.height/2,half=bridgeWidth/2;
   const bridges=map.objects.filter(o=>o.kind==='gate').map(o=>{

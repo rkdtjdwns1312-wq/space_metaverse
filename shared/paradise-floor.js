@@ -2,11 +2,11 @@
 // 쿼터뷰의 원형 공간은 타원으로 보이며, 문이 있는 방향에만 곧은 다리가 붙습니다.
 import {onPlazaFloor} from './plaza-layout.js';
 import {onValleyFloor} from './valley-layout.js';
-import {gateFloorGeometry,insideGateFloor} from './floor-geometry.js';
+import {gateFloorGeometry,insideGateFloor,BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 import {isStarOrigin,onOriginFloor} from './origin-floor.js';
 import {onStreetFloor,isStarlightStreet} from './street-layout.js';
 export const PARADISE_SCALE=1.5;
-export const PARADISE_FLOOR=Object.freeze({rx:660,ry:370,bridgeWidth:180,landing:55,wallWidth:12});
+export const PARADISE_FLOOR=Object.freeze({rx:660,ry:370,bridgeWidth:180*BRIDGE_WIDTH_SCALE,landing:55,wallWidth:12});
 export const isParadise=id=>id==='moon-garden'||id==='star-paradise'||/^sun-paradise(?:-[23])?$/.test(id)||/^moon-paradise-[123]$/.test(id);
 export const paradisePoint=p=>({x:p.x*PARADISE_SCALE,y:p.y*PARADISE_SCALE});
 export function enlargeParadise(map){
