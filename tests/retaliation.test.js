@@ -9,11 +9,12 @@ import {recoverDefeated,RECOVERY_MS} from '../server/battle-recovery.js';
 import {RoomStore} from '../server/rooms.js';
 import {fromRecord,toRecord,pinHash} from '../server/persistent-rooms.js';
 import {advance} from '../server/world.js';
-import {PLAZA_ID} from '../shared/config.js';
+import {PLAZA_ID,mapOf} from '../shared/config.js';
 
 const player=(id,constellationId='sagittarius',level=5)=>({id,role:'student',connected:true,away:false,mapId:'star-origin-1',x:198,y:280,avatar:{level,xp:0,constellationId},input:{x:0,y:0,at:0}});
 function fixture(id='star-crab'){
- const room={players:new Map(),planets:new Map()},m=monstersOf(room,0).get(id);
+ const room={players:new Map(),planets:new Map()},m=monstersOf(room,0,()=>0).get(id);
+ const map=mapOf(m.mapId);Object.assign(m,{x:map.width/2,y:map.height/2,spawnX:map.width/2,spawnY:map.height/2});
  room.monsters=new Map([[id,m]]);return {room,m};
 }
 test('16종 모든 단계 기본 방어력+계열 보정·0하한, 피해1하한, 위조된 방어력 무시',()=>{
@@ -32,7 +33,7 @@ test('공격계3종의 LV2~5 방어0/0/1/2와 실제 몬스터 공격5의 피해
  }
 });
 test('단계별 이동량·공격 속도는1/1.3/1.69배이며 산책 주기는4초로 같다',()=>{
- for(const [id,power] of [['star-crab',2],['star-scorpion-1',3],['star-keeper',5]]){
+ for(const [id,power] of [['star-crab',2],['star-scorpion-1',3],['star-dragon-1',5]]){
    const {room,m}=fixture(id),factor=MONSTER_COMBAT[m.mapId].speedFactor;Object.assign(m,{x:600,y:450});
    moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
    assert.ok(Math.abs(m.x-600-MONSTER_RULES.speed*factor*.05)<1e-8);

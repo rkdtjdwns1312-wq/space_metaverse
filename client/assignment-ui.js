@@ -1,6 +1,6 @@
 export function createAssignmentUI({request,stop,toast}){
   const dialog=document.createElement('dialog');dialog.id='assignment-dialog';dialog.setAttribute('aria-labelledby','assignment-title');
-  dialog.innerHTML='<h2 id="assignment-title">✨ 과제안드로메다</h2><p class="muted">최근 3주의 과제와 완료한 친구를 확인해요.</p><div id="assignment-weeks" class="assignment-weeks" role="tablist" aria-label="최근 3주"></div><h3 id="assignment-week-title"></h3><div id="assignment-items"></div><h3 id="assignment-selected" hidden></h3><ol id="assignment-completed" aria-label="과제 완료한 친구" hidden></ol><p id="assignment-error" role="alert"></p><div class="dialog-actions"><button id="assignment-close" class="secondary" type="button">닫기</button></div>';
+  dialog.innerHTML='<h2 id="assignment-title">✨ 과제별서고</h2><p class="muted">최근 3주의 과제와 완료한 친구를 확인해요.</p><div id="assignment-weeks" class="assignment-weeks" role="tablist" aria-label="최근 3주"></div><h3 id="assignment-week-title"></h3><div id="assignment-items"></div><h3 id="assignment-selected" hidden></h3><ol id="assignment-completed" aria-label="과제 완료한 친구" hidden></ol><p id="assignment-error" role="alert"></p><div class="dialog-actions"><button id="assignment-close" class="secondary" type="button">닫기</button></div>';
   document.body.append(dialog);
   const $=id=>dialog.querySelector('#assignment-'+id);
   let data=null,weekIndex=0,revision=0;

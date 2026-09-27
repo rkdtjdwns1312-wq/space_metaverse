@@ -6,6 +6,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {fillNewClass} from './class-setup.mjs';
 import {createClassroomServer} from '../server/app.js';
 import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,GARDEN_ID,PARADISE_ID,PARADISE_MAPS,MOON_PARADISE_ID,MOON_PARADISE_MAPS,STAR_PARADISE,VALLEY_ID,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
+import {plazaPoint} from '../shared/plaza-layout.js';
 import {addPlanet} from '../server/world.js';
 const key='navigation-test-only-private-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
@@ -91,8 +92,16 @@ try{
  const valleyGate=MAP.objects.find(o=>o.target===VALLEY_ID);Object.assign(p,{mapId:PLAZA_ID,x:valleyGate.x,y:valleyGate.y});publish();
  await page.locator('#interact-prompt').filter({hasText:'은하수계곡'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:'은하수계곡'}).waitFor();assert.equal(p.mapId,VALLEY_ID);
  await page.screenshot({path:'.local/map-valley.png'});const valleyPicture=await page.locator('#world').evaluate(c=>c.toDataURL());await page.waitForTimeout(250);assert.notEqual(await page.locator('#world').evaluate(c=>c.toDataURL()),valleyPicture);
- Object.assign(p,{x:600,y:155});publish();await page.locator('#interact-prompt').filter({hasText:'별의 기원'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();assert.equal(p.mapId,PLAZA_ID);check('은하수계곡 아래 문 왕복·잔잔한 흐름 애니메이션');
- for(const [mapId,file] of [[GARDEN_ID,'map-crossroads'],[STREET_ID,'map-rainbow'],...[...PARADISE_MAPS,...MOON_PARADISE_MAPS,STAR_PARADISE].map(m=>[m.id,m.id])]){Object.assign(p,{mapId,x:600,y:450});publish();await page.waitForTimeout(180);await page.screenshot({path:'.local/'+file+'.png'});}
+ const valleyReturn=VALLEY.objects.find(o=>o.target===PLAZA_ID);assert.ok(valleyReturn);
+ Object.assign(p,{x:valleyReturn.x,y:valleyReturn.y});publish();await page.locator('#interact-prompt').filter({hasText:valleyReturn.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();assert.equal(p.mapId,PLAZA_ID);check('은하수계곡 출구 설정 위치로 광장 왕복·잔잔한 흐름 애니메이션');
+ const plazaStreetGate=MAP.objects.find(o=>o.target===STREET_ID),streetGate=STREET.objects.find(o=>o.target===PLAZA_ID);
+ assert.deepEqual(plazaStreetGate.arrival,STREET.spawn);assert.deepEqual(streetGate.arrival,plazaPoint({x:5950,y:2200}));
+ Object.assign(p,{mapId:STREET_ID,x:STREET.spawn.x,y:STREET.spawn.y});publish();await page.waitForFunction(id=>document.getElementById('minimap')?.dataset.mapId===id,STREET_ID);
+ await page.waitForFunction(y=>Math.abs(Number(document.getElementById('world').dataset.selfRenderY)-y)<50,STREET.spawn.y);
+ Object.assign(p,{x:streetGate.x+30,y:streetGate.y});publish();
+ await page.locator('#interact-prompt').filter({hasText:streetGate.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#minimap-title').filter({hasText:MAP.name}).waitFor();assert.equal(p.mapId,PLAZA_ID);assert.ok(Math.hypot(p.x-streetGate.arrival.x,p.y-streetGate.arrival.y)<5);
+ check('쉼터 spawn·서쪽 문 실제 F 이동·광장 도착 좌표 확인');
+ for(const [mapId,file] of [[GARDEN_ID,'map-crossroads'],[STREET_ID,'map-starlight-street'],...[...PARADISE_MAPS,...MOON_PARADISE_MAPS,STAR_PARADISE].map(m=>[m.id,m.id])]){Object.assign(p,{mapId,x:600,y:450});publish();await page.waitForTimeout(180);await page.screenshot({path:'.local/'+file+'.png'});}
  for(const machine of STREET.objects.filter(o=>o.kind==='arcade')){
    Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+72});publish();await page.locator('#interact-prompt').filter({hasText:machine.name}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#arcade-dialog').waitFor({state:'visible'});
    const board=page.locator('#arcade-board');

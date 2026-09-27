@@ -170,8 +170,31 @@ try{
   Object.assign(player,{x:market.x+market.rx+30});publish();
   await page.waitForTimeout(300);assert.equal(await page.locator('#interact-object').filter({hasText:'거래걸기'}).isVisible(),false);
   check('시장 외곽에서 거래 열기 가능, 원형 공간 밖에서는 거래 안내 없음');
-  const labels=await page.evaluate(async()=>{const m=await import('/plaza-props.js');return m.PLAZA_SIGNS.map(s=>s.lines.join(' '));});
-  assert.deepEqual(labels,['과제안드로메다','시장으로가는길','부서행성으로 가는길','블랙홀로 가는길']);
+  const signData=await page.evaluate(async()=>{
+    const [{PLAZA_SIGNS},{PLAZA_LAYOUT}]=await Promise.all([import('/plaza-props.js'),import('/shared/plaza-layout.js')]);
+    return {labels:PLAZA_SIGNS.map(s=>s.lines.join(' ')),signs:PLAZA_SIGNS,layout:PLAZA_LAYOUT};
+  });
+  const labels=signData.labels;
+  assert.deepEqual(labels,['과제별서고','별 시장으로 가는 길','부서행성으로 가는 길','블랙홀로 가는길']);
+  for(const [islandId,direction] of [['market',1],['department',-1]]){
+    const island=signData.layout.islands.find(entry=>entry.id===islandId),center=signData.layout.center;
+    const sign=signData.signs.find(entry=>entry.id==='sign-'+islandId),dx=island.x-center.x,dy=island.y-center.y,length=Math.hypot(dx,dy);
+    const t=.76/Math.hypot(dx/center.rx,dy/center.ry),routeX=center.x+dx*t,routeY=center.y+dy*t;
+    const lateral=(sign.x-routeX)*dy/length-(sign.y-routeY)*dx/length;
+    const requiredClearance=78+105*Math.abs(dy/length)+70*Math.abs(dx/length);
+    assert.equal(Math.sign(lateral),direction,`${islandId} sign is on its requested screen-x side of the bridge`);
+    assert.ok(Math.abs(lateral)>requiredClearance,`${islandId} sign sprite clears the bridge walking path`);
+  }
+  check('시장·부서행성 표지판의 지정된 좌우 배치와 다리 통행 폭 확보');
+  const assignment=MAP.objects.find(object=>object.id==='assignment-andromeda');
+  assert.ok(assignment,'the persistent assignment-andromeda identifier remains unchanged');
+  Object.assign(player,{mapId:PLAZA_ID,x:assignment.x+assignment.radius+20,y:assignment.y});publish();
+  await page.locator('#interact-prompt').filter({hasText:'과제별서고'}).waitFor({state:'visible'});
+  await page.locator('#world').focus();await page.keyboard.press('f');
+  await page.locator('#assignment-dialog').waitFor({state:'visible'});
+  await page.locator('#assignment-title').filter({hasText:'과제별서고'}).waitFor();
+  await page.locator('#assignment-close').click();await page.locator('#assignment-dialog').waitFor({state:'hidden'});
+  check('과제별 서고 실제 상호작용과 새 UI 명칭 표시');
   Object.assign(player,{mapId:PLAZA_ID,...MAP.spawn});publish();await page.waitForTimeout(300);
   await page.screenshot({path:'.local/254-temple.png'});
   const shop=STATIC_MAPS['star-street'].objects.find(o=>o.kind==='shop');

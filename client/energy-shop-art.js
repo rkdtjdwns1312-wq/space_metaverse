@@ -1,5 +1,7 @@
-// 별 상점과 구분되는 파스텔 유리·금속 외관. 매 프레임 외부 객체를 만들지 않습니다.
+import {drawPaintedProp} from './painted-props.js';
+// 이미지가 준비되면 정면 원화 사용. 기존 외관은 로딩 중 예비 그림입니다.
 export function drawEnergyShop(ctx, object) {
+  if(drawPaintedProp(ctx,{...object,kind:'energy-shop'}))return;
   const { x, y } = object;
   const left = x - 106;
   const top = y - 110;

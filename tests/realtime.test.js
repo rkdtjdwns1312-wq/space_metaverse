@@ -718,7 +718,7 @@ test('map:travel requires a nearby gate to a real map; success moves the player 
  assert.equal(p.mapId,STREET_ID);
  assert.ok(Math.hypot(p.x-gate.arrival.x,p.y-gate.arrival.y)<400);
  const streetGate=STREET.objects.find(o=>o.kind==='gate');
- p.x=STREET.width/2;p.y=STREET.height-100;
+ p.x=STREET.width/2;p.y=STREET.height/2;
  const stillFar=await call(s,'map:travel',{to:PLAZA_ID});
  assert.equal(stillFar.ok,false);assert.equal(stillFar.error,'문에 더 가까이 가주세요.');
  p.x=streetGate.x;p.y=streetGate.y;

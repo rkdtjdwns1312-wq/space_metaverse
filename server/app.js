@@ -765,7 +765,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const object=interiorDecorObject(data.objectId);
       ensure(object,'꾸밀 오브젝트를 골라주세요.');
       const target=mapOf(p.mapId).objects.find(item=>item.id===object.id);
-      ensure(target&&isNear(p,target),'오브젝트 가까이에서 꾸며주세요.');
+      const controlId=data.controlId,control=controlId==='department-control-machine'
+        ?mapOf(p.mapId).objects.find(item=>item.id===controlId&&item.kind==='interior-decor-machine'):null;
+      ensure(target&&(isNear(p,target)||(control&&isNear(p,control))),'꾸밀 오브젝트나 제어장치 가까이에서 꾸며주세요.');
       ensure(interiorDecorColor(data.colorId)&&object.shapes.some(shape=>shape.id===data.shapeId),'준비된 색과 모양 중에서 골라주세요.');
       const style={colorId:data.colorId,shapeId:data.shapeId};
       planet.interiorDecor??={};planet.interiorDecor[object.id]=style;
@@ -775,10 +777,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     const warningRockAccess=data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const planet=requirePlanet(s.room,data),p=s.player;
-      ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 경고 돌덩이를 이용할 수 있어요.');
+      ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 경고 제어돌을 이용할 수 있어요.');
       ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'소속 학생만 이 부서의 경고를 줄 수 있어요.');
       const rock=mapOf(p.mapId).objects.find(o=>o.kind==='warning-rock');
-      ensure(rock&&isNear(p,rock),'경고 돌덩이에 더 가까이 가주세요.');
+      ensure(rock&&isNear(p,rock),'경고 제어돌에 더 가까이 가주세요.');
       return {...s,planet};
     };
     action('warning:get',data=>{
@@ -867,7 +869,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('assignment:read',()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const portal=MAP.objects.find(o=>o.kind==='andromeda');
-      ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제안드로메다 가까이에서 확인해주세요.');
+      ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
       return recentAssignments(s.room,clock());
     });
     action('shards:give',data=>{

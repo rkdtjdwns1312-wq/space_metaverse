@@ -21,29 +21,9 @@ function fallbackBody(ctx,map,moon){
   for(let i=0;i<7;i++){const a=i*Math.PI*2/7;ctx.beginPath();ctx.arc(x+Math.cos(a)*r*.35,y+Math.sin(a)*r*.35,r*(.1+i%3*.035),0,Math.PI*2);ctx.stroke();}
 }
 
-function gardenBed(ctx,x,y,rx,ry,color){
-  ctx.save();ctx.fillStyle='#342d3c22';ctx.beginPath();ctx.roundRect(x-rx,y-ry+9,rx*2,ry*2,ry);ctx.fill();
-  ctx.fillStyle='#74856f';ctx.beginPath();ctx.roundRect(x-rx,y-ry,rx*2,ry*2,ry);ctx.fill();
-  ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x-rx+5,y-ry+4,rx*2-10,ry*2-9,ry-4);ctx.fill();
-  for(let i=0;i<5;i++){const px=x+(i-2)*rx*.27,py=y-4+(i%2)*3;ctx.fillStyle=i%2?'#f4e5d0':'#e7d8ed';ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);ctx.fill();}
-  ctx.restore();
-}
-
-function bedPoints(f){
-  const points=[];
-  for(let i=0;i<6;i++){
-    const a=-Math.PI*.84+i*Math.PI*1.68/5;
-    const x=f.cx+Math.cos(a)*(f.rx-52),y=f.cy+Math.sin(a)*(f.ry-38);
-    if(f.bridges.some(b=>Math.hypot(x-b.x,y-b.y)<175))continue;
-    points.push({x,y});
-  }
-  return points;
-}
-
 // Cache key includes asset readiness so an image arriving after first paint replaces the fallback.
 export function drawParadiseArt(ctx,map,f){
   const moon=map.theme==='moon-paradise',sun=map.theme==='sun-paradise';
-  const crossroads=map.id==='moon-garden';
   ctx.save();ctx.beginPath();ctx.moveTo(f.points[0].x,f.points[0].y);for(const p of f.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.clip();
   const paving=images.paradisePaving;
   if(ready(paving)){
@@ -56,9 +36,6 @@ export function drawParadiseArt(ctx,map,f){
   if(map.theme==='star-paradise'){
     const blend=ctx.createLinearGradient(f.cx-f.rx,0,f.cx+f.rx,0);blend.addColorStop(0,'#f4dfb822');blend.addColorStop(.5,'#ffffff00');blend.addColorStop(1,'#c9d8f422');
     ctx.fillStyle=blend;ctx.fillRect(0,0,map.width,map.height);
-  }
-  {
-    const points=bedPoints(f);for(let i=0;i<points.length;i++)gardenBed(ctx,points[i].x,points[i].y,crossroads?38:34,crossroads?18:16,moon?'#adb9aa':sun?'#b4c19a':'#b7c5a9');
   }
   ctx.restore();
 }

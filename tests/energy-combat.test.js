@@ -35,7 +35,7 @@ test('첫 맵은 별게3·물별이2, 서버가 좌우 이동 방향을 전파�
   assert.ok(list.every(m=>m.hp===20&&m.attackPower===2));
   assert.deepEqual(MONSTER_TYPES.filter(t=>t.level===1).map(t=>t.name),['Lv1 별게','Lv1 물별이']);
   const m=monstersOf(room).get('star-crab');room.monsters=new Map([[m.id,m]]);
-  Object.assign(m,{x:600,y:450,lastMoveAt:0,nextDirectionAt:0,patrolStartedAt:0});
+  Object.assign(m,{x:600,y:450,lastMoveAt:0,nextDirectionAt:0,patrolStartedAt:0,patrolPhaseOffset:0});
   moveMonsters(room,50,()=>0);assert.equal(monsterViews(room)[0].facingX,1);assert.equal(monsterViews(room)[0].moving,true);
   moveMonsters(room,4000,()=>.5);assert.equal(monsterViews(room)[0].facingX,-1);
 });

@@ -5,7 +5,7 @@ export const DEPARTMENT_RADIUS=36,DEPARTMENT_GAP=48,DEPARTMENT_SPACING=132;
 export const PLAZA_LAYOUT=Object.freeze({width:3720,height:2640,wall:10,bridgeWidth:156,
   center:{x:1800,y:1320,rx:780,ry:480},
   islands:[
-    {id:'assignment',name:'과제안드로메다',x:600,y:510,rx:432,ry:336,color:'#e9e2ff'},
+    {id:'assignment',name:'과제별서고',x:600,y:510,rx:432,ry:336,color:'#e9e2ff'},
     {id:'market',name:'별 시장',x:600,y:2100,rx:432,ry:336,color:'#fff0dc'},
     {id:'department',name:'부서행성 광장',x:2940,y:2070,rx:732,ry:504,color:'#e5f5ed'},
     {id:'black-hole',name:'블랙홀 입구',x:3090,y:510,rx:480,ry:336,color:'#e1dcf7'}

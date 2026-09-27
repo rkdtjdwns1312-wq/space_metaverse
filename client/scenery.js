@@ -1,11 +1,13 @@
 import {drawParadiseFloor} from './paradise-floor.js';
 import {drawValleyGround} from './valley-art.js';
 import {onParadiseArtReady,paradiseArtCacheKey,drawParadiseBackdrop} from './paradise-art.js';
+import {drawOriginArt,originArtCacheKey,onOriginArtReady} from './origin-art.js';
 // 동화풍 배경은 한 번 그려 보관합니다. 매 프레임 복잡한 성운을 다시 그리지 않아
 // 크롬북에서도 이동·채팅에 쓸 여유를 남깁니다. 외부 이미지로 교체하기 쉬운 모듈입니다.
 const backgrounds=new Map();
 document.fonts.load('20px Jua').then(()=>backgrounds.clear());
 onParadiseArtReady(()=>backgrounds.clear());
+onOriginArtReady(()=>backgrounds.clear());
 function ellipse(ctx,x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();}
 function star(ctx,x,y,r,color){
   ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,d=i%2?r*.48:r;i?ctx.lineTo(x+Math.cos(a)*d,y+Math.sin(a)*d):ctx.moveTo(x+Math.cos(a)*d,y+Math.sin(a)*d);}ctx.closePath();ctx.fillStyle=color;ctx.fill();
@@ -25,7 +27,7 @@ function sky(ctx,w,h,colors=['#b8b7e3','#d5c3e5','#a9cddf']){
   for(let i=0;i<8;i++){const x=160+i*430,y=230+i%3*670;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+45,y+70);ctx.lineTo(x+125,y+45);ctx.stroke();}
 }
 function cached(map,draw){
-  const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}`;
+  const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}:${originArtCacheKey()}`;
   if(!backgrounds.has(key)){const canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));backgrounds.set(key,canvas);}
   return backgrounds.get(key);
 }
@@ -72,38 +74,15 @@ export function drawValley(ctx,map,time){drawValleyGround(ctx,map,time);}
 // 별의 시작점은 거의 검은 공간 위에 별을 드문드문 놓습니다. 위치와 색은
 // 맵 이름으로 만든 시드에서 결정해 캐시된 배경이 매번 달라지지 않게 합니다.
 export function drawStarOrigin(ctx,map,time=0){
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  ctx.drawImage(cached(map,c=>{
-    c.fillStyle='#050710';c.fillRect(0,0,map.width,map.height);
-    let seed=2166136261;
-    for(const ch of `${map.id??''}:${map.name??'star-origin'}`){seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);}
-    const rand=()=>{seed=Math.imul(seed^seed>>>16,2246822519);seed=Math.imul(seed^seed>>>13,3266489917);return ((seed^seed>>>16)>>>0)/4294967296;};
-    const colors=['#d9e7ff','#fff4d0','#cfe8ff','#eee1ff'];
-    const cols=9,rows=5,cellW=map.width/cols,cellH=map.height/rows,stars=[];
-    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-      if(stars.length>=45)break;
-      const x=(col+.5+(rand()-.5)*.58)*cellW;
-      const y=(row+.5+(rand()-.5)*.58)*cellH;
-      const r=.9+rand()*1.25;
-      stars.push({x,y,r,color:colors[Math.floor(rand()*colors.length)],phase:rand()*Math.PI*2,speed:6000+rand()*6000,animated:stars.length<5+Math.floor(rand()*4)});
-    }
-    for(const s of stars){c.fillStyle=s.color;c.globalAlpha=.48+rand()*.35;c.beginPath();c.arc(s.x,s.y,s.r,0,Math.PI*2);c.fill();}
-    c.globalAlpha=1;
-  }),0,0);
+  ctx.drawImage(cached(map,c=>drawOriginArt(c,map)),0,0);
+  const reduced=typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduced)return;
-  const elapsed=Number.isFinite(time)?time:0;
   let seed=2166136261;for(const ch of `${map.id??''}:${map.name??'star-origin'}`){seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);}
   const rand=()=>{seed=Math.imul(seed^seed>>>16,2246822519);seed=Math.imul(seed^seed>>>13,3266489917);return ((seed^seed>>>16)>>>0)/4294967296;};
-  const cols=9,rows=5,cellW=map.width/cols,cellH=map.height/rows,animated=[];
-  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const x=(col+.5+(rand()-.5)*.58)*cellW,y=(row+.5+(rand()-.5)*.58)*cellH,r=.9+rand()*1.25,color=['#d9e7ff','#fff4d0','#cfe8ff','#eee1ff'][Math.floor(rand()*4)],phase=rand()*Math.PI*2,speed=6000+rand()*6000;
-    if(animated.length<5+Math.floor(rand()*4))animated.push({x,y,r,color,phase,speed});
-  }
-  ctx.save();
-  for(const s of animated){
-    const alpha=.42+.28*(.5+.5*Math.sin(elapsed*2*Math.PI/s.speed+s.phase));
-    ctx.globalAlpha=alpha;ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=alpha*.14;ctx.beginPath();ctx.arc(s.x,s.y,s.r*3.2,0,Math.PI*2);ctx.fill();
+  const elapsed=Number.isFinite(time)?time:0;ctx.save();
+  for(let i=0;i<14;i++){
+    const x=(i*137+rand()*map.width)%map.width,y=(i*191+rand()*map.height)%map.height,r=.7+rand()*1.1,phase=rand()*Math.PI*2;
+    ctx.globalAlpha=.25+.48*(.5+.5*Math.sin(elapsed*.001+phase));ctx.fillStyle=i%3?'#f4edff':'#fff2cf';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
   }
   ctx.restore();
 }

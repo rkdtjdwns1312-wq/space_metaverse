@@ -110,7 +110,7 @@ export function drawValleyAltar(ctx, object, time = 0) {
   const width = radius * (220 / 65), height = radius * (275 / 65), footY = y + radius * .45;
   let orbX = x, orbY = y - radius * 1.8;
   ctx.save();
-  ctx.fillStyle = '#34324e30';ctx.beginPath();ctx.ellipse(x, footY, radius * .94, radius * .25, 0, 0, Math.PI * 2);ctx.fill();
+  // 받침대 원화의 바닥을 footY에 붙이고 떠 보이게 하는 별도 타원 그림자는 그리지 않습니다.
   if (ready(image)) {
     const art = altarArt[object.kind], [sx, sy, sw, sh] = art.crop;
     const sourceX = image.naturalWidth / art.width, sourceY = image.naturalHeight / art.height;

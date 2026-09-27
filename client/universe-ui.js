@@ -1,6 +1,8 @@
 import {drawParadiseFloor} from './paradise-floor.js';
 import {drawPlazaMiniFloor} from './plaza-art.js';
 import {drawValleyMiniFloor} from './valley-art.js';
+import {drawOriginMiniFloor} from './origin-art.js';
+import {drawStreetMiniFloor} from './street-art.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
@@ -110,7 +112,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       const sx=w/info.width,sy=h/info.height,cx=x+info.templeCenter.x*sx,cy=y+info.templeCenter.y*sy;
       ctx.fillStyle='#fff9ee';ctx.fillRect(cx-320*sx,cy-170*sy,640*sx,340*sy);
     }
-    if(theme==='star-origin'){ctx.fillStyle='#cfd9ff99';for(let i=0;i<24;i++){ctx.fillRect(x+(i*83%Math.max(1,w)),y+(i*47%Math.max(1,h)),1.5,1.5);}}
+    if(theme==='star-origin'){ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawOriginMiniFloor(ctx,info);ctx.restore();}
+    if(theme==='starlight-street'){ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawStreetMiniFloor(ctx,info);ctx.restore();}
     // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
     if(theme==='sun-paradise'||theme==='moon-paradise'){

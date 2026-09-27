@@ -1,7 +1,9 @@
 import {PLAZA_LAYOUT as L} from '/shared/plaza-layout.js';
+import {drawPaintedProp} from './painted-props.js';
+export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
-for(const name of ['market','bazaar','andromeda','black-hole','department','sign']){
+for(const name of ['market','bazaar','andromeda','black-hole','sign']){
   const img=new Image();img.src='/assets/maps/plaza-'+name+'.png';art[name]=img;
 }
 const ready=name=>art[name].complete&&art[name].naturalWidth>0;
@@ -14,32 +16,32 @@ export function drawPlazaLandmark(ctx,o){
   sprite(ctx,name,o.x,o.y+110,w,h);
   label(ctx,o.name,o.x,o.y+125,21);
 }
-export function drawDepartmentHome(ctx,o,myDept,template){
-  const w=o.radius*2.65,h=o.radius*3.15;
-  if(o.id===myDept){ctx.save();ctx.strokeStyle='#c3a0ed';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.5,o.radius+9,o.radius*.45,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
-  sprite(ctx,'department',o.x,o.y+o.radius*.9,w,h);
-  // 색과 종류를 유지하여 같은 기본 원화를 쓰는 부서들도 구별합니다.
-  ctx.save();ctx.fillStyle=o.color||'#d7c5ec';ctx.strokeStyle='#fff9ed';ctx.lineWidth=2;
-  ctx.beginPath();ctx.arc(o.x+o.radius*.8,o.y-o.radius*.8,10,0,Math.PI*2);ctx.fill();ctx.stroke();
-  if(template){ctx.font='13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(template.icon,o.x+o.radius*.8,o.y-o.radius*.8);}
-  ctx.restore();
-}
 export function drawBazaar(ctx,o){
-  sprite(ctx,'bazaar',o.x,o.y+260,730,487);
-  label(ctx,'별 시장',o.x+50,o.y+30,23);
+  const zone=L.islands.find(z=>z.id==='market');
+  // 원형 구역 안에 여백을 두고 맞춥니다. 원화의 북동~동쪽(1~3시)은 통째로 열린 입구입니다.
+  const w=zone.rx*1.7,h=zone.ry*1.75;
+  sprite(ctx,'bazaar',zone.x,zone.y+h/2,w,h);
+  label(ctx,'별 시장',zone.x,zone.y+15,23);
 }
 export function drawPaintedStarShop(ctx,o){
+  if(drawPaintedProp(ctx,{...o,kind:'shop'}))return;
   sprite(ctx,'market',o.x,o.y+66,224,224);
   // 별상점 위치와 기능은 그대로, 사용자가 지정한 생성 원화만 적용합니다.
   ctx.save();ctx.fillStyle='#fff7fc';ctx.strokeStyle='#b78ca8';ctx.lineWidth=2;
   ctx.beginPath();ctx.roundRect(o.x-65,o.y-139,130,28,10);ctx.fill();ctx.stroke();ctx.restore();
   label(ctx,'별 상점',o.x,o.y-119,19);
 }
-const words={assignment:['과제안드로메다'],market:['시장으로가는길'],department:['부서행성으로','가는길'],'black-hole':['블랙홀로 가는길']};
+const words={assignment:['과제별서고'],market:['별 시장으로','가는 길'],department:['부서행성으로','가는 길'],'black-hole':['블랙홀로 가는길']};
 export const PLAZA_SIGNS=L.islands.map(z=>{
   const c=L.center,dx=z.x-c.x,dy=z.y-c.y,length=Math.hypot(dx,dy);
-  // 입구의 중앙 통행선 옆, 중앙 바닥 안쪽에 세워 다리 폭을 가리지 않습니다.
-  const t=.76/Math.hypot(dx/c.rx,dy/c.ry),side=z.x<c.x?1:-1;
+  // SW 시장 표지판은 다리 시작점의 화면 오른쪽, SE 부서 표지판은 화면 왼쪽에 둡니다.
+  // 다리 옆으로 245px 비켜 세워 표지판 폭이 통행 폭을 침범하지 않게 합니다.
+  const t=.76/Math.hypot(dx/c.rx,dy/c.ry);
+  if(z.id==='market'||z.id==='department'){
+    const offset=z.id==='market'?245:-245;
+    return {id:'sign-'+z.id,x:c.x+dx*t+dy/length*offset,y:c.y+dy*t-dx/length*offset,lines:words[z.id]};
+  }
+  const side=z.x<c.x?1:-1;
   return {id:'sign-'+z.id,x:c.x+dx*t-dy/length*112*side,y:c.y+dy*t+dx/length*112*side,lines:words[z.id]};
 });
 export function drawPlazaSign(ctx,s){

@@ -12,7 +12,7 @@ const monster=typeId=>({id:'monster-1',typeId,mapId:'star-origin-1',x:100,y:100}
 const fixedRoll=value=>(min,max)=>{assert.ok(value>=min&&value<max);return value;};
 
 test('각 몬스터 단계 보상의 양끝을 만들고 0이면 드랍하지 않는다',()=>{
-  const cases=[['star-crab',1,2],['star-scorpion',6,10],['bear',24,40]];
+  const cases=[['star-crab',1,2],['star-scorpion',6,10],['star-dragon',24,40],['grown-cool-star',24,40]];
   for(const [typeId,min,max] of cases)for(const total of [min,max]){
     const p=makePlayer('p'),room=makeRoom([p]);
     const drop=addEnergyDrop(room,monster(typeId),new Map([['p',10]]),100,fixedRoll(total));

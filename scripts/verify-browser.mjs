@@ -548,8 +548,8 @@ try{
 
  // Item 4: the star shop.
  const shopObj=STREET.objects.find(o=>o.id==='shop');
- // 아래쪽으로 옮긴 상점은 가로등을 돌아, 가운데 통로에서 접근합니다.
- await walkNear(student,p,{x:shopObj.x,y:380},{waypoint:true});
+ // 상점 위쪽의 길목을 지나 상점 정면으로 접근합니다. 좌표는 현재 상점 위치에서 계산합니다.
+ await walkNear(student,p,{x:shopObj.x,y:shopObj.y-120},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('f');
@@ -609,7 +609,7 @@ try{
  // Item 5: the street/shop are only reachable from the street; walking back through the plaza gate
  // returns the student near its configured arrival point, with planet-making available again.
  // Same reasoning as Item 3: right after closing the shop dialog the student is still within its
- // interact radius (and roughly level with it, y≈300), so step down first to clear that row before
+ // interact radius (and roughly level with it), so step down first to clear that row before
  // walking toward the far-away gate.
  const gateBack=STREET.objects.find(o=>o.id==='gate-plaza');
  await student.locator('#world').focus();

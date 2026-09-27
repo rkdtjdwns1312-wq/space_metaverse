@@ -1,3 +1,4 @@
+import {drawPaintedProp} from './painted-props.js';
 const TAU = Math.PI * 2;
 
 function starPath(ctx, x, y, outer, inner = outer * 0.42, points = 5) {
@@ -18,6 +19,7 @@ function ellipse(ctx, x, y, rx, ry, rotation = 0) {
 }
 
 export function drawCraftingMachine(ctx, o, time = 0) {
+  if(drawPaintedProp(ctx,{...o,kind:'crafting'}))return;
   if (!ctx || !o) return;
   const x = Number(o.x) || 1080;
   const y = Number(o.y) || 380;

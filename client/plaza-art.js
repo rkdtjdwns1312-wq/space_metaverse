@@ -11,14 +11,6 @@ const floorPath=new Path2D();
 for(const poly of PLAZA_POLYGONS){floorPath.moveTo(poly[0].x,poly[0].y);for(const p of poly.slice(1))floorPath.lineTo(p.x,p.y);floorPath.closePath();}
 const edgePath=new Path2D();for(const [a,b] of PLAZA_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
-function garden(ctx,x,y,angle){
-  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle='#a8bba677';ctx.beginPath();ctx.ellipse(0,0,44,20,0,0,Math.PI*2);ctx.fill();
-  // 바닥 높이의 꽃 장식이라 시야나 통행을 막지 않습니다.
-  for(let i=0;i<9;i++){const fx=(i*19%65)-32,fy=(i*13%25)-12;ctx.fillStyle=i%2?'#9dc7b4':'#c2d8ab';ctx.beginPath();ctx.ellipse(fx,fy,9,4,i,0,Math.PI*2);ctx.fill();
-    for(let p=0;p<5;p++){const a=p*Math.PI*2/5;ctx.fillStyle=i%3?'#f5e5f5':'#cddffc';ctx.beginPath();ctx.ellipse(fx+Math.cos(a)*4,fy+Math.sin(a)*4,3.5,2.5,a,0,Math.PI*2);ctx.fill();}
-    ctx.fillStyle='#f4ce83';ctx.beginPath();ctx.arc(fx,fy,2,0,Math.PI*2);ctx.fill();}
-  ctx.restore();
-}
 function ground(ctx){
   ctx.save();ctx.translate(0,35);ctx.fillStyle='#74658d';ctx.shadowColor='#17193399';ctx.shadowBlur=30;ctx.shadowOffsetY=20;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
@@ -28,11 +20,6 @@ function ground(ctx){
   ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
   // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
   const c=L.center;if(ready(images.temple))ctx.drawImage(images.temple,c.x-360,c.y-250,720,480);
-  for(const z of [L.center,...L.islands])for(let i=0;i<20;i++){
-    const a=(i+.5)*Math.PI/10,p={x:z.x+Math.cos(a)*(z.rx-90),y:z.y+Math.sin(a)*(z.ry-70)};
-    // 다리 접속 방향은 비워 둡니다.
-    if(Math.abs(Math.sin(a*2))<.28||Math.abs(Math.sin(a*2))>.97)continue;garden(ctx,p.x,p.y,a);
-  }
   ctx.restore();ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
   ctx.strokeStyle='#a693bd';ctx.lineWidth=15;ctx.stroke(edgePath);ctx.strokeStyle='#fff5e2';ctx.lineWidth=5;ctx.stroke(edgePath);ctx.restore();
 }

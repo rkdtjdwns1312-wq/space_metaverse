@@ -10,9 +10,11 @@ import {INTERIOR,interiorIdOf} from '../shared/config.js';
 import {INTERIOR_DECOR_COLORS,INTERIOR_DECOR_OBJECTS} from '../shared/interior-decor.js';
 import {validateInteriorDecor} from '../server/interior-decor.js';
 
-test('부서 내부 네 오브젝트에는 기본색 포함 7색과 각각 3가지 모양이 있다',()=>{
+test('부서 내부 다섯 오브젝트에는 기본색 포함 7색과 각각 3가지 모양이 있다',()=>{
   assert.equal(INTERIOR_DECOR_COLORS.length,7);
   assert.deepEqual(INTERIOR_DECOR_OBJECTS.map(object=>object.id),['board','report-board','warning-rock','door']);
+  const machine=INTERIOR.objects.find(object=>object.id==='department-control-machine');
+  assert.deepEqual([machine.name,machine.kind,machine.x,machine.y],['부서행성 제어장치','interior-decor-machine',960,590]);
   for(const object of INTERIOR_DECOR_OBJECTS)assert.equal(object.shapes.length,3);
   assert.deepEqual(validateInteriorDecor(),{});
   assert.throws(()=>validateInteriorDecor({'warning-rock':{colorId:'neon',shapeId:'default'}}),/꾸미기 저장/);
@@ -48,11 +50,19 @@ test('소속 학생만 가까운 오브젝트를 꾸미고 행성별 선택은 �
   assert.equal((await call(memberSocket,event,selected)).ok,true);
   assert.deepEqual(refresh().interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
   assert.deepEqual(game.store.snapshot(room,outsider).planets.find(item=>item.id===planet.id).interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
+  const machine=INTERIOR.objects.find(item=>item.id==='department-control-machine'),controlStyle={planetId:planet.id,objectId:'board',controlId:machine.id,colorId:'sky',shapeId:'tablet'};
+  Object.assign(member,{x:machine.x,y:machine.y+70});Object.assign(outsider,{x:machine.x,y:machine.y+70});
+  assert.equal((await call(outsiderSocket,event,controlStyle)).ok,false,'타 부서 학생은 제어장치로 꾸밀 수 없어야 합니다.');
+  assert.equal((await call(memberSocket,event,controlStyle)).ok,true,'소속 학생은 제어장치 근처에서 떨어진 게시판도 꾸밀 수 있어야 합니다.');
+  assert.deepEqual(refresh().interiorDecor.board,{colorId:'sky',shapeId:'tablet'});
+  Object.assign(member,{x:machine.x+300,y:machine.y+100});
+  assert.equal((await call(memberSocket,event,{...controlStyle,colorId:'rose'})).ok,false,'제어장치와 대상 둘 다 멀면 저장을 막아야 합니다.');
   assert.deepEqual(other.interiorDecor,{});
   for(const socket of sockets)socket.disconnect();await game.close();
   game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false});address=await game.listen();
   const reopenedTeacher=await connect();assert.equal((await call(reopenedTeacher,'room:open',{teacherKey:key,code:created.room.code})).ok,true);
   room=game.store.rooms.get(created.room.code);
   assert.deepEqual(room.planets.get(planet.id).interiorDecor['warning-rock'],{colorId:'mint',shapeId:'crystal'});
+  assert.deepEqual(room.planets.get(planet.id).interiorDecor.board,{colorId:'sky',shapeId:'tablet'});
   assert.deepEqual(room.planets.get(other.id).interiorDecor,{});
 });

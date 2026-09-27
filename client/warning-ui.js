@@ -7,7 +7,7 @@ export function createWarningUI({request,stop,toast,getSelfId}){
   const releaseConfirmation=$('black-star-confirm-dialog');
   let releaseTarget=null,releasing=false;
   const render=data=>{
-    $('warning-title').textContent=data.planetName+' · 경고 돌덩이';
+    $('warning-title').textContent=data.planetName+' · 경고 제어돌';
     $('warning-summary').textContent='경고 '+data.threshold+'회가 쌓이면 검은별이 되어 블랙홀로 이동해요.';
     $('warning-threshold').value=String(data.threshold);
     const options=data.students.filter(p=>p.id!==getSelfId()&&!p.blackStar);

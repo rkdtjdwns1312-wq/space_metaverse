@@ -10,21 +10,27 @@ import {createClassroomServer} from '../server/app.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
 
 function singleMonster(id){
-  const room={};monstersOf(room,0);const monster=room.monsters.get(id);
+  const room={};monstersOf(room,0,()=>0);const monster=room.monsters.get(id);
+  const map=mapOf(monster.mapId);Object.assign(monster,{x:map.width/2,y:map.height/2,spawnX:map.width/2,spawnY:map.height/2});
   room.monsters=new Map([[id,monster]]);return {room,monster};
 }
 
-test('세 맵별 5마리·첫 맵 두 종류·방별 독립된 몬스터 상태',()=>{
-  const a={},b={};assert.equal(monstersOf(a).size,25);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,11);
-  for(const map of ['star-origin-1','star-origin-2','star-origin-3','sun-paradise','sun-paradise-2'])
+test('각 맵 5마리·별의기원3 3용이+2사조·방별 독립 몬스터 상태',()=>{
+  const a={},b={};assert.equal(monstersOf(a).size,35);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,10);
+  for(const map of ['star-origin-1','star-origin-2','star-origin-3','sun-paradise','sun-paradise-2','moon-paradise-1','moon-paradise-2'])
     assert.equal(monsterViews(a).filter(m=>m.mapId===map).length,5);
   const second=monsterViews(a).filter(m=>m.mapId==='star-origin-2');
   assert.deepEqual(second.filter(m=>m.typeId==='star-scorpion').map(m=>m.id),['star-scorpion-1','star-scorpion-2','star-scorpion-3']);
   assert.deepEqual(second.filter(m=>m.typeId==='chameleon-star').map(m=>m.id),['chameleon-star-1','chameleon-star-2']);
-  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,25);
+  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,35);
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise').map(m=>[m.id,m.level]),[['warm-star',2]]);
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise-2').map(m=>[m.id,m.level]),[['grown-warm-star',3]]);
+  const origin3=monsterViews(a).filter(m=>m.mapId==='star-origin-3');
+  assert.deepEqual(origin3.filter(m=>m.typeId==='star-dragon').map(m=>m.id),['star-dragon-1','star-dragon-2','star-dragon-3']);
+  assert.deepEqual(origin3.filter(m=>m.typeId==='star-phoenix').map(m=>m.id),['star-phoenix-1','star-phoenix-2']);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-1').map(m=>[m.id,m.level]),[['cool-star',2]]);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-2').map(m=>[m.id,m.level]),[['grown-cool-star',3]]);
   for(const m of second)assert.notEqual(m.id,m.typeId,'개체 id와 종류 id는 분리되어야 합니다.');
   const one=monstersOf(a).get('star-crab'),two=monstersOf(b).get('star-crab');one.x=999;
   assert.notEqual(one.x,two.x);
@@ -40,13 +46,15 @@ test('두 번째 맵의 새 몬스터 설정과 체력·공격·속도·보상 �
   const list=monsterViews({});assert.ok(list.filter(m=>m.mapId==='star-origin-2').every(m=>m.hp===40&&m.attackPower===3));
 });
 
-test('새 따뜻한별도 같은 레벨의 기존 몬스터와 체력·공격·속도·보상이 같다',()=>{
+test('별용이·별사조와 태양·달 별 몬스터의 단계별 능력치·보상 범위가 맞다',()=>{
   const expected={
     'star-origin-1':{level:1,hp:20,power:2,speedFactor:1,reward:[0,2]},
     'star-origin-2':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
     'star-origin-3':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]},
     'sun-paradise':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
-    'sun-paradise-2':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]}
+    'sun-paradise-2':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]},
+    'moon-paradise-1':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
+    'moon-paradise-2':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]}
   };
   for(const [mapId,values] of Object.entries(expected)){
     assert.equal(MONSTER_HP[mapId],values.hp);
@@ -57,6 +65,10 @@ test('새 따뜻한별도 같은 레벨의 기존 몬스터와 체력·공격·�
   assert.deepEqual(MONSTER_TYPES.filter(type=>type.id==='warm-star'||type.id==='grown-warm-star').map(({id,mapId,level})=>[id,mapId,level]),[
     ['warm-star','sun-paradise',2],['grown-warm-star','sun-paradise-2',3]
   ]);
+  assert.deepEqual(MONSTER_TYPES.filter(type=>type.id==='cool-star'||type.id==='grown-cool-star').map(({id,mapId,level})=>[id,mapId,level]),[
+    ['cool-star','moon-paradise-1',2],['grown-cool-star','moon-paradise-2',3]
+  ]);
+  assert.deepEqual(MONSTER_TYPES.filter(type=>type.mapId==='star-origin-3').map(({id,level})=>[id,level]),[['star-dragon',3],['star-phoenix',3]]);
 });
 
 test('LV2 공격 자세는 서버 이벤트 동안만 전환되고 종료 시 대기로 돌아간다',()=>{
@@ -78,7 +90,7 @@ test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·4배�
 });
 
 test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',()=>{
-  const room={};monstersOf(room,0);const before=monsterViews(room).filter(m=>m.mapId==='star-origin-3'&&m.radius===96).map(m=>({...m}));
+  const room={};monstersOf(room,0,()=>0);const before=monsterViews(room).filter(m=>m.mapId==='star-origin-3'&&m.radius===96).map(m=>({...m}));
   for(const m of before) for(const other of before) if(other!==m)
     assert.ok(Math.hypot(m.x-other.x,m.y-other.y)>=m.radius+other.radius+10);
   moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
@@ -87,7 +99,7 @@ test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',(
 });
 
 test('모든 레벨은 2초 걷고 2초 쉬며 속도 배율만 다르다',()=>{
-  for(const id of ['star-crab','star-scorpion-1','star-keeper','warm-star-1','grown-warm-star-1']){
+  for(const id of ['star-crab','star-scorpion-1','star-dragon-1','warm-star-1','grown-warm-star-1','cool-star-1','grown-cool-star-1']){
     const {room,monster:m}=singleMonster(id),factor=MONSTER_COMBAT[m.mapId].speedFactor;
     let calls=0;const random=()=>++calls===1?0:.25;
     moveMonsters(room,0,random);const start={x:m.x,y:m.y};
@@ -107,6 +119,20 @@ test('모든 레벨은 2초 걷고 2초 쉬며 속도 배율만 다르다',()=>{
     assert.ok(Math.abs(m.x-rest.x)<1e-6);
     assert.ok(Math.abs(m.y-rest.y-MONSTER_RULES.speed*factor*.05)<1e-6);
   }
+});
+
+test('같은 맵 몬스터는 개체별 무작위 phase로 첫 산책 시작 시각이 서로 다르다',()=>{
+  const room={},offsets=[.05,.3,.55,.8,.1];let index=0;
+  monstersOf(room,1000,()=>offsets[index++]??((index%19)/20));
+  const firstFive=['star-crab','water-star','star-crab-2','water-star-2','star-crab-3'].map(id=>room.monsters.get(id));
+  assert.equal(index,MONSTER_SPAWNS.length,'각 스폰이 독립적인 초기 phase 표본을 받는다');
+  assert.equal(new Set(firstFive.map(monster=>monster.patrolPhaseOffset)).size,firstFive.length);
+  for(const monster of firstFive)assert.ok(monster.patrolPhaseOffset>=0&&monster.patrolPhaseOffset<MONSTER_RULES.walkMs+MONSTER_RULES.restMs);
+  moveMonsters(room,1450,()=>.25);
+  assert.deepEqual(firstFive.map(monster=>monster.moving),[true,false,false,false,true],
+    '같은 1450ms 시각에도 일부는 걷기 시작하고 나머지는 첫 걷기를 기다린다');
+  const firstWalkStarts=firstFive.map(monster=>monster.patrolStartedAt);
+  assert.equal(new Set(firstWalkStarts).size,firstFive.length,'각 개체의 첫 걷기 시작 시각이 겹치지 않는다');
 });
 
 test('산책 방향은 전방향 각도를 따르고 좌우 바라보기도 맞춘다',()=>{
@@ -136,10 +162,13 @@ test('휴식 중 공격받으면 몬스터가 바로 공격자를 추격한다',
 });
 
 test('몬스터는 맵 경계와 문 주변을 지키고 3구역에서는 뭉치지 않는다',()=>{
-  const room={};monstersOf(room,0);
+  const room={};monstersOf(room,0,()=>0);
   const list=monsterViews(room);
-  for(const m of list)if(m.mapId.startsWith('sun-paradise')){
+  for(const m of list)if(m.mapId.startsWith('sun-paradise')||m.mapId.startsWith('moon-paradise')){
     const map=mapOf(m.mapId);assert.equal(onParadiseFloor(map,m.x,m.y,m.radius),true,`${m.id} 낙원 바닥 안 초기 배치`);
+  }
+  for(const m of list.filter(monster=>monster.mapId==='star-origin-3')){
+    assert.equal(onParadiseFloor(mapOf(m.mapId),m.x,m.y,m.radius),true,`${m.id} 별의 시작점3 바닥 안 초기 배치`);
   }
   for(let now=0;now<60000;now+=50){
     moveMonsters(room,now,()=>.125);
@@ -169,7 +198,7 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
-  assert.equal(packet.monsters.length,25);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
+  assert.equal(packet.monsters.length,35);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
 });
 
 test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 좌표가 함께 온다',async t=>{
@@ -180,16 +209,16 @@ test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 �
   const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:'monster-motion-test-private',allowedNames:['1']});
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1'});
   const room=game.store.rooms.get(created.room.code),player=room.players.get(joined.selfId);
+  room.monsters=undefined;monstersOf(room,Date.now(),()=>0);
   Object.assign(player,{mapId:'star-origin-1',x:600,y:450});
-  const packets=[];student.on('world:positions',packet=>packets.push(packet));
-  const input=setInterval(()=>student.emit('player:input',{x:1,y:0}),80);
-  try{
-    await new Promise((resolve,reject)=>{
-      let check;
-      const deadline=setTimeout(()=>{clearInterval(check);reject(new Error('동시 이동 패킷을 받지 못했어요.'));},2000);
-      check=setInterval(()=>{if(packets.length>=8){clearInterval(check);clearTimeout(deadline);resolve();}},20);
-    });
-  }finally{clearInterval(input);student.emit('player:input',{x:0,y:0});}
+  const firstMonster=game.store.rooms.get(created.room.code).monsters.get('star-crab');
+  Object.assign(firstMonster,{x:600,y:450,spawnX:600,spawnY:450,patrolStartedAt:Date.now(),patrolPhaseOffset:0,patrolCycle:-1,nextDirectionAt:Date.now()});
+  for(const id of ['water-star','star-crab-2','water-star-2','star-crab-3']){
+    const monster=game.store.rooms.get(created.room.code).monsters.get(id);monster.x+=220;
+  }
+  const packets=[];student.on('world:positions',packet=>packets.push(packet));student.emit('player:input',{x:1,y:0});
+  await new Promise(resolve=>setTimeout(resolve,25));
+  for(let i=0;i<8;i++)await new Promise(resolve=>setTimeout(resolve,80));
   const avatarXs=packets.flatMap(packet=>packet.positions.filter(([id])=>id===joined.selfId).map(([,x])=>x));
   const monsterPoints=packets.map(packet=>packet.monsters?.find(monster=>monster.id==='star-crab'));
   assert.ok(avatarXs.length>=2&&Math.max(...avatarXs)-Math.min(...avatarXs)>1,'아바타가 움직여야 합니다.');

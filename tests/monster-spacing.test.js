@@ -71,14 +71,14 @@ test('세 맵의 몬스터 배치가 실제 맵 경계 안이고 안전 간격�
 
 test('처치 몬스터가 다른 살아있는 몬스터와 겹치는 위치에서는 리스폰하지 않는다',()=>{
   const room={};const monsters=monstersOf(room,0);
-  const defeated=monsters.get('star-keeper');
-  const blocker=monsters.get('bear');
+  const defeated=monsters.get('star-dragon-1');
+  const blocker=monsters.get('star-phoenix-1');
   defeated.hp=0;defeated.respawnAt=10000;
   blocker.x=defeated.spawnX;blocker.y=defeated.spawnY;
   moveMonsters(room,10000,()=>0);
   assert.equal(defeated.hp,0);
   assertNoOverlap(room,'겹치는 리스폰 보류');
-  blocker.x+=defeated.radius+blocker.radius+10;
+  blocker.x=864;blocker.y=648;
   moveMonsters(room,10001,()=>0);
   assert.equal(defeated.hp,defeated.maxHp);
   assertNoOverlap(room,'리스폰 후');

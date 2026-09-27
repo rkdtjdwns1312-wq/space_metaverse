@@ -1,24 +1,25 @@
 // 별의 시작점에서 만나는 귀여운 동물별자리 상상 디자인 목록입니다.
-export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100,'sun-paradise':40,'sun-paradise-2':100});
+export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100,'sun-paradise':40,'sun-paradise-2':100,'moon-paradise-1':40,'moon-paradise-2':100});
 export const MONSTER_COMBAT=Object.freeze({
   'star-origin-1':Object.freeze({power:2,speedFactor:1}),
   'star-origin-2':Object.freeze({power:3,speedFactor:1.3}),
   'star-origin-3':Object.freeze({power:5,speedFactor:1.3*1.3}),
   'sun-paradise':Object.freeze({power:3,speedFactor:1.3}),
-  'sun-paradise-2':Object.freeze({power:5,speedFactor:1.3*1.3})
+  'sun-paradise-2':Object.freeze({power:5,speedFactor:1.3*1.3}),
+  'moon-paradise-1':Object.freeze({power:3,speedFactor:1.3}),
+  'moon-paradise-2':Object.freeze({power:5,speedFactor:1.3*1.3})
 });
 export const MONSTER_TYPES = Object.freeze([
   { id:'warm-star', name:'Lv2 따뜻한별', description:'작은 햇살을 나누는 따뜻한별. 공격받으면 금빛으로 몸을 부딪쳐 반격해요.', mapId:'sun-paradise', shape:'warm-star', color:'#ffd16a', level:2 },
   { id:'grown-warm-star', name:'Lv3 성장한따뜻한별', description:'별의 궤도를 품고 성장한 따뜻한별. 황금빛을 모아 몸통으로 반격해요.', mapId:'sun-paradise-2', shape:'grown-warm-star', color:'#ffba4f', level:3 },
+  { id:'cool-star', name:'Lv2 서늘한별', description:'달빛을 머금은 서늘한별. 차분한 빛으로 가까운 모험가를 밀어내요.', mapId:'moon-paradise-1', shape:'cool-star', color:'#9bd8ff', level:2 },
+  { id:'grown-cool-star', name:'Lv3 성장한서늘한별', description:'달의 궤도에서 자라난 서늘한별. 푸른 달빛을 모아 힘차게 반격해요.', mapId:'moon-paradise-2', shape:'grown-cool-star', color:'#879dff', level:3 },
   { id: 'star-crab', name: 'Lv1 별게', description: '달과 별을 품은 파란 등껍질, 집게에서 작은 물결을 일으키는 별게', mapId: 'star-origin-1', shape: 'star-crab', color: '#96cfff', level: 1 },
   { id: 'water-star', name: 'Lv1 물별이', description: '별무늬 물병을 메고 물보라를 뿌리는 작은 물별이', mapId: 'star-origin-1', shape: 'water-star', color: '#b6ecff', level: 1 },
   { id: 'star-scorpion', name: 'Lv2 별전갈', description: '보랏빛 별가루를 품은 별전갈', mapId: 'star-origin-2', shape: 'star-scorpion', color: '#a875d8', level: 2 },
   { id: 'chameleon-star', name: 'Lv2 카멜레별', description: '파스텔 초록빛으로 반짝이는 카멜레별', mapId: 'star-origin-2', shape: 'chameleon-star', color: '#b8e6a1', level: 2 },
-  { id: 'star-keeper', name: '별지기자리', description: '두 손에 별을 안은 사람 모양 별지기', mapId: 'star-origin-3', shape: 'star-keeper', color: '#f4c7e8', level: 3 },
-  { id: 'bear', name: '곰자리', description: '포근한 발바닥으로 별을 지키는 곰', mapId: 'star-origin-3', shape: 'bear', color: '#c9b3a5', level: 3 },
-  { id: 'elephant', name: '코끼리자리', description: '긴 코로 별가루를 뿜는 코끼리', mapId: 'star-origin-3', shape: 'elephant', color: '#c8c7e8', level: 3 },
-  { id: 'whale', name: '고래자리', description: '은하 바다를 헤엄치는 큰 고래', mapId: 'star-origin-3', shape: 'whale', color: '#9fd8e8', level: 3 },
-  { id: 'giraffe', name: '기린자리', description: '목 끝까지 별이 이어진 키 큰 기린', mapId: 'star-origin-3', shape: 'giraffe', color: '#ffe09b', level: 3 }
+  { id: 'star-dragon', name: 'Lv3 별용이', description: '별빛 비늘을 두른 용이', mapId: 'star-origin-3', shape: 'star-dragon', color: '#67c8ff', level: 3 },
+  { id: 'star-phoenix', name: 'Lv3 별사조', description: '별의 불꽃을 품은 사조', mapId: 'star-origin-3', shape: 'star-phoenix', color: '#ff9f45', level: 3 }
 ]);
 
 export function monsterType(id) {
@@ -33,6 +34,7 @@ export const MONSTER_SPAWNS=Object.freeze([
   {id:'star-scorpion-1',typeId:'star-scorpion'}, {id:'star-scorpion-2',typeId:'star-scorpion'},
   {id:'star-scorpion-3',typeId:'star-scorpion'}, {id:'chameleon-star-1',typeId:'chameleon-star'},
   {id:'chameleon-star-2',typeId:'chameleon-star'},
-  ...MONSTER_TYPES.filter(t=>t.mapId==='star-origin-3').map(t=>({id:t.id,typeId:t.id})),
-  ...['warm-star','grown-warm-star'].flatMap(typeId=>Array.from({length:5},(_,i)=>({id:`${typeId}-${i+1}`,typeId})))
+  ...Array.from({length:3},(_,i)=>({id:`star-dragon-${i+1}`,typeId:'star-dragon'})),
+  ...Array.from({length:2},(_,i)=>({id:`star-phoenix-${i+1}`,typeId:'star-phoenix'})),
+  ...['warm-star','grown-warm-star','cool-star','grown-cool-star'].flatMap(typeId=>Array.from({length:5},(_,i)=>({id:`${typeId}-${i+1}`,typeId})))
 ]);

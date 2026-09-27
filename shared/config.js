@@ -1,6 +1,7 @@
 import {enlargeParadise,paradisePoint} from './paradise-floor.js';
 import {PLAZA_LAYOUT,departmentSlots,plazaPoint,DEPARTMENT_RADIUS,DEPARTMENT_GAP} from './plaza-layout.js';
 import {VALLEY_LAYOUT} from './valley-layout.js';
+import {STREET_LAYOUT} from './street-layout.js';
 import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
@@ -35,30 +36,31 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
     {id:'pillar-weekly',name:'이번 주 받은 별',x:2020,y:1430,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
     { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x:3642,y:1320,radius: 38, kind: 'gate', target: 'star-street',
-      arrival: { x: 170, y: 380 }, color: '#d9c6f2', passable: true },
+      arrival: STREET_LAYOUT.spawn, color: '#d9c6f2', passable: true },
     { id: 'gate-garden', name: '낙원의 갈림길', x:78,y:1320,radius: 38, kind: 'gate', target:'moon-garden',
       arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡',x:1800,y:2562,radius:38,kind:'gate',target:'milky-valley',arrival:VALLEY_LAYOUT.spawn,color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
-    {id:'assignment-andromeda',name:'과제안드로메다',x:600,y:510,radius:144,kind:'andromeda',passable:true},
+    {id:'assignment-andromeda',name:'과제별서고',x:600,y:510,radius:144,kind:'andromeda',passable:true},
     {id:'black-hole-portal',name:'블랙홀',x:3090,y:510,radius:144,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
     MARKET
   ] });
 export const PLAZA_ID = MAP.id;
-// 두 번째 맵 '오색별빛 쉼터': 별상점이 있는 거리. 왼쪽 문으로 광장에 돌아갑니다. 행성은 만들 수 없습니다.
-export const STREET = Object.freeze({ id: 'star-street', name: '오색별빛 쉼터', width: 1200, height: 760, spawn: { x: 170, y: 380 },
+// 두 번째 맵 '오색별빛 쉼터': 위쪽 상점 마당과 아래쪽 놀이 마당을 잇는 공간입니다.
+export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 쉼터', theme:'starlight-street', width: STREET_LAYOUT.width, height: STREET_LAYOUT.height, spawn: STREET_LAYOUT.spawn,
   objects: [
-    { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: 80, y: 380, radius: 38, kind: 'gate', target: 'space-plaza',
+    { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
-    { id: 'shop', name: '별 상점', x: 400, y: 225, radius: 72, kind: 'shop', color: '#ffe59b' },
-    { id: 'energy-shop', name: '우주에너지 상점', x: 800, y: 225, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
+    { id: 'shop', name: '별 상점', x: 580, y: 500, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'energy-shop', name: '우주에너지 상점', x: 1180, y: 500, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1']
-    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:240+i*180,y:510,radius:32,kind:'arcade'})),
-    {id:'crafting-machine',name:'별빛 조합기',x:1080,y:380,radius:62,kind:'crafting',color:'#cdb8ef'},
-    { id: 'lamp-left', name: '별빛 가로등', x: 220, y: 290, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
-    { id: 'lamp-right', name: '별빛 가로등', x: 980, y: 290, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
+    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:420+i*240,y:1600,radius:32,kind:'arcade'})),
+    {id:'crafting-machine',name:'별빛 조합기',x:1430,y:780,radius:62,kind:'crafting',color:'#cdb8ef'},
+    {id:'playground-sign',name:'놀이터가는길',x:1100,y:1060,radius:24,kind:'street-sign',passable:true},
+    { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 650, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
+    { id: 'lamp-right', name: '별빛 가로등', x: 1480, y: 650, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
@@ -223,7 +225,8 @@ export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 60
     { id: 'board', name: '행성 규칙 게시판', x: 600, y: 150, radius: 80, kind: 'board', color: '#fff6d6' },
     { id: 'mailbox', name: '가입 신청 우체통', x: 220, y: 150, radius: 42, kind: 'mailbox', color: '#d5c4fa' },
     { id: 'report-board', name: '부서실적 작성하기', x: 960, y: 170, radius: 28, kind: 'report-board', color: '#fff6d6' },
-    { id: 'warning-rock', name: '경고 돌덩이', x: 260, y: 590, radius: 48, kind: 'warning-rock', color: '#696477' },
+    { id: 'warning-rock', name: '경고 제어돌', x: 260, y: 590, radius: 48, kind: 'warning-rock', color: '#696477' },
+    { id: 'department-control-machine', name: '부서행성 제어장치', x: 960, y: 590, radius: 48, kind: 'interior-decor-machine', color: '#bcc6d8' },
     { id: 'door', name: '광장으로 나가는 문', x: 600, y: 690, radius: 34, kind: 'door', color: '#d9d3f2', passable: true }
   ] });
 export const interiorIdOf = planetId => 'planet:' + planetId;

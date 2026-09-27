@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import {createClassroomServer} from '../server/app.js';
 import {MAP,PLAZA_ID} from '../shared/config.js';
 
-test('선생님이 체크한 알림장 줄만 학생 과제로 가져와 완료하고 안드로메다 명단에 이름순으로 남긴다',async t=>{
+test('선생님이 체크한 알림장 줄만 학생 과제로 가져와 완료하고 과제별서고 명단에 이름순으로 남긴다',async t=>{
   const game=createClassroomServer({teacherKey:'assignment-test-private-key',studentHours:false});
   const address=await game.listen(),sockets=[];
   const connect=async()=>{const socket=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};

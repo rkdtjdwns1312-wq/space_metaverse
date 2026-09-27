@@ -778,6 +778,7 @@ function doInteract(){
   else if(n.kind==='report-board')departmentWork.open(n.id);
   else if(n.kind==='mailbox')mailboxUI.open(n.id);
   else if(n.kind==='warning-rock')warningUI.open(n.id,room?.players.find(p=>p.id===selfId)?.role==='student');
+  else if(n.kind==='interior-decor-machine')interiorDecor.open(planetIdOfMap(world.currentMapId()),n.id);
   else if(n.kind==='andromeda')assignmentUI.open();
   else if(n.kind==='arcade'){stop();request('arcade:open',{objectId:n.id}).then(r=>{if(selfId&&!document.querySelector('dialog:modal'))arcade.open(r.gameId);}).catch(e=>toast(e.message));}
 }

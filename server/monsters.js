@@ -9,12 +9,13 @@ import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 
 
 export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
+const randomPatrolOffset=random=>Math.floor(Math.max(0,Math.min(.999999999,random()))*(MONSTER_RULES.walkMs+MONSTER_RULES.restMs));
 const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
-const largeSpawns=[[205,235],[600,235],[995,235],[400,660],[800,660]];
+const largeSpawns=[[430.56,256.94],[597.22,256.94],[763.89,256.94],[291.67,312.5],[902.78,312.5]];
 const sunSpawns=[[-330,-110],[0,-170],[330,-110],[-240,140],[240,140]];
 export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
 // 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
-export function monstersOf(room,now=Date.now()){
+export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map((spawn,i)=>{
     const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
@@ -25,9 +26,11 @@ export function monstersOf(room,now=Date.now()){
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
     const multiplier={1:1,2:2,3:4}[type.level]||1;
     const radius=MONSTER_RULES.radius*multiplier;
+    const patrolPhaseOffset=randomPatrolOffset(phaseRandom),patrolStartedAt=now+patrolPhaseOffset;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       hp:MONSTER_HP[type.mapId],maxHp:MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
-      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,patrolStartedAt:now,patrolCycle:-1,nextDirectionAt:now,lastMoveAt:now}];
+      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
+      patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   }));
   return room.monsters;
 }
@@ -92,16 +95,18 @@ export function selectMonsterTarget(room,monster){
 export function moveMonsters(room,now=Date.now(),random=Math.random){
   const monsters=monstersOf(room,now);
   const hits=[];
+  const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
-      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt:now,patrolCycle:-1,nextDirectionAt:now});
+      const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
+      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const rule=MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
-    if(previousTarget&&!target){m.patrolStartedAt=now;m.patrolCycle=-1;m.nextDirectionAt=now;}
+    if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
     let resting=false;
@@ -110,9 +115,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
     }else{
       // 레벨별 속도와 무관하게 실제 2초 이동/2초 휴식. 추격은 이 주기를 건너뜁니다.
-      const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
-      const elapsed=Math.max(0,now-(m.patrolStartedAt??now)),cycle=Math.floor(elapsed/cycleMs);
-      resting=elapsed%cycleMs>=MONSTER_RULES.walkMs;
+      const elapsed=now-(m.patrolStartedAt??now),cycle=Math.floor(Math.max(0,elapsed)/cycleMs);
+      resting=elapsed<0||elapsed%cycleMs>=MONSTER_RULES.walkMs;
       if(!resting&&cycle!==m.patrolCycle&&now>=m.nextDirectionAt){
         const angle=random()*Math.PI*2;m.dx=Math.cos(angle);m.dy=Math.sin(angle);
         m.patrolCycle=cycle;m.nextDirectionAt=m.patrolStartedAt+(cycle+1)*cycleMs;

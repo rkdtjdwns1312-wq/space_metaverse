@@ -20,7 +20,7 @@ test('행성 내부 경고 돌과 실적 게시판은 서로 다른 지정 위�
   const rock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
   const report=INTERIOR.objects.find(object=>object.kind==='report-board');
   const rules=INTERIOR.objects.find(object=>object.kind==='board');
-  assert.ok(rock.x<INTERIOR.width*.35&&rock.y>INTERIOR.height*.65);
+  assert.equal(rock.name,'경고 제어돌');assert.ok(rock.x<INTERIOR.width*.35&&rock.y>INTERIOR.height*.65);
   assert.ok(report.x>rules.x+rules.radius&&report.y<INTERIOR.height*.35);
   assert.ok(Math.hypot(report.x-rock.x,report.y-rock.y)>rock.radius+report.radius);
 });
