@@ -224,7 +224,7 @@ export const INTERIOR = Object.freeze({ width: 1200, height: 760, spawn: { x: 60
   objects: [
     { id: 'board', name: '행성 규칙 게시판', x: 600, y: 150, radius: 80, kind: 'board', color: '#fff6d6' },
     { id: 'mailbox', name: '가입 신청 우체통', x: 220, y: 150, radius: 42, kind: 'mailbox', color: '#d5c4fa' },
-    { id: 'report-board', name: '부서실적 작성하기', x: 960, y: 170, radius: 28, kind: 'report-board', color: '#fff6d6' },
+    { id: 'report-board', name: '실적작성표', x: 960, y: 170, radius: 28, kind: 'report-board', color: '#fff6d6' },
     { id: 'warning-rock', name: '경고 제어돌', x: 260, y: 590, radius: 48, kind: 'warning-rock', color: '#696477' },
     { id: 'department-control-machine', name: '부서행성 제어장치', x: 960, y: 590, radius: 48, kind: 'interior-decor-machine', color: '#bcc6d8' },
     { id: 'door', name: '광장으로 나가는 문', x: 600, y: 690, radius: 34, kind: 'door', color: '#d9d3f2', passable: true }

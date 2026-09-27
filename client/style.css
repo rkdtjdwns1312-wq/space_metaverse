@@ -315,6 +315,18 @@ body.joined #interior-decorate:not([hidden]){position:fixed;left:0;top:0;z-index
 .interior-decor-choice input{flex:0 0 auto;width:16px;height:16px;margin:0;padding:0}
 .interior-decor-swatch{flex:0 0 auto;width:17px;height:17px;border:1px solid #9d94a6;border-radius:50%}
 #interior-decor-error{color:#a33e5b}
+#interior-decor-targets{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+#interior-decor-targets [role=tab]{width:100%;text-align:left;background:#f3ecff;border:2px solid #d5c1ed;color:#63418b}
+#interior-decor-targets [aria-selected=true]{background:#8060af;color:#fff;border-color:#8060af}
+#interior-decor-selected{font-size:18px;color:#63418b;margin:14px 0 4px}
+#interior-board-content{position:fixed;left:0;top:0;width:444px;height:124px;z-index:3;transform-origin:0 0;overflow:hidden;display:flex;flex-direction:column;font-family:"Jua","Malgun Gothic",sans-serif;color:#635776;direction:ltr;contain:layout paint}
+#interior-board-content h3{font-size:28.5px;font-weight:400;line-height:34px;flex:0 0 34px;margin:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#interior-board-rules{font-size:22.5px;line-height:1.45;margin:2px 0 0;padding:0 10px 0 28px;min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;white-space:normal;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#a78abd #e7dbcf;overscroll-behavior:contain;touch-action:pan-y}
+#interior-board-rules li{padding:0 0 6px}
+#interior-board-rules:focus-visible{outline:2px solid #a78abd;outline-offset:-2px}
+#interior-board-rules::-webkit-scrollbar{width:10px}
+#interior-board-rules::-webkit-scrollbar-track{background:#e7dbcf;border-radius:6px}
+#interior-board-rules::-webkit-scrollbar-thumb{background:#a78abd;border-radius:6px;border:2px solid #e7dbcf}
 @media(max-width:390px){
   body.joined .bottom-dock{left:auto;right:8px;bottom:max(14px,env(safe-area-inset-bottom));transform:none;gap:3px;padding:6px}
   body.joined .dock-button{width:40px;min-height:43px;padding:4px 3px;border-radius:13px;font-size:10px}

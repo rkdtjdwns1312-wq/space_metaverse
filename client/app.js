@@ -28,7 +28,6 @@ import {createGrowthUI} from './growth-ui.js';
 import {createWarningUI} from './warning-ui.js';
 import {createAssignmentUI} from './assignment-ui.js';
 import {createInteriorDecorUI} from './interior-decor-ui.js';
-import {interiorDecorObject} from '/shared/interior-decor.js';
 import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
@@ -784,12 +783,6 @@ function doInteract(){
 }
 $('interact-prompt').onclick=doInteract;
 $('touch-interact').onclick=doInteract;
-$('interior-decorate').onclick=()=>{
-  if(!selfId||placing||document.querySelector('dialog:modal'))return;
-  const nearby=world.nearby(),planetId=planetIdOfMap(world.currentMapId());
-  const me=room?.players.find(player=>player.id===selfId);
-  if(nearby&&planetId&&interiorDecorObject(nearby.kind)&&(me?.role==='teacher'||me?.departmentId===planetId))interiorDecor.open(planetId,nearby.kind);
-};
 function updateInteractPrompt(){
   const prompt=$('interact-prompt'),touchButton=$('touch-interact'),decorate=$('interior-decorate');
   const hide=()=>{if(!prompt.hidden)prompt.hidden=true;if(!decorate.hidden)decorate.hidden=true;if(!touchButton.disabled)touchButton.disabled=true;};
@@ -812,15 +805,7 @@ function updateInteractPrompt(){
   y=Math.max(8,Math.min(innerHeight-height-8,y));
   // 좌표만 바뀔 때 레이아웃을 다시 계산하지 않도록 합성 이동을 사용합니다.
   prompt.style.transform='translate3d('+x+'px,'+y+'px,0)';
-  const planetId=planetIdOfMap(world.currentMapId()),me=room?.players.find(player=>player.id===selfId);
-  const canDecorate=!!(planetId&&interiorDecorObject(n.kind)&&(me?.role==='teacher'||me?.departmentId===planetId));
-  decorate.hidden=!canDecorate;
-  if(canDecorate){
-    const decorWidth=decorate.offsetWidth,decorHeight=decorate.offsetHeight;
-    const dx=Math.max(8,Math.min(innerWidth-decorWidth-8,x+(width-decorWidth)/2));
-    const below=y+height+5,dy=below+decorHeight+8<=innerHeight?below:Math.max(8,y-decorHeight-5);
-    decorate.style.transform='translate3d('+dx+'px,'+dy+'px,0)';
-  }
+  decorate.hidden=true; // 꾸미기는 부서행성 제어장치에서만 엽니다.
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
 window.addEventListener('keydown',e=>{
@@ -1199,6 +1184,7 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{if(keys[e.code]){held.delete(e.code);input();}});
 window.addEventListener('blur',stop);
+window.addEventListener('game-ui-focus',stop);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
 // 네이티브 dialog는 닫히면 열었던 메뉴 버튼으로 초점을 돌립니다.
 // 마지막 창이 닫힌 뒤에는 맵으로 복귀해 방향키/Enter가 이전 메뉴를 다시 누르지 않게 합니다.

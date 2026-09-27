@@ -1,4 +1,5 @@
 import {avatarFloorRadius} from '/shared/avatar-boundary.js';
+import {createInteriorBoardUI} from './interior-board-ui.js';
 import {inMarket} from '/shared/market.js';
 import {drawPlazaLandmark,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {floorRenderPoint} from '/shared/paradise-floor.js';
@@ -67,6 +68,7 @@ function drawStar(ctx,x,y,r,fill){
 // Canvas renderer만 교체하면 서버 규칙을 바꾸지 않고 그림을 바꿀 수 있습니다.
 // 행성은 정적 목록이 아니라 room.planets 스냅샷(가변 개수, 최대 PLANET.maxPerRoom)입니다.
 export function createWorld(canvas) {
+  const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
   let hits=[],starCards=[],energyDrops=[];
@@ -266,8 +268,8 @@ export function createWorld(canvas) {
   }
   function drawInterior(map,time){
     if(map.id==='black-hole')return drawBlackHoleInterior(map,time);
-    drawInteriorFloor(ctx,map);
     const planet=planets.find(p=>p.id===map.planetId);
+    drawInteriorFloor(ctx,map,planet);
     for(const o of map.objects){
       if(o.kind==='door'){drawGate({...o,target:PLAZA_ID});drawInteriorDecoration(ctx,o,interiorDecorStyle(planet?.interiorDecor,o.id));}
       else drawInteriorProp(ctx,o,planet);
@@ -389,6 +391,7 @@ export function createWorld(canvas) {
     const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
     const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
     view={x,y,scale};
+    interiorBoard.update({map,planet:planets.find(p=>p.id===map.planetId),view,rect,visible:!!selfId&&document.body.classList.contains('joined')});
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);

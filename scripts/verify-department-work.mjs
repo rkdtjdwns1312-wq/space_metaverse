@@ -8,7 +8,7 @@ import {addPlanet} from '../server/world.js';
 import {PLAZA_ID,INTERIOR,interiorIdOf,PLANET_COLORS} from '../shared/config.js';
 const game=createClassroomServer({teacherKey:'department-browser-test-private',studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
 await mkdir('.local',{recursive:true});
 const check=text=>{checks.push(text);console.log('Department '+checks.length+': '+text);};
 try{
@@ -18,12 +18,12 @@ try{
  const room=[...game.store.rooms.values()][0];
  for(const [page,name] of [[one,'1'],[two,'2']]){await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});}
  const p1=[...room.players.values()].find(p=>p.nickname==='1'),p2=[...room.players.values()].find(p=>p.nickname==='2'),t=[...room.players.values()].find(p=>p.role==='teacher');
- const planet=addPlanet(room,{name:'독서행성',description:'함께 읽어요',x:700,y:400,color:PLANET_COLORS[0],rules:[],templateId:'reading'});
+ const planet=addPlanet(room,{name:'독서행성',description:'함께 읽어요',x:2940,y:2070,color:PLANET_COLORS[0],rules:[],templateId:'reading'});
  p1.avatar.departmentId=p2.avatar.departmentId=planet.id;
  const report=INTERIOR.objects.find(object=>object.kind==='report-board');
- Object.assign(p1,{mapId:interiorIdOf(planet.id),x:report.x,y:report.y+45});Object.assign(p2,{mapId:interiorIdOf(planet.id),x:report.x-50,y:report.y+35});Object.assign(t,{mapId:PLAZA_ID,x:planet.x,y:planet.y+95});
+ Object.assign(p1,{mapId:interiorIdOf(planet.id),x:report.x,y:report.y+45});Object.assign(p2,{mapId:interiorIdOf(planet.id),x:report.x-50,y:report.y+35});Object.assign(t,{mapId:PLAZA_ID,x:planet.x,y:planet.y+70});
  const publish=()=>{for(const p of room.players.values())game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));};publish();
- const document=async page=>{await page.locator('#interact-prompt').filter({hasText:'부서실적 작성하기'}).waitFor({state:'visible'});await page.locator('#interact-prompt').click();await page.locator('#department-text').waitFor({state:'visible'});};
+ const document=async page=>{await page.locator('#interact-prompt').filter({hasText:'실적작성표'}).waitFor({state:'visible'});await page.locator('#interact-prompt').click();await page.locator('#department-text').waitFor({state:'visible'});};
  await document(one);await one.locator('#department-text').fill('책을 종류별로 정리하고 친구에게 책을 소개했어요.');await one.locator('#department-save').click();await one.locator('#department-report-status').filter({hasText:'저장된 실적'}).waitFor();
  await one.locator('#department-work-close').click();await document(one);assert.equal(await one.locator('#department-text').inputValue(),'책을 종류별로 정리하고 친구에게 책을 소개했어요.');check('문서 F 상호작용·작성·저장·닫았다 다시 열기');
  await one.locator('#department-submit').click();await one.locator('#department-report-status').filter({hasText:'실적제출확인요함'}).waitFor();assert.equal(planet.work.report.status,'submitted');assert.equal(game.store.snapshot(room,t).planets.find(p=>p.id===planet.id).reportPending,true);

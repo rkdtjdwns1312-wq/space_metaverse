@@ -47,7 +47,7 @@ import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
 import {addTask,completeTask} from './tasks.js';
-import {interiorDecorObject,interiorDecorColor} from '../shared/interior-decor.js';
+import {interiorDecorTarget,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -762,12 +762,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s,planet=requirePlanet(room,data);
       ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'우리 부서의 오브젝트만 꾸밀 수 있어요.');
       ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 꾸밀 수 있어요.');
-      const object=interiorDecorObject(data.objectId);
+      const object=interiorDecorTarget(data.objectId);
       ensure(object,'꾸밀 오브젝트를 골라주세요.');
-      const target=mapOf(p.mapId).objects.find(item=>item.id===object.id);
       const controlId=data.controlId,control=controlId==='department-control-machine'
         ?mapOf(p.mapId).objects.find(item=>item.id===controlId&&item.kind==='interior-decor-machine'):null;
-      ensure(target&&(isNear(p,target)||(control&&isNear(p,control))),'꾸밀 오브젝트나 제어장치 가까이에서 꾸며주세요.');
+      ensure(control&&isNear(p,control),'제어장치 가까이에서 꾸며주세요.');
       ensure(interiorDecorColor(data.colorId)&&object.shapes.some(shape=>shape.id===data.shapeId),'준비된 색과 모양 중에서 골라주세요.');
       const style={colorId:data.colorId,shapeId:data.shapeId};
       planet.interiorDecor??={};planet.interiorDecor[object.id]=style;
