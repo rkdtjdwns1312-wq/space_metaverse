@@ -43,7 +43,7 @@ test('department realtime access, work, distribution, privacy, and persistence',
   let secondPlayer = room.players.get(joins[1].selfId);
   let planet;
   game.store.transact(() => {
-    planet = addPlanet(room, { name: '실적행성', description: '', x: 190, y: 175, color: PLANET_COLORS[0], rules: ['협력해요'], createdBy: teacherPlayer.id, templateId: 'reading' });
+    planet = addPlanet(room, { name: '실적행성', description: '', x: 2940, y: 2070, color: PLANET_COLORS[0], rules: ['협력해요'], createdBy: teacherPlayer.id, templateId: 'reading' });
     for (const player of [firstPlayer, secondPlayer]) player.avatar.departmentId = planet.id;
   });
   const refresh = () => {

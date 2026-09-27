@@ -1,3 +1,9 @@
+// 기존 원화 대비 화면 면적 배율입니다. 다른 맵 몬스터와 전투 판정은 바꾸지 않습니다.
+export const MONSTER_VISUAL_AREA=Object.freeze({'star-origin-1':1.5,'star-origin-3':2});
+// 대기 원화의 불투명 몸체 외곽(따뜻한별 485×462, 서늘한별 400×412)을 기준으로
+// 투명 여백이 다른 두 LV2 몬스터의 화면 점유 면적을 맞춥니다. 전투 반경은 유지합니다.
+export const WARM_STAR_VISUAL_SCALE=Math.sqrt((400*412)/(485*462));
+export const monsterVisualScale=(mapId,typeId)=>Math.sqrt(MONSTER_VISUAL_AREA[mapId]||1)*(typeId==='warm-star'?WARM_STAR_VISUAL_SCALE:1);
 // 별의 시작점에서 만나는 귀여운 동물별자리 상상 디자인 목록입니다.
 export const MONSTER_HP=Object.freeze({'star-origin-1':20,'star-origin-2':40,'star-origin-3':100,'sun-paradise':40,'sun-paradise-2':100,'moon-paradise-1':40,'moon-paradise-2':100});
 export const MONSTER_COMBAT=Object.freeze({

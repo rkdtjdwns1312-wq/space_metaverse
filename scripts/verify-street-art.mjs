@@ -1,4 +1,4 @@
-// 요청 276: 오색별빛 쉼터 실제 원화 로딩, 맵 바닥·미니맵과 전체 화면을 확인합니다.
+// 요청 279: 오색별빛 쉼터 원화와 길목 안내 글자, 전체 화면을 확인합니다.
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
@@ -26,19 +26,25 @@ try{
     const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1000;const ctx=canvas.getContext('2d');ctx.scale(.5,.5);street.drawStreetGround(ctx,config.STREET);
     const painted=[];
     for(const o of config.STREET.objects){if(['shop','energy-shop','crafting','arcade'].includes(o.kind))painted.push({id:o.id,kind:o.kind,file:props.PAINTED_PROPS[o.kind].file,drawn:props.drawPaintedProp(ctx,o)});else if(o.kind==='gate')gates.drawPaintedGate(ctx,o);}
-    return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,overview:canvas.toDataURL('image/png')};
+    const closeup=document.createElement('canvas');closeup.width=2040;closeup.height=1170;
+    closeup.getContext('2d').drawImage(canvas,140,20,680,390,0,0,2040,1170);
+    const signAssetRequested=performance.getEntriesByType('resource').some(entry=>entry.name.includes('/assets/maps/plaza-sign.png'));
+    return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabel:street.STREET_ROUTE_LABEL,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
   });
   assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png'].sort());
   assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,8);assert.ok(loaded.painted.every(x=>x.drawn));
   assert.equal(loaded.painted.filter(x=>x.kind==='arcade').length,5);
   assert.equal(await page.locator('#minimap').getAttribute('data-map-id'),STREET_ID);
-  const sign=STREET.objects.find(o=>o.kind==='street-sign');assert.ok(onStreetFloor(STREET,sign.x,sign.y,24));
-  assert.ok(sign.x-105>STREET_LAYOUT.upper.x+STREET_LAYOUT.bridgeWidth/2,'표지판은 중앙 다리 오른쪽에 여백을 둡니다.');
-  await page.screenshot({path:'.local/request276-street-game.png'});
+  const routeLabel=loaded.routeLabel;assert.deepEqual(routeLabel,{text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
+  assert.ok(onStreetFloor(STREET,routeLabel.x,routeLabel.y),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');
+  assert.equal(loaded.signAssetRequested,false,'푯말 그림 PNG를 내려받지 않습니다.');
+  await page.screenshot({path:'.local/request279-street-game.png'});
   const gallery=await browser.newPage({viewport:{width:1000,height:1120}});gallery.on('pageerror',e=>errors.push(e.message));await gallery.goto(`${url}/health`);
   await gallery.evaluate(data=>{document.body.innerHTML='<main style="margin:0;background:#202038;color:white;font:18px sans-serif"><h1 style="margin:8px">오색별빛 쉼터 · 전체 맵 원화 검수</h1><img id="overview" style="display:block;width:min(900px,95vw);height:auto;margin:auto"/><pre id="assets" style="white-space:pre-wrap"></pre></main>';document.getElementById('overview').src=data.overview;document.getElementById('assets').textContent=JSON.stringify({backdrop:data.backdrop,images:data.imageFiles,paintedProps:data.painted},null,2);},loaded);
-  await gallery.locator('#overview').evaluate(img=>img.decode());await gallery.screenshot({path:'.local/request276-street-overview.png',fullPage:true});
+  await gallery.locator('#overview').evaluate(img=>img.decode());await gallery.screenshot({path:'.local/request279-street-overview.png',fullPage:true});
+  await gallery.evaluate(data=>{const image=document.createElement('img');image.id='closeup';image.style='display:block;width:min(1400px,96vw);height:auto;margin:16px auto';image.src=data.closeup;document.querySelector('main').prepend(image);},loaded);
+  await gallery.locator('#closeup').evaluate(img=>img.decode());await gallery.locator('#closeup').screenshot({path:'.local/request279-street-signs-closeup.png'});
   assert.deepEqual(errors,[]);
-  const result={checks:7,background:loaded.backdrop,assets:loaded.imageFiles,drawnProps:loaded.painted.map(({id,kind,file})=>({id,kind,file})),sign:{x:sign.x,y:sign.y,bridgeRight:STREET_LAYOUT.upper.x+STREET_LAYOUT.bridgeWidth/2},screenshots:['.local/request276-street-overview.png','.local/request276-street-game.png']};
-  await writeFile('.local/request276-street-art-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+  const result={checks:7,background:loaded.backdrop,assets:loaded.imageFiles,drawnProps:loaded.painted.map(({id,kind,file})=>({id,kind,file})),routeLabel,signAssetRequested:loaded.signAssetRequested,screenshots:['.local/request279-street-overview.png','.local/request279-street-game.png','.local/request279-street-signs-closeup.png']};
+  await writeFile('.local/request279-street-art-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
 }finally{await browser.close();await game.close();}

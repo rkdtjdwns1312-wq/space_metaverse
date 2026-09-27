@@ -167,7 +167,8 @@ try{
   Object.assign(player,{mapId:PLAZA_ID,x:market.x+market.rx*.75,y:market.y});publish();
   await page.locator('#interact-object').filter({hasText:'거래걸기'}).waitFor();
   await page.keyboard.press('f');await page.locator('dialog[open]').waitFor();await page.keyboard.press('Escape');
-  Object.assign(player,{x:market.x+market.rx+30});publish();
+  // 바닥 밖 강제 좌표는 안전 위치로 복구되므로, 실제 출구 다리 위에서 시장 이탈을 확인합니다.
+  Object.assign(player,{x:(market.x+PLAZA_LAYOUT.center.x)/2,y:(market.y+PLAZA_LAYOUT.center.y)/2});publish();
   await page.waitForTimeout(300);assert.equal(await page.locator('#interact-object').filter({hasText:'거래걸기'}).isVisible(),false);
   check('시장 외곽에서 거래 열기 가능, 원형 공간 밖에서는 거래 안내 없음');
   const signData=await page.evaluate(async()=>{
@@ -175,17 +176,13 @@ try{
     return {labels:PLAZA_SIGNS.map(s=>s.lines.join(' ')),signs:PLAZA_SIGNS,layout:PLAZA_LAYOUT};
   });
   const labels=signData.labels;
-  assert.deepEqual(labels,['과제별서고','별 시장으로 가는 길','부서행성으로 가는 길','블랙홀로 가는길']);
-  for(const [islandId,direction] of [['market',1],['department',-1]]){
-    const island=signData.layout.islands.find(entry=>entry.id===islandId),center=signData.layout.center;
-    const sign=signData.signs.find(entry=>entry.id==='sign-'+islandId),dx=island.x-center.x,dy=island.y-center.y,length=Math.hypot(dx,dy);
-    const t=.76/Math.hypot(dx/center.rx,dy/center.ry),routeX=center.x+dx*t,routeY=center.y+dy*t;
-    const lateral=(sign.x-routeX)*dy/length-(sign.y-routeY)*dx/length;
-    const requiredClearance=78+105*Math.abs(dy/length)+70*Math.abs(dx/length);
-    assert.equal(Math.sign(lateral),direction,`${islandId} sign is on its requested screen-x side of the bridge`);
-    assert.ok(Math.abs(lateral)>requiredClearance,`${islandId} sign sprite clears the bridge walking path`);
+  assert.deepEqual(labels,['과제별서고 가는길','별 시장 가는길','부서행성 가는길','블랙홀 가는길']);
+  for(const island of signData.layout.islands){
+    const center=signData.layout.center,sign=signData.signs.find(entry=>entry.id==='sign-'+island.id);
+    const dx=island.x-center.x,dy=island.y-center.y;
+    assert.ok(Math.abs((sign.x-center.x)*dy-(sign.y-center.y)*dx)<.001,'각 문구는 다리 중심선의 길목에 있습니다.');
   }
-  check('시장·부서행성 표지판의 지정된 좌우 배치와 다리 통행 폭 확보');
+  check('푯말 대신 광장 네 길목에 목적지 가는길 글자 안내');
   const assignment=MAP.objects.find(object=>object.id==='assignment-andromeda');
   assert.ok(assignment,'the persistent assignment-andromeda identifier remains unchanged');
   Object.assign(player,{mapId:PLAZA_ID,x:assignment.x+assignment.radius+20,y:assignment.y});publish();
@@ -201,7 +198,7 @@ try{
   Object.assign(player,{mapId:'star-street',x:shop.x,y:shop.y+160});publish();await page.waitForTimeout(450);
   await page.screenshot({path:'.local/254-star-shop.png'});
   Object.assign(player,{mapId:PLAZA_ID,...MAP.spawn});publish();
-  check('네 표지판 명칭·중앙 신전·별상점 원화 캡처');
+  check('네 길목 글자·중앙 신전·별상점 원화 캡처');
   await page.setViewportSize({width:390,height:844});
   publish();
   await page.waitForFunction(()=>document.getElementById('minimap-title')?.textContent==='별의 기원');

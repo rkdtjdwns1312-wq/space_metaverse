@@ -66,7 +66,7 @@ export function respondSummon(room,player,id,accept,now=Date.now()) {
   ensure(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
   canTravel(room,player,host);
   // 수락 시점의 서버 위치에서 충돌 없는 빈자리만 선택합니다.
-  const pos=arrivePosition(room,host.mapId,host);
+  const pos=arrivePosition(room,host.mapId,host,player);
   Object.assign(player,pos,{mapId:host.mapId,input:{x:0,y:0,at:0}});
   room.summons.delete(id);return r;
 }

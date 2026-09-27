@@ -139,6 +139,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
     ctx.strokeStyle='#b9a9d7';ctx.lineWidth=2;ctx.strokeRect(ox,oy,info.width*scale,info.height*scale);
     for(const o of info.objects){
+      if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
       drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme);
       if(detailed){ctx.fillStyle='#54456e';ctx.font='15px Jua, sans-serif';ctx.textAlign='center';const label=o.name||'행성';ctx.fillText(label,Math.max(65,Math.min(w-65,x)),Math.min(h-9,y+o.radius*scale+20),125);}

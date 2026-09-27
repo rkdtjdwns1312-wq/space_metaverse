@@ -192,7 +192,7 @@ export class PersistentRoomStore extends RoomStore {
       checkPin(p,data.pin);
       this.sessions.delete(p.token);
       const mapId=p.avatar.blackStar?BLACK_HOLE_ID:PLAZA_ID;
-      Object.assign(p,mapId===BLACK_HOLE_ID?spawnInside(room,mapId):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
+      Object.assign(p,mapId===BLACK_HOLE_ID?spawnInside(room,mapId,p):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
         expiresAt:null,mapId,input:{x:0,y:0,at:0}});
       const session={room,player:p};this.sessions.set(p.token,session);return session;
     }

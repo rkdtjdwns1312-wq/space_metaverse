@@ -1,15 +1,11 @@
-import {onParadiseFloor} from '../shared/paradise-floor.js';
-import {onPlazaFloor,departmentSite} from '../shared/plaza-layout.js';
-import {onValleyFloor} from '../shared/valley-layout.js';
+import {avatarFitsFloor} from '../shared/avatar-boundary.js';
+import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
-export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true) {
+export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
-  if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
-  if (!onParadiseFloor(map,x,y,r)) return false;
-  if (!onPlazaFloor(map,x,y,r)) return false;
-  if (!onValleyFloor(map,x,y,r)) return false;
+  if (!avatarFitsFloor(map,x,y,boundaryPlayer)) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
   if (!avoidPlayers) return true;
   return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
@@ -25,28 +21,28 @@ export function spawnPosition(room) {
   throw new Error('안전하게 입장할 자리가 없습니다.');
 }
 // spawn/문 근처 좌표를 중심으로 반지름을 0, 42, 84...로 늘리며 8방향에서 빈 자리를 찾습니다.
-function nearestFree(room, cx, cy, mapId) {
-  if (isFree(room, cx, cy, null, mapId)) return {x:cx, y:cy};
+function nearestFree(room, cx, cy, mapId, player) {
+  if (isFree(room, cx, cy, player?.id, mapId, true, player)) return {x:cx, y:cy};
   for (let radius=42; radius<2000; radius+=42)
     for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
       const x=cx+dx*radius, y=cy+dy*radius;
-      if (isFree(room, x, y, null, mapId)) return {x,y};
+      if (isFree(room, x, y, player?.id, mapId, true, player)) return {x,y};
     }
   return null;
 }
-export function spawnInside(room, mapId) {
-  const map = mapOf(mapId, room.planets.values()), pos = nearestFree(room, map.spawn.x, map.spawn.y, mapId);
+export function spawnInside(room, mapId, player) {
+  const map = mapOf(mapId, room.planets.values()), pos = nearestFree(room, map.spawn.x, map.spawn.y, mapId, player);
   if (!pos) throw new Error('안전하게 들어갈 자리가 없습니다.');
   return pos;
 }
 // 문을 통과해 다른 맵으로 이동할 때 도착 좌표(point) 근처의 빈 자리를 찾습니다. mapId는 도착하는 맵입니다.
-export function arrivePosition(room, mapId, point) {
-  const pos = nearestFree(room, point.x, point.y, mapId);
+export function arrivePosition(room, mapId, point, player) {
+  const pos = nearestFree(room, point.x, point.y, mapId, player);
   if (!pos) throw new Error('안전하게 도착할 자리가 없습니다.');
   return pos;
 }
-export function exitPosition(room, planet) {
-  const pos = nearestFree(room, planet.x, planet.y+planet.radius+RULES.radius+12, PLAZA_ID);
+export function exitPosition(room, planet, player) {
+  const pos = nearestFree(room, planet.x, planet.y+planet.radius+RULES.radius+12, PLAZA_ID, player);
   if (!pos) throw new Error('안전하게 들어갈 자리가 없습니다.');
   return pos;
 }
@@ -74,13 +70,17 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
   room.planets.set(planet.id, planet);
   for (const p of room.players.values())
     if (p.mapId === PLAZA_ID && Math.hypot(p.x-planet.x, p.y-planet.y) < planet.radius+RULES.radius)
-      Object.assign(p, exitPosition(room, planet));
+      Object.assign(p, exitPosition(room, planet, p));
   return planet;
 }
 export function advance(room, now) {
   // 실제 경과 시간이나 클라이언트 좌표 대신 고정 서버 tick으로 속도를 제한합니다.
   if (!room.unattended && ![...room.players.values()].some(p => p.role==='teacher' && p.connected)) return;
   for (const p of room.players.values()) {
+    // 진화하거나 옛 좌표로 입장해 몸이 바닥 밖에 걸린 경우 가까운 안전 위치로 보정합니다.
+    if(p.connected&&!isDefeated(p)&&!avatarFitsFloor(mapOf(p.mapId,room.planets.values()),p.x,p.y,p)){
+      const safe=nearestFree(room,p.x,p.y,p.mapId,p);if(safe)Object.assign(p,safe);
+    }
     if (!p.connected || isDefeated(p) || now-p.input.at>RULES.inputExpiryMs) continue;
     const length=Math.hypot(p.input.x,p.input.y);
     if (!length) continue;

@@ -3,7 +3,7 @@ import {drawPaintedProp} from './painted-props.js';
 export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
-for(const name of ['market','bazaar','andromeda','black-hole','sign']){
+for(const name of ['market','bazaar','andromeda','black-hole']){
   const img=new Image();img.src='/assets/maps/plaza-'+name+'.png';art[name]=img;
 }
 const ready=name=>art[name].complete&&art[name].naturalWidth>0;
@@ -31,21 +31,13 @@ export function drawPaintedStarShop(ctx,o){
   ctx.beginPath();ctx.roundRect(o.x-65,o.y-139,130,28,10);ctx.fill();ctx.stroke();ctx.restore();
   label(ctx,'별 상점',o.x,o.y-119,19);
 }
-const words={assignment:['과제별서고'],market:['별 시장으로','가는 길'],department:['부서행성으로','가는 길'],'black-hole':['블랙홀로 가는길']};
+const words={assignment:'과제별서고 가는길',market:'별 시장 가는길',department:'부서행성 가는길','black-hole':'블랙홀 가는길'};
+// 푯말 대신 중앙 마당에서 각 다리가 시작되는 지점의 바닥에 글씨만 표시합니다.
 export const PLAZA_SIGNS=L.islands.map(z=>{
-  const c=L.center,dx=z.x-c.x,dy=z.y-c.y,length=Math.hypot(dx,dy);
-  // SW 시장 표지판은 다리 시작점의 화면 오른쪽, SE 부서 표지판은 화면 왼쪽에 둡니다.
-  // 다리 옆으로 245px 비켜 세워 표지판 폭이 통행 폭을 침범하지 않게 합니다.
-  const t=.76/Math.hypot(dx/c.rx,dy/c.ry);
-  if(z.id==='market'||z.id==='department'){
-    const offset=z.id==='market'?245:-245;
-    return {id:'sign-'+z.id,x:c.x+dx*t+dy/length*offset,y:c.y+dy*t-dx/length*offset,lines:words[z.id]};
-  }
-  const side=z.x<c.x?1:-1;
-  return {id:'sign-'+z.id,x:c.x+dx*t-dy/length*112*side,y:c.y+dy*t+dx/length*112*side,lines:words[z.id]};
+  const c=L.center,dx=z.x-c.x,dy=z.y-c.y;
+  const t=.84/Math.hypot(dx/c.rx,dy/c.ry);
+  return {id:'sign-'+z.id,x:c.x+dx*t,y:c.y+dy*t,lines:[words[z.id]]};
 });
 export function drawPlazaSign(ctx,s){
-  sprite(ctx,'sign',s.x,s.y+12,210,140);
-  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='17px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#5d476e';
-  const center=s.y-69;s.lines.forEach((line,i)=>ctx.fillText(line,s.x,center+(i-(s.lines.length-1)/2)*21,180));ctx.restore();
+  ctx.save();ctx.textBaseline='middle';label(ctx,s.lines.join(' '),s.x,s.y,26);ctx.restore();
 }

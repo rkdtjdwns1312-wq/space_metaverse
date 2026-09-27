@@ -17,7 +17,15 @@ export function drawPaintedProp(ctx,o){
   const w=image.naturalWidth*scale,h=image.naturalHeight*scale,x=o.x-w/2,y=o.y+spec.foot-h;
   ctx.save();ctx.drawImage(image,x,y,w,h);ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font='19px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#5d4e74';
-  if(spec.signY)ctx.fillText(o.name||({shop:'별 상점','energy-shop':'우주에너지 상점',crafting:'별빛 조합기'}[o.kind]),o.x,y+h*spec.signY,w*spec.signWidth);
+  if(spec.signY){
+    const text=o.name||({shop:'별 상점','energy-shop':'우주에너지 상점',crafting:'별빛 조합기'}[o.kind]);
+    const sy=y+h*spec.signY,sw=Math.max(w*spec.signWidth,ctx.measureText(text).width+26),sh=35;
+    // 글자를 눌러 줄이지 않고 이름에 맞춰 실제 간판의 폭을 넓힙니다.
+    const panel=ctx.createLinearGradient(0,sy-sh/2,0,sy+sh/2);panel.addColorStop(0,'#fffdf3');panel.addColorStop(1,'#f3e4c9');
+    ctx.fillStyle=panel;ctx.strokeStyle=o.kind==='energy-shop'?'#79b3d2':'#bf9b57';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.roundRect(o.x-sw/2,sy-sh/2,sw,sh,9);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#5d4e74';ctx.fillText(text,o.x,sy+1);
+  }
   if(o.kind==='arcade'){
     ctx.fillStyle='#65517d';ctx.font='20px "Jua",sans-serif';
     ctx.fillText(({memory:'▦',baseball:'⚾',stars:'★',sudoku:'1·9',dodge:'☄'})[o.gameId]||'★',o.x,y+h*.385);

@@ -513,7 +513,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const previousId=student.avatar.departmentId;
         if(student.mapId!==PLAZA_ID&&!student.avatar.blackStar){
           const previousPlanet=room.planets.get(previousId);
-          Object.assign(student,exitPosition(room,previousPlanet||planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+          Object.assign(student,exitPosition(room,previousPlanet||planet,student),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
         }
         student.avatar.departmentId=planet.id;
         if(previousId){
@@ -556,7 +556,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       room.planets.delete(planet.id);
       const mapId=interiorIdOf(planet.id);
       for(const player of room.players.values()){
-        if(player.mapId===mapId) Object.assign(player,exitPosition(room,planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+        if(player.mapId===mapId) Object.assign(player,exitPosition(room,planet,player),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
         if(player.avatar.departmentId===planet.id) player.avatar.departmentId=null;
       }
       roster(room);
@@ -565,7 +565,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     const completeMembership=(room,planet,p)=>{
       const previous=room.planets.get(p.avatar.departmentId);
-      if(previous&&p.mapId===interiorIdOf(previous.id))Object.assign(p,exitPosition(room,previous),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      if(previous&&p.mapId===interiorIdOf(previous.id))Object.assign(p,exitPosition(room,previous,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
       p.avatar.departmentId=planet.id;clearJoinRequests(room,p.id);
       if(previous){previous.rename?.votes.delete(p.id);evaluateRename(room,previous);}
       roster(room);announce(room,previous?p.nickname+' 친구가 '+previous.name+'에서 '+planet.name+ro(planet.name)+' 옮겼어요.':p.nickname+' 친구가 '+planet.name+'에 가입했어요.');
@@ -611,7 +611,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s;
       const planet=requirePlanet(room,data);
       ensure(p.avatar.departmentId===planet.id,planet.name+' 소속이 아니에요.');
-      if(p.mapId===interiorIdOf(planet.id)) Object.assign(p,exitPosition(room,planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      if(p.mapId===interiorIdOf(planet.id)) Object.assign(p,exitPosition(room,planet,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
       p.avatar.departmentId=null;
       planet.rename?.votes.delete(p.id); evaluateRename(room,planet);
       roster(room);
@@ -626,7 +626,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.role==='teacher' || p.avatar.departmentId===planet.id,planet.name+' 소속 친구만 들어갈 수 있어요.');
       ensure(isNear(p,planet),'행성에 더 가까이 가주세요.');
       const mapId=interiorIdOf(planet.id);
-      Object.assign(p,spawnInside(room,mapId),{mapId,input:{x:0,y:0,at:0}});
+      Object.assign(p,spawnInside(room,mapId,p),{mapId,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
     });
@@ -637,7 +637,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(planetId,'지금은 행성 안이 아니에요.');
       const planet=room.planets.get(planetId);
       ensure(planet,'행성을 찾지 못했어요.');
-      Object.assign(p,exitPosition(room,planet),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      Object.assign(p,exitPosition(room,planet,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
     });
@@ -753,7 +753,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
       ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
       requireMapLevel(p,data.to);
-      Object.assign(p,arrivePosition(room,data.to,gate.arrival),{mapId:data.to,input:{x:0,y:0,at:0}});
+      Object.assign(p,arrivePosition(room,data.to,gate.arrival,p),{mapId:data.to,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
     });
@@ -1400,6 +1400,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
+      // 맵/위치 변경으로 시장을 떠난 거래는 바닥 보정 전에 종료합니다.
+      if(pruneMarketTrades(room,clock(),whisper))roster(room);
       advance(room,now);
       if(pruneMarketTrades(room,clock(),whisper))roster(room);
       for(const p of recoverDefeated(room,clock())){

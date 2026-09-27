@@ -23,7 +23,7 @@ test('수평 facingX는 좌우 실제 이동에서만 바뀌고 수직·정지·
 
   player.x=RULES.radius;
   move(room,player,-1,0,1030);assert.equal(player.facingX,-1,'벽에 막힌 좌 입력은 방향을 바꾸지 않는다');
-  player.x=MAP.spawn.x;
+  Object.assign(player,MAP.spawn);
   move(room,player,1,0,1040);assert.equal(player.facingX,1);
 });
 

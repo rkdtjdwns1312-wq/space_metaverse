@@ -1,3 +1,4 @@
+import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
@@ -51,7 +52,7 @@ test('movement is normalized and ignores client-selected coordinates or speed',(
 });
 test('world boundary and a temple pillar block movement',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
- player.x=RULES.radius;player.y=MAP.spawn.y;player.input={x:-1,y:0,at:0};advance(room,0);assert.equal(player.x,RULES.radius);
+ player.x=RULES.radius;player.y=MAP.spawn.y;player.input={x:-1,y:0,at:0};advance(room,0);assert.ok(avatarFitsFloor(MAP,player.x,player.y,player));
  assert.equal(isFree(room,MAP.objects.find(o=>o.id==='pillar-notice').x,MAP.objects.find(o=>o.id==='pillar-notice').y,player.id),false);
 });
 test('placementFree keeps new planets away from the star, other planets and pending proposals',()=>{

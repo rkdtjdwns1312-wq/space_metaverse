@@ -1,9 +1,10 @@
 import {STREET_LAYOUT,STREET_POLYGONS,STREET_EDGES} from '/shared/street-layout.js';
 
 export const STREET_BACKDROP_SRC='/assets/maps/starlight-street.png';
+export const STREET_ROUTE_LABEL=Object.freeze({text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
 const images={};let revision=0;
 const listeners=new Set(),tiles=new Map();
-for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png',sign:'/assets/maps/plaza-sign.png'})){
+for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png'})){
   const image=new Image();image.onload=()=>{revision++;tiles.clear();for(const fn of listeners)fn();};image.src=src;images[key]=image;
 }
 const ready=key=>images[key]?.complete&&images[key].naturalWidth>0;
@@ -24,12 +25,9 @@ function backdrop(ctx,map){
     }
   }
 }
-function sign(ctx,map){
-  const o=map.objects.find(item=>item.kind==='street-sign');if(!o)return;
-  const w=210,h=140;
-  if(ready('sign'))ctx.drawImage(images.sign,o.x-w/2,o.y+12-h,w,h);
-  else{ctx.fillStyle='#886743';ctx.fillRect(o.x-w/2,o.y-95,w,72);ctx.fillStyle='#f2e2c1';ctx.fillRect(o.x-w/2+10,o.y-85,w-20,48);}
-  ctx.save();ctx.font='bold 24px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=5;ctx.strokeStyle='#fffaf4';ctx.strokeText(o.name,o.x,o.y-69,190);ctx.fillStyle='#49345f';ctx.fillText(o.name,o.x,o.y-69,190);ctx.restore();
+function routeLabel(ctx){
+  const label=STREET_ROUTE_LABEL;
+  ctx.save();ctx.font=label.font;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=6;ctx.strokeStyle=label.outline;ctx.strokeText(label.text,label.x,label.y);ctx.fillStyle=label.color;ctx.fillText(label.text,label.x,label.y);ctx.restore();
 }
 function paint(ctx,map){
   backdrop(ctx,map);
@@ -39,7 +37,7 @@ function paint(ctx,map){
   const wash=ctx.createLinearGradient(STREET_LAYOUT.upper.x-STREET_LAYOUT.upper.rx,0,STREET_LAYOUT.upper.x+STREET_LAYOUT.upper.rx,map.height);
   wash.addColorStop(0,'#ffd8eb30');wash.addColorStop(.5,'#fff6dc18');wash.addColorStop(1,'#bde6ff3d');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#85809f';ctx.lineWidth=18;ctx.stroke(edgePath);ctx.strokeStyle='#fff5e9';ctx.lineWidth=6;ctx.stroke(edgePath);ctx.restore();
-  sign(ctx,map);
+  routeLabel(ctx);
 }
 export function drawStreetGround(ctx,map){
   let canvas=tiles.get(map.id);

@@ -548,8 +548,8 @@ try{
 
  // Item 4: the star shop.
  const shopObj=STREET.objects.find(o=>o.id==='shop');
- // 상점 위쪽의 길목을 지나 상점 정면으로 접근합니다. 좌표는 현재 상점 위치에서 계산합니다.
- await walkNear(student,p,{x:shopObj.x,y:shopObj.y-120},{waypoint:true});
+ // 상점 아래의 열린 마당을 지나 정면으로 접근합니다.
+ await walkNear(student,p,{x:shopObj.x,y:shopObj.y+130},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});
  await student.keyboard.press('f');

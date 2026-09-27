@@ -1,3 +1,4 @@
+import {avatarFloorRadius} from '/shared/avatar-boundary.js';
 import {inMarket} from '/shared/market.js';
 import {drawPlazaLandmark,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {floorRenderPoint} from '/shared/paradise-floor.js';
@@ -24,7 +25,7 @@ import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, 
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
-import {monsterType} from '/shared/monsters.js';
+import {monsterType,monsterVisualScale} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
 import {avatarLabel} from '/shared/avatar-label.js';
@@ -150,6 +151,7 @@ export function createWorld(canvas) {
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
+    for(const sign of PLAZA_SIGNS)drawPlazaSign(ctx,sign);
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
@@ -373,7 +375,7 @@ export function createWorld(canvas) {
     // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
     for(const p of players){
       const position=tracks.get(p.id)?.at(t)||{x:p.x,y:p.y};
-      points.set(p.id,floorRenderPoint(mapOf(p.mapId,planets),position,{x:p.x,y:p.y},config.RULES.radius));
+      points.set(p.id,floorRenderPoint(mapOf(p.mapId,planets),position,{x:p.x,y:p.y},avatarFloorRadius(p)));
     }
     for(const m of monsters)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
@@ -404,19 +406,20 @@ export function createWorld(canvas) {
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
       const attack=monsterAttacks.get(m.id);
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
-      const body={...type,...m,...pos},activeAttack=monsterAttacks.get(m.id);
+      const visualRadius=m.radius*monsterVisualScale(m.mapId,m.typeId);
+      const body={...type,...m,...pos,radius:visualRadius},activeAttack=monsterAttacks.get(m.id);
       if(!drawCelestialMonster(ctx,body,t,activeAttack)&&!drawSunMonster(ctx,body,t,activeAttack)&&!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
       const isWater=['star-crab','water-star'].includes(type.shape);
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
       const barScale=celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?1.3:isWater?1.8:1;
-      const barWidth=64,barY=pos.y-(Number(m.radius)||24)*barScale-18;
+      const barWidth=64,barY=pos.y-visualRadius*barScale-18;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,9,4);ctx.fill();
       ctx.fillStyle='#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),7);
       ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();
-      if(m===firstMonster){canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
+      if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
-      const nameY=pos.y+(Number(m.radius)||24)*(celestial?celestial.scale:type.shape==='grown-warm-star'?.55:isWater?1.65:1)+13;
+      const nameY=pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.55:isWater?1.65:1)+13;
       ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x,nameY);
       ctx.fillText(type.name,pos.x,nameY);ctx.restore();
     }
@@ -434,8 +437,7 @@ export function createWorld(canvas) {
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
-        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)})),
-        ...PLAZA_SIGNS.map(s=>({y:s.y,draw:()=>drawPlazaSign(ctx,s)}))];
+        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
