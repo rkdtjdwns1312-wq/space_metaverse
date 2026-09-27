@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
 import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
 import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
+import {departmentSlots} from '../shared/plaza-layout.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
-test('the plaza is 60% of its former dimensions while the temple reservation stays the same size',()=>{
- assert.deepEqual([MAP.width,MAP.height],[2160,1440]);
- const temple=PLANET.reserved.find(z=>z.label==='별들의 신전');
- assert.deepEqual([temple.width,temple.height],[900,700]);
- assert.equal(PLANET.reserved.some(z=>z.label.includes('가는 길')),false);
+test('the enlarged plaza exposes its real objects and department placement slots',()=>{
+ assert.deepEqual([MAP.width,MAP.height],[6200,4400]);
+ assert.deepEqual(MAP.spawn,{x:3000,y:2340});
+ assert.deepEqual(MAP.templeCenter,{x:3000,y:2200});
+ assert.equal(departmentSlots().length,50);
+ assert.ok(departmentSlots().every(p=>p.x>=0&&p.x<=MAP.width&&p.y>=0&&p.y<=MAP.height));
  for(const object of MAP.objects)assert.ok(object.x>=0&&object.x<=MAP.width&&object.y>=0&&object.y<=MAP.height);
 });
 test('garden uses its own map size and collision boundaries, not the enlarged plaza',()=>{
@@ -49,26 +51,27 @@ test('movement is normalized and ignores client-selected coordinates or speed',(
 });
 test('world boundary and a temple pillar block movement',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
- player.x=RULES.radius;player.y=400;player.input={x:-1,y:0,at:0};advance(room,0);assert.equal(player.x,RULES.radius);
+ player.x=RULES.radius;player.y=MAP.spawn.y;player.input={x:-1,y:0,at:0};advance(room,0);assert.equal(player.x,RULES.radius);
  assert.equal(isFree(room,MAP.objects.find(o=>o.id==='pillar-notice').x,MAP.objects.find(o=>o.id==='pillar-notice').y,player.id),false);
 });
 test('placementFree keeps new planets away from the star, other planets and pending proposals',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'t');
  const star=MAP.objects.find(o=>o.kind==='pillar');
  assert.equal(placementFree(room, star.x, star.y), false);
- assert.equal(placementFree(room, 650, 150), true);
+ const [firstSlot,secondSlot]=departmentSlots();
+ assert.equal(placementFree(room, firstSlot.x, firstSlot.y), true);
  // 예약 구역(왼쪽 아래 이동 버튼 자리)에는 만들 수 없고, 그 밖은 됩니다.
  assert.equal(placementFree(room, 120, 680), false);
- assert.equal(placementFree(room, 400, 680), true);
- const planet=addPlanet(room,{name:'첫행성',description:'',x:650,y:150,color:'#98dfd2',rules:['규칙']});
+ assert.equal(placementFree(room, secondSlot.x, secondSlot.y), true);
+ const planet=addPlanet(room,{name:'첫행성',description:'',...firstSlot,color:'#98dfd2',rules:['규칙']});
  assert.equal(placementFree(room, planet.x, planet.y), false);
- room.proposals.set('p1',{id:'p1',name:'대기',description:'',x:400,y:400,radius:PLANET.radius,color:'#fff',playerId:'x',nickname:'x',at:Date.now()});
- assert.equal(placementFree(room, 400, 400), false);
+ room.proposals.set('p1',{id:'p1',name:'대기',description:'',...secondSlot,radius:PLANET.radius,color:'#fff',playerId:'x',nickname:'x',at:Date.now()});
+ assert.equal(placementFree(room, secondSlot.x, secondSlot.y), false);
 });
 test('addPlanet pushes a plaza player standing where the new planet appears out to a free spot',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
- player.x=500;player.y=500;player.mapId=PLAZA_ID;
- const planet=addPlanet(room,{name:'새행성',description:'',x:500,y:500,color:'#98dfd2',rules:['규칙'],createdBy:null});
+ const [slot]=departmentSlots();Object.assign(player,slot,{mapId:PLAZA_ID});
+ const planet=addPlanet(room,{name:'새행성',description:'',...slot,color:'#98dfd2',rules:['규칙'],createdBy:null});
  assert.ok(Math.hypot(player.x-planet.x,player.y-planet.y) >= planet.radius+RULES.radius);
  assert.equal(planet.createdBy,null);
 });
@@ -84,10 +87,10 @@ test('interior maps block boundary and board, allow doors, isolate collisions pe
  const inside=store.join({code:room.code,nickname:'1'},'s').player;
  inside.mapId=mapId;inside.x=600;inside.y=400;
  assert.equal(isFree(room, 600, 400, null, mapId), false);
- assert.equal(isFree(room, 600, 400, null, PLAZA_ID), true);
- // 광장에서는 자유롭지만 행성 안 게시판 때문에 막히는 같은 좌표
- assert.equal(isFree(room, 600, 90, null, PLAZA_ID), true);
- assert.equal(isFree(room, 600, 90, null, mapId), false);
+ assert.equal(isFree(room, MAP.spawn.x, MAP.spawn.y, null, PLAZA_ID), true);
+ // 확대된 광장의 스폰 좌표는 작은 행성 내부 맵의 바깥입니다.
+ assert.equal(isFree(room, MAP.spawn.x, MAP.spawn.y, null, PLAZA_ID), true);
+ assert.equal(isFree(room, MAP.spawn.x, MAP.spawn.y, null, mapId), false);
 });
 test('spawnInside places players near the interior spawn point without overlap',()=>{
  const store=new RoomStore(),{room}=store.create({...roomData,seedPlanets:true},'t');

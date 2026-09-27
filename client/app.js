@@ -828,7 +828,7 @@ window.addEventListener('keydown',e=>{
 });
 function startPlacement(){world.setPlacing(true);
   placing=true;document.body.classList.add('placing');
-  $('map-caption').textContent='✦ 지도에서 행성을 만들 자리를 눌러주세요 (Esc 취소)';
+  $('map-caption').textContent='✦ 오른쪽 아래 부서행성 광장에 자리를 골라주세요 (Esc 취소)';
   $('planet-new').textContent='취소';
 }
 function stopPlacement(){

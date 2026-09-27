@@ -54,8 +54,8 @@ test('친구 호출·붐비는 입장도 바닥 내부에 배치하고 낙원 �
     for(let i=0;i<30;i++){const p=arrivePosition(r,map.id,map.objects[0]);assert.ok(onParadiseFloor(map,p.x,p.y,RULES.radius));r.players.set(String(i),{...p,id:String(i),mapId:map.id});}
     const spawn=spawnInside(r,map.id);assert.ok(onParadiseFloor(map,spawn.x,spawn.y,RULES.radius));
   }
-  assert.ok(isFree(room(),25,MAP.height-25,null,MAP.id));
-  assert.ok(onParadiseFloor(MAP,40,40));
+  assert.ok(isFree(room(),MAP.spawn.x,MAP.spawn.y,null,MAP.id));
+  assert.ok(onParadiseFloor(MAP,MAP.spawn.x,MAP.spawn.y));
 });
 test('다리 모서리 보간이 바깥으로 나가면 확정된 안전 좌표를 그린다',()=>{
   const safe=GARDEN.spawn,outside={x:40,y:40};

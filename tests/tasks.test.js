@@ -39,7 +39,7 @@ test('선생님이 체크한 알림장 줄만 학생 과제로 가져와 완료�
   const gallery=await call(teacher,'assignment:read',{});
   assert.equal(gallery.weeks.length,3);assert.equal(gallery.weeks[0].assignments.length,1);
   assert.deepEqual(gallery.weeks[0].assignments[0].completed,['가은','다희']);
-  Object.assign(b,{x:1100,y:1100});assert.equal((await call(second,'assignment:read',{})).ok,false);
+  Object.assign(b,{x:MAP.spawn.x+100,y:MAP.spawn.y+100});assert.equal((await call(second,'assignment:read',{})).ok,false);
   Object.assign(teacherPlayer,{x:notice.x+65,y:notice.y});
   const changed=await call(teacher,'temple:save',{objectId:'pillar-notice',text:'물병 준비\n다른 책 읽기',taskLineIndexes:[1]});
   assert.notEqual(changed.taskLines[0].assignmentId,assignmentId);

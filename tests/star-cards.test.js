@@ -232,10 +232,10 @@ test('30 stable centered slots avoid pillars and fit reserved area, full board r
   for (let i = 0; i < MAX_STAR_CARDS; i++) use(f, 'rest', [], NOW + i * 2000);
   const views = activeStarCards(f.room, NOW + DAY);
   assert.equal(views.length, MAX_STAR_CARDS);
-  const reserved = PLANET.reserved.find(area => area.label === '별들의 신전');
+  const temple = MAP.templeCenter;
   for (const view of views) {
-    assert.ok(view.x - view.width / 2 >= reserved.x && view.x + view.width / 2 <= reserved.x + reserved.width);
-    assert.ok(view.y - view.height / 2 >= reserved.y && view.y + view.height / 2 <= reserved.y + reserved.height);
+    assert.ok(Math.abs(view.x-temple.x)<=450-view.width/2);
+    assert.ok(view.y-temple.y>=-250-view.height/2&&view.y-temple.y<=450-view.height/2);
     assert.equal(view.width, 66); assert.equal(view.height, 90); assert.equal(view.mapId, MAP.id);
     assert.equal(view.slot, view.data.slot);
     for (const pillar of MAP.objects.filter(object => object.kind === 'pillar')) {

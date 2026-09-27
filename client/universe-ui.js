@@ -1,4 +1,5 @@
 import {drawParadiseFloor} from './paradise-floor.js';
+import {drawPlazaMiniFloor} from './plaza-art.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
@@ -104,6 +105,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#c7c9e5':'#e1daf2';
     ctx.fillRect(x,y,w,h);
     if(theme==='plaza'){
+      ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawPlazaMiniFloor(ctx);ctx.restore();
       // 본 맵과 같은 신전 바닥 중심을 사용합니다.
       const sx=w/info.width,sy=h/info.height,cx=x+(info.templeCenter?.x??1080)*sx,cy=y+(info.templeCenter?.y??700)*sy;
       ctx.fillStyle='#bda9d688';ctx.beginPath();ctx.ellipse(cx,cy+26*sy,443*sx,257*sy,0,0,Math.PI*2);ctx.fill();

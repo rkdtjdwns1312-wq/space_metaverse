@@ -103,7 +103,7 @@ const planetInput=(room,data) => {
   ensure(!filterChat(description).flagged,'행성 소개에 쓸 수 없는 말이 있어요.');
   ensure(Number.isFinite(data.x) && Number.isFinite(data.y),'행성 위치를 확인해주세요.');
   const x=Math.round(data.x), y=Math.round(data.y);
-  ensure(placementFree(room,x,y),'그 자리에는 행성을 만들 수 없어요. 조금 떨어진 곳을 골라주세요.');
+  ensure(placementFree(room,x,y),'오른쪽 아래 부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
   ensure(PLANET_COLORS.includes(data.color),'행성 색을 골라주세요.');
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
   return {name,description,x,y,color:data.color,templateId:data.templateId};

@@ -14,6 +14,7 @@ import { evolveAvatar, gainExperience } from '../server/progression.js';
 import { MARKET } from '../shared/market.js';
 import { unlockStoppedStore } from '../server/store-lock.js';
 import { PLAZA_ID, STREET_ID, STREET, SHOP, interiorIdOf, mapOf } from '../shared/config.js';
+import {departmentSlots,departmentSite} from '../shared/plaza-layout.js';
 
 const key='persistence-tests-private-teacher-key';
 const call=(s,event,data={})=>s.timeout(5000).emitWithAck(event,data);
@@ -240,16 +241,25 @@ test('대기 행성 신청과 이름 투표 Map을 복원하며 수업 밖 소�
   assert.ok((await call(a,'planet:join',{planetId:planet.id})).ok);
   assert.ok((await call(b,'planet:join',{planetId:planet.id})).ok);await approveJoinFixture(f.game,a,b,planet.id);
   assert.ok((await call(a,'planet:rename:propose',{planetId:planet.id,name:'책읽는행성'})).ok);
-  const proposed=await call(c,'planet:propose',{name:'새행성',description:'내일 이어서',x:1870,y:1050,color:'#98dfd2',templateId:'reading'});
+  const proposed=await call(c,'planet:propose',{name:'새행성',description:'내일 이어서',...departmentSlots()[10],color:'#98dfd2',templateId:'reading'});
   assert.equal(proposed.ok,true,proposed.error);
+  const proposal= f.game.store.rooms.get(code).proposals.get(proposed.proposalId);
+  const proposalData=structuredClone(proposal);delete proposalData.x;delete proposalData.y;delete proposalData.at;
+  f.game.store.transact(()=>Object.assign(proposal,{x:1870,y:1050}));
   await f.restart();const tr=await f.connect(),opened=await open(tr,code);assert.ok(opened.ok);
   const saved=opened.room.planets.find(p=>p.id===planet.id);
   assert.equal(saved.rename.yes,1);assert.equal(saved.memberCount,2);assert.equal(opened.room.proposals.length,1);
+  const restoredProposal=opened.room.proposals[0];
+  const restoredData=structuredClone(restoredProposal);delete restoredData.x;delete restoredData.y;delete restoredData.at;
+  assert.deepEqual(restoredData,proposalData);
+  assert.ok(departmentSite(restoredProposal.x,restoredProposal.y));
+  await f.restart();const tr2=await f.connect(),openedAgain=await open(tr2,code);
+  assert.deepEqual(openedAgain.room.proposals[0],restoredProposal);
   const returning=await f.connect();assert.equal((await join(returning,code,'2','2222')).selfId,jb.selfId);
   assert.ok((await call(returning,'planet:rename:vote',{planetId:planet.id,agree:true})).ok);
   assert.equal(f.game.store.rooms.get(code).planets.get(planet.id).name,'책읽는행성');
   assert.equal(f.game.store.rooms.get(code).players.get(ja.selfId).away,true);
-  assert.ok((await call(tr,'planet:approve',{proposalId:opened.room.proposals[0].id})).ok);
+  assert.ok((await call(tr2,'planet:approve',{proposalId:opened.room.proposals[0].id})).ok);
 });
 
 test('복원시 손상된 학생 데이터는 시작을 막고 원본을 그대로 보존하며 잠금을 돌려준다',()=>{

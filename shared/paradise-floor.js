@@ -1,5 +1,6 @@
 // 낙원의 바닥 외곽선 하나를 서버 충돌, 실제 맵, 작은 지도에서 함께 사용합니다.
 // 쿼터뷰의 원형 공간은 타원으로 보이며, 문이 있는 방향에만 곧은 다리가 붙습니다.
+import {onPlazaFloor} from './plaza-layout.js';
 export const PARADISE_SCALE=1.5;
 export const PARADISE_FLOOR=Object.freeze({rx:660,ry:370,bridgeWidth:180,landing:55,wallWidth:12});
 export const isParadise=id=>id==='moon-garden'||id==='star-paradise'||/^sun-paradise(?:-[23])?$/.test(id)||/^moon-paradise-[123]$/.test(id);
@@ -54,5 +55,5 @@ export function onParadiseFloor(map,x,y,radius=0){
 }
 // 다리 모서리에서 두 서버 좌표 사이를 보간할 때 배경을 가로지르지 않게 보정합니다.
 export function floorRenderPoint(map,point,fallback,radius=0){
-  return onParadiseFloor(map,point.x,point.y,radius)?point:fallback;
+  return onParadiseFloor(map,point.x,point.y,radius)&&onPlazaFloor(map,point.x,point.y,radius)?point:fallback;
 }

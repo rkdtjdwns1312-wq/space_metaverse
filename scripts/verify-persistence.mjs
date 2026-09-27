@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClassroomServer } from '../server/app.js';
 import {fillNewClass} from './class-setup.mjs';
-import { STREET, STREET_ID, SHOP } from '../shared/config.js';
+import { STREET, STREET_ID, SHOP, MAP } from '../shared/config.js';
 
 export async function verifyPersistence(browser){
   const dataDir=mkdtempSync(join(tmpdir(),'browser-class-')),teacherKey=randomBytes(32).toString('hex');
@@ -47,7 +47,7 @@ export async function verifyPersistence(browser){
     game.io.to(ruleTeacher.socketId).emit('room:state',game.store.snapshot(room,ruleTeacher));
     await teacher.locator('#planet-close').click();await teacher.locator('#interact-object').filter({hasText:'규칙 수정하기'}).waitFor();
     await teacher.locator('#touch-interact').click();await teacher.locator('#rules-edit-input').fill('책을 소중하게 읽어요');await teacher.locator('#rules-edit-save').click();await teacher.locator('#rules-edit-dialog').waitFor({state:'hidden'});
-    Object.assign(ruleTeacher,{mapId:'space-plaza',x:1080,y:800});game.io.to(ruleTeacher.socketId).emit('room:state',game.store.snapshot(room,ruleTeacher));
+    Object.assign(ruleTeacher,{mapId:'space-plaza',...MAP.spawn});game.io.to(ruleTeacher.socketId).emit('room:state',game.store.snapshot(room,ruleTeacher));
     await clickPlanet(teacher,planet);
     await teacher.locator('#planet-rules-list li').filter({hasText:'책을 소중하게 읽어요'}).waitFor({state:'attached'});await teacher.locator('#planet-close').click();
     // 이동 자체는 기존 82개 시나리오에서 검증합니다. 이 검사는 상점 앞을 시작 위치로 고정합니다.

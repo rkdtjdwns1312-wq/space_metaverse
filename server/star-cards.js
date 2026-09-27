@@ -149,11 +149,11 @@ function activate(room, player, itemId, selectedCard, now, chooseIndex) {
 // when another record expires or is removed. Recompute only on module load.
 export const STAR_CARD_SLOTS = Object.freeze(Array.from({length: STAR_CARD_LAYOUT.columns * STAR_CARD_LAYOUT.rows}, (_, index) => ({
   x: MAP.templeCenter.x + (index % STAR_CARD_LAYOUT.columns - (STAR_CARD_LAYOUT.columns - 1) / 2) * STAR_CARD_LAYOUT.spacingX,
-  y: 450 + Math.floor(index / STAR_CARD_LAYOUT.columns) * STAR_CARD_LAYOUT.spacingY
+  y: MAP.templeCenter.y-250 + Math.floor(index / STAR_CARD_LAYOUT.columns) * STAR_CARD_LAYOUT.spacingY
 })).filter(point => MAP.objects.filter(object => object.kind === 'pillar').every(pillar =>
   Math.hypot(point.x - pillar.x, point.y - pillar.y) >= STAR_CARD_LAYOUT.minPillarDistance))
-  .sort((a, b) => (a.x - MAP.templeCenter.x) ** 2 + (a.y - 720) ** 2 -
-    (b.x - MAP.templeCenter.x) ** 2 - (b.y - 720) ** 2 || a.y - b.y || a.x - b.x)
+  .sort((a, b) => (a.x - MAP.templeCenter.x) ** 2 + (a.y - MAP.templeCenter.y-20) ** 2 -
+    (b.x - MAP.templeCenter.x) ** 2 - (b.y - MAP.templeCenter.y-20) ** 2 || a.y - b.y || a.x - b.x)
   .slice(0, MAX_STAR_CARDS).map(Object.freeze));
 
 function publicRecord(record) {

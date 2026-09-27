@@ -1,4 +1,6 @@
 import {floorRenderPoint} from '/shared/paradise-floor.js';
+import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
+import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide} from './plaza-art.js';
 import {drawLifeStar} from './life-star-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
@@ -9,7 +11,7 @@ import {ATTACK_VISUAL} from '/shared/combat.js';
 import {skillEffectById} from '/shared/skill-effects.js';
 import {drawSkillEffect} from './skill-effects.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
-import { drawTemple, drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
+import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
 import {monsterType} from '/shared/monsters.js';
@@ -74,6 +76,7 @@ export function createWorld(canvas) {
   function currentMap(){return mapOf(myMapId,planets.map(p=>({...p,kind:'planet'})));}
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
+    if(!departmentSite(pt.x,pt.y,r))return false;
     if(pt.x<r||pt.y<r||pt.x>MAP.width-r||pt.y>MAP.height-r)return false;
     if((PLANET.reserved||[]).some(z=>{const cx=Math.max(z.x,Math.min(pt.x,z.x+z.width)),cy=Math.max(z.y,Math.min(pt.y,z.y+z.height));return Math.hypot(pt.x-cx,pt.y-cy)<PLANET.radius;}))return false;
     const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets,...proposals];
@@ -146,7 +149,7 @@ export function createWorld(canvas) {
     }
   }
   function drawMap(map,time){
-    drawTemple(ctx,map,time);
+    drawPlazaGround(ctx,map,time);
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
@@ -170,7 +173,8 @@ export function createWorld(canvas) {
         for(let i=0;i<8;i++){const a=i*Math.PI/4;star(o.x+Math.cos(a)*(o.radius-30),o.y+Math.sin(a)*(o.radius-30),8,i%2?'#b5ddfa':'#e6c8f3');}
         ctx.font='24px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#78559f';ctx.fillText('별 시장',o.x,o.y+8);ctx.restore();continue;
       } else if(o.kind==='pillar'){
-        // 기둥 그림은 scenery 배경에 있습니다. 여기서는 역할 이름만 표시합니다.
+        // 기둥은 아래에서 아바타와 발 위치 순서로 함께 그립니다.
+        continue;
       } else {
         drawPlanet(o,myDept,time);
       }
@@ -201,6 +205,7 @@ export function createWorld(canvas) {
     }
     for(const card of starCards)drawStarCard(ctx,card,time);
     if(placing||placement){
+      drawDepartmentGuide(ctx);
       // 배치 모드: 행성을 만들 수 없는 예약 구역(이동 버튼 자리)을 빗금으로 보여 줍니다.
       for(const z of PLANET.reserved||[]){
         ctx.save();ctx.fillStyle='#9a92b41f';ctx.fillRect(z.x,z.y,z.width,z.height);
@@ -537,10 +542,11 @@ export function createWorld(canvas) {
     const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     const map=currentMap();
-    const scale=(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
+    const zone=placing&&myMapId===PLAZA_ID?DEPARTMENT_ZONE:null;
+    const scale=zone?Math.min(rect.width/(zone.rx*2+300),rect.height/(zone.ry*2+300)):(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
     const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
-    const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(me?.x??map.width/2)-cw/2));
-    const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(me?.y??map.height/2)-ch/2));
+    const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
+    const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
     view={x,y,scale};
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
@@ -583,7 +589,12 @@ export function createWorld(canvas) {
       ctx.shadowBlur=0;ctx.textAlign='center';ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e7faff';ctx.strokeStyle='#294776';ctx.lineWidth=3;
       ctx.strokeText('우주에너지 '+amount,drop.x,drop.y+35);ctx.fillText('우주에너지 '+amount,drop.x,drop.y+35);ctx.restore();
     }
-    for(const p of players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId).sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
+    if(myMapId===PLAZA_ID){
+      const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
+        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
+      for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
+    }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
     hits=hits.filter(hit=>hit.until>t&&hit.mapId===myMapId);
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){

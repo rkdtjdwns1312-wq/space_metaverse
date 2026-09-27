@@ -1,4 +1,5 @@
 import {validateJoinRequests} from './planet-membership.js';
+import {relocateDepartments} from './plaza-migration.js';
 import {validateLv4State} from './lv4-item-effects.js';
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import {validateTemple} from './temple.js';
@@ -121,6 +122,7 @@ export function fromRecord(r) {
   if(r.summonCooldowns!==undefined&&(!Array.isArray(r.summonCooldowns)||r.summonCooldowns.some(e=>!Array.isArray(e)||e.length!==2||typeof e[0]!=='string'||!Number.isSafeInteger(e[1]))))bad();
   room.summonCooldowns=new Map((r.summonCooldowns||[]).filter(([,until])=>until>Date.now()));
   room.summons=new Map(); // 답을 기다리는 호출은 다음 수업에 자동 재생하지 않습니다.
+  relocateDepartments(room);
   return room;
 }
 

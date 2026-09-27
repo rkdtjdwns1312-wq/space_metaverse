@@ -1,3 +1,5 @@
+import {PLAZA_LAYOUT,departmentSlots,onPlazaFloor} from '../shared/plaza-layout.js';
+const sites=departmentSlots();
 import {MARKET} from '../shared/market.js';
 // 실제 UI 조작으로 검증합니다. pnpm test:browser (Windows: 설치된 Edge 사용)
 import { chromium } from 'playwright';
@@ -54,9 +56,20 @@ async function worldClick(page,mx,my){
 // prompt appears or the timeout elapses.
 async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
   await closeOpenDialogs(page);await page.locator("#world").focus();
+  // 새 광장의 원형 구역 사이에서는 허공을 가로지르지 않고 실제 다리로 걷습니다.
+  const route=[];
+  if(player.mapId===PLAZA_ID){
+    const nodes=[{x:player.x,y:player.y},target,PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands,...Object.values(PLAZA_LAYOUT.gates)];
+    const clear=(a,b)=>{const steps=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/35);for(let i=0;i<=steps;i++)if(!onPlazaFloor(MAP,a.x+(b.x-a.x)*i/steps,a.y+(b.y-a.y)*i/steps,16))return false;return true;};
+    const queue=[[0]],seen=new Set([0]);let found=null;
+    while(queue.length){const path=queue.shift(),last=path.at(-1);if(last===1){found=path;break;}for(let i=1;i<nodes.length;i++)if(!seen.has(i)&&clear(nodes[last],nodes[i])){seen.add(i);queue.push([...path,i]);}}
+    assert.ok(found,'광장 바닥에서 다리 경로를 찾을 수 있어야 합니다.');
+    for(let k=1;k<found.length;k++){const a=nodes[found[k-1]],b=nodes[found[k]],steps=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/85);for(let i=1;i<=steps;i++)route.push({x:a.x+(b.x-a.x)*i/steps,y:a.y+(b.y-a.y)*i/steps});}
+  }
   const held=new Set();
   const wanted=()=>{
-    const dx=target.x-player.x,dy=target.y-player.y,codes=new Set();
+    while(route.length>1&&Math.hypot(player.x-route[0].x,player.y-route[0].y)<50)route.shift();
+    const aim=route[0]||target,dx=aim.x-player.x,dy=aim.y-player.y,codes=new Set();
     if(Math.abs(dx)>4)codes.add(dx<0?'ArrowLeft':'ArrowRight');
     if(Math.abs(dy)>4)codes.add(dy<0?'ArrowUp':'ArrowDown');
     return codes;
@@ -254,7 +267,7 @@ try{
  await clickMenuAction(student,'planet-new');
  await student.waitForFunction(()=>document.body.classList.contains('placing'));
  check('Clicking "행성 만들기" enters placement mode (body.placing)');
- await worldClick(student,1080,1150);
+ await worldClick(student,sites[20].x,sites[20].y);
  await student.locator('#planet-create-dialog').waitFor({state:'visible'});
  await student.locator('input[name="planet-type"][value="meal"]').check();
  await student.locator('#planet-name').fill('급식행성');
@@ -270,13 +283,13 @@ try{
  await student.locator('#self-proposal').filter({hasText:'급식행성'}).waitFor({state:'attached'});
  check('Student sees their own pending proposal in the passport panel');
  const teacherCanvasAfterPropose=await teacher.locator('#world').evaluate(c=>c.toDataURL());
- assert.notEqual(teacherCanvasBeforePropose,teacherCanvasAfterPropose);
- check('Teacher canvas changes to draw the dashed pending-proposal circle');
+ assert.ok(room.proposals.size===1); // 지도 밖의 신청도 서버에 등록됩니다.
+ check('Teacher receives pending-proposal state outside the current camera');
 
  // Item 2: a second proposal attempt from the same student is rejected while one is pending.
  await clickMenuAction(student,'planet-new');
  await student.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(student,1870,1050);
+ await worldClick(student,sites[24].x,sites[24].y);
  await student.locator('#planet-create-dialog').waitFor({state:'visible'});
  await student.locator('input[name="planet-type"][value="subject"]').check();
  await student.locator('#planet-name').fill('두번째행성');
@@ -308,7 +321,7 @@ try{
  // Re-focus the world canvas first: the last chat send left focus in #chat-input, and the
  // movement keydown handler ignores arrow keys while an INPUT/TEXTAREA/BUTTON is focused.
  await student.locator('#world').focus();
- await walkNear(student,p,{x:1080,y:1150});
+ await walkNear(student,p,cafeteria);
  await student.locator('#interact-prompt').filter({hasText:'급식행성'}).waitFor({timeout:2000});
  check('Walking the student near the new planet shows the "급식행성 (E)" interact prompt');
 
@@ -633,7 +646,7 @@ try{
  // Item 11: second student's next proposal is rejected by the teacher.
  await clickMenuAction(student2,'planet-new');
  await student2.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(student2,1870,1050);
+ await worldClick(student2,sites[24].x,sites[24].y);
  await student2.locator('#planet-create-dialog').waitFor({state:'visible'});
  await student2.locator('input[name="planet-type"][value="show"]').check();
  await student2.locator('#planet-name').fill('놀이행성');
@@ -675,7 +688,7 @@ try{
  assert.ok(Math.abs(phoneBox.width/phoneBox.height-1200/760)>0.2,'expected a letterboxed canvas at 390px');
  await clickMenuAction(student,'planet-new');
  await student.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(student,1900,1100);
+ await worldClick(student,sites[32].x,sites[32].y);
  await student.locator('#planet-create-dialog').waitFor({state:'visible'});
  await student.locator('input[name="planet-type"][value="audit"]').check();
  await student.locator('#planet-name').fill('손가락행성');
@@ -683,7 +696,7 @@ try{
  await student.locator('#planet-create-dialog').waitFor({state:'hidden'});
  const tapped=[...room.proposals.values()].find(pr=>pr.name==='손가락행성');
  assert.ok(tapped,'the 390px tap did not create a proposal');
- assert.ok(Math.hypot(tapped.x-1900,tapped.y-1100)<14,'390px tap landed at '+tapped.x+','+tapped.y+' instead of 1900,1100');
+ assert.ok(Math.hypot(tapped.x-sites[32].x,tapped.y-sites[32].y)<14,'390px tap landed at '+tapped.x+','+tapped.y+' instead of sites[32].x,sites[32].y');
  check('A map tap on the letterboxed 390px canvas creates the planet at the tapped spot (within 14px)');
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
@@ -707,7 +720,7 @@ try{
  const teacherCanvasBeforeTypes=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  await clickMenuAction(teacher,'planet-new');
  await teacher.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(teacher,1870,1050);
+ await worldClick(teacher,sites[24].x,sites[24].y);
  await teacher.locator('#planet-create-dialog').waitFor({state:'visible'});
  await teacher.locator('input[name="planet-type"][value="pe"]').check();
  await teacher.locator('#planet-create-submit').click();
@@ -716,7 +729,7 @@ try{
  assert.notEqual(teacherCanvasBeforeTypes,teacherCanvasAfterFirstType);
  await clickMenuAction(teacher,'planet-new');
  await teacher.waitForFunction(()=>document.body.classList.contains('placing'));
- await worldClick(teacher,440,1150);
+ await worldClick(teacher,sites[38].x,sites[38].y);
  await teacher.locator('#planet-create-dialog').waitFor({state:'visible'});
  await teacher.locator('input[name="planet-type"][value="art"]').check();
  await teacher.locator('#planet-create-submit').click();

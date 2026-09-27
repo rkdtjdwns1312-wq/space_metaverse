@@ -9,11 +9,12 @@ const roomData={title:'겹침 테스트 교실',allowedNames:['1','2']};
 test('advance lets both student and teacher pass through another player',()=>{
   const store=new RoomStore(), {room,player:teacher}=store.create(roomData,'teacher');
   const student=store.join({code:room.code,nickname:'1'},'student').player;
-  teacher.x=400; teacher.y=400; student.x=400+RULES.radius*2; student.y=400;
+  const x=MAP.spawn.x+200,y=MAP.spawn.y+200;
+  teacher.x=x; teacher.y=y; student.x=x+RULES.radius*2; student.y=y;
   teacher.input={x:1,y:0,at:0}; student.input={x:-1,y:0,at:0};
   advance(room,0);
-  assert.ok(teacher.x>400);
-  assert.ok(student.x<400+RULES.radius*2);
+  assert.ok(teacher.x>x);
+  assert.ok(student.x<x+RULES.radius*2);
 });
 
 test('isFree still blocks boundaries and solid objects when player collision is disabled',()=>{
@@ -25,6 +26,6 @@ test('isFree still blocks boundaries and solid objects when player collision is 
 
 test('player collision remains isolated by map when player avoidance is enabled',()=>{
   const store=new RoomStore(), {room,player}=store.create(roomData,'teacher');
-  player.x=400; player.y=400; player.mapId='other-map';
-  assert.equal(isFree(room,400,400,null,PLAZA_ID),true);
+  player.x=MAP.spawn.x; player.y=MAP.spawn.y; player.mapId='other-map';
+  assert.equal(isFree(room,MAP.spawn.x,MAP.spawn.y,null,PLAZA_ID),true);
 });

@@ -1,4 +1,5 @@
 import {onParadiseFloor} from '../shared/paradise-floor.js';
+import {onPlazaFloor,departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
@@ -6,6 +7,7 @@ export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlaye
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (x < r || y < r || x > map.width-r || y > map.height-r) return false;
   if (!onParadiseFloor(map,x,y,r)) return false;
+  if (!onPlazaFloor(map,x,y,r)) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
   if (!avoidPlayers) return true;
   return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
@@ -52,6 +54,7 @@ export function isNear(player, object) {
 // 광장 경계 안이고 별·행성·대기 신청 어느 것과도 겹치지 않는 자리인지 검사합니다.
 export function placementFree(room, x, y) {
   const r = PLANET.radius + RULES.radius;
+  if (!departmentSite(x,y,r)) return false;
   if (x < r || y < r || x > MAP.width-r || y > MAP.height-r) return false;
   // 예약 구역(이동 버튼 자리)과 행성 원이 겹치면 안 됩니다. 원과 사각형의 가장 가까운 점 거리로 판정합니다.
   if ((PLANET.reserved||[]).some(z => {
