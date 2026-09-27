@@ -1,17 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
-import {MONSTER_TYPES} from '../shared/monsters.js';
+import {MONSTER_TYPES,MONSTER_SPAWNS,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
+import {ENERGY_DROPS} from '../shared/energy-drops.js';
+import {LV2_MONSTER_ART,lv2MonsterPose} from '../client/lv2-monster-art.js';
 import {mapOf} from '../shared/config.js';
 import {monstersOf,monsterViews,moveMonsters,MONSTER_RULES} from '../server/monsters.js';
 import {createClassroomServer} from '../server/app.js';
 
 test('세 맵별 5마리·첫 맵 두 종류·방별 독립된 몬스터 상태',()=>{
   const a={},b={};assert.equal(monstersOf(a).size,15);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,12);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,9);
   for(const map of ['star-origin-1','star-origin-2','star-origin-3'])assert.equal(monsterViews(a).filter(m=>m.mapId===map).length,5);
+  const second=monsterViews(a).filter(m=>m.mapId==='star-origin-2');
+  assert.deepEqual(second.filter(m=>m.typeId==='star-scorpion').map(m=>m.id),['star-scorpion-1','star-scorpion-2','star-scorpion-3']);
+  assert.deepEqual(second.filter(m=>m.typeId==='chameleon-star').map(m=>m.id),['chameleon-star-1','chameleon-star-2']);
+  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,15);
+  for(const m of second)assert.notEqual(m.id,m.typeId,'개체 id와 종류 id는 분리되어야 합니다.');
   const one=monstersOf(a).get('star-crab'),two=monstersOf(b).get('star-crab');one.x=999;
   assert.notEqual(one.x,two.x);
+});
+
+test('두 번째 맵의 새 몬스터 설정과 체력·공격·속도·보상 규칙을 유지한다',()=>{
+  const scorpion=MONSTER_TYPES.find(m=>m.id==='star-scorpion'),chameleon=MONSTER_TYPES.find(m=>m.id==='chameleon-star');
+  assert.deepEqual([scorpion.name,scorpion.mapId,scorpion.level,scorpion.shape,scorpion.color],['Lv2 별전갈','star-origin-2',2,'star-scorpion','#a875d8']);
+  assert.deepEqual([chameleon.name,chameleon.mapId,chameleon.level,chameleon.shape,chameleon.color],['Lv2 카멜레별','star-origin-2',2,'chameleon-star','#b8e6a1']);
+  assert.equal(MONSTER_HP['star-origin-2'],40);assert.deepEqual(MONSTER_COMBAT['star-origin-2'],{power:3,speedFactor:1.3});
+  assert.deepEqual(ENERGY_DROPS.rewards[2],[6,10]);
+  for(const t of [scorpion,chameleon])assert.ok(LV2_MONSTER_ART[t.shape],'실제 그림 렌더러와 종류 연결');
+  const list=monsterViews({});assert.ok(list.filter(m=>m.mapId==='star-origin-2').every(m=>m.hp===40&&m.attackPower===3));
+});
+
+test('LV2 공격 자세는 서버 이벤트 동안만 전환되고 종료 시 대기로 돌아간다',()=>{
+  const attack={startedAt:1000,durationMs:600};
+  assert.equal(lv2MonsterPose(5000,null).active,false);
+  assert.equal(lv2MonsterPose(999,attack).active,false);
+  assert.equal(lv2MonsterPose(1120,attack).frame,1);
+  assert.equal(lv2MonsterPose(1330,attack).frame,2);
+  assert.equal(lv2MonsterPose(1490,attack).frame,3);
+  assert.equal(lv2MonsterPose(1600,attack).frame,0);
 });
 
 test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·4배다',()=>{

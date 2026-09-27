@@ -1,6 +1,7 @@
 import {floorRenderPoint} from '/shared/paradise-floor.js';
 import {drawLifeStar} from './life-star-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
+import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
 import {drawEnergyShop} from './energy-shop-art.js';
 import {drawStarCard} from './star-card-art.js';
@@ -558,9 +559,12 @@ export function createWorld(canvas) {
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
       const attack=monsterAttacks.get(m.id);
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
-      if(!drawWaterMonster(ctx,{...type,...m,...pos},t,monsterAttacks.get(m.id)))drawMonster(ctx,{...type,...m,...pos},t);
+      const body={...type,...m,...pos},activeAttack=monsterAttacks.get(m.id);
+      if(!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
       const isWater=['star-crab','water-star'].includes(type.shape);
-      const barWidth=64,barY=pos.y-(Number(m.radius)||24)*(isWater?1.8:1)-18;
+      // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
+      const barScale=type.shape==='star-scorpion'?2.15:isWater?1.8:1;
+      const barWidth=64,barY=pos.y-(Number(m.radius)||24)*barScale-18;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,9,4);ctx.fill();
       ctx.fillStyle='#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),7);
       ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText(m.hp+' / '+m.maxHp,pos.x,barY-4);ctx.restore();

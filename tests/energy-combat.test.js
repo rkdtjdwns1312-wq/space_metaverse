@@ -12,7 +12,7 @@ import {MONSTER_TYPES} from '../shared/monsters.js';
 const player=id=>({id,role:'student',connected:true,away:false,avatar:{level:3,constellationId:'aquarius'},mapId:'star-origin-2',x:538,y:450,facing:{x:1,y:0},cosmicEnergy:0});
 test('실제 누적 피해 최대자가 소유하며 마지막 과잉 피해·중복 공격으로 빼앗지 못한다',()=>{
   const a=player('a'),b=player('b'),room={players:new Map([['a',a],['b',b]])};
-  const m=monstersOf(room,0).get('lion');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
+  const m=monstersOf(room,0).get('star-scorpion-1');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
   strikeMonsters(room,a,15,0);strikeMonsters(room,b,10,1);strikeMonsters(room,a,10,2);
   assert.equal(m.contributors.get('a'),25);assert.equal(m.hp,5);
   strikeMonsters(room,b,99999,3);
@@ -23,7 +23,7 @@ test('실제 누적 피해 최대자가 소유하며 마지막 과잉 피해·�
 
 test('전회복 시 이전 전투 기여도 제거, 새 싸움 보상 소유권을 오염하지 않는다',()=>{
   const a=player('a'),b=player('b'),room={players:new Map([['a',a],['b',b]])};
-  const m=monstersOf(room,0).get('lion');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
+  const m=monstersOf(room,0).get('star-scorpion-1');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
   strikeMonsters(room,a,30,0);a.mapId='star-origin-1';selectMonsterTarget(room,m);
   assert.equal(m.hp,40);assert.equal(m.contributors.size,0);
   strikeMonsters(room,b,40,2);assert.deepEqual([...room.energyDrops.values()][0].shares.keys().toArray(),['b']);
@@ -51,7 +51,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
   const code=created.room.code,id=joined.selfId;
   const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);
-  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('lion');Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';m.hp=1;});
+  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';m.hp=1;});
   const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);assert.ok(killed.targets.some(m=>m.defeated));
   const drop=[...current().energyDrops.values()][0],amount=drop.total;assert.equal(person().cosmicEnergy,0);
   const thief=await connect(),other=await call(thief,'room:join',{code,nickname:'2',pin:'1234'});assert.ok(other.ok,other.error);

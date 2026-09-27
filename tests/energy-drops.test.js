@@ -12,7 +12,7 @@ const monster=typeId=>({id:'monster-1',typeId,mapId:'star-origin-1',x:100,y:100}
 const fixedRoll=value=>(min,max)=>{assert.ok(value>=min&&value<max);return value;};
 
 test('각 몬스터 단계 보상의 양끝을 만들고 0이면 드랍하지 않는다',()=>{
-  const cases=[['star-crab',1,2],['lion',6,10],['bear',24,40]];
+  const cases=[['star-crab',1,2],['star-scorpion',6,10],['bear',24,40]];
   for(const [typeId,min,max] of cases)for(const total of [min,max]){
     const p=makePlayer('p'),room=makeRoom([p]);
     const drop=addEnergyDrop(room,monster(typeId),new Map([['p',10]]),100,fixedRoll(total));
@@ -25,7 +25,7 @@ test('각 몬스터 단계 보상의 양끝을 만들고 0이면 드랍하지 �
 });
 
 test('최대 누적 피해자가 단독 소유하고 동률이면 먼저 기여한 플레이어가 이긴다',()=>{
-  const a=makePlayer('a'),b=makePlayer('b'),c=makePlayer('c'),room=makeRoom([a,b,c]),m=monster('lion');
+  const a=makePlayer('a'),b=makePlayer('b'),c=makePlayer('c'),room=makeRoom([a,b,c]),m=monster('star-scorpion');
   assert.deepEqual(rewardRecipients(room,m,new Map([['a',4],['b',9],['c',9]])),['b']);
   const drop=addEnergyDrop(room,m,new Map([['a',4],['b',9],['c',9]]),0,fixedRoll(6));
   assert.deepEqual([...drop.shares], [['b',6]]);
@@ -36,16 +36,16 @@ test('미래 파티 구성원에게 나머지를 앞 순서부터 나눠도 합�
   const leader=makePlayer('leader'),second=makePlayer('second'),third=makePlayer('third',{mapId:STREET_ID}),offline=makePlayer('offline',{connected:false}),away=makePlayer('away',{away:true});
   const room=makeRoom([leader,second,third,offline,away]);
   room.parties=new Map([['party-1',{memberIds:['leader','second','second','third','offline','away']}]]);
-  const drop=addEnergyDrop(room,monster('lion'),new Map([['leader',12]]),0,fixedRoll(10));
+  const drop=addEnergyDrop(room,monster('star-scorpion'),new Map([['leader',12]]),0,fixedRoll(10));
   assert.deepEqual([...drop.shares],[['leader',5],['second',5]]);
   assert.equal([...drop.shares.values()].reduce((a,b)=>a+b,0),10);
-  const split=addEnergyDrop(room,monster('lion'),new Map([['leader',12]]),1,fixedRoll(7));
+  const split=addEnergyDrop(room,monster('star-scorpion'),new Map([['leader',12]]),1,fixedRoll(7));
   assert.deepEqual([...split.shares],[['leader',4],['second',3]]);
 });
 
 test('자기 몫만 유효한 거리·맵에서 한 번 수령하고 동기 중복 수령은 한 번만 성공한다',()=>{
   const a=makePlayer('a'),b=makePlayer('b'),room=makeRoom([a,b]);
-  const drop=addEnergyDrop(room,monster('lion'),new Map([['a',8],['b',3]]),0,fixedRoll(6));
+  const drop=addEnergyDrop(room,monster('star-scorpion'),new Map([['a',8],['b',3]]),0,fixedRoll(6));
   const id=drop.id;
   a.x=175;assert.throws(()=>collectEnergyDrop(room,a,id,1),/가까이/);a.x=100;
   a.mapId=STREET_ID;assert.throws(()=>collectEnergyDrop(room,a,id,1),/가까이/);a.mapId='star-origin-1';
@@ -55,7 +55,7 @@ test('자기 몫만 유효한 거리·맵에서 한 번 수령하고 동기 중�
   assert.deepEqual(first,{amount:6,cosmicEnergy:6});assert.equal(a.cosmicEnergy,6);
   assert.throws(()=>collectEnergyDrop(room,a,id,1));
   assert.equal(b.cosmicEnergy,0);
-  const secondDrop=addEnergyDrop(room,monster('lion'),new Map([['a',8],['b',3]]),2,fixedRoll(6));
+  const secondDrop=addEnergyDrop(room,monster('star-scorpion'),new Map([['a',8],['b',3]]),2,fixedRoll(6));
   const outcomes=[a,b].map(p=>{try{return collectEnergyDrop(room,p,secondDrop.id,3).amount;}catch{return null;}});
   assert.deepEqual(outcomes,[6,null]);
 });

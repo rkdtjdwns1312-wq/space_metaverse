@@ -9,7 +9,7 @@ import {fillNewClass} from './class-setup.mjs';
 
 const key='energy-world-browser-key',game=createClassroomServer({teacherKey:key,studentHours:false});
 const {port}=await game.listen(),url='http://127.0.0.1:'+port;
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[],checks=[];
 page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
 const check=text=>{checks.push(text);console.log('Energy world '+checks.length+': '+text);};
@@ -34,9 +34,9 @@ try{
   const student=await browser.newPage({viewport:{width:1440,height:960}});student.on('pageerror',e=>errors.push(e.message));
   await student.goto(url);await student.locator('#join-code').fill(room.code);await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');
   await student.locator('#student-form .submit').click();await student.locator('#lobby').waitFor({state:'hidden'});
-  const p=[...room.players.values()].find(p=>p.role==='student'),lion=monstersOf(room).get('lion');
-  p.avatar.level=5;p.avatar.constellationId='aquarius';Object.assign(lion,{x:600,y:450,hp:1,nextDirectionAt:Infinity,dx:0,dy:0});
-  Object.assign(p,{mapId:lion.mapId,x:538,y:450,facing:{x:1,y:0}});publish(p);
+  const p=[...room.players.values()].find(p=>p.role==='student'),scorpion=monstersOf(room).get('star-scorpion-1');
+  p.avatar.level=5;p.avatar.constellationId='aquarius';Object.assign(scorpion,{x:600,y:450,hp:1,nextDirectionAt:Infinity,dx:0,dy:0});
+  Object.assign(p,{mapId:scorpion.mapId,x:538,y:450,facing:{x:1,y:0}});publish(p);
   await student.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='5');
   await student.locator('#world').focus();await student.keyboard.press('q');
   await student.locator('#interact-prompt').filter({hasText:/우주에너지.*줍기/}).waitFor();

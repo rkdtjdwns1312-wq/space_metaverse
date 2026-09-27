@@ -9,7 +9,7 @@ import {MONSTER_TYPES} from '../shared/monsters.js';
 import {addPlanet} from '../server/world.js';
 import {PLAZA_ID,PLANET_COLORS} from '../shared/config.js';
 const key='monster-ui-test-only-private',game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen();
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})}),checks=[],errors=[];
 const check=text=>{checks.push(text);console.log(text);};await mkdir('.local',{recursive:true});
 try{
   const teacher=await browser.newPage();await teacher.goto('http://127.0.0.1:'+address.port,{waitUntil:'domcontentloaded',timeout:25000});
@@ -47,26 +47,28 @@ try{
   await page.setViewportSize({width:390,height:844});await page.locator('#touch-attack').tap();await page.waitForTimeout(100);assert.equal(m.hp,18);await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='16');
   await page.locator('#touch-skill').tap();assert.equal(m.hp,16);
   const hud=await page.locator('#vitals-hud').boundingBox(),dock=await page.locator('#bottom-dock').boundingBox(),hp=await page.locator('.vitals-hp').boundingBox(),mp=await page.locator('.vitals-mp').boundingBox();
-  assert.ok(hud.y+hud.height<dock.y&&Math.abs(hp.y-mp.y)<1&&hud.width===200);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  // 작은 화면에서는 좌우 조작 버튼 사이의 여백(390-208=182px)을 사용합니다.
+  assert.ok(hud.y+hud.height<dock.y&&Math.abs(hp.y-mp.y)<1&&hud.width===182);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:'.local/monster-mobile.png'});check('390px 터치 공격/스킬·아이콘 위 일렬 HP/MP·가로 넘침 없음');
   for(let i=0;i<8;i++){await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();}
   await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='4');assert.equal(m.hp,0);assert.equal(p.avatar.xp,0);check('체력0 처치·화면에서 사라짐·미정 보상 없음');
-  const lion=monstersOf(room).get('lion');Object.assign(lion,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});
-  p.avatar.level=5;Object.assign(p,{mapId:lion.mapId,x:lion.x-62,y:lion.y,facing:{x:1,y:0}});publish();
+  const scorpion=monstersOf(room).get('star-scorpion-1');Object.assign(scorpion,{dx:0,dy:0,nextDirectionAt:Date.now()+60000});
+  p.avatar.level=5;Object.assign(p,{mapId:scorpion.mapId,x:scorpion.x-62,y:scorpion.y,facing:{x:1,y:0}});publish();
   await page.locator('.vitals-hp .vitals-label').filter({hasText:'HP 40/40'}).waitFor();await page.waitForTimeout(1050);
   await page.locator('#world').focus();await page.keyboard.press('q');await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='37');
   await page.waitForTimeout(1050);await page.locator('#touch-attack').tap();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterHp==='34');
-  assert.equal(lion.hp,34);assert.equal(await page.locator('.vitals-mp .vitals-label').textContent(),'MP 40/40');check('제작계 LV5 Q·터치 공격력3: 몬스터40→37→34·최대 HP/MP40·MP40 유지');
+  assert.equal(scorpion.hp,34);assert.equal(await page.locator('.vitals-mp .vitals-label').textContent(),'MP 40/40');check('제작계 LV5 Q·터치 공격력3: 몬스터40→37→34·최대 HP/MP40·MP40 유지');
   const planet=addPlanet(room,{name:'체육행성',description:'친구들과 건강하게 놀아요.',templateId:'sports',x:700,y:400,color:PLANET_COLORS[0],rules:['서로 응원해요.']});
   p.avatar.departmentId=planet.id;Object.assign(p,{mapId:PLAZA_ID,x:planet.x+70,y:planet.y});publish();
   await page.locator('#interact-object').filter({hasText:'체육행성'}).waitFor();await page.locator('#touch-interact').tap();await page.locator('#planet-dialog').waitFor({state:'visible'});
-  const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings','#planet-rename','#planet-work'];
+  const selectors=['#planet-title','.planet-description-heading','#planet-member-count','#planet-members','#planet-rules-toggle','#planet-warnings','#planet-rename'];
   const boxes=await Promise.all(selectors.map(selector=>page.locator(selector).boundingBox()));for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].y>=boxes[i-1].y+boxes[i-1].height-1);
-  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();await page.locator('#planet-warnings p').filter({hasText:'경고 돌덩이'}).waitFor();
+  await page.locator('#planet-rules-toggle').tap();await page.locator('#planet-rules-list').filter({hasText:'서로 응원'}).waitFor();await page.locator('#planet-warnings summary').tap();
+  for(const label of ['1회','2회','3회','검은별'])assert.ok((await page.locator('#planet-warning-status').textContent()).includes(label));
   await page.screenshot({path:'.local/planet-menu-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#planet-close').tap();
-  check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·경고 돌덩이 안내·닫기');
+  check('행성 이름→설명→친구명단→규칙→경고/검은별→이름바꾸기 세로순서·규칙·경고 횟수 현황·닫기');
   Object.assign(p,{mapId:PLAZA_ID,x:300,y:1100});publish();await page.waitForFunction(()=>document.getElementById('world').dataset.monsterCount==='0');
   check('광장에서는 몬스터 표시 없음');
-  assert.equal(MONSTER_TYPES.length,15);assert.deepEqual(errors,[]);
+  assert.equal(MONSTER_TYPES.length,9);assert.deepEqual(errors,[]);
 }finally{await writeFile('.local/monsters-planets-result.json',JSON.stringify({checks,errors},null,2));await browser.close();await game.close();}
 console.log(JSON.stringify({checks:checks.length,errors}));

@@ -32,7 +32,7 @@ test('공격계3종의 LV2~5 방어0/0/1/2와 실제 몬스터 공격5의 피해
  }
 });
 test('단계별 이동량·방향 주기·공격 간격이 정확히1/1.3/1.69배다',()=>{
- for(const [id,power] of [['star-crab',2],['lion',3],['star-keeper',5]]){
+ for(const [id,power] of [['star-crab',2],['star-scorpion-1',3],['star-keeper',5]]){
    const {room,m}=fixture(id),factor=MONSTER_COMBAT[m.mapId].speedFactor;Object.assign(m,{x:600,y:450});
    moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
    assert.ok(Math.abs(m.x-600-MONSTER_RULES.speed*factor*.05)<1e-8);
