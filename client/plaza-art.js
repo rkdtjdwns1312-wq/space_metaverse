@@ -1,4 +1,5 @@
 import {PLAZA_LAYOUT as L,PLAZA_POLYGONS,PLAZA_EDGES,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
+import {drawStoneRim} from './stone-rim.js';
 // 원화는 로드 후 재사용합니다. 3720px 전체 배경 캔버스를 만들지 않고 화면에 보이는
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
 const images={},tiles=new Map(),SIZE=768,LIMIT=16;
@@ -12,7 +13,7 @@ for(const poly of PLAZA_POLYGONS){floorPath.moveTo(poly[0].x,poly[0].y);for(cons
 const edgePath=new Path2D();for(const [a,b] of PLAZA_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function ground(ctx){
-  ctx.save();ctx.translate(0,35);ctx.fillStyle='#74658d';ctx.shadowColor='#17193399';ctx.shadowBlur=30;ctx.shadowOffsetY=20;ctx.fill(floorPath);ctx.restore();
+  ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
   if(ready(images.floor)){const pattern=ctx.createPattern(images.floor,'repeat');pattern.setTransform(new DOMMatrix().scale(.30));ctx.fillStyle=pattern;ctx.fillRect(0,0,L.width,L.height);}
   for(const z of L.islands){ctx.fillStyle=z.color+'55';ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx,z.ry,0,0,Math.PI*2);ctx.fill();ring(ctx,z,58,'#bca6c780',3);}
@@ -20,8 +21,7 @@ function ground(ctx){
   ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
   // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
   const c=L.center;if(ready(images.temple))ctx.drawImage(images.temple,c.x-360,c.y-250,720,480);
-  ctx.restore();ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
-  ctx.strokeStyle='#a693bd';ctx.lineWidth=15;ctx.stroke(edgePath);ctx.strokeStyle='#fff5e2';ctx.lineWidth=5;ctx.stroke(edgePath);ctx.restore();
+  ctx.restore();drawStoneRim(ctx,PLAZA_EDGES);
 }
 function tile(tx,ty){const key=tx+':'+ty;let canvas=tiles.get(key);if(canvas){tiles.delete(key);tiles.set(key,canvas);return canvas;}
   canvas=document.createElement('canvas');canvas.width=SIZE+4;canvas.height=SIZE+4;const c=canvas.getContext('2d');c.translate(-tx*SIZE+2,-ty*SIZE+2);ground(c);tiles.set(key,canvas);

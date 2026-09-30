@@ -1,4 +1,5 @@
-import { VALLEY_LAYOUT, traceValleyFloor, onValleyFloor } from '/shared/valley-layout.js';
+import { VALLEY_LAYOUT, VALLEY_EDGES, traceValleyFloor, onValleyFloor } from '/shared/valley-layout.js';
+import {drawStoneRim} from './stone-rim.js';
 
 const images = new Map();
 let background = null;
@@ -35,7 +36,7 @@ function floorTint(ctx, mini = false) {
 function drawFloor(ctx) {
   const { width, height } = VALLEY_LAYOUT;
   // 외곽선은 원·다리별 선이 아니라 공유 union 경로만 사용합니다.
-  ctx.save();ctx.translate(0, 22);
+  ctx.save();ctx.translate(0, 12);
   ctx.shadowColor = '#111a4290';ctx.shadowBlur = 24;ctx.shadowOffsetY = 14;
   traceValleyFloor(ctx);ctx.fillStyle = '#777c9e';ctx.fill();ctx.restore();
   ctx.save();traceValleyFloor(ctx);ctx.clip();
@@ -48,9 +49,8 @@ function drawFloor(ctx) {
   }
   ctx.fillStyle = floorTint(ctx);ctx.fillRect(0, 0, width, height);
   ctx.restore();
-  ctx.save();traceValleyFloor(ctx);ctx.lineJoin = 'round';ctx.lineCap = 'round';
-  ctx.lineWidth = 12;ctx.strokeStyle = '#9b94b3';ctx.stroke();
-  ctx.lineWidth = 4;ctx.strokeStyle = '#fff9ec';ctx.stroke();ctx.restore();
+  drawStoneRim(ctx,VALLEY_EDGES.filter(([a,b])=>(a.x+b.x)/2<=VALLEY_LAYOUT.center.x),'moon');
+  drawStoneRim(ctx,VALLEY_EDGES.filter(([a,b])=>(a.x+b.x)/2>VALLEY_LAYOUT.center.x),'sun');
 }
 
 function templeLabels(ctx) {

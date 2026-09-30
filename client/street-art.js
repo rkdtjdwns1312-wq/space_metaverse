@@ -1,4 +1,5 @@
 import {STREET_LAYOUT,STREET_POLYGONS,STREET_EDGES} from '/shared/street-layout.js';
+import {drawStoneRim} from './stone-rim.js';
 
 export const STREET_BACKDROP_SRC='/assets/maps/starlight-street.png';
 export const STREET_ROUTE_LABEL=Object.freeze({text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
@@ -31,12 +32,12 @@ function routeLabel(ctx){
 }
 function paint(ctx,map){
   backdrop(ctx,map);
-  ctx.save();ctx.translate(0,18);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
+  ctx.save();ctx.translate(0,12);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
   ctx.save();ctx.clip(shape);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,map.width,map.height);
   if(ready('paving')){const pattern=ctx.createPattern(images.paving,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.globalAlpha=.88;ctx.fillStyle=pattern;ctx.fillRect(0,0,map.width,map.height);ctx.globalAlpha=1;}}
   const wash=ctx.createLinearGradient(STREET_LAYOUT.upper.x-STREET_LAYOUT.upper.rx,0,STREET_LAYOUT.upper.x+STREET_LAYOUT.upper.rx,map.height);
   wash.addColorStop(0,'#ffd8eb30');wash.addColorStop(.5,'#fff6dc18');wash.addColorStop(1,'#bde6ff3d');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
-  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#85809f';ctx.lineWidth=18;ctx.stroke(edgePath);ctx.strokeStyle='#fff5e9';ctx.lineWidth=6;ctx.stroke(edgePath);ctx.restore();
+  drawStoneRim(ctx,STREET_EDGES);
   routeLabel(ctx);
 }
 export function drawStreetGround(ctx,map){

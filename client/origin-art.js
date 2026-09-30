@@ -1,4 +1,5 @@
 import {originFloor} from '/shared/origin-floor.js';
+import {drawStoneRim,rimEdges} from './stone-rim.js';
 
 const image=typeof Image==='undefined'?null:new Image();
 let revision=0;
@@ -25,7 +26,7 @@ export function drawOriginArt(ctx,map){
   if(pavingImage?.complete&&pavingImage.naturalWidth){const pattern=ctx.createPattern(pavingImage,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.fillStyle=pattern;ctx.globalAlpha=.92;ctx.fillRect(0,0,map.width,map.height);}}
   else{const g=ctx.createLinearGradient(f.cx-f.rx,f.cy-f.ry,f.cx+f.rx,f.cy+f.ry);g.addColorStop(0,'#eeeaf4');g.addColorStop(1,'#aaa9c9');ctx.fillStyle=g;ctx.fillRect(0,0,map.width,map.height);}
   const wash=ctx.createLinearGradient(0,0,map.width,map.height);wash.addColorStop(0,'#e9d9ff22');wash.addColorStop(.5,'#ffffff00');wash.addColorStop(1,'#a9ddff30');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
-  ctx.save();ctx.strokeStyle='#f0eaff';ctx.lineWidth=Math.max(8,map.width*.009);ctx.lineJoin='round';ctx.stroke(path);ctx.strokeStyle='#625f8299';ctx.lineWidth=Math.max(2,map.width*.0025);ctx.stroke(path);ctx.restore();
+  drawStoneRim(ctx,rimEdges(f.points),'moon');
 }
 const pavingImage=typeof Image==='undefined'?null:new Image();
 if(pavingImage){pavingImage.onload=()=>{revision++;for(const fn of listeners)fn();};pavingImage.src='/assets/maps/plaza-paving.png';}
