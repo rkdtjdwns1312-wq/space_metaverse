@@ -107,7 +107,7 @@ test('공격 쿨다운은 중복을 막고 스킬은 같은 서버 대상 목록
 
 for (const [role,level,size,power,radius] of [
   ['student',2,80,1,36], ['student',3,92,2,41.4], ['student',4,105.8,3,47.61],
-  ['student',5,121.67,4,54.7515], ['teacher',6,96,99999,43.2]
+  ['student',5,105.8,4,47.61], ['teacher',6,96,99999,43.2]
 ]) test(`${role} LV${level}: 소켓 Q/E 크기별 사거리·반경·대각선 시작점·경계 판정·위조 무시`,async t=>{
   // In-memory room and a fixed clock keep movement/retaliation from changing boundary fixtures.
   const now=Date.now();

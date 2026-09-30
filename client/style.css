@@ -67,7 +67,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .card-status h3{font-size:12px;margin:0 0 8px;color:#5d4795;font-weight:800}
 .card-skills{padding:10px 14px 0;border-top:1px solid #e1d9f1;margin-top:10px}
 .card-skills h3{font-size:12px;margin:0 0 8px;color:#5d4795;font-weight:800}
-#self-skill-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#self-skill-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .skill-placeholder{aspect-ratio:1;border:2px solid #ded6ee;border-radius:10px;background:#faf8ff;min-width:0}
 .skill-placeholder{position:relative;overflow:hidden;padding:0}
 .skill-placeholder img{display:block;width:100%;height:100%;object-fit:cover}
@@ -429,8 +429,8 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 .combat-buttons>button .combat-slot-lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin:0;color:#7c718b;pointer-events:none}
 .combat-buttons>button .combat-slot-lock svg{width:28%;height:28%}
 .combat-buttons>button .combat-slot-lock span{margin:0;font:800 11px/1.2 sans-serif}
-.combat-buttons>#touch-skill.is-locked{opacity:1;cursor:default;border-color:#c8bfd3;background:#eae5ef}
-.combat-buttons>#touch-skill.is-locked .combat-slot-icon{opacity:.12}
+.combat-buttons>button.is-locked{opacity:1;cursor:default;border-color:#c8bfd3;background:#eae5ef}
+.combat-buttons>button.is-locked .combat-slot-icon{opacity:.12}
 .combat-buttons>.auxiliary-skills>button.auxiliary-skill{--key-size:15px;overflow:visible}
 .combat-buttons>.auxiliary-skills>button.auxiliary-skill::after{content:none}
 .combat-buttons>.auxiliary-skills>button.auxiliary-skill .combat-slot-placeholder{font-size:24px}
@@ -442,3 +442,7 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 #interior-decor-dialog .dialog-actions{flex-wrap:nowrap;gap:8px;align-items:center}
 #interior-decor-leave{margin-right:auto}
 @media(max-width:520px){#interior-decor-dialog .dialog-actions button{padding:10px 8px;font-size:13px;white-space:nowrap}}
+
+.auxiliary-skill.is-transforming{box-shadow:0 0 12px #bda1ff;border-color:#e6d9ff}
+
+.auxiliary-skill .skill-cooldown{font-size:13px}

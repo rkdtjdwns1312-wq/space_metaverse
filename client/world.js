@@ -1,3 +1,6 @@
+import {createDamageNumbers} from './damage-numbers.js';
+import {drawCorvus,preloadCorvus} from './corvus-effects.js';
+import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
 import {avatarFloorRadius} from '/shared/avatar-boundary.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {inMarket} from '/shared/market.js';
@@ -75,6 +78,7 @@ export function createWorld(canvas) {
   let hits=[],starCards=[],energyDrops=[];
   let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
+  const damageNumbers=createDamageNumbers();
   let monsters=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
@@ -326,7 +330,7 @@ export function createWorld(canvas) {
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
     if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
-    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,p.avatar.level):null;
+    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
     if(p.role==='teacher'){
       celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
@@ -460,7 +464,8 @@ export function createWorld(canvas) {
       if(hit.kind==='damage')continue;
       if(hit.kind==='monster'&&['star-crab','water-star'].includes(monsterType(monsters.find(m=>m.id===hit.monsterId)?.typeId)?.shape))continue;
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
-      const progress=1-(hit.until-t)/(effect?.durationMs??ATTACK_VISUAL.durationMs);
+      const progress=1-(hit.until-t)/(CORVUS_VFX[hit.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs);
+      if(drawCorvus(ctx,hit,progress,reducedMotion.matches))continue;
       if(effect){
         ctx.save();ctx.translate(hit.x+hit.dx*(hit.originOffset||0),hit.y+hit.dy*(hit.originOffset||0));ctx.rotate(Math.atan2(hit.dy,hit.dx));
         drawSkillEffect(ctx,effect,progress,{reducedMotion:reducedMotion.matches,quality:hits.length>18?'low':'full'});ctx.restore();continue;
@@ -476,25 +481,17 @@ export function createWorld(canvas) {
       ctx.strokeStyle=monsterHit?'#fff0dc':'#fffdf0';ctx.lineWidth=4;
       for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
     }
-    for(const hit of hits){
-      if(!['monster','damage'].includes(hit.kind)||!Number.isFinite(Number(hit.damage))||!hit.targetId)continue;
-      const target=points.get(hit.targetId)||players.find(p=>p.id===hit.targetId);
-      if(!target)continue;
-      const progress=1-(hit.until-t)/ATTACK_VISUAL.durationMs;
-      ctx.save();ctx.globalAlpha=Math.max(0,1-progress);ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';
-      ctx.textAlign='center';ctx.fillStyle='#d65c78';ctx.strokeStyle='#fff4f7';ctx.lineWidth=3;
-      const label=`-${Number(hit.damage)}`;const rise=progress*22;
-      const labelY=target.y-avatarSizeOf(players.find(p=>p.id===hit.targetId))/2-22-rise;
-      ctx.strokeText(label,target.x,labelY);ctx.fillText(label,target.x,labelY);ctx.restore();
-    }
+    damageNumbers.draw(ctx,t,reducedMotion.matches);
+    canvas.dataset.damageNumberCount=String(damageNumbers.size);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
+      if(nextMap!==myMapId||id!==selfId){damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
+      if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];
       energyDrops=room?.energyDrops||[];
@@ -524,7 +521,8 @@ export function createWorld(canvas) {
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
-      if(data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(CORVUS_VFX[data.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(data.vfxId)canvas.dataset.lastCorvusVfx=data.vfxId;
       canvas.dataset.lastAttackReach=String(data.reach??ATTACK_VISUAL.reach);canvas.dataset.lastSkillOrigin=String(data.originOffset||0);canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind!=='skill')canvas.dataset.lastAttackRadius=String(data.radius??ATTACK_VISUAL.hitRadius);
       if(data.kind==='skill'){canvas.dataset.lastSkillDx=String(data.dx);canvas.dataset.lastSkillDy=String(data.dy);canvas.dataset.lastSkillEffect=effect?.id||'';}
@@ -538,6 +536,17 @@ export function createWorld(canvas) {
       hits.push({...data,kind:'monster',until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
       canvas.dataset.lastMonsterDamage=String(data.damage);
       canvas.dataset.lastMonsterTarget=String(data.targetId);
+    },
+    damageNumbers(data){
+      for(const hit of data.hits||[]){
+        if(hit.mapId!==myMapId)continue;
+        const monster=hit.targetKind==='monster'&&monsters.find(m=>m.id===hit.targetId);
+        const player=hit.targetKind==='player'&&players.find(p=>p.id===hit.targetId);
+        let head=player?avatarSizeOf(player)/2+24:42;
+        if(monster){const type=monsterType(monster.typeId),celestial=CELESTIAL_MONSTER_ART[type?.shape];const scale=celestial?celestial.scale*2:type?.shape==='star-scorpion'?2.15:type?.shape==='warm-star'?1.9:type?.shape==='grown-warm-star'?1.3:['star-crab','water-star'].includes(type?.shape)?1.8:1;head=monster.radius*monsterVisualScale(monster.mapId,monster.typeId)*scale+30;}
+        damageNumbers.add({...hit,y:Math.max(1,hit.y-head)});
+        canvas.dataset.lastDamageNumber=String(hit.damage);canvas.dataset.lastDamageTargetKind=hit.targetKind;
+      }
     },
     playerHit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.targetId))return;
@@ -630,7 +639,7 @@ export function renderPortrait(canvas,player,effects){
     ctx.fillStyle=glow;ctx.fillRect(cx-60,cy-60,120,120);
   }
   ctx.save();ctx.translate(cx,cy);
-  const constellation=player?.avatar?.level>=2?constellationOf(player.avatar.constellationId,player.avatar.level):null;
+  const constellation=player?.avatar?.level>=2?constellationOf(player.avatar.constellationId,appearanceLevelOf(player)):null;
   if(player?.role==='teacher'){
     celestialAura(ctx,'#e9c77b',76,0);
     const sprite=loadedAvatarSprite(TEACHER_SPRITE,()=>{if(portraitPlayers.get(canvas)===player)renderPortrait(canvas,player,effects);});

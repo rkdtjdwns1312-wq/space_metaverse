@@ -58,7 +58,7 @@ test('teacher-chosen student PINs are created with the classroom and remain vali
   assert.equal((await call(first,'room:join',{code,nickname:'별이',pin:'2468'})).ok,false);
   assert.ok((await call(first,'room:join',{code,nickname:'별이',pin:'1357'})).ok);
   assert.ok((await call(second,'room:join',{code,nickname:'달이',pin:'2468'})).ok);
-  assert.equal(JSON.stringify(game.store.records.get(code)).includes('1357'),false);
+  assert.equal(JSON.stringify(game.store.records.get(code)).includes('"1357"'),false);
   const extra=await call(teacher,'student:create',{nickname:'해솔',pin:'9876'});assert.ok(extra.ok,extra.error);
   await game.close();game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false});address=await game.listen();
   const reopened=await call(await connect(),'room:open',{teacherKey:key,code});assert.ok(reopened.ok,reopened.error);

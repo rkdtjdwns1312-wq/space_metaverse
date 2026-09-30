@@ -9,6 +9,7 @@ export function ensureVitals(player){
   if(!value||value.level!==player.avatar.level||value.role!==player.role){
     value=player.battleVitals={level:player.avatar.level,role:player.role,hp:limits.hp.max,mp:limits.mp.max,defeatedAt:null};
   }
+  value.hp=Math.min(value.hp,limits.hp.max);value.mp=Math.min(value.mp,limits.mp.max);
   return value;
 }
 export function playerVitals(player){
@@ -20,6 +21,8 @@ export function damagePlayer(player,power,now){
   const value=ensureVitals(player);if(!value||value.hp<=0)return null;
   const damage=damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
   value.hp=Math.max(0,value.hp-damage);
+  player.damageNumbers??=[];player.damageNumbers.push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage});
+  if(player.damageNumbers.length>40)player.damageNumbers.shift();
   if(value.hp===0){value.defeatedAt=now;player.input={x:0,y:0,at:0};}
   return {damage,vitals:playerVitals(player),defeated:value.hp===0};
 }

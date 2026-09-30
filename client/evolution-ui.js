@@ -34,7 +34,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   function summary() {
     if (!info) return '정보를 불러오는 중…';
     const avatar = info.avatar;
-    if (avatar.level >= PROGRESSION.transcendentLevel) return '현재 단계: LV5 초월체 · 경험치 최고 단계';
+    if (avatar.level >= PROGRESSION.transcendentLevel) return '현재 단계: LV5 · 변신 해금 · 평소 LV4 모습';
     return '현재 단계: LV' + avatar.level + ' · 경험치 ' + avatar.xp + ' / ' + info.requiredXp;
   }
   function choiceButton(option, onChoose) {
@@ -113,7 +113,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     $('types').replaceChildren();
     $('panel-title').textContent = '별자리 아바타 진화하기';
     if (info.avatar.level >= PROGRESSION.transcendentLevel) {
-      $('help').textContent = '이미 최고 단계인 초월체예요.';
+      $('help').textContent = '최고 단계예요. 평소 LV4 모습이며 변신 버튼으로 LV5 모습을 사용할 수 있어요.';
       return;
     }
     if (!info.canEvolve) {

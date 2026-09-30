@@ -107,3 +107,6 @@ export function sagittariusViews(room,mapId,now=Date.now()){
     id:c.id,playerId:c.playerId,mapId:c.mapId,slot:c.slot,kind:c.kind,x:c.x,y:c.y,dx:c.dx,dy:c.dy,
     size:c.size,radius:c.radius,remainingMs:Math.max(0,c.endsAt-now)}));
 }
+
+// 공통 선분 공격(까마귀 포함)에서 서버가 선정한 대상/피해 처리만 재사용합니다.
+export {enemies as combatEnemies,damage as damageTargets};

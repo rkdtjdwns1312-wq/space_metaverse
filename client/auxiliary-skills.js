@@ -1,3 +1,4 @@
+import {characterAbilities} from '/shared/character-skills.js';
 // 각 캐릭터의 [E, 보조1, 보조2] 아이콘 URL. 원화가 정해지면 빈 문자열만 채웁니다.
 // 이 설정은 그림만 바꾸며 실제 스킬이나 해금 레벨을 추가하지 않습니다.
 import {SAGITTARIUS_SKILLS,SAGITTARIUS_ATTACK,isSagittarius} from '/shared/sagittarius-skills.js';
@@ -21,14 +22,14 @@ export const CHARACTER_SKILL_ICON_URLS = Object.freeze({
 });
 
 export function canUseSpecialSkill(player) {
-  return !!player && (player.role === 'teacher' || Number(player.avatar?.level || 1) >= (isSagittarius(player)?3:2));
+  return !!player && (player.role === 'teacher' || Number(player.avatar?.level || 1) >= 2);
 }
 
 // 기존 Q/E 조작 모듈의 키보드·터치 요청 모두 동일한 경계에서 확인합니다.
 export function createSkillGatedRequest({ getPlayer, request }) {
   return async (event, payload) => {
     if (event === 'combat:skill' && !canUseSpecialSkill(getPlayer())) {
-      throw new Error(`특수 공격은 LV${isSagittarius(getPlayer())?3:2}부터 사용할 수 있어요.`);
+      throw new Error(`특수 공격은 LV2부터 사용할 수 있어요.`);
     }
     return request(event, payload);
   };
@@ -47,24 +48,24 @@ function setSlotIcon(button, url = '') {
   else { image.onload = null; image.removeAttribute('src'); }
 }
 
-export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
+export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, transform, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
   const controls = document.querySelector('.combat-buttons');
   const skill = document.getElementById('touch-skill');
   const attack = document.getElementById('touch-attack');
   const defaultAttackIcon = attack?.querySelector('.combat-slot-icon')?.innerHTML || '';
   let attackMode = '';
   function updateAttackIcon(player){
-    const mode=isSagittarius(player)&&player.avatar.level>=2?'arrow':'sword';
+    const spec=characterAbilities(player)[0];const mode=player?.avatar?.level>=2&&spec.iconUrl?spec.iconUrl:'sword';
     if(mode===attackMode||!attack)return;attackMode=mode;
     const container=attack.querySelector('.combat-slot-icon');
-    container.innerHTML=mode==='arrow'?'<img alt="" src="'+SAGITTARIUS_ATTACK.iconUrl+'">':defaultAttackIcon;
-    attack.title=mode==='arrow'?'빛의 화살 (Q)':'공격 (Q)';attack.setAttribute('aria-label',attack.title);
+    container.innerHTML=mode!=='sword'?'<img alt="" src="'+spec.iconUrl+'">':defaultAttackIcon;
+    attack.title=spec.name+' (Q)';attack.setAttribute('aria-label',attack.title);
   }
   if (!controls || !skill) return { update() {}, reset() {} };
 
   const group = document.createElement('div');
   group.className = 'auxiliary-skills';
-  group.setAttribute('aria-label', '보조 스킬');
+  group.setAttribute('aria-label', 'LV5 변신');
   controls.append(group);
   let count = 0;
   const heldNumberKeys = new Set();
@@ -129,7 +130,8 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, ico
     const player = getPlayer();
     const unlocked = canUseSpecialSkill(player);
     updateAttackIcon(player);
-    const requiredLevel=isSagittarius(player)?3:2;
+    if(attack){attack.disabled=!unlocked;attack.classList.toggle('is-locked',!unlocked);attack.setAttribute('aria-disabled',String(!unlocked));const lock=attack.querySelector('.combat-slot-lock');if(lock)lock.hidden=unlocked;}
+    const requiredLevel=2;
     skill.disabled = !unlocked;
     skill.classList.toggle('is-locked', !unlocked);
     skill.setAttribute('aria-disabled', String(!unlocked));
@@ -139,8 +141,9 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, ico
     const lock = skill.querySelector('.combat-slot-lock');
     if (lock) {lock.hidden = unlocked;lock.querySelector('span').textContent=`LV${requiredLevel}`;}
     const urls = iconUrls[player?.avatar?.constellationId] || [];
-    setSlotIcon(skill, unlocked ? urls[0] || '' : '');
-    const wanted = player ? Math.max(0, Math.min(2, levelOf(player) - (isSagittarius(player)?3:2))) : 0;
+    setSlotIcon(skill, unlocked ? characterAbilities(player)[1].iconUrl : '');
+    if(unlocked){skill.title=characterAbilities(player)[1].name+' (E)';skill.setAttribute('aria-label',skill.title);}
+    const wanted = player && levelOf(player)>=5 && player.role!=='teacher' ? 1 : 0;
     if (wanted !== count) {
       count = wanted;
       group.replaceChildren();
@@ -154,14 +157,14 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, ico
           `<span class="combat-key-badge" aria-hidden="true">${index}</span>`;
         button.setAttribute('aria-label', `보조 스킬 ${index} (준비 중)`);
         button.addEventListener('click', () => {
-          if (canAct()) {if(castSkill)castSkill(index);else toast('보조 스킬은 준비 중이에요.');}
+          if(canAct()) {if(transform)transform();else toast('변신 설정을 준비 중이에요.');}
         });
         group.append(button);
       }
     }
     [...group.children].forEach((button, index) => {
-      setSlotIcon(button, urls[index + 1] || '');
-      button.setAttribute('aria-label',isSagittarius(player)?`${SAGITTARIUS_SKILLS[index+1].name} (${index+1})`:`보조 스킬 ${index+1} (준비 중)`);
+      setSlotIcon(button, characterAbilities(player)[2].iconUrl);
+      button.setAttribute('aria-label','LV5 변신 (1)');button.dataset.skillSlot='transformation';
       button.title=button.getAttribute('aria-label');
     });
     layout();

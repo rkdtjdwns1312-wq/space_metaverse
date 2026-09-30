@@ -13,9 +13,10 @@ const student = (overrides = {}) => ({
 });
 
 test('학생 LV1~LV5 아바타 가로·세로 크기와 교사 크기를 고정한다', () => {
-  for (const [level, size] of [[1, 32], [2, 80], [3, 92], [4, 105.8], [5, 121.67]]) {
+  for (const [level, size] of [[1, 32], [2, 80], [3, 92], [4, 105.8], [5, 105.8]]) {
     assert.ok(Math.abs(avatarSizeOf(student({ avatar: { level } })) - size) < 1e-12);
   }
+  assert.ok(Math.abs(avatarSizeOf(student({avatar:{level:5},transformation:{active:true}}))-121.67)<1e-12);
   assert.equal(avatarSizeOf({ role: 'teacher', avatar: { level: 6 } }), 96);
   assert.ok(Math.abs(avatarSizeOf(student({ avatar: { level: 6 } })) - 121.67) < 1e-12);
 });
@@ -23,7 +24,7 @@ test('학생 LV1~LV5 아바타 가로·세로 크기와 교사 크기를 고정�
 test('크기 비례 사거리·타격 반경·몸 가장자리 스킬 시작점은 위조 수치를 무시한다', () => {
   for (const [role, level, reach, originOffset, radius] of [
     ['student', 1, 24.8, 16, 14.4], ['student', 2, 62, 40, 36], ['student', 3, 71.3, 46, 41.4],
-    ['student', 4, 81.995, 52.9, 47.61], ['student', 5, 94.29425, 60.835, 54.7515], ['teacher', 6, 74.4, 48, 43.2]
+    ['student', 4, 81.995, 52.9, 47.61], ['student', 5, 81.995, 52.9, 47.61], ['teacher', 6, 74.4, 48, 43.2]
   ]) {
     const p = student({ role, avatar: { level }, reach: 99999, radius: 99999, originOffset: 99999 });
     const geometry = attackGeometryOf(p);

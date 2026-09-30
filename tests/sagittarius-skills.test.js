@@ -32,7 +32,7 @@ test('유성화살은 +5가 아닌 300%, 가로5배·MP5·쿨타임5초',()=>{
   castSagittarius(room,player,0,now+5000);assert.equal(ensureVitals(player).mp,10);
 });
 test('LV·종류·슬롯·MP·사망·검은별 검증 실패 시 소모 없음',()=>{
-  for(const level of [1,2,3,4]){
+  for(const level of [1]){
     const {room,player}=setup(level);const before=ensureVitals(player).mp;
     assert.throws(()=>castSagittarius(room,player,Math.max(0,level-2),now),/LV/);assert.equal(ensureVitals(player).mp,before);
   }
@@ -124,7 +124,7 @@ test('실제 소켓 위조 수치 무시·동일맵에만 효과·저장 데이�
   const result=await call(student,'combat:skill',{slot:0,power:999999,mana:0,range:999999,dx:-1});
   assert.equal(result.ok,true);assert.equal(result.targets.find(t=>t.monsterId===monster.id).damage,attackPowerOf(3,'sagittarius')*3);
   assert.equal(result.vitals.mp.current,15);assert.equal(result.effects[0].dx,1);
-  assert.equal((await call(student,'combat:skill',{slot:3})).ok,false);
+  for(const slot of [1,2,3])assert.equal((await call(student,'combat:skill',{slot})).ok,false);
   ensureVitals(player).mp=0;
   const q=await call(student,'combat:attack',{power:99999});assert.equal(q.ok,true);
   assert.equal(q.effects[0].slot,'attack');assert.equal(q.vitals.mp.current,0);

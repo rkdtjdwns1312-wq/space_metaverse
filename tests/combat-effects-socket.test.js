@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {monstersOf} from '../server/monsters.js';
+import {ensureVitals,damagePlayer} from '../server/vitals.js';
+import {toRecord} from '../server/persistent-rooms.js';
+
+test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, 위조 변신 수치 무시·저장 제외',async t=>{
+ let now=1000000;const key='corvus-private-test-key',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
+ t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
+ const connect=async()=>{const s=io(`http://127.0.0.1:${port}`,{transports:['websocket'],reconnection:false,autoConnect:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);s.connect();});return s;};
+ const call=(s,e,d={})=>s.timeout(3000).emitWithAck(e,d),teacher=await connect(),a=await connect(),b=await connect(),outsider=await connect();
+ const made=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2']});
+ const joined=await call(a,'room:join',{code:made.room.code,nickname:'1'}),peer=await call(b,'room:join',{code:made.room.code,nickname:'2'});
+ await call(outsider,'room:create',{teacherKey:key,allowedNames:['3']});
+ const room=game.store.rooms.get(made.room.code),p=room.players.get(joined.selfId),friend=room.players.get(peer.selfId);
+ Object.assign(p,{x:500,y:450,mapId:'star-origin-1',facing:{x:1,y:0}});Object.assign(p.avatar,{level:4,constellationId:'corvus'});
+ Object.assign(friend,{x:700,y:450,mapId:p.mapId});Object.assign(friend.avatar,{level:4,constellationId:'taurus'});
+ const monster=[...monstersOf(room).values()][0];Object.assign(monster,{x:690,y:450,hp:100,maxHp:100,nextAttackAt:Infinity,lastMoveAt:now});room.monsters=new Map([[monster.id,monster]]);
+ let leaks=0;teacher.on('combat:damage-numbers',()=>leaks++);outsider.on('combat:damage-numbers',()=>leaks++);
+ const result=await call(a,'combat:skill',{slot:0,power:99999,mana:0,hits:100,dx:-1});assert.equal(result.ok,true);assert.equal(result.vitals.mp.current,25);assert.equal(result.hit.dx,1);
+ for(const slot of [1,2,3])assert.equal((await call(a,'combat:skill',{slot})).ok,false);
+ const received=new Promise(r=>a.once('combat:damage-numbers',r));now+=1000;const batch=await received;
+ assert.equal(batch.hits.filter(h=>h.targetKind==='monster').length,4);assert.equal(batch.hits.filter(h=>h.targetKind==='player').length,4);
+ assert.ok(batch.hits.filter(h=>h.targetKind==='monster').every(h=>h.damage===4));assert.equal(monster.hp,84);
+ await new Promise(r=>setTimeout(r,80));assert.equal(leaks,0);
+ assert.equal((await call(a,'combat:transform',{level:5})).ok,false);
+ p.avatar.level=5;ensureVitals(p).hp=1;ensureVitals(p).mp=0;
+ const transformed=await call(a,'combat:transform',{durationMs:999999,cooldownMs:0,attackBonus:99999});assert.equal(transformed.ok,true);
+ assert.equal(transformed.endsAt,now+30000);assert.equal(transformed.cooldownUntil,now+300000);assert.equal(ensureVitals(p).hp,50);assert.equal(ensureVitals(p).mp,50);
+ assert.equal((await call(a,'combat:transform')).ok,false);
+ damagePlayer(p,10,now);assert.ok(ensureVitals(p).hp<50);const hp=ensureVitals(p).hp;now+=5000;
+ await new Promise(r=>setTimeout(r,80));assert.equal(ensureVitals(p).hp,Math.min(50,hp+5));
+ now+=25000;await call(a,'combat:skill',{slot:3});assert.equal(p.transformation.active,false);assert.equal(ensureVitals(p).hp<=40,true);
+ const saved=JSON.stringify(toRecord(room));for(const privateKey of ['corvusCasts','corvusCooldownUntil','damageNumbers','transformation'])assert.ok(!saved.includes(privateKey));
+});

@@ -1,3 +1,5 @@
+import {castCorvus,advanceCorvus,corvusCooldowns} from './corvus-skills.js';
+import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
@@ -269,7 +271,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const execute=save?transaction:work=>work();
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
-          if(session&&['combat:attack','combat:skill','map:travel','evolution:evolve','evolution:change'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
+          if(session&&name.startsWith('combat:')&&expireTransformation(session.player,clock()))roster(session.room);
+          if(session&&['combat:attack','combat:skill','combat:transform','map:travel','evolution:evolve','evolution:change'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
             ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
@@ -297,6 +300,16 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,...geometry,power};
+      if(player.avatar.constellationId==='corvus'){
+      const result=castCorvus(room,player,now,{basic:true});
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+          io.to(viewer.socketId).emit('combat:hit',result.hit);
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+          for(const target of result.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
+        }
+        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+        return result;
+      }
       if(isSagittarius(player)){
         const result=attackSagittarius(room,player,now);
         // 기존 공격 알림은 유지하되 원형 타격 대신 화살만 그립니다.
@@ -327,12 +340,29 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(session.room);return result;
     });
     // 이전 클라이언트에도 바로 안내하고, 폐지된 몬스터 상호작용은 실행하지 않습니다.
+    action('combat:transform',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const candidate={...session.player,transformation:{active:true}};
+      const safe=arrivePosition(session.room,session.player.mapId,session.player,candidate);
+      const result=startTransformation(session.player,clock());Object.assign(session.player,safe);roster(session.room);return result;
+    },false);
     action('combat:skill',data=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const {room,player}=session,now=clock();
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(player.role==='teacher'||player.avatar.level>=2,'특수 스킬은 LV2부터 사용할 수 있어요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
+      ensure((data.slot??0)===0,'기존 보조 스킬은 더 이상 사용하지 않아요.');
+      if(player.avatar.constellationId==='corvus'){
+      const result=castCorvus(room,player,now,{basic:false});
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+          io.to(viewer.socketId).emit('combat:hit',result.hit);
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+          for(const target of result.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
+        }
+        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+        return result;
+      }
       if(isSagittarius(player)){
         const result=castSagittarius(room,player,data.slot??0,now);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
@@ -350,8 +380,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(now-(lastSkills.get(player)??-Infinity)>=SKILL_COOLDOWN_MS,'스킬을 조금 천천히 사용해주세요.');
       lastSkills.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
-      const effect=skillEffectOf(player.avatar.constellationId,player.avatar.level);
+      const effect=skillEffectOf(player.avatar.constellationId,Math.min(4,player.avatar.level));
       const hit={kind:'skill',playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,effectId:effect?.id||null,durationMs:effect?.durationMs??ATTACK_VISUAL.durationMs,...geometry};
+      if(player.avatar.constellationId==='corvus'){hit.vfxId='skill-lv'+Math.min(4,player.avatar.level);hit.durationMs=1000;}
       // 아직 효과 수치는 정하지 않았습니다. 이후 스킬도 동일한 다중 대상 판정을 사용할 수 있습니다.
       hit.playerTargetIds=playersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id}).map(p=>p.id);
       hit.monsterTargetIds=monstersInAttackArea(room,player,now).map(m=>m.id);
@@ -1442,6 +1473,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
         }
       }
+      let transformationChanged=false;
+      for(const player of room.players.values())transformationChanged=expireTransformation(player,clock())||transformationChanged;
+      if(transformationChanged)roster(room);
+      for(const hit of advanceCorvus(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
+          for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
+        }
+        if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
       for(const hit of advanceSagittarius(room,clock())){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           const {targets,playerTargets,...visual}=hit;
@@ -1452,6 +1492,13 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           }
         }
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
+      // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
+      const damageNumbers=room.damageNumbers?.splice(0)||[];
+      for(const player of room.players.values())damageNumbers.push(...(player.damageNumbers?.splice(0)||[]));
+      for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
+        const visible=damageNumbers.filter(hit=>hit.mapId===viewer.mapId);
+        if(visible.length)io.to(viewer.socketId).emit('combat:damage-numbers',{hits:visible});
       }
       for(const update of advanceLifeRecovery(room,clock())){
         const player=room.players.get(update.playerId);
@@ -1537,7 +1584,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
           io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,
-            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:skillCooldowns(viewer),serverNow:clock()}});
+            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }
     }

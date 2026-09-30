@@ -1,3 +1,4 @@
+import {corvusSkillOf} from '/shared/character-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
 import {isSagittarius,sagittariusSkill} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
@@ -10,8 +11,9 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
   }
   async function castSkill(slot=0){
     const player=getPlayer();if(!player||!canAct())return;
+    if(slot!==0){toast('기존 보조 스킬은 더 이상 사용하지 않아요.');return;}
     if(player.vitals?.defeated){toast('체력을 회복하는 중이에요.');return;}
-    const spec=isSagittarius(player)&&sagittariusSkill(slot);
+    const spec=player.avatar.constellationId==='corvus'?corvusSkillOf(player):isSagittarius(player)&&sagittariusSkill(slot);
     if(spec){
       if(player.avatar.level<spec.level){toast(`LV${spec.level}부터 사용할 수 있어요.`);return;}
       const remaining=owner===player.id?(cooldowns[slot]||0)-Date.now()-serverOffset:0;
@@ -43,12 +45,15 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
   // 숫자는 그림 위에만 겹쳐 표시해 슬롯·작은 단축키 위치는 바꾸지 않습니다.
   setInterval(()=>{
     const player=getPlayer();
-    [skill,...document.querySelectorAll('.auxiliary-skill')].forEach((button,slot)=>{
+    const transform=document.querySelector('[data-skill-slot="transformation"]');
+    if(transform){let badge=transform.querySelector('.skill-cooldown');if(!badge){badge=document.createElement('span');badge.className='skill-cooldown';transform.append(badge);}const state=player?.transformation;const left=Math.ceil(((state?.active?state.endsAt:state?.cooldownUntil)||0)-Date.now()-serverOffset)/1000;badge.hidden=left<=0;badge.textContent=left>0?Math.ceil(left)+'':'';transform.classList.toggle('is-transforming',!!state?.active);}
+    [skill].forEach((button,slot)=>{
       let badge=button.querySelector('.skill-cooldown');
       if(!badge){badge=document.createElement('span');badge.className='skill-cooldown';button.append(badge);}
-      const left=owner===player?.id&&isSagittarius(player)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
+      const left=owner===player?.id&&['corvus','sagittarius'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
       badge.hidden=left<=0;badge.textContent=left>0?String(left):'';
     });
   },100);
-  return {castSkill,sync};
+  async function transform(){if(!canAct())return;try{await request('combat:transform',{});}catch(error){toast(error.message);}}
+  return {castSkill,sync,transform};
 }

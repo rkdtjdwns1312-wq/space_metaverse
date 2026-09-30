@@ -1,0 +1,502 @@
+{
+  "version": 1,
+  "tool": "built-in image_gen + Pillow frame assembly",
+  "effects": [
+    {
+      "id": "attack",
+      "sourceSize": [
+        1536,
+        1024
+      ],
+      "nativeFrameSize": 256,
+      "frameSize": 256,
+      "sheetSize": [
+        1536,
+        1024
+      ],
+      "columns": 6,
+      "rows": 4,
+      "frameCount": 24,
+      "fps": 24,
+      "durationMs": 1000,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alignmentOffsetsNativePixels": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "resampling": "none",
+      "sheet": "attack.png",
+      "frames": "frames/attack/{01..24}.png",
+      "preview": "attack-preview.apng"
+    },
+    {
+      "id": "skill-lv2",
+      "sourceSize": [
+        1536,
+        1024
+      ],
+      "nativeFrameSize": 256,
+      "frameSize": 512,
+      "sheetSize": [
+        3072,
+        2048
+      ],
+      "columns": 6,
+      "rows": 4,
+      "frameCount": 24,
+      "fps": 24,
+      "durationMs": 1000,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alignmentOffsetsNativePixels": [
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -3,
+          -3
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ]
+      ],
+      "resampling": "LANCZOS 256 to 512",
+      "sheet": "skill-lv2.png",
+      "frames": "frames/skill-lv2/{01..24}.png",
+      "preview": "skill-lv2-preview.apng"
+    },
+    {
+      "id": "skill-lv3",
+      "sourceSize": [
+        1536,
+        1024
+      ],
+      "nativeFrameSize": 256,
+      "frameSize": 512,
+      "sheetSize": [
+        3072,
+        2048
+      ],
+      "columns": 6,
+      "rows": 4,
+      "frameCount": 24,
+      "fps": 24,
+      "durationMs": 1000,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alignmentOffsetsNativePixels": [
+        [
+          -4,
+          -14
+        ],
+        [
+          -1,
+          -14
+        ],
+        [
+          7,
+          -15
+        ],
+        [
+          1,
+          -15
+        ],
+        [
+          2,
+          -15
+        ],
+        [
+          0,
+          -12
+        ],
+        [
+          -1,
+          -9
+        ],
+        [
+          -1,
+          -9
+        ],
+        [
+          4,
+          -8
+        ],
+        [
+          1,
+          -7
+        ],
+        [
+          3,
+          -7
+        ],
+        [
+          5,
+          -12
+        ],
+        [
+          -1,
+          -7
+        ],
+        [
+          -4,
+          -7
+        ],
+        [
+          -1,
+          -7
+        ],
+        [
+          2,
+          -9
+        ],
+        [
+          3,
+          -10
+        ],
+        [
+          -1,
+          -11
+        ],
+        [
+          -2,
+          -8
+        ],
+        [
+          0,
+          -8
+        ],
+        [
+          1,
+          -9
+        ],
+        [
+          -1,
+          -7
+        ],
+        [
+          2,
+          -6
+        ],
+        [
+          1,
+          -4
+        ]
+      ],
+      "resampling": "LANCZOS 256 to 512",
+      "sheet": "skill-lv3.png",
+      "frames": "frames/skill-lv3/{01..24}.png",
+      "preview": "skill-lv3-preview.apng"
+    },
+    {
+      "id": "skill-lv4",
+      "sourceSize": [
+        1536,
+        1024
+      ],
+      "nativeFrameSize": 256,
+      "frameSize": 512,
+      "sheetSize": [
+        3072,
+        2048
+      ],
+      "columns": 6,
+      "rows": 4,
+      "frameCount": 24,
+      "fps": 24,
+      "durationMs": 1000,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alignmentOffsetsNativePixels": [
+        [
+          -4,
+          -17
+        ],
+        [
+          -4,
+          -16
+        ],
+        [
+          -1,
+          -18
+        ],
+        [
+          0,
+          -16
+        ],
+        [
+          -4,
+          -18
+        ],
+        [
+          2,
+          -17
+        ],
+        [
+          -3,
+          -6
+        ],
+        [
+          -2,
+          -7
+        ],
+        [
+          0,
+          -6
+        ],
+        [
+          2,
+          -7
+        ],
+        [
+          -3,
+          -10
+        ],
+        [
+          0,
+          -12
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          -1,
+          5
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          3,
+          -6
+        ],
+        [
+          -1,
+          8
+        ],
+        [
+          -1,
+          -4
+        ],
+        [
+          -7,
+          0
+        ],
+        [
+          -6,
+          1
+        ],
+        [
+          0,
+          10
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          -4,
+          12
+        ],
+        [
+          2,
+          12
+        ]
+      ],
+      "resampling": "LANCZOS 256 to 512",
+      "sheet": "skill-lv4.png",
+      "frames": "frames/skill-lv4/{01..24}.png",
+      "preview": "skill-lv4-preview.apng"
+    }
+  ]
+}

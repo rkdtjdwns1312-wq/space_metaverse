@@ -1,3 +1,4 @@
+import {appearanceLevelOf} from '/shared/character-skills.js';
 import {createMailboxUI} from './mailbox-ui.js';
 import {createMarketUI} from './market-ui.js';
 import {createAuxiliarySkills,createSkillGatedRequest} from './auxiliary-skills.js';
@@ -60,7 +61,7 @@ const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
 const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request})});
 const characterSkills=createCharacterSkillsUI();
-const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill});
+const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
@@ -311,11 +312,11 @@ function updateRoom(value){
   const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId,myLv)?.type:null;
   $('self-constellation-type').hidden=!constellationType;
   $('self-constellation-type').textContent=constellationType||'';
-  const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId,myLv):null;
+  const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId,appearanceLevelOf(me)):null;
   const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
   $('self-xp').textContent=isTeacher?'교사 전용':transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
-  $('experience-next').textContent=isTeacher?'모든 맵을 관리할 수 있어요.':transcendent?'초월체에 도달했어요!':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
+  $('experience-next').textContent=isTeacher?'모든 맵을 관리할 수 있어요.':transcendent?'LV5 변신을 해금했어요. 평소에는 LV4 모습이에요.':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
   $('card-foot').textContent=room.title+' · '+room.code;
   $('avatar-card').style.setProperty('--card-accent',isTeacher?'#d2a454':(myPlanet?.color||'#b9a8f0'));
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
@@ -1124,6 +1125,7 @@ socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
+socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});
 socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
 socket.on('sagittarius:effect',data=>{if(selfId)world.sagittariusEffect(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});

@@ -60,6 +60,8 @@ export function damageMonster(room,target,player,power,now=Date.now()){
   target.contributors??=new Map();
   target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(power,target.hp));
   target.hp=Math.max(0,target.hp-power);
+  room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:power});
+  if(room.damageNumbers.length>200)room.damageNumbers.shift();
   if(target.hp===0){
     addEnergyDrop(room,target,target.contributors,now);
     target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;

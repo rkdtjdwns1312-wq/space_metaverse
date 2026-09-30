@@ -117,7 +117,10 @@ async function clearShopPath(page,p,shop){
   assert.ok(Math.abs(p.x-shop.x)>=shop.radius+90,'상점 옆 통로로 나와야 합니다');
   // 상점은 북쪽, 게임기는 남쪽에 있어 귀환문과 같은 높이의 통로가 비어 있습니다.
   const corridorY=STREET.objects.find(o=>o.id==='gate-plaza').y;
-  for(let i=0;i<20&&Math.abs(p.y-corridorY)>25;i++)await holdKey(page,p.y<corridorY?'ArrowDown':'ArrowUp',70);
+  // 70ms 펄스를 이동속도로 축소하면 서버 한 틱보다 짧아 입력을 놓칠 수 있습니다.
+  // 키를 유지한 상태로 실제 서버 좌표가 도착하는 것을 확인합니다.
+  const vertical=p.y<corridorY?'ArrowDown':'ArrowUp';await page.locator('#world').focus();await page.keyboard.down(vertical);
+  try{const end=Date.now()+5000;while(Math.abs(p.y-corridorY)>25&&Date.now()<end)await page.waitForTimeout(20);}finally{await page.keyboard.up(vertical);}
   assert.ok(Math.abs(p.y-corridorY)<=25,'상점과 게임기 사이 통로에 도착해야 합니다');
   for(let i=0;i<25&&p.x>300;i++)await holdKey(page,'ArrowLeft',120);
 }

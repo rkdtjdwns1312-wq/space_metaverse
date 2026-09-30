@@ -10,7 +10,7 @@ const student=level=>({id:'student',role:'student',avatar:{level},connected:true
 const roomWith=player=>({players:new Map([[player.id,player]]),planets:new Map(),proposals:new Map(),unattended:true});
 
 test('바닥 보호 반지름은 화면 크기에 맞고 이동·물체 반경은 16으로 유지된다',()=>{
-  const expected=[18,42,48,55,63];
+  const expected=[18,42,48,55,55];
   for(let level=1;level<=5;level++)assert.equal(avatarFloorRadius({role:'student',avatar:{level}}),expected[level-1],`학생 LV${level}`);
   assert.equal(avatarFloorRadius({role:'teacher',avatar:{level:6}}),50);
   assert.equal(RULES.radius,16,'이동 충돌과 물체·공격 상호작용 반경은 기존 값');

@@ -3,7 +3,7 @@ const define=ability=>Object.freeze({...ability,iconUrl:'/assets/skills/sagittar
 export const SAGITTARIUS_ATTACK=define({slot:'attack',key:'Q',level:2,name:'빛의 화살',icon:'light-arrow',mana:0,cooldownMs:1000,rangeWidths:3,
   description:'최근 이동한 방향으로 빛의 화살을 쏩니다. 사거리: 캐릭터 가로 크기의 3배 · 피해: 현재 공격력의 100% · 마나 소모 없음 · 1초에 한 번 공격'});
 export const SAGITTARIUS_SKILLS=Object.freeze([
-  {slot:0,key:'E',level:3,name:'유성화살',icon:'meteor-arrow',mana:5,cooldownMs:5000,rangeWidths:5,
+  {slot:0,key:'E',level:2,name:'유성화살',icon:'meteor-arrow',mana:5,cooldownMs:5000,rangeWidths:5,
     description:'최근 이동한 방향으로 유성화살을 쏩니다. 사거리: 캐릭터 가로 크기의 5배 · 피해: 현재 공격력의 300% · 마나 5 · 쿨타임 5초'},
   {slot:1,key:'1',level:4,name:'추적의 사냥꾼',icon:'hunter',mana:10,cooldownMs:15000,durationMs:10000,intervalMs:1000,
     description:'가장 가까운 적을 쫓는 꼬마 별여우를 10초 동안 소환합니다. 1초마다 현재 공격력의 100%로 총 10번 공격한 뒤 사라집니다. 마나 10 · 쿨타임 15초'},
