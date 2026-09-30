@@ -52,7 +52,10 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const code=created.room.code,id=joined.selfId;
   const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);
   game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';m.hp=1;});
-  const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);assert.ok(killed.targets.some(m=>m.defeated));
+  const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);
+  // 물병 Q는 서버 투사체가 실제 적에게 도착한 뒤 처치와 드랍이 발생합니다.
+  for(let i=0;i<40&&!current().energyDrops?.size;i++)await new Promise(r=>setTimeout(r,50));
+  assert.equal(monstersOf(current()).get('star-scorpion-1').hp,0);
   const drop=[...current().energyDrops.values()][0],amount=drop.total;assert.equal(person().cosmicEnergy,0);
   const thief=await connect(),other=await call(thief,'room:join',{code,nickname:'2',pin:'1234'});assert.ok(other.ok,other.error);
   Object.assign(current().players.get(other.selfId),{mapId:drop.mapId,x:drop.x,y:drop.y});

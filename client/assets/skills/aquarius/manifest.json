@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "generator": "builtin image_gen.imagegen",
+  "nativeSize": 256,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 6,
+  "rows": 4,
+  "frameCount": 24,
+  "sheetWidth": 1536,
+  "sheetHeight": 1024,
+  "frameOrder": "row-major",
+  "premultipliedAlpha": false,
+  "prompts": "production-prompts.json",
+  "buildScript": "scripts/build-aquarius-vfx.py",
+  "previewDurationMs": 5000,
+  "phases": {
+    "startup": {
+      "frames": [
+        0,
+        5
+      ],
+      "startMs": 0,
+      "endMs": 500
+    },
+    "loop": {
+      "frames": [
+        6,
+        17
+      ],
+      "startMs": 500,
+      "endMs": 4500,
+      "cycleMs": 1000,
+      "repeat": 4
+    },
+    "fade": {
+      "frames": [
+        18,
+        23
+      ],
+      "startMs": 4500,
+      "endMs": 5000
+    }
+  },
+  "assets": {
+    "attack": {
+      "sourceKind": "aquarius-attack",
+      "sheet": "attack.png",
+      "icon": "attack-icon.png",
+      "preview": "attack-preview.png",
+      "framePattern": "attack/frames/{frame:02d}.png",
+      "frameFilenameIndexBase": 1,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "nativeSize": 256,
+      "frameCount": 24,
+      "groundEllipseWidthRatio": null,
+      "source": "source/attack.png",
+      "sourceSha256": "cf249118e13044e69b18344a5457b0348b7b59993ff0530ba7708c87b6512917"
+    },
+    "skill-lv2": {
+      "sourceKind": "aquarius-skill-lv2",
+      "sheet": "skill-lv2.png",
+      "icon": "skill-lv2-icon.png",
+      "preview": "skill-lv2-preview.png",
+      "framePattern": "skill-lv2/frames/{frame:02d}.png",
+      "frameFilenameIndexBase": 1,
+      "anchor": [
+        0.5,
+        0.75
+      ],
+      "nativeSize": 256,
+      "frameCount": 24,
+      "groundEllipseWidthRatio": 0.8,
+      "source": "source/skill-lv2.png",
+      "sourceSha256": "623e5de7307dcc32f519c979aac5e00b87b0f06c7ba4bb84d03f77cb67269899"
+    },
+    "skill-lv3": {
+      "sourceKind": "aquarius-skill-lv3",
+      "sheet": "skill-lv3.png",
+      "icon": "skill-lv3-icon.png",
+      "preview": "skill-lv3-preview.png",
+      "framePattern": "skill-lv3/frames/{frame:02d}.png",
+      "frameFilenameIndexBase": 1,
+      "anchor": [
+        0.5,
+        0.75
+      ],
+      "nativeSize": 256,
+      "frameCount": 24,
+      "groundEllipseWidthRatio": 0.8,
+      "source": "source/skill-lv3.png",
+      "sourceSha256": "7b7a245935b1ac579655e780b5b8032934be1946ee85f0bd02767a6384d13c1b"
+    },
+    "skill-lv4": {
+      "sourceKind": "aquarius-skill-lv4",
+      "sheet": "skill-lv4.png",
+      "icon": "skill-lv4-icon.png",
+      "preview": "skill-lv4-preview.png",
+      "framePattern": "skill-lv4/frames/{frame:02d}.png",
+      "frameFilenameIndexBase": 1,
+      "anchor": [
+        0.5,
+        0.75
+      ],
+      "nativeSize": 256,
+      "frameCount": 24,
+      "groundEllipseWidthRatio": 0.8,
+      "source": "source/skill-lv4.png",
+      "sourceSha256": "7d1a8a845257f9db6d523fd4e72f92ca4b7a9fb76c1e15c303ebdef7c7a5970f"
+    }
+  }
+}

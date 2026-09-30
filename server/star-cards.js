@@ -141,36 +141,39 @@ function activate(room, player, itemId, selectedCard, now, chooseIndex) {
   commit(room, draft);
   return {message: `${card.name} 별 카드를 공개했어요.${card.id === 'zodiac' ? ' 원하는 효과를 골라주세요.' : policy.manual.length ? ' 선생님 확인이 필요한 효과가 있어요.' : ' 자동 효과를 적용했어요.'}`,
     record: structuredClone(record), card: structuredClone(card), targetIds: [player.id], tax,
-    starCard: {card: publicRecord(record), definition: structuredClone(card), canRemove: false}};
+    starCard: {card: activeStarCards(room,now).find(card=>card.id===record.id), definition: structuredClone(card), canRemove: false}};
 }
 
-// Candidate centers stay in the reserved 900x700 temple area. Filter the actual
-// map's pillars, then retain the nearest 30 centers. Record slots never shift
-// when another record expires or is removed. Recompute only on module load.
-export const STAR_CARD_SLOTS = Object.freeze(Array.from({length: STAR_CARD_LAYOUT.columns * STAR_CARD_LAYOUT.rows}, (_, index) => ({
-  x: MAP.templeCenter.x + (index % STAR_CARD_LAYOUT.columns - (STAR_CARD_LAYOUT.columns - 1) / 2) * STAR_CARD_LAYOUT.spacingX,
-  y: MAP.templeCenter.y-250 + Math.floor(index / STAR_CARD_LAYOUT.columns) * STAR_CARD_LAYOUT.spacingY
-})).filter(point => MAP.objects.filter(object => object.kind === 'pillar').every(pillar =>
-  Math.hypot(point.x - pillar.x, point.y - pillar.y) >= STAR_CARD_LAYOUT.minPillarDistance))
-  .sort((a, b) => (a.x - MAP.templeCenter.x) ** 2 + (a.y - MAP.templeCenter.y-20) ** 2 -
-    (b.x - MAP.templeCenter.x) ** 2 - (b.y - MAP.templeCenter.y-20) ** 2 || a.y - b.y || a.x - b.x)
-  .slice(0, MAX_STAR_CARDS).map(Object.freeze));
+// 저장된 슬롯/카드 ID는 유지하고 화면 위치만 신전 바로 아래 한 줄로 정렬합니다.
+// 최대30장도 광장 바닥을 벗어나지 않도록 많을 때만 그림을 비례 축소합니다.
+function rowSlots(count){
+  if(!count)return [];
+  const layout=STAR_CARD_LAYOUT,width=Math.min(layout.width,(layout.rowWidth-(count-1)*layout.gap)/count);
+  const spacing=count>1?Math.min(layout.spacingX,(layout.rowWidth-width)/(count-1)):0;
+  return Array.from({length:count},(_,index)=>Object.freeze({
+    x:MAP.templeCenter.x+(index-(count-1)/2)*spacing,y:MAP.templeCenter.y+layout.rowOffsetY,
+    width,height:layout.height*width/layout.width,labelWidth:count>1?spacing-4:180
+  }));
+}
+export const STAR_CARD_SLOTS=Object.freeze(rowSlots(MAX_STAR_CARDS));
 
-function publicRecord(record) {
-  const card = starCardOf(record.cardId), position = STAR_CARD_SLOTS[record.data.slot];
+function publicRecord(record,position=STAR_CARD_SLOTS[record.data.slot]) {
+  const card = starCardOf(record.cardId);
   const copy = structuredClone(record);
   // 할인 사용 목록은 구매 내역입니다. 다른 학생에게 가는 공개 카드에 넣지 않습니다.
   if (copy.cardId === 'saturn' && copy.data.automation) copy.data.automation = {version: 1};
   return {...copy, slot: record.data.slot, name: card.name, description: card.description, effect: card.effect,
     durationDays: card.durationDays, mapId: MAP.id, ...position,
-    width: STAR_CARD_LAYOUT.width, height: STAR_CARD_LAYOUT.height, art: STAR_CARD_ART.face, backArt: STAR_CARD_ART.back};
+    art: STAR_CARD_ART.face, backArt: STAR_CARD_ART.back};
 }
 
 // Public read-only projection: suitable for every student and the teacher.
-// x/y is the card's center; no inventory, warning reasons or secret recipes leak.
+// x/y is the floor interaction point; no private inventory or secret recipes leak.
 export function activeStarCards(room, now = Date.now()) {
   validTime(now);
-  return validateStarCards(room.starCards).filter(record => active(record, now)).map(publicRecord);
+  const records=validateStarCards(room.starCards).filter(record=>active(record,now)).sort((a,b)=>a.data.slot-b.data.slot);
+  const slots=rowSlots(records.length);
+  return records.map((record,index)=>publicRecord(record,slots[index]));
 }
 
 export function removeStarCard(room, teacher, id) {
@@ -319,5 +322,5 @@ export function chooseStarCard(room, player, {id, choice, constellationId} = {},
   record.data.automation.choice = choice;
   validateStarCards(draft.starCards);
   commit(room, draft);
-  return publicRecord(record);
+  return activeStarCards(room,now).find(card=>card.id===record.id);
 }

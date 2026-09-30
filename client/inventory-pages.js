@@ -1,12 +1,12 @@
 const PAGE_SIZE = 20;
-const PAGE_COUNT = 2;
+const PAGE_COUNT = 3;
 
 /**
- * Creates the two-page inventory navigator without owning inventory rendering.
+ * Creates the three-page inventory navigator without owning inventory rendering.
  * The current page intentionally survives calls to slice(), so roster updates
  * can refresh the visible rows without moving the player back to page one.
  */
-export function createInventoryPages({ onChange } = {}) {
+export function createInventoryPages({ onChange, onRecipes } = {}) {
   const list = document.querySelector('#bag-list');
   if (!list) throw new Error('Inventory pages require #bag-list.');
 
@@ -16,7 +16,7 @@ export function createInventoryPages({ onChange } = {}) {
   nav.setAttribute('aria-label', '가방 페이지');
   nav.setAttribute('role', 'tablist');
 
-  const buttons = [1, 2].map((number) => {
+  const buttons = [1, 2, 3].map((number) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'inventory-page-tab';
@@ -43,6 +43,7 @@ export function createInventoryPages({ onChange } = {}) {
     return button;
   });
 
+  const recipes=document.createElement('button');recipes.type='button';recipes.id='bag-recipes';recipes.className='inventory-recipes';recipes.textContent='조합레시피';recipes.onclick=()=>onRecipes?.();nav.append(recipes);
   // 페이지 선택은 가방 제목 바로 아래에 고정합니다.
   const title = document.querySelector('#inventory-title');
   if (title) title.after(nav);

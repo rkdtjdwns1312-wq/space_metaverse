@@ -87,8 +87,7 @@ try{
   await dock(teacher,'menu');await teacher.locator('#teacher-tools').click();await teacher.locator('#shards-give').click();
   await dock(one,'inventory');await one.locator('[data-item-id="rainbow-tail"] .slot-btn').click();await one.locator('.item-info').click();await one.locator('#item-info-text').filter({hasText:'무지개 꼬리'}).waitFor();await one.keyboard.press('Escape');
   await one.locator('#bag-detail .use').click();await one.locator('#toast').filter({hasText:'캐릭터의 lv보다 높은 아이템'}).waitFor();assert.equal(p1.inventory[0].quantity,1);
-  await one.locator('.item-discard').click();await one.locator('#discard-no').click();assert.equal(p1.inventory[0].quantity,1);
-  await one.locator('.item-discard').click();await one.locator('#discard-yes').click();await one.waitForFunction(()=>!document.querySelector('#bag-list [data-item-id="rainbow-tail"]'));check('아이템 효과·레벨 안내·폐기 아니오/예');
+  assert.equal(await one.locator('.item-discard').count(),0);assert.equal(p1.inventory[0].quantity,1);check('아이템 효과·레벨 안내·버리기 기능 제거');
   await one.locator('[data-item-id="star-sticker"] .slot-btn').click();await one.locator('#bag-detail .use').click();await one.locator('#use-confirm').click();await two.locator('#toast').filter({hasText:'별이 친구가'}).waitFor();check('일반 아이템 사용자가 광장에 표시됨');
   for(const to of [GARDEN_ID,STREET_ID]){
     await close(one);const gate=MAP.objects.find(o=>o.target===to);p1.mapId=PLAZA_ID;p1.x=gate.x;p1.y=gate.y;

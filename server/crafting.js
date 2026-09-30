@@ -84,5 +84,7 @@ export function attemptCraft(player, input, { recipes = [], catalog = SHOP.items
   if (outputEntry && outputEntry.quantity < CRAFTING.maxQuantity) outputEntry.quantity += 1;
   else player.inventory.push({ id: match.output.id, quantity: 1 });
   player.starShards -= fee;
+  if (!(player.learnedRecipeIds || []).includes(match.output.id))
+    player.learnedRecipeIds = [...(player.learnedRecipeIds || []), match.output.id];
   return { success: true, item: match.output, error: null, balance: player.starShards, inventory: player.inventory };
 }

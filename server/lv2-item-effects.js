@@ -1,4 +1,5 @@
 import {randomInt} from 'node:crypto';
+import {allowsOfflineItemTarget} from '../shared/item-targets.js';
 import {hasUnlimitedShards} from '../shared/economy.js';
 import {ITEM_USE, SHARDS, SHOP} from '../shared/config.js';
 import {LV2_ITEMS} from '../shared/lv2-items.js';
@@ -28,19 +29,10 @@ const validNow = now => fail(Number.isSafeInteger(now) && now >= 0 && now <= Num
 //   at zero (or call settle). Other markers follow the existing completion flow.
 // - star-card is an inventory-only placeholder; no star-card subtype/effect here.
 
-// Integration: persist lv2State.galaxyNextAt (0..2 acquisition-anchored timestamps).
-// Call after EVERY inventory change (buy/craft/give/trade/sell/use). Existing cards
-// without state start their first week now; elapsed ownership cannot be inferred.
-// Removing a card removes the newest anchor; a new card never inherits that week.
+// 이전 예약 시각은 저장 호환용으로만 남깁니다. 보유능력은 직접 사용하며 소급 지급하지 않습니다.
 export function syncGalaxyHoldings(player, now = Date.now()) {
   validNow(now);
-  const quantity = Math.min(2, count(player, 'galaxy-card'));
-  const previous = player.lv2State?.galaxyNextAt || [];
-  const next = previous.slice(0, quantity);
-  while (next.length < quantity) next.push(now + WEEK);
-  if (JSON.stringify(previous) === JSON.stringify(next)) return false;
-  player.lv2State = {...player.lv2State, galaxyNextAt: next};
-  return true;
+  return false;
 }
 
 export function canPurchaseLv2Item(player, item, quantity = 1) {
@@ -121,7 +113,7 @@ function recipients(room, actor, item, data) {
   const expected = item.targets === 'three' ? 3 : item.targets === 'pair' || spaceship ? 2 : 1;
   fail(ids.length === expected && new Set(ids).size === expected && ids.every(id => typeof id === 'string'), '서로 다른 사용 대상을 골라주세요.');
   const targets = ids.map(id => room.players.get(id));
-  fail(targets.every(p => p?.connected), '그 친구는 지금 없어요.');
+  fail(targets.every(p => p && (p.connected || (allowsOfflineItemTarget(item) && p.role === 'student'))), '그 친구는 지금 없어요.');
   if (item.targets === 'self') fail(ids[0] === actor.id, '이 물건은 나에게만 쓸 수 있어요.');
   if ((item.targets === 'other' && !spaceship) || item.targets === 'three') fail(targets.every(p => p.id !== actor.id && p.role === 'student'), '다른 학생 친구를 골라주세요.');
   if (item.targets === 'pair' || spaceship) fail(targets.every(p => p.role === 'student'), '학생 친구 2명을 골라주세요.');
@@ -234,9 +226,6 @@ export function useLv2Item(room, actor, item, data = {}, now = Date.now(), die =
 export function lv2ItemsDue(room, now = Date.now()) {
   validNow(now);
   for (const player of room.players.values()) {
-    const anchors = player.lv2State?.galaxyNextAt || [];
-    if (anchors.length !== Math.min(2, count(player, 'galaxy-card'))) return true;
-    if (player.starShards < SHARDS.max && anchors.some(at => at <= now)) return true;
     for (const marker of player.cardMarkers || []) {
       if (!catalogueItem(marker.itemId)) continue;
       if (marker.itemId === 'moon-card' && player.avatar.blackStar) return true;
@@ -255,14 +244,6 @@ export function settleLv2Items(room, now = Date.now()) {
   let changed = false;
   for (const player of room.players.values()) {
     changed = syncGalaxyHoldings(player, now) || changed;
-    const anchors = player.lv2State?.galaxyNextAt || [];
-    // Bounded by 2 anchors, even after years offline. Full wallets retain debt.
-    for (let i = 0; i < anchors.length; i++) {
-      if (anchors[i] > now) continue;
-      const due = Math.floor((now - anchors[i]) / WEEK) + 1;
-      const paid = Math.min(due, Math.max(0, SHARDS.max - player.starShards));
-      if (paid) { player.starShards += paid; anchors[i] += paid * WEEK; changed = true; }
-    }
     const before = player.cardMarkers || [];
     const after = before.filter(marker => {
       if (!catalogueItem(marker.itemId)) return true;

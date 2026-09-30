@@ -2,6 +2,7 @@ import {TRANSFORMATION,transformationDescription,transformedSkill} from './trans
 export {TRANSFORMATION} from './transformation.js';
 import {SAGITTARIUS_ATTACK,SAGITTARIUS_SKILLS} from './sagittarius-skills.js';
 import {constellationOf} from './constellations.js';
+import {AQUARIUS_VFX,AQUARIUS_NAMES,aquariusSkillOf} from './aquarius-skills.js';
 
 // 레벨(입장/아이템 권한)과 현재 외형을 분리합니다. LV5는 평소 LV4 모습입니다.
 export function appearanceLevelOf(player){
@@ -32,6 +33,12 @@ export function characterAbilities(player){
     Object.assign(attack,{name:'검은 깃털 투사체',iconUrl:CORVUS_VFX.attack.iconUrl});
     Object.assign(skill,{name:corvusNames[level],iconUrl:CORVUS_VFX[`skill-lv${level}`].iconUrl,
       ready:true,description:`공격력: ${spec.multiplier*100}% × ${spec.hits}회\n쿨타임: ${spec.cooldownMs/1000}초\n마나 소모: ${spec.mana}`});
+  }
+  if(id==='aquarius'){
+    const spec=aquariusSkillOf(player);
+    Object.assign(attack,{name:'물방울 투사체',iconUrl:AQUARIUS_VFX.attack.iconUrl,description:'바라보는 방향으로 가로 크기의 4배까지 물방울을 날려요. 마나 소모 없이 현재 공격력만큼, 1초에 한 번 공격하며 첫 몬스터에서 멈춰요.'});
+    Object.assign(skill,{name:AQUARIUS_NAMES[level],iconUrl:AQUARIUS_VFX[`skill-lv${level}`].iconUrl,ready:true,
+      description:`공격력: 5초 총 ${spec.multiplier*100}% · 범위 안 친구 체력 ${spec.effectAmount*100}% 회복(최대 ${spec.healingAmount})\n쿨타임: ${spec.cooldownMs/1000}초\n마나 소모: ${spec.mana}`});
   }
   const transform={slot:'transform',key:'1',level:5,name:'LV5 변신',ready:TRANSFORMATION.ready,
     iconUrl:constellationOf(id,5)?.sprite||'',description:transformationDescription(player)};

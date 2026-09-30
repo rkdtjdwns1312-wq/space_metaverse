@@ -967,7 +967,7 @@ test('item:use preserves all four concurrent effects and refreshes repeated item
  assert.equal(target.effects.length,4);
  assert.equal(target.effects.filter(e=>e.itemId==='space-snack').length,1);
 });
-test('item:use validates ownership, level gates, target existence/connection, and self-only items',async t=>{
+test('item:use validates ownership, level gates, existing offline targets, and self-only items',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
  const s1=await connect(),s2=await connect(),s3=await connect();
  const j1=await call(s1,'room:join',{code:r.room.code,nickname:'1'});
@@ -982,7 +982,9 @@ test('item:use validates ownership, level gates, target existence/connection, an
  p1.inventory=[{id:'star-sticker',quantity:1}];
  assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:'nope'})).error,'그 친구는 지금 없어요.');
  p3.connected=false;
- assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j3.selfId})).error,'그 친구는 지금 없어요.');
+ assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:j3.selfId})).ok,true);
+ assert.ok(p3.effects.some(effect=>effect.itemId==='star-sticker'));
+ p1.inventory=[{id:'star-sticker',quantity:1}];p1.lastItemUseAt=0;
  p3.connected=true;
  assert.equal((await call(s1,'item:use',{itemId:'star-sticker',targetId:r.selfId})).error,'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
  p1.avatar.level=2;p1.inventory=[{id:'rainbow-tail',quantity:1}];

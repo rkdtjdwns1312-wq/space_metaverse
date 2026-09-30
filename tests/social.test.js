@@ -68,10 +68,10 @@ test('summon requires current membership, accepts only the target, uses a safe p
   p1.mapId=interiorIdOf('joined');p2.mapId=PLAZA_ID;p2.avatar.departmentId='joined';room.planets.set('joined',{id:'joined',rules:[]});p1.lastSummonAt=0;assert.equal((await call(a,'social:summon',{targetId:jb.selfId})).ok,true);p2.avatar.departmentId=null;assert.equal((await call(b,'social:respond',{requestId:[...room.summons.keys()].at(-1),accept:true})).ok,false);
 });
 
-test('item discard consumes only the sender item, rejects forged items, and high level use does not consume',async t=>{
+test('removed item discard rejects legacy requests without consumption, and high level use does not consume',async t=>{
   const f=await roomWithStudents(t),{room,a,b,ja,jb}=f,p1=room.players.get(ja.selfId),p2=room.players.get(jb.selfId);
   p1.inventory=[{id:'star-sticker',quantity:2}];p2.inventory=[{id:'firefly-lamp',quantity:2}];
-  assert.equal((await call(a,'item:discard',{itemId:'star-sticker',quantity:99})).ok,true);assert.deepEqual(p1.inventory,[{id:'star-sticker',quantity:1}]);assert.deepEqual(p2.inventory,[{id:'firefly-lamp',quantity:2}]);assert.equal((await call(a,'item:discard',{itemId:'forged'})).ok,false);
+  assert.equal((await call(a,'item:discard',{itemId:'star-sticker',quantity:99})).ok,false);assert.deepEqual(p1.inventory,[{id:'star-sticker',quantity:2}]);assert.deepEqual(p2.inventory,[{id:'firefly-lamp',quantity:2}]);assert.equal((await call(a,'item:discard',{itemId:'forged'})).ok,false);
   const high=SHOP.items.find(x=>x.level>p1.avatar.level);if(high){p1.inventory=[{id:high.id,quantity:1}];p1.lastItemUseAt=0;const before=structuredClone(p1.inventory);assert.equal((await call(a,'item:use',{itemId:high.id,targetId:ja.selfId})).ok,false);assert.deepEqual(p1.inventory,before);}
 });
 

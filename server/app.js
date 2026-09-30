@@ -1,4 +1,9 @@
 import {advanceProjectiles,projectileViews} from './projectiles.js';
+import {allowsOfflineItemTarget} from '../shared/item-targets.js';
+import {teacherInventoryView,adjustTeacherInventory} from './teacher-inventory.js';
+import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
+import {teacherCardCatalog} from './teacher-card-catalog.js';
+import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aquarius-skills.js';
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
@@ -23,6 +28,7 @@ import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, a
 import { filterChat } from './chat-filter.js';
 import { CRAFTING } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
+import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
 import { loadCraftingRecipes } from './crafting-recipes.js';
 import {sellQuote} from '../shared/item-pricing.js';
@@ -35,7 +41,7 @@ import {useLv3Item, syncLv3Holdings, settleLv3Items, lv3ItemsDue} from './lv3-it
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
-import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
+import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
@@ -43,7 +49,8 @@ import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
 import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
-import {currentWeekRecords} from './weekly-ranking.js';
+import {currentWeekRecords,resetWeeklyRanking} from './weekly-ranking.js';
+import {memoryRanking,startMemoryRun,cancelMemoryRun,flipMemoryCard} from './memory-game.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
@@ -51,6 +58,7 @@ import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,ad
 import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
+import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
 import {addTask,completeTask} from './tasks.js';
 import {interiorDecorTarget,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
@@ -163,6 +171,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
   const joinChannel=s=>deliver(()=>io.sockets.sockets.get(s.player.socketId)?.join(s.room.code));
   // 별 파편·아이템·거래는 아이들끼리 비밀이라 방 전체에 한 번 뿌리지 않고, 접속 중인 플레이어마다 자기 것만 보이는 스냅샷을 따로 보냅니다.
   const roster=room=>{
+    room.recipeDropOutputIds=[...new Set(craftingRecipes.map(recipe=>recipe.output.id))];
     deliver(()=>io.to(room.code).emit('planet:mailbox:changed',{}));
     for(const p of room.players.values()){syncGalaxyHoldings(p,clock());syncLv3Holdings(p,clock());syncLv4Holdings(p,clock());}
     // 가입·탈퇴·계정 삭제 뒤에는 과거 부원 명단으로 분배할 수 없습니다.
@@ -301,8 +310,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,...geometry,power};
-      if(player.avatar.constellationId==='corvus'){
-      const result=castCorvus(room,player,now,{basic:true});
+      if(['corvus','aquarius'].includes(player.avatar.constellationId)){
+      const result=(player.avatar.constellationId==='aquarius'?castAquarius:castCorvus)(room,player,now,{basic:true});
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
           io.to(viewer.socketId).emit('combat:hit',result.hit);
           io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
@@ -354,6 +363,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(player.role==='teacher'||player.avatar.level>=2,'특수 스킬은 LV2부터 사용할 수 있어요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure((data.slot??0)===0,'기존 보조 스킬은 더 이상 사용하지 않아요.');
+      if(player.avatar.constellationId==='aquarius'){
+        const result=castAquarius(room,player,now);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+        return result;
+      }
       if(player.avatar.constellationId==='corvus'){
       const result=castCorvus(room,player,now,{basic:false});
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
@@ -430,6 +445,16 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('student:create',data=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');ensure(persistent,'저장 기능이 필요해요.');
       const player=store.createStudent(s.room,data);roster(s.room);return {playerId:player.id};
+    });
+    action('teacher:inventory:read',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      return teacherInventoryView(s.room,s.player,data.playerId);
+    },false);
+    for(const mode of ['give','remove'])action(`teacher:inventory:${mode}`,data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {target,message}=adjustTeacherInventory(s.room,s.player,data,mode);
+      whisper(s.room,target,'선생님이 가방을 조정했어요. '+message);roster(s.room);
+      return {...teacherInventoryView(s.room,s.player,target.id),message};
     });
     action('student:password',data=>{
       const s=socket.data.session;ensure(persistent&&s?.player.role==='student','학생 본인만 바꿀 수 있어요.');
@@ -889,10 +914,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     };
     action('temple:read',data=>{
       const {room,player,pillar}=templeAccess(data),kind=pillar.service;
-      if(kind==='weekly')return {kind,...weeklyRewards(room,clock())};
+      if(kind==='weekly')return {kind,...weeklyRewards(room,clock()),canReset:player.role==='teacher'};
       if(kind==='effects')return {kind,canComplete:player.role==='teacher',rows:templeItemRows(room,player,clock())};
       if(kind==='timetable')return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
       return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
+    });
+    action('temple:weekly:reset',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(pillar.service==='weekly','이번 주 받은 별 기둥에서 초기화해주세요.');
+      return {kind:'weekly',...resetWeeklyRewards(room,player,clock()),canReset:true};
     });
     action('temple:save',data=>{
       const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 내용을 바꿀 수 있어요.');
@@ -971,7 +1001,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const machine=STREET.objects.find(o=>o.gameId==='stars');
       ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'반짝별 찾기 오락기 가까이에서 이용해주세요.');return s;
     };
-    action('stars:ranking',()=>{const s=starAccess();return {ranking:starRanking(s.room)};});
+    action('stars:ranking',()=>{const s=starAccess();return {ranking:starRanking(s.room),canReset:s.player.role==='teacher'};});
     action('stars:start',()=>{const s=starAccess();return startStarRun(s.room,s.player);});
     action('stars:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelStarRun(s.room,s.player,data.runId);return {};});
     action('stars:click',data=>{
@@ -984,7 +1014,28 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const machine=STREET.objects.find(o=>o.gameId==='dodge');
       ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'별 피하기 오락기 가까이에서 이용해주세요.');return s;
     };
-    action('dodge:ranking',()=>{const s=dodgeAccess();return {ranking:dodgeRanking(s.room)};});
+    action('dodge:ranking',()=>{const s=dodgeAccess();return {ranking:dodgeRanking(s.room),canReset:s.player.role==='teacher'};});
+    const memoryAccess=()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(o=>o.gameId==='memory');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'짝맞추기 오락기 가까이에서 이용해주세요.');return s;
+    };
+    action('memory:ranking',()=>{const s=memoryAccess();return {ranking:memoryRanking(s.room),canReset:s.player.role==='teacher'};});
+    action('memory:start',data=>{const s=memoryAccess();return startMemoryRun(s.room,s.player,data);});
+    action('memory:flip',data=>{
+      const s=memoryAccess(),result=flipMemoryCard(s.room,s.player,data);
+      if(result.won)deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));
+      return result;
+    });
+    action('memory:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelMemoryRun(s.room,s.player,data.runId);return {};});
+    for(const [game,access] of [['memory',memoryAccess],['stars',starAccess],['dodge',dodgeAccess]]){
+      action(`${game}:ranking:reset`,()=>{
+        const s=access();resetWeeklyRanking(s.room,s.player,game);
+        const result={ranking:[],canReset:true};
+        deliver(()=>io.to(s.room.code).emit(`${game}:ranking`,{ranking:[]}));
+        return result;
+      });
+    }
     action('dodge:start',()=>{const s=dodgeAccess();return startDodgeRun(s.room,s.player);});
     action('dodge:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelDodgeRun(s.room,s.player,data.runId);return {};});
     // 방향 입력에는 디스크 저장이 필요 없습니다. 점수와 충돌 판정은 서버가 계산합니다.
@@ -1002,6 +1053,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     };
     action('crafting:open',()=>{
       const {player}=requireCrafting();return {enabled:craftingRecipes.length>0,fee:shardCost(player,CRAFTING.fee)};
+    },false);
+    action('recipes:learned',data=>{
+      const s=socket.data.session;
+      ensure(s?.player.role==='student'&&s.player.connected&&!s.player.away,'학생 본인만 배운 조합법을 볼 수 있어요.');
+      ensure((data.playerId===undefined||data.playerId===s.player.id)&&(data.targetId===undefined||data.targetId===s.player.id),'다른 학생의 조합법은 볼 수 없어요.');
+      return {recipes:learnedRecipesView(s.player,craftingRecipes)};
     },false);
     action('crafting:recipes',data=>{
       const s=socket.data.session;
@@ -1040,6 +1097,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       requireShop(p);
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
+      ensure(![2,3,4].includes(item.level),'LV2~LV4 아이템은 별빛 조합기로 만들 수 있어요. 직접 구매할 수 없어요.');
+      ensure(p.role==='teacher'||(p.avatar?.level||1)>=(item.level||1),'아직 이 레벨 상점이 열리지 않았어요.');
       ensure(item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
       ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 구매 가격이 정해지지 않았어요.');
       const quantity=data.quantity;
@@ -1050,7 +1109,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const copyPending=p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
         p.abilityState.pending.week===weekStart(clock())&&
         (p.abilityState.pending.maxPrice!==undefined?item.price<=p.abilityState.pending.maxPrice:item.level<=2);
-      const totalQuantity=quantity+(copyPending?1:0);
+      const copyQuantity=copyPending?(p.abilityState.pending.quantity||1):0;
+      const totalQuantity=quantity+copyQuantity;
       const existing=p.inventory.find(i=>i.id===item.id);
       ensure(!item.maxOwned||(existing?.quantity||0)+totalQuantity<=item.maxOwned,item.name+'은 '+item.maxOwned+'개까지 보유할 수 있어요.');
       if(existing){
@@ -1064,7 +1124,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(!hasUnlimitedShards(p))consumeStarCardDiscounts(room,item.id,quote,p,clock());
       if(copyPending)p.abilityState.pending=null;
       roster(room);
-      return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null,
+      return {starShards:p.starShards,inventory:[...p.inventory],copiedItem:copyPending?item.name:null,copiedQuantity:copyQuantity,
         cost,discounted:quote.discounted,shopDiscounts:starCardShopDiscounts(room,p,clock())};
     });
     action('shop:sell',data=>{
@@ -1138,6 +1198,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       whisper(room,p,'달토끼 뽑기: '+reward.text);
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
+    action('teacher:cards:catalog',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return teacherCardCatalog(s.room,s.player);},false);
+    action('holding:status',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return holdingStatus(s.room,s.player,data.itemId,clock());},false);
+    action('holding:use',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const result=useHoldingAbility(s.room,s.player,data,clock(),abilityDie);roster(s.room);return result;});
     action('lv4:info',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return lv4Info(s.room,s.player);});
     action('lv4:black-hole:preview',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');ensure(levelOf(s.player)>=4,'LV4부터 사용할 수 있어요.');return blackHolePreview(s.room,s.player,data.planetIds,clock());},false);
     action('lv4:holding:use',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=useLv4Holding(s.room,s.player,data,clock());roster(s.room);return r;});
@@ -1148,7 +1211,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 사용 중인 아이템을 처리 완료할 수 있어요.');
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
-      const marker=target?.cardMarkers?.find(entry=>entry.itemId!=='moon-rabbit-card'&&entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||itemOf(entry.itemId)?.mode==='lv4'))));
+      const marker=target?.cardMarkers?.find(entry=>entry.itemId!=='moon-rabbit-card'&&entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||entry.holdingAbility||itemOf(entry.itemId)?.mode==='lv4'))));
       ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
       ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
       if(marker.remainingUses>1)marker.remainingUses--;
@@ -1160,7 +1223,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
       const {room,player:p}=s,week=weekStart(clock()),state=p.abilityState||freshAbilityState();
       if(state.pending?.week!==week)state.pending=null;
-      return {week,used:state.usedWeek===week,pending:state.pending,
+      const modifiers=lifeAbilityModifiers(p,clock()),ability=constellationOf(p.avatar.constellationId,p.avatar.level)?.ability;
+      return {week,...lifeAbilityUsage(state,week,modifiers),pending:state.pending,
+        description:ability?lifeAbilityDescription(ability,modifiers.multiplier):'',
         planets:[...room.planets.values()].filter(planet=>planet.id!==p.avatar.departmentId&&warningCount(planet,p.id)>0)
           .map(planet=>({id:planet.id,name:planet.name,count:warningCount(planet,p.id)}))};
     });
@@ -1169,7 +1234,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const {room,player:p}=s,now=clock(),week=weekStart(now),constellation=constellationOf(p.avatar.constellationId,p.avatar.level);
       ensure(p.avatar.level>=2&&constellation&&!constellation.legacy,'LV2 별자리 아바타부터 능력을 사용할 수 있어요.');
       const state=p.abilityState??=freshAbilityState(),ability=constellation.ability,mode=ability.mode;
-      ensure(state.usedWeek!==week,'이번 주 별자리 능력은 이미 사용했어요. 다음 월요일에 다시 쓸 수 있어요.');
+      const modifiers=lifeAbilityModifiers(p,clock()),multiplier=modifiers.multiplier,usage=lifeAbilityUsage(state,week,modifiers);
+      ensure(!usage.used,'이번 주 별자리 능력은 이미 사용했어요. 다음 월요일에 다시 쓸 수 있어요.');
+      ensure(!usage.awaitingCompletion,'진행 중인 별자리 능력을 완료한 뒤 다시 사용할 수 있어요.');
       if(state.pending?.week!==week)state.pending=null;
       let target=null,planet=null,roll=null,reward=0,note='';
       if(['ban-two-days','sleep','manual'].includes(mode)&&typeof data.targetId==='string'&&data.targetId){
@@ -1188,9 +1255,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(['grant-one','dice-shards','dice-risk','sleep','dice-difference','dice-triple'].includes(mode)){
         const maxReward=mode==='dice-risk'?(ability.win||3):mode==='dice-shards'?Math.max(...(ability.rewards||[0,1,1,1,1,2])):
           mode==='dice-difference'?5:mode==='dice-triple'?2:(ability.reward||1);
-        ensure(p.starShards<=SHARDS.max-maxReward,'별 파편을 더 담을 수 없어요.');
-        if(mode==='sleep')ensure(target.starShards<SHARDS.max,'친구가 별 파편을 더 담을 수 없어요.');
-        if(mode==='dice-risk')ensure(p.starShards>=(ability.loss||1),'별 파편 '+(ability.loss||1)+'개가 있어야 황소자리 주사위를 던질 수 있어요.');
+        ensure(p.starShards<=SHARDS.max-maxReward*multiplier,'별 파편을 더 담을 수 없어요.');
+        if(mode==='sleep')ensure(target.starShards<=SHARDS.max-multiplier,'친구가 별 파편을 더 담을 수 없어요.');
+        if(mode==='dice-risk')ensure(p.starShards>=(ability.loss||1)*multiplier,'별 파편 '+((ability.loss||1)*multiplier)+'개가 있어야 황소자리 주사위를 던질 수 있어요.');
       }
       if(mode==='ban-two-days')ensure((target.abilityState?.blocks||[]).length<20,'친구의 능력 상태 기록이 가득 찼어요.');
       if(mode==='sleep')ensure((p.abilityState?.blocks||[]).length<20&&(target.abilityState?.blocks||[]).length<20,'능력 상태 기록이 가득 찼어요.');
@@ -1202,37 +1269,38 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(mode==='dice-risk')reward=roll%2===1?(ability.win||3):-(ability.loss||1);
       if(mode==='dice-difference'){
         rolls.push(abilityDie());reward=Math.abs(rolls[0]-rolls[1]);
-        note='주사위 '+rolls.join(' · ')+' → 차이 '+reward+'개';
-        if(!reward)state.pending={mode:'dice-retry',week};
+        note='주사위 '+rolls.join(' · ')+' → 차이 보상 '+reward*multiplier+'개';
+        if(!reward)state.pending={mode:'dice-retry',week,multiplier};
       }
       if(mode==='dice-triple'){
         rolls.push(abilityDie(),abilityDie());
         const kinds=new Set(rolls).size;
         if(kinds===2)reward=2;
-        note='주사위 '+rolls.join(' · ')+' → '+(kinds===1?'별 카드 · 선생님 확인':kinds===3?'뽑기 카드 · 선생님 확인':'별 2개');
-        if(kinds!==2)state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note,targetName:''});
+        note='주사위 '+rolls.join(' · ')+' → '+(kinds===1?'별 카드 '+multiplier+'장 · 선생님 확인':kinds===3?'뽑기 카드 '+multiplier+'장 · 선생님 확인':'별 '+2*multiplier+'개');
+        if(kinds!==2)state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note,targetName:'',week,multiplier,sourceDescription:lifeAbilityDescription(ability,multiplier)});
       }
       if(mode==='sleep')reward=1;
+      reward*=multiplier;
       if(reward)p.starShards+=reward;
-      if(mode==='shop-copy'){state.pending={mode,week,...(ability.maxPrice?{maxPrice:ability.maxPrice}:{})};note='이번 주 '+(ability.maxPrice?'별 파편 '+ability.maxPrice+'개 이하':'Lv2 이하')+' 아이템 구매 시 1개 복사 대기';}
+      if(mode==='shop-copy'){state.pending={mode,week,quantity:multiplier,multiplier,...(ability.maxPrice?{maxPrice:ability.maxPrice}:{})};note='이번 주 '+(ability.maxPrice?'별 파편 '+ability.maxPrice+'개 이하':'Lv2 이하')+' 아이템 구매 시 '+multiplier+'개 복사 대기';}
       if(mode==='value-item'){
-        state.pending={mode,week,budget:roll*ability.multiplier,maxLevel:ability.maxItemLevel,picks:ability.picks,roll,selected:[]};
+        state.pending={mode,week,budget:roll*ability.multiplier*multiplier,maxLevel:ability.maxItemLevel,picks:ability.picks,roll,selected:[],multiplier};
         note='별 파편 '+state.pending.budget+'개 이하 가치 · 최대 '+ability.picks+'종 제작 대기';
       }
-      if(mode==='dice-item'&&roll>=2){state.pending={mode,week,maxLevel:Math.floor(roll/2),roll};note='Lv'+state.pending.maxLevel+' 이하 아이템 선택 대기';}
+      if(mode==='dice-item'&&roll>=2){state.pending={mode,week,maxLevel:Math.floor(roll/2),roll,quantity:multiplier,multiplier};note='Lv'+state.pending.maxLevel+' 이하 아이템 '+multiplier+'개 선택 대기';}
       if(mode==='dice-item'&&roll===1)note='주사위 1: 만들 수 있는 아이템이 없어요.';
-      if(mode==='warning-one'){const result=clearOneWarningFromPlanet(room,planet,p);note=planet.name+' 경고 1개 해제'+(result.released?' · 검은별 해제':'');}
-      if(mode==='ban-two-days'){addItemBlock(target,'ophiuchus',p,now+2*86400000,1);note=target.nickname+' 아이템 사용 2일 정지 · 해제일 별 1개';}
-      if(mode==='sleep'){addItemBlock(p,'aries',p,nextKoreaMidnight(now));addItemBlock(target,'aries',p,nextKoreaMidnight(now));target.starShards++;note=target.nickname+'와 각각 별 1개 · 오늘 자정까지 수면';}
+      if(mode==='warning-one'){let cleared=0,released=false;for(let i=0;i<multiplier;i++){const result=clearOneWarningFromPlanet(room,planet,p);cleared+=result.cleared;released||=result.released;}note=planet.name+' 경고 '+cleared+'개 해제'+(released?' · 검은별 해제':'');}
+      if(mode==='ban-two-days'){addItemBlock(target,'ophiuchus',p,now+2*86400000,multiplier);note=target.nickname+' 아이템 사용 2일 정지 · 해제일 별 '+multiplier+'개';}
+      if(mode==='sleep'){addItemBlock(p,'aries',p,nextKoreaMidnight(now));addItemBlock(target,'aries',p,nextKoreaMidnight(now));target.starShards+=multiplier;note=target.nickname+'와 각각 별 '+multiplier+'개 · 오늘 자정까지 수면';}
       if(mode==='manual'){
         note=(target?target.nickname+' 대상 · ':'')+constellation.ability.description;
-        state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note:note.slice(0,120),targetName:target?.nickname||''});
+        state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note:note.slice(0,120),targetName:target?.nickname||'',week,multiplier,sourceDescription:lifeAbilityDescription(ability,multiplier)});
         note='선생님 확인 요청을 남겼어요. 효과·보상은 선생님 확인 후 적용해요.';
       }
-      state.usedWeek=week;
+      state.usedWeek=week;state.usedCount=usage.usedCount+1;
       whisper(room,p,constellation.name+' 능력을 사용했어요.'+(roll?' 주사위 '+roll+'.':'')+(note?' '+note:''));
       roster(room);
-      return {week,roll,rolls,reward,note,pending:state.pending,starShards:p.starShards,
+      return {week,roll,rolls,reward,note,pending:state.pending,starShards:p.starShards,...lifeAbilityUsage(state,week,modifiers),
         ...(target?{targetNickname:target.nickname}:{} )};
     });
     action('ability:choose-item',data=>{
@@ -1241,29 +1309,32 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(p.avatar.constellationId==='corvus'&&['dice-item','value-item'].includes(pending?.mode)&&pending.week===weekStart(clock()),'진행 중인 까마귀자리 아이템 생성이 없어요.');
       const item=itemOf(data.itemId);
       ensure(item&&item.level<=pending.maxLevel,'주사위 눈으로 만들 수 있는 Lv 아이템을 골라주세요.');
+      ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 제작 가치가 정해지지 않은 아이템이에요.');
       if(pending.mode==='value-item'){
         ensure(item.price<=pending.budget,'남은 제작 가치보다 비싼 아이템이에요.');
         ensure(!pending.selected.includes(item.id),'서로 다른 종류의 아이템을 골라주세요.');
       }
       const owned=p.inventory.find(entry=>entry.id===item.id);
-      ensure(!item.maxOwned||(owned?.quantity||0)+1<=item.maxOwned,item.name+'은 '+item.maxOwned+'개까지 보유할 수 있어요.');
-      if(owned)ensure(owned.quantity<SHOP.maxStack,'그 아이템을 더 담을 수 없어요.');
+      const quantity=pending.mode==='dice-item'?(pending.quantity||1):1;
+      ensure(!item.maxOwned||(owned?.quantity||0)+quantity<=item.maxOwned,item.name+'은 '+item.maxOwned+'개까지 보유할 수 있어요.');
+      if(owned)ensure(owned.quantity+quantity<=SHOP.maxStack,'그 아이템을 더 담을 수 없어요.');
       else ensure(p.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
-      if(owned)owned.quantity++;else p.inventory.push({id:item.id,quantity:1});
+      if(owned)owned.quantity+=quantity;else p.inventory.push({id:item.id,quantity});
       if(pending.mode==='value-item'){
         pending.budget-=item.price;pending.picks--;pending.selected.push(item.id);
-        if(!pending.picks||!SHOP.items.some(value=>value.level<=pending.maxLevel&&value.price<=pending.budget&&!pending.selected.includes(value.id)))state.pending=null;
+        if(!pending.picks||!SHOP.items.some(value=>Number.isSafeInteger(value.price)&&value.price>=0&&value.level<=pending.maxLevel&&value.price<=pending.budget&&!pending.selected.includes(value.id)))state.pending=null;
       }else state.pending=null;
-      whisper(room,p,item.name+' 1개를 만들었어요.');roster(room);
-      return {itemName:item.name,inventory:[...p.inventory]};
+      whisper(room,p,item.name+' '+quantity+'개를 만들었어요.');roster(room);
+      return {itemName:item.name,quantity,inventory:[...p.inventory]};
     });
     action('ability:retry',()=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
       const {room,player:p}=s,state=p.abilityState,week=weekStart(clock());
       ensure(p.avatar.constellationId==='libra'&&state?.pending?.mode==='dice-retry'&&state.pending.week===week&&state.usedWeek===week,'다시 던질 수 있는 천칭자리 능력이 없어요.');
+      const multiplier=state.pending.multiplier||1;
       ensure(p.starShards>=2,'다시 도전하려면 별 파편 2개가 필요해요.');
-      ensure(p.starShards-2+5<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
-      const rolls=[abilityDie(),abilityDie()],reward=Math.abs(rolls[0]-rolls[1]);
+      ensure(p.starShards-2+5*multiplier<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
+      const rolls=[abilityDie(),abilityDie()],reward=Math.abs(rolls[0]-rolls[1])*multiplier;
       p.starShards+=reward-2;if(reward)state.pending=null;
       const note='별 2개 사용 · 주사위 '+rolls.join(' · ')+' → 차이 '+reward+'개';
       whisper(room,p,note);roster(room);return {roll:rolls[0],rolls,reward,note,pending:state.pending,starShards:p.starShards};
@@ -1275,7 +1346,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const marker=target?.abilityState?.markers?.find(entry=>entry.id===data.abilityMarkerId);
       ensure(marker,'처리할 별자리 능력 기록을 찾지 못했어요.');
       if(marker.constellationId==='libra'&&(marker.level||2)===2){
-        ensure(Number.isInteger(data.xpAmount)&&data.xpAmount>=0&&data.xpAmount<=2,'천칭자리 경험치는 0~2 중에서 선택해주세요.');
+        const multiplier=marker.multiplier||1;
+        ensure([0,multiplier,2*multiplier].includes(data.xpAmount),'천칭자리 경험치는 '+[0,multiplier,2*multiplier].join('·')+' 중에서 선택해주세요.');
         target.avatar=gainExperience(target.avatar,data.xpAmount);
         whisper(room,target,'선생님이 천칭자리 능력 경험치 '+data.xpAmount+'을 확인했어요.');
       }else ensure(data.xpAmount===undefined,'이 능력에는 경험치를 지급할 수 없어요.');
@@ -1311,12 +1383,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     action('item:discard',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const {room,player}=s,item=itemOf(data.itemId);
-      ensure(item,'그런 물건은 없어요.');
-      const owned=player.inventory.find(i=>i.id===item.id);ensure(owned&&owned.quantity>0,'가방에 그 물건이 없어요.');
-      // 확인창에서 선택한 한 개만 버립니다. 타인의 id/수량은 입력받지 않습니다.
-      owned.quantity--;if(!owned.quantity)player.inventory=player.inventory.filter(i=>i.id!==item.id);
-      whisper(room,player,item.name+' 1개를 버렸어요.');roster(room);return {};
+      // 이전 화면/클라이언트가 폐기 요청을 보내도 실제 아이템은 삭제하지 않습니다.
+      ensure(false,'아이템 버리기 기능은 더 이상 제공하지 않아요.');
     });
     action('item:use',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1325,6 +1393,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
       ensure(item.usable!==false,'이 아이템의 사용 효과는 준비 중이에요.');
+      if(item.mode==='recipe'){
+        const result=useRecipeItem(room,p,data,craftingRecipes,clock());
+        if(result.learned)roster(room);
+        return result;
+      }
       if(item.mode==='star-card'){
         const result=item.id==='star-card'?useStarCard(room,p,clock(),starCardRandom):useTypedStarCard(room,p,item.id,clock(),starCardRandom);
         room.itemLog.push({id:randomUUID(),at:clock(),userId:p.id,userNickname:p.nickname,targetId:p.id,targetNickname:p.nickname,itemId:item.id,itemName:result.card.name,secret:false});
@@ -1350,11 +1423,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(item.mode!=='draw','달토끼 카드는 뽑기 카드 화면에서 사용해주세요.');
       ensure(typeof data.targetId==='string','그 친구는 지금 없어요.');
       const target=room.players.get(data.targetId);
-      ensure(target && target.connected,'그 친구는 지금 없어요.');
+      ensure(target && (target.connected || (allowsOfflineItemTarget(item) && target.role==='student')),'그 친구는 지금 없어요.');
       ensure(item.targets!=='self' || target.id===p.id,'이 물건은 나에게만 쓸 수 있어요.');
       ensure(item.targets!=='other' || target.id!==p.id,'이 물건은 다른 친구에게만 쓸 수 있어요.');
       const second=item.targets==='pair'&&typeof data.secondTargetId==='string'?room.players.get(data.secondTargetId):null;
-      if(item.targets==='pair')ensure(second&&second.connected&&second.id!==target.id&&second.role==='student'&&target.role==='student','서로 다른 학생 친구 2명을 골라주세요.');
+      if(item.targets==='pair')ensure(second&&second.id!==target.id&&second.role==='student'&&target.role==='student','서로 다른 학생 친구 2명을 골라주세요.');
       const targets=second?[target,second]:[target];
       for(const recipient of targets){
         ensure(levelOf(p)>=levelOf(recipient),'나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
@@ -1484,6 +1557,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         }
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
       }
+      for(const hit of advanceAquarius(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
+          for(const healed of hit.healed)io.to(viewer.socketId).emit('combat:vitals',healed);
+        if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
       for(const hit of advanceSagittarius(room,clock())){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           const {targets,playerTargets,...visual}=hit;
@@ -1552,9 +1630,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           catch(error){console.error('별자리 능력 만료 저장 실패:',error.message);continue;}
         }
         // 열린 랭킹 창도 한국 시간 월요일 0시를 지나면 즉시 비웁니다.
-        if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
+        if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking','memoryRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
           try{transaction(()=>{
             room.starRanking=currentWeekRecords(room.starRanking||[]);room.dodgeRanking=currentWeekRecords(room.dodgeRanking||[]);
+            room.memoryRanking=currentWeekRecords(room.memoryRanking||[]);
+            deliver(()=>io.to(room.code).emit('memory:ranking',{ranking:memoryRanking(room)}));
             deliver(()=>io.to(room.code).emit('stars:ranking',{ranking:starRanking(room)}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:dodgeRanking(room)}));
           });}catch(error){const restored=store.rooms.get(room.code);if(restored)restored.rankingRetryAt=now+5000;console.error('주간 순위 초기화 저장 실패:',error.message);continue;}
@@ -1585,8 +1665,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),
-            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),
+            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }
     }

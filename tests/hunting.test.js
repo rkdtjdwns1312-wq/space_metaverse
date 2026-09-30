@@ -61,7 +61,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
    const expected=table[c.type][level-2],visual=new Promise(r=>student.once('combat:hit',r));
    const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});
    assert.equal(result.ok,true);
-   if(['corvus','sagittarius'].includes(c.id)){
+   if(['corvus','sagittarius','aquarius'].includes(c.id)){
      assert.equal(result.target,null);now+=650;await new Promise(r=>setTimeout(r,70));
    }else assert.equal(result.target.damage,expected,c.id+' LV'+level);
    assert.equal(m.hp,20-expected,c.id+' LV'+level);

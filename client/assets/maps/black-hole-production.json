@@ -1,0 +1,137 @@
+{
+  "request": 305,
+  "tool": "builtin image_gen.imagegen",
+  "styleReferences": [
+    "client/assets/maps/plaza-sanctuary.png",
+    "client/assets/maps/plaza-black-hole.png"
+  ],
+  "prompts": {
+    "ground": "Use case: stylized-concept.\nAsset type: complete 2D RPG room background / walkable floor illustration, one landscape image, intended final canvas 1200x760 (aspect 30:19).\nPrimary request: the quiet interior of a magical black hole as a gentle pastel storybook classical 2D RPG SPACE TEMPLE. Darker than the reference plaza but welcoming, readable, silver-blue and lavender carved stone with a soft indigo cosmic nebula around the perimeter. Match the reference's painterly illustrated soft edges, hand-painted stone and delicately sparkling galaxy, not photorealism, not pixel art.\nInput images: image1 reference for the game's soft nebula palette, image2 reference for ivory/silver stone illustration and gentle temple ornament style. Do NOT copy the portal.\nComposition: orthographic almost-top-down RPG floor plane, no horizon, NO perspective vanishing point, no tilted isometric diamond. Broad rectangular silver-lavender-blue stone floor occupies the full usable map, with thin rounded outer stone border near normalized x .015/.985 and y .02/.98. Space and soft nebula glimpsed only along the extreme perimeter and softly reflected in the stone. Keep floor brightness midtone blue-lavender so player sprites remain visible.\nExact layout in the FINAL 1200x760 coordinates: axis of symmetry x600. A delicate flush inlaid concentric oval/circular sanctuary floor mosaic centered (600,285), about 290px wide x130px tall, EMPTY inside for a separately drawn small star at (600,250). No solid pedestal or steps. Keep (600,390) open walkable clear floor for player arrival. Keep lower center rectangle x510..690,y600..745 clear with ordinary flat floor for a separately drawn exit gate at (600,680). NO painted gate, NO stairs, NO star object, NO characters, NO furniture, NO statues, NO columns obstructing the traversable space.\nDetails: large hand-painted fitted stone slabs, restrained silver etched constellations, pale lilac seam glow, gentle indigo violet border carvings, subtle white pinprick starlight in edge nebula. Soft mysterious serenity, classic storybook RPG painted backdrop, small gem accents only at outer border. All architectural details remain flat paving decoration.\nConstraints: one clean background artwork, no UI, no text, no labels, no diagram, no numbers, no grid overlay, no actual large star object, no vortex pit in floor, no abyss in the playable area, no horror, no sharp threatening spikes. Opaque background.",
+    "groundCorrection": "Use case: precise-object-edit. Edit target: supplied temple floor background.\nKeep the same painterly silver-blue/lavender stone-and-nebula style, the existing upper-center flush sanctuary mosaic, flat orthographic RPG floor view, exact landscape aspect 1200:760, no characters or objects.\nChange ONLY the rectangular outer boundary placement and floor extent: expand the stone paving downwards so ALL of the lower central area through y=735 of the final 760-high canvas is flat traversable floor. The bottom border must be a THIN FLAT rim at y=744, not the existing raised ornamental wall at y~650. REMOVE the large bottom-center diamond crest and the large bottom-corner ornaments completely, replace that area with matching ordinary lavender-blue paving. Maintain an unobstructed clear flat floor rectangle x500..700,y600..735 for a separately rendered exit at (600,680). No gate is painted. The left/right rims likewise are near x16 and1184, subtle flush inlay, with cosmic mist visible only at the extreme edge. Upper stone rim remains decorative near the very top edge, not an obstacle. Slightly deepen the floor's cool blue-silver midtones to feel tranquil inside a black hole, retaining readable soft illumination. Never black horror.\nThe empty sanctuary floor oval remains upper-center at x600,y285. No star object baked into the floor. Do not add stairs, furniture, pillars, letters, labels, diagrams, UI or large objects. Deliver actual finished environment illustration.",
+    "star": "Use case: stylized-concept.\nAsset type: isolated transparent 2D RPG interactive object sprite.\nCreate one charming small five-pointed BLACK STAR gemstone, dark black-plum interior with richly faceted deep violet crystal planes, a bright soft amethyst/lavender rim, tiny pale-white-blue specular sparkles, and a delicate diffuse lavender nebula aura with only a few miniature glints. Rounded gently plump star tips, magical and calm, never frightening. No face, no eyes, no limbs. Hand-painted pastel storybook/classical 2D RPG illustration matching the provided stone-and-nebula game references. Crisp readable gem silhouette at small size.\nComposition: square 1024x1024, star centered EXACTLY at canvas (512,512); main gem body fits x192..832,y192..832 (about 62.5% of the image), aura fits x64..960,y64..960 with completely transparent edges. Upright star one point up; almost frontal / slight top view with painted dimensional facets, no dramatic rotation. No pedestal, no floor, no ground shadow, no portal, no title, no label, no UI, no checkerboard, no background rectangle.\nBackground: genuine transparent RGBA alpha including translucent aura; preserve transparency, not a painted checkerboard. The deep dark interior of the gem must remain opaque, not punched out."
+  },
+  "geometry": {
+    "map": [
+      1200,
+      760
+    ],
+    "star": {
+      "x": 600,
+      "y": 250,
+      "radius": 80,
+      "passable": true
+    },
+    "spawn": {
+      "x": 600,
+      "y": 390
+    },
+    "gate": {
+      "x": 600,
+      "y": 680,
+      "radius": 42,
+      "passable": true
+    },
+    "source": "shared/config.js BLACK_HOLE"
+  },
+  "outputs": {
+    "ground": {
+      "file": "black-hole-interior.png",
+      "size": [
+        1200,
+        760
+      ],
+      "mode": "RGB",
+      "bytes": 1589766,
+      "sha256": "01e79f43b0ff05bee5413fdd0d095047c00f2dc424cb882e0246ccd25809b068"
+    },
+    "star": {
+      "file": "black-star-sanctuary.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "bytes": 355710,
+      "displaySizeAtRadius80": [
+        224,
+        224
+      ],
+      "sha256": "d82f6ef928a7fc5f5b36beed0ad03ea429831463b4298a1a1a458e817078c591"
+    }
+  },
+  "originals": {
+    "ground": ".local/black-hole-art/source-ground.png",
+    "star": ".local/black-hole-art/source-star.png"
+  },
+  "postprocess": "Resize with Pillow LANCZOS and lossless optimized PNG. No procedural replacement artwork, alpha removal, recoloring or composition edits.",
+  "module": "client/black-hole-art.js",
+  "exports": [
+    "drawBlackHoleGround(ctx,map)",
+    "drawBlackStar(ctx,object,time=0)"
+  ],
+  "integration": "Parent calls ground in drawBlackHoleInterior, calls star with unchanged black-star object, retains existing label and gate. No world.js/shared/game-function edits by this task.",
+  "validation": {
+    "status": "PASS",
+    "browser": {
+      "status": "PASS",
+      "browser": "154.0.4258.37",
+      "checks": {
+        "cacheCanvasCount": 1,
+        "cacheAllocationsDuring120Frames": 0,
+        "mapUnchanged": true,
+        "contextStateRestored": true,
+        "starPaintedBounds": [
+          500,
+          150,
+          697,
+          344
+        ],
+        "starPixelCount": 25577,
+        "shimmerChangedChannels": 50246,
+        "canvasSize": [
+          1200,
+          760
+        ],
+        "gate": {
+          "x": 600,
+          "y": 680
+        },
+        "spawn": {
+          "x": 600,
+          "y": 390
+        }
+      },
+      "reducedMotionPixelsIdentical": true,
+      "errors": [],
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3000/black-hole-art.js",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:3000/assets/maps/black-hole-interior.png",
+          "status": 200
+        },
+        {
+          "url": "http://127.0.0.1:3000/assets/maps/black-star-sanctuary.png",
+          "status": 200
+        }
+      ],
+      "preview": "module-preview.png",
+      "geometryPreview": "geometry-preview.png"
+    },
+    "alpha": {
+      "mode": "RGBA",
+      "range": [
+        0,
+        253
+      ],
+      "transparentBorderMaxAlpha": 0,
+      "centerAlpha": 253,
+      "transparentPixelCount": 126256,
+      "review": "actual solid-background module composition inspected, no baked checkerboard"
+    },
+    "visualReview": "1200x760 actual-module preview inspected at original star, spawn and gate coordinates; clear stone floor under exit, separate star and label, no geometry changes",
+    "reviewer": "Codex current body; parent handles Astra project final review"
+  }
+}

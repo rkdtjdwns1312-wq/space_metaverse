@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {ensure} from './rooms.js';
 const KST = 9 * 60 * 60 * 1000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -51,7 +52,8 @@ export function validateTemple(value) {
     const ids = new Set();
     const totals = entry.totals.map((row, j) => {
       if (!row || typeof row.playerId !== 'string' || !Number.isSafeInteger(row.total) || row.total < 0 || ids.has(row.playerId)) fail(`weeks[${i}].totals[${j}]`);
-      ids.add(row.playerId); return { playerId: row.playerId, total: row.total };
+      if(row.resetTotal!==undefined&&(!Number.isSafeInteger(row.resetTotal)||row.resetTotal<0||row.resetTotal>row.total))fail(`weeks[${i}].totals[${j}].resetTotal`);
+      ids.add(row.playerId); return { playerId: row.playerId, total: row.total,...(row.resetTotal===undefined?{}:{resetTotal:row.resetTotal}) };
     });
     return { week: entry.week, totals };
   });
@@ -155,8 +157,16 @@ export function recordReward(room, playerId, amount, now = Date.now()) {
 }
 function playerEntries(players) { return players instanceof Map ? [...players.values()] : Array.isArray(players) ? players : Object.values(players || {}); }
 export function weeklyRewards(room, now = Date.now()) {
-  const week = weekStart(now), totals = new Map((templeOf(room).weeks.find(v => v.week === week)?.totals || []).map(v => [v.playerId, v.total]));
+  const week = weekStart(now), totals = new Map((templeOf(room).weeks.find(v => v.week === week)?.totals || []).map(v => [v.playerId, v.total-(v.resetTotal||0)]));
   const rows = playerEntries(room.players).filter(p => p && p.role !== 'teacher').map(p => ({ playerId: p.id, nickname: String(p.nickname ?? ''), total: totals.get(p.id) || 0 }));
   rows.sort((a, b) => a.nickname.localeCompare(b.nickname, 'ko', { numeric: true, sensitivity: 'base' }) || a.playerId.localeCompare(b.playerId));
   return { week, rows };
+}
+
+export function resetWeeklyRewards(room,player,now=Date.now()){
+  ensure(player?.role==='teacher'&&room.players.get(player.id)===player,'선생님만 이번 주 받은 별 집계를 초기화할 수 있어요.');
+  const row=templeOf(room).weeks.find(v=>v.week===weekStart(now));
+  // 누적 지급 총액과 지급 로그·잔액은 보존하고, 표시 집계의 기준점만 옮깁니다.
+  if(row)for(const total of row.totals)total.resetTotal=total.total;
+  return weeklyRewards(room,now);
 }

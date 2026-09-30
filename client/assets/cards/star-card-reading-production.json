@@ -1,0 +1,133 @@
+{
+  "request": 309,
+  "tool": "builtin image_gen.imagegen",
+  "prompt": "Use case: stylized-concept.\nAsset type: portrait reading-panel background artwork for a classic 2D RPG storybook space classroom game. Final portrait 3:4 aspect ratio.\nCreate a beautifully hand-painted celestial card FRAME with a very quiet, pale central reading area. Match the reference images' pastel lavender-blue cosmic clouds, ivory carved temple stone, soft silver and restrained warm gold accents, storybook classic 2D RPG illustration.\nComposition: a slim rounded rectangle border of ivory-lavender carved stone around the edge, a few small inset violet gems, delicate constellation threads and sparse tiny white starlight on the OUTER EDGES. A small elegant four-point pearl-gold star ornament centered at the top within the uppermost 10%; subtle soft blue-lilac nebula wisps hugging the corners. The entire central rectangle x=12%..88%, y=18%..91% must remain nearly flat PALE IVORY with the faintest lavender-blue wash, uniform low contrast, no sparkles, no symbols, no objects behind text. This will hold dynamic black Korean text, so prioritize legibility and calm space. Thin pale silver/gold frame lines; all saturated color and detailed ornament stays outside the reading area.\nFinish: polished high-quality painterly card stationery that belongs to a friendly fantasy space temple, soft rounded forms, no scary elements, no photorealism.\nDeliver ONLY the background frame art. No card title, no letters, no numbers, no words, no UI controls, no sample text, no characters, no large illustration in the middle. Full opaque image, no transparency needed. Keep the center exceptionally clean and bright, preserve a visible soft purple-blue illustrated frame.",
+  "referenceImages": [
+    "client/assets/maps/plaza-sanctuary.png",
+    "client/assets/maps/plaza-black-hole.png"
+  ],
+  "original": ".local/star-card-reading/source-frame.png",
+  "output": "client/assets/cards/star-card-reading-frame.webp",
+  "size": [
+    768,
+    1024
+  ],
+  "format": "opaque RGB WebP quality90",
+  "scope": "Only .star-card-face background declaration changed. Reader content, automation, permission controls, app interaction and map-card back/old face assets untouched.",
+  "validation": {
+    "status": "PASS",
+    "browser": {
+      "status": "PASS",
+      "browser": "154.0.4258.37",
+      "method": "Actual createStarCardUI.open/read path with real CSS and catalog text in an isolated browser fixture. No student data, effects or server mutations.",
+      "reports": [
+        {
+          "name": "별의 휴식",
+          "viewport": [
+            1440,
+            1000
+          ],
+          "dialogRect": {
+            "x": 480,
+            "y": 73.03125,
+            "width": 480,
+            "height": 853.9375
+          },
+          "dialogClientWidth": 478,
+          "dialogScrollWidth": 478,
+          "faceClientWidth": 446,
+          "faceScrollWidth": 446,
+          "bodyScrollWidth": 1440,
+          "background": "url(\"http://127.0.0.1:3000/assets/cards/star-card-reading-frame.webp\")",
+          "backgroundSize": "100% 100%",
+          "descriptionUnchanged": true,
+          "effectUnchanged": true,
+          "studentRemoveHidden": true,
+          "studentChoiceHidden": true,
+          "requests": [
+            {
+              "type": "star-card:read",
+              "payload": {
+                "id": "preview-reading-card"
+              }
+            }
+          ],
+          "closeRestoresFocus": true,
+          "teacherRemovalConfirmationIntact": true,
+          "choiceControlsIntact": true,
+          "noWriteRequests": true,
+          "assetResponses": [
+            {
+              "url": "http://127.0.0.1:3000/assets/cards/star-card-reading-frame.webp",
+              "status": 200
+            }
+          ],
+          "errors": []
+        },
+        {
+          "name": "별의 휴식",
+          "viewport": [
+            375,
+            812
+          ],
+          "dialogRect": {
+            "x": 15,
+            "y": 14,
+            "width": 345,
+            "height": 784
+          },
+          "dialogClientWidth": 343,
+          "dialogScrollWidth": 343,
+          "faceClientWidth": 322,
+          "faceScrollWidth": 322,
+          "bodyScrollWidth": 375,
+          "background": "url(\"http://127.0.0.1:3000/assets/cards/star-card-reading-frame.webp\")",
+          "backgroundSize": "100% 100%",
+          "descriptionUnchanged": true,
+          "effectUnchanged": true,
+          "studentRemoveHidden": true,
+          "studentChoiceHidden": true,
+          "requests": [
+            {
+              "type": "star-card:read",
+              "payload": {
+                "id": "preview-reading-card"
+              }
+            }
+          ],
+          "closeRestoresFocus": true,
+          "teacherRemovalConfirmationIntact": true,
+          "choiceControlsIntact": true,
+          "noWriteRequests": true,
+          "assetResponses": [
+            {
+              "url": "http://127.0.0.1:3000/assets/cards/star-card-reading-frame.webp",
+              "status": 200
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    "cssDiff": "Exactly one background declaration replaced; all other CSS preserved.",
+    "unchangedFilesAtVerification": {
+      "client/star-card-ui.js": true,
+      "client/star-card-ui.css": true,
+      "client/app.js": true,
+      "shared/star-cards.js": true,
+      "client/assets/cards/star-card-back.webp": true,
+      "client/assets/cards/star-card-face.webp": true
+    },
+    "conservativeMinimumTextContrast": {
+      "body": 12.407481817817683,
+      "manualNote": 5.769056359284457
+    },
+    "visualReview": "PC 1440x1000 and mobile 375x812 actual dialog screenshots inspected; full effect text readable, no horizontal overflow, close reachable.",
+    "screenshots": [
+      ".local/star-card-reading/pc-top.png",
+      ".local/star-card-reading/mobile-top.png"
+    ]
+  },
+  "bytes": 118752,
+  "sha256": "764b20246c540996a26822bd0b2405d4f4e10aa0ae6414dd9919b586fe986663"
+}

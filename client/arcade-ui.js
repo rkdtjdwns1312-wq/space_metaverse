@@ -14,26 +14,28 @@ const GAMES={
 
 export function createArcadeUI({
   stop=()=>{},toast=()=>{},request=()=>Promise.resolve({}),subscribeStarRanking=()=>()=>{},
-  sendDodgeInput=()=>{},subscribeDodgeState=()=>()=>{},subscribeDodgeRanking=()=>()=>{}
+  sendDodgeInput=()=>{},subscribeDodgeState=()=>()=>{},subscribeDodgeRanking=()=>()=>{},subscribeMemoryRanking=()=>()=>{}
 }={}){
   const dialog=document.createElement('dialog');dialog.id='arcade-dialog';dialog.setAttribute('aria-labelledby','arcade-title');
   const header=document.createElement('header'),title=document.createElement('h2');title.id='arcade-title';
-  const closeButton=document.createElement('button');closeButton.id='arcade-close';closeButton.type='button';closeButton.textContent='닫기';header.append(title,closeButton);
+  const closeButton=document.createElement('button');closeButton.id='arcade-close';closeButton.type='button';closeButton.textContent='닫기';header.append(title);
+  const footer=document.createElement('footer');footer.className='arcade-footer';
+  const rankingActions=document.createElement('div');rankingActions.className='arcade-ranking-actions';footer.append(rankingActions,closeButton);
   const instructions=document.createElement('p');instructions.id='arcade-instructions';
   const score=document.createElement('p');score.id='arcade-score';score.setAttribute('aria-live','polite');
   const board=document.createElement('div');board.id='arcade-board';board.setAttribute('role','region');board.setAttribute('aria-label','미니게임판');
   const restartButton=document.createElement('button');restartButton.id='arcade-restart';restartButton.type='button';restartButton.textContent='다시하기';
-  dialog.append(header,instructions,score,board,restartButton);document.body.append(dialog);
+  dialog.append(header,instructions,score,board,restartButton,footer);document.body.append(dialog);
 
   let current=null,activeGame=null;
   const setScore=text=>{score.textContent=text;};
   const cleanup=()=>{activeGame?.destroy();activeGame=null;board.replaceChildren();};
   const factories={
-    memory:()=>createMemoryGame({board,setScore,toast}),
+    memory:()=>createMemoryGame({board,setScore,toast,request,footer:rankingActions,subscribeRanking:subscribeMemoryRanking}),
     baseball:()=>createBaseballGame({board,setScore,toast}),
-    stars:()=>createStarGame({board,request,subscribeStarRanking,toast}),
+    stars:()=>createStarGame({board,request,subscribeStarRanking,toast,footer:rankingActions}),
     sudoku:()=>createSudokuGame({board,toast}),
-    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast})
+    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions})
   };
   const render=id=>{
     const game=GAMES[id];title.textContent=game.title;instructions.textContent=game.instructions;setScore(game.score);board.replaceChildren();

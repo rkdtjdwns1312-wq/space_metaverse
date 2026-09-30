@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 
 const root=fileURLToPath(new URL('..',import.meta.url));
-const html=`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/client/arcade.css"><style>body{margin:0}</style></head><body><script type="module">import {createArcadeUI} from '/client/arcade-ui.js';window.toasts=[];window.arcade=createArcadeUI({toast:text=>window.toasts.push(text),request:async()=>({ranking:[]}),subscribeStarRanking:()=>()=>{},sendDodgeInput:()=>{},subscribeDodgeState:()=>()=>{},subscribeDodgeRanking:()=>()=>{}});window.arcade.open('memory');</script></body></html>`;
+const html=`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/client/arcade.css"><style>body{margin:0}</style></head><body><script type="module">import {createArcadeUI} from '/client/arcade-ui.js';window.toasts=[];window.arcade=createArcadeUI({toast:text=>window.toasts.push(text),request:async(event)=>event==='memory:start'?{runId:'mock-high',step:0}:{ranking:[]},subscribeStarRanking:()=>()=>{},sendDodgeInput:()=>{},subscribeDodgeState:()=>()=>{},subscribeDodgeRanking:()=>()=>{}});window.arcade.open('memory');</script></body></html>`;
 const types={'.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 const server=http.createServer(async(request,response)=>{
   if(request.url==='/'){response.writeHead(200,{'content-type':'text/html; charset=utf-8'});response.end(html);return;}
@@ -35,7 +35,7 @@ try{
 
   const levels=page.locator('.memory-level');
   assert.equal(await levels.count(),3);assert.deepEqual(await levels.evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-pressed'))),['false','false','false']);
-  assert.deepEqual(await levels.allTextContents(),['하','중','상']);
+  assert.deepEqual(await levels.allTextContents(),['상','중','하']);
   assert.equal(await page.locator('.memory-start').isDisabled(),true);
   await page.getByRole('button',{name:'하',exact:true}).click();
   assert.equal(await page.locator('#arcade-score').textContent(),'하 · 시작 전');
@@ -44,7 +44,7 @@ try{
     await start(name);const info=await gridInfo();
     assert.deepEqual([info.rows,info.columns,info.renderedRows,info.renderedColumns],[rows,columns,rows,columns]);
     assert.equal(info.symbols.length,rows*columns);const counts=new Map();for(const symbol of info.symbols)counts.set(symbol,(counts.get(symbol)??0)+1);
-    assert.equal(counts.size,rows*columns/2);assert.ok([...counts.values()].every(count=>count===2));
+    if(name==='상'){assert.ok(info.symbols.every(symbol=>symbol===''));}else{assert.equal(counts.size,rows*columns/2);assert.ok([...counts.values()].every(count=>count===2));}
     assert.equal(await page.locator('.memory-level[aria-pressed="true"]').count(),1);check(`${name}: 정확한 ${rows}×${columns} 격자와 서로 다른 그림 짝`);
   }
 

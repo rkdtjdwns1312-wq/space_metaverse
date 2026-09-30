@@ -104,10 +104,11 @@ try {
     return {images: result, faceBackground: getComputedStyle(document.querySelector('.star-card-face')).backgroundImage};
   });
   assert.ok(art.images.every(image => image.width > 100 && image.height > image.width && image.warmRatio > 0.15), JSON.stringify(art));
-  assert.match(art.faceBackground, /star-card-face\.webp/);
-  check('실제 금색 원본 앞·뒷면 이미지 디코딩과 앞면 배경 적용');
+  assert.match(art.faceBackground, /star-card-reading-frame\.webp/);
+  check('원본 카드 그림 유지·동화풍 우주 신전 확대 배경 적용');
 
   const card = game.store.snapshot(room(), player('달이')).starCards[0];
+  const savedCard=structuredClone(room().starCards[0]);
   assert.equal(card.slot, 0); assert.equal(card.height, 90); assert.ok(Number.isFinite(card.x) && Number.isFinite(card.y));
   await approach(observer, player('달이'), card);
   await observer.waitForFunction(() => window.__starCardDraw?.naturalWidth > 0 && window.__starCardDraw.args.at(-1) === 86);
@@ -152,6 +153,23 @@ try {
   assert.equal(player('별이').inventory.find(item => item.id === 'space-food-card').quantity, 2);
   assert.equal(game.store.records.get(code).starCards.length, 0);
   check('교사의 삭제 취소·확정 실제 조작, 저장 반영 및 기존 보상 보존');
+  await observer.setViewportSize({width:1440,height:960});
+  for(const count of [5,30]){
+    game.store.transact(()=>{room().starCards=Array.from({length:count},(_,slot)=>({...structuredClone(savedCard),id:crypto.randomUUID(),data:{...structuredClone(savedCard.data),slot}}));});
+    const cards=game.store.snapshot(room(),player('달이')).starCards;
+    assert.equal(new Set(cards.map(card=>card.y)).size,1);
+    assert.ok(cards.every(card=>card.y>1550));
+    for(let i=1;i<cards.length;i++)assert.ok(cards[i].x-cards[i-1].x>(cards[i].width+cards[i-1].width)/2);
+    await approach(observer,player('달이'),cards[Math.floor(count/2)]);
+    await observer.waitForTimeout(400);
+    await observer.screenshot({path:`.local/314-star-cards-row-${count}.png`});
+    await approach(observer,player('달이'),cards.at(-1));
+    await observer.keyboard.press('f');
+    await observer.locator('#star-card-dialog').waitFor({state:'visible'});
+    assert.match(await observer.locator('.star-card-used-by').innerText(),/별이/);
+    await closeDialogs(observer);
+  }
+  check('5장·30장 신전 아래 한 줄 배치와 겹침 방지·끝 카드 실제 F 열람');
   assert.deepEqual(errors, []);
   await writeFile('.local/star-cards-browser-result.json', JSON.stringify({checks, errors, art, card: {x: card.x, y: card.y, slot: card.slot, height: card.height}}, null, 2));
   console.log(JSON.stringify({checks, errors}, null, 2));

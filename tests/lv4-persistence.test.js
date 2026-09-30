@@ -7,6 +7,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {STREET, STREET_ID} from '../shared/config.js';
 import {LV4_ITEMS} from '../shared/lv4-items.js';
+import {nextRewardMonday} from '../shared/weekly-reward-time.js';
 
 const KEY = 'synthetic-lv4-persistence-test-key';
 const NOW = Date.now(); // 저장 로더의 실제 만료 시각과 일치시켜 날짜가 지나도 유효한 검사입니다.
@@ -75,7 +76,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   putAtShop(f, code, [a.selfId, b.selfId, c.selfId]);
 
   for (const [socket, itemId] of [[aSocket, 'total-eclipse-card'], [bSocket, 'nebula-card']]) {
-    const bought = await call(socket, 'shop:buy', {itemId, quantity: 1});
+    const bought = await call(teacher, 'teacher:inventory:give', {playerId:socket===aSocket?a.selfId:b.selfId,itemIds:[itemId]});
     assert.equal(bought.ok, true, bought.error);
   }
   f.game.store.transact(() => {
@@ -112,7 +113,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   const save = f.game.store.files.save.bind(f.game.store.files);
   f.game.store.files.save = () => { throw new Error('synthetic LV4 persistence write failure'); };
   try {
-    const failedSave = await call(aSocket, 'shop:buy', {itemId: 'nebula-card', quantity: 1});
+    const failedSave = await call(teacher, 'teacher:inventory:give', {playerId:a.selfId,itemIds:['nebula-card']});
     assert.equal(failedSave.ok, false);
     assert.match(failedSave.error, /저장/);
   } finally { f.game.store.files.save = save; }
@@ -169,7 +170,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   const savedTarget = saved.students.find(student => student.id === b.selfId);
   assert.equal(savedTarget.cardMarkers.find(marker => marker.itemId === 'total-eclipse-card')?.until, NOW + WEEK);
   const savedHolder = saved.students.find(student => student.id === c.selfId);
-  assert.deepEqual(savedHolder.lv4State, {stacks:0,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null});
+  assert.deepEqual(savedHolder.lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null});
 
   await f.restart();
   const nextTeacher = await f.connect();
@@ -180,40 +181,42 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   assert.equal(resumedHolder.ok, true, resumedHolder.error);
   room = f.game.store.rooms.get(code);
   assert.equal(room.players.get(b.selfId).cardMarkers.find(marker => marker.itemId === 'total-eclipse-card')?.until, NOW + WEEK);
-  assert.deepEqual(room.players.get(c.selfId).lv4State, {stacks:0,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null});
+  assert.deepEqual(room.players.get(c.selfId).lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null});
   assert.equal(room.players.get(b.selfId).starShards, 0);
 });
 
 test('weekly stacks persist, claim once, and restore both stack and reward on a failed disk write',async t=>{
-  const f=await fixture(t),{code}=await classroom(f),socket=await f.connect();
+  const f=await fixture(t),{code,teacher:grantTeacher}=await classroom(f),socket=await f.connect();
   const joined=await join(socket,code,'1');assert.ok(joined.ok);putAtShop(f,code,[joined.selfId]);
-  assert.ok((await call(socket,'shop:buy',{itemId:'supercluster-card',quantity:1})).ok);
+  assert.ok((await call(grantTeacher,'teacher:inventory:give',{playerId:joined.selfId,itemIds:['supercluster-card']})).ok);
   const get=()=>f.game.store.rooms.get(code).players.get(joined.selfId);
   assert.equal((await call(socket,'lv4:info')).holding.stacks,0);
   const shards=get().starShards;f.advance(3*WEEK);
-  assert.deepEqual((await call(socket,'lv4:info')).holding,{stacks:3,nextAt:NOW+4*WEEK});assert.equal(get().starShards,shards);
+  assert.deepEqual((await call(socket,'lv4:info')).holding,{stacks:3,nextAt:nextRewardMonday(NOW)+3*WEEK});assert.equal(get().starShards,shards);
   const claim={reward:'card',requestId:'one-card-claim'};
   assert.ok((await call(socket,'lv4:holding:use',claim)).ok);
   assert.ok((await call(socket,'lv4:holding:use',claim)).ok);
   assert.equal(get().lv4State.stacks,1);assert.equal(get().inventory.find(i=>i.id==='star-card').quantity,1);
   assert.equal(get().inventory.find(i=>i.id==='supercluster-card').quantity,1);
+  assert.equal((await call(socket,'lv4:holding:use',{reward:'shards',requestId:'same-week'})).ok,false);
+  f.advance(WEEK);await call(socket,'lv4:info');
   const before=structuredClone(get()),save=f.game.store.files.save.bind(f.game.store.files);
   f.game.store.files.save=()=>{throw Error('synthetic weekly stack write failure');};
   try{const result=await call(socket,'lv4:holding:use',{reward:'shards',requestId:'shard-claim'});assert.equal(result.ok,false);assert.match(result.error,/저장/);}
   finally{f.game.store.files.save=save;}
   assert.deepEqual(get(),before);
   assert.ok((await call(socket,'lv4:holding:use',{reward:'shards',requestId:'shard-claim'})).ok);
-  assert.equal(get().lv4State.stacks,0);assert.equal(get().starShards,shards+4);
+  assert.equal(get().lv4State.stacks,1);assert.equal(get().starShards,shards+4);
   await f.restart();const teacher=await f.connect();assert.ok((await call(teacher,'room:open',{teacherKey:KEY,code})).ok);
   const resumed=await f.connect();assert.ok((await join(resumed,code,'1')).ok);
-  assert.equal(get().lv4State.stacks,0);assert.equal(get().starShards,shards+4);assert.equal(get().inventory.find(i=>i.id==='star-card').quantity,1);
+  assert.equal(get().lv4State.stacks,1);assert.equal(get().starShards,shards+4);assert.equal(get().inventory.find(i=>i.id==='star-card').quantity,1);
   assert.ok((await call(resumed,'lv4:holding:use',claim)).ok);assert.equal(get().inventory.find(i=>i.id==='star-card').quantity,1);
-  f.advance(WEEK);assert.equal((await call(resumed,'lv4:info')).holding.stacks,1);
+  f.advance(WEEK);assert.equal((await call(resumed,'lv4:info')).holding.stacks,2);
   // 실제 판매는 먼저 지난 기간을 정산한 뒤 보유 중단하며, 재구매는 새 주기를 시작합니다.
   putAtShop(f,code,[joined.selfId]);assert.ok((await call(resumed,'shop:sell',{itemId:'supercluster-card',quantity:1})).ok);
   assert.equal(get().lv4State.nextStackAt,null);f.advance(2*WEEK);
-  assert.equal((await call(resumed,'lv4:info')).holding.stacks,1);
+  assert.equal((await call(resumed,'lv4:info')).holding.stacks,2);
   assert.equal((await call(resumed,'lv4:holding:use',{reward:'shards',requestId:'without-card'})).ok,false);
-  assert.ok((await call(resumed,'shop:buy',{itemId:'supercluster-card',quantity:1})).ok);
-  assert.equal((await call(resumed,'lv4:info')).holding.stacks,1);assert.equal(get().lv4State.nextStackAt,NOW+7*WEEK);
+  assert.ok((await call(teacher,'teacher:inventory:give',{playerId:joined.selfId,itemIds:['supercluster-card']})).ok);
+  assert.equal((await call(resumed,'lv4:info')).holding.stacks,2);assert.equal(get().lv4State.nextStackAt,nextRewardMonday(NOW)+7*WEEK);
 });

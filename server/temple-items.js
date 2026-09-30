@@ -19,8 +19,8 @@ export function templeItemRows(room,viewer,now=Date.now()) {
     }),
     ...(p.abilityState?.markers||[]).map(marker=>({targetId:p.id,nickname:p.nickname,fromNickname:p.nickname,itemId:null,icon:'✦',
       label:'Lv'+(marker.level||2)+' '+(constellationOf(marker.constellationId)?.name||'별자리')+' 능력',
-      description:constellationOf(marker.constellationId,marker.level||2)?.ability?.description||'',note:marker.note,until:null,
-      ...(teacher?{abilityMarkerId:marker.id,constellationId:marker.constellationId,abilityLevel:marker.level||2}:{})}))
+      description:marker.sourceDescription||constellationOf(marker.constellationId,marker.level||2)?.ability?.description||'',note:marker.note,until:null,
+      ...(teacher?{abilityMarkerId:marker.id,constellationId:marker.constellationId,abilityLevel:marker.level||2,abilityMultiplier:marker.multiplier||1}:{})}))
   ]).sort((a,b)=>{
     // 비밀 사용자 정보 제거 후 정렬하여, 순서에서도 비밀 정보가 드러나지 않게 합니다.
     const title=row=>itemOf(row.itemId)?.name||row.label||'';

@@ -1,4 +1,6 @@
 import {createProjectileEffects} from './projectile-effects.js';
+import {createAquariusEffects,preloadAquarius} from './aquarius-effects.js';
+import {drawBlackHoleGround,drawBlackStar} from './black-hole-art.js';
 import {createDamageNumbers} from './damage-numbers.js';
 import {drawCorvus,preloadCorvus} from './corvus-effects.js';
 import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
@@ -27,7 +29,7 @@ import {ATTACK_VISUAL} from '/shared/combat.js';
 import {skillEffectById} from '/shared/skill-effects.js';
 import {drawSkillEffect} from './skill-effects.js';
 import {drawSagittarius} from './sagittarius-effects.js';
-import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap } from '/shared/config.js';
+import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap, itemOf } from '/shared/config.js';
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
@@ -77,6 +79,7 @@ export function createWorld(canvas) {
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
   const projectiles=createProjectileEffects(canvas);
+  const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[];
   let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
@@ -284,16 +287,10 @@ export function createWorld(canvas) {
     }
   }
   function drawBlackHoleInterior(map,time){
-    ctx.fillStyle='#010106';ctx.fillRect(0,0,1200,760);
-    const g=ctx.createRadialGradient(600,350,20,600,350,620);g.addColorStop(0,'#09051a');g.addColorStop(1,'#000');ctx.fillStyle=g;ctx.fillRect(0,0,1200,760);
-    for(const s of stars){ctx.fillStyle='#bda8ff55';ctx.beginPath();ctx.arc(s.x,(s.y*1.13)%760,s.r*.7,0,Math.PI*2);ctx.fill();}
-    ctx.strokeStyle='#3b285e';ctx.lineWidth=2;ctx.strokeRect(16,16,1168,728);
+    drawBlackHoleGround(ctx,map);
     const darkStar=map.objects?.find(o=>o.kind==='black-star');
     if(darkStar){
-      const pulse=window.matchMedia('(prefers-reduced-motion: reduce)').matches?.45:(Math.sin(time/900)+1)*.18+.27;
-      ctx.save();ctx.shadowColor=`rgba(255,255,255,${pulse})`;ctx.shadowBlur=28;
-      drawStar(ctx,darkStar.x,darkStar.y,darkStar.radius,'#020205');
-      ctx.lineWidth=2;ctx.strokeStyle=`rgba(255,255,255,${pulse+.15})`;ctx.stroke();ctx.restore();
+      drawBlackStar(ctx,darkStar,time);
       ctx.save();ctx.textAlign='center';ctx.font='700 17px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e9e5f2';ctx.fillText(darkStar.name,darkStar.x,darkStar.y+darkStar.radius+32);ctx.restore();
     }
     const door=map.objects?.find(o=>o.kind==='gate');if(door)drawGate(door);
@@ -366,7 +363,7 @@ export function createWorld(canvas) {
       }
     }
     ctx.translate(-x,-y);
-    if(effects.length){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a3450';ctx.fillText(effects.map(e=>e.icon).join(' '),x,y-size/2-22);}
+    // 사용 중 아이템은 내정보/게시판에서 확인하며 머리 위에는 아이콘을 겹치지 않습니다.
     ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Jua","Malgun Gothic",sans-serif';
     const label=avatarLabel(p),nameWidth=ctx.measureText(label.name).width;
     ctx.font='11px "Jua","Malgun Gothic",sans-serif';
@@ -436,6 +433,14 @@ export function createWorld(canvas) {
     }
     const visibleDrops=myEnergyDrops();canvas.dataset.energyDropCount=String(visibleDrops.length);
     for(const drop of visibleDrops){
+      if(drop.kind==='recipe'){
+        const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
+        ctx.save();ctx.translate(drop.x,drop.y+bob);ctx.shadowColor='#cfabff';ctx.shadowBlur=12;
+        ctx.fillStyle='#fff4db';ctx.strokeStyle='#8d69b2';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-15,-23,30,37,5);ctx.fill();ctx.stroke();
+        ctx.shadowBlur=0;ctx.fillStyle='#9c73bb';ctx.font='20px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('✦',0,2);
+        ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.strokeStyle='#463052';ctx.lineWidth=3;ctx.fillStyle='#fff3d9';
+        const label=itemOf(drop.itemId)?.name||'조합법';ctx.strokeText(label,0,34);ctx.fillText(label,0,34);ctx.restore();continue;
+      }
       const amount=drop.shares.find(s=>s.playerId===selfId).amount;
       const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
       const icon=loadedAvatarSprite('/assets/currencies/cosmic-energy.svg');
@@ -451,6 +456,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    aquarius.draw(ctx,t,reducedMotion.matches);
     sagittariusEffects=sagittariusEffects.filter(e=>e.until>t&&e.mapId===myMapId);
     sagittariusCasts=sagittariusCasts.filter(e=>e.until>t&&e.mapId===myMapId);
     for(const cast of sagittariusCasts){
@@ -492,8 +498,9 @@ export function createWorld(canvas) {
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
+      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
+      if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];
@@ -506,7 +513,7 @@ export function createWorld(canvas) {
       for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
     },
     projectileEnd(data){if(data.mapId===myMapId)projectiles.end(data);},
-    positions(data){if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    positions(data){if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
     energyDrops(data){energyDrops=data.drops||[];},
     sagittariusState(data){
@@ -570,7 +577,7 @@ export function createWorld(canvas) {
       const me=players.find(p=>p.id===selfId);if(!me)return null;
       const drop=myEnergyDrops().filter(d=>Math.hypot(me.x-d.x,me.y-d.y)<=ENERGY_DROPS.pickupDistance)
         .sort((a,b)=>Math.hypot(me.x-a.x,me.y-a.y)-Math.hypot(me.x-b.x,me.y-b.y))[0];
-      if(drop)return {...drop,kind:'energy-drop',name:'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
+      if(drop)return {...drop,kind:'energy-drop',name:drop.kind==='recipe'?(itemOf(drop.itemId)?.name||'조합법')+' 줍기':'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
       if(myMapId===PLAZA_ID){
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
@@ -676,6 +683,5 @@ export function renderPortrait(canvas,player,effects){
     }
   }
   ctx.restore();
-  if(list.length){ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#f2ecff';ctx.fillText(list.map(e=>e.icon).join(' '),cx,cy-52);}
   if(player?.deptIcon){ctx.save();ctx.font='22px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText(player.deptIcon,w-10,10);ctx.restore();}
 }

@@ -16,8 +16,11 @@ import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/c
 import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
+import {validateMemoryRanking} from './memory-game.js';
 import {validateStarCards} from './star-cards.js';
 import {validateLv3State} from './lv3-item-effects.js';
+import {validateHoldingState} from '../shared/holding-abilities.js';
+import {validateLearnedRecipeIds} from './learned-recipes.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 export const PIN_RULES = { attempts:5, lockMs:60_000 };
@@ -51,6 +54,7 @@ export function toRecord(room) {
     starCards:validateStarCards(room.starCards),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
+    memoryRanking:structuredClone(room.memoryRanking||[]),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
@@ -59,6 +63,8 @@ export function toRecord(room) {
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
+      holdingState:validateHoldingState(p.holdingState),
+      learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
@@ -76,6 +82,7 @@ export function fromRecord(r) {
     starCards:validateStarCards(r.starCards),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
+    memoryRanking:validateMemoryRanking(r.memoryRanking),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
     itemLog:structuredClone(r.itemLog),tradeLog:structuredClone(r.tradeLog),trades:new Map()};
   for(const pl of r.planets){
@@ -112,8 +119,8 @@ export function fromRecord(r) {
     // 옛 달토끼 효과 기록만 정리하고 진행 중인 뽑기·보상 순서는 보존합니다.
     const cardMarkers=savedMarkers.filter(marker=>marker.itemId!=='moon-rabbit-card');
     if(rabbitDraw)rabbitDraw.markerId=null;
-    room.players.set(p.id,offline({...structuredClone(p),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),abilityState:validateAbilityState(p.abilityState),role:'student'}));
+    room.players.set(p.id,offline({...structuredClone(p),learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();

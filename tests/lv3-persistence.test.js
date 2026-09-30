@@ -10,6 +10,7 @@ import {weekStart} from '../server/temple.js';
 
 const KEY = 'lv3-persistence-tests-private-key';
 const NOW = Date.parse('2026-09-21T03:00:00Z');
+const NEXT_MONDAY = Date.parse('2026-09-28T00:00:00+09:00');
 const call = (socket, event, data = {}) => socket.timeout(5000).emitWithAck(event, data);
 
 async function fixture(t) {
@@ -58,7 +59,7 @@ function positionAtShop(f, code, ids) {
   });
 }
 
-test('LV3 purchase/use logs, permanent markers and cluster/supernova state survive socket-server restart', async t => {
+test('LV3 grants/use logs and activated supernova discount survive restart; upper items cannot be purchased', async t => {
   const f = await fixture(t), {teacher, code} = await classroom(f);
   const aSocket = await f.connect(), bSocket = await f.connect(), cSocket = await f.connect();
   const a = await join(aSocket, code, '1'), b = await join(bSocket, code, '2'), c = await join(cSocket, code, '3');
@@ -66,11 +67,12 @@ test('LV3 purchase/use logs, permanent markers and cluster/supernova state survi
   positionAtShop(f, code, [a.selfId, b.selfId, c.selfId]);
 
   for (const itemId of ['space-station-card', 'galaxy-cluster-card', 'supernova-alpha-card']) {
-    const bought = await call(aSocket, 'shop:buy', {itemId, quantity: 1});
+    assert.equal((await call(aSocket,'shop:buy',{itemId,quantity:1})).ok,false);
+    const bought = await call(teacher, 'teacher:inventory:give', {playerId:a.selfId,itemIds:[itemId]});
     assert.equal(bought.ok, true, bought.error);
   }
   let room = f.game.store.rooms.get(code), actor = room.players.get(a.selfId);
-  assert.deepEqual(actor.lv3State.clusterNextAt, [NOW + 7 * 86_400_000]);
+  assert.deepEqual(actor.lv3State.clusterNextAt, []);
   assert.deepEqual(actor.lv3State.supernovaUsed, {});
 
   const save = f.game.store.files.save.bind(f.game.store.files);
@@ -94,7 +96,8 @@ test('LV3 purchase/use logs, permanent markers and cluster/supernova state survi
   }
   assert.equal(room.itemLog.at(-1).itemId, 'space-station-card');
 
-  const rabbit = SHOP.items.find(item => item.id === 'rabbit-princess-card');
+  assert.equal((await call(aSocket,'holding:use',{itemId:'supernova-alpha-card'})).ok,true);
+  const rabbit = SHOP.items.find(item => item.id === 'space-food-card');
   assert.ok(rabbit && Number.isSafeInteger(rabbit.price));
   const discountedCost = Math.floor(rabbit.price / 2);
 
@@ -110,7 +113,7 @@ test('LV3 purchase/use logs, permanent markers and cluster/supernova state survi
     actor = f.game.store.rooms.get(code).players.get(a.selfId);
     actor.starShards = 800;
     const ids = new Set(actor.inventory.map(item => item.id));
-    const fillers = SHOP.items.filter(item => item.id !== rabbit.id && !ids.has(item.id));
+    const fillers = SHOP.items.filter(item => item.id !== rabbit.id && item.id !== 'supernova-beta-card' && !ids.has(item.id));
     while (actor.inventory.length < SHOP.maxKinds) {
       const item = fillers.shift(); assert.ok(item, 'catalog needs enough distinct valid items to fill the bag');
       ids.add(item.id); actor.inventory.push({id: item.id, quantity: 1});
@@ -146,13 +149,13 @@ test('LV3 purchase/use logs, permanent markers and cluster/supernova state survi
 
   const persisted = JSON.parse(fs.readFileSync(path.join(f.dir, `${code}.json`), 'utf8'));
   const savedActor = persisted.students.find(student => student.id === a.selfId);
-  assert.deepEqual(savedActor.lv3State.clusterNextAt, [NOW + 7 * 86_400_000]);
+  assert.deepEqual(savedActor.lv3State.clusterNextAt, []);
   assert.deepEqual(savedActor.lv3State.supernovaUsed, {'supernova-alpha-card': weekStart(NOW)});
   for (const id of [b.selfId, c.selfId]) {
     const savedTarget = persisted.students.find(student => student.id === id);
     assert.equal(savedTarget.cardMarkers.find(marker => marker.itemId === 'space-station-card')?.until, null);
   }
-  assert.equal(persisted.itemLog.at(-1).itemId, 'space-station-card');
+  assert.ok(persisted.itemLog.some(log=>log.itemId==='space-station-card'));
 
   await f.restart();
   const nextTeacher = await f.connect();
@@ -160,9 +163,9 @@ test('LV3 purchase/use logs, permanent markers and cluster/supernova state survi
   const resumed = await join(await f.connect(), code, '1');
   assert.equal(resumed.ok, true, resumed.error);
   room = f.game.store.rooms.get(code); actor = room.players.get(a.selfId);
-  assert.deepEqual(actor.lv3State.clusterNextAt, [NOW + 7 * 86_400_000]);
+  assert.deepEqual(actor.lv3State.clusterNextAt, []);
   assert.deepEqual(actor.lv3State.supernovaUsed, {'supernova-alpha-card': weekStart(NOW)});
-  assert.equal(room.itemLog.at(-1).itemId, 'space-station-card');
+  assert.ok(room.itemLog.some(log=>log.itemId==='space-station-card'));
   for (const id of [b.selfId, c.selfId])
     assert.equal(room.players.get(id).cardMarkers.find(marker => marker.itemId === 'space-station-card')?.until, null);
 });

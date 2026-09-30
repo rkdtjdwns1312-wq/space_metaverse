@@ -164,34 +164,34 @@ test('offline full-stack rabbit reward survives repeated restart and pays once w
   assert.equal(quantity(f.friend, 'star-card'), SHOP.maxStack);
 });
 
-test('shop-acquired galaxy anchors persist and offline catch-up accrues once per held card', async t => {
-  const f = await fixture(t), acquiredAt = f.now;
-  f.place('shop');
-  assert.ok((await call(f.first, 'shop:buy', {itemId: 'galaxy-card', quantity: 1})).ok);
+test('acquired galaxy never grants automatic offline holding rewards', async t => {
+  const f = await fixture(t,Date.parse('2026-09-22T12:00:00+09:00')), acquiredAt = f.now;
+  assert.ok((await call(f.teacher, 'teacher:inventory:give', {playerId:f.actor.id,itemIds:['galaxy-card']})).ok);
   f.setNow(f.now + DAY);
-  assert.ok((await call(f.first, 'shop:buy', {itemId: 'galaxy-card', quantity: 1})).ok);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, [acquiredAt + WEEK, acquiredAt + DAY + WEEK]);
+  assert.ok((await call(f.teacher, 'teacher:inventory:give', {playerId:f.actor.id,itemIds:['galaxy-card']})).ok);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
   const balance = f.actor.starShards;
   await f.restart(acquiredAt + 3 * WEEK + DAY);
   assert.equal(f.actor.connected, false);
-  await until(() => f.actor.starShards === balance + 6);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, [acquiredAt + 4 * WEEK, acquiredAt + DAY + 4 * WEEK]);
+  await sleep(1100);assert.equal(f.actor.starShards,balance);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
   await f.restart(); await sleep(1100);
-  assert.equal(f.actor.starShards, balance + 6);
+  assert.equal(f.actor.starShards, balance);
 });
 
-test('shop maxOwned includes Gemini copied quantity and rejection consumes neither money nor pending', async t => {
+test('LV2 purchase rejection preserves Gemini copy; permitted LV1 purchase consumes it once', async t => {
   const f = await fixture(t);
   f.seed(a => {a.avatar.constellationId = 'gemini'; a.inventory = [{id: 'galaxy-card', quantity: 1}];
     a.abilityState.pending = {mode: 'shop-copy', week: weekStart(f.now)};});
   f.place('shop'); const before = assets(f.actor);
   const result = await call(f.first, 'shop:buy', {itemId: 'galaxy-card', quantity: 1});
-  assert.equal(result.ok, false); assert.match(result.error, /2개까지/);
+  assert.equal(result.ok, false); assert.match(result.error, /직접 구매/);
   assert.deepEqual(assets(f.actor), before);
   f.seed(a => {a.inventory = [];}); f.place('shop');
-  assert.ok((await call(f.first, 'shop:buy', {itemId: 'galaxy-card', quantity: 1})).ok);
-  assert.equal(quantity(f.actor, 'galaxy-card'), 2);
-  assert.equal(f.actor.lv2State.galaxyNextAt.length, 2);
+  assert.ok((await call(f.first, 'shop:buy', {itemId: 'space-food-card', quantity: 1})).ok);
+  assert.equal(quantity(f.actor, 'space-food-card'), 2);
+  assert.equal(f.actor.abilityState.pending,null);
+  assert.equal(f.actor.lv2State?.galaxyNextAt?.length||0, 0);
 });
 
 test('Corvus acquisition obeys maxOwned and budget without spending pending picks', async t => {
@@ -223,7 +223,7 @@ test('crafting maxOwned rejection keeps ingredients and fee; successful acquisit
   const result = await call(f.first, 'crafting:combine', request);
   assert.ok(result.ok && result.success, result.error);
   assert.equal(quantity(f.actor, 'galaxy-card'), 2);
-  assert.equal(f.actor.lv2State.galaxyNextAt.length, 2);
+  assert.equal(f.actor.lv2State?.galaxyNextAt?.length||0, 0);
 });
 
 test('mutually confirmed market trade rejects recipient maxOwned overflow without transferring items or either currency', async t => {

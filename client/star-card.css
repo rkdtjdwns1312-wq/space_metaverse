@@ -10,7 +10,7 @@
   box-sizing: border-box;
   min-height: 24rem;
   padding: clamp(4.5rem, 19vw, 7rem) clamp(1rem, 8vw, 3rem) 2rem;
-  background: url('/assets/cards/star-card-face.webp') center / cover no-repeat;
+  background: #f6f0e9 url('/assets/cards/star-card-reading-frame.webp') center / 100% 100% no-repeat;
   display: grid;
   align-content: center;
   gap: .45rem;

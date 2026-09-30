@@ -50,7 +50,8 @@ export function validateCardMarkers(value){
     const item=marker&&itemOf(marker.itemId);
     if(!item?.mode||typeof marker.id!=='string'||ids.has(marker.id)||
       (marker.until!==null&&(!Number.isSafeInteger(marker.until)||marker.until<0))||
-      (item.mode==='lv4'?false:item.mode==='lv2'?marker.until===null:['uv','moon'].includes(item.mode)?marker.until===null:marker.until!==null)||
+      (marker.holdingAbility===true?item.id!=='alien-creature-card'||marker.until===null:item.mode==='lv4'?false:item.mode==='lv2'?marker.until===null:['uv','moon'].includes(item.mode)?marker.until===null:marker.until!==null)||
+      (marker.holdingAbility!==undefined&&marker.holdingAbility!==true)||
       typeof marker.fromId!=='string'||typeof marker.fromNickname!=='string'||marker.fromNickname.length>12||
       (marker.note!==undefined&&(typeof marker.note!=='string'||marker.note.length>80))||
       (marker.remainingUses!==undefined&&(!Number.isSafeInteger(marker.remainingUses)||marker.remainingUses<0||marker.remainingUses>99))||

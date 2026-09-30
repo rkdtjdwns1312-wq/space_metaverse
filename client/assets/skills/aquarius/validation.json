@@ -1,0 +1,1414 @@
+{
+  "reviewTool": "Codex; exact model not exposed by tool metadata",
+  "checks": {
+    "attack": {
+      "frames": 24,
+      "uniqueFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "sheet": [
+        1536,
+        1024
+      ],
+      "alpha": "real RGBA; zero RGB at zero alpha",
+      "transparentBorderMaxAlpha": 0,
+      "apngFrames": 60,
+      "apngDurationMs": 5000.0,
+      "apngEveryFrameMatchesPng": true,
+      "loopPremultipliedMeanAbsDiff": [
+        0.017194755375385284,
+        0.01877855509519577,
+        0.01822490245103836,
+        0.020186569541692734,
+        0.0161563940346241,
+        0.01332466583698988,
+        0.014223781414330006,
+        0.012766161933541298,
+        0.0159003846347332,
+        0.028357088565826416,
+        0.022269979119300842,
+        0.010668016038835049
+      ],
+      "loopSeamMeanAbsDiff": 0.010668016038835049,
+      "sourceRegistration": [
+        {
+          "sourceCenter": [
+            132.74348317309415,
+            151.79566650873056
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            133.21308448171118,
+            154.38324661928803
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            127.18151642739225,
+            154.95281761516736
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            131.05959199806082,
+            155.0709718001588
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            138.56409885778825,
+            152.82328782943503
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            143.7072044284135,
+            151.45048055602558
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            147.12108230548932,
+            149.26007089029778
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            144.08599125885178,
+            149.04576812844113
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            145.40270375687575,
+            148.61472968033667
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            145.67568757067954,
+            147.58504797778508
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            143.23833360550663,
+            150.0757789835858
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            141.716923868713,
+            148.75806852737625
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            148.79668155804598,
+            136.1775971347543
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            148.60955540781544,
+            137.1775369625152
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            148.0914658580899,
+            136.00653150269096
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            144.26312145012832,
+            137.13606395185974
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            146.7797742645862,
+            134.43391642175513
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            153.83704496075697,
+            133.0796301254461
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            158.78557986559227,
+            113.7914398009283
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            152.28397646474573,
+            116.75252130079865
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            137.1773220228293,
+            115.31332256998913
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            121.58305320295447,
+            119.35258734244763
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            124.67086455034227,
+            122.04748213407431
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        },
+        {
+          "sourceCenter": [
+            150.25068542920397,
+            114.3676925628604
+          ],
+          "scale": [
+            0.84,
+            0.84
+          ]
+        }
+      ],
+      "alphaSquaredCentroids": [
+        [
+          128.2362269216331,
+          128.07010818251106
+        ],
+        [
+          128.24632450918853,
+          128.0606562712973
+        ],
+        [
+          128.03651791348827,
+          128.08069056642515
+        ],
+        [
+          128.00415406298046,
+          128.0728780430993
+        ],
+        [
+          128.07816358395604,
+          127.92605407915815
+        ],
+        [
+          128.0684514167121,
+          127.92544696735123
+        ],
+        [
+          128.06327109120653,
+          127.92569302671276
+        ],
+        [
+          127.92586128549969,
+          127.99283949482084
+        ],
+        [
+          128.10524857304995,
+          127.9125931141533
+        ],
+        [
+          128.07454400225615,
+          127.9305262893282
+        ],
+        [
+          128.10634366642844,
+          127.98784257027474
+        ],
+        [
+          127.92241476878004,
+          127.91644445075204
+        ],
+        [
+          128.096553655537,
+          127.92042809088827
+        ],
+        [
+          127.92371232628292,
+          127.91236645931775
+        ],
+        [
+          127.948850308779,
+          127.90964285281702
+        ],
+        [
+          128.10290135379904,
+          127.91790142928933
+        ],
+        [
+          127.93443531090284,
+          127.94452413506782
+        ],
+        [
+          127.94437764485372,
+          127.92453573653943
+        ],
+        [
+          127.94777550630172,
+          127.92666108821874
+        ],
+        [
+          128.12873507995155,
+          127.91180535257709
+        ],
+        [
+          128.1562448120156,
+          127.98211835408915
+        ],
+        [
+          128.27113551946687,
+          128.0963577324864
+        ],
+        [
+          128.38800033298224,
+          128.06396999299048
+        ]
+      ],
+      "maxCenterErrorPx": 0.3932383735058603
+    },
+    "skill-lv2": {
+      "frames": 24,
+      "uniqueFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "sheet": [
+        1536,
+        1024
+      ],
+      "alpha": "real RGBA; zero RGB at zero alpha",
+      "transparentBorderMaxAlpha": 0,
+      "apngFrames": 60,
+      "apngDurationMs": 5000.0,
+      "apngEveryFrameMatchesPng": true,
+      "loopPremultipliedMeanAbsDiff": [
+        0.006590931676328182,
+        0.008503954857587814,
+        0.007317040115594864,
+        0.0073695071041584015,
+        0.008602476678788662,
+        0.009733974933624268,
+        0.010038953274488449,
+        0.010495548136532307,
+        0.012020031921565533,
+        0.010644059628248215,
+        0.008389700204133987,
+        0.007593053393065929
+      ],
+      "loopSeamMeanAbsDiff": 0.007593053393065929,
+      "sourceRegistration": [
+        {
+          "sourceFloor": [
+            123.5,
+            224.0
+          ],
+          "sourceFloorWidth": 162.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            131.5,
+            225.0
+          ],
+          "sourceFloorWidth": 164.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.0,
+            232.0
+          ],
+          "sourceFloorWidth": 169.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            137.5,
+            225.0
+          ],
+          "sourceFloorWidth": 180.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.5,
+            229.0
+          ],
+          "sourceFloorWidth": 186.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.0,
+            228.0
+          ],
+          "sourceFloorWidth": 193.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            129.5,
+            234.0
+          ],
+          "sourceFloorWidth": 204.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            134.5,
+            234.0
+          ],
+          "sourceFloorWidth": 200.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.0,
+            233.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            232.0
+          ],
+          "sourceFloorWidth": 205.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.5,
+            234.0
+          ],
+          "sourceFloorWidth": 202.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.5,
+            233.0
+          ],
+          "sourceFloorWidth": 198.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            135.5,
+            232.0
+          ],
+          "sourceFloorWidth": 208.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.5,
+            231.0
+          ],
+          "sourceFloorWidth": 212.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            144.0,
+            231.0
+          ],
+          "sourceFloorWidth": 201.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.5,
+            232.0
+          ],
+          "sourceFloorWidth": 202.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            144.0,
+            231.0
+          ],
+          "sourceFloorWidth": 203.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.5,
+            231.0
+          ],
+          "sourceFloorWidth": 196.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            133.0,
+            213.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            215.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            147.0,
+            213.0
+          ],
+          "sourceFloorWidth": 191.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            145.5,
+            213.0
+          ],
+          "sourceFloorWidth": 188.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            144.5,
+            214.0
+          ],
+          "sourceFloorWidth": 186.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            143.0,
+            213.0
+          ],
+          "sourceFloorWidth": 177.0,
+          "scale": [
+            1.0,
+            0.78
+          ]
+        }
+      ],
+      "loopJarRegionMaxPixelDifference": 0,
+      "loopFloorRegionMaxPixelDifference": 0,
+      "registeredFloorCenterPx": [
+        128,
+        192
+      ],
+      "referenceFloorBodyWidthPx": 205
+    },
+    "skill-lv3": {
+      "frames": 24,
+      "uniqueFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "sheet": [
+        1536,
+        1024
+      ],
+      "alpha": "real RGBA; zero RGB at zero alpha",
+      "transparentBorderMaxAlpha": 0,
+      "apngFrames": 60,
+      "apngDurationMs": 5000.0,
+      "apngEveryFrameMatchesPng": true,
+      "loopPremultipliedMeanAbsDiff": [
+        0.009718858636915684,
+        0.009392164647579193,
+        0.009277106262743473,
+        0.009416469372808933,
+        0.012532907538115978,
+        0.013450507074594498,
+        0.012430036440491676,
+        0.012495786882936954,
+        0.01330544427037239,
+        0.01391565054655075,
+        0.012625839561223984,
+        0.01258382759988308
+      ],
+      "loopSeamMeanAbsDiff": 0.01258382759988308,
+      "sourceRegistration": [
+        {
+          "sourceFloor": [
+            126.5,
+            227.0
+          ],
+          "sourceFloorWidth": 170.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            132.0,
+            225.0
+          ],
+          "sourceFloorWidth": 177.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            135.0,
+            227.0
+          ],
+          "sourceFloorWidth": 179.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            134.5,
+            227.0
+          ],
+          "sourceFloorWidth": 188.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            134.5,
+            227.0
+          ],
+          "sourceFloorWidth": 188.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            134.0,
+            228.0
+          ],
+          "sourceFloorWidth": 187.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.0,
+            226.0
+          ],
+          "sourceFloorWidth": 201.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.0,
+            225.0
+          ],
+          "sourceFloorWidth": 203.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            137.5,
+            226.0
+          ],
+          "sourceFloorWidth": 200.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.0,
+            225.0
+          ],
+          "sourceFloorWidth": 203.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            136.5,
+            226.0
+          ],
+          "sourceFloorWidth": 202.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            136.0,
+            226.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            227.0
+          ],
+          "sourceFloorWidth": 207.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            144.5,
+            229.0
+          ],
+          "sourceFloorWidth": 210.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.5,
+            226.0
+          ],
+          "sourceFloorWidth": 206.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.0,
+            228.0
+          ],
+          "sourceFloorWidth": 205.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.5,
+            225.0
+          ],
+          "sourceFloorWidth": 204.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            132.5,
+            226.0
+          ],
+          "sourceFloorWidth": 194.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            208.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.5,
+            205.0
+          ],
+          "sourceFloorWidth": 192.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.5,
+            207.0
+          ],
+          "sourceFloorWidth": 198.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            141.5,
+            206.0
+          ],
+          "sourceFloorWidth": 196.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.5,
+            208.0
+          ],
+          "sourceFloorWidth": 190.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            131.0,
+            207.0
+          ],
+          "sourceFloorWidth": 181.0,
+          "scale": [
+            1.0098522167487685,
+            0.78
+          ]
+        }
+      ],
+      "loopJarRegionMaxPixelDifference": 0,
+      "loopFloorRegionMaxPixelDifference": 0,
+      "registeredFloorCenterPx": [
+        128,
+        192
+      ],
+      "referenceFloorBodyWidthPx": 205
+    },
+    "skill-lv4": {
+      "frames": 24,
+      "uniqueFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "sheet": [
+        1536,
+        1024
+      ],
+      "alpha": "real RGBA; zero RGB at zero alpha",
+      "transparentBorderMaxAlpha": 0,
+      "apngFrames": 60,
+      "apngDurationMs": 5000.0,
+      "apngEveryFrameMatchesPng": true,
+      "loopPremultipliedMeanAbsDiff": [
+        0.01777508854866028,
+        0.013558275066316128,
+        0.01590506173670292,
+        0.011894818395376205,
+        0.015388056635856628,
+        0.014671104028820992,
+        0.015775177627801895,
+        0.01478070393204689,
+        0.01306002214550972,
+        0.01444738358259201,
+        0.012577845714986324,
+        0.017467863857746124
+      ],
+      "loopSeamMeanAbsDiff": 0.017467863857746124,
+      "sourceRegistration": [
+        {
+          "sourceFloor": [
+            134.0,
+            230.0
+          ],
+          "sourceFloorWidth": 197.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            232.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            143.0,
+            233.0
+          ],
+          "sourceFloorWidth": 199.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            136.0,
+            232.0
+          ],
+          "sourceFloorWidth": 209.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            143.5,
+            230.0
+          ],
+          "sourceFloorWidth": 204.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            233.0
+          ],
+          "sourceFloorWidth": 203.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            135.0,
+            233.0
+          ],
+          "sourceFloorWidth": 229.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            235.0
+          ],
+          "sourceFloorWidth": 231.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            233.0
+          ],
+          "sourceFloorWidth": 229.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.5,
+            235.0
+          ],
+          "sourceFloorWidth": 228.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.5,
+            235.0
+          ],
+          "sourceFloorWidth": 226.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            235.0
+          ],
+          "sourceFloorWidth": 219.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            231.0
+          ],
+          "sourceFloorWidth": 227.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.5,
+            232.0
+          ],
+          "sourceFloorWidth": 232.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            140.0,
+            232.0
+          ],
+          "sourceFloorWidth": 227.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            143.0,
+            232.0
+          ],
+          "sourceFloorWidth": 225.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.0,
+            227.0
+          ],
+          "sourceFloorWidth": 221.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.0,
+            233.0
+          ],
+          "sourceFloorWidth": 213.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            138.0,
+            215.0
+          ],
+          "sourceFloorWidth": 223.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.5,
+            217.0
+          ],
+          "sourceFloorWidth": 208.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            143.0,
+            218.0
+          ],
+          "sourceFloorWidth": 203.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            142.5,
+            217.0
+          ],
+          "sourceFloorWidth": 200.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            144.5,
+            219.0
+          ],
+          "sourceFloorWidth": 192.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        },
+        {
+          "sourceFloor": [
+            139.5,
+            217.0
+          ],
+          "sourceFloorWidth": 192.0,
+          "scale": [
+            0.8991228070175439,
+            0.78
+          ]
+        }
+      ],
+      "loopJarRegionMaxPixelDifference": 0,
+      "loopFloorRegionMaxPixelDifference": 0,
+      "registeredFloorCenterPx": [
+        128,
+        192
+      ],
+      "referenceFloorBodyWidthPx": 205
+    }
+  },
+  "apngFrameIndices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ],
+  "apngFrameDurationsMs": [
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84
+  ],
+  "status": "structural checks passed; see playback-validation.json for browser playback"
+}

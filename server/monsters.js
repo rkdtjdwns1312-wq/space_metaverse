@@ -4,7 +4,7 @@ import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
-import {addEnergyDrop} from './energy-drops.js';
+import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 
 
@@ -52,7 +52,7 @@ export function strikeMonsters(room,player,power,now=Date.now()){
   return monstersInAttackArea(room,player,now).map(target=>damageMonster(room,target,player,power,now));
 }
 // Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
-export function damageMonster(room,target,player,power,now=Date.now()){
+export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll}={}){
   if(target.hp<=0||!(power>0)||!Number.isFinite(power))return null;
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
@@ -63,7 +63,8 @@ export function damageMonster(room,target,player,power,now=Date.now()){
   room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:power});
   if(room.damageNumbers.length>200)room.damageNumbers.shift();
   if(target.hp===0){
-    addEnergyDrop(room,target,target.contributors,now);
+    addRecipeDrop(room,target,target.contributors,now,recipeRoll);
+    addEnergyDrop(room,target,target.contributors,now,energyRoll);
     target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
   }
   else{

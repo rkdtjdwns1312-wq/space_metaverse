@@ -7,6 +7,7 @@ import {useLv2Item, settleLv2Items, hasLv2ItemBlock, collectSunTax,
 import {GameError} from '../server/rooms.js';
 
 const NOW = Date.parse('2026-09-21T03:00:00Z'); // Monday noon KST
+const MONDAY = Date.parse('2026-09-21T00:00:00+09:00');
 const DAY = 86_400_000, WEEK = 7 * DAY;
 function player(id) {
   return {id, nickname: id, role: 'student', connected: true, avatar: {level: 2, blackStar: null},
@@ -50,7 +51,7 @@ test('owned, level, connection, target levels, UV and ability blocks validate be
     [f => { f.actor.inventory[0].quantity = 0; }, /가방/],
     [f => { f.actor.avatar.level = 1; }, /LV2/],
     [f => { f.actor.connected = false; }, /입장/],
-    [f => { f.b.connected = false; }, /지금 없어요/],
+    [f => { f.room.players.delete(f.b.id); }, /지금 없어요/],
     [f => { f.b.avatar.level = 3; }, /높은/],
     [f => { f.actor.cardMarkers = [marker('little-sun-card')]; }, /자외선/],
     [f => { f.b.cardMarkers = [marker('little-moon-card')]; }, /꼬마 달/],
@@ -137,7 +138,7 @@ test('galaxy grants exactly one placeholder and consumes card with no effect mar
   assert.ok(!f.actor.inventory.some(i => i.id === 'galaxy-card'));
   assert.equal(f.actor.cardMarkers.length, 0);
   assert.equal(f.actor.inventory.length, SHOP.maxKinds);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, []);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
 });
 
 test('galaxy full-bag/stack reward failures do not consume or charge', () => {
@@ -150,34 +151,34 @@ test('galaxy full-bag/stack reward failures do not consume or charge', () => {
   }
 });
 
-test('galaxy acquisition anchors each card, caps two and accrues every seven days offline', () => {
+test('galaxy acquisition caps two and never schedules automatic holding rewards', () => {
   const f = fixture();
   acquireGalaxy(f.actor, 1, NOW);
   acquireGalaxy(f.actor, 1, NOW + DAY);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, [NOW + WEEK, NOW + WEEK + DAY]);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
   assert.equal(canPurchaseLv2Item(f.actor, 'galaxy-card'), false);
   rejectedWithoutMutation(f, () => acquireGalaxy(f.actor, 1, NOW + DAY), /최대 2/);
-  assert.equal(settleLv2Items(f.room, NOW + WEEK - 1), false);
-  assert.equal(settleLv2Items(f.room, NOW + WEEK), true);
-  assert.equal(f.actor.starShards, 11);
+  assert.equal(settleLv2Items(f.room, MONDAY + WEEK - 1), false);
+  assert.equal(settleLv2Items(f.room, MONDAY + WEEK), false);
+  assert.equal(f.actor.starShards, 10);
   assert.equal(settleLv2Items(f.room, NOW + WEEK), false);
   settleLv2Items(f.room, NOW + 3 * WEEK + DAY);
-  assert.equal(f.actor.starShards, 16);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, [NOW + 4 * WEEK, NOW + 4 * WEEK + DAY]);
+  assert.equal(f.actor.starShards, 10);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
 });
 
-test('galaxy wallet cap queues accrual; sale/reacquisition never reuses removed anchor', () => {
+test('galaxy wallet capacity and reacquisition do not trigger an automatic payout', () => {
   const f = fixture();
   acquireGalaxy(f.actor, 2, NOW);
   f.actor.starShards = SHARDS.max;
   assert.equal(settleLv2Items(f.room, NOW + WEEK), false);
   f.actor.starShards -= 2;
-  assert.equal(settleLv2Items(f.room, NOW + WEEK), true);
-  assert.equal(f.actor.starShards, SHARDS.max);
+  assert.equal(settleLv2Items(f.room, NOW + WEEK), false);
+  assert.equal(f.actor.starShards, SHARDS.max-2);
   f.actor.inventory = [];
   syncGalaxyHoldings(f.actor, NOW + WEEK);
   acquireGalaxy(f.actor, 1, NOW + WEEK + DAY);
-  assert.deepEqual(f.actor.lv2State.galaxyNextAt, [NOW + 2 * WEEK + DAY]);
+  assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
 });
 
 test('acquisition respects configured bag capacity and invalid quantities are atomic', () => {
@@ -392,12 +393,12 @@ test('due predicate is read-only and matches settlement at boundaries and blocke
     assert.equal(lv2ItemsDue(f.room, now), false);
   };
   const f = fixture('galaxy-card');
-  check(f, NOW, true); // Initial ownership anchor is missing.
-  check(f, NOW + WEEK - 1, false);
+  check(f, NOW, false); // Holding rewards now require manual activation.
+  check(f, MONDAY + WEEK - 1, false);
   f.actor.starShards = SHARDS.max;
-  check(f, NOW + WEEK, false);
+  check(f, MONDAY + WEEK, false);
   f.actor.starShards--;
-  check(f, NOW + WEEK, true);
+  check(f, MONDAY + WEEK, false);
   const g = fixture('sun-rabbit-card'); fillBag(g.b);
   use(g, 'sun-rabbit-card', {targetId: 'b'});
   check(g, NOW + WEEK - 1, false);

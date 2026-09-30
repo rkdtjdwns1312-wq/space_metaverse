@@ -5,7 +5,7 @@
   margin: 0.5rem 0 0.75rem;
 }
 
-.inventory-page-tab {
+.inventory-page-tab,.inventory-recipes {
   min-width: 2.75rem;
   min-height: 2.75rem;
   padding: 0.25rem 0.65rem;
@@ -16,6 +16,12 @@
   box-shadow: 0 3px 0 #ece3f8;
   cursor: pointer;
 }
+.inventory-recipes{font-size:14px;white-space:nowrap;margin-left:3px}
+.recipe-book-list{list-style:none;padding:0;max-height:60vh;overflow:auto}
+.recipe-book-list li{border:1px solid #d9c7ee;background:#fcfaff;border-radius:14px;padding:12px;margin:8px 0;min-height:76px}
+.recipe-book-list img{width:64px;height:64px;object-fit:cover;border-radius:10px;float:left;margin-right:12px}
+.recipe-book-list p{line-height:1.6;overflow-wrap:anywhere}
+#recipe-book-dialog{max-width:580px;width:calc(100% - 28px)}
 
 .inventory-page-tab[aria-selected="true"] {
   border-color: #8860bf;

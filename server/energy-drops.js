@@ -3,6 +3,8 @@ import {ENERGY_DROPS} from '../shared/energy-drops.js';
 import {monsterType} from '../shared/monsters.js';
 import {ensure} from './rooms.js';
 import {isDefeated} from './vitals.js';
+import {SHOP,itemOf} from '../shared/config.js';
+import {recipeItemId} from '../shared/recipe-items.js';
 
 // 바닥 드랍은 전투처럼 임시 상태입니다. 습득할 때만 잔액과 함께 원자적으로 저장합니다.
 export function pruneEnergyDrops(room,now=Date.now()){
@@ -39,10 +41,30 @@ export function addEnergyDrop(room,monster,contributions,now=Date.now(),roll=ran
   const drop={id:randomUUID(),mapId:monster.mapId,x:monster.x,y:monster.y,total,shares,expiresAt:now+ENERGY_DROPS.lifetimeMs};
   room.energyDrops.set(drop.id,drop);return drop;
 }
+// Called for every kill independently of its energy roll. No recipe exists for LV1.
+// Only public output IDs are attached to the transient room; ingredients stay private.
+export function addRecipeDrop(room,monster,contributions,now=Date.now(),roll=randomInt){
+  const level=monsterType(monster.typeId)?.level;
+  const outputs=[...new Set(room.recipeDropOutputIds||[])].filter(id=>itemOf(id)?.level===level&&itemOf(recipeItemId(id)));
+  if(!outputs.length)return null;
+  const ownerId=[...contributions].filter(([id,damage])=>room.players?.has(id)&&damage>0)
+    .sort((a,b)=>b[1]-a[1])[0]?.[0];
+  if(!ownerId)return null;
+  const chance=roll(0,100);
+  if(chance!==0)return null; // exactly one of the 100 equiprobable server outcomes
+  const index=roll(0,outputs.length);
+  if(!Number.isSafeInteger(index)||index<0||index>=outputs.length)return null;
+  pruneEnergyDrops(room,now);room.energyDrops??=new Map();
+  if(room.energyDrops.size>=ENERGY_DROPS.maxPerRoom)return null;
+  const drop={id:randomUUID(),kind:'recipe',itemId:recipeItemId(outputs[index]),
+    mapId:monster.mapId,x:monster.x,y:monster.y,total:1,shares:new Map([[ownerId,1]]),expiresAt:now+ENERGY_DROPS.lifetimeMs};
+  room.energyDrops.set(drop.id,drop);return drop;
+}
 export function energyDropViews(room,now=Date.now()){
   return [...(room.energyDrops?.values()||[])].filter(d=>d.expiresAt>now).map(d=>({
     id:d.id,mapId:d.mapId,x:d.x,y:d.y,radius:ENERGY_DROPS.radius,expiresAt:d.expiresAt,
-    shares:[...d.shares].map(([playerId,amount])=>({playerId,amount}))
+    shares:[...d.shares].map(([playerId,amount])=>({playerId,amount})),
+    ...(d.kind==='recipe'?{kind:'recipe',itemId:d.itemId}:{})
   }));
 }
 export function collectEnergyDrop(room,player,id,now=Date.now()){
@@ -53,6 +75,15 @@ export function collectEnergyDrop(room,player,id,now=Date.now()){
   ensure(player.mapId===drop.mapId&&Math.hypot(player.x-drop.x,player.y-drop.y)<=ENERGY_DROPS.pickupDistance,'우주에너지 가까이 가주세요.');
   const amount=drop.shares.get(player.id);
   ensure(Number.isSafeInteger(amount)&&amount>0,'내 몫의 우주에너지가 아니거나 이미 주웠어요.');
+  if(drop.kind==='recipe'){
+    const item=itemOf(drop.itemId),entry=player.inventory.find(value=>value.id===drop.itemId);
+    ensure(item?.mode==='recipe'&&amount===1,'조합법 아이템을 확인해주세요.');
+    ensure((entry?.quantity||0)<SHOP.maxStack,'조합법은 99개까지만 담을 수 있어요.');
+    ensure(entry||player.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
+    if(entry)entry.quantity++;else player.inventory.push({id:item.id,quantity:1});
+    drop.shares.delete(player.id);if(!drop.shares.size)room.energyDrops.delete(drop.id);
+    return {kind:'recipe',itemId:item.id,quantity:1,inventory:structuredClone(player.inventory)};
+  }
   const before=player.cosmicEnergy??0;
   ensure(Number.isSafeInteger(before)&&before>=0&&Number.isSafeInteger(before+amount),'우주에너지를 더 담을 수 없어요.');
   player.cosmicEnergy=before+amount;drop.shares.delete(player.id);

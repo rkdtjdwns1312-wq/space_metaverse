@@ -1,4 +1,5 @@
 import {drawCorvus} from './corvus-effects.js';
+import {drawAquarius} from './aquarius-effects.js';
 import {drawSagittarius} from './sagittarius-effects.js';
 
 export function createProjectileEffects(canvas){
@@ -18,7 +19,7 @@ export function createProjectileEffects(canvas){
         if(age>=p.durationMs){active.delete(id);continue;}
         const progress=age/p.durationMs,distance=p.range*progress;
         const visual={...p,x:p.x+p.dx*distance,y:p.y+p.dy*distance,projectile:true};
-        if(!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
+        if(!drawAquarius(ctx,visual,age,reducedMotion)&&!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
         count++;canvas.dataset.projectileX=String(visual.x);canvas.dataset.projectileY=String(visual.y);
       }
       canvas.dataset.projectileCount=String(count);

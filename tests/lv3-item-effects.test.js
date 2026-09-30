@@ -8,6 +8,7 @@ import {weekStart} from '../server/temple.js';
 import {GameError} from '../server/rooms.js';
 
 const NOW = Date.parse('2026-09-21T03:00:00Z'); // Monday noon KST
+const MONDAY = Date.parse('2026-09-21T00:00:00+09:00');
 const DAY = 86_400_000, WEEK = 7 * DAY;
 const card = id => LV3_ITEMS.find(item => item.id === id);
 function player(id, level = 3) {
@@ -22,6 +23,9 @@ function fixture(itemId, quantity = 1) {
   return {room, actor, b, c, d, owner};
 }
 function use(f, id, data = {}, now = NOW) { return useLv3Item(f.room, f.actor, id, data, now); }
+function activateSupernova(p, id, now = NOW) {
+  p.holdingState = {usedWeeks: {[id]: weekStart(now)}, supernovaActiveId: id, queenReadyWeek: null};
+}
 function marker(itemId, extra = {}) {
   return {id: `mark-${itemId}`, itemId, until: NOW + WEEK, fromId: 'owner', fromNickname: 'owner', at: NOW - 1000, fromLevel: 3, ...extra};
 }
@@ -51,8 +55,8 @@ test('catalogue ID controls use; spoofed level, ID, target policy and unknown ID
   rejectedWithoutMutation(f, () => useLv3Item(f.room, f.actor, {id: 'space-station-card', level: 1, targets: 'self', usable: true}, {targetId: 'a'}, NOW), /대상|서로 다른/);
   rejectedWithoutMutation(f, () => useLv3Item(f.room, f.actor, {id: 'unknown-card', level: 3, usable: true}, {}, NOW), /준비 중/);
   rejectedWithoutMutation(f, () => use(f, 'galaxy-card'), /준비 중/);
-  const g = fixture('supernova-alpha-card');
-  rejectedWithoutMutation(g, () => useLv3Item(g.room, g.actor, {id: 'supernova-alpha-card', usable: true, targets: 'self'}, {}, NOW), /준비 중/);
+  const g = fixture('alien-creature-card');
+  rejectedWithoutMutation(g, () => useLv3Item(g.room, g.actor, {id: 'alien-creature-card', usable: true, targets: 'self'}, {}, NOW), /준비 중/);
 });
 
 test('ownership, actor identity, connection, LV3 restriction and cooldown fail before mutation', () => {
@@ -79,7 +83,7 @@ test('UV, LV2 item block, ability block and target protection reject without mut
     [f => { f.actor.abilityState.blocks = [{until: NOW + 1}]; }, /사용할 수 없어요/],
     [f => { f.b.cardMarkers = [marker('little-moon-card')]; }, /꼬마 달/],
     [f => { f.b.avatar.level = 4; }, /높은/],
-    [f => { f.b.connected = false; }, /지금 없어요/]
+    [f => { f.room.players.delete(f.b.id); }, /지금 없어요/]
   ];
   for (const [setup, pattern] of cases) {
     const f = fixture('space-station-card'); setup(f);
@@ -172,75 +176,80 @@ test('comet clears every warning and black star including disconnected students'
   assert.equal(f.actor.inventory.length, 0);
 });
 
-test('cluster holdings create at most two seven-day anchors, including multiple acquisitions', () => {
+test('cluster holdings never create automatic payout anchors', () => {
   const f = fixture();
   f.actor.inventory.push({id: 'galaxy-cluster-card', quantity: 1});
-  assert.equal(syncLv3Holdings(f.actor, NOW), true);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + WEEK]);
+  assert.equal(syncLv3Holdings(f.actor, NOW), false);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, []);
   f.actor.inventory[0].quantity = 2;
   syncLv3Holdings(f.actor, NOW + DAY);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + WEEK, NOW + DAY + WEEK]);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, []);
   f.actor.inventory[0].quantity = 3;
   syncLv3Holdings(f.actor, NOW + 2 * DAY);
-  assert.equal(f.actor.lv3State.clusterNextAt.length, 2);
+  assert.equal(f.actor.lv3State.clusterNextAt.length, 0);
 });
 
-test('cluster settles all due weeks across multiple anchors and offline players', () => {
+test('legacy cluster schedules cannot award offline catchup automatically', () => {
   const f = fixture();
   f.actor.connected = false;
   f.actor.inventory = [{id: 'galaxy-cluster-card', quantity: 2}];
   f.actor.lv3State.clusterNextAt = [NOW - 3 * WEEK, NOW - 2 * WEEK];
-  assert.equal(lv3ItemsDue(f.room, NOW), true);
-  assert.equal(settleLv3Items(f.room, NOW), true);
-  assert.equal(f.actor.starShards, 20 + (4 * 2 + 3 * 2));
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + WEEK, NOW + WEEK]);
+  assert.equal(lv3ItemsDue(f.room, NOW), false);
+  assert.equal(settleLv3Items(f.room, NOW), false);
+  assert.equal(f.actor.starShards, 20);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW - 3 * WEEK, NOW - 2 * WEEK]);
   assert.equal(settleLv3Items(f.room, NOW), false);
 });
 
-test('cluster wallet maximum preserves undelivered accrual until capacity returns', () => {
+test('legacy cluster accrual stays inert when wallet capacity returns', () => {
   const f = fixture();
   f.actor.inventory = [{id: 'galaxy-cluster-card', quantity: 2}];
   f.actor.starShards = SHARDS.max;
-  f.actor.lv3State.clusterNextAt = [NOW - 2 * WEEK, NOW - WEEK];
+  f.actor.lv3State.clusterNextAt = [MONDAY - 2 * WEEK, MONDAY - WEEK];
   assert.equal(settleLv3Items(f.room, NOW), false);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW - 2 * WEEK, NOW - WEEK]);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, [MONDAY - 2 * WEEK, MONDAY - WEEK]);
   f.actor.starShards -= 3;
-  assert.equal(settleLv3Items(f.room, NOW), true);
-  assert.equal(f.actor.starShards, SHARDS.max - 1);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW - WEEK, NOW - WEEK]);
+  assert.equal(settleLv3Items(f.room, NOW), false);
+  assert.equal(f.actor.starShards, SHARDS.max - 3);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, [MONDAY - 2 * WEEK, MONDAY - WEEK]);
 });
 
-test('cluster sale and reacquisition starts a fresh anchor rather than reusing sold time', () => {
+test('cluster sale and reacquisition do not reactivate legacy schedules', () => {
   const f = fixture();
   f.actor.inventory = [{id: 'galaxy-cluster-card', quantity: 2}];
   f.actor.lv3State.clusterNextAt = [NOW + 10, NOW + 20];
   f.actor.inventory = [];
   syncLv3Holdings(f.actor, NOW + DAY);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, []);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + 10, NOW + 20]);
   f.actor.inventory = [{id: 'galaxy-cluster-card', quantity: 1}];
   syncLv3Holdings(f.actor, NOW + DAY);
-  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + DAY + WEEK]);
+  assert.deepEqual(f.actor.lv3State.clusterNextAt, [NOW + 10, NOW + 20]);
 });
 
-test('supernova discounts are once per type per Korean week regardless of duplicate quantity', () => {
+test('only latest held supernova discounts once per Korean week; switching never refunds use', () => {
   const f = fixture();
   f.actor.inventory = [{id: 'supernova-alpha-card', quantity: 3}, {id: 'supernova-beta-card', quantity: 2}];
-  assert.deepEqual(availableSupernovas(f.actor, NOW), ['supernova-alpha-card', 'supernova-beta-card']);
-  consumeSupernovas(f.actor, ['supernova-alpha-card', 'supernova-alpha-card'], NOW);
+  assert.deepEqual(availableSupernovas(f.actor, NOW), []);
+  activateSupernova(f.actor, 'supernova-beta-card');
   assert.deepEqual(availableSupernovas(f.actor, NOW), ['supernova-beta-card']);
   consumeSupernovas(f.actor, ['supernova-beta-card'], NOW);
   assert.deepEqual(availableSupernovas(f.actor, NOW), []);
-  assert.deepEqual(availableSupernovas(f.actor, NOW + WEEK), ['supernova-alpha-card', 'supernova-beta-card']);
+  assert.deepEqual(availableSupernovas(f.actor, NOW + WEEK), []);
+  activateSupernova(f.actor, 'supernova-beta-card', NOW + WEEK);
+  assert.deepEqual(availableSupernovas(f.actor, NOW + WEEK), ['supernova-beta-card']);
 });
 
 test('supernova sale and reacquisition cannot reset same-week use; Korean Monday boundary is exact', () => {
   const f = fixture();
   f.actor.inventory = [{id: 'supernova-alpha-card', quantity: 2}];
+  activateSupernova(f.actor, 'supernova-alpha-card');
   consumeSupernovas(f.actor, ['supernova-alpha-card'], NOW);
   f.actor.inventory = [];
   f.actor.inventory = [{id: 'supernova-alpha-card', quantity: 1}];
   assert.deepEqual(availableSupernovas(f.actor, NOW + DAY), []);
   assert.deepEqual(availableSupernovas(f.actor, Date.parse('2026-09-27T14:59:59Z')), []);
+  assert.deepEqual(availableSupernovas(f.actor, Date.parse('2026-09-27T15:00:00Z')), []);
+  activateSupernova(f.actor, 'supernova-alpha-card', NOW + WEEK);
   assert.deepEqual(availableSupernovas(f.actor, Date.parse('2026-09-27T15:00:00Z')), ['supernova-alpha-card']);
   assert.equal(weekStart(Date.parse('2026-09-27T14:59:59Z')), '2026-09-21');
   assert.equal(weekStart(Date.parse('2026-09-27T15:00:00Z')), '2026-09-28');
@@ -262,16 +271,17 @@ test('state validator defaults, clones valid state, and rejects malformed anchor
 test('supernova quote charges only one discount per purchase and consume records both sources', () => {
   const f = fixture();
   f.actor.inventory = [{id: 'supernova-alpha-card', quantity: 4}, {id: 'supernova-beta-card', quantity: 3}];
+  activateSupernova(f.actor, 'supernova-beta-card');
   const saturn = {id: 'saturn-record', cardId: 'saturn', userId: 'a', expiresAt: null,
     data: {automation: {version: 1, usedItems: []}}};
   f.room.starCards = [structuredClone(saturn), {...structuredClone(saturn), id: 'saturn-record-2',
     data: {automation: {version: 1, usedItems: []}}}];
   const item = {id: 'some-for-sale-item', price: 11, forSale: true};
   const quote = starCardPurchaseQuote(f.room, f.actor, item, 5, NOW);
-  assert.equal(quote.discounted, 4);
-  assert.equal(quote.cost, Math.floor(11 / 2) * 4 + 11);
+  assert.equal(quote.discounted, 3);
+  assert.equal(quote.cost, Math.floor(11 / 2) * 3 + 11 * 2);
   assert.equal(quote.cardIds.length, 2);
-  assert.deepEqual(quote.supernovaIds, ['supernova-alpha-card', 'supernova-beta-card']);
+  assert.deepEqual(quote.supernovaIds, ['supernova-beta-card']);
   consumeStarCardDiscounts(f.room, item.id, quote, f.actor, NOW);
   assert.deepEqual(f.room.starCards.map(record => record.data.automation.usedItems), [[item.id], [item.id]]);
   assert.deepEqual(availableSupernovas(f.actor, NOW), []);

@@ -446,3 +446,38 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 .auxiliary-skill.is-transforming{box-shadow:0 0 12px #bda1ff;border-color:#e6d9ff}
 
 .auxiliary-skill .skill-cooldown{font-size:13px}
+
+/* 아이템명과 단계는 제목 줄 양쪽에, 효과 설명은 아래에 표시합니다. */
+#item-info-dialog .item-info-heading{display:flex;align-items:center;gap:18px;width:100%}
+#item-info-title{margin:0;flex:1;min-width:0;text-align:left;overflow-wrap:anywhere}
+#item-info-level{flex:0 0 auto;text-align:right;white-space:nowrap;font-size:18px;color:#796297;background:#f1eaff;border:1px solid #daccf0;border-radius:12px;padding:6px 10px}
+@media(max-width:520px){#item-info-dialog .item-info-heading{gap:8px}#item-info-level{font-size:14px;padding:5px 7px}}
+
+/* 가방 요약: 그림과 단계 배지 옆에 이름·짧은 별 이야기를 나란히 둡니다. */
+#bag-detail .bag-item-summary{display:grid;grid-template-columns:68px minmax(0,1fr);align-items:center;gap:14px;width:100%;min-width:0;min-height:68px}
+#bag-detail .bag-item-icon{position:relative;display:grid;place-items:center;width:68px;height:68px;flex-shrink:0}
+#bag-detail .bag-item-icon .item-art{display:block;width:68px;height:68px;object-fit:cover;border-radius:12px}
+#bag-detail .bag-item-icon .icon{display:grid;place-items:center;width:68px;height:68px;font-size:40px;line-height:1;background:#f2edfb;border-radius:12px}
+#bag-detail .bag-item-level{position:absolute;right:-3px;bottom:-3px;z-index:1;padding:3px 6px;border:2px solid #fff;border-radius:9px;background:#7c659b;color:#fff;font:700 11px/1.1 sans-serif;white-space:nowrap;box-shadow:0 2px 5px #66517c24}
+#bag-detail .bag-item-summary .info{justify-content:center;gap:6px;min-height:68px}
+#bag-detail .bag-item-summary .info strong{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
+#bag-detail .bag-item-summary .bag-flavor{font-size:13px;line-height:1.5;color:#817193;white-space:normal;overflow:visible;overflow-wrap:anywhere;word-break:keep-all}
+@media(max-width:380px){#bag-detail .bag-item-summary{gap:10px}#bag-detail .bag-item-summary .info strong{font-size:14px}#bag-detail .bag-item-summary .bag-flavor{font-size:12px}}
+/* 상점도 가방과 같은 그림·단계 배지·두 줄 별 이야기로 보여 줍니다. */
+#item-info-text{white-space:pre-line;line-height:1.75}
+.shop-level-tabs button:disabled{opacity:.45;cursor:not-allowed}
+#shop-buy-list .item{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px 14px;align-items:start}
+#shop-buy-list .shop-item-picture{display:flex;flex-direction:column;align-items:center;gap:8px}
+#shop-buy-list .bag-item-icon{position:relative;width:68px;height:68px;display:grid;place-items:center}
+#shop-buy-list .bag-item-icon .item-art{width:68px;height:68px;object-fit:cover;border-radius:12px}
+#shop-buy-list .bag-item-icon .icon{width:68px;height:68px;font-size:40px;background:#f2edfb;border-radius:12px;display:grid;place-items:center}
+#shop-buy-list .bag-item-level{position:absolute;right:-3px;bottom:-3px;padding:3px 6px;border:2px solid white;border-radius:9px;background:#7c659b;color:white;font:700 11px/1.1 sans-serif;white-space:nowrap}
+#shop-buy-list .shop-item-picture .item-info{font-size:12px;padding:5px 8px;min-height:30px;white-space:nowrap}
+#shop-buy-list .info{min-width:0;min-height:68px;justify-content:center;gap:6px}
+#shop-buy-list .info strong{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
+#shop-buy-list .info .bag-flavor{font-size:13px;line-height:1.5;color:#817193;word-break:keep-all;overflow-wrap:anywhere}
+#shop-buy-list .item-actions{grid-column:1/-1;flex-wrap:wrap}
+@media(max-width:380px){#shop-buy-list .item{gap:10px}#shop-buy-list .info strong{font-size:14px}#shop-buy-list .info .bag-flavor{font-size:12px}}
+.holding-dialog{max-width:520px;width:calc(100% - 28px)}
+.holding-dialog p{line-height:1.7;overflow-wrap:anywhere}
+.holding-choices select{width:100%;margin:10px 0;min-height:42px}

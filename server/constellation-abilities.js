@@ -4,7 +4,7 @@ import {constellationOf} from '../shared/constellations.js';
 
 export const DICE_SIDES=6;
 export const rollStarDie=()=>randomInt(1,DICE_SIDES+1);
-export const freshAbilityState=()=>({usedWeek:null,pending:null,markers:[],blocks:[]});
+export const freshAbilityState=()=>({usedWeek:null,usedCount:0,pending:null,markers:[],blocks:[]});
 const date=/^\d{4}-\d{2}-\d{2}$/;
 
 export function validateAbilityState(value){
@@ -13,21 +13,32 @@ export function validateAbilityState(value){
     (value.usedWeek!==null&&(typeof value.usedWeek!=='string'||!date.test(value.usedWeek)))||
     !Array.isArray(value.markers)||value.markers.length>30||!Array.isArray(value.blocks)||value.blocks.length>20)
     throw new Error('별자리 능력 저장 데이터가 올바르지 않습니다.');
+  if(value.usedCount!==undefined&&(!Number.isInteger(value.usedCount)||value.usedCount<0||value.usedCount>2||
+    (value.usedWeek===null&&value.usedCount!==0)||(value.usedWeek!==null&&value.usedCount===0)))
+    throw new Error('별자리 주간 사용 횟수가 올바르지 않습니다.');
   if(value.pending!==null){
     const pending=value.pending;
     if(!pending||!['shop-copy','dice-item','value-item','dice-retry'].includes(pending.mode)||!date.test(pending.week)||
       (pending.mode==='dice-item'&&(!Number.isInteger(pending.maxLevel)||pending.maxLevel<1||pending.maxLevel>3||
         !Number.isInteger(pending.roll)||pending.roll<2||pending.roll>6)))
       throw new Error('별자리 능력 저장 데이터가 올바르지 않습니다.');
+    if(pending.multiplier!==undefined&&![1,2].includes(pending.multiplier))
+      throw new Error('별자리 배율 저장 데이터가 올바르지 않습니다.');
+    if(pending.quantity!==undefined&&![1,2].includes(pending.quantity))
+      throw new Error('별자리 제작 개수 저장 데이터가 올바르지 않습니다.');
     if(pending.mode==='shop-copy'&&pending.maxPrice!==undefined&&pending.maxPrice!==4)
       throw new Error('별자리 복사 저장 데이터가 올바르지 않습니다.');
-    if(pending.mode==='value-item'&&(!Number.isInteger(pending.budget)||pending.budget<0||pending.budget>12||
+    if(pending.mode==='value-item'&&(!Number.isInteger(pending.budget)||pending.budget<0||pending.budget>12*(pending.multiplier||1)||
       ![2,5].includes(pending.maxLevel)||![1,2].includes(pending.picks)||
       !Number.isInteger(pending.roll)||pending.roll<1||pending.roll>6||!Array.isArray(pending.selected)||
       pending.selected.length>1||pending.selected.some(id=>typeof id!=='string')))
       throw new Error('별자리 제작 저장 데이터가 올바르지 않습니다.');
   }
   for(const marker of value.markers){
+    if((marker.multiplier!==undefined&&![1,2].includes(marker.multiplier))||
+      (marker.week!==undefined&&!date.test(marker.week))||
+      (marker.sourceDescription!==undefined&&(typeof marker.sourceDescription!=='string'||marker.sourceDescription.length>1500)))
+      throw new Error('별자리 능력 배율 기록이 올바르지 않습니다.');
     if(!marker||typeof marker.id!=='string'||!constellationOf(marker.constellationId)||
       !Number.isSafeInteger(marker.at)||marker.at<0||typeof marker.note!=='string'||marker.note.length>120||
       typeof marker.targetName!=='string'||marker.targetName.length>12||
@@ -37,10 +48,10 @@ export function validateAbilityState(value){
   for(const block of value.blocks){
     if(!block||typeof block.id!=='string'||!['ophiuchus','aries'].includes(block.sourceId)||
       !Number.isSafeInteger(block.until)||block.until<0||typeof block.fromId!=='string'||
-      typeof block.fromNickname!=='string'||block.fromNickname.length>12||![0,1].includes(block.reward))
+      typeof block.fromNickname!=='string'||block.fromNickname.length>12||![0,1,2].includes(block.reward))
       throw new Error('별자리 능력 저장 데이터가 올바르지 않습니다.');
   }
-  return structuredClone(value);
+  return {...structuredClone(value),usedCount:value.usedCount??(value.usedWeek===null?0:1)};
 }
 
 export function activeItemBlocks(player,now=Date.now()){

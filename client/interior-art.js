@@ -32,11 +32,11 @@ export function drawInteriorFloor(ctx,map,planet){
 function label(ctx,text,x,y,size=18){ctx.font=`${size}px "Jua","Malgun Gothic",sans-serif`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.lineWidth=4;ctx.strokeStyle='#fffdf7';ctx.strokeText(text,x,y);ctx.fillStyle='#594c75';ctx.fillText(text,x,y);}
 function starPath(ctx,x,y,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.46:r;i?ctx.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s):ctx.moveTo(x+Math.cos(a)*s,y+Math.sin(a)*s);}ctx.closePath();}
 export function drawInteriorDecoration(ctx,o,style){
-  if(!style||style.shapeId==='default')return;
+  // 과거 꾸미기 값은 보존하되 원화 위의 불필요한 육각형 표시는 숨깁니다.
+  if(!style||['default','hex','crystal','tablet'].includes(style.shapeId))return;
   const x=o.x,y=o.y+(o.kind==='board'?155:30),r=22;ctx.save();ctx.fillStyle=interiorDecorColor(style.colorId)?.hex||'#e2d7f2';ctx.strokeStyle='#a696bc';ctx.lineWidth=2;
   if(style.shapeId==='star'){starPath(ctx,x,y,r);ctx.fill();ctx.stroke();}
   else if(style.shapeId==='moon'){ctx.beginPath();ctx.arc(x,y,r,.7,Math.PI*2-.7);ctx.arc(x+r*.62,y,r*.7,-Math.PI*.6,Math.PI*.6,true);ctx.closePath();ctx.fill();ctx.stroke();}
-  else if(['hex','crystal','tablet'].includes(style.shapeId)){ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI*i/3;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();ctx.fill();ctx.stroke();}
   else if(style.shapeId==='scroll'){for(const dx of [-24,24]){ctx.beginPath();ctx.roundRect(x+dx-4,y-20,8,40,4);ctx.fill();ctx.stroke();}}
   else{ctx.beginPath();ctx.ellipse(x,y,r,r*.75,0,0,Math.PI*2);ctx.fill();ctx.stroke();}
   ctx.restore();

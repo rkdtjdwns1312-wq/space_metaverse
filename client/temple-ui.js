@@ -1,4 +1,5 @@
 import {itemOf} from '/shared/config.js';
+import {createResetConfirmation} from './reset-confirm.js';
 
 function formatRemaining(until, remainingUses, now=Date.now()){
   const parts=[];
@@ -18,7 +19,13 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
   document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;const selectedXp=new Map();
-  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;selectedXp.clear();});
+  const reset=document.createElement('button');reset.id='temple-weekly-reset';reset.type='button';reset.className='secondary';reset.textContent='초기화';reset.hidden=true;
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;flex-shrink:0';$('close').before(actions);actions.append(reset,$('close'));
+  const resetConfirm=createResetConfirmation({root:dialog,title:'이번 주 받은 별 초기화',message:'이번 주 받은 별 집계만 초기화할까요? 학생 잔액과 부서 재화는 그대로 유지돼요.',
+    submit:async()=>{const rev=revision,data=await request('temple:weekly:reset',{objectId:selected.id});return {rev,data};},
+    onSuccess:({rev,data})=>{if(rev!==revision||!dialog.open)return;result=data;render();toast('이번 주 받은 별 집계를 초기화했어요.');}});
+  reset.onclick=()=>{if(result?.kind==='weekly'&&result.canReset)resetConfirm.open();};
+  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();});
   function usableEffectRows(now=Date.now()){
     return (result?.rows||[]).filter(e=>(e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
   }
@@ -44,7 +51,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
         if(r.abilityMarkerId&&r.constellationId==='libra'&&(r.abilityLevel||2)===2){
           const label=document.createElement('label');label.textContent='확인한 주차의 경험치 ';label.className='small';
           xpSelect=document.createElement('select');xpSelect.setAttribute('aria-label',r.nickname+' 천칭자리 경험치');
-          for(const [amount,weeks] of [[0,'1주'],[1,'2~3주'],[2,'4~5주']])xpSelect.append(new Option(weeks+' · '+amount+' XP',String(amount)));
+          for(const [base,weeks] of [[0,'1주'],[1,'2~3주'],[2,'4~5주']]){const amount=base*(r.abilityMultiplier||1);xpSelect.append(new Option(weeks+' · '+amount+' XP'+(r.abilityMultiplier===2?' (α 2배)':''),String(amount)));}
           xpSelect.value=selectedXp.get(r.abilityMarkerId)||'0';xpSelect.onchange=()=>selectedXp.set(r.abilityMarkerId,xpSelect.value);
           label.append(xpSelect);li.append(label);
         }
@@ -113,6 +120,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     table.append(body);$('content').replaceChildren(table);
   }
   function render(){
+    reset.hidden=result.kind!=='weekly'||!result.canReset;
     $('error').textContent='';const daily=['notice','timetable'].includes(result.kind);
     $('save').hidden=!result.canEdit;$('content').hidden=result.kind==='notice'&&result.canEdit;$('notice-rows').hidden=result.kind!=='notice'||!result.canEdit;$('add-line').hidden=result.kind!=='notice'||!result.canEdit;$('refresh').hidden=daily;
     if(result.kind==='timetable'){$('description').textContent='월요일부터 금요일까지 · 선생님이 채우는 우주 시간표';renderTimetable();}
@@ -127,5 +135,5 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   $('refresh').onclick=load;
   $('save').onclick=async()=>{if(!selected)return;const rev=revision;$('save').disabled=true;try{let data;if(result?.kind==='timetable'){const cells=[...$('content').querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(input=>input.value));data=await request('temple:timetable:save',{objectId:selected.id,cells});}else{const rows=[...$('notice-rows').children].map(row=>({text:row.querySelector('.notice-line').value.trim(),task:row.querySelector('.notice-task input').checked})).filter(row=>row.text);const text=rows.map(row=>row.text).join('\n');if(text.length>2000)throw new Error('알림장은 2000자 이내로 적어주세요.');const taskLineIndexes=rows.flatMap((row,index)=>row.task?[index]:[]);data=await request('temple:save',{objectId:selected.id,text,taskLineIndexes});}if(rev===revision&&dialog.open){result=data;render();toast(result.kind==='timetable'?'시간표를 저장했어요.':'오늘의 내용을 저장했어요.');}}catch(e){if(rev===revision)$('error').textContent=e.message;}finally{$('save').disabled=false;}};
   setInterval(tickEffects,1000);
-  return {open(pillar){stop();selected=pillar;result=null;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
+  return {open(pillar){stop();selected=pillar;result=null;reset.hidden=true;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
 }

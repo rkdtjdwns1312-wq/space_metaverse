@@ -1,7 +1,7 @@
 // Original slide text is retained, including line breaks, in sourceText.
 // No config import: config.js may register GOLD_CARD_ITEMS without a cycle.
 export const STAR_CARD_ART = Object.freeze({back:'/assets/cards/star-card-back.webp',face:'/assets/cards/star-card-face.webp'});
-export const STAR_CARD_LAYOUT = Object.freeze({maxCards:30,columns:8,rows:5,spacingX:100,spacingY:120,width:66,height:90,minPillarDistance:80});
+export const STAR_CARD_LAYOUT = Object.freeze({maxCards:30,columns:30,rows:1,spacingX:100,rowWidth:1000,rowOffsetY:350,gap:6,width:66,height:90,minPillarDistance:80});
 export const MAX_STAR_CARDS = STAR_CARD_LAYOUT.maxCards;
 export const STAR_CARD_CATALOG = Object.freeze([
   {

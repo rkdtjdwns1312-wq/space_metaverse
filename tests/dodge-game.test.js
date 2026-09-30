@@ -186,7 +186,7 @@ test('real socket wiring enforces arcade access, accepts no-ack input, broadcast
   assert.equal(created.ok,true);assert.equal((await socketCall(socket,'dodge:start',{})).ok,false);
   const room=game.store.rooms.get(created.room.code),player=room.players.get(created.selfId),machine=STREET.objects.find(object=>object.gameId==='dodge');
   Object.assign(player,{mapId:STREET_ID,x:machine.x,y:machine.y+50});
-  assert.deepEqual(await socketCall(socket,'dodge:ranking',{}),{ok:true,ranking:[]});
+  assert.deepEqual(await socketCall(socket,'dodge:ranking',{}),{ok:true,ranking:[],canReset:true});
   const started=await socketCall(socket,'dodge:start',{});assert.equal(started.ok,true);assert.equal(started.arenaWidth,600);assert.equal(started.stars.length,2);
   socket.emit('dodge:input',{runId:started.runId,x:20,y:0,elapsedMs:999999999});
   const moved=await new Promise((resolve,reject)=>{

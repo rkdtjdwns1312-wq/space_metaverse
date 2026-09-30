@@ -53,10 +53,10 @@ test('교사 잔액0 무료 구매·판매, 학생 비용과 위조/수량/거�
 test('교사 무료 구매는 초신성 할인권을 소모하지 않는다',async t=>{
   const {teacher,tp,call,at}=await fixture(t);at(tp,'shop');
   tp.inventory=[{id:'supernova-alpha-card',quantity:1}];
-  const before=structuredClone(tp.lv3State);
+  const before=structuredClone(tp.lv3State?.supernovaUsed||{});
   const reply=await call(teacher,'shop:buy',{itemId:'space-food-card',quantity:1});
   assert.equal(reply.ok,true);assert.equal(reply.cost,0);assert.equal(reply.discounted,0);
-  assert.deepEqual(tp.lv3State,before);
+  assert.deepEqual(tp.lv3State?.supernovaUsed||{},before);
 });
 
 test('교사 조합 성공/실패 모두 수수료0, 학생은 잔액 검증 후1 차감',async t=>{

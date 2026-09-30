@@ -1,9 +1,10 @@
+import {createArcadeRanking} from './arcade-ranking.js';
 import {createMotionTrack} from './motion.js';
 const WIDTH=600,HEIGHT=420,INPUT_INTERVAL_MS=100;
 // 서버의 50ms 간격 좌표를 75ms 버퍼로 이어 그립니다. 판정 좌표는 예측/수정하지 않습니다.
 const newTrack=()=>createMotionTrack({delayMs:75,intervalMs:50});
 
-export function createDodgeGame({board,request,sendInput,subscribeState,subscribeRanking,toast=()=>{}}={}){
+export function createDodgeGame({board,request,sendInput,subscribeState,subscribeRanking,toast=()=>{},footer}={}){
   if(!board)throw new TypeError('board가 필요합니다.');
   if(typeof request!=='function'||typeof sendInput!=='function')throw new TypeError('별 피하기 연결 함수가 필요합니다.');
   const stylesheet=document.head.querySelector('link[href="./dodge-game.css"]')||document.createElement('link');
@@ -14,7 +15,7 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
   root.innerHTML=`
     <div class="dodge-toolbar">
       <button type="button" id="dodge-start">시작</button>
-      <button type="button" id="dodge-ranking-toggle" aria-expanded="false">랭킹 보기</button>
+
       <strong id="dodge-stopwatch" aria-live="off">0.00초</strong>
     </div>
     <p class="dodge-help">방향키·WASD 또는 화면 속 소행성을 손가락으로 끌어 별을 피해요.</p>
@@ -27,7 +28,7 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
     </section>`;
   board.replaceChildren(root);board.classList.add('dodge-game-host');
   const find=id=>root.querySelector('#dodge-'+id),canvas=find('canvas'),context=canvas.getContext('2d');
-  const startButton=find('start'),rankingButton=find('ranking-toggle'),rankingPanel=find('ranking-panel');
+  const startButton=find('start');
   let alive=true,running=false,runId=null,state=null,stateReceivedAt=0,frame=0,pointerId=null,touchTarget=null;
   let playerTrack=newTrack();const starTracks=new Map();
   function trackState(next,now,reset=false){
@@ -70,11 +71,8 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
     frame=requestAnimationFrame(draw);
   }
 
-  function renderRanking({ranking=[]}={}){
-    if(!alive)return;const list=find('ranking');list.replaceChildren();
-    if(!ranking.length){const item=document.createElement('li');item.className='dodge-ranking-empty';item.textContent='아직 이번 주 기록이 없어요.';list.append(item);return;}
-    for(const record of ranking){const item=document.createElement('li');item.textContent=`${record.rank}위 · ${record.nickname} · ${(record.elapsedMs/1000).toFixed(2)}초`;list.append(item);}
-  }
+  const rankingUI=createArcadeRanking({game:'dodge',prefix:'dodge',root,footer,request,subscribe:subscribeRanking,toast});
+  const renderRanking=rankingUI.render;
   function receive(event){
     if(!alive||!event?.state)return;if(runId&&event.state.runId!==runId)return;
     runId=event.state.runId;state=event.state;stateReceivedAt=performance.now();
@@ -95,10 +93,6 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
     }
   }
   const unsubscribeState=typeof subscribeState==='function'?(subscribeState(receive)||(()=>{})):(()=>{});
-  const unsubscribeRanking=typeof subscribeRanking==='function'?(subscribeRanking(renderRanking)||(()=>{})):(()=>{});
-
-  async function refreshRanking(){try{renderRanking(await request('dodge:ranking',{}));}catch(error){if(alive)find('status').textContent=error.message;}}
-  refreshRanking();
   startButton.addEventListener('click',async()=>{
     if(!alive||startButton.disabled)return;startButton.disabled=true;find('status').textContent='별을 불러오는 중…';stopInput();
     try{
@@ -109,11 +103,6 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
       find('status').textContent='별을 피하세요! 4초마다 별이 하나씩 더 많이 나타나요.';canvas.focus();send();
     }catch(error){if(alive){startButton.disabled=false;find('status').textContent=error.message;}}
   });
-  rankingButton.addEventListener('click',()=>{
-    const opening=rankingPanel.hidden;rankingPanel.hidden=!opening;rankingButton.textContent=opening?'랭킹 닫기':'랭킹 보기';rankingButton.setAttribute('aria-expanded',String(opening));
-    if(opening)refreshRanking();
-  });
-
   function keyEvent(event,down){
     if(!keyDirections[event.code])return;event.preventDefault();event.stopPropagation();
     if(!running)return;down?keys.add(event.code):keys.delete(event.code);send();
@@ -129,7 +118,7 @@ export function createDodgeGame({board,request,sendInput,subscribeState,subscrib
   const heartbeat=setInterval(send,INPUT_INTERVAL_MS);draw();
   return {destroy(){
     if(!alive)return;const activeRun=running?runId:null;stopInput();alive=false;running=false;clearInterval(heartbeat);cancelAnimationFrame(frame);
-    unsubscribeState();unsubscribeRanking();window.removeEventListener('blur',loseFocus);root.remove();board.classList.remove('dodge-game-host');if(ownsStylesheet)stylesheet.remove();
+    unsubscribeState();rankingUI.destroy();window.removeEventListener('blur',loseFocus);root.remove();board.classList.remove('dodge-game-host');if(ownsStylesheet)stylesheet.remove();
     if(activeRun)request('dodge:cancel',{runId:activeRun}).catch(()=>{});
     state=null;runId=null;starTracks.clear();playerTrack=newTrack();
   }};

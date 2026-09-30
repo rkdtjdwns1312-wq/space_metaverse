@@ -1,0 +1,731 @@
+{
+  "browser": "154.0.4258.37",
+  "observedDurationMs": 8225,
+  "actualApngScreenshotCount": 28,
+  "phaseChecks": [
+    {
+      "ms": 0,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "ms": 250,
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "ms": 500,
+      "expected": 6,
+      "actual": 6
+    },
+    {
+      "ms": 1499,
+      "expected": 17,
+      "actual": 17
+    },
+    {
+      "ms": 1500,
+      "expected": 6,
+      "actual": 6
+    },
+    {
+      "ms": 4499,
+      "expected": 17,
+      "actual": 17
+    },
+    {
+      "ms": 4500,
+      "expected": 18,
+      "actual": 18
+    },
+    {
+      "ms": 4999,
+      "expected": 23,
+      "actual": 23
+    }
+  ],
+  "consoleErrors": [],
+  "method": "Capture actual browser-rendered APNGs over more than one full 5-second cycle; compare displayed pixels against each exported RGBA frame composited on the same solid background.",
+  "assets": {
+    "attack": {
+      "distinctActualBrowserImages": 15,
+      "maxFrameMatchErrorRgb255": 0.05846619745283922,
+      "observedFrames": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        17,
+        18,
+        21,
+        24
+      ],
+      "samples": [
+        {
+          "elapsedMs": 224,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.007750406971176865
+        },
+        {
+          "elapsedMs": 517,
+          "nearestFrameIndex": 5,
+          "rgbMeanAbsoluteError": 0.031270947045868046
+        },
+        {
+          "elapsedMs": 800,
+          "nearestFrameIndex": 9,
+          "rgbMeanAbsoluteError": 0.0514220051709279
+        },
+        {
+          "elapsedMs": 1080,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.05846619745283922
+        },
+        {
+          "elapsedMs": 1393,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.04204371349229149
+        },
+        {
+          "elapsedMs": 1689,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.04380925021545533
+        },
+        {
+          "elapsedMs": 1983,
+          "nearestFrameIndex": 11,
+          "rgbMeanAbsoluteError": 0.05773005841233362
+        },
+        {
+          "elapsedMs": 2280,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.05513262472469597
+        },
+        {
+          "elapsedMs": 2577,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.0324439816144786
+        },
+        {
+          "elapsedMs": 2866,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.05629368955281049
+        },
+        {
+          "elapsedMs": 3163,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.05538398927511252
+        },
+        {
+          "elapsedMs": 3465,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.03169587283347697
+        },
+        {
+          "elapsedMs": 3758,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.04380925021545533
+        },
+        {
+          "elapsedMs": 4057,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.05846619745283922
+        },
+        {
+          "elapsedMs": 4364,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.04204371349229149
+        },
+        {
+          "elapsedMs": 4675,
+          "nearestFrameIndex": 20,
+          "rgbMeanAbsoluteError": 0.021192425548214114
+        },
+        {
+          "elapsedMs": 4961,
+          "nearestFrameIndex": 23,
+          "rgbMeanAbsoluteError": 0.0
+        },
+        {
+          "elapsedMs": 5265,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.007750406971176865
+        },
+        {
+          "elapsedMs": 5565,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.0324439816144786
+        },
+        {
+          "elapsedMs": 5880,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.05629368955281049
+        },
+        {
+          "elapsedMs": 6170,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.05538398927511252
+        },
+        {
+          "elapsedMs": 6467,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.03169587283347697
+        },
+        {
+          "elapsedMs": 6761,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.04380925021545533
+        },
+        {
+          "elapsedMs": 7059,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.05846619745283922
+        },
+        {
+          "elapsedMs": 7350,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.04204371349229149
+        },
+        {
+          "elapsedMs": 7632,
+          "nearestFrameIndex": 7,
+          "rgbMeanAbsoluteError": 0.038339078808771423
+        },
+        {
+          "elapsedMs": 7928,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.05629368955281049
+        },
+        {
+          "elapsedMs": 8225,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.05513262472469597
+        }
+      ],
+      "loopSeamVsMaxInternalDifference": 0.37620279719728517,
+      "alphaReview": "Solid dark and light backgrounds reviewed; real transparency, no baked checkerboard.",
+      "positionReview": "Attack alpha-weighted center error <0.4px."
+    },
+    "skill-lv2": {
+      "distinctActualBrowserImages": 15,
+      "maxFrameMatchErrorRgb255": 0.09457291965910179,
+      "observedFrames": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        17,
+        18,
+        21,
+        24
+      ],
+      "samples": [
+        {
+          "elapsedMs": 224,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.07226730824475726
+        },
+        {
+          "elapsedMs": 517,
+          "nearestFrameIndex": 5,
+          "rgbMeanAbsoluteError": 0.07774944939193719
+        },
+        {
+          "elapsedMs": 800,
+          "nearestFrameIndex": 9,
+          "rgbMeanAbsoluteError": 0.08384803217466245
+        },
+        {
+          "elapsedMs": 1080,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.08922244565737815
+        },
+        {
+          "elapsedMs": 1393,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.08502705161352102
+        },
+        {
+          "elapsedMs": 1689,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.0823099205209231
+        },
+        {
+          "elapsedMs": 1983,
+          "nearestFrameIndex": 11,
+          "rgbMeanAbsoluteError": 0.08661902709949248
+        },
+        {
+          "elapsedMs": 2280,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.09225677487312076
+        },
+        {
+          "elapsedMs": 2577,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.08238173896389926
+        },
+        {
+          "elapsedMs": 2866,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.08715766542181365
+        },
+        {
+          "elapsedMs": 3163,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.08980896294168342
+        },
+        {
+          "elapsedMs": 3465,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.08062817198123144
+        },
+        {
+          "elapsedMs": 3758,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.0823099205209231
+        },
+        {
+          "elapsedMs": 4057,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.08922244565737815
+        },
+        {
+          "elapsedMs": 4364,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.08502705161352102
+        },
+        {
+          "elapsedMs": 4675,
+          "nearestFrameIndex": 20,
+          "rgbMeanAbsoluteError": 0.09457291965910179
+        },
+        {
+          "elapsedMs": 4961,
+          "nearestFrameIndex": 23,
+          "rgbMeanAbsoluteError": 0.0
+        },
+        {
+          "elapsedMs": 5265,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.07226730824475726
+        },
+        {
+          "elapsedMs": 5565,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.08238173896389926
+        },
+        {
+          "elapsedMs": 5880,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.08715766542181365
+        },
+        {
+          "elapsedMs": 6170,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.08980896294168342
+        },
+        {
+          "elapsedMs": 6467,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.08062817198123144
+        },
+        {
+          "elapsedMs": 6761,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.0823099205209231
+        },
+        {
+          "elapsedMs": 7059,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.08922244565737815
+        },
+        {
+          "elapsedMs": 7350,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.08502705161352102
+        },
+        {
+          "elapsedMs": 7632,
+          "nearestFrameIndex": 7,
+          "rgbMeanAbsoluteError": 0.08420712438954324
+        },
+        {
+          "elapsedMs": 7928,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.08715766542181365
+        },
+        {
+          "elapsedMs": 8225,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.09225677487312076
+        }
+      ],
+      "loopSeamVsMaxInternalDifference": 0.6316999357916,
+      "alphaReview": "Solid dark and light backgrounds reviewed; real transparency, no baked checkerboard.",
+      "positionReview": "Exact stable jar and floor pixel regions throughout frames 7-18; registered floor center (128,192)."
+    },
+    "skill-lv3": {
+      "distinctActualBrowserImages": 15,
+      "maxFrameMatchErrorRgb255": 0.1273400842669731,
+      "observedFrames": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        17,
+        18,
+        21,
+        24
+      ],
+      "samples": [
+        {
+          "elapsedMs": 224,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.09620080436656134
+        },
+        {
+          "elapsedMs": 517,
+          "nearestFrameIndex": 5,
+          "rgbMeanAbsoluteError": 0.10498060902039644
+        },
+        {
+          "elapsedMs": 800,
+          "nearestFrameIndex": 9,
+          "rgbMeanAbsoluteError": 0.11490950876185005
+        },
+        {
+          "elapsedMs": 1080,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.1202180886718376
+        },
+        {
+          "elapsedMs": 1393,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11826702097098535
+        },
+        {
+          "elapsedMs": 1689,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.1156695872833477
+        },
+        {
+          "elapsedMs": 1983,
+          "nearestFrameIndex": 11,
+          "rgbMeanAbsoluteError": 0.11665110600402183
+        },
+        {
+          "elapsedMs": 2280,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.1219237766925213
+        },
+        {
+          "elapsedMs": 2577,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.1168665613329503
+        },
+        {
+          "elapsedMs": 2866,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11616034664368477
+        },
+        {
+          "elapsedMs": 3163,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.12288734080245141
+        },
+        {
+          "elapsedMs": 3465,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.11586708800153213
+        },
+        {
+          "elapsedMs": 3758,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.1156695872833477
+        },
+        {
+          "elapsedMs": 4057,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.1202180886718376
+        },
+        {
+          "elapsedMs": 4364,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11826702097098535
+        },
+        {
+          "elapsedMs": 4675,
+          "nearestFrameIndex": 20,
+          "rgbMeanAbsoluteError": 0.1273400842669731
+        },
+        {
+          "elapsedMs": 4961,
+          "nearestFrameIndex": 23,
+          "rgbMeanAbsoluteError": 0.0
+        },
+        {
+          "elapsedMs": 5265,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.09620080436656134
+        },
+        {
+          "elapsedMs": 5565,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.1168665613329503
+        },
+        {
+          "elapsedMs": 5880,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11616034664368477
+        },
+        {
+          "elapsedMs": 6170,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.12288734080245141
+        },
+        {
+          "elapsedMs": 6467,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.11586708800153213
+        },
+        {
+          "elapsedMs": 6761,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.1156695872833477
+        },
+        {
+          "elapsedMs": 7059,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.1202180886718376
+        },
+        {
+          "elapsedMs": 7350,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11826702097098535
+        },
+        {
+          "elapsedMs": 7632,
+          "nearestFrameIndex": 7,
+          "rgbMeanAbsoluteError": 0.11677080340898209
+        },
+        {
+          "elapsedMs": 7928,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11616034664368477
+        },
+        {
+          "elapsedMs": 8225,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.1219237766925213
+        }
+      ],
+      "loopSeamVsMaxInternalDifference": 0.9042931595463363,
+      "alphaReview": "Solid dark and light backgrounds reviewed; real transparency, no baked checkerboard.",
+      "positionReview": "Exact stable jar and floor pixel regions throughout frames 7-18; registered floor center (128,192)."
+    },
+    "skill-lv4": {
+      "distinctActualBrowserImages": 15,
+      "maxFrameMatchErrorRgb255": 0.12336613042229244,
+      "observedFrames": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        17,
+        18,
+        21,
+        24
+      ],
+      "samples": [
+        {
+          "elapsedMs": 224,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.10024657665421814
+        },
+        {
+          "elapsedMs": 517,
+          "nearestFrameIndex": 5,
+          "rgbMeanAbsoluteError": 0.11037896198410418
+        },
+        {
+          "elapsedMs": 800,
+          "nearestFrameIndex": 9,
+          "rgbMeanAbsoluteError": 0.11712391075361486
+        },
+        {
+          "elapsedMs": 1080,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.11805755051230489
+        },
+        {
+          "elapsedMs": 1393,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11528057071722685
+        },
+        {
+          "elapsedMs": 1689,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.11776429187015225
+        },
+        {
+          "elapsedMs": 1983,
+          "nearestFrameIndex": 11,
+          "rgbMeanAbsoluteError": 0.11744709374700757
+        },
+        {
+          "elapsedMs": 2280,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.11707603179163076
+        },
+        {
+          "elapsedMs": 2577,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.11885952312553864
+        },
+        {
+          "elapsedMs": 2866,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11717777458584698
+        },
+        {
+          "elapsedMs": 3163,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.11678875801972613
+        },
+        {
+          "elapsedMs": 3465,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.11639974145360528
+        },
+        {
+          "elapsedMs": 3758,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.11776429187015225
+        },
+        {
+          "elapsedMs": 4057,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.11805755051230489
+        },
+        {
+          "elapsedMs": 4364,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11528057071722685
+        },
+        {
+          "elapsedMs": 4675,
+          "nearestFrameIndex": 20,
+          "rgbMeanAbsoluteError": 0.12336613042229244
+        },
+        {
+          "elapsedMs": 4961,
+          "nearestFrameIndex": 23,
+          "rgbMeanAbsoluteError": 0.0
+        },
+        {
+          "elapsedMs": 5265,
+          "nearestFrameIndex": 2,
+          "rgbMeanAbsoluteError": 0.10024657665421814
+        },
+        {
+          "elapsedMs": 5565,
+          "nearestFrameIndex": 6,
+          "rgbMeanAbsoluteError": 0.11885952312553864
+        },
+        {
+          "elapsedMs": 5880,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11717777458584698
+        },
+        {
+          "elapsedMs": 6170,
+          "nearestFrameIndex": 13,
+          "rgbMeanAbsoluteError": 0.11678875801972613
+        },
+        {
+          "elapsedMs": 6467,
+          "nearestFrameIndex": 17,
+          "rgbMeanAbsoluteError": 0.11639974145360528
+        },
+        {
+          "elapsedMs": 6761,
+          "nearestFrameIndex": 8,
+          "rgbMeanAbsoluteError": 0.11776429187015225
+        },
+        {
+          "elapsedMs": 7059,
+          "nearestFrameIndex": 12,
+          "rgbMeanAbsoluteError": 0.11805755051230489
+        },
+        {
+          "elapsedMs": 7350,
+          "nearestFrameIndex": 16,
+          "rgbMeanAbsoluteError": 0.11528057071722685
+        },
+        {
+          "elapsedMs": 7632,
+          "nearestFrameIndex": 7,
+          "rgbMeanAbsoluteError": 0.11877573494206646
+        },
+        {
+          "elapsedMs": 7928,
+          "nearestFrameIndex": 10,
+          "rgbMeanAbsoluteError": 0.11717777458584698
+        },
+        {
+          "elapsedMs": 8225,
+          "nearestFrameIndex": 14,
+          "rgbMeanAbsoluteError": 0.11707603179163076
+        }
+      ],
+      "loopSeamVsMaxInternalDifference": 0.9827159965997857,
+      "alphaReview": "Solid dark and light backgrounds reviewed; real transparency, no baked checkerboard.",
+      "positionReview": "Exact stable jar and floor pixel regions throughout frames 7-18; registered floor center (128,192)."
+    }
+  },
+  "status": "PASS: four APNGs actually animate at native 256px; timing boundary checks pass; no browser errors.",
+  "validatedFilesSha256": {
+    "attack-icon.png": "0fd111de30bf2ae9b9f35ed60e0d1119688cadc658c17976d7ec6bae6ae0ff46",
+    "attack-preview.png": "d93e14979d037950f17e6ac55056d6da9bc7353276d5f526a56f9b2747b364a4",
+    "attack.png": "7cec8451bf6cfb340513ae1fd425beee59ee6e9cc5a785e1a69a423c241a8d64",
+    "skill-lv2-icon.png": "33e06d58b0a6cbf66051aee19f5faba235cbb9188a5b4d98ec850f05435da044",
+    "skill-lv2-preview.png": "5747127aca1941d57c7275ce46d06a0d4299a0c77ce54d04f794f2dee78c66ca",
+    "skill-lv2.png": "43a3ea66e44018c1d077f46f42da89ecd79c58feb79827469edd089d512f6a67",
+    "skill-lv3-icon.png": "e981365c456659edd98d6cb96e49bbad8ae3da822b1cda415cf83abd0001b4ab",
+    "skill-lv3-preview.png": "a0ee1d8685be1caaa68753ab4b4ac63202cae5f08138f42ea7b29e1909595508",
+    "skill-lv3.png": "cd5b614d9b3847f8d9a16f5d102c7cbd43609027e5a6cf318c50acfcc47fba17",
+    "skill-lv4-icon.png": "3daffc0c2b5c0f4493f04e063e1329e32fb54a57f21c4804ca98b648ad379223",
+    "skill-lv4-preview.png": "14110ea21ef8b3b46fe52105ec7ad2c39109d4e25c83cb2a0cc31f7eee471188",
+    "skill-lv4.png": "52041b7ff334fc8eb1fa704b9f68da159d0f462817265e7ccd3ab1f1730209c2"
+  },
+  "privateEvidenceDirectory": ".local/aquarius-vfx"
+}

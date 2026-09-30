@@ -7,6 +7,7 @@ import {blackHolePreview, confirmLv4, lv4ItemsDue, settleLv4Items,
 import {GameError} from '../server/rooms.js';
 
 const NOW = Date.parse('2026-09-21T03:00:00Z');
+const MONDAY = Date.parse('2026-09-21T00:00:00+09:00');
 const DAY = 86_400_000, WEEK = 7 * DAY;
 const card = id => LV4_ITEMS.find(item => item.id === id);
 function player(id, level = 4, role = 'student') {
@@ -94,8 +95,9 @@ test('black hole preview prices warning per target and black star at three, tota
 test('teacher confirmations require teacher, unique references, and queen writing has no extra reward', () => {
   const f=fixture();f.b.inventory=[{id:'alien-queen-card',quantity:1}];
   const data={playerId:'b',action:'queen-writing',reference:'reading-1',markerId:'unused'};
-  const before=f.b.starShards;confirmLv4(f.room,f.teacher,data,NOW);assert.equal(f.b.starShards,before+1);
-  assert.throws(()=>confirmLv4(f.room,f.teacher,data,NOW),/중복 지급/);assert.equal(f.b.starShards,before+1);
+  const before=f.b.starShards;confirmLv4(f.room,f.teacher,data,NOW);assert.equal(f.b.starShards,before);
+  assert.equal(f.b.holdingState.queenReadyWeek,'2026-09-21');
+  assert.throws(()=>confirmLv4(f.room,f.teacher,data,NOW),/중복 지급/);assert.equal(f.b.starShards,before);
   assert.throws(()=>confirmLv4(f.room,f.b,{...data,reference:'reading-2'},NOW),/선생님만/);
 });
 
@@ -133,13 +135,13 @@ test('LV4 state validator defaults new saves and clones valid stacks, claims, re
 
 test('supercluster accrues one stack per seven days independent of card quantity, including offline periods', () => {
   const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:4}];
-  assert.equal(settleLv4Items(f.room,NOW),true);assert.equal(f.actor.lv4State.nextStackAt,NOW+WEEK);assert.equal(f.actor.lv4State.stacks,0);
-  assert.equal(settleLv4Items(f.room,NOW+3*WEEK+DAY),true);assert.equal(f.actor.lv4State.stacks,3);assert.equal(f.actor.lv4State.nextStackAt,NOW+4*WEEK);
+  assert.equal(settleLv4Items(f.room,NOW),true);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+WEEK);assert.equal(f.actor.lv4State.stacks,0);
+  assert.equal(settleLv4Items(f.room,NOW+3*WEEK+DAY),true);assert.equal(f.actor.lv4State.stacks,3);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+4*WEEK);
   assert.equal(f.actor.starShards,20);assert.equal(f.actor.inventory[0].quantity,4);
   assert.equal(lv4ItemsDue(f.room,NOW+3*WEEK+DAY),false);
   f.actor.inventory=[];assert.equal(syncLv4Holdings(f.actor,NOW+4*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,null);assert.equal(f.actor.lv4State.stacks,3);
   assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),false);assert.equal(f.actor.lv4State.stacks,3);
-  f.actor.inventory=[{id:'supercluster-card',quantity:2}];assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,NOW+11*WEEK);
+  f.actor.inventory=[{id:'supercluster-card',quantity:2}];assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+11*WEEK);
 });
 
 test('previous disabled LV4 reward state migrates without invented stacks or losing teacher receipts',()=>{
@@ -156,7 +158,7 @@ test('holding exchange spends one stack for four shards or two for one star card
   assert.equal(shards.actor.starShards,24);assert.equal(shards.actor.lv4State.stacks,1);assert.equal(shards.actor.inventory[0].quantity,3);assert.equal(result.holding.stacks,1);
   const cards=fixture();cards.actor.inventory=[{id:'supercluster-card',quantity:2}];cards.actor.lv4State={stacks:2,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
   useLv4Holding(cards.room,cards.actor,{reward:'card',requestId:'card-1'},NOW);
-  assert.deepEqual(cards.actor.inventory,[{id:'supercluster-card',quantity:2},{id:'star-card',quantity:1}]);assert.equal(cards.actor.lv4State.stacks,0);assert.equal(cards.actor.lv4State.nextStackAt,NOW+WEEK);
+  assert.deepEqual(cards.actor.inventory,[{id:'supercluster-card',quantity:2},{id:'star-card',quantity:1}]);assert.equal(cards.actor.lv4State.stacks,0);assert.equal(cards.actor.lv4State.nextStackAt,MONDAY+WEEK);
 });
 
 test('holding retries preserve request id semantics and successful requests cannot consume twice', () => {
@@ -168,7 +170,8 @@ test('holding retries preserve request id semantics and successful requests cann
   assert.deepEqual(f.actor.lv4State.claimIds,['retry-1']);
   const after=structuredClone(f.room);
   const duplicate=useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW);assert.match(duplicate.message,/이미 처리/);assert.deepEqual(f.room,after);
-  useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'retry-2'},NOW);
+  rejectedWithoutMutation(f,()=>useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'retry-2'},NOW),/이번 주/);
+  useLv4Holding(f.room,f.actor,{reward:'shards',requestId:'retry-2'},NOW+WEEK);
   assert.deepEqual(f.actor.lv4State.claimIds,['retry-1','retry-2']);
 });
 

@@ -6,9 +6,10 @@ import {activeItemBlocks} from './constellation-abilities.js';
 import {collectSunTax, hasLv2ItemBlock} from './lv2-item-effects.js';
 import {clearBlackStar} from './warnings.js';
 import {weekStart} from './temple.js';
+import {SUPERNOVA_IDS, activatedSupernova, supernovaHoldings} from '../shared/supernova-life.js';
 
 const WEEK = 7 * 86_400_000;
-const SUPERNOVAS = ['supernova-alpha-card', 'supernova-beta-card'];
+const SUPERNOVAS = SUPERNOVA_IDS;
 const count = (p, id) => p.inventory.find(e => e.id === id)?.quantity || 0;
 const level = p => p.role === 'teacher' ? ITEM_USE.teacherLevel : p.avatar.level;
 const validTime = now => ensure(Number.isSafeInteger(now) && now >= 0 && now <= Number.MAX_SAFE_INTEGER - WEEK, '사용 시각이 올바르지 않습니다.');
@@ -23,12 +24,20 @@ export function validateLv3State(value) {
         !Number.isFinite(Date.parse(date)) || weekStart(Date.parse(date)) !== date)) {
     throw new Error('LV3 아이템 저장 데이터가 올바르지 않습니다.');
   }
-  return {clusterNextAt: [...anchors], supernovaUsed: {...used}};
+  const holdings = value.supernovaHoldings, order = value.supernovaOrder;
+  if ((holdings === undefined) !== (order === undefined) || (holdings !== undefined && (
+    !holdings || typeof holdings !== 'object' || Array.isArray(holdings) ||
+    Object.entries(holdings).some(([id, n]) => !SUPERNOVAS.includes(id) || !Number.isSafeInteger(n) || n < 0 || n > SHOP.maxStack) ||
+    !Array.isArray(order) || order.length > 2 || new Set(order).size !== order.length || order.some(id => !SUPERNOVAS.includes(id)))))
+    throw new Error('LV3 아이템 저장 데이터가 올바르지 않습니다.');
+  return {clusterNextAt: [...anchors], supernovaUsed: {...used},
+    ...(holdings === undefined ? {} : {supernovaHoldings: {...holdings}, supernovaOrder: [...order]})};
 }
 
 export function availableSupernovas(player, now = Date.now()) {
   if (level(player) < 3 || hasCardStatus(player, 'little-sun-card', now) || hasLv2ItemBlock(player, now) || activeItemBlocks(player, now).length) return [];
-  return SUPERNOVAS.filter(id => count(player, id) > 0 && player.lv3State?.supernovaUsed?.[id] !== weekStart(now));
+  const active = activatedSupernova(player, now);
+  return active && !Object.values(player.lv3State?.supernovaUsed || {}).includes(weekStart(now)) ? [active] : [];
 }
 export function consumeSupernovas(player, ids, now = Date.now()) {
   if (!ids.length) return;
@@ -36,36 +45,28 @@ export function consumeSupernovas(player, ids, now = Date.now()) {
   for (const id of ids) player.lv3State.supernovaUsed[id] = weekStart(now);
 }
 
-// 인벤토리 변경 직후 호출. 새 은하단의 첫 지급은 획득 시점에서 7일 뒤입니다.
+// 은하단 예약 시각은 호환용으로 보존하며 자동 보상은 지급하지 않습니다.
 export function syncLv3Holdings(player, now = Date.now()) {
   validTime(now);
-  const previous = player.lv3State?.clusterNextAt || [];
-  const quantity = Math.min(2, count(player, 'galaxy-cluster-card'));
-  const next = previous.slice(0, quantity);
-  while (next.length < quantity) next.push(now + WEEK);
-  if (JSON.stringify(previous) === JSON.stringify(next)) return false;
-  player.lv3State = {...(player.lv3State || validateLv3State()), clusterNextAt: next};
+  const supernovaChanged = syncSupernovaHoldings(player);
+  return supernovaChanged;
+}
+export function syncSupernovaHoldings(player) {
+  const tracking = supernovaHoldings(player);
+  if (!player.lv3State?.supernovaHoldings && !tracking.supernovaOrder.length) return false;
+  if (JSON.stringify(player.lv3State?.supernovaHoldings) === JSON.stringify(tracking.supernovaHoldings) &&
+      JSON.stringify(player.lv3State?.supernovaOrder) === JSON.stringify(tracking.supernovaOrder)) return false;
+  player.lv3State = {...(player.lv3State || validateLv3State()), ...tracking};
   return true;
 }
 export function lv3ItemsDue(room, now = Date.now()) {
-  return [...room.players.values()].some(p => {
-    const anchors = p.lv3State?.clusterNextAt || [];
-    return anchors.length !== Math.min(2, count(p, 'galaxy-cluster-card')) ||
-      (p.starShards <= SHARDS.max - 2 && anchors.some(at => at <= now));
-  });
+  return false;
 }
 export function settleLv3Items(room, now = Date.now()) {
   validTime(now);
   let changed = false;
   for (const player of room.players.values()) {
     changed = syncLv3Holdings(player, now) || changed;
-    const anchors = player.lv3State?.clusterNextAt || [];
-    for (let i = 0; i < anchors.length; i++) {
-      if (anchors[i] > now) continue;
-      const weeks = Math.min(Math.floor((now - anchors[i]) / WEEK) + 1, Math.floor(Math.max(0, SHARDS.max - player.starShards) / 2));
-      // 지갑이 가득 차면 미지급 기간을 보존합니다. 반복 접속으로 중복 지급되지 않습니다.
-      if (weeks > 0) { player.starShards += weeks * 2; anchors[i] += weeks * WEEK; changed = true; }
-    }
   }
   return changed;
 }
@@ -87,7 +88,7 @@ export function useLv3Item(room, actor, item, data = {}, now = Date.now()) {
   ensure(ids.length === expected && new Set(ids).size === expected && ids.every(id => typeof id === 'string'), '서로 다른 사용 대상을 골라주세요.');
   if (card.targets === 'self') ensure(ids[0] === actor.id, '이 물건은 나에게만 쓸 수 있어요.');
   const targets = ids.map(id => room.players.get(id));
-  ensure(targets.every(p => p?.connected), '그 친구는 지금 없어요.');
+  ensure(targets.every(p => p && (p.connected || p.role === 'student')), '그 친구는 지금 없어요.');
   if (expected > 1) ensure(targets.every(p => p.role === 'student'), '학생 친구를 골라주세요.');
   for (const target of targets) {
     ensure(level(actor) >= level(target), '나보다 레벨이 높은 친구에게는 쓸 수 없어요.');
@@ -113,7 +114,7 @@ export function useLv3Item(room, actor, item, data = {}, now = Date.now()) {
       Object.assign(addCardMarker(target, card, user, null, note), {at: now, fromLevel: level(user)});
     }
     message = '자리 변경을 기록했어요. 실제 자리와 효과 종료는 선생님이 확인해요.';
-  } else if (card.id === 'galaxy-cluster-card' || card.id === 'rabbit-princess-card') {
+  } else if (card.id === 'galaxy-cluster-card' || card.id === 'rabbit-princess-card' || SUPERNOVAS.includes(card.id)) {
     const amount = card.id === 'galaxy-cluster-card' ? 2 : 1;
     const owned = user.inventory.find(e => e.id === 'star-card');
     ensure((owned?.quantity || 0) + amount <= SHOP.maxStack && (owned || user.inventory.length < SHOP.maxKinds), '별 카드를 받을 가방 공간이 부족해요.');

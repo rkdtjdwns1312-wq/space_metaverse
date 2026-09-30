@@ -114,7 +114,7 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
 
   const personOptions = () => roster.players.map(player => ({
     value: player.id,
-    label: `${player.nickname || player.id} (Lv${player.level ?? '?'})`
+    label: `${player.nickname || player.id} (Lv${player.level ?? '?'})${player.connected===false?' · 미접속':''}`
   }));
 
   function buildItem(item, body) {

@@ -1,15 +1,11 @@
-export function createStarGame({board,request,subscribeStarRanking,toast=()=>{}}){
+import {createArcadeRanking} from './arcade-ranking.js';
+export function createStarGame({board,request,subscribeStarRanking,toast=()=>{},footer}){
   board.classList.add('star-game');
-  const wrap=document.createElement('section');wrap.innerHTML='<div class="game-start-actions"><button id="star-start" type="button">시작</button><button id="star-ranking-toggle" type="button" aria-expanded="false">랭킹 보기</button></div><p id="star-timer">0.00초 · 0 / 10</p><div id="star-grid" aria-label="4행 4열 별 찾기"></div><p id="star-result" role="status"></p><section id="star-ranking-panel" hidden><h3>우리 교실 빠른 기록 TOP 10</h3><p>매주 월요일 0시 새로 시작해요.</p><ol id="star-ranking"></ol></section>';
+  const wrap=document.createElement('section');wrap.innerHTML='<div class="game-start-actions"><button id="star-start" type="button">시작</button></div><p id="star-timer">0.00초 · 0 / 10</p><div id="star-grid" aria-label="4행 4열 별 찾기"></div><p id="star-result" role="status"></p><section id="star-ranking-panel" hidden><h3>우리 교실 빠른 기록 TOP 10</h3><p>매주 월요일 0시 새로 시작해요.</p><ol id="star-ranking"></ol></section>';
   board.append(wrap);const $=id=>wrap.querySelector('#star-'+id);let active=true,run=null,pending=false,anchor=0,elapsed=0,frame=null;
   const cells=Array.from({length:16},(_,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label',(i+1)+'번 칸');b.disabled=true;b.onclick=()=>hit(i);$('grid').append(b);return b;});
-  function ranking({ranking=[]}){
-    if(!active)return;$('ranking').replaceChildren(...ranking.map(r=>{const li=document.createElement('li');li.textContent=r.rank+'위 · '+r.nickname+' · '+(r.elapsedMs/1000).toFixed(2)+'초';return li;}));
-    if(!ranking.length){const li=document.createElement('li');li.textContent='아직 기록이 없어요. 첫 기록에 도전해요!';$('ranking').append(li);}
-  }
-  const unsubscribe=subscribeStarRanking?.(ranking)||(()=>{});
-  $('ranking-toggle').onclick=()=>{const open=$('ranking-panel').hidden;$('ranking-panel').hidden=!open;$('ranking-toggle').setAttribute('aria-expanded',String(open));$('ranking-toggle').textContent=open?'랭킹 닫기':'랭킹 보기';if(open)request('stars:ranking',{}).then(ranking).catch(e=>{if(active)$('result').textContent=e.message;});};
-  request('stars:ranking',{}).then(ranking).catch(e=>{if(active)$('result').textContent=e.message;});
+  const rankingUI=createArcadeRanking({game:'stars',prefix:'star',root:wrap,footer,request,subscribe:subscribeStarRanking,toast});
+  const ranking=rankingUI.render;
   function paint(){
     for(const [i,b] of cells.entries()){const target=run&&i===run.target;b.textContent=target?'⭐':'';b.disabled=!run||pending;b.setAttribute('aria-label',target?'⭐':(i+1)+'번 칸');}
   }
@@ -40,5 +36,5 @@ export function createStarGame({board,request,subscribeStarRanking,toast=()=>{}}
     }catch(e){if(active){$('result').textContent=e.message;$('start').disabled=false;}}
     finally{pending=false;if(active)paint();}
   };
-  return {destroy(){active=false;unsubscribe();cancelAnimationFrame(frame);board.classList.remove('star-game');if(run)request('stars:cancel',{runId:run.runId}).catch(()=>{});run=null;}};
+  return {destroy(){active=false;rankingUI.destroy();cancelAnimationFrame(frame);board.classList.remove('star-game');if(run)request('stars:cancel',{runId:run.runId}).catch(()=>{});run=null;}};
 }

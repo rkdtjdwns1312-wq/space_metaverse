@@ -566,8 +566,10 @@ try{
  assert.equal(await student.locator('#shop-buy-list li.ppt-card img.item-art').evaluateAll(async images=>{
    await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);
  }),true);
- assert.ok((await student.locator('#shop-buy-list li[data-item-id="little-sun-card"]').innerText()).includes('자외선'));
- check('PPT에서 가져온 Lv1 카드 8종의 그림과 효과 설명이 상점에 표시됨');
+ await student.locator('#shop-buy-list li[data-item-id="little-sun-card"] .item-info').click();
+ assert.ok((await student.locator('#item-info-text').innerText()).includes('자외선'));
+ await student.locator('[data-close="item-info-dialog"]').click();
+ check('Lv1 카드 8종 그림과 감성 문구·상점 정보보기의 효과 설명');
  await student.screenshot({path:'.local/06-street-shop.png',fullPage:true});
  await student.locator('#shop-buy-list').evaluate(list=>list.scrollTop=list.scrollHeight);
  await student.screenshot({path:'.local/06b-ppt-item-shop.png',fullPage:true});

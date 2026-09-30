@@ -5,6 +5,7 @@ import {STAR_CARD_CATALOG, GOLD_CARD_ITEMS, STAR_CARD_LAYOUT, MAX_STAR_CARDS, go
 import {BLACK_HOLE_ID, PLAZA_ID, PLANET, MAP, SHOP, SHARDS, PROGRESSION} from '../shared/config.js';
 import {useStarCard, useTypedStarCard, activeStarCards, validateStarCards, removeStarCard, expireStarCards, starCardsDue, STAR_CARD_SLOTS} from '../server/star-cards.js';
 import {nextKoreaMidnight} from '../server/item-cards.js';
+import {onPlazaFloor} from '../shared/plaza-layout.js';
 
 const NOW = Date.parse('2026-09-21T03:00:00Z'), DAY = 86_400_000;
 function fixture(quantity = 1) {
@@ -201,7 +202,7 @@ for (let roll = 1; roll <= 10; roll++) test(`planet exploration roll ${roll} giv
   assert.equal(quantity(f.actor, rewardId), 1);
   if (roll === 10) {
     assert.equal(rewardId, 'galaxy-card');
-    assert.deepEqual(f.actor.lv2State.galaxyNextAt, [NOW + 7 * DAY]);
+    assert.deepEqual(f.actor.lv2State?.galaxyNextAt||[], []);
   } else {
     assert.ok(GOLD_CARD_ITEMS.some(item => item.id === rewardId));
     const typed = useTypedStarCard(f.room, f.actor, rewardId, NOW + 2000, () => 0);
@@ -227,16 +228,18 @@ test('all 30 typed catalog entries can be activated without randomizing the card
   }
 });
 
-test('30 stable centered slots avoid pillars and fit reserved area, full board rejects, removal reuses only the free slot', () => {
+test('30 cards form one row below temple, fit walkable floor, full board rejects and saved slots remain stable', () => {
   const f = fixture(MAX_STAR_CARDS + 1);
   for (let i = 0; i < MAX_STAR_CARDS; i++) use(f, 'rest', [], NOW + i * 2000);
   const views = activeStarCards(f.room, NOW + DAY);
   assert.equal(views.length, MAX_STAR_CARDS);
   const temple = MAP.templeCenter;
   for (const view of views) {
-    assert.ok(Math.abs(view.x-temple.x)<=450-view.width/2);
-    assert.ok(view.y-temple.y>=-250-view.height/2&&view.y-temple.y<=450-view.height/2);
-    assert.equal(view.width, 66); assert.equal(view.height, 90); assert.equal(view.mapId, MAP.id);
+    assert.ok(Math.abs(view.x-temple.x)<=STAR_CARD_LAYOUT.rowWidth/2-view.width/2+.001);
+    assert.equal(view.y,temple.y+STAR_CARD_LAYOUT.rowOffsetY);
+    assert.ok(view.y-view.height>temple.y+230);
+    assert.ok(onPlazaFloor(MAP,view.x,view.y,35));
+    assert.ok(view.width<=66&&view.width>=27);assert.ok(Math.abs(view.height/view.width-90/66)<.001);assert.equal(view.mapId,MAP.id);
     assert.equal(view.slot, view.data.slot);
     for (const pillar of MAP.objects.filter(object => object.kind === 'pillar')) {
       assert.ok(Math.hypot(view.x - pillar.x, view.y - pillar.y) >= 80);
@@ -244,6 +247,7 @@ test('30 stable centered slots avoid pillars and fit reserved area, full board r
     assert.equal(view.inventory, undefined);
   }
   assert.equal(new Set(views.map(view => `${view.x},${view.y}`)).size, MAX_STAR_CARDS);
+  for(let i=1;i<views.length;i++)assert.ok(views[i].x-views[i-1].x>(views[i].width+views[i-1].width)/2);
   rejectUnchanged(f, () => use(f, 'rest', [], NOW + DAY), /가득/);
   const id = f.room.starCards[3].id;
   rejectUnchanged(f, () => removeStarCard(f.room, f.actor, id), /선생님/);
@@ -252,8 +256,17 @@ test('30 stable centered slots avoid pillars and fit reserved area, full board r
   const before = activeStarCards(f.room, NOW + DAY);
   const result = use(f, 'rest', [], NOW + DAY);
   assert.equal(result.record.data.slot, 3);
-  assert.deepEqual(activeStarCards(f.room, NOW + DAY).filter(view => view.id !== result.record.id), before);
+  assert.deepEqual(activeStarCards(f.room, NOW + DAY).filter(view=>view.id!==result.record.id).map(view=>view.data),before.map(view=>view.data));
   assert.equal(quantity(f.actor, 'star-card'), 0);
+});
+
+test('1~30 cards stay centered below temple; fewer cards retain their original size',()=>{
+  for(const count of [1,5,10,15,30]){
+    const f=fixture(count);for(let i=0;i<count;i++)use(f,'rest',[],NOW+i*2000);
+    const cards=activeStarCards(f.room,NOW+DAY);
+    assert.equal(cards.length,count);assert.equal((cards[0].x+cards.at(-1).x)/2,MAP.templeCenter.x);
+    assert.equal(new Set(cards.map(c=>c.y)).size,1);if(count<=10)assert.equal(cards[0].width,66);
+  }
 });
 
 test('public views and returned records are detached; manual duration remains until teacher removal with no refund', () => {
@@ -288,12 +301,13 @@ test('known one-day/seven-day boundaries expire exclusively, manual polaris has 
   }
 });
 
-test('activation prunes expired records transactionally and reuses a slot without moving survivors', () => {
+test('activation prunes expired records and reuses a slot while retaining surviving card identity/effect', () => {
   const f = fixture(3);
   use(f, 'comet'); use(f, 'rest', [], NOW + 2000);
   const surviving = activeStarCards(f.room, NOW + DAY)[0];
   use(f, 'new-life', [], NOW + DAY);
-  assert.deepEqual(activeStarCards(f.room, NOW + DAY)[0], surviving);
+  const remaining=activeStarCards(f.room,NOW+DAY).find(c=>c.id===surviving.id);
+  assert.deepEqual(remaining.data,surviving.data);assert.equal(remaining.slot,surviving.slot);assert.equal(remaining.effect,surviving.effect);
   assert.equal(f.room.starCards[1].data.slot, 0);
 });
 
