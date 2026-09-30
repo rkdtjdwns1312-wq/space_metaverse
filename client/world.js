@@ -1,3 +1,4 @@
+import {createProjectileEffects} from './projectile-effects.js';
 import {createDamageNumbers} from './damage-numbers.js';
 import {drawCorvus,preloadCorvus} from './corvus-effects.js';
 import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
@@ -75,6 +76,7 @@ export function createWorld(canvas) {
   const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
+  const projectiles=createProjectileEffects(canvas);
   let hits=[],starCards=[],energyDrops=[];
   let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
@@ -481,6 +483,7 @@ export function createWorld(canvas) {
       ctx.strokeStyle=monsterHit?'#fff0dc':'#fffdf0';ctx.lineWidth=4;
       for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
     }
+    projectiles.draw(ctx,t,reducedMotion.matches);
     damageNumbers.draw(ctx,t,reducedMotion.matches);
     canvas.dataset.damageNumberCount=String(damageNumbers.size);
     requestAnimationFrame(frame);
@@ -489,7 +492,7 @@ export function createWorld(canvas) {
   return {
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
+      if(nextMap!==myMapId||id!==selfId){projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
@@ -502,7 +505,8 @@ export function createWorld(canvas) {
       const now=performance.now();for(const p of players)recordPosition(p,now);
       for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
     },
-    positions(data){const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    projectileEnd(data){if(data.mapId===myMapId)projectiles.end(data);},
+    positions(data){if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     monsters(data){setMonsters(data.monsters||[]);},
     energyDrops(data){energyDrops=data.drops||[];},
     sagittariusState(data){
@@ -514,14 +518,15 @@ export function createWorld(canvas) {
     sagittariusEffect(data){
       if(data.mapId!==myMapId)return;
       const startsAt=performance.now()+(data.delayMs||0);
-      sagittariusEffects.push({...data,startsAt,until:startsAt+data.durationMs});
+      if(data.projectile)projectiles.add(data);else sagittariusEffects.push({...data,startsAt,until:startsAt+data.durationMs});
       if(sagittariusEffects.length>80)sagittariusEffects.shift();
       canvas.dataset.lastSagittariusEffect=data.kind;canvas.dataset.lastSagittariusSlot=String(data.slot);
     },
     hit(data){
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
-      if(data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(CORVUS_VFX[data.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(data.projectiles)data.projectiles.forEach(projectiles.add);
+      if(!data.projectiles&&data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(CORVUS_VFX[data.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
       if(data.vfxId)canvas.dataset.lastCorvusVfx=data.vfxId;
       canvas.dataset.lastAttackReach=String(data.reach??ATTACK_VISUAL.reach);canvas.dataset.lastSkillOrigin=String(data.originOffset||0);canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind!=='skill')canvas.dataset.lastAttackRadius=String(data.radius??ATTACK_VISUAL.hitRadius);

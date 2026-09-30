@@ -15,6 +15,21 @@ test('Q/E는 LV2 해금, 일반 스킬은 2/3/4 강화 후 고정, 변신만 LV5
   }
   assert.equal(characterAbilities({...player(2),avatar:{level:2,constellationId:'sagittarius'}})[1].level,2);
 });
+test('일반 스킬 설명은 공격력·쿨타임·마나 소모 세 줄만 표시',()=>{
+  const expected={
+    corvus:{2:['공격력: 100% × 2회','쿨타임: 10초','마나 소모: 5'],3:['공격력: 150% × 3회','쿨타임: 10초','마나 소모: 5'],4:['공격력: 200% × 4회','쿨타임: 10초','마나 소모: 5']},
+    sagittarius:['공격력: 현재 공격력의 300%','쿨타임: 5초','마나 소모: 5'],
+  };
+  for(const [level,lines] of Object.entries(expected.corvus)){
+    const description=characterAbilities(player(Number(level)))[1].description;
+    assert.deepEqual(description.split('\n'),lines);
+  }
+  const sagitt=characterAbilities({...player(2),avatar:{level:2,constellationId:'sagittarius'}})[1];
+  assert.deepEqual(sagitt.description.split('\n'),expected.sagittarius);
+  assert.equal(sagitt.name,'유성화살 LV2');
+  const unknown=characterAbilities({...player(2),avatar:{level:2,constellationId:'unreleased'}})[1];
+  assert.deepEqual(unknown.description.split('\n'),['공격력: 준비 중','쿨타임: 준비 중','마나 소모: 준비 중']);
+});
 test('LV5 권한을 그대로 보존하면서 LV4 외형/크기, 실제 변신 때만 LV5 외형',()=>{
   const p=player(5);assert.equal(appearanceLevelOf(p),4);assert.equal(p.avatar.level,5);
   assert.equal(avatarSizeOf(p),avatarSizeOf(player(4)));

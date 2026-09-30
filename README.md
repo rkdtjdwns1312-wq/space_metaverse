@@ -566,13 +566,13 @@ node scripts/verify-interior-decor.mjs
 | E 그림자의 날개 / LV3 | 150%×3회 | 5 | 10초 | 가로크기5배 |
 | E 심연의 군황 / LV4·LV5 | 200%×4회 | 5 | 10초 | 가로크기5배 |
 
-- 피해의 소수는 매 타격 반올림하고, 학생이 받는 피해는 방어력 차감 후 최소1입니다. 같은 선분 안에 겹친 모든 대상을 매 타격 다시 판정합니다. Q는 기존 기본공격 규칙(MP0/1초)을 유지합니다.
+- 피해의 소수는 매 타격 반올림하고, 학생이 받는 피해는 방어력 차감 후 최소1입니다. 까마귀·사수자리 Q는 캐릭터에서 날아가 첫 몬스터에서 멈춥니다(같은 위치에 겹친 첫 몬스터들은 함께 명중). E는 몬스터를 관통하며, 실제로 지나가는 구간에서만 피해를 줍니다. 까마귀 E는 120ms 간격의 2/3/4개 투사체로 각각 한 번씩 타격합니다. Q는 MP0/1초를 유지합니다.
 - 까마귀 이펙트: 총4종×24F=96장. 투명 PNG 시트·개별 프레임·APNG 재생 파일은 client/assets/skills/corvus/에 있습니다. 생성 프롬프트와 원본/확대 규격도 함께 저장합니다. 서버의 /corvus-vfx-preview.html에서 재생해 볼 수 있습니다.
 - 사수자리 Q 빛의화살(100%·MP0·1초·가로3배), E 유성화살(300%·MP5·5초·가로5배)은 LV2부터 사용합니다. E 피해는 성장한 기본 공격력에 비례합니다. 기존 사냥꾼/천궁 보조 스킬은 더 이상 호출되지 않습니다. 다른 별자리의 미정 E 전투 수치는 연출 미리보기로 남깁니다.
-- 내 정보에는 Q/E/변신 3칸이 있으며 해금된 아이콘을 누르면 설명을 봅니다.
+- 내 정보에는 Q/E/변신 3칸이 있으며 해금된 아이콘을 누르면 설명을 봅니다. 일반 스킬(E) 설명은 공격력·쿨타임·마나 소모 세 줄만 표시합니다.
 - 모든 실제 몬스터·학생 피해는 머리 위에 숫자로 표시됩니다. 몬스터 금색/학생 분홍색, 굵은 보라 테두리·밝은 외곽선·약1.1초 부유/소멸, 연타 위치 분산. 같은 교실의 같은 맵에만 전달합니다.
 - 전투/변신 상태는 영구 저장하지 않습니다. 계정·아이템·재화·소속 저장은 기존대로입니다.
-- 검사: node --test --test-concurrency=1 tests/*.test.js / node scripts/verify-browser.mjs / node scripts/verify-character-skills.mjs / node scripts/verify-auxiliary-skills.mjs / node scripts/verify-sagittarius.mjs.
+- 검사: node --test --test-concurrency=1 tests/*.test.js / node scripts/verify-browser.mjs / node scripts/verify-character-skills.mjs / node scripts/verify-auxiliary-skills.mjs / node scripts/verify-sagittarius.mjs / node scripts/verify-projectiles.mjs.
 
 ## 다리 폭 넓히기 (요청287)
 

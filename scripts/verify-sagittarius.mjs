@@ -27,6 +27,7 @@ try{
   for(const m of room.monsters.values()){m.nextAttackAt=Number.MAX_SAFE_INTEGER;m.x=1300;m.y=1000;}
   const publish=()=>game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player));
   const setLevel=async level=>{
+    room.projectiles=[];
     Object.assign(player,{mapId:'star-origin-1',x:500,y:450,facing:{x:1,y:0},battleVitals:null,sagittariusCooldowns:{},transformation:null});
     Object.assign(player.avatar,{level,constellationId:'sagittarius',form:'constellation'});room.sagittariusCasts?.clear();ensureVitals(player);
     Object.assign(monster,{mapId:'star-origin-1',x:700,y:450,hp:10000,maxHp:10000,nextAttackAt:Number.MAX_SAFE_INTEGER});publish();
@@ -47,7 +48,7 @@ try{
 
   await page.evaluate(()=>document.getElementById('avatar-dialog').showModal());
   await page.locator('#self-skill-slots button').nth(1).click();await page.locator('#skill-description-dialog').waitFor({state:'visible'});
-  assert.match(await page.locator('#skill-description-text').textContent(),/300%.*마나 5.*5초/);
+  assert.match(await page.locator('#skill-description-text').textContent(),/^공격력: 현재 공격력의 300%\n쿨타임: 5초\n마나 소모: 5$/);
   await page.screenshot({path:'.local/293-sagittarius-description.png'});
   await page.locator('#skill-description-dialog button').click();await page.evaluate(()=>document.getElementById('avatar-dialog').close());
   check('profile E description reflects shared LV2 attack at 300%, MP5, and 5-second cooldown');
@@ -62,8 +63,9 @@ try{
   await setLevel(2);
   const before=monster.hp;
   await page.keyboard.press('e');await page.waitForFunction(()=>document.querySelector('#world').dataset.lastSagittariusSlot==='0');
+  now+=900;await page.waitForTimeout(100);
   assert.equal(ensureVitals(player).mp,5);assert.equal(before-monster.hp,attackPowerOf(2,'sagittarius')*3);
-  await page.waitForFunction(()=>document.querySelector('#touch-skill .skill-cooldown')?.textContent==='5');
+  await page.waitForFunction(()=>document.querySelector('#touch-skill .skill-cooldown')?.textContent==='5'||document.querySelector('#touch-skill .skill-cooldown')?.textContent==='4');
   await page.keyboard.press('e');await page.waitForTimeout(150);
   assert.equal(ensureVitals(player).mp,5);assert.equal(monster.hp,before-attackPowerOf(2,'sagittarius')*3);
   const oldSkill=await teacher.timeout(5000).emitWithAck('combat:skill',{slot:1});assert.equal(oldSkill.ok,false);
@@ -71,6 +73,7 @@ try{
 
   now+=5000;await page.waitForTimeout(120);const afterCooldown=monster.hp;
   await page.locator('#touch-skill').tap();await page.waitForTimeout(150);
+  now+=900;await page.waitForTimeout(100);
   assert.equal(ensureVitals(player).mp,0);assert.equal(afterCooldown-monster.hp,attackPowerOf(2,'sagittarius')*3);
   check('E is usable again after five seconds through touch control');
 

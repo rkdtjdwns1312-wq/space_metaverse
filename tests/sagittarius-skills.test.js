@@ -1,3 +1,6 @@
+import {advanceProjectiles} from '../server/projectiles.js';
+import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
+const fly=(room,now)=>advanceProjectiles(room,now,combatEnemies,damageTargets);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -20,13 +23,13 @@ function setup(level=5){
 test('Q 빛의 화살은 현재 공격력100%·MP0·가로3배, MP가 0이어도 공격',()=>{
   const {room,player,monster,power,size}=setup(2);ensureVitals(player).mp=0;
   const hit=attackSagittarius(room,player,now);
-  assert.equal(monster.hp,1000-power);assert.equal(ensureVitals(player).mp,0);
+  assert.equal(monster.hp,1000);fly(room,now+650);assert.equal(monster.hp,1000-power);assert.equal(ensureVitals(player).mp,0);
   assert.equal(hit.effects[0].range,size*3);assert.equal(hit.effects[0].basic,true);
   assert.equal(player.sagittariusCooldowns,undefined);
 });
 test('유성화살은 +5가 아닌 300%, 가로5배·MP5·쿨타임5초',()=>{
   const {room,player,monster,power,size}=setup(3);
-  const hit=castSagittarius(room,player,0,now);assert.equal(monster.hp,1000-power*3);
+  const hit=castSagittarius(room,player,0,now);assert.equal(monster.hp,1000);fly(room,now+900);assert.equal(monster.hp,1000-power*3);
   assert.equal(hit.effects[0].range,size*5);assert.equal(ensureVitals(player).mp,15);
   assert.throws(()=>castSagittarius(room,player,0,now+4999),/1초/);assert.equal(ensureVitals(player).mp,15);
   castSagittarius(room,player,0,now+5000);assert.equal(ensureVitals(player).mp,10);
@@ -51,7 +54,7 @@ test('화살 방향/사거리, 겹친 몬스터·학생 모두 명중, 자기·�
   const peer={...player,id:'friend',x:700,avatar:{level:5,constellationId:'taurus'}};
   room.players.set(peer.id,peer);room.players.set('immune',{...peer,id:'immune',avatar:{...peer.avatar,blackStar:true}});
   room.players.set('other',{...peer,id:'other',mapId:'star-origin-2'});
-  const hit=castSagittarius(room,player,0,now);
+  castSagittarius(room,player,0,now);const hit=fly(room,now+900)[0];
   assert.deepEqual(hit.targets.map(t=>t.monsterId),[monster.id,twin.id]);assert.deepEqual(hit.playerTargets.map(t=>t.targetId),['friend']);
   assert.equal(hit.playerTargets[0].damage,Math.max(1,power*3-defensePowerOf(5,'taurus',peer)));
   assert.equal(ensureVitals(player).hp,20);assert.equal(far.hp,1000);assert.equal(behind.hp,1000);
@@ -122,7 +125,7 @@ test('실제 소켓 위조 수치 무시·동일맵에만 효과·저장 데이�
   const monster=[...monstersOf(room).values()][0];monster.x=700;monster.y=500;
   let leaks=0;peer.on('sagittarius:effect',()=>leaks++);
   const result=await call(student,'combat:skill',{slot:0,power:999999,mana:0,range:999999,dx:-1});
-  assert.equal(result.ok,true);assert.equal(result.targets.find(t=>t.monsterId===monster.id).damage,attackPowerOf(3,'sagittarius')*3);
+  assert.equal(result.ok,true);assert.equal(result.targets.length,0);const hp=monster.hp;time+=900;await new Promise(r=>setTimeout(r,80));assert.equal(hp-monster.hp,attackPowerOf(3,'sagittarius')*3);
   assert.equal(result.vitals.mp.current,15);assert.equal(result.effects[0].dx,1);
   for(const slot of [1,2,3])assert.equal((await call(student,'combat:skill',{slot})).ok,false);
   ensureVitals(player).mp=0;

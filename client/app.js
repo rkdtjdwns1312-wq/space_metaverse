@@ -1126,6 +1126,7 @@ socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});
+socket.on('combat:projectile-end',data=>{if(selfId)world.projectileEnd(data);});
 socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
 socket.on('sagittarius:effect',data=>{if(selfId)world.sagittariusEffect(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});

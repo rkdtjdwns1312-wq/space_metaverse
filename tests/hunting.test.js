@@ -60,7 +60,11 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
    Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});Object.assign(p.avatar,{level,constellationId:c.id});now+=1000;
    const expected=table[c.type][level-2],visual=new Promise(r=>student.once('combat:hit',r));
    const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});
-   assert.equal(result.ok,true);assert.equal(result.target.damage,expected,c.id+' LV'+level);assert.equal(m.hp,20-expected);
+   assert.equal(result.ok,true);
+   if(['corvus','sagittarius'].includes(c.id)){
+     assert.equal(result.target,null);now+=650;await new Promise(r=>setTimeout(r,70));
+   }else assert.equal(result.target.damage,expected,c.id+' LV'+level);
+   assert.equal(m.hp,20-expected,c.id+' LV'+level);
    assert.equal((await visual).power,expected);assert.equal(game.store.snapshot(room,p).players.find(v=>v.id===p.id).combat.attackPower,expected);
  }
  p.avatar.level=1;now+=500;assert.equal((await call(student,'combat:attack',{level:5,power:999})).ok,false);

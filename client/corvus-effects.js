@@ -13,7 +13,7 @@ export function drawCorvus(ctx,hit,progress,reducedMotion=false){
   if(!image?.complete||!image.naturalWidth)return true;
   const frame=reducedMotion?12:Math.min(23,Math.max(0,Math.floor(progress*24)));
   const size=(hit.originOffset||40)*(hit.vfxId==='attack'?2.5:4);
-  const reach=hit.vfxId==='attack'?(hit.range||hit.reach||62)*Math.min(1,progress*2):(hit.range||hit.originOffset||40)*.45;
+  const reach=hit.projectile?0:(hit.vfxId==='attack'?(hit.range||hit.reach||62)*Math.min(1,progress*2):(hit.range||hit.originOffset||40)*progress);
   ctx.save();ctx.translate(hit.x+hit.dx*reach,hit.y+hit.dy*reach);
   if(hit.vfxId==='attack')ctx.rotate(Math.atan2(hit.dy,hit.dx)+Math.PI/4);
   if(reducedMotion)ctx.globalAlpha=Math.sin(Math.PI*progress)*.65;

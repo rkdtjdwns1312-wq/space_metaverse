@@ -1,3 +1,4 @@
+import {launchProjectiles} from './projectiles.js';
 import {randomUUID} from 'node:crypto';
 import {isSagittarius,sagittariusSkill,SAGITTARIUS_ATTACK} from '../shared/sagittarius-skills.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
@@ -53,15 +54,7 @@ function execute(room,player,skill,now,basic){
   let result={targets:[],playerTargets:[]},effects=[];
   if(basic||slot===0){
     const range=size*skill.rangeWidths,width=size*.13;
-    // 끝점을 포함한 선분 판정. 겹쳐 있는 모든 대상에게 한 번씩 피해를 줍니다.
-    const line=list.filter(t=>{
-      const vx=t.entity.x-player.x,vy=t.entity.y-player.y,along=vx*dx+vy*dy;
-      if(along<0)return false;
-      const projection=Math.max(0,Math.min(range,along));
-      return Math.hypot(vx-dx*projection,vy-dy*projection)<=t.radius+width;
-    });
-    result=damage(room,player,line,basic?power:power*3,now);
-    effects=[{...base,kind:'arrow',basic,range,durationMs:basic?360:600}];
+    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*3,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();
     const cast={...base,kind:slot===1?'hunter':'rain',x:slot===1?player.x+dx*size/2:target.entity.x,y:slot===1?player.y+dy*size/2:target.entity.y,lastMoveAt:now,

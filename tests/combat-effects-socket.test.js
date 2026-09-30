@@ -33,5 +33,5 @@ test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, �
  damagePlayer(p,10,now);assert.ok(ensureVitals(p).hp<50);const hp=ensureVitals(p).hp;now+=5000;
  await new Promise(r=>setTimeout(r,80));assert.equal(ensureVitals(p).hp,Math.min(50,hp+5));
  now+=25000;await call(a,'combat:skill',{slot:3});assert.equal(p.transformation.active,false);assert.equal(ensureVitals(p).hp<=40,true);
- const saved=JSON.stringify(toRecord(room));for(const privateKey of ['corvusCasts','corvusCooldownUntil','damageNumbers','transformation'])assert.ok(!saved.includes(privateKey));
+ const saved=JSON.stringify(toRecord(room));for(const privateKey of ['projectiles','corvusCasts','corvusCooldownUntil','damageNumbers','transformation'])assert.ok(!saved.includes(privateKey));
 });

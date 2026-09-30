@@ -1,4 +1,5 @@
-import {castCorvus,advanceCorvus,corvusCooldowns} from './corvus-skills.js';
+import {advanceProjectiles,projectileViews} from './projectiles.js';
+import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
@@ -10,7 +11,7 @@ import {collectEnergyDrop,energyDropViews,pruneEnergyDrops} from './energy-drops
 import {attackPowerOf,attackGeometryOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {isSagittarius} from '../shared/sagittarius-skills.js';
-import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns} from './sagittarius-skills.js';
+import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns,combatEnemies,damageTargets} from './sagittarius-skills.js';
 import {requireMapLevel} from './map-access.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
@@ -1476,8 +1477,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       let transformationChanged=false;
       for(const player of room.players.values())transformationChanged=expireTransformation(player,clock())||transformationChanged;
       if(transformationChanged)roster(room);
-      for(const hit of advanceCorvus(room,clock())){
+      for(const hit of advanceProjectiles(room,clock(),combatEnemies,damageTargets)){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
+          if(hit.end)io.to(viewer.socketId).emit('combat:projectile-end',hit.end);
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
         }
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
@@ -1583,7 +1585,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }

@@ -75,7 +75,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .skill-cooldown{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;background:#211632bb;color:white;font-size:20px;pointer-events:none}
 .skill-cooldown[hidden]{display:none}
 #skill-description-dialog{max-width:min(480px,90vw)}
-#skill-description-text{line-height:1.8;white-space:normal;overflow-wrap:anywhere}
+#skill-description-text{line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
 .status-grid{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;min-width:0}
 .status-grid li.status-badge{width:72px;min-height:68px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;border-radius:12px;color:#5d4795;text-align:center;overflow:hidden}
 .status-grid .status-icon{font-size:22px;line-height:1}

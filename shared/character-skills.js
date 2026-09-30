@@ -17,15 +17,17 @@ const corvusNames={2:'어둠의 깃털',3:'그림자의 날개',4:'심연의 군
 export function characterAbilities(player){
   const level=skillStageOf(player),id=player?.avatar?.constellationId;
   const attack={slot:'attack',key:'Q',level:2,name:'일반 공격',iconUrl:'',ready:true,description:'최근 이동한 방향으로 현재 공격력만큼 공격합니다. 마나 소모 없이 1초에 한 번 사용할 수 있어요.'};
-  const skill={slot:'skill',key:'E',level:2,name:`일반 스킬 LV${level}`,iconUrl:'',ready:false,description:`LV2에 배우고 LV3·LV4에 강화되는 일반 스킬이에요. 현재는 연출 미리보기이며 피해·마나·쿨타임은 아직 준비 중이에요.`};
+  const skill={slot:'skill',key:'E',level:2,name:`일반 스킬 LV${level}`,iconUrl:'',ready:false,
+    description:'공격력: 준비 중\n쿨타임: 준비 중\n마나 소모: 준비 중'};
   if(id==='sagittarius'){
     Object.assign(attack,SAGITTARIUS_ATTACK);
-    Object.assign(skill,SAGITTARIUS_SKILLS[0],{slot:'skill',level:2,ready:true,name:`유성화살 LV${level}`});
+    Object.assign(skill,SAGITTARIUS_SKILLS[0],{slot:'skill',level:2,ready:true,name:`유성화살 LV${level}`,
+      description:`공격력: 현재 공격력의 ${SAGITTARIUS_SKILLS[0].damagePercent||300}%\n쿨타임: ${SAGITTARIUS_SKILLS[0].cooldownMs/1000}초\n마나 소모: ${SAGITTARIUS_SKILLS[0].mana}`});
   }
   if(id==='corvus'){
     Object.assign(attack,{name:'검은 깃털 투사체',iconUrl:CORVUS_VFX.attack.iconUrl});
     Object.assign(skill,{name:corvusNames[level],iconUrl:CORVUS_VFX[`skill-lv${level}`].iconUrl,
-      ready:true,description:`${corvusNames[level]} · 사거리: 캐릭터 가로 길이의 5배 · 피해: 공격력 ${level===2?100:level===3?150:200}% × ${level}회 · 마나 5 · 쿨타임 10초. LV3·LV4에 강화됩니다.`});
+      ready:true,description:`공격력: ${level===2?100:level===3?150:200}% × ${level===2?2:level===3?3:4}회\n쿨타임: 10초\n마나 소모: 5`});
   }
   const transform={slot:'transform',key:'1',level:5,name:'LV5 변신',ready:TRANSFORMATION.ready,
     iconUrl:constellationOf(id,5)?.sprite||'',description:'30초 동안 LV5 모습으로 변신해요. 마나 소모 없음 · 쿨타임 300초. 체력·마나를 50/50으로 완전히 회복하고, 공격력 +3 · 방어력 -1(최소 0). 5초마다 체력·마나를 각각 5 회복해요. 종료 시 원래 최대치로 돌아가며 현재치는 그 최대치까지만 유지해요.'};

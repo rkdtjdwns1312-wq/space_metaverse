@@ -43,7 +43,7 @@ try{
  clockShift+=25000;await page.waitForTimeout(130);assert.equal(player.transformation.active,false);assert.equal(ensureVitals(player).hp,40);check('5초마다5회복·30초뒤변신종료·최대치원복');
  await page.evaluate(()=>document.getElementById('avatar-dialog').showModal());
  await page.locator('#self-skill-slots button').nth(1).click();await page.locator('#skill-description-dialog').waitFor({state:'visible'});
- assert.match(await page.locator('#skill-description-text').textContent(),/200% × 4회.*마나 5.*10초/);
+ assert.match(await page.locator('#skill-description-text').textContent(),/^공격력: 200% × 4회\n쿨타임: 10초\n마나 소모: 5$/);
  await page.screenshot({path:'.local/293-corvus-description.png'});check('내 정보 아이콘 클릭 설명');
  await page.locator('#skill-description-dialog button').click();await page.evaluate(()=>document.getElementById('avatar-dialog').close());
  Object.assign(player,{mapId:'star-origin-1',x:650,y:700,facing:{x:1,y:0}});player.corvusCooldownUntil=0;ensureVitals(player).mp=40;

@@ -22,7 +22,7 @@ export function drawSagittarius(ctx,effect,progress,time,reducedMotion=false){
   const size=effect.size||80;
   if(effect.kind==='arrow'){
     ctx.rotate(Math.atan2(effect.dy,effect.dx));const start=size/2,end=effect.range;
-    const head=start+(end-start)*Math.min(1,progress*1.6);
+    const head=effect.projectile?0:start+(end-start)*Math.min(1,progress*1.6);
     ctx.globalAlpha=1-progress*.7;arrow(ctx,head,0,size*(effect.basic ? .7 : 1.3),effect.basic?1:1.7);
     for(let i=0;i<3;i++){ctx.fillStyle=i%2?'#e4d5fa':'#fff5ce';star(ctx,head-size*(.25+i*.22),Math.sin(i*3+1)*10,3);}
   }else if(effect.kind==='hunter'){
