@@ -1,5 +1,6 @@
 import {ensureVitals} from './vitals.js';
-import {TRANSFORMATION} from '../shared/character-skills.js';
+import {TRANSFORMATION} from '../shared/transformation.js';
+import {vitalsOf} from '../shared/vitals.js';
 import {ensure} from './rooms.js';
 
 // 클라이언트가 레벨/지속시간을 보내도 사용하지 않습니다. 서버 설정이 기준입니다.
@@ -11,18 +12,18 @@ export function startTransformation(player,now,config=TRANSFORMATION){
   ensure(!player.transformation?.active,'이미 변신 중이에요.');
   ensure(now>=(player.transformation?.cooldownUntil||0),'변신을 다시 사용하려면 조금 기다려주세요.');
   player.transformation={active:true,endsAt:now+config.durationMs,cooldownUntil:now+config.cooldownMs,constellationId:player.avatar.constellationId,nextRegenAt:now+config.regenMs};
-  const vitals=ensureVitals(player);vitals.hp=config.maxVitals;vitals.mp=config.maxVitals;
+  const vitals=ensureVitals(player),limits=vitalsOf(player.avatar.level,player);vitals.hp=limits.hp.max;vitals.mp=limits.mp.max;
   return {...player.transformation};
 }
 export function expireTransformation(player,now){
   const state=player.transformation;
   if(!state?.active)return false;
   let changed=false;
-  const vitals=ensureVitals(player);
+  const vitals=ensureVitals(player),limits=vitalsOf(player.avatar.level,player);
   if(vitals.hp>0&&player.connected&&!player.away){
     while(state.nextRegenAt<=Math.min(now,state.endsAt)){
-      vitals.hp=Math.min(TRANSFORMATION.maxVitals,vitals.hp+TRANSFORMATION.maxVitals*TRANSFORMATION.regenRatio);
-      vitals.mp=Math.min(TRANSFORMATION.maxVitals,vitals.mp+TRANSFORMATION.maxVitals*TRANSFORMATION.regenRatio);
+      vitals.hp=Math.min(limits.hp.max,vitals.hp+limits.hp.max*TRANSFORMATION.regenRatio);
+      vitals.mp=Math.min(limits.mp.max,vitals.mp+limits.mp.max*TRANSFORMATION.regenRatio);
       state.nextRegenAt+=TRANSFORMATION.regenMs;changed=true;
     }
   }

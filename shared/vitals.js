@@ -1,10 +1,10 @@
-import {TRANSFORMATION} from './character-skills.js';
+import {transformationBonus} from './transformation.js';
 // 소행성 LV1 → 별자리 LV2/3/4 → 초월체 LV5의 임시 최대치입니다.
 export const VITAL_LIMITS=Object.freeze({1:1,2:10,3:20,4:30,5:40});
 import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
 export function vitalsOf(level,player=null){
   if(isTeacher(player))return {hp:{current:TEACHER_AVATAR.hp,max:TEACHER_AVATAR.hp},mp:{current:TEACHER_AVATAR.mp,max:TEACHER_AVATAR.mp}};
-  const max=player?.transformation?.active?TRANSFORMATION.maxVitals:VITAL_LIMITS[level];
+  const max=VITAL_LIMITS[level],bonus=transformationBonus(player);
   // 최초 입장·단계 변경 때의 최대치입니다. 전투 현재치는 server/vitals.js에서 유지합니다.
-  return Number.isInteger(level)&&max?{hp:{current:max,max},mp:{current:max,max}}:null;
+  return Number.isInteger(level)&&max?{hp:{current:max+bonus.hpBonus,max:max+bonus.hpBonus},mp:{current:max+bonus.mpBonus,max:max+bonus.mpBonus}}:null;
 }

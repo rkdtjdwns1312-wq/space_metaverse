@@ -98,7 +98,7 @@ try{
   await page.locator('.auxiliary-skill[data-skill-slot="transformation"]').click();
   await page.waitForFunction(()=>document.querySelector('.auxiliary-skill.is-transforming')!==null||
     document.querySelector('.auxiliary-skill .skill-cooldown:not([hidden])')!==null);
-  assert.equal(actor.transformation.active,true);assert.equal(ensureVitals(actor).hp,50);assert.equal(ensureVitals(actor).mp,50);
+  assert.equal(actor.transformation.active,true);assert.equal(ensureVitals(actor).hp,60);assert.equal(ensureVitals(actor).mp,40);
   const hp=await ensureVitals(actor).hp,mp=await ensureVitals(actor).mp;
   const box=await transformButton.boundingBox();assert.ok(box);
   const transformsBefore=()=>requests.filter(r=>r.event==='combat:transform').length;
@@ -107,7 +107,7 @@ try{
   await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);await page.waitForTimeout(100);
   assert.equal(transformsBefore(),countBefore+1);
   assert.equal(ensureVitals(actor).hp,hp);assert.equal(ensureVitals(actor).mp,mp);
-  check('real LV5 1-key transformation calls combat:transform and restores HP/MP to 50; 2/3 do not send further requests');
+  check('real LV5 1-key transformation calls combat:transform and restores special-class HP/MP to 60/40; 2/3 do not send further requests');
   await setLevel(1,'teacher');assert.equal(await page.locator('.auxiliary-skill').count(),0);
   await page.locator('#touch-attack').click();await page.waitForTimeout(100);
   assert.equal(transformsBefore(),countBefore+1);

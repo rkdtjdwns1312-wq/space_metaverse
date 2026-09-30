@@ -1,3 +1,4 @@
+import {transformedSkill} from '../shared/transformation.js';
 import {launchProjectiles} from './projectiles.js';
 import {randomUUID} from 'node:crypto';
 import {isSagittarius,sagittariusSkill,SAGITTARIUS_ATTACK} from '../shared/sagittarius-skills.js';
@@ -30,7 +31,7 @@ export function attackSagittarius(room,player,now=Date.now()){
   return execute(room,player,SAGITTARIUS_ATTACK,now,true);
 }
 export function castSagittarius(room,player,slot,now=Date.now()){
-  return execute(room,player,sagittariusSkill(slot),now,false);
+  return execute(room,player,transformedSkill(player,sagittariusSkill(slot)&&{...sagittariusSkill(slot),multiplier:3}),now,false);
 }
 function execute(room,player,skill,now,basic){
   const slot=skill?.slot;
@@ -54,7 +55,7 @@ function execute(room,player,skill,now,basic){
   let result={targets:[],playerTargets:[]},effects=[];
   if(basic||slot===0){
     const range=size*skill.rangeWidths,width=size*.13;
-    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*3,durationMs:basic?650:900},now);
+    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*skill.multiplier,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();
     const cast={...base,kind:slot===1?'hunter':'rain',x:slot===1?player.x+dx*size/2:target.entity.x,y:slot===1?player.y+dy*size/2:target.entity.y,lastMoveAt:now,

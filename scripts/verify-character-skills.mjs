@@ -37,10 +37,10 @@ try{
  check('E LV2/3/4 각각 해당 24F, LV5는 LV4 E 유지·MP5 소모');
  await page.keyboard.press('q');await page.waitForFunction(()=>document.querySelector('#world').dataset.lastCorvusVfx==='attack');
  await page.waitForTimeout(300);await page.screenshot({path:'.local/293-corvus-attack.png'});check('Q 검은 깃털 재생');
- await page.keyboard.press('1');await page.waitForTimeout(150);assert.equal(player.transformation.active,true);assert.equal(ensureVitals(player).hp,50);assert.equal(ensureVitals(player).mp,50);check('키1 변신 즉시HP/MP50완전회복·LV5외형·쿨타임');
+ await page.keyboard.press('1');await page.waitForTimeout(150);assert.equal(player.transformation.active,true);assert.equal(ensureVitals(player).hp,60);assert.equal(ensureVitals(player).mp,60);check('키1 변신 즉시HP/MP60완전회복·LV5외형·쿨타임');
  await page.screenshot({path:'.local/293-transformed.png'});
- ensureVitals(player).hp=20;ensureVitals(player).mp=10;clockShift+=5100;await page.waitForTimeout(130);assert.equal(ensureVitals(player).hp,25);assert.equal(ensureVitals(player).mp,15);
- clockShift+=25000;await page.waitForTimeout(130);assert.equal(player.transformation.active,false);assert.equal(ensureVitals(player).hp,40);check('5초마다5회복·30초뒤변신종료·최대치원복');
+ ensureVitals(player).hp=20;ensureVitals(player).mp=10;clockShift+=5100;await page.waitForTimeout(130);assert.equal(ensureVitals(player).hp,26);assert.equal(ensureVitals(player).mp,16);
+ clockShift+=25000;await page.waitForTimeout(130);assert.equal(player.transformation.active,false);assert.equal(ensureVitals(player).hp,40);check('5초마다6회복·30초뒤변신종료·최대치원복');
  await page.evaluate(()=>document.getElementById('avatar-dialog').showModal());
  await page.locator('#self-skill-slots button').nth(1).click();await page.locator('#skill-description-dialog').waitFor({state:'visible'});
  assert.match(await page.locator('#skill-description-text').textContent(),/^공격력: 200% × 4회\n쿨타임: 10초\n마나 소모: 5$/);
