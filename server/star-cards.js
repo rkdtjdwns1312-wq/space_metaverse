@@ -4,6 +4,7 @@ import {CONSTELLATIONS} from '../shared/constellations.js';
 import {STAR_CARD_AUTOMATION, discountedPurchase} from '../shared/star-card-automation.js';
 import {gainExperience} from './progression.js';
 import {STAR_CARD_CATALOG, GOLD_CARD_ITEMS, STAR_CARD_LAYOUT, STAR_CARD_ART, MAX_STAR_CARDS, starCardOf, goldItemIdOf} from '../shared/star-cards.js';
+import {displayStarCard} from './star-card-text.js';
 import {ensure} from './rooms.js';
 import {hasCardStatus, nextKoreaMidnight} from './item-cards.js';
 import {activeItemBlocks} from './constellation-abilities.js';
@@ -157,8 +158,8 @@ function rowSlots(count){
 }
 export const STAR_CARD_SLOTS=Object.freeze(rowSlots(MAX_STAR_CARDS));
 
-function publicRecord(record,position=STAR_CARD_SLOTS[record.data.slot]) {
-  const card = starCardOf(record.cardId);
+function publicRecord(room,record,position=STAR_CARD_SLOTS[record.data.slot]) {
+  const card = displayStarCard(room,record.cardId);
   const copy = structuredClone(record);
   // 할인 사용 목록은 구매 내역입니다. 다른 학생에게 가는 공개 카드에 넣지 않습니다.
   if (copy.cardId === 'saturn' && copy.data.automation) copy.data.automation = {version: 1};
@@ -173,7 +174,7 @@ export function activeStarCards(room, now = Date.now()) {
   validTime(now);
   const records=validateStarCards(room.starCards).filter(record=>active(record,now)).sort((a,b)=>a.data.slot-b.data.slot);
   const slots=rowSlots(records.length);
-  return records.map((record,index)=>publicRecord(record,slots[index]));
+  return records.map((record,index)=>publicRecord(room,record,slots[index]));
 }
 
 export function removeStarCard(room, teacher, id) {

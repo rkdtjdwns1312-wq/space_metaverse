@@ -48,12 +48,16 @@ try{
   const recipe=loadCraftingRecipes().find(r=>SHOP.items.find(i=>i.id===r.output.id)?.level===2),id=recipeItemId(recipe.output.id);
   const fillers=SHOP.items.filter(i=>i.id!=='galaxy-card').slice(0,40).map(item=>({id:item.id,quantity:1}));
   game.store.transact(()=>{p.inventory=[...fillers,{id,quantity:2}];p.lastItemUseAt=0;});publish();await bag();await page.locator('.inventory-page-tab').filter({hasText:'3'}).click();await select(id);
+  const recipeArt=page.locator(`#bag-list [data-item-id="${id}"] img`);
+  assert.equal(await recipeArt.getAttribute('src'),'/assets/items/recipe-paper-bundle.webp');
+  await recipeArt.evaluate(image=>image.decode());
+  assert.ok((await page.locator('#bag-detail').textContent()).includes('조합 레시피'));
   await page.locator('#bag-detail .use').click();await page.locator('#use-confirm').click();await page.locator('#use-dialog').waitFor({state:'hidden'});assert.ok(p.learnedRecipeIds.includes(recipe.output.id));assert.equal(p.inventory.find(i=>i.id===id).quantity,1);
   await page.locator('#bag-recipes').click();await page.locator(`.recipe-book-list [data-recipe-id="${recipe.output.id}"]`).waitFor();assert.equal(await page.locator('.recipe-book-list li').count(),1);await page.screenshot({path:'.local/317-recipe-book.png'});await close();
   await bag();await select(id);await page.locator('#bag-detail .use').click();await page.locator('#use-confirm').click();await page.locator('#use-dialog').waitFor({state:'hidden'});assert.equal(p.inventory.find(i=>i.id===id).quantity,1);
   check('3번 가방 레시피 아이템 사용·본인 목록 공개·이미 학습한 레시피 보존');
   await close();Object.assign(p,{mapId:STREET_ID,x:shop.x,y:shop.y+80});room.energyDrops=new Map([['ui-recipe-drop',{id:'ui-recipe-drop',kind:'recipe',itemId:id,mapId:p.mapId,x:p.x+20,y:p.y,total:1,shares:new Map([[p.id,1]]),expiresAt:now+60000}]]);publish();await page.waitForTimeout(250);
-  await page.locator('#interact-prompt').filter({hasText:'조합법 줍기'}).waitFor();await page.screenshot({path:'.local/317-recipe-drop.png'});await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#toast').filter({hasText:'조합법을 주웠어요'}).waitFor();assert.equal(p.inventory.find(i=>i.id===id).quantity,2);
+  await page.locator('#interact-prompt').filter({hasText:'조합 레시피 줍기'}).waitFor();await page.screenshot({path:'.local/317-recipe-drop.png'});await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#toast').filter({hasText:'조합 레시피를 주웠어요'}).waitFor();assert.equal(p.inventory.find(i=>i.id===id).quantity,2);
   check('레시피 바닥 그림·F 습득·가방 지급');assert.deepEqual(errors,[]);
   await writeFile('.local/315-317-browser-result.json',JSON.stringify({checks,errors},null,2));
 }finally{teacher.disconnect();await browser.close();await game.close();assert.equal(dirname(resolve(dir)),root);await rm(dir,{recursive:true,force:true});}

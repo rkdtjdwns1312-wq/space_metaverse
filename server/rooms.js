@@ -60,7 +60,7 @@ export class RoomStore {
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
     const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
-      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map() };
+      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map(), starCardText:{} };
     this.rooms.set(room.code,room);
     // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
     if (data.seedPlanets===true) for (const seed of EXAMPLE_PLANETS) addPlanet(room,{...seed,createdBy:null});

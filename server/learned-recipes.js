@@ -44,5 +44,5 @@ export function useRecipeItem(room, player, data, recipes, now = Date.now()) {
   player.learnedRecipeIds = [...(player.learnedRecipeIds || []), item.outputId];
   player.lastItemUseAt = now;
   return {learned: true, alreadyLearned: false, recipeId: item.outputId,
-    inventory: structuredClone(player.inventory), message: item.name + '을 배웠어요.'};
+    inventory: structuredClone(player.inventory), message: item.name + '를 배웠어요.'};
 }

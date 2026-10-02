@@ -18,6 +18,7 @@ import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
 import {validateMemoryRanking} from './memory-game.js';
 import {validateStarCards} from './star-cards.js';
+import {validateStarCardText} from './star-card-text.js';
 import {validateLv3State} from './lv3-item-effects.js';
 import {validateHoldingState} from '../shared/holding-abilities.js';
 import {validateLearnedRecipeIds} from './learned-recipes.js';
@@ -52,6 +53,7 @@ export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     temple:structuredClone(room.temple),
     starCards:validateStarCards(room.starCards),
+    starCardText:validateStarCardText(room.starCardText),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
     memoryRanking:structuredClone(room.memoryRanking||[]),
@@ -80,6 +82,7 @@ export function fromRecord(r) {
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
     temple:validateTemple(r.temple),
     starCards:validateStarCards(r.starCards),
+    starCardText:validateStarCardText(r.starCardText),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
     memoryRanking:validateMemoryRanking(r.memoryRanking),

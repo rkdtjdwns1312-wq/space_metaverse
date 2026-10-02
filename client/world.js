@@ -44,6 +44,8 @@ const TEACHER_SPRITE=TEACHER_AVATAR.sprite;
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const avatarSprites=new Map();
 const portraitPlayers=new WeakMap();
+// 초상화 배경은 진화 단계마다 별도로 교체합니다. LV5 변신 전후와 교사는 가장 화려한 신전을 사용합니다.
+const portraitBackgrounds=Array.from({length:5},(_,index)=>`/assets/portrait-backgrounds/lv${index+1}.webp`);
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 // 원화는 그대로 두고 주변 성운의 밝기·회전만 천천히 바꿉니다.
 function celestialAura(ctx,color,r,time){
@@ -641,10 +643,12 @@ export function renderPortrait(canvas,player,effects){
   portraitPlayers.set(canvas,player);
   const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
   ctx.clearRect(0,0,w,h);
-  const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#2c2350');g.addColorStop(1,'#4a3a7a');
-  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-  for(let i=0;i<24;i++){const sx=(i*53+17)%w,sy=(i*37+11)%h,r=i%4===0?1.6:1;
-    ctx.fillStyle='#ffffffb0';ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();}
+  const level=player?.role==='teacher'?5:Math.max(1,Math.min(5,Number(player?.avatar?.level)||1));
+  const backdrop=loadedAvatarSprite(portraitBackgrounds[level-1],()=>{
+    if(portraitPlayers.get(canvas)===player)renderPortrait(canvas,player,effects);
+  });
+  if(backdrop)ctx.drawImage(backdrop,0,0,w,h);
+  else{ctx.fillStyle='#292445';ctx.fillRect(0,0,w,h);}
   const cx=w/2,cy=h/2+8,list=(effects||player?.effects||[]).slice(0,3);
   if(list.some(e=>e.style==='glow')){
     const glow=ctx.createRadialGradient(cx,cy,6,cx,cy,60);glow.addColorStop(0,'#fff2b880');glow.addColorStop(1,'#fff2b800');

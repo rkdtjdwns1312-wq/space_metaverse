@@ -5,26 +5,32 @@ import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {io} from 'socket.io-client';
 import {SHOP} from '../shared/config.js';
+import {recipeItemId} from '../shared/recipe-items.js';
 import {teacherInventoryView,adjustTeacherInventory} from '../server/teacher-inventory.js';
 import {createClassroomServer} from '../server/app.js';
 
 function fixture(){
   const teacher={id:'teacher',role:'teacher',connected:true},student={id:'student',nickname:'학생',role:'student',connected:false,inventory:[]};
-  return {teacher,student,room:{players:new Map([[teacher.id,teacher],[student.id,student]])}};
+  return {teacher,student,room:{players:new Map([[teacher.id,teacher],[student.id,student]]),recipeDropOutputIds:['galaxy-card','supernova-alpha-card','nebula-card','mini-satellite']}};
 }
 test('교사만 같은 교실의 미접속 가방 조회·추가·1개 제거, 학생 레벨/재화 무관',()=>{
   const {room,teacher,student}=fixture();student.avatar={level:1};student.starShards=0;
   const view=teacherInventoryView(room,teacher);assert.equal(view.playerId,student.id);assert.equal(view.students[0].connected,false);
   assert.ok(view.catalog.every(i=>i.level>=1&&i.level<=4));
+  const recipes=view.catalog.filter(i=>i.mode==='recipe');
+  assert.deepEqual(recipes.map(i=>[i.id,i.level]),[['recipe:galaxy-card',2],['recipe:supernova-alpha-card',3],['recipe:nebula-card',4],['recipe:mini-satellite',2]]);
+  assert.ok(recipes.every(i=>!('ingredients'in i)&&!('recipe'in i)));
   for(const actor of [student,{...teacher},{...teacher,role:'student'},undefined]){
     assert.throws(()=>teacherInventoryView(room,actor));
     assert.throws(()=>adjustTeacherInventory(room,actor,{playerId:student.id,itemIds:['nebula-card']},'give'));
   }
   const data={playerId:student.id,itemIds:['space-food-card','nebula-card']};
   adjustTeacherInventory(room,teacher,data,'give');adjustTeacherInventory(room,teacher,data,'give');
-  assert.equal(student.inventory[0].quantity,2);assert.equal(student.starShards,0);
-  adjustTeacherInventory(room,teacher,{playerId:student.id,itemId:'space-food-card'},'remove');assert.equal(student.inventory[0].quantity,1);
-  adjustTeacherInventory(room,teacher,{playerId:student.id,itemId:'space-food-card'},'remove');assert.equal(student.inventory.length,1);
+  adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:[recipeItemId('nebula-card')]},'give');
+  assert.equal(student.inventory.find(i=>i.id===recipeItemId('nebula-card')).quantity,1);
+  assert.equal(student.inventory.find(i=>i.id==='space-food-card').quantity,2);assert.equal(student.starShards,0);
+  adjustTeacherInventory(room,teacher,{playerId:student.id,itemId:'space-food-card'},'remove');assert.equal(student.inventory.find(i=>i.id==='space-food-card').quantity,1);
+  adjustTeacherInventory(room,teacher,{playerId:student.id,itemId:'space-food-card'},'remove');assert.equal(student.inventory.some(i=>i.id==='space-food-card'),false);
   assert.throws(()=>adjustTeacherInventory(room,teacher,{playerId:student.id,itemId:'space-food-card'},'remove'));
   assert.throws(()=>teacherInventoryView(room,teacher,'another-class'));assert.throws(()=>teacherInventoryView(room,teacher,teacher.id));
 });

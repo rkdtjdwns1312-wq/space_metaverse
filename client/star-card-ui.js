@@ -116,16 +116,12 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
     const card = result?.card ?? result?.activeentry ?? result?.activeEntry ?? result ?? {};
     const definition = result?.definition ?? card.definition ?? {};
     cardId = id ?? card.id ?? card.cardId ?? null;
-    name.textContent = text(definition.name ?? card.name ?? '별카드');
+    renderCardText(definition,card);
     const nickname = card.nickname ?? card.usedByNickname ?? card.userNickname ?? card.ownerNickname;
     const self = getRoom?.()?.players?.find(player => player.id === getSelfId?.());
     usedBy.textContent = nickname ? `${nickname}이 사용` : (self?.nickname ? `${self.nickname}이 사용` : '사용자 확인 중');
     const seconds = remaining(card);
     expiry.textContent = remainingLabel(seconds);
-    description.replaceChildren();
-    paragraphList(definition.description ?? card.description).forEach(value => { const p = document.createElement('p'); p.textContent = value; description.append(p); });
-    effect.replaceChildren();
-    paragraphList(definition.effect ?? card.effect).forEach(value => { const p = document.createElement('p'); p.textContent = value; effect.append(p); });
     messages.replaceChildren();
     paragraphList(card.data?.messages ?? card.messages).forEach(value => { const p = document.createElement('p'); p.textContent = value; messages.append(p); });
     manualNote.textContent = text(card.manualNote ?? card.data?.manualNote);
@@ -134,6 +130,14 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
     error.textContent = '';
     remove.hidden = result?.canRemove !== true;
     removeConfirm.hidden = true;
+  }
+
+  function renderCardText(definition,card){
+    name.textContent=text(definition.name ?? card.name ?? '별카드');
+    description.replaceChildren();
+    paragraphList(definition.description ?? card.description).forEach(value=>{const p=document.createElement('p');p.textContent=value;description.append(p);});
+    effect.replaceChildren();
+    paragraphList(definition.effect ?? card.effect).forEach(value=>{const p=document.createElement('p');p.textContent=value;effect.append(p);});
   }
 
   function renderChoice(result) {
@@ -221,6 +225,12 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
       const latestChoice = latest.data?.automation?.version === 1 ? latest.data.automation.choice : undefined;
       const changed = latestChoice !== observedAutomationChoice;
       currentResult.card = latest;
+      // 교사가 표시 문구를 저장하면 이미 열려 있는 학생의 카드 읽기 창도 바로 갱신합니다.
+      const definition=currentResult.definition||{};
+      if(['name','description','effect'].some(field=>definition[field]!==latest[field])){
+        currentResult.definition={...definition,name:latest.name,description:latest.description,effect:latest.effect};
+        renderCardText(currentResult.definition,latest);
+      }
       if (changed && !choosing) renderChoice(currentResult);
     }
     const seconds = remaining(currentResult.card);

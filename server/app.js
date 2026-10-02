@@ -3,6 +3,7 @@ import {allowsOfflineItemTarget} from '../shared/item-targets.js';
 import {teacherInventoryView,adjustTeacherInventory} from './teacher-inventory.js';
 import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
 import {teacherCardCatalog} from './teacher-card-catalog.js';
+import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
 import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aquarius-skills.js';
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
@@ -1199,6 +1200,21 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
     action('teacher:cards:catalog',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return teacherCardCatalog(s.room,s.player);},false);
+    action('teacher:cards:update',data=>{
+      const s=socket.data.session;
+      ensure(s?.player.role==='teacher'&&s.room.players.get(s.player.id)===s.player&&s.player.connected,'선생님만 별카드 문구를 수정할 수 있어요.');
+      ensure(starCardOf(data.id),'수정할 별카드를 선택해주세요.');
+      const entry={};
+      for(const [field,limit] of Object.entries(STAR_CARD_TEXT_LIMITS)){
+        ensure(typeof data[field]==='string'&&data[field].length<=limit&&!data[field].includes('\0'),`${field} 글자 수를 확인해주세요.`);
+        entry[field]=data[field].replaceAll('\r\n','\n').trim();
+      }
+      ensure(entry.name&&entry.effect,'카드 이름과 효과 문구를 입력해주세요.');
+      s.room.starCardText??={};
+      s.room.starCardText={...s.room.starCardText,[data.id]:entry};
+      roster(s.room);
+      return {card:displayStarCard(s.room,data.id),message:'별카드 표시 문구를 저장했어요.'};
+    });
     action('holding:status',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return holdingStatus(s.room,s.player,data.itemId,clock());},false);
     action('holding:use',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const result=useHoldingAbility(s.room,s.player,data,clock(),abilityDie);roster(s.room);return result;});
     action('lv4:info',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return lv4Info(s.room,s.player);});
@@ -1356,13 +1372,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     // 학생 입력으로 카드 종류나 보상을 정하지 않습니다. 공개·제거도 같은 저장 트랜잭션에 들어갑니다.
     const cardReply=(card,canRemove=false)=>{
-      const definition=starCardOf(card.cardId),d=card.data;
+      const s=socket.data.session,definition=displayStarCard(s.room,card.cardId),d=card.data;
       const messages=[...(d.rewards||[]).map(r=>(itemOf(r.itemId)?.name||r.itemId)+' '+r.quantity+'개 지급'),
         ...(d.xp?[`경험치 ${d.xp} 지급`]:[]),...(d.shards?[`초과 경험치를 별 파편 ${d.shards}개로 지급`]:[]),
         ...(d.warningsCleared?[`경고 ${d.warningsCleared}건 해제`]:[]),...(d.blackStarsCleared?[`검은별 ${d.blackStarsCleared}개 해제`]:[]),
         ...(d.automation?.choice==='xp'?[`주사위 ${d.roll} → 경험치 보상 ${Math.min(d.roll*3,10)}`]:[]),
         ...(d.automation?.choice==='constellation'?[`${constellationOf(d.automation.constellationId)?.name}로 변경 완료`]:[])];
-      const s=socket.data.session;
       return {card:{...card,data:{...d,messages,manualNote:[...(d.automatic||[]),...(d.manual||[])].join(' ')}},definition,canRemove,
         ...starCardChoiceInfo(s.room,s.player,card)};
     };

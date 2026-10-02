@@ -782,7 +782,7 @@ async function travelTo(to){try{await request('map:travel',{to});}catch(e){toast
 function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
-  if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.kind==='recipe'?(itemOf(r.itemId)?.name||'조합법')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
+  if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.kind==='recipe'?(itemOf(r.itemId)?.name||'조합 레시피')+'를 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
