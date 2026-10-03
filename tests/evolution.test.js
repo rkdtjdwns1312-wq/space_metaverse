@@ -6,8 +6,11 @@ import path from 'node:path';
 import { io } from 'socket.io-client';
 import { createAvatar, VALLEY, VALLEY_ID } from '../shared/config.js';
 import { CONSTELLATIONS,CONSTELLATION_TYPES,LEGACY_CONSTELLATIONS,constellationOf } from '../shared/constellations.js';
-import { buyExperience, changeConstellation, evolutionInfo, evolveConstellation, growthInfo } from '../server/evolution.js';
+import { buyExperience, changeConstellation, evolutionInfo, evolveConstellation, selectTeacherEvolution, growthInfo } from '../server/evolution.js';
 import { createClassroomServer } from '../server/app.js';
+import {avatarSizeOf} from '../shared/avatar-size.js';
+import {avatarLabel} from '../shared/avatar-label.js';
+import {attackPowerOf} from '../shared/combat.js';
 
 const evolutionStar = VALLEY.objects.find(object => object.id === 'evolution-star');
 const growthStar = VALLEY.objects.find(object => object.id === 'growth-star');
@@ -75,12 +78,27 @@ test('two sequential first evolutions fill a constellation and the next request 
 });
 
 test('constellation change preserves level, xp, form, equipment, and department metadata', () => {
-  const me = player({ avatar: { ...createAvatar(), level: 4, xp: 17, constellationId: 'orion', departmentId: 'science', equipment: { pet: 'comet' } } });
+  const me = player({ starShards:12,avatar: { ...createAvatar(), level: 4, xp: 17, constellationId: 'orion', departmentId: 'science', equipment: { pet: 'comet' } } });
   const before = structuredClone(me.avatar);
   changeConstellation(room(me), me, { constellationId: 'corvus' });
   assert.deepEqual(me.avatar, { ...before, form: 'constellation', constellationId: 'corvus' });
+  assert.equal(me.starShards,4);
   assert.throws(() => changeConstellation(room(me), me, { constellationId: 'lyra' }), /현재 선택할 수 있는/);
+  assert.throws(()=>changeConstellation(room(me),me,{constellationId:'corvus'}),/지금과 다른/);
+  assert.equal(me.starShards,4);
   assert.throws(() => changeConstellation(room(player()), player(), { constellationId: 'aries' }), /LV1/);
+});
+
+test('constellation change costs current LV×2 shards and leaves avatar untouched when insufficient',()=>{
+  const me=player({starShards:5,avatar:{...createAvatar(),level:3,constellationId:'aries',xp:11}});
+  const before=structuredClone(me.avatar),classroom=room(me);
+  assert.equal(evolutionInfo(classroom,me).changeCost,6);
+  assert.throws(()=>changeConstellation(classroom,me,{constellationId:'pisces'}),/6개가 필요/);
+  assert.deepEqual(me.avatar,before);assert.equal(me.starShards,5);
+  me.starShards=6;
+  const result=changeConstellation(classroom,me,{constellationId:'pisces'});
+  assert.equal(result.starShards,0);assert.equal(me.avatar.xp,11);
+  assert.equal(me.avatar.constellationId,'pisces');
 });
 
 test('manual evolution rejects missing xp, resets xp, advances one step, and keeps lineage', () => {
@@ -106,9 +124,9 @@ test('level four becomes transcendent at level five and cannot evolve again', ()
   assert.throws(() => evolveConstellation(classroom, me, {}), /최고 단계/);
 });
 
-test('server functions require a student on the correct map and near the matching star', () => {
+test('evolution star admits teachers but still requires the correct map and distance', () => {
   const teacher = player({ role: 'teacher' });
-  assert.throws(() => evolutionInfo(room(teacher), teacher), /학생만/);
+  assert.equal(evolutionInfo(room(teacher), teacher).teacherMode,true);
   const awayMap = player({ mapId: 'space-plaza' });
   assert.throws(() => evolutionInfo(room(awayMap), awayMap), /은하수계곡/);
   const far = player({ x: 0, y: 0 });
@@ -116,6 +134,28 @@ test('server functions require a student on the correct map and near the matchin
   const growthOnly = atGrowth(player());
   assert.doesNotThrow(() => growthInfo(room(growthOnly), growthOnly));
   assert.throws(() => evolutionInfo(room(growthOnly), growthOnly), /가까이/);
+});
+
+test('teacher can preview all stages and constellations without xp or quota, while student cannot',()=>{
+  const teacher=player({role:'teacher',avatar:{...createAvatar(),level:6,form:'star-guardian'}});
+  const students=[player({avatar:{...createAvatar(),level:2,constellationId:'taurus'}}),
+    player({avatar:{...createAvatar(),level:3,constellationId:'taurus'}})];
+  const classroom=room(teacher,...students);
+  assert.equal(evolutionInfo(classroom,teacher).options.find(value=>value.id==='taurus').available,true);
+  for(const level of [2,3,4,5]){
+    const result=selectTeacherEvolution(classroom,teacher,{level,constellationId:'taurus'});
+    assert.deepEqual({level:result.avatar.level,id:result.avatar.constellationId,xp:result.avatar.xp,teacherPreview:result.avatar.teacherPreview},
+      {level,id:'taurus',xp:0,teacherPreview:true});
+    assert.equal(avatarLabel(teacher).detail.includes('LV'+level+' 황소자리'),true);
+    assert.equal(attackPowerOf(level,'taurus',teacher),99999,'선생님 운영 권한과 능력치는 유지');
+    assert.ok(avatarSizeOf(teacher)>32);
+  }
+  selectTeacherEvolution(classroom,teacher,{level:1});
+  assert.deepEqual({level:teacher.avatar.level,id:teacher.avatar.constellationId},{level:1,id:null});
+  assert.equal(avatarSizeOf(teacher),32);
+  assert.throws(()=>selectTeacherEvolution(classroom,students[0],{level:5,constellationId:'gemini'}),/선생님만/);
+  assert.throws(()=>selectTeacherEvolution(classroom,teacher,{level:6,constellationId:'gemini'}),/LV1~LV5/);
+  assert.throws(()=>selectTeacherEvolution(classroom,teacher,{level:4,constellationId:'unknown'}),/현재 선택/);
 });
 
 test('experience purchase uses exact balance and caps at the current threshold without evolving', () => {
@@ -191,6 +231,50 @@ test('actual socket actions cap purchase and allow a confirmed first evolution',
   const evolved = await fixture.call(fixture.student, 'evolution:evolve', { constellationId: 'aries', xp: 999 });
   assert.deepEqual({ ok: evolved.ok, level: evolved.avatar.level, xp: evolved.avatar.xp, constellationId: evolved.avatar.constellationId },
     { ok: true, level: 2, xp: 0, constellationId: 'aries' });
+});
+
+test('teacher socket may choose a full constellation and any stage without xp, students are denied',async t=>{
+  const fixture=await serverFixture(t);
+  const classroom=fixture.game.store.rooms.get(fixture.code);
+  const teacher=[...classroom.players.values()].find(p=>p.role==='teacher');
+  Object.assign(teacher,{mapId:VALLEY_ID,x:evolutionStar.x,y:evolutionStar.y});
+  const info=await fixture.call(fixture.teacher,'evolution:info');
+  assert.equal(info.teacherMode,true);
+  const chosen=await fixture.call(fixture.teacher,'evolution:teacher-select',{level:5,constellationId:'aries'});
+  assert.equal(chosen.ok,true,chosen.error);
+  assert.deepEqual({level:teacher.avatar.level,id:teacher.avatar.constellationId,preview:teacher.avatar.teacherPreview},
+    {level:5,id:'aries',preview:true});
+  const student=classroom.players.get(fixture.playerId);
+  Object.assign(student,{mapId:VALLEY_ID,x:evolutionStar.x,y:evolutionStar.y});
+  const denied=await fixture.call(fixture.student,'evolution:teacher-select',{level:5,constellationId:'aries'});
+  assert.equal(denied.ok,false);assert.match(denied.error,/선생님만/);
+  const stage1=await fixture.call(fixture.teacher,'evolution:teacher-select',{level:1});
+  assert.equal(stage1.ok,true,stage1.error);assert.equal(stage1.avatar.level,1);
+});
+
+test('student socket charges exactly LV×2 for constellation change and rolls back failed saves',async t=>{
+  const fixture=await serverFixture(t);
+  const classroom=fixture.game.store.rooms.get(fixture.code),student=classroom.players.get(fixture.playerId);
+  Object.assign(student,{mapId:VALLEY_ID,x:evolutionStar.x,y:evolutionStar.y});
+  Object.assign(student.avatar,{level:3,constellationId:'aries',form:'constellation',xp:9});
+  assert.equal((await fixture.call(fixture.teacher,'shards:give',{playerId:student.id,amount:5})).ok,true);
+  const denied=await fixture.call(fixture.student,'evolution:change',{constellationId:'pisces'});
+  assert.equal(denied.ok,false);assert.match(denied.error,/6개가 필요/);
+  let current=fixture.game.store.rooms.get(fixture.code).players.get(fixture.playerId);
+  assert.equal(current.starShards,5);assert.equal(current.avatar.constellationId,'aries');
+  assert.equal((await fixture.call(fixture.teacher,'shards:give',{playerId:student.id,amount:1})).ok,true);
+  const realSave=fixture.game.store.files.save.bind(fixture.game.store.files);
+  fixture.game.store.files.save=()=>{throw new Error('simulated change disk full');};
+  try{
+    const failed=await fixture.call(fixture.student,'evolution:change',{constellationId:'pisces'});
+    assert.equal(failed.ok,false);assert.match(failed.error,/저장하지 못했어요/);
+  }finally{fixture.game.store.files.save=realSave;}
+  current=fixture.game.store.rooms.get(fixture.code).players.get(fixture.playerId);
+  assert.equal(current.starShards,6);assert.equal(current.avatar.constellationId,'aries');
+  const changed=await fixture.call(fixture.student,'evolution:change',{constellationId:'pisces'});
+  assert.equal(changed.ok,true,changed.error);
+  assert.equal(changed.starShards,0);assert.equal(changed.avatar.constellationId,'pisces');
+  assert.equal(changed.avatar.xp,9);
 });
 
 test('persistent socket transaction rolls back both shards and xp when saving fails', async t => {

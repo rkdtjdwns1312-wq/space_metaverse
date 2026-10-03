@@ -1,10 +1,20 @@
 import {corvusSkillOf} from '/shared/character-skills.js';
 import {aquariusSkillOf} from '/shared/aquarius-skills.js';
 import {waterSkillOf,isWaterConstellation} from '/shared/water-skills.js';
+import {swanSkillOf} from '/shared/swan-skills.js';
+import {ophiuchusSkillOf} from '/shared/ophiuchus-skills.js';
+import {geminiSkillOf} from '/shared/gemini-skills.js';
+import {ariesSkillOf} from '/shared/aries-skills.js';
+import {taurusSkillOf} from '/shared/taurus-skills.js';
+import {herculesSkillOf} from '/shared/hercules-skills.js';
+import {libraSkillOf} from '/shared/libra-skills.js';
+import {coronaSkillOf} from '/shared/corona-skills.js';
+import {capricornSkillOf} from '/shared/capricorn-skills.js';
+import {leoSkillOf} from '/shared/leo-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
-import {isSagittarius,sagittariusSkill} from '/shared/sagittarius-skills.js';
+import {isSagittarius,sagittariusSkillOf} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
-export function createCombatControls({getPlayer,canAct,toast,request}){
+export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{}}){
   const attack=document.getElementById('touch-attack'),skill=document.getElementById('touch-skill');
   const last={attack:-Infinity,skill:-Infinity};
   let cooldowns={},owner=null,serverOffset=0;
@@ -15,7 +25,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     const player=getPlayer();if(!player||!canAct())return;
     if(slot!==0){toast('기존 보조 스킬은 더 이상 사용하지 않아요.');return;}
     if(player.vitals?.defeated){toast('체력을 회복하는 중이에요.');return;}
-    const spec=player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):isWaterConstellation(player)?waterSkillOf(player):isSagittarius(player)&&sagittariusSkill(slot);
+    const spec=player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):player.avatar.constellationId==='cygnus'?swanSkillOf(player):player.avatar.constellationId==='ophiuchus'?ophiuchusSkillOf(player):player.avatar.constellationId==='gemini'?geminiSkillOf(player):player.avatar.constellationId==='aries'?ariesSkillOf(player):player.avatar.constellationId==='taurus'?taurusSkillOf(player):player.avatar.constellationId==='hercules'?herculesSkillOf(player):player.avatar.constellationId==='libra'?libraSkillOf(player):player.avatar.constellationId==='corona-borealis'?coronaSkillOf(player):player.avatar.constellationId==='capricorn'?capricornSkillOf(player):player.avatar.constellationId==='leo'?leoSkillOf(player):isWaterConstellation(player)?waterSkillOf(player):isSagittarius(player)&&sagittariusSkillOf(player);
     if(spec){
       if(player.avatar.level<spec.level){toast(`LV${spec.level}부터 사용할 수 있어요.`);return;}
       const remaining=owner===player.id?(cooldowns[slot]||0)-Date.now()-serverOffset:0;
@@ -24,7 +34,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
       if(slot!==0){toast('보조 스킬은 준비 중이에요.');return;}
       if(performance.now()-last.skill<SKILL_COOLDOWN_MS)return;last.skill=performance.now();
     }
-    try{const result=await request('combat:skill',{slot});if(result.ready)sync(result);else toast('전투 스킬은 준비 중이에요. 지금은 별자리 이펙트를 미리 볼 수 있어요.');}
+    try{const result=await request('combat:skill',{slot});if(result.ready){sync(result);onSound('e',player.avatar.constellationId);}else toast('전투 스킬은 준비 중이에요. 지금은 별자리 이펙트를 미리 볼 수 있어요.');}
     catch(error){toast(error.message);}
   }
   async function act(kind){
@@ -36,7 +46,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     if(player.avatar.level<2){toast('LV2부터 공격할 수 있어요.');return;}
     const power=player.combat?.attackPower;
     if(power==null){toast('이 단계의 공격력은 설정 준비 중이에요.');return;}
-    try{const result=await request('combat:attack',{});if((result.targets||[result.target]).some(target=>target?.defeated))toast('별자리 몬스터를 잡았어요! 잠시 뒤 다시 나타나요.');}catch(error){toast(error.message);}
+    try{const result=await request('combat:attack',{});onSound('q',player.avatar.constellationId);if(result.cooldowns)sync(result);if((result.targets||[result.target]).some(target=>target?.defeated))toast('별자리 몬스터를 잡았어요! 잠시 뒤 다시 나타나요.');}catch(error){toast(error.message);}
   }
   attack.onclick=()=>act('attack');skill.onclick=()=>act('skill');
   window.addEventListener('keydown',event=>{
@@ -52,7 +62,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     [skill].forEach((button,slot)=>{
       let badge=button.querySelector('.skill-cooldown');
       if(!badge){badge=document.createElement('span');badge.className='skill-cooldown';button.append(badge);}
-      const left=owner===player?.id&&['aquarius','corvus','sagittarius','cancer','cetus','pisces'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
+      const left=owner===player?.id&&['aquarius','corvus','sagittarius','cancer','cetus','pisces','cygnus','ophiuchus','gemini','aries','taurus','hercules','libra','corona-borealis','capricorn','leo'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
       badge.hidden=left<=0;badge.textContent=left>0?String(left):'';
     });
   },100);

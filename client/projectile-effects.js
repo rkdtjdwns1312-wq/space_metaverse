@@ -1,6 +1,13 @@
 import {drawCorvus} from './corvus-effects.js';
 import {drawAquarius} from './aquarius-effects.js';
 import {drawWaterProjectile} from './water-effects.js';
+import {drawSwanProjectile} from './swan-effects.js';
+import {drawOphiuchusProjectile} from './ophiuchus-effects.js';
+import {drawGeminiProjectile} from './gemini-effects.js';
+import {drawAriesProjectile} from './aries-effects.js';
+import {drawTaurusProjectile} from './taurus-effects.js';
+import {drawLibraProjectile} from './libra-effects.js';
+import {drawCoronaProjectile} from './corona-effects.js';
 import {drawSagittarius} from './sagittarius-effects.js';
 import {waterProjectilePoint} from '/shared/water-skills.js';
 
@@ -21,7 +28,7 @@ export function createProjectileEffects(canvas){
         if(age>=p.durationMs){active.delete(id);continue;}
         const progress=age/p.durationMs;
         const visual={...p,...waterProjectilePoint(p,progress),projectile:true};
-        if(p.visible!==false&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
+        if(p.visible!==false&&!drawCoronaProjectile(ctx,visual,age,reducedMotion)&&!drawLibraProjectile(ctx,visual,age,reducedMotion)&&!drawTaurusProjectile(ctx,visual,age,reducedMotion)&&!drawAriesProjectile(ctx,visual,age,reducedMotion)&&!drawGeminiProjectile(ctx,visual,age,reducedMotion)&&!drawOphiuchusProjectile(ctx,visual,age,reducedMotion)&&!drawSwanProjectile(ctx,visual,age,reducedMotion)&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
           !drawAquarius(ctx,visual,age,reducedMotion)&&!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
         count++;
         if(p.visible!==false){canvas.dataset.projectileX=String(visual.x);canvas.dataset.projectileY=String(visual.y);}

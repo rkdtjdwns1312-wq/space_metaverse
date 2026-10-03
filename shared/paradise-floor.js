@@ -8,18 +8,27 @@ import {onStreetFloor,isStarlightStreet} from './street-layout.js';
 export const PARADISE_SCALE=1.5;
 export const PARADISE_FLOOR=Object.freeze({rx:660,ry:370,bridgeWidth:180*BRIDGE_WIDTH_SCALE,landing:55,wallWidth:12});
 export const isParadise=id=>id==='moon-garden'||id==='star-paradise'||/^sun-paradise(?:-[23])?$/.test(id)||/^moon-paradise-[123]$/.test(id);
-export const paradisePoint=p=>({x:p.x*PARADISE_SCALE,y:p.y*PARADISE_SCALE});
+// LV3·LV4 몬스터와 보스가 있는 낙원은 단계마다 중앙 마당도 조금씩 커집니다.
+export function paradiseScale(id){
+  const stage=String(id).match(/^(?:sun-paradise(?:-([23]))?|moon-paradise-([123]))$/);
+  return stage?[1.55,1.62,1.68][Number(stage[1]||stage[2]||1)-1]:PARADISE_SCALE;
+}
+export const paradisePoint=(p,scale=PARADISE_SCALE)=>({x:p.x*scale,y:p.y*scale});
 export function enlargeParadise(map){
-  return Object.freeze({...map,width:map.width*PARADISE_SCALE,height:map.height*PARADISE_SCALE,
-    spawn:paradisePoint(map.spawn),
-    vista:map.vista?Object.freeze({bodyX:map.vista.bodyX*PARADISE_SCALE,bodyY:map.vista.bodyY*PARADISE_SCALE,bodyRadius:map.vista.bodyRadius*PARADISE_SCALE}):undefined,
-    objects:map.objects.map(o=>({...o,...paradisePoint(o),arrival:isParadise(o.target)?paradisePoint(o.arrival):o.arrival}))});
+  const scale=paradiseScale(map.id);
+  return Object.freeze({...map,width:map.width*scale,height:map.height*scale,paradiseScale:scale,
+    spawn:paradisePoint(map.spawn,scale),
+    vista:map.vista?Object.freeze({bodyX:map.vista.bodyX*scale,bodyY:map.vista.bodyY*scale,bodyRadius:map.vista.bodyRadius*scale}):undefined,
+    objects:map.objects.map(o=>({...o,...paradisePoint(o,scale),arrival:isParadise(o.target)?paradisePoint(o.arrival,paradiseScale(o.target)):o.arrival}))});
 }
 const cache=new WeakMap();
 export function paradiseFloor(map){
   if(!isParadise(map.id))return null;
   if(cache.has(map))return cache.get(map);
-  const floor=gateFloorGeometry(map,PARADISE_FLOOR);cache.set(map,floor);return floor;
+  const ratio=(map.paradiseScale||PARADISE_SCALE)/PARADISE_SCALE;
+  const floor=gateFloorGeometry(map,{rx:PARADISE_FLOOR.rx*ratio,ry:PARADISE_FLOOR.ry*ratio,
+    bridgeWidth:PARADISE_FLOOR.bridgeWidth*ratio,landing:PARADISE_FLOOR.landing*ratio});
+  cache.set(map,floor);return floor;
 }
 export function onParadiseFloor(map,x,y,radius=0){
   if(isStarOrigin(map?.id))return onOriginFloor(map,x,y,radius);

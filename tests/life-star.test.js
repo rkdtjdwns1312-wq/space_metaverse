@@ -20,10 +20,10 @@ test('서버 시간 5초에 걸쳐 HP/MP 회복, 5초 직전은 미완료',()=>{
   const {player,room}=fixture();startLifeRecovery(player,1000);
   assert.deepEqual(advanceLifeRecovery(room,1999),[]);
   assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[10,0]);
-  advanceLifeRecovery(room,3000);assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[22,16]);
-  advanceLifeRecovery(room,5999);assert.ok(player.battleVitals.hp<40&&player.battleVitals.mp<40);
+  advanceLifeRecovery(room,3000);assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[30,16]);
+  advanceLifeRecovery(room,5999);assert.ok(player.battleVitals.hp<60&&player.battleVitals.mp<40);
   assert.equal(advanceLifeRecovery(room,6000)[0].complete,true);
-  assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[40,40]);
+  assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[60,40]);
   assert.equal(player.battleVitals.lifeRecovery,undefined);assert.deepEqual(advanceLifeRecovery(room,12000),[]);
 });
 test('원거리·다른 맵·접속 해제·사망 중의 시작 거부, 반복 요청 중첩 없음',()=>{
@@ -38,7 +38,7 @@ test('회복은 개인별이고 걸으며 계속되며, 추가 피해에도 정�
   const {player,room}=fixture(),other=fixture().player;other.id='q';room.players.set('q',other);
   startLifeRecovery(player,0);advanceLifeRecovery(room,2000);
   player.x+=200;damagePlayer(player,10,3000);advanceLifeRecovery(room,5000);
-  assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[40,40]);assert.equal(other.battleVitals.hp,10);
+  assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[60,40]);assert.equal(other.battleVitals.hp,10);
 });
 for(const reason of ['disconnect','death','evolution'])test(`회복 중 ${reason}이면 이전 회복 취소`,()=>{
   const {player,room}=fixture();startLifeRecovery(player,0);

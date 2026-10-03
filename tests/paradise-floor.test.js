@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {STATIC_MAPS,RULES,MAP,GARDEN,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE} from '../shared/config.js';
-import {paradiseFloor,onParadiseFloor,floorRenderPoint} from '../shared/paradise-floor.js';
+import {paradiseFloor,onParadiseFloor,floorRenderPoint,paradiseScale} from '../shared/paradise-floor.js';
 import {isFree,advance,arrivePosition,spawnInside} from '../server/world.js';
 const maps=[GARDEN,...PARADISE_MAPS,...MOON_PARADISE_MAPS,STAR_PARADISE];
 const room=()=>({players:new Map(),planets:new Map(),unattended:true});
 test('낙원8맵 중앙 공간 확대·모든 문과 입장 좌표가 바닥 안에 연결된다',()=>{
   for(const map of maps){
-    const f=paradiseFloor(map);assert.equal(map.width,1800);assert.equal(map.height,1140);
+    const f=paradiseFloor(map);assert.equal(map.width,1200*paradiseScale(map.id));assert.equal(map.height,760*paradiseScale(map.id));
     assert.ok(f.rx*f.ry>425*190*3,'기존 가장 큰 중앙 공간보다 면적3배 이상');
     assert.ok(onParadiseFloor(map,map.spawn.x,map.spawn.y,RULES.radius));
     for(const gate of map.objects){

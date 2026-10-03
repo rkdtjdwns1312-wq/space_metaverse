@@ -5,19 +5,26 @@ import {EQUIPMENT_ITEMS} from '/shared/equipment.js';
 export function createEnergyShopUI({request,getPlayer,stop,toast}){
   const dialog=document.createElement('dialog');dialog.id='energy-shop-dialog';
   dialog.setAttribute('aria-labelledby','energy-shop-title');
-  dialog.innerHTML='<header><h2 id="energy-shop-title">우주에너지 상점</h2><button id="energy-shop-close" class="secondary" type="button">닫기</button></header><div id="energy-shop-wallet"></div><p class="energy-shop-hint">모은 우주에너지로 장비를 골라 보세요. 장비는 내 정보의 세 칸에 장착할 수 있어요.</p><div id="energy-shop-list" class="energy-shop-list"></div>';
+  dialog.innerHTML='<header><h2 id="energy-shop-title">우주에너지 상점</h2><button id="energy-shop-close" class="secondary" type="button">닫기</button></header><div id="energy-shop-wallet"></div><p class="energy-shop-hint">모은 우주에너지로 장비를 골라 보세요. 장비는 내 정보의 세 칸에 장착할 수 있어요.</p><button id="energy-shop-catalog-open" class="secondary teacher-equipment-catalog-trigger" type="button" hidden>모든 아이템 보기</button><div id="energy-shop-list" class="energy-shop-list"></div>';
+  const catalogDialog=document.createElement('dialog');catalogDialog.id='teacher-equipment-catalog-dialog';catalogDialog.setAttribute('aria-labelledby','teacher-equipment-catalog-title');
+  catalogDialog.innerHTML='<header><h2 id="teacher-equipment-catalog-title">장착 가능한 모든 아이템</h2><button id="teacher-equipment-catalog-close" class="secondary" type="button">닫기</button></header><p class="energy-shop-hint">현재 등록된 장비 목록이에요. 여기서는 구매할 수 없어요.</p><div id="teacher-equipment-catalog-list" class="energy-shop-list"></div>';
+  document.body.append(catalogDialog);
   document.body.append(dialog);
-  const wallet=dialog.querySelector('#energy-shop-wallet'),list=dialog.querySelector('#energy-shop-list');let revision=0;
+  const wallet=dialog.querySelector('#energy-shop-wallet'),list=dialog.querySelector('#energy-shop-list'),catalogList=catalogDialog.querySelector('#teacher-equipment-catalog-list');let revision=0,catalogItems=EQUIPMENT_ITEMS;
   dialog.querySelector('#energy-shop-close').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{revision++;document.getElementById('world')?.focus();});
+  dialog.querySelector('#energy-shop-catalog-open').onclick=()=>{if(getPlayer()?.role!=='teacher')return;renderCatalog();catalogDialog.showModal();};
+  catalogDialog.querySelector('#teacher-equipment-catalog-close').onclick=()=>catalogDialog.close();
+  dialog.addEventListener('close',()=>{revision++;if(catalogDialog.open)catalogDialog.close();document.getElementById('world')?.focus();});
+  catalogDialog.addEventListener('close',()=>{if(dialog.open)dialog.querySelector('#energy-shop-catalog-open').focus();});
   const bonusText=bonus=>[
     bonus.attack&&'공격력 +'+bonus.attack,bonus.defense&&'방어력 +'+bonus.defense,
     bonus.hp&&'체력 +'+bonus.hp,bonus.mp&&'마나 +'+bonus.mp,
     bonus.speed&&'이동속도 +'+Math.round(bonus.speed*100)+'%',
     bonus.regen&&'10초 회복 +'+Math.round(bonus.regen*100)+'%'
   ].filter(Boolean).join(' · ');
-  function render(items=EQUIPMENT_ITEMS){
+  function render(items=catalogItems.filter(item=>!item.craftOnly)){
     const player=getPlayer();if(!player)return;
+    const catalogButton=dialog.querySelector('#energy-shop-catalog-open');catalogButton.hidden=player.role!=='teacher';
     renderWallet(wallet,player);
     const level=player.role==='teacher'?5:player.avatar?.level||1;
     list.replaceChildren(...items.map(item=>{
@@ -36,13 +43,26 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       actions.append(price,buy);row.append(picture,details,actions);return row;
     }));
   }
+  function renderCatalog(){
+    if(getPlayer()?.role!=='teacher')return;
+    catalogList.replaceChildren(...catalogItems.map(item=>{
+      const row=document.createElement('article');row.className='energy-shop-item';row.dataset.itemId=item.id;
+      const picture=document.createElement('img');picture.src=item.art;picture.alt='';picture.className='energy-shop-picture';
+      const details=document.createElement('div');details.className='energy-shop-details';
+      const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
+      const flavor=document.createElement('p');flavor.textContent=item.description;
+      const bonus=document.createElement('small');bonus.textContent=bonusText(item.bonus);
+      details.append(title,flavor,bonus);row.append(picture,details);return row;
+    }));
+  }
   return {
     async open(){const ticket=++revision;try{
       const result=await request('shop:energy:open',{});
       if(ticket!==revision||!getPlayer())return;
-      stop();render(result.items||[]);if(!dialog.open)dialog.showModal();
+      catalogItems=result.items||EQUIPMENT_ITEMS;
+      stop();render((result.items||[]).filter(item=>!item.craftOnly));if(!dialog.open)dialog.showModal();
     }catch(e){toast(e.message);}},
     update(){if(dialog.open)render();},
-    reset(){revision++;if(dialog.open)dialog.close();}
+    reset(){revision++;if(dialog.open)dialog.close();if(catalogDialog.open)catalogDialog.close();}
   };
 }

@@ -4,7 +4,7 @@ import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
 
 export function avatarLabel(player) {
   const name = String(player?.nickname ?? '');
-  if (isTeacher(player)) return { name: TEACHER_AVATAR.nickname, detail: 'LV6 '+TEACHER_AVATAR.name };
+  if (isTeacher(player)&&!player.avatar?.teacherPreview) return { name: TEACHER_AVATAR.nickname, detail: 'LV6 '+TEACHER_AVATAR.name };
 
   const avatar = player?.avatar ?? {};
   const level = Number.isInteger(avatar.level) ? Math.min(PROGRESSION.maxLevel,avatar.level) : 1;

@@ -10,7 +10,7 @@ function addToBag(player,itemId){
   if(row)row.quantity++;else player.inventory.push({id:itemId,quantity:1});
 }
 export function buyEquipment(player,itemId){
-  const item=equipmentOf(itemId);ensure(item&&EQUIPMENT_ITEMS.includes(item),'우주에너지 상점의 물건을 골라주세요.');
+  const item=equipmentOf(itemId);ensure(item&&EQUIPMENT_ITEMS.includes(item)&&!item.craftOnly,'우주에너지 상점의 물건을 골라주세요.');
   ensure(levelOf(player)>=item.level,'이 장비는 LV'+item.level+'부터 살 수 있어요.');
   const free=player.role==='teacher';
   ensure(free||Number.isSafeInteger(player.cosmicEnergy)&&player.cosmicEnergy>=item.price,'우주에너지가 부족해요.');

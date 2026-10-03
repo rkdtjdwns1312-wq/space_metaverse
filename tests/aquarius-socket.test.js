@@ -18,11 +18,11 @@ test('물병 소켓: 위조 수치 무시, 같은맵 상태·회복, 쿨타임, 
   Object.assign(friend,{x:2117.4,y:1320});Object.assign(friend.avatar,{level:4,constellationId:'leo'});ensureVitals(friend).hp=1;
   let outsideViews=0,heals=0,view=null;other.on('world:positions',d=>outsideViews+=(d.aquarius?.length||0));
   a.on('world:positions',d=>{if(d.aquarius?.length)view=d.aquarius[0];});b.on('combat:vitals',d=>{if(d.playerId===friend.id)heals++;});
-  const r=await call(a,'combat:skill',{mana:0,power:99999,x:0,durationMs:999999});assert.equal(r.ok,true);assert.equal(r.vitals.mp.current,20);assert.equal(r.cooldowns[0],now+20000);
+  const r=await call(a,'combat:skill',{mana:0,power:99999,x:0,durationMs:999999});assert.equal(r.ok,true);assert.equal(r.vitals.mp.current,40);assert.equal(r.cooldowns[0],now+20000);
   await new Promise(r=>setTimeout(r,160));assert.ok(view);assert.equal(view.x,2117.4);assert.equal(view.durationMs,5000);assert.equal(view.rx/view.ry,2);
-  assert.equal((await call(a,'combat:skill')).ok,false);assert.equal(ensureVitals(p).mp,20);
+  assert.equal((await call(a,'combat:skill')).ok,false);assert.equal(ensureVitals(p).mp,40);
   for(const slot of [1,2,3])assert.equal((await call(a,'combat:skill',{slot})).ok,false);
-  now+=5000;await new Promise(r=>setTimeout(r,160));assert.equal(ensureVitals(friend).hp,16);assert.ok(heals>0);assert.equal(outsideViews,0);assert.equal(room.aquariusCasts.size,0);
+  now+=5000;await new Promise(r=>setTimeout(r,160));assert.equal(ensureVitals(friend).hp,31);assert.ok(heals>0);assert.equal(outsideViews,0);assert.equal(room.aquariusCasts.size,0);
   const saved=JSON.stringify(toRecord(room));for(const name of ['aquariusCasts','aquariusCooldownUntil','healBudgets'])assert.ok(!saved.includes(name));
   const q=await call(a,'combat:attack');assert.equal(q.ok,true);assert.equal(q.hit.kind,'aquarius-attack');assert.equal((await call(a,'combat:attack')).ok,false);
 });

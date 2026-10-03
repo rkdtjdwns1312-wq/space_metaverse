@@ -1,4 +1,4 @@
-"""Split and verify the generated Cancer, Cetus and Pisces 24-frame VFX.
+"""Split and verify 24-frame constellation VFX.
 
 The committed `source` images are the artwork. This script only registers cells,
 cleans invisible alpha noise, and exports sheets, individual frames and previews.
@@ -7,13 +7,14 @@ from pathlib import Path
 import hashlib
 import json
 import math
+import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 KINDS = ('attack', 'skill-lv2', 'skill-lv3', 'skill-lv4')
-STARS = ('cancer', 'cetus', 'pisces')
+STARS = ('cancer', 'cetus', 'pisces', 'cygnus', 'ophiuchus', 'sagittarius', 'gemini', 'aries', 'taurus', 'hercules', 'libra', 'corona-borealis', 'capricorn', 'leo')
 SIZE = 256
 
 
@@ -45,14 +46,51 @@ def registered(frame):
     return Image.fromarray(pixels, 'RGBA')
 
 
+def clean_cygnus_matte(frame):
+    """Extract luminous feathers from the generator's opaque blue glow matte."""
+    pixels = np.array(frame.convert('RGBA'))
+    red = pixels[:, :, 0].astype(np.float32)
+    original_alpha = pixels[:, :, 3].astype(np.float32)
+    # Darker pixels describe the smooth backdrop. Estimate that backdrop from
+    # nearby pixels so the white feather detail keeps its soft antialiasing.
+    backdrop = ((red < 220) & (original_alpha > 12)).astype(np.float32)
+    weighted = Image.fromarray(np.uint8(np.rint(red * backdrop)), 'L')
+    weights = Image.fromarray(np.uint8(np.rint(backdrop * 255)), 'L')
+    blurred_red = np.asarray(weighted.filter(ImageFilter.GaussianBlur(18)), dtype=np.float32)
+    blurred_weight = np.asarray(weights.filter(ImageFilter.GaussianBlur(18)), dtype=np.float32) / 255
+    local_red = blurred_red / np.maximum(blurred_weight, .06)
+    extracted = np.clip((red - local_red - 8) / 30, 0, 1)
+    pixels[:, :, 3] = np.uint8(np.rint(original_alpha * extracted))
+    pixels[pixels[:, :, 3] == 0, :3] = 0
+    return Image.fromarray(pixels, 'RGBA')
+
+
+def clean_gradient_matte(frame):
+    """Remove a broad generator glow matte, retaining local spell detail."""
+    pixels = np.array(frame.convert('RGBA'))
+    rgb = pixels[:, :, :3].astype(np.float32)
+    background = np.asarray(frame.convert('RGB').filter(ImageFilter.GaussianBlur(18)), dtype=np.float32)
+    contrast = np.max(np.abs(rgb - background), axis=2)
+    opacity = np.clip((contrast - 11) / 33, 0, 1)
+    pixels[:, :, 3] = np.uint8(np.rint(pixels[:, :, 3].astype(np.float32) * opacity))
+    pixels[pixels[:, :, 3] == 0, :3] = 0
+    return Image.fromarray(pixels, 'RGBA')
+
+
 def build(star, kind):
     folder = ROOT / 'client/assets/skills' / star
     source_path = folder / 'source' / f'{kind}.png'
     source = Image.open(source_path).convert('RGBA')
     assert source.size == (SIZE * 6, SIZE * 4), (source_path, source.size)
-    frames = [registered(source.crop(((n % 6) * SIZE, (n // 6) * SIZE,
-                                      (n % 6 + 1) * SIZE, (n // 6 + 1) * SIZE)))
-              for n in range(24)]
+    def crop(n):
+        cell = source.crop(((n % 6) * SIZE, (n // 6) * SIZE,
+                            (n % 6 + 1) * SIZE, (n // 6 + 1) * SIZE))
+        if star in ('cygnus', 'aries'):
+            cell = clean_cygnus_matte(cell)
+        elif star in ('ophiuchus', 'sagittarius', 'gemini', 'taurus', 'hercules', 'libra', 'corona-borealis', 'capricorn', 'leo'):
+            cell = clean_gradient_matte(cell)
+        return registered(cell)
+    frames = [crop(n) for n in range(24)]
     # The generated artwork has a consistent 6x4 layout. A small temporal
     # filter of the middle loop damps frame-to-frame paint flicker, while
     # preserving the first/last stages exactly as designed.
@@ -98,7 +136,10 @@ def build(star, kind):
 
 
 def main():
-    for star in STARS:
+    selected = tuple(sys.argv[1:]) or STARS
+    if any(star not in STARS for star in selected):
+        raise SystemExit('Unknown constellation VFX directory')
+    for star in selected:
         results = {kind: build(star, kind) for kind in KINDS}
         folder = ROOT / 'client/assets/skills' / star
         (folder / 'manifest.json').write_text(json.dumps({

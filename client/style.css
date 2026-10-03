@@ -216,7 +216,11 @@ body.placing #world{cursor:crosshair}
 /* 요청036: 입장 후에는 맵을 화면의 주 작업 영역으로 전환합니다. */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .classroom-clock{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:8;pointer-events:none;white-space:nowrap;padding:8px 17px;border:1px solid #fff9;border-radius:999px;background:#ffffffdf;color:#59457c;box-shadow:0 5px 18px #25355521;font-size:16px;font-variant-numeric:tabular-nums;text-align:center}
+.audio-control{position:absolute;top:14px;left:calc(50% + 128px);z-index:12}.audio-toggle{width:38px;height:38px;min-height:38px;padding:0;border:1px solid #e7d8ff;border-radius:50%;background:#fff9;color:#59457c;box-shadow:0 5px 18px #25355521;font-size:18px}.audio-panel{position:absolute;top:43px;right:0;width:195px;padding:12px;border:1px solid #d7c8ef;border-radius:14px;background:#fffc;box-shadow:0 12px 28px #25355535;display:grid;gap:8px;color:#59457c;font-size:12px}.audio-panel[hidden]{display:none}.audio-panel input{width:100%}.audio-toggle:focus-visible,.audio-panel input:focus-visible{outline:3px solid #f0b35b;outline-offset:2px}
+#party-hud{position:absolute;left:14px;top:39%;z-index:9;width:min(245px,34vw);padding:9px 11px;border:1px solid #d9d3f0;border-radius:15px;background:#fcfaffdf;box-shadow:0 7px 24px #28305935;color:#464166;font-size:12px;pointer-events:auto}#party-hud[hidden]{display:none}#party-hud h3{margin:0 0 6px;font-size:13px;color:#7a5b9b}#party-hud ul{list-style:none;padding:0;margin:0;display:grid;gap:5px}#party-hud li{border-top:1px solid #d9d3f0;padding-top:4px}#party-hud .party-member-name{font-weight:700}#party-hud .party-member-vitals{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-variant-numeric:tabular-nums}#party-hud .party-member-vitals img{object-fit:contain}.party-roll-message{margin:6px 0;font-weight:700;color:#7a5b9b}
 @media(max-width:520px){.classroom-clock{top:8px;max-width:calc(100vw - 160px);padding:6px 9px;white-space:normal;font-size:12px;line-height:1.2}}
+@media(max-width:520px){.audio-control{top:8px;left:auto;right:8px}.audio-toggle{width:32px;height:32px;min-height:32px}.audio-panel{top:38px}}
+@media(max-width:520px){#party-hud{left:6px;top:34%;width:160px;padding:6px;font-size:10px}}
 body.joined #menu-dialog .topline{display:flex;gap:18px}
 body.joined .hud{display:contents!important}
 body.joined:not(.placing) .map-caption{display:none}
@@ -409,7 +413,6 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 .game-start-actions{display:flex;gap:8px;flex-wrap:wrap}#arcade-board #star-ranking-panel p{font-size:14px}
 @media(max-width:520px){body.joined:not(.placing) #world-navigation{top:56px}}
 
-.map-level{font-size:12px;color:#77618e}
 #energy-shop-dialog{width:min(580px,calc(100vw - 24px));box-sizing:border-box;border:2px solid #a7d5f3;background:#f5fbff;color:#355575;border-radius:24px}
 #energy-shop-dialog h2{color:#426da1}
 #energy-shop-dialog p{line-height:1.7}

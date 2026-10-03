@@ -40,6 +40,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='오색별빛 쉼터');
   await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#energy-shop-dialog').waitFor({state:'visible'});
   assert.equal(await page.locator('.energy-shop-item').count(),10);
+  assert.equal(await page.locator('#energy-shop-catalog-open').isVisible(),false);
   assert.ok(await page.locator('.energy-shop-picture').evaluateAll(async images=>{await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);}));
   await page.locator('#energy-shop-dialog').screenshot({path:'.local/energy-shop-new.png'});
   await page.locator('[data-item-id="comet-compass"] button').click();
@@ -51,11 +52,26 @@ try{
   await page.locator('#avatar-dialog').screenshot({path:'.local/equipment-info-new.png'});
   assert.equal(student().equipmentSlots[0],'comet-compass');
   check('우주에너지 상점 10종 원화·구매·가방 장착·내정보 세 칸 확인');
+  game.store.transact(()=>{const p=[...room().players.values()].find(p=>p.role==='teacher');
+    Object.assign(p,{mapId:STREET_ID,x:shop.x,y:shop.y+shop.radius+10});});publish();
+  await teacher.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='오색별빛 쉼터');
+  await teacher.locator('#world').focus();await teacher.keyboard.press('f');
+  await teacher.locator('#energy-shop-dialog').waitFor({state:'visible'});
+  await teacher.locator('#energy-shop-catalog-open').click();
+  await teacher.locator('#teacher-equipment-catalog-dialog').waitFor({state:'visible'});
+  assert.equal(await teacher.locator('#teacher-equipment-catalog-list .energy-shop-item').count(),13);
+  for(const id of ['sun-ring','moon-earring','burning-ice-necklace'])
+    assert.equal(await teacher.locator('#teacher-equipment-catalog-list [data-item-id="'+id+'"]').count(),1);
+  await teacher.locator('#teacher-equipment-catalog-dialog').screenshot({path:'.local/boss-equipment-catalog.png'});
+  await teacher.locator('#teacher-equipment-catalog-close').click();
+  await teacher.locator('#energy-shop-close').click();
+  check('선생님만 판매10종·보스 조합3종을 모든 아이템 보기에서 확인');
   const flask=MAP.objects.find(o=>o.kind==='exploration'),priorityUntil=Date.now()+7*86400000;
   game.store.transact(()=>{
     student().lv4State={...student().lv4State,priorityUntil};
     const p=[...room().players.values()].find(p=>p.role==='teacher');Object.assign(p,{mapId:MAP.id,x:flask.x,y:flask.y});
   });publish();
+  await teacher.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='별의 기원');
   await teacher.locator('#world').focus();await teacher.keyboard.press('f');
   await teacher.locator('#exploration-dialog').waitFor({state:'visible'});
   assert.match(await teacher.locator('#exploration-dialog').innerText(),/베텔기우스 급식 우선권[\s\S]*별이/);

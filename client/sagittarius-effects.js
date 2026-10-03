@@ -1,5 +1,11 @@
 // 파스텔 별화살·별여우·별자리 지대. 타격 횟수/대상은 서버 이벤트만 따릅니다.
+import {SAGITTARIUS_VFX} from '/shared/sagittarius-skills.js';
 const fox=new Image();fox.src='/assets/skills/sagittarius/star-fox.svg';
+const spriteImages=new Map();
+export function preloadSagittarius(ids=Object.keys(SAGITTARIUS_VFX)){
+  for(const id of ids){const spec=SAGITTARIUS_VFX[id];if(!spec||spriteImages.has(spec.url))continue;
+    const image=new Image();image.src=spec.url;spriteImages.set(spec.url,image);}
+}
 function star(ctx,x,y,r){
   ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,s=i%2?r*.48:r;ctx.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s);}ctx.closePath();ctx.fill();ctx.stroke();
 }
@@ -21,6 +27,17 @@ export function drawSagittarius(ctx,effect,progress,time,reducedMotion=false){
   ctx.shadowColor='#f5d995';ctx.shadowBlur=reducedMotion?0:10;
   const size=effect.size||80;
   if(effect.kind==='arrow'){
+    const spec=SAGITTARIUS_VFX[effect.vfxId];if(spec){
+      preloadSagittarius([spec.id]);const image=spriteImages.get(spec.url);
+      if(image?.complete&&image.naturalWidth){
+        const frame=reducedMotion?12:Math.min(23,Math.floor(progress*24));
+        const stage=Number(spec.id.slice(-1));const scale=effect.basic?.95:stage===2?1.5:stage===3?1.75:2;
+        const width=size*scale;
+        ctx.rotate(Math.atan2(effect.dy??0,effect.dx??1));
+        ctx.drawImage(image,(frame%6)*256,Math.floor(frame/6)*256,256,256,-width/2,-width/2,width,width);
+        ctx.restore();return;
+      }
+    }
     ctx.rotate(Math.atan2(effect.dy,effect.dx));const start=size/2,end=effect.range;
     const head=effect.projectile?0:start+(end-start)*Math.min(1,progress*1.6);
     ctx.globalAlpha=1-progress*.7;arrow(ctx,head,0,size*(effect.basic ? .7 : 1.3),effect.basic?1:1.7);

@@ -82,7 +82,7 @@ export function advance(room, now) {
     if(p.connected&&!isDefeated(p)&&!avatarFitsFloor(mapOf(p.mapId,room.planets.values()),p.x,p.y,p)){
       const safe=nearestFree(room,p.x,p.y,p.mapId,p);if(safe)Object.assign(p,safe);
     }
-    if (!p.connected || isDefeated(p) || now-p.input.at>RULES.inputExpiryMs) continue;
+    if (!p.connected || isDefeated(p) || p.taurusDash?.endsAt>now || now-p.input.at>RULES.inputExpiryMs) continue;
     const length=Math.hypot(p.input.x,p.input.y);
     if (!length) continue;
     const step=RULES.speed*(1+equipmentBonus(p).speed)*RULES.tickMs/1000;

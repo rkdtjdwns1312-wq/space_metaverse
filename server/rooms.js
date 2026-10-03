@@ -13,6 +13,7 @@ import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 import {EXPLORATION_GOAL} from '../shared/exploration.js';
 import {objectSignals} from './object-signals.js';
+import {partyView,leaveParty} from './party.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -36,7 +37,20 @@ export function effectsView(effects, viewerIsTeacher) {
   });
 }
 export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
-  return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher)];
+  const poison=player.combatPoison?.expiresAt>now?[{statusId:'poison',label:'중독 상태',icon:'🧪',style:'poison',until:player.combatPoison.expiresAt}]:[];
+  const combat=[];
+  const add=(id,label,icon,until)=>{if(until>now)combat.push({statusId:id,label,icon,style:'combat',until});};
+  add('capricorn-blessing','염소의 축복','♑',player.capricornBlessing?.endsAt);
+  add('leo-courage','사자의 용기','♌',player.leoCourage?.endsAt);
+  add('libra-reflect','천칭의 보호','⚖',player.libraAura?.endsAt);
+  if(player.libraBuff?.bonus)combat.push({statusId:'libra-reflect',label:'천칭의 공격력',icon:'⚖',style:'combat',until:now+1000});
+  add('hercules-shield','헤라클레스 방패','🛡',player.herculesShield?.endsAt);
+  add('taurus-immunity','황소의 무적','♉',player.taurusImmuneUntil);
+  if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 방어','🐋',player.waterAura.endsAt);
+  if(player.waterAura?.kind==='cancer')add('crab-empowerment','게의 힘','♋',player.waterAura.endsAt);
+  add('crown-aura','왕관의 힘','♛',player.coronaAura?.endsAt);
+  add('swan-wings','백조의 날개','🪽',player.swanAura?.endsAt);
+  return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher),...poison,...combat];
 }
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function nickname(value) {
@@ -99,7 +113,7 @@ export class RoomStore {
     Object.assign(session.player,{ connected:true, socketId, expiresAt:null, input:{x:0,y:0,at:0} });
     return session;
   }
-  remove(room,p) { this.sessions.delete(p.token); room.players.delete(p.id); }
+  remove(room,p) { leaveParty(room,p.id);this.sessions.delete(p.token); room.players.delete(p.id); }
   destroy(room) {
     for (const p of room.players.values()) this.sessions.delete(p.token);
     this.rooms.delete(room.code);
@@ -137,7 +151,8 @@ export class RoomStore {
         .map(t=>({id:t.id,fromId:t.fromId,fromNickname:t.fromNickname,toId:t.toId,toNickname:t.toNickname,
           give:t.give,want:t.want,status:t.status,at:t.at,revision:t.revision,confirmed:[...(t.confirmed||[])]})),
       summons:[...(room.summons?.values()||[])].filter(r=>r.expiresAt>Date.now()&&viewer&&(r.toId===viewer.id||r.fromId===viewer.id)),
-      summonCooldowns:[...(room.summonCooldowns||[])].filter(([key,until])=>viewer&&key.startsWith(viewer.id+':')&&until>Date.now()).map(([key,until])=>({targetId:key.slice(viewer.id.length+1),until}))
+      summonCooldowns:[...(room.summonCooldowns||[])].filter(([key,until])=>viewer&&key.startsWith(viewer.id+':')&&until>Date.now()).map(([key,until])=>({targetId:key.slice(viewer.id.length+1),until})),
+      ...partyView(room,viewer)
     };
   }
   pushChat(room,{playerId,nickname,role,text,flagged,...scope}) {

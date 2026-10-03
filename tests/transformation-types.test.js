@@ -21,10 +21,11 @@ test('5개 계열의 변신 프로필과 LV5 공격·방어·HP/MP 최대치 보
     assert.deepEqual([profile.attackBonus,profile.defenseBonus,profile.hpBonus,profile.mpBonus,profile.skillCooldownFactor,profile.skillAmountFactor],
       [item.attack,item.defense,item.hp,item.mp,item.cooldown,item.amount]);
     const baseAttack=attackPowerOf(5,item.id,p),baseDefense=defensePowerOf(5,item.id,p);
+    const baseVitals=vitalsOf(5,p);
     p.transformation={active:true};
     assert.equal(attackPowerOf(5,item.id,p),Math.max(1,baseAttack+item.attack));
     assert.equal(defensePowerOf(5,item.id,p),Math.max(0,baseDefense+item.defense));
-    assert.deepEqual([vitalsOf(5,p).hp.max,vitalsOf(5,p).mp.max],[40+item.hp,40+item.mp]);
+    assert.deepEqual([vitalsOf(5,p).hp.max,vitalsOf(5,p).mp.max],[baseVitals.hp.max+item.hp,baseVitals.mp.max+item.mp]);
   }
 });
 

@@ -10,7 +10,10 @@ export const EQUIPMENT_ITEMS=Object.freeze([
   {id:'galaxy-pendant',name:'은하수 목걸이',description:'깊은 우주의 기운을 담았어요.',level:3,price:20,bonus:{mp:6}},
   {id:'star-heart',name:'별하트',description:'따뜻한 별빛이 오래 머물러요.',level:3,price:22,bonus:{hp:6}},
   {id:'meteor-boots',name:'유성 장화',description:'발끝에 작은 유성이 따라와요.',level:3,price:28,bonus:{speed:.08}},
-  {id:'celestial-crown',name:'천공의 왕관',description:'은은한 별빛이 몸과 마음을 지켜요.',level:4,price:40,bonus:{attack:1,defense:1,hp:4,mp:4}}
+  {id:'celestial-crown',name:'천공의 왕관',description:'은은한 별빛이 몸과 마음을 지켜요.',level:4,price:40,bonus:{attack:1,defense:1,hp:4,mp:4}},
+  {id:'sun-ring',name:'태양의 반지',description:'따뜻한 태양빛이 힘을 깨워요.',level:4,price:null,craftOnly:true,bonus:{attack:2,hp:5}},
+  {id:'moon-earring',name:'달의 귀걸이',description:'차분한 달빛이 충격을 감싸요.',level:4,price:null,craftOnly:true,bonus:{defense:2,mp:5}},
+  {id:'burning-ice-necklace',name:'불타는 얼음 목걸이',description:'해와 달의 빛이 하나로 흐릅니다.',level:4,price:null,craftOnly:true,bonus:{attack:1,defense:1,hp:10,mp:10,regen:.01}}
 ].map(item=>Object.freeze({...item,art:'/assets/equipment/'+item.id+'.png',icon:'✦',type:'equipment',mode:'equipment',currency:'cosmicEnergy',forSale:false,usable:false,targets:'self',secret:false,effect:{label:'장비 능력',icon:'✦',durationMs:0}})));
 
 export const equipmentOf=id=>EQUIPMENT_ITEMS.find(item=>item.id===id)||null;

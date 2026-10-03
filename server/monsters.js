@@ -1,10 +1,10 @@
-import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT} from '../shared/monsters.js';
+import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
-import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
+import {addEnergyDrop,addRecipeDrop,addBossDrops} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 
 
@@ -19,24 +19,25 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map((spawn,i)=>{
     const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
-    const [baseX,baseY]=(type.level===3?largeSpawns:spawns)[i%5];
+    const [baseX,baseY]=((type.radiusScale??({1:1,2:2,3:4}[type.level]||1))>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
-    const x=isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
+    const x=type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×4.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
-    const multiplier={1:1,2:2,3:4}[type.level]||1;
-    const radius=MONSTER_RULES.radius*multiplier;
+    const multiplier=type.radiusScale??({1:1,2:2,3:4,4:4}[type.level]||1);
+    const radius=MONSTER_RULES.radius*(type.boss?8:multiplier);
     const patrolPhaseOffset=randomPatrolOffset(phaseRandom),patrolStartedAt=now+patrolPhaseOffset;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
-      hp:MONSTER_HP[type.mapId],maxHp:MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
+      hp:type.hp??MONSTER_HP[type.mapId],maxHp:type.hp??MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
       targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   }));
   return room.monsters;
 }
-export function monsterViews(room){
+export function monsterViews(room,now=Date.now()){
   return [...monstersOf(room).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
-    facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,attackPower:MONSTER_COMBAT[m.mapId].power}));
+    facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,
+    poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
 export function monstersInAttackArea(room,player,now=Date.now()){
@@ -52,26 +53,31 @@ export function strikeMonsters(room,player,power,now=Date.now()){
   return monstersInAttackArea(room,player,now).map(target=>damageMonster(room,target,player,power,now));
 }
 // Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
-export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll}={}){
-  if(target.hp<=0||!(power>0)||!Number.isFinite(power))return null;
+export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false}={}){
+  if(target.hp<=0||power<0||!Number.isFinite(power))return null;
+  const raw=(target.sleepUntil||0)>now&&!ignoreSleep?power*2:power;
+  const type=monsterType(target.typeId),level=type?.level??target.level;
+  const defense=type?.defense??MONSTER_LEVEL_STATS[level]?.defense??MONSTER_COMBAT[target.mapId]?.defense??0;
+  const dealt=Math.max(1,Math.round(raw)-defense);
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
   // 남은 HP를 넘는 과잉 피해로 마지막 공격자가 소유권을 빼앗지 않도록 실제 감소량만 합산합니다.
   target.contributors??=new Map();
-  target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(power,target.hp));
-  target.hp=Math.max(0,target.hp-power);
-  room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:power});
+  target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(dealt,target.hp));
+  target.hp=Math.max(0,target.hp-dealt);
+  room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
   if(room.damageNumbers.length>200)room.damageNumbers.shift();
   if(target.hp===0){
     addRecipeDrop(room,target,target.contributors,now,recipeRoll);
     addEnergyDrop(room,target,target.contributors,now,energyRoll);
+    if(type?.boss)addBossDrops(room,target,target.contributors,now,bossRoll);
     target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
   }
   else{
     if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
     target.attackers.set(player.id,++target.attackOrder);selectMonsterTarget(room,target);
   }
-  return {monsterId:target.id,damage:power,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
+  return {monsterId:target.id,damage:dealt,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
 }
 // 이전 서버 테스트/연동의 단수 응답 호환. 실제 적용은 항상 모든 대상입니다.
 export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
@@ -113,6 +119,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const rule=MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
+    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.moving=false;continue;}
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
     let resting=false;
@@ -142,8 +149,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){
         if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
         const attackReach=Math.min(reach,distance);
-        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true},rule.power,now);
-        if(results.length){m.nextAttackAt=now+MONSTER_RULES.attackMs/factor;
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,sourceMonsterId:m.id},rule.power,now);
+        if(results.length){m.nextAttackAt=now+(rule.attackMs??MONSTER_RULES.attackMs/factor);
           for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:attackReach,durationMs:ATTACK_VISUAL.durationMs,...result});
           if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
         }

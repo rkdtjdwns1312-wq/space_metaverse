@@ -25,7 +25,9 @@ import {createStatusUI} from './status-ui.js';
 import {createVitalsUI} from './vitals-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
+import {createAudio} from './audio.js';
 import { createSocialUI } from './social-ui.js';
+import {createPartyUI} from './party-ui.js';
 import { createAccountsUI } from './accounts-ui.js';
 import { createUniverseUI } from './universe-ui.js';
 import {createObjectUpdates} from './object-updates.js';
@@ -64,18 +66,32 @@ dockResizeObserver.observe($('bottom-dock'));
 window.addEventListener('resize',updateControlAlignment);
 updateControlAlignment();
 startClassroomClock($('classroom-clock'));
+const audio=createAudio();
+const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
+function syncAudioControls(){
+  audioVolume.value=Math.round(audio.volume*100);
+  audioToggle.textContent=audio.muted||audio.volume===0?'🔇':'🔊';
+  audioToggle.setAttribute('aria-label',audio.muted?'소리 꺼짐 · 소리 설정':'소리 켜짐 · 소리 설정');
+  audioMute.textContent=audio.muted?'소리 켜기':'음소거';
+}
+syncAudioControls();
+audioToggle.addEventListener('click',()=>{audio.resume();audioPanel.hidden=!audioPanel.hidden;audioToggle.setAttribute('aria-expanded',String(!audioPanel.hidden));});
+audioMute.addEventListener('click',()=>{audio.setMuted(!audio.muted);audio.resume();syncAudioControls();});
+audioVolume.addEventListener('input',()=>{audio.setVolume(Number(audioVolume.value)/100);if(Number(audioVolume.value)>0)audio.setMuted(false);audio.resume();syncAudioControls();});
+document.addEventListener('pointerdown',()=>audio.resume(),{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const holdings=createHoldingUI({request,toast,onChanged:()=>renderBag(myInventory()),onDraw:async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();}});
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
-const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request})});
+const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
 const characterSkills=createCharacterSkillsUI();
 const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat});
+const partyUI=createPartyUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 $('avatar-card').append($('experience-panel'));
 document.querySelector('.top-right').append($('connection'));
 let overview=false;
@@ -86,7 +102,8 @@ const teacherInventory=createTeacherInventoryUI({request,stop,toast,getPlayer:()
 const teacherCardCatalog=createTeacherCardCatalog({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const craftingUI=createCraftingUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
 const lv4UI=createLv4ItemUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),stop,toast});
-const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
+const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),
+  request:async(event,data)=>{const result=await request(event,data);if(event==='shop:energy:buy')audio.playSfx('shop-buy');return result;},stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const explorationUI=createExplorationUI({request,stop,toast});
 const recipeBook=createRecipeBookUI({request,toast});
@@ -95,7 +112,7 @@ const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;ren
 setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag(myInventory());},30000);
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const subscribe=(event,listener)=>{socket.on(event,listener);return()=>socket.off(event,listener);};
-const arcade=createArcadeUI({stop,toast,request,
+const arcade=createArcadeUI({stop,toast,request,onSound:(gameId,result)=>audio.playSfx('arcade',{gameId,result}),
   subscribeMemoryRanking:listener=>subscribe('memory:ranking',listener),
   subscribeStarRanking:listener=>subscribe('stars:ranking',listener),
   sendDodgeInput:data=>socket.volatile.emit('dodge:input',data),
@@ -281,6 +298,7 @@ function updateRoom(value){
   const me=room.players.find(p=>p.id===selfId);
   const isTeacher=me?.role==='teacher';
   const myMapId=me?.mapId||PLAZA_ID,inPlanet=Boolean(planetIdOfMap(myMapId)),inStreet=myMapId===STREET_ID;
+  if(me)audio.playBgm(myMapId);
   $('players').replaceChildren(...room.players.filter(p=>p.connected).map(p=>{
     const li=document.createElement('li');li.classList.toggle('mine',p.id===selfId);
     const name=document.createElement('span');name.textContent=p.nickname+(p.id===selfId?' · 나':'');
@@ -292,7 +310,7 @@ function updateRoom(value){
     const insideId=planetIdOfMap(p.mapId),inside=insideId?planetById(insideId):null;
     const state=document.createElement('span');state.textContent=p.away?'수업 밖':!p.connected?'다시 연결 중':inside?inside.name+' 안':p.role==='teacher'?'선생님':p.muted?'채팅 멈춤':p.avatar.level>=PROGRESSION.transcendentLevel?PROGRESSION.transcendentName:'LV '+p.avatar.level;
     li.append(name);
-    if(p.id!==selfId){const select=document.createElement('button');select.type='button';select.className='small secondary friend-select';select.dataset.playerId=p.id;select.textContent='대화 · 부르기';select.setAttribute('aria-label',p.nickname+' 친구 선택');select.onclick=()=>social.friend(p.id);li.append(select);}
+    if(p.id!==selfId){const select=document.createElement('button');select.type='button';select.className='small secondary friend-select';select.dataset.playerId=p.id;select.textContent='대화 · 부르기 · 파티';select.setAttribute('aria-label',p.nickname+' 친구 선택');select.onclick=()=>{social.friend(p.id);partyUI.friend(p.id);};li.append(select);}
     // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
     if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);li.append(shards);}
     const effects=document.createElement('span');effects.className='effects';effects.textContent=(p.effects||[]).map(e=>e.icon).join(' ');
@@ -363,7 +381,7 @@ function updateRoom(value){
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent=room.unattended?'우주와 연결되었어요 · 선생님 자리 비움':'선생님 연결 대기 · 잠시 이동을 멈춰요';
   else if(socket.connected)$('connection').textContent='우주와 연결되었어요';
   updateChatUI(me,isTeacher);
-  social.update();craftingUI.update();energyShopUI.update();
+  social.update();partyUI.update();craftingUI.update();energyShopUI.update();
   accounts.update();
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
@@ -832,7 +850,7 @@ function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
   if(n.id){objectUpdates.acknowledge(world.currentMapId(),n.id);world.setObjectUpdates(objectUpdates.pending());}
-  if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.kind==='recipe'?(itemOf(r.itemId)?.name||'조합 레시피')+'를 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
+  if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
@@ -1035,7 +1053,7 @@ function renderShopBuyList(){
       try{
         const reply=await request('shop:buy',{itemId:item.id,quantity});
         toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 반값 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+formatShards({...room?.players.find(p=>p.id===selfId),starShards:reply.starShards}));
-        applyShopAck(reply);
+        audio.playSfx('shop-buy');applyShopAck(reply);
       }catch(e){toast(e.message);}
     };
     row.append(price,qty,buy);li.append(icon,info,row);
@@ -1067,7 +1085,7 @@ function renderShopSellList(){
       try{
         const reply=await request('shop:sell',{itemId:item.id,quantity});
         toast(item.name+' '+quantity+'개를 팔았어요. 별 파편 ★ '+formatShards({...room?.players.find(p=>p.id===selfId),starShards:reply.starShards}));
-        applyShopAck(reply);
+        audio.playSfx('shop-sell');applyShopAck(reply);
       }catch(e){toast(e.message);}
     };
     row.append(price,qty,sell);li.append(icon,info,row);
@@ -1123,8 +1141,8 @@ function reset(message){
   accounts.reset();
   clearStudentAccountPins();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
-  social.reset();document.querySelector('.top-right').append($('connection'));
-  stop();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
+  social.reset();partyUI.reset();document.querySelector('.top-right').append($('connection'));
+  stop();audio.stopBgm();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
   $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   teacherInventory.update();
@@ -1209,16 +1227,20 @@ socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textCon
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});
 socket.on('combat:projectile-end',data=>{if(selfId)world.projectileEnd(data);});
-socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
+socket.on('combat:hercules-burst',data=>{if(selfId)world.herculesBurst(data);});
+socket.on('combat:corona-fall',data=>{if(selfId)world.coronaFall(data);});
+socket.on('combat:leo-roar',data=>{if(selfId)world.leoRoar(data);});
+socket.on('combat:hit',data=>{if(selfId){world.hit(data);if(data.playerId!==selfId)audio.playSfx('constellation',{key:String(data.kind||'').includes('skill')?'e':'q',constellationId:room?.players.find(p=>p.id===data.playerId)?.avatar?.constellationId});}});
 socket.on('sagittarius:effect',data=>{if(selfId)world.sagittariusEffect(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});
-socket.on('combat:monster-hit',data=>{if(selfId)world.monsterHit(data);});
+socket.on('combat:monster-hit',data=>{if(selfId){world.monsterHit(data);audio.playSfx('monster-attack',{monsterId:data.monsterId});}});
 socket.on('combat:water-pulse',data=>{if(selfId)world.waterPulse(data);});
 socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
 socket.on('life-star:complete',()=>{if(selfId)toast('체력과 마나가 가득 찼어요!');});
 socket.on('combat:vitals',data=>{
   const player=room?.players.find(p=>p.id===data.playerId);if(!player)return;
   player.vitals=data.vitals;
+  partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
 socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});

@@ -20,19 +20,24 @@ function setup(level=5){
   Object.assign(monster,{x:700,y:500,hp:1000,maxHp:1000,radius:24});
   return {room,player,monster,power:attackPowerOf(level,'sagittarius'),size:avatarSizeOf(player)};
 }
-test('Q 빛의 화살은 현재 공격력100%·MP0·가로3배, MP가 0이어도 공격',()=>{
+test('Q 빛의 화살은 현재 공격력100%·MP0·가로6배, MP가 0이어도 공격',()=>{
   const {room,player,monster,power,size}=setup(2);ensureVitals(player).mp=0;
   const hit=attackSagittarius(room,player,now);
   assert.equal(monster.hp,1000);fly(room,now+650);assert.equal(monster.hp,1000-power);assert.equal(ensureVitals(player).mp,0);
-  assert.equal(hit.effects[0].range,size*3);assert.equal(hit.effects[0].basic,true);
+  assert.equal(hit.effects[0].range,size*6);assert.equal(hit.effects[0].basic,true);
   assert.equal(player.sagittariusCooldowns,undefined);
 });
-test('유성화살은 +5가 아닌 300%, 가로5배·MP5·쿨타임5초',()=>{
-  const {room,player,monster,power,size}=setup(3);
-  const hit=castSagittarius(room,player,0,now);assert.equal(monster.hp,1000);fly(room,now+900);assert.equal(monster.hp,1000-power*3);
-  assert.equal(hit.effects[0].range,size*5);assert.equal(ensureVitals(player).mp,15);
-  assert.throws(()=>castSagittarius(room,player,0,now+4999),/1초/);assert.equal(ensureVitals(player).mp,15);
-  castSagittarius(room,player,0,now+5000);assert.equal(ensureVitals(player).mp,10);
+test('큰 관통 화살은 LV2/3/4 피해500/400/500%, 쿨5/4/3초, 가로6배·MP2',()=>{
+  for(const [level,multiplier,cooldown] of [[2,5,5000],[3,4,4000],[4,5,3000]]){
+    const {room,player,monster,power,size}=setup(level),mp=ensureVitals(player).mp;
+    const hit=castSagittarius(room,player,0,now);assert.equal(room.projectiles[0].piercing,true);
+    assert.equal(monster.hp,1000);fly(room,now+900);
+    assert.equal(monster.hp,1000-power*multiplier);
+    assert.equal(hit.effects[0].range,size*6);assert.equal(hit.effects[0].piercing,undefined);
+    assert.equal(ensureVitals(player).mp,mp-2);
+    assert.throws(()=>castSagittarius(room,player,0,now+cooldown-1),/1초/);
+    castSagittarius(room,player,0,now+cooldown);assert.equal(ensureVitals(player).mp,mp-4);
+  }
 });
 test('LV·종류·슬롯·MP·사망·검은별 검증 실패 시 소모 없음',()=>{
   for(const level of [1]){
@@ -41,8 +46,8 @@ test('LV·종류·슬롯·MP·사망·검은별 검증 실패 시 소모 없음'
   }
   const {room,player}=setup();
   for(const slot of [-1,3,4,'1','attack',{},NaN])assert.throws(()=>castSagittarius(room,player,slot,now));
-  ensureVitals(player).mp=4;assert.throws(()=>castSagittarius(room,player,0,now),/마나/);
-  assert.equal(ensureVitals(player).mp,4);assert.equal(player.sagittariusCooldowns,undefined);
+  ensureVitals(player).mp=1;assert.throws(()=>castSagittarius(room,player,0,now),/마나/);
+  assert.equal(ensureVitals(player).mp,1);assert.equal(player.sagittariusCooldowns,undefined);
   player.avatar.blackStar=true;assert.throws(()=>castSagittarius(room,player,0,now));
   player.avatar.blackStar=false;ensureVitals(player).hp=0;assert.throws(()=>castSagittarius(room,player,0,now));
 });
@@ -50,18 +55,18 @@ test('화살 방향/사거리, 겹친 몬스터·학생 모두 명중, 자기·�
   const {room,player,monster,power,size}=setup(3);
   const twin={...monster,id:'second',attackers:new Map(),contributors:new Map()};room.monsters.set(twin.id,twin);
   const behind={...monster,id:'behind',x:400,attackers:new Map(),contributors:new Map()};room.monsters.set(behind.id,behind);
-  const far={...monster,id:'far',x:500+size*5+24+size*.13+1,attackers:new Map(),contributors:new Map()};room.monsters.set(far.id,far);
+  const far={...monster,id:'far',x:500+size*6+24+size*.13+1,attackers:new Map(),contributors:new Map()};room.monsters.set(far.id,far);
   const peer={...player,id:'friend',x:700,avatar:{level:5,constellationId:'taurus'}};
   room.players.set(peer.id,peer);room.players.set('immune',{...peer,id:'immune',avatar:{...peer.avatar,blackStar:true}});
   room.players.set('other',{...peer,id:'other',mapId:'star-origin-2'});
   castSagittarius(room,player,0,now);const hit=fly(room,now+900)[0];
   assert.deepEqual(hit.targets.map(t=>t.monsterId),[monster.id,twin.id]);assert.deepEqual(hit.playerTargets.map(t=>t.targetId),['friend']);
-  assert.equal(hit.playerTargets[0].damage,Math.max(1,power*3-defensePowerOf(5,'taurus',peer)));
+  assert.equal(hit.playerTargets[0].damage,Math.max(1,power*4-defensePowerOf(5,'taurus',peer)));
   assert.equal(ensureVitals(player).hp,20);assert.equal(far.hp,1000);assert.equal(behind.hp,1000);
 });
 test('사냥꾼 1초마다 10회100%, 종료 피해 없음, 쿨15초',()=>{
   const {room,player,monster,power,size}=setup(4);
-  castSagittarius(room,player,1,now);assert.equal(ensureVitals(player).mp,20);
+  castSagittarius(room,player,1,now);assert.equal(ensureVitals(player).mp,30);
   assert.equal(advanceSagittarius(room,now+999).length,0);
   const events=[];for(let i=1;i<=10;i++)events.push(...advanceSagittarius(room,now+1000*i));
   assert.equal(events.filter(e=>e.kind==='hunter-hit').length,10);assert.equal(events.at(-1).kind,'hunter-fade');assert.deepEqual(events.at(-1).targets,[]);
@@ -125,8 +130,8 @@ test('실제 소켓 위조 수치 무시·동일맵에만 효과·저장 데이�
   const monster=[...monstersOf(room).values()][0];monster.x=700;monster.y=500;
   let leaks=0;peer.on('sagittarius:effect',()=>leaks++);
   const result=await call(student,'combat:skill',{slot:0,power:999999,mana:0,range:999999,dx:-1});
-  assert.equal(result.ok,true);assert.equal(result.targets.length,0);const hp=monster.hp;time+=900;await new Promise(r=>setTimeout(r,80));assert.equal(hp-monster.hp,attackPowerOf(3,'sagittarius')*3);
-  assert.equal(result.vitals.mp.current,15);assert.equal(result.effects[0].dx,1);
+  assert.equal(result.ok,true);assert.equal(result.targets.length,0);const hp=monster.hp;time+=900;await new Promise(r=>setTimeout(r,80));assert.equal(hp-monster.hp,attackPowerOf(3,'sagittarius')*4);
+  assert.equal(result.vitals.mp.current,28);assert.equal(result.effects[0].dx,1);
   for(const slot of [1,2,3])assert.equal((await call(student,'combat:skill',{slot})).ok,false);
   ensureVitals(player).mp=0;
   const q=await call(student,'combat:attack',{power:99999});assert.equal(q.ok,true);

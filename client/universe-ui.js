@@ -55,7 +55,6 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const button=document.createElement('button');button.type='button';button.className='universe-node';button.dataset.mapId=id;
     const thumbnail=document.createElement('canvas');thumbnail.width=144;thumbnail.height=84;thumbnail.className='universe-thumbnail';thumbnail.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.textContent=map(id).name;button.append(thumbnail,name);draw(thumbnail,id);
-    if(map(id).minLevel){const level=document.createElement('span');level.className='map-level';level.textContent='LV'+map(id).minLevel+' 이상';button.append(level);}
     if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
     button.onclick=()=>{selected=id;signature='';render();};return button;

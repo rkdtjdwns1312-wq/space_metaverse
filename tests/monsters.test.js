@@ -16,21 +16,21 @@ function singleMonster(id){
 }
 
 test('각 맵 5마리·별의기원3 3용이+2사조·방별 독립 몬스터 상태',()=>{
-  const a={},b={};assert.equal(monstersOf(a).size,35);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,10);
-  for(const map of ['star-origin-1','star-origin-2','star-origin-3','sun-paradise','sun-paradise-2','moon-paradise-1','moon-paradise-2'])
+  const a={},b={};assert.equal(monstersOf(a).size,42);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,13);
+  for(const map of ['star-origin-1','star-origin-2','star-origin-3','moon-garden','sun-paradise','sun-paradise-2','moon-paradise-1','moon-paradise-2'])
     assert.equal(monsterViews(a).filter(m=>m.mapId===map).length,5);
   const second=monsterViews(a).filter(m=>m.mapId==='star-origin-2');
   assert.deepEqual(second.filter(m=>m.typeId==='star-scorpion').map(m=>m.id),['star-scorpion-1','star-scorpion-2','star-scorpion-3']);
   assert.deepEqual(second.filter(m=>m.typeId==='chameleon-star').map(m=>m.id),['chameleon-star-1','chameleon-star-2']);
-  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,35);
-  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise').map(m=>[m.id,m.level]),[['warm-star',2]]);
-  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise-2').map(m=>[m.id,m.level]),[['grown-warm-star',3]]);
+  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,42);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise').map(m=>[m.id,m.level]),[['warm-star',3]]);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise-2').map(m=>[m.id,m.level]),[['grown-warm-star',4]]);
   const origin3=monsterViews(a).filter(m=>m.mapId==='star-origin-3');
   assert.deepEqual(origin3.filter(m=>m.typeId==='star-dragon').map(m=>m.id),['star-dragon-1','star-dragon-2','star-dragon-3']);
   assert.deepEqual(origin3.filter(m=>m.typeId==='star-phoenix').map(m=>m.id),['star-phoenix-1','star-phoenix-2']);
-  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-1').map(m=>[m.id,m.level]),[['cool-star',2]]);
-  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-2').map(m=>[m.id,m.level]),[['grown-cool-star',3]]);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-1').map(m=>[m.id,m.level]),[['cool-star',3]]);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='moon-paradise-2').map(m=>[m.id,m.level]),[['grown-cool-star',4]]);
   for(const m of second)assert.notEqual(m.id,m.typeId,'개체 id와 종류 id는 분리되어야 합니다.');
   const one=monstersOf(a).get('star-crab'),two=monstersOf(b).get('star-crab');one.x=999;
   assert.notEqual(one.x,two.x);
@@ -40,33 +40,34 @@ test('두 번째 맵의 새 몬스터 설정과 체력·공격·속도·보상 �
   const scorpion=MONSTER_TYPES.find(m=>m.id==='star-scorpion'),chameleon=MONSTER_TYPES.find(m=>m.id==='chameleon-star');
   assert.deepEqual([scorpion.name,scorpion.mapId,scorpion.level,scorpion.shape,scorpion.color],['Lv2 별전갈','star-origin-2',2,'star-scorpion','#a875d8']);
   assert.deepEqual([chameleon.name,chameleon.mapId,chameleon.level,chameleon.shape,chameleon.color],['Lv2 카멜레별','star-origin-2',2,'chameleon-star','#b8e6a1']);
-  assert.equal(MONSTER_HP['star-origin-2'],40);assert.deepEqual(MONSTER_COMBAT['star-origin-2'],{power:3,speedFactor:1.3});
+  assert.equal(MONSTER_HP['star-origin-2'],100);assert.deepEqual(MONSTER_COMBAT['star-origin-2'],{power:6,defense:1,speedFactor:1.3});
   assert.deepEqual(ENERGY_DROPS.rewards[2],[6,10]);
   for(const t of [scorpion,chameleon])assert.ok(LV2_MONSTER_ART[t.shape],'실제 그림 렌더러와 종류 연결');
-  const list=monsterViews({});assert.ok(list.filter(m=>m.mapId==='star-origin-2').every(m=>m.hp===40&&m.attackPower===3));
+  const list=monsterViews({});assert.ok(list.filter(m=>m.mapId==='star-origin-2').every(m=>m.hp===100&&m.attackPower===6));
 });
 
 test('별용이·별사조와 태양·달 별 몬스터의 단계별 능력치·보상 범위가 맞다',()=>{
   const expected={
-    'star-origin-1':{level:1,hp:20,power:2,speedFactor:1,reward:[0,2]},
-    'star-origin-2':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
-    'star-origin-3':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]},
-    'sun-paradise':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
-    'sun-paradise-2':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]},
-    'moon-paradise-1':{level:2,hp:40,power:3,speedFactor:1.3,reward:[6,10]},
-    'moon-paradise-2':{level:3,hp:100,power:5,speedFactor:1.3*1.3,reward:[24,40]}
+    'star-origin-1':{level:1,hp:50,power:3,defense:0,speedFactor:1,reward:[0,2]},
+    'star-origin-2':{level:2,hp:100,power:6,defense:1,speedFactor:1.3,reward:[6,10]},
+    'star-origin-3':{level:3,hp:300,power:10,defense:2,speedFactor:1.3*1.3,reward:[24,40]},
+    'moon-garden':{level:2,hp:100,power:6,defense:1,speedFactor:1.3,reward:[6,10]},
+    'sun-paradise':{level:3,hp:300,power:10,defense:2,speedFactor:1.3,reward:[24,40]},
+    'sun-paradise-2':{level:4,hp:1000,power:15,defense:4,speedFactor:1.3*1.3,reward:[60,100]},
+    'moon-paradise-1':{level:3,hp:300,power:10,defense:2,speedFactor:1.3,reward:[24,40]},
+    'moon-paradise-2':{level:4,hp:1000,power:15,defense:4,speedFactor:1.3*1.3,reward:[60,100]}
   };
   for(const [mapId,values] of Object.entries(expected)){
     assert.equal(MONSTER_HP[mapId],values.hp);
-    assert.deepEqual(MONSTER_COMBAT[mapId],{power:values.power,speedFactor:values.speedFactor});
+    assert.deepEqual(MONSTER_COMBAT[mapId],{power:values.power,defense:values.defense,speedFactor:values.speedFactor});
     assert.deepEqual(ENERGY_DROPS.rewards[values.level],values.reward);
     assert.ok(MONSTER_TYPES.filter(type=>type.mapId===mapId).every(type=>type.level===values.level));
   }
   assert.deepEqual(MONSTER_TYPES.filter(type=>type.id==='warm-star'||type.id==='grown-warm-star').map(({id,mapId,level})=>[id,mapId,level]),[
-    ['warm-star','sun-paradise',2],['grown-warm-star','sun-paradise-2',3]
+    ['warm-star','sun-paradise',3],['grown-warm-star','sun-paradise-2',4]
   ]);
   assert.deepEqual(MONSTER_TYPES.filter(type=>type.id==='cool-star'||type.id==='grown-cool-star').map(({id,mapId,level})=>[id,mapId,level]),[
-    ['cool-star','moon-paradise-1',2],['grown-cool-star','moon-paradise-2',3]
+    ['cool-star','moon-paradise-1',3],['grown-cool-star','moon-paradise-2',4]
   ]);
   assert.deepEqual(MONSTER_TYPES.filter(type=>type.mapId==='star-origin-3').map(({id,level})=>[id,level]),[['star-dragon',3],['star-phoenix',3]]);
 });
@@ -198,7 +199,7 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
-  assert.equal(packet.monsters.length,35);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
+  assert.equal(packet.monsters.length,42);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
 });
 
 test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 좌표가 함께 온다',async t=>{

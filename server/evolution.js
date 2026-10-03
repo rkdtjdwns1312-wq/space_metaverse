@@ -30,26 +30,42 @@ function constellationCount(room, constellationId, exceptId = null) {
 function optionsFor(room, player) {
   const currentLegacy=constellationOf(player.avatar?.constellationId);
   const values=currentLegacy?.legacy?[...CONSTELLATIONS,currentLegacy]:CONSTELLATIONS;
+  const teacher=hasUnlimitedShards(player);
   return values.map(value => {
     const count = constellationCount(room, value.id);
     const current = player.avatar?.constellationId === value.id;
-    return { ...constellationOf(value.id, player.avatar.level), count, available: !value.legacy && (current || count < CONSTELLATION_LIMIT), current };
+    return { ...constellationOf(value.id, teacher?Math.max(2,Math.min(5,player.avatar.level)):player.avatar.level), count, available: !value.legacy && (teacher || current || count < CONSTELLATION_LIMIT), current };
   });
 }
 
 function baseInfo(room, player) {
   const requiredXp = requirement(player.avatar);
+  const teacher=hasUnlimitedShards(player);
   return {
     options: optionsFor(room, player),
     avatar: structuredClone(player.avatar),
     requiredXp,
-    canEvolve: player.avatar.level < PROGRESSION.transcendentLevel && player.avatar.xp >= requiredXp
+    canEvolve: player.avatar.level < PROGRESSION.transcendentLevel && player.avatar.xp >= requiredXp,
+    teacherMode: teacher,
+    starShards: player.starShards??0,
+    changeCost: teacher?0:player.avatar.level*2
   };
 }
 
 export function evolutionInfo(room, player) {
-  requireStudentAt(player, evolutionStar, '진화의 별');
+  requireStudentAt(player, evolutionStar, '진화의 별', true);
   return baseInfo(room, player);
+}
+
+export function selectTeacherEvolution(room,player,{level,constellationId}={}){
+  requireStudentAt(player,evolutionStar,'진화의 별',true);
+  ensure(hasUnlimitedShards(player),'선생님만 자유 진화를 선택할 수 있어요.');
+  ensure(Number.isInteger(level)&&level>=1&&level<=PROGRESSION.transcendentLevel,'LV1~LV5 중 단계를 골라주세요.');
+  const selected=level>=2?constellationOf(constellationId,level):null;
+  ensure(level===1||(selected&&!selected.legacy),'현재 선택할 수 있는 별자리를 골라주세요.');
+  player.avatar={...player.avatar,level,xp:0,form:level===1?'asteroid':level===PROGRESSION.transcendentLevel?'transcendent':'constellation',
+    constellationId:level===1?null:selected.id,teacherPreview:true};
+  return baseInfo(room,player);
 }
 
 export function changeConstellation(room, player, { constellationId } = {}) {
@@ -57,13 +73,18 @@ export function changeConstellation(room, player, { constellationId } = {}) {
   const selected = constellationOf(constellationId);
   ensure(selected&&!selected.legacy, '현재 선택할 수 있는 별자리를 골라주세요.');
   ensure(player.avatar.level >= 2, 'LV1은 첫 진화를 할 때 별자리를 고를 수 있어요.');
+  ensure(player.avatar.constellationId!==selected.id,'지금과 다른 별자리를 골라주세요.');
   ensure(constellationCount(room, selected.id, player.id) < CONSTELLATION_LIMIT,
     selected.name + '는 이미 두 친구가 선택했어요.');
+  const cost=player.avatar.level*2;
+  ensure(Number.isSafeInteger(player.starShards)&&player.starShards>=cost,
+    '별자리를 변경하려면 별 파편 '+cost+'개가 필요해요.');
   player.avatar = {
     ...structuredClone(player.avatar),
     form: player.avatar.level >= PROGRESSION.transcendentLevel ? 'transcendent' : 'constellation',
     constellationId: selected.id
   };
+  player.starShards-=cost;
   return baseInfo(room, player);
 }
 

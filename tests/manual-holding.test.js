@@ -97,7 +97,8 @@ test('315 socket: no automatic catchup; disk rollback, reacquisition, restart, M
   const student=await connect(address.port);assert.ok((await call(student,'room:join',{code,nickname:'검사',pin:'1234'})).ok);
   assert.equal((await call(student,'holding:use',{itemId:'galaxy-card',playerId:'other'})).ok,false);
   const save=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw Error('simulated disk full');};
-  const beforeRead=structuredClone(player());assert.ok((await call(student,'holding:status',{itemId:'galaxy-card'})).ok);assert.deepEqual(player(),beforeRead);
+  const withoutRecoveryClock=value=>{const copy=structuredClone(value);delete copy.battleVitals?.nextPassiveRecoveryAt;return copy;};
+  const beforeRead=withoutRecoveryClock(player());assert.ok((await call(student,'holding:status',{itemId:'galaxy-card'})).ok);assert.deepEqual(withoutRecoveryClock(player()),beforeRead);
   assert.equal((await call(student,'holding:use',{itemId:'galaxy-card'})).ok,false);game.store.files.save=save;
   assert.equal(player().starShards,0);assert.equal(player().holdingState?.usedWeeks?.['galaxy-card'],undefined);
   assert.ok((await call(student,'holding:use',{itemId:'galaxy-card',quantity:99,now:0})).ok);assert.equal(player().starShards,2);

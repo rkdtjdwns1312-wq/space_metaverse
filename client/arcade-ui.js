@@ -14,7 +14,8 @@ const GAMES={
 
 export function createArcadeUI({
   stop=()=>{},toast=()=>{},request=()=>Promise.resolve({}),subscribeStarRanking=()=>()=>{},
-  sendDodgeInput=()=>{},subscribeDodgeState=()=>()=>{},subscribeDodgeRanking=()=>()=>{},subscribeMemoryRanking=()=>()=>{}
+  sendDodgeInput=()=>{},subscribeDodgeState=()=>()=>{},subscribeDodgeRanking=()=>()=>{},subscribeMemoryRanking=()=>()=>{},
+  onSound=()=>{}
 }={}){
   const dialog=document.createElement('dialog');dialog.id='arcade-dialog';dialog.setAttribute('aria-labelledby','arcade-title');
   const header=document.createElement('header'),title=document.createElement('h2');title.id='arcade-title';
@@ -28,7 +29,13 @@ export function createArcadeUI({
   dialog.append(header,instructions,score,board,restartButton,footer);document.body.append(dialog);
 
   let current=null,activeGame=null;
-  const setScore=text=>{score.textContent=text;};
+  let lastOutcome='';
+  const setScore=text=>{
+    score.textContent=text;
+    const outcome=/성공|정답|완성|승리/.test(text)?'win':/실패|패배|게임 종료/.test(text)?'lose':'';
+    if(outcome&&outcome!==lastOutcome)onSound(current,outcome);
+    if(outcome)lastOutcome=outcome;
+  };
   const cleanup=()=>{activeGame?.destroy();activeGame=null;board.replaceChildren();};
   const factories={
     memory:()=>createMemoryGame({board,setScore,toast,request,footer:rankingActions,subscribeRanking:subscribeMemoryRanking}),
@@ -37,16 +44,19 @@ export function createArcadeUI({
     sudoku:()=>createSudokuGame({board,toast}),
     dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions})
   };
+  board.addEventListener('click',event=>{if(event.target.closest('button,[role="button"],.cell,.card'))onSound(current,'move');});
+  board.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')onSound(current,'move');});
   const render=id=>{
+    lastOutcome='';
     const game=GAMES[id];title.textContent=game.title;instructions.textContent=game.instructions;setScore(game.score);board.replaceChildren();
     activeGame=factories[id]();
   };
   const close=()=>{cleanup();if(dialog.open)dialog.close();stop();};
 
   closeButton.addEventListener('click',close);
-  restartButton.addEventListener('click',()=>{cleanup();render(current);});
+  restartButton.addEventListener('click',()=>{onSound(current,'start');cleanup();render(current);});
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
   dialog.addEventListener('close',cleanup);
 
-  return {open(gameId){if(!GAMES[gameId])return;stop();cleanup();current=gameId;render(gameId);if(!dialog.open)dialog.showModal();}};
+  return {open(gameId){if(!GAMES[gameId])return;stop();cleanup();current=gameId;onSound(current,'start');render(gameId);if(!dialog.open)dialog.showModal();}};
 }

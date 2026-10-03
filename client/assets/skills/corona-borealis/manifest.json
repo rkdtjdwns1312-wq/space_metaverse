@@ -1,0 +1,64 @@
+{
+  "format": "RGBA PNG",
+  "columns": 6,
+  "rows": 4,
+  "frameCount": 24,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameOrder": "row-major",
+  "loopFrames": [
+    7,
+    18
+  ],
+  "buildScript": "scripts/build-water-vfx.py",
+  "assets": {
+    "attack": {
+      "sourceSha256": "9030b99ef4686f7f9b1c9ede725284b8234d9f5c72532b9383dd925a3808afac",
+      "frames": 24,
+      "distinctFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "transparentBorders": true,
+      "playablePreviewFrames": 60,
+      "loopSeamMeanDifference": 0.05476
+    },
+    "skill-lv2": {
+      "sourceSha256": "7a31dfa166e224e10e214cd07949b4c7d49543c0ece28006caefe4d4e48657cb",
+      "frames": 24,
+      "distinctFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "transparentBorders": true,
+      "playablePreviewFrames": 60,
+      "loopSeamMeanDifference": 0.07013
+    },
+    "skill-lv3": {
+      "sourceSha256": "0cea9effa4c407b4d6e691474d3a1d37efc2b2873ebf8d3069f6fd3afc67a635",
+      "frames": 24,
+      "distinctFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "transparentBorders": true,
+      "playablePreviewFrames": 60,
+      "loopSeamMeanDifference": 0.08073
+    },
+    "skill-lv4": {
+      "sourceSha256": "c45d101bf2659f9779f787da32820fd695f7ba120b7e4c335ceeecf8f1f833b3",
+      "frames": 24,
+      "distinctFrames": 24,
+      "canvas": [
+        256,
+        256
+      ],
+      "transparentBorders": true,
+      "playablePreviewFrames": 60,
+      "loopSeamMeanDifference": 0.05182
+    }
+  }
+}

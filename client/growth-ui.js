@@ -99,7 +99,7 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
   $('max').onclick = () => { if (info?.maxBuy) $('amount').value = String(info.maxBuy); };
   $('buy').onclick = buy;
   $('header-close').onclick = $('close').onclick = () => dialog.close();
-  dialog.addEventListener('close', () => { revision++; busy = false; info = null; });
+  dialog.addEventListener('close', () => { if(dialog.open)return;revision++; busy = false; info = null; });
   return {
     open() {
       if (!joined()) return;

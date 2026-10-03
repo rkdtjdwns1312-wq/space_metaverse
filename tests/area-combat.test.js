@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
-import {ATTACK_VISUAL, attackGeometryOf} from '../shared/combat.js';
+import {ATTACK_VISUAL, attackGeometryOf, attackPowerOf, defensePowerOf} from '../shared/combat.js';
 import {PLAZA_ID, RULES} from '../shared/config.js';
 import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
@@ -48,9 +48,9 @@ test('실제 소켓 공격은 겹친 몹 2마리와 학생 2명을 모두 맞히
   assert.equal(forged.ok,true);
   assert.deepEqual(forged.playerTargets.map(hit=>hit.targetId),[targetB.id,targetC.id]);
   assert.deepEqual(forged.targets.map(hit=>hit.monsterId),monsters.map(monster=>monster.id));
-  assert.equal(ensureVitals(targetB).hp,9);assert.equal(ensureVitals(targetC).hp,9);
-  assert.deepEqual(monsters.map(monster=>monster.hp),[19,19]);
-  assert.equal(ensureVitals(attacker).hp,10);
+  assert.equal(ensureVitals(targetB).hp,15);assert.equal(ensureVitals(targetC).hp,15);
+  assert.deepEqual(monsters.map(monster=>monster.hp),[15,15]);
+  assert.equal(ensureVitals(attacker).hp,20);
 });
 
 test('범위 전투는 자신·다른 방·다른 맵·범위 밖·검은별·사망 학생을 제외하고 방어력을 적용한다',async t=>{
@@ -73,10 +73,10 @@ test('범위 전투는 자신·다른 방·다른 맵·범위 밖·검은별·�
   Object.assign(otherPlayer,{mapId:'star-origin-1',x:400+ATTACK_VISUAL.reach,y:400});
   const result=await call(sockets[0],'combat:attack');
   assert.deepEqual(result.playerTargets.map(hit=>hit.targetId),[players[1].id]);
-  assert.equal(ensureVitals(players[1]).hp,18);
-  assert.equal(ensureVitals(players[2]).hp,20);
-  assert.equal(ensureVitals(players[3]).hp,20);
-  assert.equal(ensureVitals(players[4]).hp,0);assert.equal(ensureVitals(players[5]).hp,20);
+  assert.equal(ensureVitals(players[1]).hp,34);
+  assert.equal(ensureVitals(players[2]).hp,40);
+  assert.equal(ensureVitals(players[3]).hp,40);
+  assert.equal(ensureVitals(players[4]).hp,0);assert.equal(ensureVitals(players[5]).hp,40);
   assert.equal(ensureVitals(otherPlayer).hp,1);
 });
 
@@ -99,15 +99,15 @@ test('공격 쿨다운은 중복을 막고 스킬은 같은 서버 대상 목록
   const event=new Promise(resolve=>b.once('combat:hit',resolve));
   const skill=await call(a,'combat:skill',{radius:99999,targetIds:['forged'],power:99999});
   assert.equal(skill.ok,true);
-  assert.equal(ensureVitals(target).hp,before-1);
+  assert.equal(ensureVitals(target).hp,before-5);
   assert.deepEqual(skill.ready,false);
   const hit=await event;assert.equal(hit.kind,'skill');assert.deepEqual(hit.playerTargetIds,[target.id]);
   assert.equal((await call(a,'combat:skill',{targets:['forged']})).ok,false);
 });
 
-for (const [role,level,size,power,radius] of [
-  ['student',2,80,1,36], ['student',3,92,2,41.4], ['student',4,105.8,3,47.61],
-  ['student',5,105.8,4,47.61], ['teacher',6,96,99999,43.2]
+for (const [role,level,size,radius] of [
+  ['student',2,80,36], ['student',3,92,41.4], ['student',4,105.8,47.61],
+  ['student',5,105.8,47.61], ['teacher',6,96,43.2]
 ]) test(`${role} LV${level}: 소켓 Q/E 크기별 사거리·반경·대각선 시작점·경계 판정·위조 무시`,async t=>{
   // In-memory room and a fixed clock keep movement/retaliation from changing boundary fixtures.
   const now=Date.now();
@@ -123,7 +123,9 @@ for (const [role,level,size,power,radius] of [
   const actor=role==='teacher'?teacher:sockets[0];
   const targets=joins.slice(1).map(join=>room.players.get(join.selfId));
   Object.assign(attacker,{mapId:'star-origin-1',x:600,y:500,facing:{x:.6,y:.8}});
-  Object.assign(attacker.avatar,{level,constellationId:'aries'});
+  // A constellation-free avatar exercises the common Q/E geometry.
+  Object.assign(attacker.avatar,{level,constellationId:null});
+  const power=attackPowerOf(level,null,attacker);
   const reach=62*size/80,originOffset=size/2;
   const center={x:600+.6*reach,y:500+.8*reach};
   targets.forEach((p,i)=>{
@@ -172,9 +174,10 @@ for (const [role,level,size,power,radius] of [
   assert.equal(attackHit.power,power);assert.equal(attackHit.durationMs,340);
   assert.deepEqual(attack.playerTargets.map(p=>p.targetId),[targets[0].id]);
   assert.deepEqual(attack.targets.map(m=>m.monsterId),[monsters[0].id]);
-  assert.equal(attack.playerTargets[0].damage,Math.max(1,power-3));
+  const targetDamage=Math.max(1,power-defensePowerOf(5,'aries',targets[0]));
+  assert.equal(attack.playerTargets[0].damage,targetDamage);
   assert.equal(attack.targets[0].damage,power);
-  assert.equal(ensureVitals(targets[0]).hp,Math.max(0,before[0]-Math.max(1,power-3)));
+  assert.equal(ensureVitals(targets[0]).hp,Math.max(0,before[0]-targetDamage));
   assert.equal(ensureVitals(targets[1]).hp,before[1]);
   assert.equal(monsters[0].hp,Math.max(0,20-power));assert.equal(monsters[1].hp,20);
   assert.equal((await call(actor,'combat:attack',spoof)).ok,false);

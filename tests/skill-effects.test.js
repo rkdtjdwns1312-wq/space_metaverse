@@ -58,19 +58,18 @@ test('실제 소켓 스킬은 16종×4단계에서 서버 효과·방향만 반�
  const otherRoomSocket=await connect();
  await call(otherRoomSocket,'room:join',{code:otherCreated.room.code,nickname:'1'});
  const before={hp:player.hp,mp:player.mp,xp:player.avatar.xp,inventory:structuredClone(player.inventory),shards:player.starShards,targetId:monster.targetId,monsterHp:monster.hp};
- // 수치가 연결된 여섯 별자리는 각각의 실제 전투·회복 검사에서 검증합니다.
- for(const constellation of CONSTELLATIONS.filter(c=>!['sagittarius','corvus','aquarius','cancer','cetus','pisces'].includes(c.id)))for(const level of [2,3,4,5]){
-  player.avatar.constellationId=constellation.id;player.avatar.level=level;
+ // All named constellations have combat skills; a constellation-free avatar still exercises the shared fallback.
+ for(const level of [2,3,4,5]){
+  player.avatar.constellationId=null;player.avatar.level=level;
   now+=500;
-  const effect=skillEffectOf(constellation.id,Math.min(4,level));
   const peerHit=new Promise(resolve=>teacher.once('combat:hit',resolve));
   let otherMapHits=0,otherRoomHits=0;
   const mapListener=()=>otherMapHits++;const roomListener=()=>otherRoomHits++;
   peer.on('combat:hit',mapListener);otherRoomSocket.on('combat:hit',roomListener);
   const result=await call(student,'combat:skill',{dx:1,dy:1,effectId:'gemini-lv5',level:99,power:999});
-  assert.deepEqual(result,{ok:true,ready:false,direction:{x:0,y:-1},effectId:effect.id});
+  assert.deepEqual(result,{ok:true,ready:false,direction:{x:0,y:-1},effectId:null});
   const hit=await peerHit;
-  assert.deepEqual({kind:hit.kind,effectId:hit.effectId,durationMs:hit.durationMs,dx:hit.dx,dy:hit.dy},{kind:'skill',effectId:effect.id,durationMs:effect.durationMs,dx:0,dy:-1});
+  assert.deepEqual({kind:hit.kind,effectId:hit.effectId,durationMs:hit.durationMs,dx:hit.dx,dy:hit.dy},{kind:'skill',effectId:null,durationMs:340,dx:0,dy:-1});
   await new Promise(resolve=>setTimeout(resolve,10));
   peer.off('combat:hit',mapListener);otherRoomSocket.off('combat:hit',roomListener);
   assert.equal(otherMapHits,0);assert.equal(otherRoomHits,0);

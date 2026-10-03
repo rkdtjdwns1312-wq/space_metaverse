@@ -35,9 +35,9 @@ for(const level of [2,3,4,5])test(`물병 LV${level}: 5초 총 피해·회복 �
 test('회복은 대상 최대HP50%, 죽은 학생 부활·PvP 피해 없음, 범위 이탈시 중단',()=>{
   const {room,p,monster,ally}=setup(4);ally.avatar={level:2,constellationId:'leo'};ally.transformation=null;ensureVitals(ally).hp=1;
   const dead={...ally,id:'dead',avatar:{...ally.avatar},battleVitals:undefined};ensureVitals(dead).hp=0;room.players.set(dead.id,dead);
-  castAquarius(room,p,0);advanceAquarius(room,1000);assert.equal(ensureVitals(ally).hp,2);
-  ally.x=0;advanceAquarius(room,2000);assert.equal(ensureVitals(ally).hp,2);
-  ally.x=monster.x;advanceAquarius(room,5000);assert.equal(ensureVitals(ally).hp,5);assert.equal(ensureVitals(dead).hp,0);
+  castAquarius(room,p,0);advanceAquarius(room,1000);assert.equal(ensureVitals(ally).hp,4);
+  ally.x=0;advanceAquarius(room,2000);assert.equal(ensureVitals(ally).hp,4);
+  ally.x=monster.x;advanceAquarius(room,5000);assert.equal(ensureVitals(ally).hp,13);assert.equal(ensureVitals(dead).hp,0);
 });
 test('시전자 사망·맵변경·접속종료·별자리변경은 지대를 취소',()=>{
   for(const change of [p=>p.mapId='other',p=>p.connected=false,p=>ensureVitals(p).hp=0,p=>p.avatar.constellationId='leo']){

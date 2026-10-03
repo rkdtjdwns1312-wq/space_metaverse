@@ -1,4 +1,9 @@
 #energy-shop-dialog{width:min(760px,calc(100vw - 26px));max-width:min(760px,calc(100vw - 26px));max-height:86vh;box-sizing:border-box;background:linear-gradient(160deg,#f5fbff,#f4efff);border:2px solid #a9cbe2}
+#teacher-equipment-catalog-dialog{width:min(760px,calc(100vw - 26px));max-width:min(760px,calc(100vw - 26px));max-height:86vh;box-sizing:border-box;background:linear-gradient(160deg,#f5fbff,#f4efff);border:2px solid #a9cbe2}
+#teacher-equipment-catalog-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#teacher-equipment-catalog-dialog h2{margin:0;color:#4d6b9b}
+#teacher-equipment-catalog-dialog .energy-shop-list{max-height:68vh}
+.teacher-equipment-catalog-trigger{margin:0 0 12px}
 #energy-shop-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px}
 #energy-shop-dialog h2{margin:0;color:#4d6b9b}
 .energy-shop-hint{color:#677494;line-height:1.45}

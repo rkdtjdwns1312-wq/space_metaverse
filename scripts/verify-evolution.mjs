@@ -44,7 +44,7 @@ try {
     window.evolutionInfo = {
       options: CONSTELLATIONS.map((value, index) => ({ ...value, count: index === 0 ? 2 : 0, available: index !== 0, current: false })),
       avatar: { form: 'asteroid', level: 1, xp: 15, constellationId: null, equipment: {}, departmentId: null },
-      requiredXp: 15, canEvolve: true
+      requiredXp: 15, canEvolve: true,starShards:20,changeCost:2
     };
     window.growthInfo = {
       avatar: { form: 'asteroid', level: 1, xp: 10, constellationId: null, equipment: {}, departmentId: null },
@@ -58,6 +58,7 @@ try {
       }
       if (event === 'evolution:change') {
         window.evolutionMutations++;
+        window.evolutionInfo.starShards-=window.evolutionInfo.avatar.level*2;
         window.evolutionInfo.avatar.constellationId = data.constellationId;
         window.evolutionInfo.options.forEach(option => { option.current = option.id === data.constellationId; });
         return clone(window.evolutionInfo);
@@ -66,10 +67,17 @@ try {
         window.evolutionMutations++;
         window.evolutionInfo.avatar.constellationId = data.constellationId;
         window.evolutionInfo.avatar.level += 1;
+        window.evolutionInfo.changeCost=window.evolutionInfo.avatar.level*2;
         window.evolutionInfo.avatar.xp = 0;
         window.evolutionInfo.requiredXp = 20;
         window.evolutionInfo.canEvolve = false;
         window.evolutionInfo.options.forEach(option => { option.current = option.id === data.constellationId; if (option.current) option.count = 1; });
+        return clone(window.evolutionInfo);
+      }
+      if (event === 'evolution:teacher-select') {
+        window.evolutionInfo.avatar.level=data.level;
+        window.evolutionInfo.avatar.constellationId=data.constellationId??null;
+        window.evolutionInfo.avatar.teacherPreview=true;
         return clone(window.evolutionInfo);
       }
       if (event === 'growth:info') return clone(window.growthInfo);
@@ -126,9 +134,12 @@ try {
   await page.locator('#evolution-change').click();
   assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 16);
   await page.locator('[data-constellation-id="libra"]').click();
+  await page.locator('#evolution-confirm-text').filter({hasText:'별 파편 4개'}).waitFor();
+  await page.locator('#evolution-yes').click();
   await page.waitForFunction(() => window.evolutionInfo.avatar.constellationId === 'libra');
   assert.equal(await page.evaluate(() => window.evolutionInfo.avatar.level), 2);
-  check('LV2 별자리 변경 즉시 저장·레벨 보존');
+  assert.equal(await page.evaluate(()=>window.evolutionInfo.starShards),16);
+  check('LV2 별자리 변경 확인·별 파편 4개 차감·레벨 보존');
 
   await page.setViewportSize({ width: 390, height: 844 });
   const dialogBox = await page.locator('#evolution-dialog').boundingBox();
@@ -181,10 +192,31 @@ try {
     window.growthInfo.maxBuy = 3; window.growthInfo.canBuy = true; window.growthUI.open();
   });
   await page.locator('#growth-info .currency-amount[data-currency="starShards"]').filter({hasText:/^3$/}).waitFor();
-  await page.locator('#growth-amount').fill('-7');
-  await page.locator('#growth-amount').blur();
+  await page.waitForFunction(()=>!document.querySelector('#growth-amount').disabled&&document.querySelector('#growth-amount').max==='3');
+  await page.locator('#growth-amount').evaluate(input=>{input.value='-7';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});
   assert.equal(await page.locator('#growth-amount').inputValue(), '1');
   check('성장 수량 최소·잔액 cap 입력 보정');
+
+  await page.locator('#growth-close').click();
+  await page.evaluate(()=>{
+    window.evolutionInfo.teacherMode=true;
+    window.evolutionInfo.avatar={form:'star-guardian',level:6,xp:0,constellationId:null};
+    window.evolutionInfo.options.forEach(option=>{option.available=true;option.current=false;});
+    window.evolutionUI.open();
+  });
+  await page.locator('#evolution-teacher').click();
+  await page.locator('#evolution-levels [data-level="5"]').click();
+  assert.equal(await page.locator('#evolution-grid .constellation-choice').count(),16);
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(),false);
+  await page.locator('[data-constellation-id="gemini"]').click();
+  await page.locator('#evolution-yes').click();
+  await page.locator('#evolution-summary').filter({hasText:'LV5'}).waitFor();
+  assert.deepEqual((await page.evaluate(()=>window.calls.findLast(value=>value.event==='evolution:teacher-select'))).data,
+    {level:5,constellationId:'gemini'});
+  await page.locator('#evolution-levels [data-level="1"]').click();
+  await page.locator('#evolution-grid button').click();await page.locator('#evolution-yes').click();
+  await page.locator('#evolution-summary').filter({hasText:'LV1'}).waitFor();
+  check('선생님 16종 LV1~LV5 자유 선택·인원 마감 무시·확인 후 적용');
 
   assert.deepEqual(errors, []);
 } finally {

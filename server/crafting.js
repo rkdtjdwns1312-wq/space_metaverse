@@ -1,5 +1,6 @@
 import { CRAFTING } from '../shared/crafting.js';
 import { SHOP } from '../shared/config.js';
+import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import {shardCost} from '../shared/economy.js';
 
 const validId = value => typeof value === 'string' && value.length > 0;
@@ -45,12 +46,12 @@ function validRecipe(recipe, catalog, maxQuantity) {
   const outputLevel = levelOf(output);
   if (outputLevel === null || outputLevel < 2 || outputLevel > 5) return null;
   const levels = ingredients.map(part => levelOf(catalog.find(item => item?.id === part.id)));
-  if (levels.some(level => level === null || level >= outputLevel) || Math.max(...levels) + 1 !== outputLevel) return null;
+  if (levels.some(level => level === null || level >= outputLevel) || (!output.craftOnly && Math.max(...levels) + 1 !== outputLevel)) return null;
   return { ingredients, output };
 }
 
 // 서버에서만 호출하며, 검증 실패는 재화와 재료를 함께 보존합니다.
-export function attemptCraft(player, input, { recipes = [], catalog = SHOP.items } = {}) {
+export function attemptCraft(player, input, { recipes = [], catalog = [...SHOP.items,...EQUIPMENT_ITEMS] } = {}) {
   if (!player || !Array.isArray(player.inventory) || !Number.isSafeInteger(player.starShards) || player.starShards < 0 ||
       !Array.isArray(recipes) || !Array.isArray(catalog)) return fail(player || {}, 'invalid-player');
   if (recipes.length === 0) return fail(player, 'invalid-recipe');

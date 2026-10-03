@@ -1,12 +1,13 @@
 import {transformedSkill} from '../shared/transformation.js';
 import {launchProjectiles} from './projectiles.js';
 import {randomUUID} from 'node:crypto';
-import {isSagittarius,sagittariusSkill,SAGITTARIUS_ATTACK} from '../shared/sagittarius-skills.js';
+import {isSagittarius,sagittariusSkill,sagittariusSkillOf,SAGITTARIUS_ATTACK} from '../shared/sagittarius-skills.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {RULES} from '../shared/config.js';
 import {monstersOf,damageMonster} from './monsters.js';
 import {ensureVitals,playerVitals,damagePlayer} from './vitals.js';
+import {reflectLibraDamage} from './area-combat.js';
 import {ensure} from './rooms.js';
 
 // 실행 중 전투 정보만 room/player에 보관합니다. 영구 저장 허용 목록에는 넣지 않습니다.
@@ -20,7 +21,7 @@ function damage(room,player,list,power,now){
   const targets=[],playerTargets=[];
   for(const target of list){
     if(target.kind==='monster'){const hit=damageMonster(room,target.entity,player,power,now);if(hit)targets.push(hit);}
-    else{const hit=damagePlayer(target.entity,power,now);if(hit)playerTargets.push({targetId:target.entity.id,...hit});}
+    else{const hit=damagePlayer(target.entity,power,now);if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
   }
   return {targets,playerTargets};
 }
@@ -31,7 +32,8 @@ export function attackSagittarius(room,player,now=Date.now()){
   return execute(room,player,SAGITTARIUS_ATTACK,now,true);
 }
 export function castSagittarius(room,player,slot,now=Date.now()){
-  return execute(room,player,transformedSkill(player,sagittariusSkill(slot)&&{...sagittariusSkill(slot),multiplier:3}),now,false);
+  const skill=slot===0?sagittariusSkillOf(player):transformedSkill(player,sagittariusSkill(slot)&&{...sagittariusSkill(slot),multiplier:3});
+  return execute(room,player,skill,now,false);
 }
 function execute(room,player,skill,now,basic){
   const slot=skill?.slot;
@@ -55,7 +57,8 @@ function execute(room,player,skill,now,basic){
   let result={targets:[],playerTargets:[]},effects=[];
   if(basic||slot===0){
     const range=size*skill.rangeWidths,width=size*.13;
-    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*skill.multiplier,durationMs:basic?650:900},now);
+    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*skill.multiplier,
+      piercing:!basic,vfxId:basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();
     const cast={...base,kind:slot===1?'hunter':'rain',x:slot===1?player.x+dx*size/2:target.entity.x,y:slot===1?player.y+dy*size/2:target.entity.y,lastMoveAt:now,

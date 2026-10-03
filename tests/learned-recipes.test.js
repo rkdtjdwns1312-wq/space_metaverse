@@ -99,15 +99,15 @@ test('drop probability has exactly one successful value out of 100; output selec
     assert.equal(drop.itemId,recipeItemId(recipes[index+1].output.id));assert.equal(itemOf(drop.itemId).level,3);}
 });
 
-test('recipe ownership uses maximum actual damage, stable ties, and ignores party split; zero energy does not cancel a recipe',()=>{
+test('recipe eligibility follows the leading contributor party; zero energy does not cancel a recipe',()=>{
   const room=makeRoom(),a=room.players.get('a'),b=room.players.get('b'),m=monster();
   room.parties=new Map([['party',{memberIds:['a','b']}]]);
   let rolls=0;const options={energyRoll:()=>0,recipeRoll:()=>{rolls++;return 0;}};
   damageMonster(room,m,a,25,NOW,options);damageMonster(room,m,b,999,NOW,options);
   assert.equal(m.hp,0);assert.equal(room.energyDrops.size,1);assert.equal(rolls,2);
-  const drop=[...room.energyDrops.values()][0];assert.equal(drop.kind,'recipe');assert.deepEqual([...drop.shares],[['a',1]]);
+  const drop=[...room.energyDrops.values()][0];assert.equal(drop.kind,'recipe');assert.deepEqual([...drop.shares],[['a',1],['b',1]]);
   assert.equal(damageMonster(room,m,b,999,NOW,options),null);assert.equal(room.energyDrops.size,1);assert.equal(rolls,2);
-  const tie=addRecipeDrop(room,monster(),new Map([['b',10],['a',10]]),NOW,()=>0);assert.deepEqual([...tie.shares],[['b',1]]);
+  const tie=addRecipeDrop(room,monster(),new Map([['b',10],['a',10]]),NOW,()=>0);assert.deepEqual([...tie.shares],[['a',1],['b',1]]);
   const view=energyDropViews(room,NOW)[0];assert.equal(view.kind,'recipe');assert.equal(view.itemId,RID);assert.equal(view.ingredients,undefined);
 });
 
@@ -180,7 +180,7 @@ test('F pickup is once-only, item use learns only consumer, and both inventory a
   assert.deepEqual(ok(await call(f.other,'recipes:learned')).recipes,[]);assert.equal((await call(f.student,'energy:collect',{dropId:drop.id})).ok,false);
   // room:open restored the configured output list before any combat takes place.
   Object.assign(f.p,{mapId:'star-origin-2',x:600,y:450});const afterRestart=monster();
-  damageMonster(f.room,afterRestart,f.p,40,f.now,{energyRoll:()=>0,recipeRoll:()=>0});
+  damageMonster(f.room,afterRestart,f.p,1000,f.now,{energyRoll:()=>0,recipeRoll:()=>0});
   assert.equal([...f.room.energyDrops.values()].filter(d=>d.kind==='recipe'&&d.itemId===RID).length,1);
 });
 

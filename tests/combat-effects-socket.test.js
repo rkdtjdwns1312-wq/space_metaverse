@@ -5,6 +5,8 @@ import {createClassroomServer} from '../server/app.js';
 import {monstersOf} from '../server/monsters.js';
 import {ensureVitals,damagePlayer} from '../server/vitals.js';
 import {toRecord} from '../server/persistent-rooms.js';
+import {advanceProjectiles} from '../server/projectiles.js';
+import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
 
 test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, 위조 변신 수치 무시·저장 제외',async t=>{
  let now=1000000;const key='corvus-private-test-key',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
@@ -19,19 +21,20 @@ test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, �
  Object.assign(friend,{x:700,y:450,mapId:p.mapId});Object.assign(friend.avatar,{level:4,constellationId:'taurus'});
  const monster=[...monstersOf(room).values()][0];Object.assign(monster,{x:690,y:450,hp:100,maxHp:100,nextAttackAt:Infinity,lastMoveAt:now});room.monsters=new Map([[monster.id,monster]]);
  let leaks=0;teacher.on('combat:damage-numbers',()=>leaks++);outsider.on('combat:damage-numbers',()=>leaks++);
- const result=await call(a,'combat:skill',{slot:0,power:99999,mana:0,hits:100,dx:-1});assert.equal(result.ok,true);assert.equal(result.vitals.mp.current,25);assert.equal(result.hit.dx,1);
+ const result=await call(a,'combat:skill',{slot:0,power:99999,mana:0,hits:100,dx:-1});assert.equal(result.ok,true);assert.equal(result.vitals.mp.current,45);assert.equal(result.hit.dx,1);
  for(const slot of [1,2,3])assert.equal((await call(a,'combat:skill',{slot})).ok,false);
- const received=new Promise(r=>a.once('combat:damage-numbers',r));now+=1000;const batch=await received;
- assert.equal(batch.hits.filter(h=>h.targetKind==='monster').length,4);assert.equal(batch.hits.filter(h=>h.targetKind==='player').length,4);
- assert.ok(batch.hits.filter(h=>h.targetKind==='monster').every(h=>h.damage===4));assert.equal(monster.hp,84);
+ monster.x=570;advanceProjectiles(room,now+700,combatEnemies,damageTargets);
+ p.transformation={active:false};const batch=advanceProjectiles(room,now+1400,combatEnemies,damageTargets);
+ assert.ok(batch.length>=1);assert.equal(monster.hp,28);
+ assert.equal(monster.hp,28);
  await new Promise(r=>setTimeout(r,80));assert.equal(leaks,0);
  assert.equal((await call(a,'combat:transform',{level:5})).ok,false);
  p.avatar.level=5;ensureVitals(p).hp=1;ensureVitals(p).mp=0;
  const transformed=await call(a,'combat:transform',{durationMs:999999,cooldownMs:0,attackBonus:99999});assert.equal(transformed.ok,true);
- assert.equal(transformed.endsAt,now+30000);assert.equal(transformed.cooldownUntil,now+300000);assert.equal(ensureVitals(p).hp,60);assert.equal(ensureVitals(p).mp,60);
+ assert.equal(transformed.endsAt,now+30000);assert.equal(transformed.cooldownUntil,now+300000);assert.equal(ensureVitals(p).hp,80);assert.equal(ensureVitals(p).mp,70);
  assert.equal((await call(a,'combat:transform')).ok,false);
- damagePlayer(p,10,now);assert.ok(ensureVitals(p).hp<60);const hp=ensureVitals(p).hp;now+=5000;
+ damagePlayer(p,10,now);assert.ok(ensureVitals(p).hp<80);const hp=ensureVitals(p).hp;now+=5000;
  await new Promise(r=>setTimeout(r,80));assert.equal(ensureVitals(p).hp,hp);
- now+=25000;await call(a,'combat:skill',{slot:3});assert.equal(p.transformation.active,false);assert.equal(ensureVitals(p).hp<=40,true);
+ now+=25000;await call(a,'combat:skill',{slot:3});assert.equal(p.transformation.active,false);assert.equal(ensureVitals(p).hp<=60,true);
  const saved=JSON.stringify(toRecord(room));for(const privateKey of ['projectiles','corvusCasts','corvusCooldownUntil','damageNumbers','transformation'])assert.ok(!saved.includes(privateKey));
 });

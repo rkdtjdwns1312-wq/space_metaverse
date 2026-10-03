@@ -13,8 +13,8 @@ const player=id=>({id,role:'student',connected:true,away:false,avatar:{level:3,c
 test('실제 누적 피해 최대자가 소유하며 마지막 과잉 피해·중복 공격으로 빼앗지 못한다',()=>{
   const a=player('a'),b=player('b'),room={players:new Map([['a',a],['b',b]])};
   const m=monstersOf(room,0).get('star-scorpion-1');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
-  strikeMonsters(room,a,15,0);strikeMonsters(room,b,10,1);strikeMonsters(room,a,10,2);
-  assert.equal(m.contributors.get('a'),25);assert.equal(m.hp,5);
+  strikeMonsters(room,a,60,0);strikeMonsters(room,b,10,1);strikeMonsters(room,a,20,2);
+  assert.equal(m.contributors.get('a'),78);assert.equal(m.hp,13);
   strikeMonsters(room,b,99999,3);
   const drop=[...room.energyDrops.values()][0];assert.deepEqual([...drop.shares.keys()],['a']);
   assert.ok(drop.total>=6&&drop.total<=10);assert.equal(m.hp,0);
@@ -25,15 +25,15 @@ test('전회복 시 이전 전투 기여도 제거, 새 싸움 보상 소유권�
   const a=player('a'),b=player('b'),room={players:new Map([['a',a],['b',b]])};
   const m=monstersOf(room,0).get('star-scorpion-1');room.monsters=new Map([[m.id,m]]);m.x=600;m.y=450;
   strikeMonsters(room,a,30,0);a.mapId='star-origin-1';selectMonsterTarget(room,m);
-  assert.equal(m.hp,40);assert.equal(m.contributors.size,0);
-  strikeMonsters(room,b,40,2);assert.deepEqual([...room.energyDrops.values()][0].shares.keys().toArray(),['b']);
+  assert.equal(m.hp,100);assert.equal(m.contributors.size,0);
+  strikeMonsters(room,b,101,2);assert.deepEqual([...room.energyDrops.values()][0].shares.keys().toArray(),['b']);
 });
 
 test('첫 맵은 별게3·물별이2, 서버가 좌우 이동 방향을 전파한다',()=>{
   const room={},list=monsterViews(room).filter(m=>m.mapId==='star-origin-1');
   assert.equal(list.filter(m=>m.typeId==='star-crab').length,3);assert.equal(list.filter(m=>m.typeId==='water-star').length,2);
-  assert.ok(list.every(m=>m.hp===20&&m.attackPower===2));
-  assert.deepEqual(MONSTER_TYPES.filter(t=>t.level===1).map(t=>t.name),['Lv1 별게','Lv1 물별이']);
+  assert.ok(list.every(m=>m.hp===50&&m.attackPower===3));
+  assert.deepEqual(MONSTER_TYPES.filter(t=>t.level===1&&!t.boss).map(t=>t.name),['Lv1 별게','Lv1 물별이']);
   const m=monstersOf(room).get('star-crab');room.monsters=new Map([[m.id,m]]);
   Object.assign(m,{x:600,y:450,lastMoveAt:0,nextDirectionAt:0,patrolStartedAt:0,patrolPhaseOffset:0});
   moveMonsters(room,50,()=>0);assert.equal(monsterViews(room)[0].facingX,1);assert.equal(monsterViews(room)[0].moving,true);
@@ -69,7 +69,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const collected=await call(student,'energy:collect',{dropId:drop.id,amount:999});assert.ok(collected.ok,collected.error);assert.equal(collected.amount,amount);
   assert.equal(person().cosmicEnergy,amount);assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);
   const shop=STREET.objects.find(o=>o.kind==='energy-shop');assert.equal((await call(student,'shop:energy:open')).ok,false);
-  Object.assign(person(),{mapId:STREET_ID,x:shop.x,y:shop.y});const opened=await call(student,'shop:energy:open');assert.ok(opened.ok);assert.equal(opened.items.length,10);
+  Object.assign(person(),{mapId:STREET_ID,x:shop.x,y:shop.y});const opened=await call(student,'shop:energy:open');assert.ok(opened.ok);assert.equal(opened.items.filter(item=>!item.craftOnly).length,10);
   assert.equal((await call(student,'shop:energy:buy',{itemId:'celestial-crown'})).ok,false); // LV4 제한
   assert.equal((await call(student,'shop:buy',{itemId:'comet-compass',quantity:1})).ok,false); // 별상점 우회 방지
   const bought=await call(student,'shop:energy:buy',{itemId:'comet-compass'});assert.ok(bought.ok,bought.error);

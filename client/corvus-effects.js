@@ -8,6 +8,7 @@ export function preloadCorvus(ids=Object.keys(CORVUS_VFX)){
 }
 // 화면 배율·방향만 적용합니다. 시트의 모든 프레임은 같은 크기와 중심점을 씁니다.
 export function drawCorvus(ctx,hit,progress,reducedMotion=false){
+  if(hit.kind!=='corvus-attack'&&hit.kind!=='skill')return false;
   const spec=CORVUS_VFX[hit.vfxId];if(!spec)return false;
   preloadCorvus([spec.id]);const image=images.get(spec.id);
   if(!image?.complete||!image.naturalWidth)return true;

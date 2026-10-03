@@ -8,7 +8,7 @@ import {LV4_ITEMS} from './lv4-items.js';
 import {LV3_ITEMS} from './lv3-items.js';
 import {GOLD_CARD_ITEMS} from './star-cards.js';
 import {recipeItemOf} from './recipe-items.js';
-import {equipmentOf} from './equipment.js';
+import {EQUIPMENT_ITEMS,equipmentOf} from './equipment.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
 // 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
@@ -79,7 +79,7 @@ function paradiseMaps(moon){
   const idOf=n=>moon?'moon-paradise-'+n:n===1?'sun-paradise':'sun-paradise-'+n;
   const title=moon?'달의 낙원':'태양의 낙원';
   return Object.freeze([1,2,3].map(n=>enlargeParadise({id:idOf(n),name:title+' '+n,
-    theme:moon?'moon-paradise':'sun-paradise',stage:n,minLevel:n+1,width:1200,height:760,
+    theme:moon?'moon-paradise':'sun-paradise',stage:n,width:1200,height:760,
     vista:Object.freeze({bodyX:175,bodyY:140,bodyRadius:[72,140,235][n-1]}),
     spawn:n===1?{x:600,y:moon?175:590}:{x:1030,y:380},objects:[
       ...(n===1?[{id:'gate-garden',name:'낙원의 갈림길 '+(moon?'↑':'↓'),x:600,y:moon?80:680,radius:38,kind:'gate',
@@ -94,7 +94,7 @@ export const PARADISE=PARADISE_MAPS[0],PARADISE_ID=PARADISE.id;
 export const MOON_PARADISE_MAPS=paradiseMaps(true);
 export const MOON_PARADISE_ID=MOON_PARADISE_MAPS[0].id;
 // 두 여행길의 끝을 연결하는 공간. 지도에서도 태양3과 달3 사이에 놓습니다.
-export const STAR_PARADISE=enlargeParadise({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',minLevel:5,width:1200,height:760,spawn:{x:600,y:380},objects:[
+export const STAR_PARADISE=enlargeParadise({id:'star-paradise',name:'별들의 낙원',theme:'star-paradise',width:1200,height:760,spawn:{x:600,y:380},objects:[
   {id:'gate-sun',name:'태양의 낙원 3',x:600,y:80,radius:38,kind:'gate',target:'sun-paradise-3',arrival:{x:600,y:590},color:'#ffe3a6',passable:true},
   {id:'gate-moon',name:'달의 낙원 3',x:600,y:680,radius:38,kind:'gate',target:'moon-paradise-3',arrival:{x:600,y:175},color:'#d3d9ff',passable:true}
 ]});
@@ -135,6 +135,8 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
 // 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
+  {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'exploration-ticket',name:'탐사권',forSale:false,usable:true,description:'우주 탐사 기회 1번을 얻어요. 선생님이 지급합니다.',special:'광장 제단 오른쪽의 우주 탐사 장치에서 사용할 수 있어요.',art:'/assets/items/exploration-ticket.svg',icon:'🎟️',type:'tool',level:1,price:0,targets:'self',secret:false,mode:'exploration-ticket',effect:{label:'우주 탐사 기회',icon:'✦',durationMs:0,style:'card'}},
   { id: 'star-sticker', name: '반짝 별 스티커', forSale: false, description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
@@ -173,7 +175,7 @@ export const ITEM_USE = Object.freeze({ cooldownMs: 2000, logSize: 100, teacherL
 // declineBlockMs: 상대가 거절하면 같은 상대에게 그 시간 동안 다시 제안할 수 없습니다(계속 조르기 방지).
 export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999, declineBlockMs: 5 * 60_000 });
 export const ITEM_TYPES = Object.freeze({ decoration: '꾸미기', consumable: '간식', tool: '도구', pet: '펫', mount: '탈것' });
-export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || equipmentOf(itemId) || recipeItemOf(itemId, SHOP.items);
+export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || equipmentOf(itemId) || recipeItemOf(itemId, [...SHOP.items,...EQUIPMENT_ITEMS]);
 // 만들 수 있는 행성 종류(2026-09-12 사용자 지정 13종). 아이들은 이 목록에서 골라 행성을 만들고, 이름은 2~10자 안에서 바꿀 수 있습니다.
 // look: 화면이 종류에 맞게 다르게 그리는 모양 스타일. icon: 행성 가운데에 그리는 그림 글자. 추후 아이들이 직접 그린 디자인(이미지)을 붙이는 기능을 붙일 자리는 image(현재 null)입니다.
 export const PLANET_TEMPLATES = Object.freeze([
