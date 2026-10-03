@@ -95,6 +95,7 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
   }
 
   $('amount').oninput = clamp;
+  $('amount').onchange = clamp; // 숫자 입력 중 일시적으로 비어 보이는 값을 포커스가 빠질 때도 보정합니다.
   $('max').onclick = () => { if (info?.maxBuy) $('amount').value = String(info.maxBuy); };
   $('buy').onclick = buy;
   $('header-close').onclick = $('close').onclick = () => dialog.close();

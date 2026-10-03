@@ -22,8 +22,8 @@ function fixture(id='galaxy-card',quantity=1){
 }
 const use=(f,data={},now=MONDAY-1000,die)=>useHoldingAbility(f.room,f.p,{itemId:f.p.inventory[0].id,...data},now,die);
 const reject=(f,fn,pattern)=>{const before=structuredClone(f.room);assert.throws(fn,pattern);assert.deepEqual(f.room,before);};
-test('315: all nine holding cards and strict persistent format',()=>{
-  assert.equal(HOLDING_ITEMS.length,9);assert.equal(new Set(HOLDING_ITEMS.map(x=>x.id)).size,9);
+test('보유능력 카드 8종과 이전 퀸 기록을 포함한 저장 형식을 검증한다',()=>{
+  assert.equal(HOLDING_ITEMS.length,8);assert.equal(new Set(HOLDING_ITEMS.map(x=>x.id)).size,8);
   const value=validateHoldingState();value.usedWeeks['galaxy-card']='2026-09-28';assert.deepEqual(validateHoldingState(value),value);
   for(const bad of [null,[],{}, {...value,usedWeeks:{unknown:'2026-09-28'}},{...value,usedWeeks:{'galaxy-card':'2026-09-29'}},{...value,usedWeeks:{'galaxy-card':'2026-02-30'}},{...value,queenReadyWeek:1},{...value,supernovaActiveId:'supernova-alpha-card'},{...value,extra:true}])assert.throws(()=>validateHoldingState(bad),/저장 데이터/);
 });
@@ -67,13 +67,14 @@ test('315: comet removes one own warning only; invalid department does not consu
   const f=fixture('comet-card');f.room.planets.set('p',{id:'p',name:'검사부서',warnings:{threshold:3,entries:[{id:'1',targetId:'a',active:true},{id:'2',targetId:'a',active:true},{id:'3',targetId:'teacher',active:true}]}});
   reject(f,()=>use(f,{planetId:'missing'}),/내 경고/);use(f,{planetId:'p'});assert.equal(f.room.planets.get('p').warnings.entries.filter(e=>e.active).length,2);assert.equal(f.room.planets.get('p').warnings.entries[2].active,true);
 });
-test('315: alien creates a persistent teacher-review marker until Monday; queen requires confirmation then manual payout',()=>{
+test('에일리언 보유 기한 연장과 퀸의 교사 확인 즉시 지급',()=>{
   const alien=fixture('alien-creature-card');use(alien);assert.equal(holdingStatus(alien.room,alien.p,'alien-creature-card',MONDAY-1).items[0].activeUntil,MONDAY);
   assert.equal(alien.p.cardMarkers[0].until,MONDAY);assert.equal(validateCardMarkers(alien.p.cardMarkers)[0].holdingAbility,true);
   assert.equal(holdingStatus(alien.room,alien.p,'alien-creature-card',MONDAY).items[0].activeUntil,null);
-  const f=fixture('alien-queen-card');reject(f,()=>use(f),/선생님/);reject(f,()=>confirmLv4(f.room,f.p,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1),/선생님/);
-  confirmLv4(f.room,f.teacher,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1);assert.equal(f.p.starShards,10);
-  use(f);assert.equal(f.p.starShards,11);reject(f,()=>use(f),/이번 주/);reject(f,()=>use(f,{},MONDAY),/선생님/);
+  const f=fixture('alien-queen-card');reject(f,()=>use(f),/보유능력이 없는/);reject(f,()=>confirmLv4(f.room,f.p,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1),/선생님/);
+  confirmLv4(f.room,f.teacher,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1);assert.equal(f.p.starShards,11);
+  reject(f,()=>confirmLv4(f.room,f.teacher,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1),/중복/);
+  confirmLv4(f.room,f.teacher,{action:'queen-writing',playerId:'a',reference:'2'},MONDAY-1);assert.equal(f.p.starShards,12);
 });
 test('315: supercluster weekly Monday stacking, legacy normalization, 1/2-stack choice and old-route quota',()=>{
   const f=fixture('supercluster-card');syncLv4Holdings(f.p,MONDAY-1);assert.equal(f.p.lv4State.nextStackAt,MONDAY);syncLv4Holdings(f.p,MONDAY);assert.equal(f.p.lv4State.stacks,1);

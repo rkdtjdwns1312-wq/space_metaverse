@@ -82,7 +82,7 @@ export function createWorld(canvas) {
   const points=new Map(),tracks=new Map(),bubbles=new Map();
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
-  let hits=[],starCards=[],energyDrops=[];
+  let hits=[],starCards=[],energyDrops=[],exploration=null,objectUpdateIds=new Set();
   let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
   const damageNumbers=createDamageNumbers();
@@ -166,12 +166,30 @@ export function createWorld(canvas) {
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
+    if(exploration?.festival){
+      // 바닥 위에만 나타나는 축제 별빛. 움직임과 충돌 판정은 건드리지 않습니다.
+      for(const [index,[x,y]] of [[1310,1050],[1470,1580],[1700,900],[2020,930],[2280,1190],[2220,1570],[1850,1700],[1150,1310],[1800,1320],[600,510],[600,2100],[2940,2070]].entries()){
+        const pulse=1+Math.sin(time/530+index*1.7)*.17;
+        ctx.save();ctx.globalAlpha=.76;const light=ctx.createRadialGradient(x,y,2,x,y,52*pulse);
+        light.addColorStop(0,'#fff9c9bb');light.addColorStop(1,'#fff9c900');ctx.fillStyle=light;ctx.fillRect(x-55,y-55,110,110);
+        star(x,y,11*pulse,index%3===0?'#fff0af':'#fffefa');ctx.restore();
+      }
+    }
     for(const sign of PLAZA_SIGNS)drawPlazaSign(ctx,sign);
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
       if(o.kind==='life-star'){
         drawLifeStar(ctx,o,time,reducedMotion.matches);
+      } else if(o.kind==='exploration'){
+        // 유리 기둥과 안쪽의 찬란한 빛을 Canvas로 그려 화면 배율에서도 선명하게 유지합니다.
+        ctx.save();ctx.translate(o.x,o.y);const wave=Math.sin(time/620)*3;
+        ctx.fillStyle='#9b83b777';ctx.beginPath();ctx.ellipse(0,26,43,11,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#f0e8fc';ctx.strokeStyle='#9477b2';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-29,16,58,20,7);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#d6c4ec';ctx.beginPath();ctx.roundRect(-15,8,30,15,4);ctx.fill();
+        ctx.fillStyle='#e8f7ff88';ctx.strokeStyle='#8c72b3';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-17,-48);ctx.lineTo(-17,-19);ctx.bezierCurveTo(-39,-8,-30,12,0,13);ctx.bezierCurveTo(30,12,39,-8,17,-19);ctx.lineTo(17,-48);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#fff5bf';star(0,-12+wave,13,'#fff5bf');star(-12,-3-wave*.3,5,'#fff');star(12,-25+wave*.4,5,'#fff');
+        ctx.fillStyle='#ddd0f4';ctx.fillRect(-20,-52,40,8);ctx.strokeRect(-20,-52,40,8);ctx.restore();
       } else if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');
         ctx.fillStyle=glow;ctx.fillRect(o.x-110,o.y-110,220,220);star(o.x,o.y,o.radius,'#fff2c9');star(o.x,o.y,o.radius-7,o.color);
@@ -458,6 +476,17 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    // 내용이 바뀐 물체 위에 크기에 맞춘 작은 별빛 느낌표를 얹습니다.
+    for(const o of map.objects||[]){
+      if(!objectUpdateIds.has(myMapId+':'+o.id))continue;
+      const visual=o.kind==='planet'?o.radius*2.1:o.kind==='pillar'?o.radius*4:o.radius*1.6;
+      const size=Math.max(18,Math.min(34,o.radius*.32+9)),x=o.x+Math.min(visual*.55,110),y=o.y-visual;
+      ctx.save();ctx.shadowColor='#fff4a9';ctx.shadowBlur=size*.65;
+      ctx.fillStyle='#fff6c9';ctx.strokeStyle='#a77941';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.arc(x,y,size*.55,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.shadowBlur=0;ctx.fillStyle='#7b4c82';ctx.font=`${Math.round(size*.8)}px "Jua","Malgun Gothic",sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',x,y+1);ctx.restore();
+    }
     aquarius.draw(ctx,t,reducedMotion.matches);
     sagittariusEffects=sagittariusEffects.filter(e=>e.until>t&&e.mapId===myMapId);
     sagittariusCasts=sagittariusCasts.filter(e=>e.until>t&&e.mapId===myMapId);
@@ -498,6 +527,7 @@ export function createWorld(canvas) {
   }
   requestAnimationFrame(frame);
   return {
+    setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
@@ -505,7 +535,7 @@ export function createWorld(canvas) {
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
-      starCards=room?.starCards||[];
+      starCards=room?.starCards||[];exploration=room?.exploration||null;
       energyDrops=room?.energyDrops||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
@@ -584,7 +614,7 @@ export function createWorld(canvas) {
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
+        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);

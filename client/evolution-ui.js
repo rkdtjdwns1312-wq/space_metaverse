@@ -1,4 +1,5 @@
 import {PROGRESSION} from '/shared/config.js';
+import {constellationOf} from '/shared/constellations.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -43,12 +44,17 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     button.className = 'constellation-choice';
     button.dataset.constellationId = option.id;
     button.style.setProperty('--constellation-color', option.color);
+    // LV1은 진화할 LV2 모습을, LV5는 평소에 사용하는 LV4 모습을 보여 줍니다.
+    const previewLevel=Math.max(2,Math.min(4,info.avatar.level));
+    button.dataset.previewLevel=String(previewLevel);
     button.disabled = busy || !option.available;
     if (option.current) button.classList.add('current');
     const icon = document.createElement('span'); icon.className = 'constellation-icon';
-    if(option.art){const art=document.createElement('img');art.src=option.art;art.alt='';art.loading='lazy';icon.append(art);
+    const sprite=option.legacy?null:constellationOf(option.id,previewLevel)?.sprite;
+    if(sprite){const art=document.createElement('img');art.src=sprite;art.alt='';art.loading='lazy';icon.append(art);
       const type=document.createElement('small');type.className='constellation-art-type';type.textContent=option.type;icon.append(type);}
     else icon.textContent=option.icon;
+    if(sprite){const level=document.createElement('small');level.className='constellation-preview-level';level.textContent=`LV${previewLevel}${info.avatar.level>=5?' 평소 모습':''}`;icon.append(level);}
     const name = document.createElement('span'); name.className = 'constellation-name'; name.textContent = option.name;
     const count = document.createElement('span'); count.className = 'constellation-count';
     count.textContent = (option.legacy?'이전 별자리':option.type)+' · '+(option.current ? '현재 · ' : '')+option.count+'/2명';

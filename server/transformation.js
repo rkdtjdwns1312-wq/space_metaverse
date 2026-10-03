@@ -11,23 +11,14 @@ export function startTransformation(player,now,config=TRANSFORMATION){
   ensure(ensureVitals(player)?.hp>0,'체력을 회복하는 중이에요.');
   ensure(!player.transformation?.active,'이미 변신 중이에요.');
   ensure(now>=(player.transformation?.cooldownUntil||0),'변신을 다시 사용하려면 조금 기다려주세요.');
-  player.transformation={active:true,endsAt:now+config.durationMs,cooldownUntil:now+config.cooldownMs,constellationId:player.avatar.constellationId,nextRegenAt:now+config.regenMs};
+  player.transformation={active:true,endsAt:now+config.durationMs,cooldownUntil:now+config.cooldownMs,constellationId:player.avatar.constellationId};
   const vitals=ensureVitals(player),limits=vitalsOf(player.avatar.level,player);vitals.hp=limits.hp.max;vitals.mp=limits.mp.max;
   return {...player.transformation};
 }
 export function expireTransformation(player,now){
   const state=player.transformation;
   if(!state?.active)return false;
-  let changed=false;
-  const vitals=ensureVitals(player),limits=vitalsOf(player.avatar.level,player);
-  if(vitals.hp>0&&player.connected&&!player.away){
-    while(state.nextRegenAt<=Math.min(now,state.endsAt)){
-      vitals.hp=Math.min(limits.hp.max,vitals.hp+limits.hp.max*TRANSFORMATION.regenRatio);
-      vitals.mp=Math.min(limits.mp.max,vitals.mp+limits.mp.max*TRANSFORMATION.regenRatio);
-      state.nextRegenAt+=TRANSFORMATION.regenMs;changed=true;
-    }
-  }
   if(now>=state.endsAt||!player.connected||player.away||player.avatar.level!==5||player.avatar.blackStar||
     player.avatar.constellationId!==state.constellationId||player.battleVitals?.hp===0){state.active=false;ensureVitals(player);return true;}
-  return changed;
+  return false;
 }

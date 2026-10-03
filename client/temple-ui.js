@@ -1,8 +1,9 @@
 import {itemOf} from '/shared/config.js';
 import {createResetConfirmation} from './reset-confirm.js';
 
-function formatRemaining(until, remainingUses, now=Date.now()){
+function formatRemaining(until, remainingUses, now=Date.now(), startsAt=null){
   const parts=[];
+  if(startsAt&&startsAt>now){const hours=Math.floor((startsAt-now)/3600000),minutes=Math.ceil(((startsAt-now)%3600000)/60000);return `포식 시작까지 ${hours}시간 ${minutes}분`;}
   if(Number.isInteger(remainingUses))parts.push(`남은 ${remainingUses}회`);
   if(until!==null&&Number.isFinite(until)){
     let seconds=Math.max(0,Math.ceil((until-now)/1000));
@@ -19,13 +20,30 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
   document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;const selectedXp=new Map();
+  const devour=document.createElement('dialog');devour.className='temple-devour-dialog';
+  const devourTitle=document.createElement('h3'),devourLabel=document.createElement('label'),devourSelect=document.createElement('select'),devourMessage=document.createElement('p');
+  const devourConfirm=document.createElement('button'),devourClose=document.createElement('button');
+  devourTitle.textContent='아이템 먹기';devourLabel.textContent='먹을 아이템 선택';devourConfirm.textContent='먹이기';devourClose.textContent='취소';
+  devourConfirm.className='primary';devourClose.className='secondary';devourLabel.append(devourSelect);
+  devour.append(devourTitle,devourLabel,devourMessage,devourConfirm,devourClose);document.body.append(devour);
+  devourClose.onclick=()=>devour.close();
+  let devourTarget=null,devourRows=[];
+  devourConfirm.onclick=async()=>{const choice=devourRows[Number(devourSelect.value)];if(!choice||!devourTarget)return;
+    devourConfirm.disabled=true;try{const response=await request('item:devour',{objectId:selected.id,eaterId:devourTarget.targetId,markerId:devourTarget.markerId,
+      victimId:choice.victimId,kind:choice.kind,recordId:choice.recordId});devour.close();toast(response.message);await load();}
+    catch(error){devourMessage.textContent=error.message;}finally{devourConfirm.disabled=false;}};
+  async function openDevour(row){try{const data=await request('item:devour:options',{objectId:selected.id,eaterId:row.targetId,markerId:row.markerId});
+      devourTarget=row;devourRows=data.rows;devourSelect.replaceChildren();data.rows.forEach((entry,index)=>devourSelect.append(new Option(
+        `${entry.nickname} · ${entry.itemName} · 별 파편 ${entry.refund}개 반환`,String(index))));
+      devourTitle.textContent=`${data.eaterName} 친구의 아이템 먹기`;devourMessage.textContent=data.rows.length?'먹을 아이템 1개를 선택해주세요.':'지금 먹을 수 있는 LV2 이하 사용 중 아이템이 없어요.';
+      devourConfirm.disabled=!data.rows.length;devour.showModal();}catch(error){$('error').textContent=error.message;}}
   const reset=document.createElement('button');reset.id='temple-weekly-reset';reset.type='button';reset.className='secondary';reset.textContent='초기화';reset.hidden=true;
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;flex-shrink:0';$('close').before(actions);actions.append(reset,$('close'));
   const resetConfirm=createResetConfirmation({root:dialog,title:'이번 주 받은 별 초기화',message:'이번 주 받은 별 집계만 초기화할까요? 학생 잔액과 부서 재화는 그대로 유지돼요.',
     submit:async()=>{const rev=revision,data=await request('temple:weekly:reset',{objectId:selected.id});return {rev,data};},
     onSuccess:({rev,data})=>{if(rev!==revision||!dialog.open)return;result=data;render();toast('이번 주 받은 별 집계를 초기화했어요.');}});
   reset.onclick=()=>{if(result?.kind==='weekly'&&result.canReset)resetConfirm.open();};
-  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();});
+  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(devour.open)devour.close();selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();});
   function usableEffectRows(now=Date.now()){
     return (result?.rows||[]).filter(e=>(e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
   }
@@ -43,10 +61,12 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
         (item?.special?' · '+item.special:'');
       body.append(title);const user=document.createElement('span');user.textContent=r.fromNickname??'비공개';
       const target=document.createElement('span');target.textContent=r.nickname||'비공개';
-      const remaining=document.createElement('span');remaining.className='effects-remaining';remaining.dataset.until=r.until??'';remaining.dataset.remainingUses=Number.isInteger(r.remainingUses)?String(r.remainingUses):'';remaining.textContent=formatRemaining(r.until,r.remainingUses);
+      const remaining=document.createElement('span');remaining.className='effects-remaining';remaining.dataset.until=r.until??'';remaining.dataset.remainingUses=Number.isInteger(r.remainingUses)?String(r.remainingUses):'';remaining.dataset.startsAt=r.startsAt??'';remaining.textContent=formatRemaining(r.until,r.remainingUses,Date.now(),r.startsAt);
       li.append(body,user,target,remaining);li.dataset.effectRow='true';
       const description=document.createElement('small');description.className='effects-detail';description.textContent=detail.textContent;li.append(description);
-      if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&(r.until===null||r.remainingUses>0)){
+      if(result.canComplete&&r.itemId==='alien-creature-card'&&r.startsAt&&r.markerId){
+        const eat=document.createElement('button');eat.type='button';eat.className='small secondary';eat.textContent='아이템 먹기';eat.dataset.devourAt=String(r.startsAt);eat.disabled=r.startsAt>Date.now();eat.onclick=()=>openDevour(r);li.append(eat);
+      }else if(result.canComplete&&(r.markerId||r.abilityMarkerId)&&(r.until===null||r.remainingUses>0)){
         let xpSelect=null;
         if(r.abilityMarkerId&&r.constellationId==='libra'&&(r.abilityLevel||2)===2){
           const label=document.createElement('label');label.textContent='확인한 주차의 경험치 ';label.className='small';
@@ -69,7 +89,9 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     for(const row of [...$('content').querySelectorAll('[data-effect-row]')]){
       const until=row.querySelector('.effects-remaining').dataset.until;
       if((until&&Number(until)<=now)||row.querySelector('.effects-remaining').dataset.remainingUses==='0'){row.remove();expired=true;continue;}
-      const cell=row.querySelector('.effects-remaining');cell.textContent=formatRemaining(until?Number(until):null,cell.dataset.remainingUses?Number(cell.dataset.remainingUses):undefined,now);
+      const cell=row.querySelector('.effects-remaining'),startsAt=cell.dataset.startsAt?Number(cell.dataset.startsAt):null;
+      cell.textContent=formatRemaining(until?Number(until):null,cell.dataset.remainingUses?Number(cell.dataset.remainingUses):undefined,now,startsAt);
+      const eat=row.querySelector('[data-devour-at]');if(eat)eat.disabled=Number(eat.dataset.devourAt)>now;
     }
     if(expired&&!$('content').querySelector('[data-effect-row]'))$('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
   }

@@ -125,6 +125,11 @@ export function useLv3Item(room, actor, item, data = {}, now = Date.now()) {
     for (const p of draft.players.values()) if (p.role === 'student' && p.avatar.blackStar) clearBlackStar(draft, p);
     for (const planet of draft.planets.values()) for (const entry of planet.warnings?.entries || []) entry.active = false;
     message = '모든 부서의 경고와 친구들의 검은별을 해제했어요.';
+  } else if (card.id === 'alien-creature-card') {
+    const startsAt = now + 86_400_000;
+    Object.assign(addCardMarker(user, card, user, startsAt + 12 * 3_600_000,
+      '사용 하루 뒤 포식 시작 · 12시간 동안 선생님이 아이템을 골라 먹일 수 있어요.'), {startsAt, at: now, fromLevel: level(user)});
+    message = '에일리언을 사용했어요. 하루 뒤부터 12시간 동안 포식 상태가 됩니다.';
   } else ensure(false, '이 아이템의 사용 효과는 준비 중이에요.');
   syncLv3Holdings(user, now);
   for (const [id, p] of draft.players) Object.assign(room.players.get(id), p);

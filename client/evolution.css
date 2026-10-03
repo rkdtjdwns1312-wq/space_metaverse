@@ -20,12 +20,15 @@
 .evolution-type-button { background: #7542a8; color: #fff; border: 2px solid #5e328b; }
 .evolution-types-back { margin-bottom: 4px; }
 .constellation-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
-.constellation-choice { display: grid; justify-items: center; gap: 3px; padding: 10px 4px; border: 2px solid color-mix(in srgb, var(--constellation-color), #72598e 30%); background: color-mix(in srgb, var(--constellation-color), white 73%); color: #40304f; }
+.constellation-choice { display: grid; justify-items: center; gap: 3px; padding: 10px 4px; border: 2px solid color-mix(in srgb, var(--constellation-color), #72598e 30%); background: #f8f6ff; color: #40304f; }
 .constellation-choice.current { outline: 3px solid #76529f; outline-offset: -3px; }
 .constellation-choice:disabled { filter: grayscale(0.75); opacity: 0.55; }
 .constellation-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 25px; background: var(--constellation-color); color: white; text-shadow: 0 1px 2px #39264c88; }
-.constellation-icon:has(img){position:relative;width:100%;height:auto;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#21183c}
-.constellation-icon img{width:100%;height:100%;object-fit:contain}
+.constellation-icon:has(img){position:relative;width:100%;height:auto;aspect-ratio:1;border:2px solid #b7dcec;border-radius:13px;overflow:hidden;background:radial-gradient(circle at 27% 26%,#ffffffaa 0 2px,transparent 3px),radial-gradient(circle at 75% 68%,#ffffffcc 0 2px,transparent 3px),linear-gradient(145deg,#d7f2ff,#a9ddf4 58%,#f0faff);box-shadow:inset 0 0 18px #ffffffb5,0 2px 5px #5b72a53d}
+.constellation-choice[data-preview-level="3"] .constellation-icon{border-color:#a8d9bd;background:radial-gradient(circle at 27% 26%,#ffffffcc 0 2px,transparent 3px),radial-gradient(circle at 75% 68%,#ffffffcc 0 2px,transparent 3px),linear-gradient(145deg,#e4f8e8,#b5edce 58%,#eafbef)}
+.constellation-choice[data-preview-level="4"] .constellation-icon{border-color:#eda995;background:radial-gradient(circle at 27% 26%,#fff8dccc 0 2px,transparent 3px),radial-gradient(circle at 75% 68%,#ffffffcc 0 2px,transparent 3px),linear-gradient(145deg,#ffe5da,#ffc0ad 58%,#fff4e8)}
+.constellation-icon img{position:relative;width:92%;height:88%;object-fit:contain;filter:drop-shadow(0 3px 4px #4a3b6659)}
+.constellation-preview-level{position:absolute;top:3px;left:4px;padding:2px 4px;border-radius:6px;background:#fffdf2d9;color:#6e5784;font-size:10px;line-height:1}
 .constellation-art-type{position:absolute;right:2px;bottom:2px;padding:2px 4px;border-radius:6px;background:#211838dc;color:#fff5c9;font-size:10px;line-height:1}
 .constellation-name { font-size: 0.92rem; line-height: 1.15; }
 .constellation-count { font-size: 0.75rem; color: #6f5b7d; }

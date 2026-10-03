@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="탐사권">
+  <defs><linearGradient id="sky" x2="1" y2="1"><stop stop-color="#e8f5ff"/><stop offset="1" stop-color="#dac9f8"/></linearGradient><linearGradient id="gem" x2="1" y2="1"><stop stop-color="#fff9ce"/><stop offset="1" stop-color="#bd8be9"/></linearGradient></defs>
+  <path d="M22 20h84q2 13 13 14v60q-11 1-13 14H22Q20 95 9 94V34q11-1 13-14Z" fill="url(#sky)" stroke="#8b71aa" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M31 29h66v70H31Z" fill="#fffdf9" stroke="#ceb3e8" stroke-width="2" stroke-dasharray="4 3"/>
+  <path d="m64 37 7 17 18 8-18 8-7 20-7-20-18-8 18-8Z" fill="url(#gem)" stroke="#9874b9" stroke-width="3"/>
+  <circle cx="64" cy="61" r="6" fill="#fff"/><circle cx="42" cy="42" r="2" fill="#f5d789"/><circle cx="88" cy="84" r="2" fill="#f5d789"/>
+</svg>

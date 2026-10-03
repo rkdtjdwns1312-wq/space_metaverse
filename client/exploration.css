@@ -1,0 +1,13 @@
+#exploration-dialog{box-sizing:border-box;width:min(620px,calc(100vw - 20px));max-height:calc(100vh - 24px);overflow:auto;border:2px solid #bba6df;border-radius:22px;background:#f7f3ff;color:#514265;box-shadow:0 20px 60px #35234a55}
+.exploration-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.exploration-header h2{margin:0;font-size:1.65rem;color:#59458d}
+.exploration-status{font-weight:800;font-size:1.1rem;margin:14px 0 4px}.exploration-message{margin:0 0 10px;color:#6b5b85}
+.exploration-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}.exploration-actions button{border-radius:16px}.exploration-hint{font-size:.9rem;color:#765e91}
+.exploration-contributors{border:1px solid #d8c7ec;border-radius:14px;background:#fffaf1;padding:9px 13px;max-height:145px;overflow:auto}.exploration-contributors h3{font-size:1rem;margin:0 0 5px}.exploration-contributors p{margin:3px 0;font-size:.92rem}
+.exploration-card{box-sizing:border-box;position:relative;width:min(100%,310px);aspect-ratio:3/4;margin:12px auto;padding:16px 18px 22px;display:flex;flex-direction:column;align-items:center;text-align:center;border:5px double #bfa7df;border-radius:22px;background:#faf5e7 url('/assets/cards/exploration-result.svg') center/100% 100% no-repeat;box-shadow:0 9px 20px #6e579355,inset 0 0 0 4px #fff9ec;overflow:hidden}
+.exploration-card[data-energy="2"]{box-shadow:0 0 25px #ffd783a3,0 9px 20px #6e579355}.exploration-card[data-energy="0"]{filter:saturate(.76)}
+.exploration-card-seal{font-size:1rem;font-weight:800;color:#795caa;z-index:1}.exploration-card-art{height:43%;width:100%;flex:none;z-index:1}
+.exploration-card h3{z-index:1;margin:2px 0 8px;font-size:1.5rem;color:#5e4189}.exploration-card-story{z-index:1;line-height:1.45;font-size:.96rem;margin:0;flex:1;display:grid;place-items:center}
+.exploration-card-reward{z-index:1;margin:9px 0 0;padding-top:8px;border-top:1px solid #cbb6df;width:100%;font-size:1rem;font-weight:800;color:#74499b}
+.exploration-results h3{margin:12px 0 7px}.exploration-result-list{max-height:160px;overflow:auto;display:grid;gap:6px;padding:2px 4px 2px 0}
+.exploration-result-entry{text-align:left;border-radius:12px;background:#fff;border:1px solid #d4c3e7;color:#5d4e79;padding:8px 10px}.exploration-result-entry[aria-pressed="true"]{background:#e9dafa;border-color:#a47cca}
+@media(max-width:380px){.exploration-card{width:min(100%,280px)}.exploration-header h2{font-size:1.4rem}}

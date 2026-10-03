@@ -8,6 +8,7 @@ import {LV4_ITEMS} from './lv4-items.js';
 import {LV3_ITEMS} from './lv3-items.js';
 import {GOLD_CARD_ITEMS} from './star-cards.js';
 import {recipeItemOf} from './recipe-items.js';
+import {equipmentOf} from './equipment.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
 // 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
@@ -32,6 +33,7 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
 export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:plazaPoint({x:3000,y:2340}),templeCenter:PLAZA_LAYOUT.center,
   objects: [
     {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
+    {id:'exploration-flask',name:'우주 탐사 장치',x:1920,y:1320,radius:34,kind:'exploration',color:'#dbb5ff'},
     {id:'pillar-notice',name:'오늘의 알림장',x:1580,y:1210,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
     {id:'pillar-effects',name:'사용 중인 아이템',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
@@ -133,6 +135,7 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
 // 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
+  {id:'exploration-ticket',name:'탐사권',forSale:false,usable:true,description:'우주 탐사 기회 1번을 얻어요. 선생님이 지급합니다.',special:'광장 제단 오른쪽의 우주 탐사 장치에서 사용할 수 있어요.',art:'/assets/items/exploration-ticket.svg',icon:'🎟️',type:'tool',level:1,price:0,targets:'self',secret:false,mode:'exploration-ticket',effect:{label:'우주 탐사 기회',icon:'✦',durationMs:0,style:'card'}},
   { id: 'star-sticker', name: '반짝 별 스티커', forSale: false, description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },
   { id: 'space-snack', name: '우주 간식', forSale: false, description: '달콤한 별사탕이에요. 누가 줬는지는 비밀!', icon: '🍬', type: 'consumable', level: 1, price: 3,
@@ -170,7 +173,7 @@ export const ITEM_USE = Object.freeze({ cooldownMs: 2000, logSize: 100, teacherL
 // declineBlockMs: 상대가 거절하면 같은 상대에게 그 시간 동안 다시 제안할 수 없습니다(계속 조르기 방지).
 export const TRADE = Object.freeze({ maxPending: 10, maxItemKinds: 5, maxShards: 999, declineBlockMs: 5 * 60_000 });
 export const ITEM_TYPES = Object.freeze({ decoration: '꾸미기', consumable: '간식', tool: '도구', pet: '펫', mount: '탈것' });
-export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || recipeItemOf(itemId, SHOP.items);
+export const itemOf = itemId => SHOP.items.find(i => i.id === itemId) || equipmentOf(itemId) || recipeItemOf(itemId, SHOP.items);
 // 만들 수 있는 행성 종류(2026-09-12 사용자 지정 13종). 아이들은 이 목록에서 골라 행성을 만들고, 이름은 2~10자 안에서 바꿀 수 있습니다.
 // look: 화면이 종류에 맞게 다르게 그리는 모양 스타일. icon: 행성 가운데에 그리는 그림 글자. 추후 아이들이 직접 그린 디자인(이미지)을 붙이는 기능을 붙일 자리는 image(현재 null)입니다.
 export const PLANET_TEMPLATES = Object.freeze([

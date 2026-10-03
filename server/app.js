@@ -9,6 +9,8 @@ import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
+import {advancePassiveRecovery} from './passive-recovery.js';
+import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket} from './exploration.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
 import express from 'express';
@@ -39,6 +41,9 @@ import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue
 import {starCardOf} from '../shared/star-cards.js';
 import {useLv2Item,settleLv2Items,hasLv2ItemBlock,collectSunTax,syncGalaxyHoldings,lv2ItemsDue} from './lv2-item-effects.js';
 import {useLv3Item, syncLv3Holdings, settleLv3Items, lv3ItemsDue} from './lv3-item-effects.js';
+import {devourOptions,devourItem} from './alien-devour.js';
+import {EQUIPMENT_ITEMS,equipmentOf} from '../shared/equipment.js';
+import {buyEquipment,equip,unequip} from './equipment.js';
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
@@ -301,6 +306,13 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       return startLifeRecovery(session.player,clock());
     },false);
+    action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
+    action('exploration:explore',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=explore(s.room,s.player,clock());roster(s.room);return result;});
+    action('exploration:clear-results',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=clearExplorationResults(s.room,s.player,clock());roster(s.room);return result;});
+    action('exploration:reset',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=resetExploration(s.room,s.player,clock());roster(s.room);return result;});
     action('combat:attack',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
@@ -923,19 +935,20 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('temple:weekly:reset',data=>{
       const {room,player,pillar}=templeAccess(data);
       ensure(pillar.service==='weekly','이번 주 받은 별 기둥에서 초기화해주세요.');
-      return {kind:'weekly',...resetWeeklyRewards(room,player,clock()),canReset:true};
+      const result=resetWeeklyRewards(room,player,clock());roster(room);
+      return {kind:'weekly',...result,canReset:true};
     });
     action('temple:save',data=>{
       const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 내용을 바꿀 수 있어요.');
       ensure(pillar.service==='notice','알림장 기둥에서 저장해주세요.');
       ensure(typeof data.text==='string'&&data.text.length<=2000,'내용은 2000자 이내로 적어주세요.');
-      try{return {kind:pillar.service,...saveNotice(room,data.text,data.taskLineIndexes??[],clock()),canEdit:true};}
+      try{const result=saveNotice(room,data.text,data.taskLineIndexes??[],clock());roster(room);return {kind:pillar.service,...result,canEdit:true};}
       catch(error){if(error.message.startsWith('Invalid temple:'))throw new GameError('알림장 과제 표시를 확인해주세요. 비어 있지 않은 줄만 체크할 수 있어요.');throw error;}
     });
     action('temple:timetable:save',data=>{
       const {room,player,pillar}=templeAccess(data);ensure(player.role==='teacher','선생님만 시간표를 바꿀 수 있어요.');
       ensure(pillar.service==='timetable','오늘의 시간표 기둥 가까이에서 저장해주세요.');
-      try{return {kind:'timetable',...saveTimetable(room,data.cells),canEdit:true};}
+      try{const result=saveTimetable(room,data.cells);roster(room);return {kind:'timetable',...result,canEdit:true};}
       catch(error){if(error.message.startsWith('Invalid temple:'))throw new GameError('시간표를 확인해주세요. 월~금 1~6교시 과목을 각 20자 이내로 적어주세요.');throw error;}
     });
     action('task:add',data=>{
@@ -1007,7 +1020,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('stars:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelStarRun(s.room,s.player,data.runId);return {};});
     action('stars:click',data=>{
       const s=starAccess(),result=clickStar(s.room,s.player,data);
-      if(result.done)deliver(()=>io.to(s.room.code).emit('stars:ranking',{ranking:result.ranking}));
+      if(result.done){deliver(()=>io.to(s.room.code).emit('stars:ranking',{ranking:result.ranking}));roster(s.room);}
       return result;
     });
     const dodgeAccess=()=>{
@@ -1025,7 +1038,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     action('memory:start',data=>{const s=memoryAccess();return startMemoryRun(s.room,s.player,data);});
     action('memory:flip',data=>{
       const s=memoryAccess(),result=flipMemoryCard(s.room,s.player,data);
-      if(result.won)deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));
+      if(result.won){deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));roster(s.room);}
       return result;
     });
     action('memory:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelMemoryRun(s.room,s.player,data.runId);return {};});
@@ -1034,6 +1047,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const s=access();resetWeeklyRanking(s.room,s.player,game);
         const result={ranking:[],canReset:true};
         deliver(()=>io.to(s.room.code).emit(`${game}:ranking`,{ranking:[]}));
+        roster(s.room);
         return result;
       });
     }
@@ -1090,18 +1104,33 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const shop=STREET.objects.find(o=>o.kind==='energy-shop');
       ensure(s.player.connected&&!s.player.away&&s.player.mapId===STREET_ID&&isNear(s.player,shop),'우주에너지 상점에 더 가까이 가주세요.');
-      return {currency:'cosmicEnergy',items:[]};
+      return {currency:'cosmicEnergy',items:EQUIPMENT_ITEMS};
     },false);
+    action('shop:energy:buy',data=>{
+      const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      const shop=STREET.objects.find(o=>o.kind==='energy-shop');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,shop),'우주에너지 상점에 더 가까이 가주세요.');
+      const result=buyEquipment(s.player,data.itemId);roster(s.room);return result;
+    });
+    action('equipment:equip',data=>{
+      const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      const result=equip(s.player,data.itemId,data.slot);roster(s.room);return result;
+    });
+    action('equipment:unequip',data=>{
+      const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      const result=unequip(s.player,data.slot);roster(s.room);return result;
+    });
     action('shop:buy',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       requireShop(p);
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
-      ensure(![2,3,4].includes(item.level),'LV2~LV4 아이템은 별빛 조합기로 만들 수 있어요. 직접 구매할 수 없어요.');
+      ensure(!equipmentOf(item.id),'장비는 우주에너지 상점에서만 살 수 있어요.');
+      ensure(p.role==='teacher'||![2,3,4].includes(item.level),'LV2~LV4 아이템은 별빛 조합기로 만들 수 있어요. 직접 구매할 수 없어요.');
       ensure(p.role==='teacher'||(p.avatar?.level||1)>=(item.level||1),'아직 이 레벨 상점이 열리지 않았어요.');
-      ensure(item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
-      ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 구매 가격이 정해지지 않았어요.');
+      ensure(p.role==='teacher'||item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
+      ensure(p.role==='teacher'||(Number.isSafeInteger(item.price)&&item.price>=0),'아직 구매 가격이 정해지지 않았어요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       // 교사 무료 구매는 학생/학급에 주어진 할인 기회도 소모하지 않습니다.
@@ -1134,6 +1163,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       requireShop(p);
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
+      ensure(!equipmentOf(item.id),'이 장비는 별상점에서 팔 수 없어요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
       const existing=p.inventory.find(i=>i.id===item.id);
@@ -1229,11 +1259,28 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
       const marker=target?.cardMarkers?.find(entry=>entry.itemId!=='moon-rabbit-card'&&entry.id===data.markerId&&(entry.until===null||(entry.until>clock()&&(entry.remainingUses>0||entry.holdingAbility||itemOf(entry.itemId)?.mode==='lv4'))));
       ensure(marker,'처리할 아이템 기록을 찾지 못했어요.');
+      ensure(!(marker.itemId==='alien-creature-card'&&marker.startsAt),'포식은 아이템 먹기에서 처리해주세요.');
       ensure(target.rabbitDraw?.markerId!==marker.id,'뽑기를 마친 뒤 처리 완료할 수 있어요.');
       if(marker.remainingUses>1)marker.remainingUses--;
       else target.cardMarkers=target.cardMarkers.filter(entry=>entry.id!==marker.id);
       roster(room);
       return {};
+    });
+    action('item:devour:options',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(pillar.service==='effects','사용 중인 아이템 기둥에서 확인해주세요.');
+      return devourOptions(room,player,data,clock());
+    },false);
+    action('item:devour',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(pillar.service==='effects','사용 중인 아이템 기둥에서 처리해주세요.');
+      const result=devourItem(room,player,data,clock());
+      room.itemLog.push({id:randomUUID(),at:clock(),userId:result.eaterId,userNickname:room.players.get(result.eaterId).nickname,
+        targetId:result.victimId,targetNickname:room.players.get(result.victimId).nickname,itemId:result.itemId,
+        itemName:itemOf(result.itemId).name,secret:false});
+      if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
+      roster(room);
+      return result;
     });
     action('ability:status',()=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
@@ -1412,6 +1459,10 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const result=useRecipeItem(room,p,data,craftingRecipes,clock());
         if(result.learned)roster(room);
         return result;
+      }
+      if(item.mode==='exploration-ticket'){
+        const result=useExplorationTicket(room,p,clock());roster(room);
+        return {...result,inventory:[...p.inventory],starShards:p.starShards};
       }
       if(item.mode==='star-card'){
         const result=item.id==='star-card'?useStarCard(room,p,clock(),starCardRandom):useTypedStarCard(room,p,item.id,clock(),starCardRandom);
@@ -1601,6 +1652,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           io.to(viewer.socketId).emit('combat:vitals',update);
         if(update.complete)io.to(player.socketId).emit('life-star:complete');
       }
+      for(const update of advancePassiveRecovery(room,clock())){
+        const player=room.players.get(update.playerId);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+          io.to(viewer.socketId).emit('combat:vitals',update);
+      }
       let dodgeSaveFailed=false;
       for(const update of advanceDodgeRuns(room)){
         const player=room.players.get(update.playerId);if(!player?.connected)continue;
@@ -1610,6 +1666,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
             const result=completeDodgeRun(room,player,update.state.runId);
             deliver(()=>io.to(player.socketId).emit('dodge:state',{...update,result}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:result.ranking}));
+            roster(room);
           });}catch(error){
             const restored=store.rooms.get(room.code);if(restored)restored.dodgeSaveRetryAt=now+5000;
             io.to(player.socketId).emit('dodge:state',{...update,error:error.message});
@@ -1652,6 +1709,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
             deliver(()=>io.to(room.code).emit('memory:ranking',{ranking:memoryRanking(room)}));
             deliver(()=>io.to(room.code).emit('stars:ranking',{ranking:starRanking(room)}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:dodgeRanking(room)}));
+            roster(room);
           });}catch(error){const restored=store.rooms.get(room.code);if(restored)restored.rankingRetryAt=now+5000;console.error('주간 순위 초기화 저장 실패:',error.message);continue;}
         }
         let effectsChanged=false;

@@ -16,6 +16,7 @@
 .lv4-controls button,.lv4-header button,.lv4-teacher-row button{min-height:42px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .lv4-controls button.primary,.lv4-teacher-row button.primary{background:#c66b69;border-color:#b95c60;color:#fff}
 .lv4-controls select,.lv4-controls input,.lv4-teacher-row select,.lv4-teacher-row input{box-sizing:border-box;min-width:0;width:100%;height:44px}
+.lv4-teacher-row input[type="checkbox"]{width:22px;height:22px;margin:4px 0}
 .lv4-field{display:grid;gap:5px;margin:0;color:#5b4c70;font-size:13px;font-weight:700;min-width:0}
 .lv4-role-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
 .lv4-check-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:7px;margin:0;padding:10px;border:1px solid #f0d0c6;border-radius:12px;min-width:0}
@@ -27,4 +28,7 @@
 .lv4-teacher-row h3{margin:0 0 6px;overflow-wrap:anywhere}
 .lv4-teacher-row p{margin:4px 0 10px;color:#75668a;line-height:1.5;overflow-wrap:anywhere}
 .lv4-teacher-row{display:grid;gap:9px}
+.lv4-confirm{display:grid;gap:8px;padding:10px;border:1px solid #e3c3db;border-radius:12px;background:#fff9fd}
+.lv4-confirm[hidden]{display:none}
+.lv4-confirm p{margin:0;white-space:pre-line;line-height:1.5}
 @media(max-width:420px){.lv4-item-dialog{width:calc(100vw - 16px);max-height:92dvh;border-radius:16px}.lv4-body{max-height:92dvh;padding:12px}.lv4-card{grid-template-columns:84px minmax(0,1fr);gap:10px;padding:10px}.lv4-card img{max-height:112px}.lv4-role-row{grid-template-columns:minmax(0,1fr)}.lv4-check-group{grid-template-columns:minmax(0,1fr)}.lv4-controls,.lv4-teacher-row{padding:10px}}

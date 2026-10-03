@@ -3,6 +3,7 @@ import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
+import {equipmentBonus} from '../shared/equipment.js';
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (!avatarFitsFloor(map,x,y,boundaryPlayer)) return false;
@@ -84,7 +85,7 @@ export function advance(room, now) {
     if (!p.connected || isDefeated(p) || now-p.input.at>RULES.inputExpiryMs) continue;
     const length=Math.hypot(p.input.x,p.input.y);
     if (!length) continue;
-    const step=RULES.speed*RULES.tickMs/1000;
+    const step=RULES.speed*(1+equipmentBonus(p).speed)*RULES.tickMs/1000;
     const dx=p.input.x/length*step, dy=p.input.y/length*step;
     const beforeX=p.x,beforeY=p.y;
     if (isFree(room,p.x+dx,p.y,p.id,p.mapId,false)) p.x+=dx;

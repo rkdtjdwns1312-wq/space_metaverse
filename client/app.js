@@ -6,6 +6,7 @@ import {createAuxiliarySkills,createSkillGatedRequest} from './auxiliary-skills.
 import {createLv4ItemUI} from './lv4-item-ui.js';
 import {createCraftingUI} from './crafting-ui.js';
 import {createStarCardUI} from './star-card-ui.js';
+import {createExplorationUI} from './exploration-ui.js';
 import {createInventoryPages} from './inventory-pages.js';
 import {itemFlavor} from './item-flavor.js';
 import {createTeacherInventoryUI} from './teacher-inventory-ui.js';
@@ -15,6 +16,7 @@ import {createRecipeBookUI} from './recipe-book-ui.js';
 import {sellQuote,sellPrice} from '/shared/item-pricing.js';
 import {formatShards,hasUnlimitedShards,shardCost} from '/shared/economy.js';
 import {renderWallet} from './wallet-ui.js';
+import {equipmentOf} from '/shared/equipment.js';
 import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
@@ -26,6 +28,7 @@ import { startClassroomClock } from './classroom-clock.js';
 import { createSocialUI } from './social-ui.js';
 import { createAccountsUI } from './accounts-ui.js';
 import { createUniverseUI } from './universe-ui.js';
+import {createObjectUpdates} from './object-updates.js';
 import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
@@ -40,6 +43,7 @@ import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
+const objectUpdates=createObjectUpdates();
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -84,6 +88,7 @@ const craftingUI=createCraftingUI({getPlayer:()=>room?.players.find(p=>p.id===se
 const lv4UI=createLv4ItemUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),stop,toast});
 const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id===selfId),request,stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
+const explorationUI=createExplorationUI({request,stop,toast});
 const recipeBook=createRecipeBookUI({request,toast});
 const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;renderBag(myInventory());},onRecipes:()=>recipeBook.open()});
 // 가방을 계속 열어 둔 상태에서도 월요일 갱신 표시가 오래 남지 않게 합니다.
@@ -267,6 +272,7 @@ async function request(event,data){
 }
 function updateRoom(value){
   room=value;world.setRoom(room,selfId);starCardUI.update();
+  world.setObjectUpdates(objectUpdates.update(room,selfId));
   universe.update();
   $('room-title').textContent=room.title;$('room-code').textContent=room.code;
   const countLabel=room.players.filter(p=>p.connected).length+' / '+room.maxPlayers;
@@ -332,6 +338,7 @@ function updateRoom(value){
   $('avatar-card').style.setProperty('--celestial-color',abilityConstellation?.color||'#b9a8f0');
   $('avatar-portrait').setAttribute('aria-label',isTeacher?'별의수호자 아바타 그림':myLv>=2?(abilityConstellation?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
   if(me)renderPortrait($('avatar-portrait'),{...me,deptIcon:myPlanetIcon},me.effects);
+  renderEquipmentSlots(me);
   $('hint').textContent=isTeacher
     ?(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
     :(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 F로 광장':'행성 가까이에서 F · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
@@ -399,12 +406,14 @@ function itemVisual(item){
   const image=document.createElement('img');image.className='item-art';image.src=item.art;image.alt='';image.loading='lazy';return image;
 }
 function itemUseText(item){
+  if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'체력',mp:'마나',speed:'이동속도',regen:'10초 회복'}[key]+' +'+(key==='speed'||key==='regen'?Math.round(value*100)+'%':value))).join(' · ');
   if(item.passiveOnly)return item.description;
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
   if(item.mode==='meteor')return '선택한 부서가 나에게 준 활성 경고를 즉시 해제해요.';
   if(item.mode==='uv')return '지정한 친구가 오늘 자정까지 자외선 상태가 돼요.';
   if(item.mode==='moon')return '자외선을 해제하고 오늘 자정까지 타인이 사용하는 효과의 대상이 되지 않아요. 나에게 쓰는 아이템은 사용할 수 있어요.';
   if(item.mode==='draw')return '카드 더미를 누르면 무작위로 한 장을 뽑아요. 아이템·별 파편·경험치 또는 우주 먼지가 나와요.';
+  if(item.mode==='exploration-ticket')return '탐사 기회 1번을 열어요. 광장의 우주 탐사 장치에서 사용할 수 있어요.';
   if(item.usable===false)return '이 아이템의 사용 효과는 준비 중이에요.';
   if(item.mode==='lv2'||item.mode==='lv3'||item.mode==='lv4'||item.mode==='star-card'||item.mode==='recipe')return item.description;
   return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
@@ -435,6 +444,10 @@ function renderBag(inventory){
     const icon=itemVisual(item);
     const count=document.createElement('span');count.className='count';count.textContent='×'+entry.quantity;
     btn.append(icon,count);
+    if(item.id==='supercluster-card'){
+      const energy=document.createElement('span');energy.className='slot-energy';energy.textContent=String(room?.players.find(p=>p.id===selfId)?.superclusterEnergy||0);
+      energy.setAttribute('aria-label','은하수의 기운 '+energy.textContent);btn.append(energy);
+    }
     if(item.level>myLevel()){const lock=document.createElement('span');lock.className='lock';lock.textContent='LV'+item.level;btn.append(lock);}
     btn.onclick=()=>{selectedSlotId=(selectedSlotId===item.id)?null:item.id;renderBag(inventory);};
     li.append(btn);
@@ -457,16 +470,50 @@ function renderBagDetail(rows){
   info.append(name,flavor);
   const summary=document.createElement('div');summary.className='bag-item-summary';summary.append(picture,info);
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
-  use.textContent=item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
-  if(item.usable===false){use.disabled=true;use.textContent='사용 효과 준비 중';}
-  use.onclick=()=>canUse?openUseDialog(item):toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
+  use.textContent=item.mode==='equipment'?'장착하기':item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
+  if(item.usable===false&&item.mode!=='equipment'){use.disabled=true;use.textContent='사용 효과 준비 중';}
+  const equipChoices=document.createElement('div');equipChoices.className='equip-choices';equipChoices.hidden=true;
+  if(item.mode==='equipment')for(let slot=1;slot<=3;slot++){
+    const choice=document.createElement('button');choice.type='button';choice.className='small secondary';choice.textContent=slot+'번 칸';
+    choice.onclick=async()=>{choice.disabled=true;try{const ack=await request('equipment:equip',{itemId:item.id,slot});applyEquipmentAck(ack);toast(item.name+'을 '+slot+'번 칸에 장착했어요.');}catch(error){toast(error.message);choice.disabled=false;}};
+    equipChoices.append(choice);
+  }
+  use.onclick=()=>{
+    if(!canUse){toast('캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');return;}
+    if(item.mode==='equipment'){equipChoices.hidden=!equipChoices.hidden;return;}
+    openUseDialog(item);
+  };
   const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보 보기';
   details.onclick=()=>openItemInfo(item);
   const choices=document.createElement('div');choices.className='item-choices';choices.append(details,use);
   const holding=holdings.button(item);if(holding)choices.append(holding);
-  wrap.append(summary,choices);
+  wrap.append(summary,choices,equipChoices);
   $('bag-detail').replaceChildren(wrap);
 }
+function applyEquipmentAck(ack){
+  const me=room?.players.find(p=>p.id===selfId);if(!me)return;
+  me.inventory=ack.inventory;me.equipmentSlots=ack.equipmentSlots||me.equipmentSlots;
+  renderBag(me.inventory);renderEquipmentSlots(me);
+}
+function renderEquipmentSlots(me){
+  const slots=me?.equipmentSlots||[null,null,null];
+  $('equipment-slots').replaceChildren(...slots.map((id,index)=>{
+    const button=document.createElement('button');button.type='button';button.className='equipment-slot';
+    const item=equipmentOf(id);button.setAttribute('aria-label',(index+1)+'번 장비 칸: '+(item?.name||'비어 있음'));
+    if(item){const img=document.createElement('img');img.src=item.art;img.alt='';button.append(img);}else button.textContent=(index+1)+'번';
+    button.onclick=()=>{
+      if(!item){toast('가방에서 장비를 골라 장착해 보세요.');return;}
+      $('equipment-title').textContent=item.name;$('equipment-picture').src=item.art;
+      $('equipment-description').textContent=itemUseText(item);
+      $('equipment-remove').onclick=async()=>{const remove=$('equipment-remove');remove.disabled=true;try{
+        const ack=await request('equipment:unequip',{slot:index+1});applyEquipmentAck(ack);$('equipment-dialog').close();toast(item.name+'을 가방에 넣었어요.');
+      }catch(error){toast(error.message);}finally{remove.disabled=false;}};
+      $('equipment-dialog').showModal();
+    };
+    return button;
+  }));
+}
+$('equipment-close').onclick=()=>$('equipment-dialog').close();
 function effectText(e){
   if(e.until===null)return e.icon+' '+e.label+' · 선생님 처리 대기';
   const mins=Math.max(1,Math.ceil((e.until-Date.now())/60000));
@@ -501,7 +548,9 @@ async function openUseDialog(item){
   useItem=item;
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
-  $('use-effect').textContent=itemUseText(item)+(me?.effects?.some(e=>e.itemId==='total-eclipse-card'&&e.until>Date.now())?' · 개기 일식 금지 상태: 이번 아이템 1회 사용료로 별 파편 1개를 내요.':'');
+  const eclipsed=me?.eclipseFeeDue===true;
+  $('use-effect').textContent=itemUseText(item)+(eclipsed?'\n현재 개기 일식 상태입니다. 별 1개를 지급 후 사용하시겠습니까?':'');
+  $('use-confirm').textContent=eclipsed?'별 1개 지급 후 사용하기':'사용하기';
   $('use-special').textContent=item.special||'';$('use-special').hidden=!item.special;
   $('use-secret-note').hidden=!item.secret;
   if(item.targets==='self-and-two'&&me?.role==='teacher'){toast('선생님은 이 아이템을 사용할 수 없어요.');return;}
@@ -782,8 +831,10 @@ async function travelTo(to){try{await request('map:travel',{to});}catch(e){toast
 function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
+  if(n.id){objectUpdates.acknowledge(world.currentMapId(),n.id);world.setObjectUpdates(objectUpdates.pending());}
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.kind==='recipe'?(itemOf(r.itemId)?.name||'조합 레시피')+'를 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
   else if(n.kind==='door')exitPlanet();
@@ -947,7 +998,7 @@ function applyShopAck(reply){
 function renderShopBuyList(){
   updateShopLevels();
   const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=hasUnlimitedShards(me);
-  const items=SHOP.items.filter(item=>shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)));
+  const items=SHOP.items.filter(item=>shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)||teacher&&[2,3,4].includes(item.level)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
@@ -962,8 +1013,8 @@ function renderShopBuyList(){
     const desc=document.createElement('p');desc.className='bag-flavor';desc.textContent=itemFlavor(item);
     info.append(name,desc);
     const row=document.createElement('div');row.className='item-actions';
-    if(shopItemLevel(item)>=2&&shopItemLevel(item)<=4){li.append(icon,info);return li;}
-    if(item.pricePending===true&&item.forSale===false){
+    if(shopItemLevel(item)>=2&&shopItemLevel(item)<=4&&!teacher){li.append(icon,info);return li;}
+    if(item.pricePending===true&&item.forSale===false&&!teacher){
       const pending=document.createElement('span');pending.className='price';pending.textContent='가격 준비 중';
       const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='가격 준비 중';buy.disabled=true;
       row.append(pending,buy);li.append(icon,info,row);return li;
@@ -973,7 +1024,7 @@ function renderShopBuyList(){
     const qty=document.createElement('input');qty.type='number';qty.min='1';qty.max='10';qty.value='1';qty.className='qty';qty.setAttribute('aria-label','수량');
     const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='사기';
     const updatePrice=()=>{
-      const quote=discountedPurchase(item.price,shopQty(qty),discounts);
+      const quote=teacher?{cost:0,discounted:0}:discountedPurchase(item.price,shopQty(qty),discounts);
       const cost=shardCost(me,quote.cost);
       price.textContent=teacher?'교사 무료 · 합계 ★ 0':'합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
       buy.disabled=shards<cost;buy.title=buy.disabled?'별 파편이 부족해요.':'';
@@ -1092,6 +1143,8 @@ function reset(message){
   if($('ability-dialog').open)$('ability-dialog').close();
   $('avatar-card').style.removeProperty('--card-accent');$('avatar-card').classList.remove('teacher-card');
   {const portrait=$('avatar-portrait');portrait.getContext('2d').clearRect(0,0,portrait.width,portrait.height);}
+  renderEquipmentSlots(null);if($('equipment-dialog').open)$('equipment-dialog').close();
+  objectUpdates.reset();world.setObjectUpdates(new Set());
   $('self-proposal').hidden=true;$('proposals-empty').hidden=false;$('proposals').replaceChildren();lastProposalCount=0;$('pin-panel').hidden=true;$('reset-pin').value='';
   $('planet-exit').hidden=true;$('planet-new').hidden=true;$('planet-info').hidden=true;$('interact-prompt').hidden=true;$('interior-decorate').hidden=true;$('map-caption').textContent='✦ 같은 교실의 친구들과 함께하는 공간';
   selectedSlotId=null;$('bag-list').replaceChildren();$('bag-empty').hidden=false;$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';

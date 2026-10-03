@@ -32,11 +32,17 @@ test('temple enforces proximity and teacher permissions, preserves daily notices
   const joined=await call(student,'room:join',{code:made.room.code,nickname:'1',pin:made.credentials.find(c=>c.nickname==='1').pin});assert.equal(joined.ok,true);
   let room=game.store.rooms.get(made.room.code),t=room.players.get(made.selfId),p=room.players.get(joined.selfId);
   const refresh=()=>{room=game.store.rooms.get(made.room.code);t=room.players.get(made.selfId);p=room.players.get(joined.selfId);};
+  const nextStudentState=()=>new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>{student.off('room:state',onState);reject(new Error('학생에게 변경 신호가 오지 않았어요.'));},3000);
+   const onState=state=>{clearTimeout(timer);resolve(state);};student.once('room:state',onState);
+  });
   const approach=(who,id)=>{const o=MAP.objects.find(o=>o.id===id);const current=game.store.rooms.get(made.room.code).players.get(who.id);Object.assign(current,{mapId:PLAZA_ID,x:o.x+65,y:o.y});};
   assert.equal((await call(student,'temple:read',{objectId:'pillar-notice'})).ok,false);
   for(const [id,text] of [['pillar-notice','내일 색연필을 준비해요.']]){
    approach(t,id);approach(p,id);assert.equal((await call(student,'temple:save',{objectId:id,text:'위조'})).ok,false);
+   const before=game.store.snapshot(room,p).objectSignals[PLAZA_ID+':'+id],changed=nextStudentState();
    assert.equal((await call(teacher,'temple:save',{objectId:id,text})).ok,true);
+   assert.notEqual((await changed).objectSignals[PLAZA_ID+':'+id],before);
    const viewed=await call(student,'temple:read',{objectId:id});assert.equal(viewed.text,text);assert.equal(viewed.canEdit,false);
    assert.equal((await call(teacher,'temple:save',{objectId:id,text:'가'.repeat(2001)})).ok,false);
   }
@@ -44,7 +50,9 @@ test('temple enforces proximity and teacher permissions, preserves daily notices
   const cells=Array.from({length:6},()=>Array(5).fill(''));cells[0][0]='국어';cells[5][4]='체육';
   assert.equal((await call(student,'temple:timetable:save',{objectId:'pillar-timetable',cells})).ok,false);
   assert.equal((await call(teacher,'temple:save',{objectId:'pillar-timetable',text:'옛 메모'})).ok,false);
+  const beforeSchedule=game.store.snapshot(room,p).objectSignals[PLAZA_ID+':pillar-timetable'],scheduleChanged=nextStudentState();
   assert.deepEqual((await call(teacher,'temple:timetable:save',{objectId:'pillar-timetable',cells})).cells,cells);
+  assert.notEqual((await scheduleChanged).objectSignals[PLAZA_ID+':pillar-timetable'],beforeSchedule);
   const timetable=await call(student,'temple:read',{objectId:'pillar-timetable'});assert.deepEqual(timetable.cells,cells);assert.equal(timetable.canEdit,false);
   assert.equal((await call(teacher,'temple:timetable:save',{objectId:'pillar-timetable',cells:[['국어']]})).ok,false);
   refresh();p.starShards=9998;await call(teacher,'shards:give',{playerId:p.id,amount:5});await call(teacher,'shards:give',{playerId:p.id,amount:-2});await call(teacher,'shards:give',{playerId:'all',amount:3});

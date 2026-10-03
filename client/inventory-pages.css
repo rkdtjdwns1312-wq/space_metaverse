@@ -52,6 +52,7 @@
 }
 #inventory-dialog .slot.empty { background: #fff; box-shadow: inset 0 0 0 3px #faf7fe; }
 #inventory-dialog .slot-btn { color: #704d9e; border-radius: 10px; }
+#inventory-dialog .slot-energy{position:absolute;left:0;bottom:0;z-index:2;min-width:18px;height:18px;padding:1px 3px;border:2px solid #fff;border-radius:10px;background:#7963b4;color:#fff;font:800 11px/14px "Jua","Malgun Gothic",sans-serif;text-align:center;box-shadow:0 2px 4px #4f367a55}
 #inventory-dialog .slot.selected {
   border-color: #8053b8;
   box-shadow: 0 0 0 2px #d8c4f0;

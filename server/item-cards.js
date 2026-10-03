@@ -37,6 +37,7 @@ export function cardMarkerViews(player,viewerIsTeacher,now=Date.now()){
     const item=itemOf(marker.itemId);
     const view={itemId:item.id,icon:item.icon,label:item.effect.label,style:item.effect.style,until:marker.until,...(item.mode==='uv'?{statusId:'uv'}:item.mode==='moon'?{statusId:'moon'}:{})};
     if(Number.isSafeInteger(marker.remainingUses)&&marker.remainingUses>=0)view.remainingUses=marker.remainingUses;
+    if(Number.isSafeInteger(marker.startsAt))view.startsAt=marker.startsAt;
     if(viewerIsTeacher){view.markerId=marker.id;view.fromId=marker.fromId;view.fromNickname=marker.fromNickname;view.note=marker.note||'';}
     return view;
   });
@@ -50,13 +51,18 @@ export function validateCardMarkers(value){
     const item=marker&&itemOf(marker.itemId);
     if(!item?.mode||typeof marker.id!=='string'||ids.has(marker.id)||
       (marker.until!==null&&(!Number.isSafeInteger(marker.until)||marker.until<0))||
-      (marker.holdingAbility===true?item.id!=='alien-creature-card'||marker.until===null:item.mode==='lv4'?false:item.mode==='lv2'?marker.until===null:['uv','moon'].includes(item.mode)?marker.until===null:marker.until!==null)||
+      (marker.holdingAbility===true?item.id!=='alien-creature-card'||marker.until===null:item.mode==='lv4'?false:item.mode==='lv2'?marker.until===null:item.id==='alien-creature-card'&&marker.startsAt!==undefined?marker.until===null:['uv','moon'].includes(item.mode)?marker.until===null:marker.until!==null)||
       (marker.holdingAbility!==undefined&&marker.holdingAbility!==true)||
       typeof marker.fromId!=='string'||typeof marker.fromNickname!=='string'||marker.fromNickname.length>12||
       (marker.note!==undefined&&(typeof marker.note!=='string'||marker.note.length>80))||
       (marker.remainingUses!==undefined&&(!Number.isSafeInteger(marker.remainingUses)||marker.remainingUses<0||marker.remainingUses>99))||
       (marker.at!==undefined&&(!Number.isSafeInteger(marker.at)||marker.at<0))||
+      (marker.startsAt!==undefined&&(marker.itemId!=='alien-creature-card'||marker.holdingAbility||!Number.isSafeInteger(marker.startsAt)||marker.startsAt<0||marker.until===null||marker.startsAt>=marker.until))||
       (marker.fromLevel!==undefined&&(!Number.isInteger(marker.fromLevel)||marker.fromLevel<1||marker.fromLevel>6))||
+      (marker.seatTargetIds!==undefined&&(marker.itemId!=='nebula-card'||!Array.isArray(marker.seatTargetIds)||marker.seatTargetIds.length!==3||new Set(marker.seatTargetIds).size!==3||marker.seatTargetIds.some(id=>typeof id!=='string'||id.length<1||id.length>80)))||
+      (marker.seatingConfirmed!==undefined&&(marker.itemId!=='nebula-card'||typeof marker.seatingConfirmed!=='boolean'||!marker.seatTargetIds))||
+      (marker.lunchOrderIds!==undefined&&(marker.itemId!=='solar-system-card'||!Array.isArray(marker.lunchOrderIds)||marker.lunchOrderIds.length!==7||new Set(marker.lunchOrderIds).size!==7||marker.lunchOrderIds.some(id=>typeof id!=='string'||id.length<1||id.length>80)))||
+      (marker.lunchOrderConfirmed!==undefined&&(marker.itemId!=='solar-system-card'||typeof marker.lunchOrderConfirmed!=='boolean'||!marker.lunchOrderIds))||
       (marker.pendingGrant!==undefined&&typeof marker.pendingGrant!=='boolean'))
       throw new Error('아이템 사용 기록이 올바르지 않습니다.');
     ids.add(marker.id);

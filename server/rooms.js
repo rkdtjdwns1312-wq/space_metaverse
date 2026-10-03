@@ -11,6 +11,8 @@ import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js'
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
+import {EXPLORATION_GOAL} from '../shared/exploration.js';
+import {objectSignals} from './object-signals.js';
 export class GameError extends Error {}
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -60,7 +62,7 @@ export class RoomStore {
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
     const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
-      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map(), starCardText:{} };
+      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map(), starCardText:{},exploration:{energy:0,results:[]} };
     this.rooms.set(room.code,room);
     // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
     if (data.seedPlanets===true) for (const seed of EXAMPLE_PLANETS) addPlanet(room,{...seed,createdBy:null});
@@ -80,9 +82,9 @@ export class RoomStore {
   add(room,name,role,socketId) {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
-      avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], starShards:0, cosmicEnergy:0, connected:true, socketId,
+      avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], equipmentSlots:[null,null,null], starShards:0, cosmicEnergy:0, connected:true, socketId,
       expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[] };
+      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0 };
     room.players.set(p.id,p);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
@@ -109,7 +111,8 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room),energyDrops:energyDropViews(room),
-      starCards:activeStarCards(room),
+      starCards:activeStarCards(room),exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
+      objectSignals:viewer?objectSignals(room,viewer):{},
       shopDiscounts:starCardShopDiscounts(room,viewer),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
@@ -122,8 +125,9 @@ export class RoomStore {
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
-        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory]; }
-        if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;
+        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
+        if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
+          out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
         return out;
       }),

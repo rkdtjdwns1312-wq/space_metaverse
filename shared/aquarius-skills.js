@@ -8,7 +8,7 @@ export const AQUARIUS_NAMES={2:'샘솟는 물병',3:'거대한 샘물',4:'천공
 export function aquariusSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return transformedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:5000,ticks:5,
-    summonWidths:3,radiusWidths:(stage+1)/2,verticalRatio:.5,
+    summonWidths:3,radiusWidths:(stage+1)/2*.8,verticalRatio:.5,
     multiplier:(stage-1)*2,healingAmount:(stage-1)*10,effectAmount:.5});
 }
 // 발동·반복·소멸을 나누어 24F의 중간 프레임을 5초 안에서 반복합니다.

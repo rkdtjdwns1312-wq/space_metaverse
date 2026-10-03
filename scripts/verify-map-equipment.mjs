@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,rm,mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {chromium} from 'playwright';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+import {MAP,STREET,STREET_ID} from '../shared/config.js';
+import {saveNotice} from '../server/temple.js';
+
+const key='isolated-map-equipment-key',dir=await mkdtemp(join(tmpdir(),'map-equipment-'));
+let game,browser,teacher,page,code;const checks=[],errors=[];
+const room=()=>game.store.rooms.get(code),student=()=>[...room().players.values()].find(p=>p.nickname==='별이');
+const publish=()=>{for(const p of room().players.values())if(p.connected)game.io.to(p.socketId).emit('room:state',game.store.snapshot(room(),p));};
+const check=value=>{checks.push(value);console.log(value);};
+try{
+  await mkdir('.local',{recursive:true});
+  game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false});
+  const url=`http://127.0.0.1:${(await game.listen()).port}`;
+  browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+  teacher=await browser.newPage({viewport:{width:1280,height:900}});teacher.on('pageerror',error=>errors.push(error.message));
+  await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);
+  await fillNewClass(teacher,['별이'],{pin:['1234']});await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  code=[...game.store.rooms.keys()][0];
+  page=await browser.newPage({viewport:{width:1280,height:900}});page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`${url}/?class=${code}`);await page.locator('#nickname').fill('별이');await page.locator('#student-pin').fill('1234');
+  await page.locator('#student-form .submit').click();await page.locator('#password-offer-no').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  await page.locator('#minimap').screenshot({path:'.local/minimap-new.png'});
+  await page.locator('#map-overview').click();await page.locator('#universe-dialog').waitFor({state:'visible'});
+  assert.ok(await page.locator('#universe-links .universe-thumbnail').first().evaluate(canvas=>canvas.getBoundingClientRect().height<100));
+  assert.ok(await page.locator('#universe-links canvas.universe-thumbnail').count()>=15);
+  await page.locator('#universe-dialog').screenshot({path:'.local/universe-new.png'});
+  check('현재 미니맵·전체 지도에서 같은 맵 원화와 장소별 축소 그림 표시');
+  await page.locator('#universe-close').click();
+  game.store.transact(()=>{saveNotice(room(),'새 알림');});publish();
+  await page.waitForFunction(()=>Number(document.querySelector('#world').dataset.objectUpdateCount)>0);
+  check('오브젝트 내용 변경 시 별빛 느낌표 알림 표시');
+  const shop=STREET.objects.find(o=>o.kind==='energy-shop');
+  game.store.transact(()=>{const p=student();p.avatar.level=4;p.avatar.constellationId='aquarius';p.cosmicEnergy=50;Object.assign(p,{mapId:STREET_ID,x:shop.x,y:shop.y+shop.radius+10});});publish();
+  await page.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='오색별빛 쉼터');
+  await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('#energy-shop-dialog').waitFor({state:'visible'});
+  assert.equal(await page.locator('.energy-shop-item').count(),10);
+  assert.ok(await page.locator('.energy-shop-picture').evaluateAll(async images=>{await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);}));
+  await page.locator('#energy-shop-dialog').screenshot({path:'.local/energy-shop-new.png'});
+  await page.locator('[data-item-id="comet-compass"] button').click();
+  await page.locator('#energy-shop-close').click();
+  await page.locator('#dock-inventory').click();await page.locator('#bag-list [data-item-id="comet-compass"] .slot-btn').click();
+  await page.locator('#bag-detail .use').click();await page.locator('#bag-detail .equip-choices button').first().click();
+  await page.locator('#inventory-dialog [data-close]').click();await page.locator('#dock-avatar').click();
+  await page.locator('#equipment-slots .equipment-slot img').first().waitFor();
+  await page.locator('#avatar-dialog').screenshot({path:'.local/equipment-info-new.png'});
+  assert.equal(student().equipmentSlots[0],'comet-compass');
+  check('우주에너지 상점 10종 원화·구매·가방 장착·내정보 세 칸 확인');
+  const flask=MAP.objects.find(o=>o.kind==='exploration'),priorityUntil=Date.now()+7*86400000;
+  game.store.transact(()=>{
+    student().lv4State={...student().lv4State,priorityUntil};
+    const p=[...room().players.values()].find(p=>p.role==='teacher');Object.assign(p,{mapId:MAP.id,x:flask.x,y:flask.y});
+  });publish();
+  await teacher.locator('#world').focus();await teacher.keyboard.press('f');
+  await teacher.locator('#exploration-dialog').waitFor({state:'visible'});
+  assert.match(await teacher.locator('#exploration-dialog').innerText(),/베텔기우스 급식 우선권[\s\S]*별이/);
+  check('선생님 탐사 장치에서 베텔기우스 급식 우선권 종료일 확인');
+  assert.deepEqual(errors,[]);
+}finally{
+  await browser?.close();await game?.close();
+  if(dir.startsWith(tmpdir()))await rm(dir,{recursive:true,force:true});
+}
+console.log(JSON.stringify({checks,errors}));

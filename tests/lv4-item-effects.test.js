@@ -37,14 +37,24 @@ test('LV4 use rejects lower-level student atomically and catalog contains only p
   rejectedWithoutMutation(f,()=>use(f,'nebula-card'),/lv보다 높은/);
 });
 
-test('solar system requires seven distinct eligible others and writes seven ordered markers', () => {
+test('태양계는 서로 다른 일곱 친구의 급식 순서를 기록하고 소행성을 각각 지급한다', () => {
   const bad=[[],['b','b','c','d','e','f','g'],['a','b','c','d','e','f','g'],['b','c','d','e','f','g','missing']];
   for(const targetIds of bad){const f=fixture('solar-system-card');rejectedWithoutMutation(f,()=>use(f,'solar-system-card',{targetIds}),/대상|서로 다른|친구/);}
   const f=fixture('solar-system-card');
   const result=use(f,'solar-system-card',{targetIds:['b','c','d','e','f','g','h']});
   assert.deepEqual(result.targetIds,['b','c','d','e','f','g','h']);
-  for(const [i,p] of [f.b,f.c,f.d,f.e,f.f,f.g,f.h].entries())assert.match(p.cardMarkers[0].note,new RegExp(`${i+1}번째`));
+  assert.deepEqual(f.actor.cardMarkers[0].lunchOrderIds,['b','c','d','e','f','g','h']);
+  for(const p of [f.b,f.c,f.d,f.e,f.f,f.g,f.h])assert.deepEqual(p.inventory,[{id:'asteroid-card',quantity:1}]);
+  const confirmation={playerId:'a',markerId:f.actor.cardMarkers[0].id,action:'solar-lunch-order',reference:'급식 순서 확인'};
+  confirmLv4(f.room,f.teacher,confirmation,NOW);
+  assert.equal(f.actor.cardMarkers[0].lunchOrderConfirmed,true);
+  assert.throws(()=>confirmLv4(f.room,f.teacher,{...confirmation,reference:'다시 확인'},NOW),/이미/);
   assert.equal(f.actor.inventory.length,0);
+});
+
+test('태양계 보상은 한 친구라도 가방이 가득 차면 모두 지급하지 않는다',()=>{
+  const f=fixture('solar-system-card');f.c.inventory=[{id:'asteroid-card',quantity:SHOP.maxStack}];
+  rejectedWithoutMutation(f,()=>use(f,'solar-system-card',{targetIds:['b','c','d','e','f','g','h']}),/가방 공간/);
 });
 
 test('supercluster grants two selected typed gold cards, stacks duplicates, and rolls back over-capacity', () => {
@@ -58,96 +68,105 @@ test('supercluster grants two selected typed gold cards, stacks duplicates, and 
   }
 });
 
-test('eclipse taxes each eligible use once and keeps its seven-day marker; higher, self, and immune targets reject', () => {
+test('개기 일식은 보호 중을 제외한 교실 학생 모두에게 7일 적용하고 사용료를 한 번씩 옮긴다', () => {
   const f=fixture('nebula-card');f.actor.cardMarkers=[marker('total-eclipse-card',{fromId:'b',fromLevel:4})];f.actor.starShards=2;
   f.b.inventory=[{id:'nebula-card',quantity:1}];f.b.cardMarkers=[marker('total-eclipse-card',{fromId:'a',fromLevel:4})];
   f.room.players.get('b').lastItemUseAt=0;
   const target=player('tax-owner');f.room.players.set(target.id,target);
   f.actor.cardMarkers=[marker('total-eclipse-card',{fromId:target.id,fromLevel:4})];
-  use(f,'nebula-card'); assert.equal(f.actor.starShards,1);assert.equal(target.starShards,21);
+  use(f,'nebula-card',{targetIds:['b','c','d']}); assert.equal(f.actor.starShards,1);assert.equal(target.starShards,21);
   assert.equal(f.actor.cardMarkers[0].until,NOW+WEEK);
-  const self=fixture('total-eclipse-card');
-  rejectedWithoutMutation(self,()=>use(self,'total-eclipse-card',{targetIds:['a']}),/다른 친구/);
-  const higher=fixture('total-eclipse-card');higher.b.avatar.level=5;
-  rejectedWithoutMutation(higher,()=>use(higher,'total-eclipse-card',{targetIds:['b']}),/높은/);
+  const all=fixture('total-eclipse-card');all.b.avatar.level=5;
+  use(all,'total-eclipse-card',{});assert.ok([all.actor,all.b,all.c,all.d].every(p=>p.cardMarkers.some(m=>m.itemId==='total-eclipse-card')));
+  assert.equal(all.actor.cardMarkers.find(m=>m.itemId==='total-eclipse-card').until,NOW+WEEK);
   const immune=fixture('total-eclipse-card');immune.b.cardMarkers=[marker('little-moon-card')];
-  rejectedWithoutMutation(immune,()=>use(immune,'total-eclipse-card',{targetIds:['b']}),/보호/);
+  use(immune,'total-eclipse-card',{});assert.ok(!immune.b.cardMarkers.some(m=>m.itemId==='total-eclipse-card'));
 });
 
-test('black hole preview prices warning per target and black star at three, totals days, and rejects atomically', () => {
+test('블랙홀은 경고당 1·검은별당 2파편을 이전하고 2주 동안 재사용할 수 없다', () => {
   const f=fixture('black-hole-card');planets(f);
   f.room.planets.get('p1').warnings.entries=[{active:true,targetId:'b'},{active:true,targetId:'b'}];
   f.room.planets.get('p2').warnings.entries=[{active:true,targetId:'c'}];
   f.b.avatar.blackStar={planetId:'p2'};f.b.starShards=8; f.c.starShards=2;
   const preview=blackHolePreview(f.room,f.actor,['p1','p2','p3'],NOW);
-  assert.deepEqual(preview.costs.map(x=>[x.playerId,x.amount]),[['b',5],['c',1]]);
-  assert.equal(preview.total,6);assert.equal(preview.durationDays,0.6);
+  assert.deepEqual(preview.costs.map(x=>[x.playerId,x.amount]),[['b',4],['c',1]]);
+  assert.equal(preview.total,5);assert.equal(preview.readyAt,NOW+2*WEEK);
   f.c.starShards=0;
   rejectedWithoutMutation(f,()=>use(f,'black-hole-card',{planetIds:['p1','p2','p3']}),/부족/);
-  f.c.starShards=2;assert.equal(blackHolePreview(f.room,f.actor,['p1','p2','p3'],NOW).total,6);
-  const success=fixture('black-hole-card');planets(success);success.room.planets.get('p1').warnings.entries=[{active:true,targetId:'b'}];
+  f.c.starShards=2;assert.equal(blackHolePreview(f.room,f.actor,['p1','p2','p3'],NOW).total,5);
+  const success=fixture('black-hole-card',2);planets(success);success.room.planets.get('p1').warnings.entries=[{active:true,targetId:'b'}];
   success.b.avatar.blackStar={planetId:'p2'};success.b.starShards=10;
   use(success,'black-hole-card',{planetIds:['p1','p2','p3']});
-  assert.equal(success.b.starShards,6);assert.equal(success.b.avatar.blackStar,null);
-  assert.equal(success.actor.cardMarkers[0].until,NOW+Math.round(4*DAY/10));
+  assert.equal(success.b.starShards,7);assert.equal(success.actor.starShards,23);
+  assert.equal(success.b.avatar.blackStar,null);assert.equal(success.room.planets.get('p1').warnings.entries[0].active,false);
+  assert.equal(success.actor.lv4State.blackHoleReadyAt,NOW+2*WEEK);
+  rejectedWithoutMutation(success,()=>use(success,'black-hole-card',{planetIds:['p1','p2','p3']},NOW+WEEK),/2주/);
+  success.room.planets.get('p1').warnings.entries.push({active:true,targetId:'c'});
+  use(success,'black-hole-card',{planetIds:['p1','p2','p3']},NOW+2*WEEK);
+  assert.equal(success.c.starShards,19);
 });
 
-test('teacher confirmations require teacher, unique references, and queen writing has no extra reward', () => {
+test('에일리언 퀸은 교사 확인마다 파편 1개를 즉시 지급하고 같은 제출은 중복 지급하지 않는다', () => {
   const f=fixture();f.b.inventory=[{id:'alien-queen-card',quantity:1}];
   const data={playerId:'b',action:'queen-writing',reference:'reading-1',markerId:'unused'};
-  const before=f.b.starShards;confirmLv4(f.room,f.teacher,data,NOW);assert.equal(f.b.starShards,before);
-  assert.equal(f.b.holdingState.queenReadyWeek,'2026-09-21');
-  assert.throws(()=>confirmLv4(f.room,f.teacher,data,NOW),/중복 지급/);assert.equal(f.b.starShards,before);
+  const before=f.b.starShards;confirmLv4(f.room,f.teacher,data,NOW);assert.equal(f.b.starShards,before+1);
+  confirmLv4(f.room,f.teacher,{...data,reference:'reading-2'},NOW);assert.equal(f.b.starShards,before+2);
+  assert.throws(()=>confirmLv4(f.room,f.teacher,data,NOW),/중복 지급/);assert.equal(f.b.starShards,before+2);
   assert.throws(()=>confirmLv4(f.room,f.b,{...data,reference:'reading-2'},NOW),/선생님만/);
 });
 
-test('nebula teacher transfer moves one shard, rejects duplicate and zero-fund transfers', () => {
-  const f=fixture();f.b.cardMarkers=[marker('nebula-card')];f.b.starShards=4;f.c.starShards=3;
-  const data={playerId:'b',action:'nebula-tax',reference:'square-1',markerId:f.b.cardMarkers[0].id,targetId:'c'};
-  confirmLv4(f.room,f.teacher,data,NOW);assert.deepEqual([f.b.starShards,f.c.starShards],[5,2]);
-  assert.throws(()=>confirmLv4(f.room,f.teacher,data,NOW),/중복/);
-  f.d.cardMarkers=[marker('nebula-card')];f.d.starShards=10;f.e.starShards=0;
-  const zero={playerId:'d',action:'nebula-tax',reference:'square-2',markerId:f.d.cardMarkers[0].id,targetId:'e'};
-  const before=structuredClone(f.room);assert.throws(()=>confirmLv4(f.room,f.teacher,zero,NOW),/부족/);assert.deepEqual(f.room,before);
+test('성운은 본인과 친구 3명의 영구 자리 변경 요청만 기록하며 교사가 비분리 배치를 확인한다',()=>{
+  for(const targetIds of [[],['b','b','c'],['a','b','c'],['b','c','missing']]){
+    const bad=fixture('nebula-card');rejectedWithoutMutation(bad,()=>use(bad,'nebula-card',{targetIds}),/친구|대상|서로 다른/);
+  }
+  const f=fixture('nebula-card');const balances=[f.actor.starShards,f.b.starShards,f.c.starShards,f.d.starShards];
+  const used=use(f,'nebula-card',{targetIds:['b','c','d']});
+  assert.deepEqual(used.targetIds,['a','b','c','d']);
+  assert.deepEqual(f.actor.cardMarkers[0].seatTargetIds,['b','c','d']);
+  const data={playerId:'a',action:'nebula-seating',reference:'자리 변경 확인',markerId:f.actor.cardMarkers[0].id};
+  rejectedWithoutMutation(f,()=>confirmLv4(f.room,f.teacher,{...data,notSeparated:false},NOW),/완전히 떨어진/);
+  confirmLv4(f.room,f.teacher,{...data,notSeparated:true},NOW);
+  assert.equal(f.actor.cardMarkers[0].seatingConfirmed,true);
+  assert.deepEqual([f.actor.starShards,f.b.starShards,f.c.starShards,f.d.starShards],balances);
+  assert.throws(()=>confirmLv4(f.room,f.teacher,{...data,notSeparated:true,reference:'두번째'},NOW),/이미/);
+  assert.throws(()=>confirmLv4(f.room,f.teacher,{...data,action:'nebula-tax',targetId:'c',reference:'이전 징수'},NOW),/확인할 활동/);
 });
 
-test('Betelgeuse records three confirmed trips and duration, then rejects a fourth', () => {
-  const f=fixture();f.b.cardMarkers=[marker('betelgeuse-card',{remainingUses:3,until:null})];
-  for(let i=1;i<=3;i++)confirmLv4(f.room,f.teacher,{playerId:'b',action:'exploration',reference:`trip-${i}`,markerId:f.b.cardMarkers[0].id,steps:i},NOW);
-  assert.equal(f.b.lv4State.priorityUntil,NOW+6*WEEK);
-  assert.equal(f.b.cardMarkers[0].remainingUses,undefined);assert.equal(f.b.cardMarkers[0].until,NOW+6*WEEK);
-  const before=structuredClone(f.room);
-  assert.throws(()=>confirmLv4(f.room,f.teacher,{playerId:'b',action:'exploration',reference:'trip-4',markerId:f.b.cardMarkers[0].id,steps:1},NOW),/남은 탐험/);
-  assert.deepEqual(f.room,before);
-  const invalid=fixture();invalid.b.cardMarkers=[marker('betelgeuse-card',{remainingUses:3,until:null})];
-  assert.throws(()=>confirmLv4(invalid.room,invalid.teacher,{playerId:'b',action:'exploration',reference:'bad',markerId:invalid.b.cardMarkers[0].id,steps:100},NOW),/1~99/);
+test('베텔기우스는 사용 즉시 탐사권 3장을 지급하고 사용 날짜를 기록한다', () => {
+  const f=fixture('betelgeuse-card');use(f,'betelgeuse-card');
+  assert.equal(f.actor.inventory.find(item=>item.id==='exploration-ticket')?.quantity,3);
+  assert.equal(f.actor.lv4State.betelgeuseDay,new Date(NOW+9*3600000).toISOString().slice(0,10));
+  assert.ok(!f.actor.cardMarkers.some(m=>m.itemId==='betelgeuse-card'));
+  const full=fixture('betelgeuse-card');full.actor.inventory.push({id:'exploration-ticket',quantity:98});
+  rejectedWithoutMutation(full,()=>use(full,'betelgeuse-card'),/가방 공간/);
 });
 
 test('LV4 state validator defaults new saves and clones valid stacks, claims, receipts, and priority data', () => {
-  assert.deepEqual(validateLv4State(),{stacks:0,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null});
+  assert.deepEqual(validateLv4State(),{stacks:0,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null,blackHoleReadyAt:null});
   for(const value of [{stacks:-1,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null},
     {stacks:0,nextStackAt:-1,claimIds:[],receipts:[],priorityUntil:null},
     {stacks:0,nextStackAt:null,claimIds:['x','x'],receipts:[],priorityUntil:null},
-    {stacks:0,nextStackAt:null,claimIds:[],receipts:[{key:'x',at:-1}],priorityUntil:null}])assert.throws(()=>validateLv4State(value),/저장 데이터/);
+    {stacks:0,nextStackAt:null,claimIds:[],receipts:[{key:'x',at:-1}],priorityUntil:null},
+    {stacks:0,nextStackAt:null,claimIds:[],receipts:[],priorityUntil:null,blackHoleReadyAt:-1}])assert.throws(()=>validateLv4State(value),/저장 데이터/);
   const old={stacks:2,nextStackAt:NOW,claimIds:['claim'],receipts:[{key:'x',at:NOW}],priorityUntil:NOW};
   const cloned=validateLv4State(old);cloned.claimIds[0]='changed';cloned.receipts[0].key='changed';assert.deepEqual(old,{stacks:2,nextStackAt:NOW,claimIds:['claim'],receipts:[{key:'x',at:NOW}],priorityUntil:NOW});
 });
 
-test('supercluster accrues one stack per seven days independent of card quantity, including offline periods', () => {
+test('초은하단은 보유한 카드 수만큼 매주 기운이 쌓이고 미접속 기간도 정산한다', () => {
   const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:4}];
   assert.equal(settleLv4Items(f.room,NOW),true);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+WEEK);assert.equal(f.actor.lv4State.stacks,0);
-  assert.equal(settleLv4Items(f.room,NOW+3*WEEK+DAY),true);assert.equal(f.actor.lv4State.stacks,3);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+4*WEEK);
+  assert.equal(settleLv4Items(f.room,NOW+3*WEEK+DAY),true);assert.equal(f.actor.lv4State.stacks,12);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+4*WEEK);
   assert.equal(f.actor.starShards,20);assert.equal(f.actor.inventory[0].quantity,4);
   assert.equal(lv4ItemsDue(f.room,NOW+3*WEEK+DAY),false);
-  f.actor.inventory=[];assert.equal(syncLv4Holdings(f.actor,NOW+4*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,null);assert.equal(f.actor.lv4State.stacks,3);
-  assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),false);assert.equal(f.actor.lv4State.stacks,3);
+  f.actor.inventory=[];assert.equal(syncLv4Holdings(f.actor,NOW+4*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,null);assert.equal(f.actor.lv4State.stacks,12);
+  assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),false);assert.equal(f.actor.lv4State.stacks,12);
   f.actor.inventory=[{id:'supercluster-card',quantity:2}];assert.equal(syncLv4Holdings(f.actor,NOW+10*WEEK),true);assert.equal(f.actor.lv4State.nextStackAt,MONDAY+11*WEEK);
 });
 
 test('previous disabled LV4 reward state migrates without invented stacks or losing teacher receipts',()=>{
   const receipts=[{key:'queen-writing::old',at:NOW}];
   assert.deepEqual(validateLv4State({rewardMode:null,nextRewardAt:null,receipts,priorityUntil:NOW}),
-    {stacks:0,nextStackAt:null,claimIds:[],receipts,priorityUntil:NOW});
+    {stacks:0,nextStackAt:null,claimIds:[],receipts,priorityUntil:NOW,blackHoleReadyAt:null});
   assert.equal(validateLv4State({rewardMode:'card',nextRewardAt:NOW+2*WEEK,receipts:[],priorityUntil:null}).nextStackAt,NOW+WEEK);
   assert.throws(()=>validateLv4State({rewardMode:'invalid',nextRewardAt:null,receipts:[],priorityUntil:null}),/저장 데이터/);
 });
@@ -164,7 +183,7 @@ test('holding exchange spends one stack for four shards or two for one star card
 test('holding retries preserve request id semantics and successful requests cannot consume twice', () => {
   const f=fixture();f.actor.inventory=[{id:'supercluster-card',quantity:1}];f.actor.lv4State={stacks:1,nextStackAt:NOW+WEEK,claimIds:[],receipts:[],priorityUntil:null};
   const noStack=structuredClone(f.room);
-  assert.throws(()=>useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW),/보유 스택이 부족/);assert.deepEqual(f.room,noStack);
+  assert.throws(()=>useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW),/은하수의 기운이 부족/);assert.deepEqual(f.room,noStack);
   f.actor.lv4State.stacks=3;
   useLv4Holding(f.room,f.actor,{reward:'card',requestId:'retry-1'},NOW);
   assert.deepEqual(f.actor.lv4State.claimIds,['retry-1']);
@@ -199,7 +218,7 @@ test('holding requires an eligible level-four connected owner and rolls back blo
  });
 
 test('little moon allows LV4 own use and own black-hole costs but protects friends',()=>{
- const f=fixture('nebula-card');f.actor.cardMarkers=[marker('little-moon-card')];use(f,'nebula-card');assert.equal(f.actor.cardMarkers.length,2);
+ const f=fixture('nebula-card');f.actor.cardMarkers=[marker('little-moon-card')];use(f,'nebula-card',{targetIds:['b','c','d']});assert.equal(f.actor.cardMarkers.length,2);
  const g=fixture('black-hole-card');planets(g);g.actor.cardMarkers=[marker('little-moon-card')];
  g.room.planets.get('p1').warnings.entries=[{active:true,targetId:'a'}];
  assert.equal(blackHolePreview(g.room,g.actor,['p1','p2','p3'],NOW).total,1);

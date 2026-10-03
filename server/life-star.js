@@ -3,8 +3,8 @@ import {ensure} from './rooms.js';
 import {isNear} from './world.js';
 import {ensureVitals,playerVitals} from './vitals.js';
 
-export const LIFE_RECOVERY_MS=10_000;
-const STEPS=10;
+export const LIFE_RECOVERY_MS=5_000;
+const STEPS=5;
 export function startLifeRecovery(player,now){
   const star=MAP.objects.find(o=>o.kind==='life-star');
   ensure(player?.connected&&!player.away,'먼저 교실에 입장해주세요.');
@@ -15,11 +15,11 @@ export function startLifeRecovery(player,now){
   if(value.lifeRecovery)return {message:'생명의별이 체력과 마나를 회복하고 있어요.'};
   if(value.hp===limits.hp.max&&value.mp===limits.mp.max)return {message:'체력과 마나가 이미 가득해요.'};
   value.lifeRecovery={startedAt:now,step:0};
-  return {message:'생명의별이 10초 동안 체력과 마나를 회복해요.'};
+  return {message:'생명의별이 5초 동안 체력과 마나를 모두 회복해요.'};
 }
 
 // HP/MP처럼 회복 중 상태도 일시적인 전투 정보입니다. 재화 저장과 분리합니다.
-// 1초마다 남은 회복량을 남은 횟수로 나누므로 정수이며 10초째에 가득 찹니다.
+// 1초마다 남은 회복량을 남은 횟수로 나누므로 정수이며 5초째에 가득 찹니다.
 export function advanceLifeRecovery(room,now){
   const updates=[];
   for(const player of room.players.values()){

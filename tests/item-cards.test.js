@@ -27,7 +27,7 @@ async function fixture(t){
 }
 
 test('PPT의 서로 다른 Lv1 카드 8종이 지정 가격과 그림·설명을 가진다',()=>{
-  const cards=SHOP.items.filter(item=>item.art&&item.level===1&&item.type==='tool');
+  const cards=SHOP.items.filter(item=>item.art&&item.level===1&&item.type==='tool'&&item.id!=='exploration-ticket');
   assert.equal(cards.length,8);assert.ok(cards.every(item=>item.level===1&&item.description&&item.special));
   assert.deepEqual(Object.fromEntries(cards.map(item=>[item.id,item.price])),{
     'space-food-card':2,'space-robot-card':2,'alien-card':4,'space-suit-card':2,

@@ -56,7 +56,9 @@ test('catalogue ID controls use; spoofed level, ID, target policy and unknown ID
   rejectedWithoutMutation(f, () => useLv3Item(f.room, f.actor, {id: 'unknown-card', level: 3, usable: true}, {}, NOW), /준비 중/);
   rejectedWithoutMutation(f, () => use(f, 'galaxy-card'), /준비 중/);
   const g = fixture('alien-creature-card');
-  rejectedWithoutMutation(g, () => useLv3Item(g.room, g.actor, {id: 'alien-creature-card', usable: true, targets: 'self'}, {}, NOW), /준비 중/);
+  assert.match(useLv3Item(g.room, g.actor, {id: 'alien-creature-card', targets: 'other'}, {}, NOW).message,/하루 뒤/);
+  assert.equal(g.actor.cardMarkers[0].startsAt,NOW+DAY);
+  assert.equal(g.actor.cardMarkers[0].until,NOW+DAY+12*3_600_000);
 });
 
 test('ownership, actor identity, connection, LV3 restriction and cooldown fail before mutation', () => {

@@ -86,7 +86,15 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
   dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
   dialog.addEventListener('close', () => { if (!closed) close(); });
 
-  const submitUse = async (item, extra = {}) => {
+  const submitUse = async (item, extra = {},confirmed=false) => {
+    if(!confirmed&&roster?.useFeeText){
+      dialog.querySelector('.lv4-eclipse-confirm')?.remove();
+      const box=el('div',undefined,'lv4-eclipse-confirm');
+      box.append(el('p','현재 개기 일식 상태입니다. 별 1개를 지급 후 사용하시겠습니까?'),
+        button('예 · 지급 후 사용',()=>{box.remove();void submitUse(item,extra,true);},'primary'),
+        button('아니오',()=>box.remove(),'secondary'));
+      dialog.querySelector('.lv4-controls')?.append(box);return;
+    }
     if (busy) return;
     busy = true;
     setBusy(true);
@@ -141,12 +149,19 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
     const form = el('section', undefined, 'lv4-controls');
     if (item.id === 'solar-system-card') {
       const inputs=Array.from({length:7},(_,i)=>{const node=select((i+1)+'번째 친구',personOptions().filter(p=>p.value!==getPlayer?.()?.id),'친구 선택');form.append(field((i+1)+'번째 친구',node));return node;});
-      form.append(el('p','정한 순서와 행성 역할은 선생님이 실제 급식·책상·하교 활동에 적용해요.','lv4-note'));
+      form.append(el('p','선택한 1~7번 순서대로 급식 순서를 영구 변경해요. 일곱 친구에게 소행성 아이템을 각각 1개씩 지급합니다.','lv4-note'));
       form.append(button('태양계 사용',()=>{const targetIds=inputs.map(n=>n.value);if(targetIds.some(id=>!id)||new Set(targetIds).size!==7){toast('서로 다른 친구 7명을 선택해 주세요.');return;}void submitUse(item,{targetIds});},'primary'));
     } else if (item.id === 'black-hole-card') {
       const planets = checkList('검은별을 정리할 부서 행성 정확히 3개 선택', (roster.planets || []).map(p => ({ value: p.id, label: p.name })), 'lv4-planet');
       form.append(planets);
-      form.append(button('비용 미리보기', async () => {
+      const confirmation=el('div',undefined,'lv4-confirm'),summaryText=el('p');
+      let pendingPlanetIds=[];
+      confirmation.hidden=true;
+      confirmation.append(summaryText,button('확인하고 사용',()=>void submitUse(item,{planetIds:pendingPlanetIds}),'primary'),button('취소',()=>{confirmation.hidden=true;}));
+      planets.addEventListener('change',()=>{confirmation.hidden=true;});
+      const readyAt=Number(roster.blackHoleReadyAt||0);
+      if(readyAt>Date.now())form.append(el('p',`다시 사용 가능: ${new Date(readyAt).toLocaleString('ko-KR')}`,'lv4-note'));
+      const previewButton=button('비용 미리보기', async () => {
         if (busy) return;
         const planetIds = checked('lv4-planet');
         if (planetIds.length !== 3 || new Set(planetIds).size !== 3) { toast?.('서로 다른 행성 3개를 선택해 주세요.'); return; }
@@ -157,21 +172,15 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
           const costs = Array.isArray(preview?.costs) ? preview.costs : [];
           const breakdown = costs.map(row => `${row.nickname || row.playerId || '대상'}: 별 파편 ${row.amount}개`).join('\n');
           const total = Number(preview?.total);
-          const durationDays = Number(preview?.durationDays);
-          const summary = `${breakdown ? `${breakdown}\n` : ''}합계: 별 파편 ${Number.isFinite(total) ? total : '확인되지 않은'}개\n소멸한 별 파편 합계÷10일 동안 아이템 효과에 면역이 됩니다. 계속할까요?`;
-          if (!window.confirm(summary)) return;
-          busy=false;await submitUse(item, { planetIds });
+          const summary = `${breakdown ? `${breakdown}\n` : ''}합계: 별 파편 ${Number.isFinite(total) ? total : '확인되지 않은'}개를 사용자에게 옮겨요.\n선택한 세 부서의 모든 경고와 검은별을 해제하고, 2주 동안 다시 사용할 수 없어요. 계속할까요?`;
+          pendingPlanetIds=planetIds;summaryText.textContent=summary;confirmation.hidden=false;
         } catch (error) { toast?.(error?.message || '비용을 확인하지 못했어요.'); }
         finally { busy = false; setBusy(false); }
-      }));
+      });
+      previewButton.disabled=readyAt>Date.now();form.append(previewButton,confirmation);
     } else if (item.id === 'total-eclipse-card') {
-      form.append(el('p', '아이템 사용 금지는 7일 동안 계속돼요. 금지 중 아이템 1개를 사용할 때마다 별 파편 1개를 내면 그 1회만 허용돼요.', 'lv4-use-fee'));
-      form.append(checkList('아이템 사용을 금지할 학생 1명 이상 선택', personOptions().filter(p => p.value !== getPlayer?.()?.id), 'lv4-target'));
-      form.append(button('개기 일식 사용', () => {
-        const targetIds = checked('lv4-target');
-        if (!targetIds.length) { toast?.('대상을 한 명 이상 선택해 주세요.'); return; }
-        void submitUse(item, { targetIds });
-      }, 'primary'));
+      form.append(el('p', '같은 교실의 학생 모두에게 1주일 개기 일식 상태를 걸어요. 아이템을 사용할 때마다 사용자에게 별 파편 1개를 지급해요.', 'lv4-use-fee'));
+      form.append(button('개기 일식 사용', () => void submitUse(item), 'primary'));
     } else if (item.id === 'supercluster-card') {
       const card1 = select('첫 번째 금별 카드', (roster.cards || []).map(c => ({ value: c.id, label: c.name })), '카드 선택');
       const card2 = select('두 번째 금별 카드', (roster.cards || []).map(c => ({ value: c.id, label: c.name })), '카드 선택');
@@ -182,11 +191,19 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
         void submitUse(item, { cardIds: [card1.value, card2.value] });
       }, 'primary'));
     } else if (item.id === 'nebula-card') {
-      form.append(el('p','실제 교실의 땅 위치와 침입 여부는 선생님이 확인해요.','lv4-note'));
-      form.append(button('성운 사용',()=>void submitUse(item),'primary'));
+      const friends=Array.from({length:3},(_,i)=>{
+        const label=`${i+1}번째 친구`,input=select(label,personOptions().filter(p=>p.value!==getPlayer?.()?.id),'친구 선택');
+        form.append(field(label,input));return input;
+      });
+      form.append(el('p','나를 포함한 네 명의 교실 자리를 영구 변경해요. 서로 완전히 떨어진 자리로 배치하지 않도록 선생님이 확인해요.','lv4-note'));
+      form.append(button('성운 사용',()=>{
+        const targetIds=friends.map(input=>input.value);
+        if(targetIds.some(id=>!id)||new Set(targetIds).size!==3){toast?.('서로 다른 친구 3명을 선택해 주세요.');return;}
+        void submitUse(item,{targetIds});
+      },'primary'));
     } else if (item.id === 'betelgeuse-card') {
-      form.append(el('p','사용하면 탐험 기회 3회를 기록해요. 실제 탐험 후 선생님이 이동 칸 수를 확인해요.','lv4-note'));
-      form.append(button('탐험 기회 3회 받기',()=>void submitUse(item),'primary'));
+      form.append(el('p','탐사권 3장을 받아요. 오늘 우주 탐사 장치에서 모은 기운 1당 급식 우선권 1주가 기록돼요.','lv4-note'));
+      form.append(button('탐사권 3장 받기',()=>void submitUse(item),'primary'));
     } else if (item.id === 'alien-queen-card') {
       const status = el('p', '일기·독서 기록 제출을 확인한 뒤 선생님이 별 파편을 지급해요.', 'lv4-note');
       form.append(status,button('면제 효과 사용',()=>void submitUse(item),'primary'));
@@ -229,14 +246,14 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
     const status = el('section', undefined, 'lv4-controls');
     const updateStatus = () => {
       const stacks = Number(roster.holding?.stacks || 0);
-      status.querySelector('.lv4-holding-count').textContent = `보유 스택: ${stacks}개`;
+      status.querySelector('.lv4-holding-count').textContent = `은하수의 기운: ${stacks}`;
       const nextAt = roster.holding?.nextAt;
       status.querySelector('.lv4-holding-date').textContent = nextAt != null ? `다음 적립: ${new Date(nextAt).toLocaleString('ko-KR')}` : '다음 적립일이 아직 없어요.';
       updateHoldingButtons();
     };
     status.append(el('p', '', 'lv4-holding-count'), el('p', '', 'lv4-holding-date'));
     const redeem = (reward, cost) => {
-      const control = button(reward === 'shards' ? '1스택 → 별 파편 4개' : '2스택 → 별 카드 1장', async () => {
+      const control = button(reward === 'shards' ? '기운 1 → 별 파편 4개' : '기운 2 → 별 카드 1장', async () => {
         if (busy || Number(roster.holding?.stacks || 0) < cost) return;
         let requestId = holdingRequestIds.get(reward);
         if (!requestId) { requestId = crypto.randomUUID(); holdingRequestIds.set(reward, requestId); }
@@ -289,29 +306,40 @@ export function createLv4ItemUI({ request, getPlayer, stop, toast }) {
       const item = byId.get(record.itemId);
       row.append(el('h3', `${record.nickname || record.playerId} · ${record.name || item?.name || record.itemId}`));
       row.append(el('p', record.note || `남은 확인 횟수: ${record.remainingUses ?? '—'} · 종료: ${record.until || '—'}`));
-      if (record.itemId === 'black-hole-card' || record.itemId === 'solar-system-card' || record.itemId === 'total-eclipse-card' || record.action === 'standard') {
+      if (record.itemId === 'black-hole-card' || record.itemId === 'total-eclipse-card' || record.action === 'standard') {
         row.append(button('실제 처리 확인 후 효과 종료', async () => {
           await teacherAction(row, () => request('lv4:teacher:end', { targetId: record.playerId, markerId: record.id }));
         }, 'primary'));
+      } else if(record.itemId==='solar-system-card'){
+        if(Array.isArray(record.lunchOrderIds)){
+          const names=record.lunchOrderIds.map((id,index)=>`${index+1}. ${students.find(student=>student.value===id)?.label||'퇴장한 친구'}`);
+          row.append(el('p',`급식 순서: ${names.join(' → ')}`));
+          if(!record.lunchOrderConfirmed){
+            const reference=textInput('실제 급식 순서 변경 확인 기록','예: 10/3 급식 순서 변경');
+            row.append(field('확인 메모',reference));
+            row.append(button('실제 급식 순서 확인',async()=>{
+              if(!reference.value.trim()){toast?.('확인 메모를 입력해 주세요.');return;}
+              await teacherAction(row,()=>request('lv4:teacher:confirm',{action:'solar-lunch-order',playerId:record.playerId,markerId:record.id,reference:reference.value.trim()}));
+            },'primary'));
+          }
+        }else row.append(el('p','이전 태양계 효과 기록입니다. 새 급식 순서 변경에는 다시 사용해야 해요.'));
+        row.append(button('효과 종료',()=>teacherAction(row,()=>request('lv4:teacher:end',{targetId:record.playerId,markerId:record.id}))));
       } else if (record.itemId === 'nebula-card') {
-        const target = select('침입 학생', students, '학생 선택');
-        const reference = textInput('실제 침입 확인 기록', '예: 9/25 2교시, 실제 침입 확인');
-        row.append(field('확인된 학생', target), field('확인 메모', reference));
-        row.append(button('실제 침입 확인 후 별 파편 징수', async () => {
-          if (!target.value || !reference.value.trim()) { toast?.('학생과 실제 확인 기록을 입력해 주세요.'); return; }
-          await teacherAction(row, () => request('lv4:teacher:confirm', { action: 'nebula-tax', playerId: record.playerId, markerId: record.id, targetId: target.value, reference: reference.value.trim() }));
-        }, 'primary'));
+        if(Array.isArray(record.seatTargetIds)){
+          const names=record.seatTargetIds.map(id=>students.find(student=>student.value===id)?.label||'퇴장한 친구');
+          row.append(el('p',`참여 학생: ${record.nickname} · ${names.join(' · ')}`));
+          if(!record.seatingConfirmed){
+            const together=document.createElement('input');together.type='checkbox';together.setAttribute('aria-label','네 명이 완전히 떨어진 자리가 아님을 확인');
+            const reference=textInput('실제 자리 변경 확인 기록','예: 10/3 자리 변경 확인');
+            row.append(field('네 명이 완전히 떨어진 자리가 아님을 확인',together),field('확인 메모',reference));
+            row.append(button('실제 자리 변경 확인',async()=>{
+              if(!together.checked||!reference.value.trim()){toast?.('자리 배치와 확인 메모를 입력해 주세요.');return;}
+              await teacherAction(row,()=>request('lv4:teacher:confirm',{action:'nebula-seating',playerId:record.playerId,markerId:record.id,notSeparated:true,reference:reference.value.trim()}));
+            },'primary'));
+          }
+        }else row.append(el('p','이전 성운 효과 기록입니다. 새 자리 변경에는 다시 사용해야 해요.'));
       } else if (record.itemId === 'betelgeuse-card') {
-        const steps = document.createElement('input'); steps.type = 'number'; steps.min = '1'; steps.max = '99'; steps.value = '1'; steps.step = '1'; steps.setAttribute('aria-label', '확인한 탐험 걸음 수');
-        const reference = textInput('실제 탐험 활동 확인 기록', '예: 9/25 2교시, 행성 탐험 확인');
-        row.append(field('실제 확인한 이동 칸 수 (1~99)', steps), field('중복 확인 방지용 실제 활동 기록 (1~80자)', reference));
-        row.append(button('탐험 확인 · 3회 중 1회 처리', async () => {
-          const count = Number(steps.value);
-          if (!Number.isInteger(count) || count < 1 || count > 99) { toast?.('1부터 99까지의 정수를 입력해 주세요.'); return; }
-          const activity = reference.value.trim();
-          if (!activity || activity.length > 80) { toast?.('실제 활동을 구분할 기록을 1~80자로 입력해 주세요.'); return; }
-          await teacherAction(row, () => request('lv4:teacher:confirm', { action: 'exploration', playerId: record.playerId, markerId: record.id, targetId: record.playerId, steps: count, reference: activity }));
-        }, 'primary'));
+        row.append(el('p','이전 베텔기우스 탐험 기록입니다. 새 우주 탐사권 효과에는 사용되지 않아요.'));
       } else {
         row.append(button('실제 처리 확인 후 효과 종료', async () => {
           await teacherAction(row, () => request('lv4:teacher:end', { targetId: record.playerId, markerId: record.id }));

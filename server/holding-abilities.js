@@ -26,7 +26,6 @@ function reason(room,p,id,now){
   if(hasCardStatus(p,'little-sun-card',now)||hasLv2ItemBlock(p,now)||activeItemBlocks(p,now).length)return '지금은 아이템을 사용할 수 없어요.';
   try{requireStarCardItemAccess(room,p,now);}catch(e){return e.message;}
   if(id==='rabbit-princess-card'&&p.rabbitDraw)return '진행 중인 뽑기를 먼저 마쳐주세요.';
-  if(id==='alien-queen-card'&&p.holdingState?.queenReadyWeek!==holdingWeek(now))return '선생님의 이번 주 작성 확인이 필요해요.';
   return null;
 }
 export function holdingStatus(room,p,itemId,now=Date.now()){
@@ -68,8 +67,6 @@ export function useHoldingAbility(room,actor,data={},now=Date.now(),die=()=>rand
     }else if(id==='alien-creature-card'){
       Object.assign(addCardMarker(p,itemOf(id),p,nextRewardMonday(now),'이번 주 마감 기한 1일 연장 · 현실 과제는 선생님 확인'),{holdingAbility:true,remainingUses:1,at:now,fromLevel:level(p)});
       message='이번 주 일요일까지 마감 기한 1일 연장을 사용해요. 실제 과제 기한은 선생님이 확인해요.';
-    }else if(id==='alien-queen-card'){
-      ensure(p.starShards<SHARDS.max,'별 파편 잔액이 가득 찼어요.');p.starShards++;message='선생님이 확인한 작성 보상 별 파편 1개를 받았어요.';
     }
     p.holdingState.usedWeeks[id]=week;
   }

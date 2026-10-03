@@ -1,8 +1,13 @@
 import {drawParadiseFloor} from './paradise-floor.js';
-import {drawPlazaMiniFloor} from './plaza-art.js';
-import {drawValleyMiniFloor} from './valley-art.js';
-import {drawOriginMiniFloor} from './origin-art.js';
-import {drawStreetMiniFloor} from './street-art.js';
+import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
+import {drawPlazaGround} from './plaza-art.js';
+import {drawValleyGround} from './valley-art.js';
+import {drawOriginArt,onOriginArtReady} from './origin-art.js';
+import {drawStreetGround,onStreetArtReady} from './street-art.js';
+import {drawBlackHoleGround} from './black-hole-art.js';
+import {drawInteriorFloor} from './interior-art.js';
+import {DEPARTMENT_ART} from './department-art.js';
+import {PAINTED_PROPS} from './painted-props.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
@@ -22,6 +27,22 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
   const map=id=>mapOf(id,planets());
+  const pictures=new Map();
+  const picture=src=>{
+    if(!src)return null;
+    if(!pictures.has(src)){
+      const image=new Image();image.onload=refreshArt;image.src=src;pictures.set(src,image);
+    }
+    const image=pictures.get(src);return image.complete&&image.naturalWidth?image:null;
+  };
+  // 원화가 늦게 도착해도 열려 있는 지도와 지도 선택 그림을 함께 갱신합니다.
+  function refreshArt(){
+    if(me())draw($('minimap'),me().mapId);
+    if(dialog.open)draw($('universe-preview'),selected||me()?.mapId,true);
+    for(const canvas of $('universe-links').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
+    for(const canvas of $('universe-planets').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
+  }
+  onParadiseArtReady(refreshArt);onOriginArtReady(refreshArt);onStreetArtReady(refreshArt);
   function close(){dialog.close();}
   $('universe-close').onclick=close;
   $('minimap-toggle').onclick=()=>setMinimapOpen(!minimapOpen);
@@ -32,103 +53,48 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   $('map-area-view').onclick=()=>{close();onAreaView();};
   function node(id,icon){
     const button=document.createElement('button');button.type='button';button.className='universe-node';button.dataset.mapId=id;
-    const name=document.createElement('span');name.textContent=icon+' '+map(id).name;button.append(name);
+    const thumbnail=document.createElement('canvas');thumbnail.width=144;thumbnail.height=84;thumbnail.className='universe-thumbnail';thumbnail.setAttribute('aria-hidden','true');
+    const name=document.createElement('span');name.textContent=map(id).name;button.append(thumbnail,name);draw(thumbnail,id);
     if(map(id).minLevel){const level=document.createElement('span');level.className='map-level';level.textContent='LV'+map(id).minLevel+' 이상';button.append(level);}
     if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
     button.onclick=()=>{selected=id;signature='';render();};return button;
   }
-  // 작은 지도에서도 실제 월드의 종류와 위치가 보이도록 간단한 실루엣을 사용합니다.
-  // 애니메이션이나 월드 캔버스 재사용 없이, 미니맵을 그릴 때만 한 번씩 그립니다.
+  // 물체는 게임 화면에서 쓰는 원화의 작은 판을 사용합니다. 축소 지도용 도형을 따로
+  // 유지하면 실제 상점·행성·문과 모양이 달라져 아이들이 위치를 알아보기 어렵습니다.
   function drawSilhouette(ctx,o,x,y,r,theme){
-    const color=o.color|| (theme==='black-hole'?'#a995d8':'#fff0b6');
     const kind=o.kind||'planet';
-    ctx.save();ctx.translate(x,y);ctx.fillStyle=color;ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.08);
-    if(kind==='life-star'){
-      ctx.fillStyle='#ffffff';ctx.shadowColor='#adf9dc';ctx.shadowBlur=5;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;ctx.strokeStyle='#b3e2cf';ctx.beginPath();ctx.ellipse(0,0,r*1.5,r*.55,-.35,0,Math.PI*2);ctx.stroke();
-    }else if(kind==='pillar'){
-      ctx.beginPath();ctx.roundRect(-r*.35,-r*1.15,r*.7,r*1.8,r*.18);ctx.fill();ctx.stroke();
-      ctx.fillRect(-r*.55,-r*1.25,r*1.1,r*.2);ctx.fillRect(-r*.55,r*.62,r*1.1,r*.2);
-    }else if(kind==='gate'||kind==='door'){
-      ctx.beginPath();ctx.arc(0,0,r*.8,Math.PI,0);ctx.lineTo(r*.8,r*.75);ctx.lineTo(-r*.8,r*.75);ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.fillStyle='#ffffff88';ctx.fillRect(-r*.42,-r*.05,r*.84,r*.75);
-    }else if(kind==='shop'){
-      ctx.fillRect(-r*.8,-r*.35,r*1.6,r*1.1);ctx.strokeRect(-r*.8,-r*.35,r*1.6,r*1.1);
-      ctx.beginPath();ctx.moveTo(-r,-r*.35);ctx.lineTo(0,-r*1.05);ctx.lineTo(r,-r*.35);ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.fillStyle='#fff8';ctx.fillRect(-r*.25,r*.05,r*.5,r*.7);
-    }else if(kind==='energy-shop'){
-      ctx.beginPath();ctx.roundRect(-r,-r*.6,r*2,r*1.3,r*.4);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#dff9ff';ctx.beginPath();ctx.ellipse(0,-r*.55,r,r*.35,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#559eea';ctx.beginPath();ctx.moveTo(0,-r*1.2);ctx.lineTo(r*.3,-r*.8);ctx.lineTo(0,-r*.4);ctx.lineTo(-r*.3,-r*.8);ctx.closePath();ctx.fill();
-    }else if(kind==='crafting'){
-      ctx.beginPath();ctx.ellipse(0,r*.15,r*.85,r*.6,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#e6fff5';ctx.beginPath();ctx.ellipse(0,-r*.2,r*.85,r*.22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#ffe298';ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=(i%2?.22:.48)*r;const px=Math.cos(a)*s,py=-r*.65+Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();
-    }else if(kind==='arcade'){
-      ctx.beginPath();ctx.roundRect(-r*.65,-r,r*1.3,r*2,r*.18);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#ffffffb8';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.55);ctx.fillStyle='#665784';ctx.fillRect(-r*.2,r*.2,r*.4,r*.12);
-    }else if(kind==='growth'||kind==='evolution'){
-      ctx.fillStyle=kind==='growth'?'#e7c478':'#e1e7f9';
-      ctx.fillRect(-r*.38,-r*.25,r*.76,r*1.1);ctx.strokeRect(-r*.38,-r*.25,r*.76,r*1.1);
-      ctx.beginPath();ctx.ellipse(0,r*.8,r*.85,r*.25,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.arc(0,-r*.65,r*.57,0,Math.PI*2);ctx.fill();ctx.stroke();
-    }else if(kind==='star'||kind==='black-star'){
-      ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.42:r;const px=Math.cos(a)*s,py=Math.sin(a)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
-    }else if(kind==='mailbox'){
-      ctx.beginPath();ctx.roundRect(-r,-r,r*2,r*1.5,r*.4);ctx.fill();ctx.stroke();ctx.fillStyle='#fffaf6';ctx.fillRect(-r*.6,-r*.4,r*1.2,r*.55);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
-    }else if(kind==='board'||kind==='report-board'){
-      ctx.fillRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.strokeRect(-r*.9,-r*.65,r*1.8,r*1.15);ctx.beginPath();ctx.moveTo(0,r*.5);ctx.lineTo(0,r*1.1);ctx.stroke();
-      ctx.strokeStyle='#ffffffaa';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-r*.55,i*r*.25);ctx.lineTo(r*.55,i*r*.25);ctx.stroke();}
-    }else if(kind==='black-hole'){
-      ctx.beginPath();ctx.arc(0,0,r*.85,0,Math.PI*2);ctx.fillStyle='#080610';ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,r*1.15,.2,Math.PI*1.35);ctx.stroke();
-    }else if(kind==='andromeda'){
-      ctx.fillStyle='#e2f0e7';ctx.beginPath();ctx.arc(0,-r*.2,r*.8,Math.PI,0);ctx.lineTo(r*.8,r*.7);ctx.lineTo(-r*.8,r*.7);ctx.closePath();ctx.fill();ctx.stroke();
-    }else if(kind==='market'){
-      ctx.fillStyle='#e6bfd8';ctx.fillRect(-r*.8,-r*.35,r*1.6,r*.35);ctx.strokeRect(-r*.65,0,r*1.3,r*.65);
-    }else if(kind==='lamp'){
-      ctx.strokeStyle='#665784';ctx.lineWidth=Math.max(1,r*.12);ctx.beginPath();ctx.moveTo(0,r*.9);ctx.lineTo(0,-r*.45);ctx.stroke();
-      ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,-r*.65,r*.42,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();ctx.moveTo(-r*.38,-r*.2);ctx.lineTo(r*.38,-r*.2);ctx.stroke();
-    }else if(kind==='warning-rock'){
-      ctx.beginPath();ctx.moveTo(-r*.8,r*.45);ctx.lineTo(-r*.95,-r*.15);ctx.lineTo(-r*.35,-r*.8);ctx.lineTo(r*.35,-r*.7);ctx.lineTo(r*.9,-r*.15);ctx.lineTo(r*.65,r*.65);ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.strokeStyle='#d8c8e8';ctx.lineWidth=Math.max(1,r*.09);ctx.beginPath();ctx.moveTo(-r*.12,-r*.35);ctx.lineTo(r*.12,r*.2);ctx.moveTo(r*.12,-r*.35);ctx.lineTo(-r*.12,r*.2);ctx.stroke();
-    }else{
-      // 부서행성은 원 대신 실제 월드의 행성처럼 타원과 소속 고리를 사용합니다.
-      ctx.beginPath();ctx.ellipse(0,0,r*.9,r*.68,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.strokeStyle='#ffffffaa';ctx.beginPath();ctx.ellipse(0,0,r*1.25,r*.35,-.35,0,Math.PI*2);ctx.stroke();
-    }
-    ctx.restore();
+    const src=kind==='planet'?DEPARTMENT_ART[o.templateId]?.src:
+      PAINTED_PROPS[kind]?'/assets/maps/'+PAINTED_PROPS[kind].file:
+      ['gate','door'].includes(kind)?'/assets/maps/star-gate.png':
+      kind==='pillar'?'/assets/maps/plaza-pillar.png':
+      kind==='market'?'/assets/maps/plaza-bazaar.png':
+      kind==='andromeda'?'/assets/maps/plaza-andromeda.png':
+      kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
+      kind==='evolution'?'/assets/maps/evolution-altar.png':
+      kind==='growth'?'/assets/maps/growth-altar.png':
+      kind==='black-star'?'/assets/maps/black-star-sanctuary.png':
+      ['board','mailbox','report-board','warning-rock','interior-decor-machine'].includes(kind)?'/assets/interior/'+({board:'board',mailbox:'mailbox','report-board':'report','warning-rock':'warning','interior-decor-machine':'control'}[kind])+'.png':null;
+    const image=picture(src);
+    if(image){const height=Math.max(8,r*(kind==='planet'?3.5:kind==='market'?4:2.8)),width=Math.min(height*image.naturalWidth/image.naturalHeight,Math.max(12,r*4));ctx.drawImage(image,x-width/2,y+r*.65-height,width,height);return;}
+    // 아직 그림이 도착하지 않은 순간에도 목적지를 찾을 수 있게 부드러운 빛만 남깁니다.
+    ctx.save();const glow=ctx.createRadialGradient(x,y,0,x,y,Math.max(4,r*1.5));glow.addColorStop(0,kind==='black-hole'?'#584779':'#fff7d7');glow.addColorStop(1,'#ffffff00');ctx.fillStyle=glow;ctx.fillRect(x-r*1.5,y-r*1.5,r*3,r*3);ctx.restore();
   }
   function mapBackground(ctx,info,x,y,w,h){
     // 고정 맵 네 곳은 config에 theme을 두지 않으므로 실제 id로 배경을 선택합니다.
     const theme=info.theme||({
       [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'paradise-crossroads',[VALLEY_ID]:'valley'
     }[info.id]||'default');
-    ctx.fillStyle=theme==='black-hole'?'#05040a':theme==='star-origin'?'#090b17':theme==='rainbow-space'?'#726aa4':theme==='sun-paradise'?'#f4d4c5':theme==='moon-paradise'?'#aaaed9':theme==='valley'?'#3e436c':'#e1daf2';
-    ctx.fillRect(x,y,w,h);
-    if(theme==='plaza'){
-      ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawPlazaMiniFloor(ctx);ctx.restore();
-      const sx=w/info.width,sy=h/info.height,cx=x+info.templeCenter.x*sx,cy=y+info.templeCenter.y*sy;
-      ctx.fillStyle='#fff9ee';ctx.fillRect(cx-320*sx,cy-170*sy,640*sx,340*sy);
-    }
-    if(theme==='star-origin'){ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawOriginMiniFloor(ctx,info);ctx.restore();}
-    if(theme==='starlight-street'){ctx.save();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);drawStreetMiniFloor(ctx,info);ctx.restore();}
-    // scenery.js의 고정 지형만 같은 좌표계로 축약합니다. 은하수의 움직임은 생략합니다.
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
-    if(theme==='sun-paradise'||theme==='moon-paradise'){
-      const v=info.vista;ctx.fillStyle=theme==='moon-paradise'?'#f4f2ff':'#fff2ad';
-      ctx.beginPath();ctx.arc(v.bodyX,v.bodyY,v.bodyRadius,0,Math.PI*2);ctx.fill();
-    }
-    if(theme==='star-paradise'){
-      ctx.fillStyle='#fff0b1';ctx.beginPath();ctx.arc(220,180,68,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#f4f4ff';ctx.beginPath();ctx.arc(1580,960,80,0,Math.PI*2);ctx.fill();
-    }
-    drawParadiseFloor(ctx,info,true);
-    if(theme==='valley')drawValleyMiniFloor(ctx);
-    if(theme==='rainbow-space'){
-      for(const [i,color] of ['#ffbbd9','#ffdba2','#bceacc','#b9deff','#ddc0ff'].entries()){ctx.strokeStyle=color+'90';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-50,560+i*20);ctx.bezierCurveTo(300,80+i*42,720,720-i*38,1250,180+i*30);ctx.stroke();}
-    }
+    if(theme==='plaza')drawPlazaGround(ctx,info);
+    else if(theme==='starlight-street'||theme==='rainbow-space')drawStreetGround(ctx,info);
+    else if(theme==='star-origin')drawOriginArt(ctx,info);
+    else if(theme==='valley')drawValleyGround(ctx,info,0);
+    else if(['sun-paradise','moon-paradise','star-paradise','paradise-crossroads'].includes(theme)){
+      drawParadiseBackdrop(ctx,info);drawParadiseFloor(ctx,info);
+    }else if(theme==='black-hole')drawBlackHoleGround(ctx,info);
+    else if(info.planetId){drawInteriorFloor(ctx,info,planets().find(p=>p.id===info.planetId));}
+    else{ctx.fillStyle='#d7d0eb';ctx.fillRect(0,0,info.width,info.height);}
     ctx.restore();
   }
   // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 좌표가 어긋나지 않습니다.
@@ -137,7 +103,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
     mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
-    ctx.strokeStyle='#b9a9d7';ctx.lineWidth=2;ctx.strokeRect(ox,oy,info.width*scale,info.height*scale);
+    // 실세계에는 사각 테두리가 없습니다. 지도에서도 인공적인 외곽선을 덧그리지 않습니다.
     for(const o of info.objects){
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;

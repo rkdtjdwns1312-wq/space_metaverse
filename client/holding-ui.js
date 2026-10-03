@@ -40,8 +40,8 @@ export function createHoldingUI({request,toast,onChanged,onDraw}){
         controls.append(choice);if(!state.planets.length)controls.append(el('p','지울 수 있는 내 경고가 없어요.'));
       }
       if(def.choice==='reward'){
-        controls.append(el('p','보유 스택: '+state.stacks+'개'));choice=el('select');choice.setAttribute('aria-label','보유능력 보상');
-        for(const [value,text,cost] of [['shards','1스택 → 별 파편 4개',1],['card','2스택 → 별 카드 1장',2]])choice.append(Object.assign(el('option',text),{value,disabled:state.stacks<cost}));
+        controls.append(el('p','은하수의 기운: '+state.stacks));choice=el('select');choice.setAttribute('aria-label','보유능력 보상');
+        for(const [value,text,cost] of [['shards','기운 1 → 별 파편 4개',1],['card','기운 2 → 별 카드 1장',2]])choice.append(Object.assign(el('option',text),{value,disabled:state.stacks<cost}));
         controls.append(choice);
       }
       const actions=el('div','','dialog-actions'),close=el('button','닫기','secondary'),use=el('button','보유능력 사용하기','primary');

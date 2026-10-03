@@ -83,7 +83,7 @@ export function collectSunTax(room, actor, now = Date.now()) {
   if (hasUnlimitedShards(actor)) return {amount: 0, ownerIds: []};
   const marker = sunWinner(actor, now);
   const owner = marker && room.players.get(marker.fromId);
-  fail(marker?.itemId!=='total-eclipse-card'||(owner&&owner.id!==actor.id), '개기 일식 사용자를 찾지 못했어요. 선생님께 금지 효과 확인을 요청해주세요.');
+  fail(marker?.itemId!=='total-eclipse-card'||owner, '개기 일식 사용자를 찾지 못했어요. 선생님께 금지 효과 확인을 요청해주세요.');
   if (!owner || owner.id === actor.id) return {amount: 0, ownerIds: []};
   fail(actor.starShards >= 1, (marker.itemId==='total-eclipse-card'?'개기 일식 금지 상태입니다. 이번 한 번을 허용받을 ':'해 효과의 ')+'사용료 별 파편 1개가 부족해요.');
   fail(owner.starShards < SHARDS.max, '해 효과 사용자에게 별 파편을 더 보낼 수 없어요.');

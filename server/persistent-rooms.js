@@ -22,6 +22,8 @@ import {validateStarCardText} from './star-card-text.js';
 import {validateLv3State} from './lv3-item-effects.js';
 import {validateHoldingState} from '../shared/holding-abilities.js';
 import {validateLearnedRecipeIds} from './learned-recipes.js';
+import {validateExploration,validateExplorationChances} from './exploration.js';
+import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 export const PIN_RULES = { attempts:5, lockMs:60_000 };
@@ -51,7 +53,7 @@ function offline(p) {
 }
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
-    temple:structuredClone(room.temple),
+    temple:structuredClone(room.temple),exploration:validateExploration(room.exploration),
     starCards:validateStarCards(room.starCards),
     starCardText:validateStarCardText(room.starCardText),
     starRanking:structuredClone(room.starRanking||[]),
@@ -62,7 +64,7 @@ export function toRecord(room) {
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
-      id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,
+      id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
@@ -80,7 +82,7 @@ export function fromRecord(r) {
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
-    temple:validateTemple(r.temple),
+    temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
     starCards:validateStarCards(r.starCards),
     starCardText:validateStarCardText(r.starCardText),
     starRanking:validateStarRanking(r.starRanking),
@@ -122,7 +124,9 @@ export function fromRecord(r) {
     // 옛 달토끼 효과 기록만 정리하고 진행 중인 뽑기·보상 순서는 보존합니다.
     const cardMarkers=savedMarkers.filter(marker=>marker.itemId!=='moon-rabbit-card');
     if(rabbitDraw)rabbitDraw.markerId=null;
-    room.players.set(p.id,offline({...structuredClone(p),learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+    const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
+    if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
+    room.players.set(p.id,offline({...structuredClone(p),equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){

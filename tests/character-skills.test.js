@@ -40,15 +40,15 @@ test('LV5 권한을 그대로 보존하면서 LV4 외형/크기, 실제 변신 �
 test('변신 낮은레벨/검은별/자리비움은 차단',()=>{
   for(const p of [player(4),{...player(5),away:true},{...player(5),avatar:{level:5,blackStar:true}}])assert.throws(()=>startTransformation(p,1000));
 });
-test('변신 30초·쿨300초·제작계전회복60/60·공+2방0·5초마다6회복·맵이동 유지·종료 원복',()=>{
+test('변신 30초·쿨300초·제작계전회복60/60·공+2방0·추가 회복 없음·맵이동 유지·종료 원복',()=>{
   const p=player(5),beforeAttack=attackPowerOf(5,'corvus',p),beforeDefense=defensePowerOf(5,'corvus',p);
   ensureVitals(p).mp=0;ensureVitals(p).hp=1;startTransformation(p,100);
   assert.deepEqual(playerVitals(p),{hp:{current:60,max:60},mp:{current:60,max:60},defeated:false});
   assert.equal(attackPowerOf(5,'corvus',p),beforeAttack+2);assert.equal(defensePowerOf(5,'corvus',p),beforeDefense);
   ensureVitals(p).hp=20;ensureVitals(p).mp=10;
-  assert.equal(expireTransformation(p,5099),false);assert.equal(expireTransformation(p,5100),true);assert.equal(ensureVitals(p).hp,26);assert.equal(ensureVitals(p).mp,16);
+  assert.equal(expireTransformation(p,5099),false);assert.equal(expireTransformation(p,5100),false);assert.equal(ensureVitals(p).hp,20);assert.equal(ensureVitals(p).mp,10);
   p.mapId='other';assert.equal(expireTransformation(p,5101),false);assert.equal(p.transformation.active,true);
-  expireTransformation(p,30100);assert.equal(p.transformation.active,false);assert.equal(playerVitals(p).hp.max,40);assert.equal(ensureVitals(p).hp,40);
+  expireTransformation(p,30100);assert.equal(p.transformation.active,false);assert.equal(playerVitals(p).hp.max,40);assert.equal(ensureVitals(p).hp,20);
   assert.equal(appearanceLevelOf(p),4);assert.throws(()=>startTransformation(p,300099),/기다려/);
   startTransformation(p,300100);ensureVitals(p).hp=0;assert.equal(expireTransformation(p,300101),true);assert.equal(ensureVitals(p).hp,0);
   assert.equal(TRANSFORMATION.cooldownMs,300000);

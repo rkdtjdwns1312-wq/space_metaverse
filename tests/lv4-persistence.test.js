@@ -41,7 +41,7 @@ async function fixture(t) {
 
 async function classroom(f) {
   const teacher = await f.connect();
-  const result = await call(teacher, 'room:create', {teacherKey: KEY, title: 'LV4 합성 저장 검사', allowedNames: ['1', '2', '3']});
+  const result = await call(teacher, 'room:create', {teacherKey: KEY, title: 'LV4 합성 저장 검사', allowedNames: ['1', '2', '3', '4']});
   assert.equal(result.ok, true, result.error);
   return {teacher, code: result.room.code};
 }
@@ -70,9 +70,9 @@ function seedEclipse(room, sourceId, targetId) {
 
 test('LV4 eclipse retains its seven-day ban, charges one shard per permitted item use, and rolls back failed use', async t => {
   const f = await fixture(t), {teacher, code} = await classroom(f);
-  const aSocket = await f.connect(), bSocket = await f.connect(), cSocket = await f.connect();
-  const a = await join(aSocket, code, '1'), b = await join(bSocket, code, '2'), c = await join(cSocket, code, '3');
-  assert.ok(a.ok && b.ok && c.ok);
+  const aSocket = await f.connect(), bSocket = await f.connect(), cSocket = await f.connect(), dSocket=await f.connect();
+  const a = await join(aSocket, code, '1'), b = await join(bSocket, code, '2'), c = await join(cSocket, code, '3'), d=await join(dSocket,code,'4');
+  assert.ok(a.ok && b.ok && c.ok && d.ok);
   putAtShop(f, code, [a.selfId, b.selfId, c.selfId]);
 
   for (const [socket, itemId] of [[aSocket, 'total-eclipse-card'], [bSocket, 'nebula-card']]) {
@@ -93,7 +93,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
 
   // One shard authorizes exactly one use. The ban marker remains through the full week.
   actor.starShards = 1;
-  const paidUse = await call(bSocket, 'item:use', {itemId: 'nebula-card'});
+  const paidUse = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
   assert.equal(paidUse.ok, true, paidUse.error);
   room = f.game.store.rooms.get(code); actor = room.players.get(b.selfId);
   assert.equal(actor.starShards, 0);
@@ -101,7 +101,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   assert.ok(actor.cardMarkers.some(marker => marker.itemId === 'nebula-card'));
 
   f.game.store.transact(() => { f.game.store.rooms.get(code).players.get(b.selfId).lastItemUseAt = 0; });
-  const noFunds = await call(bSocket, 'item:use', {itemId: 'nebula-card'});
+  const noFunds = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
   assert.equal(noFunds.ok, false);
   assert.match(noFunds.error, /별 파편|부족/);
   room = f.game.store.rooms.get(code); actor = room.players.get(b.selfId);
@@ -128,7 +128,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   const beforeFailedUse = structuredClone(f.game.store.rooms.get(code).players.get(b.selfId));
   f.game.store.files.save = () => { throw new Error('synthetic LV4 item-use write failure'); };
   try {
-    const failedUse = await call(bSocket, 'item:use', {itemId: 'nebula-card'});
+    const failedUse = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
     assert.equal(failedUse.ok, false);
     assert.match(failedUse.error, /저장/);
   } finally { f.game.store.files.save = save; }
@@ -141,7 +141,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
     target.starShards = 0; target.lastItemUseAt = 0;
   });
   const beforePoorUse = structuredClone(f.game.store.rooms.get(code).players.get(b.selfId));
-  const poorUse = await call(bSocket, 'item:use', {itemId: 'nebula-card'});
+  const poorUse = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
   assert.equal(poorUse.ok, false);
   room = f.game.store.rooms.get(code);
   assert.deepEqual(room.players.get(b.selfId), beforePoorUse);
@@ -163,6 +163,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
     const student = f.game.store.rooms.get(code).players.get(c.selfId);
     student.avatar.level = 4;
     student.inventory.push({id: 'supercluster-card', quantity: 1});
+    student.lv4State={stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null,blackHoleReadyAt:NOW+2*WEEK};
   });
   const selected = await call(cSocket, 'lv4:info');
   assert.equal(selected.ok, true, selected.error);
@@ -170,7 +171,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   const savedTarget = saved.students.find(student => student.id === b.selfId);
   assert.equal(savedTarget.cardMarkers.find(marker => marker.itemId === 'total-eclipse-card')?.until, NOW + WEEK);
   const savedHolder = saved.students.find(student => student.id === c.selfId);
-  assert.deepEqual(savedHolder.lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null});
+  assert.deepEqual(savedHolder.lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null,blackHoleReadyAt:NOW+2*WEEK});
 
   await f.restart();
   const nextTeacher = await f.connect();
@@ -181,7 +182,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   assert.equal(resumedHolder.ok, true, resumedHolder.error);
   room = f.game.store.rooms.get(code);
   assert.equal(room.players.get(b.selfId).cardMarkers.find(marker => marker.itemId === 'total-eclipse-card')?.until, NOW + WEEK);
-  assert.deepEqual(room.players.get(c.selfId).lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null});
+  assert.deepEqual(room.players.get(c.selfId).lv4State, {stacks:0,nextStackAt:nextRewardMonday(NOW),claimIds:[],receipts:[],priorityUntil:null,blackHoleReadyAt:NOW+2*WEEK});
   assert.equal(room.players.get(b.selfId).starShards, 0);
 });
 

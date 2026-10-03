@@ -37,6 +37,14 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .card-title h2{margin:0;font-size:16px;color:#fff}
 .card-level{font-size:12px;font-weight:800;color:#ffe59b;white-space:nowrap;flex-shrink:0}
 .card-art{background:#241d40;display:flex;align-items:center;justify-content:center;padding:8px;position:relative}
+.equipment-slots{position:relative;z-index:2;display:flex;flex-direction:column;gap:5px;flex:0 0 54px;margin-left:8px}
+.equipment-slot{width:54px;height:47px;padding:3px;border:2px solid #dccbf6;border-radius:13px;background:#eee9fa88;color:#fdf9ff;font:700 13px "Jua",sans-serif;box-shadow:inset 0 1px 5px #fff8}
+.equipment-slot img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 3px #1a103e77)}
+.equipment-slot:focus-visible{outline:3px solid #fff0ad;outline-offset:2px}
+.equip-choices{display:flex;flex-wrap:wrap;gap:7px;width:100%}.equip-choices[hidden]{display:none}
+.card-art:has(.equipment-slots) .constellation-type{right:75px}
+#equipment-dialog{text-align:center;width:min(360px,calc(100vw - 30px));background:linear-gradient(#fdfaff,#f1effb)}
+#equipment-dialog img{object-fit:contain;filter:drop-shadow(0 5px 5px #483e6b44)}
 .celestial-card .card-art{overflow:hidden}
 .celestial-card .card-art::after{content:"";position:absolute;inset:5%;pointer-events:none;background:radial-gradient(ellipse,var(--celestial-color),transparent 65%);mix-blend-mode:screen;opacity:.12;animation:celestial-breathe 6s ease-in-out infinite alternate}
 @keyframes celestial-breathe{to{opacity:.25;transform:scale(1.1) rotate(6deg)}}
@@ -282,6 +290,11 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 #universe-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 #universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
 #universe-links .universe-node{min-width:0;padding:9px 5px}
+#universe-links .universe-node,.universe-node{overflow:hidden;background:linear-gradient(145deg,#fff9f0,#eee8fa);border-color:#c9b6db;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16}
+.universe-thumbnail{display:block;width:100%;height:auto;aspect-ratio:12/7;border-radius:10px;object-fit:contain;background:#d9d0e9;pointer-events:none}
+body.joined #universe-links canvas.universe-thumbnail,body.joined #universe-planets canvas.universe-thumbnail{height:auto;min-height:0;max-height:none;aspect-ratio:12/7;object-fit:contain}
+.universe-node span:not(.location-badge){font-family:"Jua","Malgun Gothic",sans-serif;text-align:center;line-height:1.2}
+#universe-planets .universe-node{min-width:110px;max-width:150px}
 #universe-links .universe-node span{word-break:normal;overflow-wrap:anywhere}
 #universe-links .universe-node::after{display:none}
 #universe-planets .universe-node::after{display:none}

@@ -16,7 +16,8 @@ const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta n
 const server = createServer(async (request, response) => {
   try {
     if (request.url === '/') { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end(html); return; }
-    const entry = files.get(request.url) || (/^\/shared\/[a-z0-9-]+\.js$/.test(request.url)
+    const entry = files.get(request.url) || (/^\/assets\/avatars\/(?:lv[34]\/)?[a-z-]+\.png$/.test(request.url)
+      ? ['client'+request.url,'image/png'] : null) || (/^\/shared\/[a-z0-9-]+\.js$/.test(request.url)
       ? [request.url.slice(1),'text/javascript; charset=utf-8'] : null);
     if (!entry) { response.statusCode = 404; response.end('not found'); return; }
     response.setHeader('content-type', entry[1]); response.end(await readFile(entry[0]));
@@ -135,8 +136,21 @@ try {
   const columns = await page.locator('#evolution-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
   assert.equal(columns, 4);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  assert.ok(await page.locator('#evolution-grid .constellation-icon img').evaluateAll(async imgs=>{
+    await Promise.all(imgs.map(img=>img.decode().catch(()=>{})));return imgs.length===16&&imgs.every(img=>img.naturalWidth>0&&img.src.includes('/assets/avatars/'));
+  }),'선택 화면은 실제 LV2 아바타 이미지를 보여야 합니다');
   await page.screenshot({ path: '.local/evolution-mobile.png' });
-  check('390px 4열 선택표·가로 넘침 없음');
+  check('390px 4열 선택표·실제 LV2 아바타 그림·가로 넘침 없음');
+
+  for(const level of [3,4]){
+    await page.evaluate(value=>{window.evolutionInfo.avatar.level=value;},level);
+    await page.locator('#evolution-refresh').click();
+    assert.equal(await page.locator('#evolution-grid .constellation-choice[data-preview-level="'+level+'"]').count(),16);
+    assert.ok(await page.locator('#evolution-grid .constellation-icon img').first().evaluate(async img=>{await img.decode();return img.naturalWidth>0;}));
+    assert.match(await page.locator('#evolution-grid .constellation-icon img').first().getAttribute('src'),new RegExp('/avatars/lv'+level+'/'));
+    await page.screenshot({path:`.local/evolution-lv${level}.png`});
+  }
+  check('LV3·LV4에서도 게임에 쓰는 단계별 아바타 그림 표시');
 
   await page.locator('#evolution-header-close').click();
   await page.evaluate(() => { window.deferEvolutionInfo = true; window.evolutionUI.open(); });
@@ -168,7 +182,7 @@ try {
   });
   await page.locator('#growth-info .currency-amount[data-currency="starShards"]').filter({hasText:/^3$/}).waitFor();
   await page.locator('#growth-amount').fill('-7');
-  await page.waitForTimeout(0);
+  await page.locator('#growth-amount').blur();
   assert.equal(await page.locator('#growth-amount').inputValue(), '1');
   check('성장 수량 최소·잔액 cap 입력 보정');
 

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/crafting.css">
   <link rel="stylesheet" href="/star-card.css">
   <link rel="stylesheet" href="/star-card-ui.css">
+  <link rel="stylesheet" href="/exploration.css">
+  <link rel="stylesheet" href="/energy-shop.css">
   <link rel="stylesheet" href="/planet-dialog.css">
   <link rel="stylesheet" href="/chat-window.css">
   <link rel="stylesheet" href="/item-usage.css">
@@ -97,7 +99,7 @@
   <section class="hud">
     <dialog id="avatar-dialog" aria-labelledby="self-name"><section class="panel passport avatar-card" id="avatar-card">
       <div class="card-title"><h2 id="self-name">나의 소행성</h2><span id="self-level" class="card-level">LV 1 ★</span></div>
-      <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><span id="self-constellation-type" class="constellation-type" hidden></span></div>
+      <div class="card-art"><canvas id="avatar-portrait" width="240" height="150" aria-label="내 소행성 그림"></canvas><div id="equipment-slots" class="equipment-slots" aria-label="장착한 장비 세 칸"></div><span id="self-constellation-type" class="constellation-type" hidden></span></div>
       <div class="card-attr"><span id="self-form-name" class="attr-tag">소행성</span><span id="self-department" class="attr-tag">아직 소속 행성이 없어요.</span></div>
         <p id="self-attack-power" class="card-combat">공격력 · 설정 예정</p>
         <p id="self-defense-power" class="card-combat">방어력 · 0</p>
@@ -111,6 +113,7 @@
       <p class="card-foot" id="card-foot"></p>
       <section id="experience-panel" aria-label="캐릭터 경험치"><div class="experience-heading"><strong>경험치</strong><span id="self-xp">0 / 15</span></div><progress id="experience-bar" value="0" max="15" aria-label="다음 단계까지 경험치"></progress><p id="experience-next">LV 2까지 15 남았어요.</p></section>
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="avatar-dialog">닫기</button></div></dialog>
+    <dialog id="equipment-dialog" aria-labelledby="equipment-title"><h2 id="equipment-title">장착한 장비</h2><img id="equipment-picture" alt="" width="110" height="110"><p id="equipment-description"></p><div class="dialog-actions"><button id="equipment-remove" class="primary" type="button">장착해제</button><button id="equipment-close" class="secondary" type="button">닫기</button></div></dialog>
     <dialog id="ability-dialog" aria-labelledby="ability-title"><h2 id="ability-title">별자리 능력</h2><p id="ability-description"></p><p id="ability-status" class="muted"></p>
       <div id="ability-target-row" hidden><label for="ability-target">함께할 친구</label><select id="ability-target"></select></div>
       <div id="ability-planet-row" hidden><label for="ability-planet">경고를 지울 부서</label><select id="ability-planet"></select></div>
