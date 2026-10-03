@@ -54,9 +54,10 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';m.hp=1;});
   const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);
   // 물병 Q는 서버 투사체가 실제 적에게 도착한 뒤 처치와 드랍이 발생합니다.
-  for(let i=0;i<40&&!current().energyDrops?.size;i++)await new Promise(r=>setTimeout(r,50));
+  for(let i=0;i<40&&![...(current().energyDrops?.values()||[])].some(drop=>drop.kind!=='recipe');i++)await new Promise(r=>setTimeout(r,50));
   assert.equal(monstersOf(current()).get('star-scorpion-1').hp,0);
-  const drop=[...current().energyDrops.values()][0],amount=drop.total;assert.equal(person().cosmicEnergy,0);
+  // The independent 1% recipe roll may insert a recipe before the energy reward.
+  const drop=[...current().energyDrops.values()].find(value=>value.kind!=='recipe'),amount=drop.total;assert.equal(person().cosmicEnergy,0);
   const thief=await connect(),other=await call(thief,'room:join',{code,nickname:'2',pin:'1234'});assert.ok(other.ok,other.error);
   Object.assign(current().players.get(other.selfId),{mapId:drop.mapId,x:drop.x,y:drop.y});
   assert.equal((await call(thief,'energy:collect',{dropId:drop.id,amount:999,playerId:id})).ok,false);

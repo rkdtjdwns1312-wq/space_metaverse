@@ -3,6 +3,7 @@ export {TRANSFORMATION} from './transformation.js';
 import {SAGITTARIUS_ATTACK,SAGITTARIUS_SKILLS} from './sagittarius-skills.js';
 import {constellationOf} from './constellations.js';
 import {AQUARIUS_VFX,AQUARIUS_NAMES,aquariusSkillOf} from './aquarius-skills.js';
+import {WATER_VFX,WATER_NAMES,waterSkillOf,isWaterConstellation} from './water-skills.js';
 
 // 레벨(입장/아이템 권한)과 현재 외형을 분리합니다. LV5는 평소 LV4 모습입니다.
 export function appearanceLevelOf(player){
@@ -39,6 +40,17 @@ export function characterAbilities(player){
     Object.assign(attack,{name:'물방울 투사체',iconUrl:AQUARIUS_VFX.attack.iconUrl,description:'바라보는 방향으로 가로 크기의 4배까지 물방울을 날려요. 마나 소모 없이 현재 공격력만큼, 1초에 한 번 공격하며 첫 몬스터에서 멈춰요.'});
     Object.assign(skill,{name:AQUARIUS_NAMES[level],iconUrl:AQUARIUS_VFX[`skill-lv${level}`].iconUrl,ready:true,
       description:`공격력: 5초 총 ${spec.multiplier*100}% · 범위 안 친구 체력 ${spec.effectAmount*100}% 회복(최대 ${spec.healingAmount})\n쿨타임: ${spec.cooldownMs/1000}초\n마나 소모: ${spec.mana}`});
+  }
+  if(isWaterConstellation(player)){
+    const spec=waterSkillOf(player),names=WATER_NAMES[id];
+    Object.assign(attack,{name:names.attack,iconUrl:WATER_VFX[id].attack.iconUrl,
+      description:id==='cetus'?'바라보는 방향 앞에 파도를 일으켜 가로 크기의 2배까지 공격해요. 마나 소모 없이 1초에 한 번 사용해요.':
+        `바라보는 방향으로 가로 크기의 4배까지 ${id==='cancer'?'물방울':'별빛 물고기'}를 날려요. 마나 소모 없이 1초에 한 번 사용해요.`});
+    const damage=id==='cancer'?`10초 동안 Q ${spec.multiplier*100}% · 폭 4배 · 관통 · 친구 회복`:
+      id==='cetus'?`10초 동안 방어력 +${spec.defenseBonus} · 주변 최대 3마리/초 공격`:
+        `현재 공격력의 ${spec.multiplier*100}% × ${spec.hits}회 · 관통`;
+    Object.assign(skill,{name:names[level],iconUrl:WATER_VFX[id][`skill-lv${level}`].iconUrl,ready:true,
+      description:`공격력: ${damage}\n쿨타임: ${spec.cooldownMs/1000}초\n마나 소모: ${spec.mana}`});
   }
   const transform={slot:'transform',key:'1',level:5,name:'LV5 변신',ready:TRANSFORMATION.ready,
     iconUrl:constellationOf(id,5)?.sprite||'',description:transformationDescription(player)};

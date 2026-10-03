@@ -13,6 +13,13 @@ const KEY = 'synthetic-lv4-persistence-test-key';
 const NOW = Date.now(); // 저장 로더의 실제 만료 시각과 일치시켜 날짜가 지나도 유효한 검사입니다.
 const WEEK = 7 * 86_400_000;
 const call = (socket, event, data = {}) => socket.timeout(5000).emitWithAck(event, data);
+// Passive HP/MP recovery runs on a timer even while a request is awaiting its reply.
+// Rollback checks compare persisted item state, not that independent combat timer.
+const stablePlayer = player => {
+  const snapshot = structuredClone(player);
+  delete snapshot.battleVitals;
+  return snapshot;
+};
 
 async function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lv4-persistence-'));
@@ -109,7 +116,7 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
   assert.equal(actor.inventory.find(item => item.id === 'nebula-card')?.quantity, 1);
 
   // A failed disk write must restore fee, item, marker, and use cooldown as one transaction.
-  const before = structuredClone({actor, source: room.players.get(a.selfId), log: room.itemLog});
+  const before = {actor: stablePlayer(actor), source: stablePlayer(room.players.get(a.selfId)), log: structuredClone(room.itemLog)};
   const save = f.game.store.files.save.bind(f.game.store.files);
   f.game.store.files.save = () => { throw new Error('synthetic LV4 persistence write failure'); };
   try {
@@ -118,14 +125,14 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
     assert.match(failedSave.error, /저장/);
   } finally { f.game.store.files.save = save; }
   room = f.game.store.rooms.get(code);
-  assert.deepEqual({actor: room.players.get(b.selfId), source: room.players.get(a.selfId), log: room.itemLog}, before);
+  assert.deepEqual({actor: stablePlayer(room.players.get(b.selfId)), source: stablePlayer(room.players.get(a.selfId)), log: room.itemLog}, before);
 
   // Restore one synthetic shard, then exercise rollback on a second item use.
   f.game.store.transact(() => {
     const target = f.game.store.rooms.get(code).players.get(b.selfId);
     target.starShards = 1; target.lastItemUseAt = 0;
   });
-  const beforeFailedUse = structuredClone(f.game.store.rooms.get(code).players.get(b.selfId));
+  const beforeFailedUse = stablePlayer(f.game.store.rooms.get(code).players.get(b.selfId));
   f.game.store.files.save = () => { throw new Error('synthetic LV4 item-use write failure'); };
   try {
     const failedUse = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
@@ -133,18 +140,18 @@ test('LV4 eclipse retains its seven-day ban, charges one shard per permitted ite
     assert.match(failedUse.error, /저장/);
   } finally { f.game.store.files.save = save; }
   room = f.game.store.rooms.get(code);
-  assert.deepEqual(room.players.get(b.selfId), beforeFailedUse);
+  assert.deepEqual(stablePlayer(room.players.get(b.selfId)), beforeFailedUse);
 
   // An insufficient balance leaves all use state unchanged.
   f.game.store.transact(() => {
     const target = f.game.store.rooms.get(code).players.get(b.selfId);
     target.starShards = 0; target.lastItemUseAt = 0;
   });
-  const beforePoorUse = structuredClone(f.game.store.rooms.get(code).players.get(b.selfId));
+  const beforePoorUse = stablePlayer(f.game.store.rooms.get(code).players.get(b.selfId));
   const poorUse = await call(bSocket, 'item:use', {itemId: 'nebula-card',targetIds:[a.selfId,c.selfId,d.selfId]});
   assert.equal(poorUse.ok, false);
   room = f.game.store.rooms.get(code);
-  assert.deepEqual(room.players.get(b.selfId), beforePoorUse);
+  assert.deepEqual(stablePlayer(room.players.get(b.selfId)), beforePoorUse);
 
   // Student sockets cannot invoke teacher confirmation or end handlers, even with valid-looking data.
   const studentConfirm = await call(bSocket, 'lv4:teacher:confirm', {
@@ -201,11 +208,11 @@ test('weekly stacks persist, claim once, and restore both stack and reward on a 
   assert.equal(get().inventory.find(i=>i.id==='supercluster-card').quantity,1);
   assert.equal((await call(socket,'lv4:holding:use',{reward:'shards',requestId:'same-week'})).ok,false);
   f.advance(WEEK);await call(socket,'lv4:info');
-  const before=structuredClone(get()),save=f.game.store.files.save.bind(f.game.store.files);
+  const before=stablePlayer(get()),save=f.game.store.files.save.bind(f.game.store.files);
   f.game.store.files.save=()=>{throw Error('synthetic weekly stack write failure');};
   try{const result=await call(socket,'lv4:holding:use',{reward:'shards',requestId:'shard-claim'});assert.equal(result.ok,false);assert.match(result.error,/저장/);}
   finally{f.game.store.files.save=save;}
-  assert.deepEqual(get(),before);
+  assert.deepEqual(stablePlayer(get()),before);
   assert.ok((await call(socket,'lv4:holding:use',{reward:'shards',requestId:'shard-claim'})).ok);
   assert.equal(get().lv4State.stacks,1);assert.equal(get().starShards,shards+4);
   await f.restart();const teacher=await f.connect();assert.ok((await call(teacher,'room:open',{teacherKey:KEY,code})).ok);

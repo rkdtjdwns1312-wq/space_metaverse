@@ -6,6 +6,8 @@ import {teacherCardCatalog} from './teacher-card-catalog.js';
 import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
 import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aquarius-skills.js';
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
+import {castWater,advanceWaterAuras,waterAuraViews,waterCooldowns,resolveWaterHit} from './water-skills.js';
+import {isWaterConstellation} from '../shared/water-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
@@ -323,8 +325,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       lastAttacks.set(player,now);
       const direction=player.facing||{x:0,y:1},geometry=attackGeometryOf(player);
       const hit={playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx:direction.x,dy:direction.y,durationMs:ATTACK_VISUAL.durationMs,...geometry,power};
-      if(['corvus','aquarius'].includes(player.avatar.constellationId)){
-      const result=(player.avatar.constellationId==='aquarius'?castAquarius:castCorvus)(room,player,now,{basic:true});
+      if(['corvus','aquarius'].includes(player.avatar.constellationId)||isWaterConstellation(player)){
+      const cast=player.avatar.constellationId==='aquarius'?castAquarius:player.avatar.constellationId==='corvus'?castCorvus:castWater;
+      const result=cast(room,player,now,{basic:true});
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
           io.to(viewer.socketId).emit('combat:hit',result.hit);
           io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
@@ -380,6 +383,15 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const result=castAquarius(room,player,now);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
           io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+        return result;
+      }
+      if(isWaterConstellation(player)){
+        const result=castWater(room,player,now);
+        if(player.waterAura)roster(room);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
+          if(result.hit)io.to(viewer.socketId).emit('combat:hit',result.hit);
+        }
         return result;
       }
       if(player.avatar.constellationId==='corvus'){
@@ -1616,10 +1628,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       let transformationChanged=false;
       for(const player of room.players.values())transformationChanged=expireTransformation(player,clock())||transformationChanged;
       if(transformationChanged)roster(room);
-      for(const hit of advanceProjectiles(room,clock(),combatEnemies,damageTargets)){
+      for(const hit of advanceProjectiles(room,clock(),combatEnemies,(room,player,selected,power,now,cast)=>
+        isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now))){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           if(hit.end)io.to(viewer.socketId).emit('combat:projectile-end',hit.end);
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
+          for(const healed of hit.healed||[])io.to(viewer.socketId).emit('combat:vitals',{playerId:healed.targetId,vitals:healed.vitals});
         }
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
       }
@@ -1628,6 +1642,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           for(const healed of hit.healed)io.to(viewer.socketId).emit('combat:vitals',healed);
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
       }
+      for(const hit of advanceWaterAuras(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
+          io.to(viewer.socketId).emit('combat:water-pulse',hit);
+        if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
+      if(room.waterAuraChanged){room.waterAuraChanged=false;roster(room);}
       for(const hit of advanceSagittarius(room,clock())){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           const {targets,playerTargets,...visual}=hit;
@@ -1738,8 +1758,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),
-            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),
+            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }
     }

@@ -1213,6 +1213,7 @@ socket.on('combat:hit',data=>{if(selfId)world.hit(data);});
 socket.on('sagittarius:effect',data=>{if(selfId)world.sagittariusEffect(data);});
 socket.on('combat:player-hit',data=>{if(selfId)world.playerHit(data);});
 socket.on('combat:monster-hit',data=>{if(selfId)world.monsterHit(data);});
+socket.on('combat:water-pulse',data=>{if(selfId)world.waterPulse(data);});
 socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
 socket.on('life-star:complete',()=>{if(selfId)toast('체력과 마나가 가득 찼어요!');});
 socket.on('combat:vitals',data=>{

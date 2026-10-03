@@ -1,5 +1,7 @@
 import {createProjectileEffects} from './projectile-effects.js';
 import {createAquariusEffects,preloadAquarius} from './aquarius-effects.js';
+import {preloadWater,drawWaterAura,drawWaterProjectile} from './water-effects.js';
+import {waterFrameAt} from '/shared/water-skills.js';
 import {drawBlackHoleGround,drawBlackStar} from './black-hole-art.js';
 import {createDamageNumbers} from './damage-numbers.js';
 import {drawCorvus,preloadCorvus} from './corvus-effects.js';
@@ -83,6 +85,7 @@ export function createWorld(canvas) {
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[],exploration=null,objectUpdateIds=new Set();
+  let waterAuras=[],waterPulses=[];
   let sagittariusCasts=[],sagittariusEffects=[];
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
   const damageNumbers=createDamageNumbers();
@@ -339,9 +342,11 @@ export function createWorld(canvas) {
   }
   function drawAvatar(p,time){
     const point=points.get(p.id)||{x:p.x,y:p.y};
-    const x=point.x,y=point.y,size=avatarSizeOf(p);
+    const x=point.x,y=point.y,aura=waterAuras.find(c=>c.playerId===p.id);
+    const size=avatarSizeOf(p)*(aura?.kind==='cetus'?2:1);
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
+    if(aura)drawWaterAura(ctx,{...aura,elapsedMs:time-aura.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
     if(effects.some(e=>e.style==='glow')){
       const glow=ctx.createRadialGradient(x,y,4,x,y,40);glow.addColorStop(0,'#fff2b880');glow.addColorStop(1,'#fff2b800');
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
@@ -471,6 +476,9 @@ export function createWorld(canvas) {
       ctx.strokeText('우주에너지 '+amount,drop.x,drop.y+35);ctx.fillText('우주에너지 '+amount,drop.x,drop.y+35);ctx.restore();
     }
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
+    canvas.dataset.waterAuraCount=String(waterAuras.length);
+    canvas.dataset.waterAuraKind=waterAuras[0]?.kind||'';
+    canvas.dataset.waterAuraFrame=waterAuras[0]?String(waterFrameAt(t-waterAuras[0].startsAt,waterAuras[0].durationMs)):'';
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
@@ -521,6 +529,10 @@ export function createWorld(canvas) {
       for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
     }
     projectiles.draw(ctx,t,reducedMotion.matches);
+    waterPulses=waterPulses.filter(p=>t-p.startedAt<500);
+    for(const pulse of waterPulses)drawWaterProjectile(ctx,{kind:'cetus-attack',vfxId:'attack',
+      x:pulse.x,y:pulse.y,dx:pulse.direction,dy:0,size:pulse.size,durationMs:500},t-pulse.startedAt,reducedMotion.matches);
+    canvas.dataset.waterPulseCount=String(waterPulses.length);
     damageNumbers.draw(ctx,t,reducedMotion.matches);
     canvas.dataset.damageNumberCount=String(damageNumbers.size);
     requestAnimationFrame(frame);
@@ -530,9 +542,10 @@ export function createWorld(canvas) {
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];}
+      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
+      for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);
       if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];exploration=room?.exploration||null;
@@ -545,7 +558,8 @@ export function createWorld(canvas) {
       for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
     },
     projectileEnd(data){if(data.mapId===myMapId)projectiles.end(data);},
-    positions(data){if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));const now=performance.now();for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    positions(data){if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
     monsters(data){setMonsters(data.monsters||[]);},
     energyDrops(data){energyDrops=data.drops||[];},
     sagittariusState(data){

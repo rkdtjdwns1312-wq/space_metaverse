@@ -1,5 +1,6 @@
 import {corvusSkillOf} from '/shared/character-skills.js';
 import {aquariusSkillOf} from '/shared/aquarius-skills.js';
+import {waterSkillOf,isWaterConstellation} from '/shared/water-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
 import {isSagittarius,sagittariusSkill} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
@@ -14,7 +15,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     const player=getPlayer();if(!player||!canAct())return;
     if(slot!==0){toast('기존 보조 스킬은 더 이상 사용하지 않아요.');return;}
     if(player.vitals?.defeated){toast('체력을 회복하는 중이에요.');return;}
-    const spec=player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):isSagittarius(player)&&sagittariusSkill(slot);
+    const spec=player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):isWaterConstellation(player)?waterSkillOf(player):isSagittarius(player)&&sagittariusSkill(slot);
     if(spec){
       if(player.avatar.level<spec.level){toast(`LV${spec.level}부터 사용할 수 있어요.`);return;}
       const remaining=owner===player.id?(cooldowns[slot]||0)-Date.now()-serverOffset:0;
@@ -51,7 +52,7 @@ export function createCombatControls({getPlayer,canAct,toast,request}){
     [skill].forEach((button,slot)=>{
       let badge=button.querySelector('.skill-cooldown');
       if(!badge){badge=document.createElement('span');badge.className='skill-cooldown';button.append(badge);}
-      const left=owner===player?.id&&['aquarius','corvus','sagittarius'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
+      const left=owner===player?.id&&['aquarius','corvus','sagittarius','cancer','cetus','pisces'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
       badge.hidden=left<=0;badge.textContent=left>0?String(left):'';
     });
   },100);
