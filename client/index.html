@@ -49,13 +49,16 @@
           <button id="teacher-tab" aria-pressed="false" type="button">선생님 접속하기</button>
         </div>
         <form id="student-form">
+          <div class="lobby-fields">
           <label for="join-code">교실 코드</label><input id="join-code" autocomplete="off" maxlength="6" required placeholder="예: ABCD12" pattern="[A-Za-z0-9]{6}">
           <label for="nickname">내 번호 또는 닉네임</label><input id="nickname" autocomplete="off" maxlength="12" required placeholder="선생님이 허용한 이름을 입력해요">
           <label for="student-pin">비밀번호(숫자 4자리)</label><input id="student-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="off" placeholder="숫자 4자리" aria-describedby="pin-help">
           <small id="pin-help">첫 입장 때 정하고, 다음에도 같은 번호로 들어와요.</small>
-          <button class="primary submit" type="submit">입장하기 <span aria-hidden="true">✦</span></button>
+          </div>
+          <button class="primary submit" type="submit">입장하기</button>
         </form>
         <form id="teacher-form" hidden>
+          <div class="lobby-fields">
           <label for="teacher-key">교사 확인 키</label><input id="teacher-key" type="password" autocomplete="off" minlength="16" required placeholder="교사용 시작 파일에서 자동 입력">
           <span class="class-mode-label">교실 방식</span>
           <div class="class-mode-choices" role="group" aria-label="교실 방식">
@@ -73,12 +76,13 @@
           <div id="legacy-names-fields" hidden><label for="allowed-names">허용할 학생 번호 또는 닉네임</label><textarea id="allowed-names" rows="2" aria-describedby="names-help"></textarea><small id="names-help">쉼표나 줄바꿈으로 구분 · 최대 29명</small></div>
           <label class="check"><input type="checkbox" id="seed-planets"> 예시 행성 4개(독서·일기·청소·교과)로 시작하기</label>
           </fieldset>
-          <button class="primary submit" type="submit" hidden>입장하기 ✦</button>
+          </div>
+          <button class="primary submit" type="submit" hidden>입장하기</button>
         </form>
         </div>
         <p id="form-message" class="form-message" role="alert"></p>
-        <p class="privacy-note"><span id="student-hours-note">학생 이용 시간 확인 중…</span><br>회원가입 없이 · 모두 LV 1 소행성으로 출발</p>
-        <p class="lobby-credit">서버 오픈시간 오전 7시 ~ 오후 10시</p>
+        <p class="lobby-hours"><span>서버 오픈시간 오전 7시 ~ 오후 10시</span><br><span id="student-hours-note">학생 접속시간 확인 중…</span></p>
+        <p class="lobby-credit">제작자 우주ssam</p>
       </div>
       <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
         <div class="combat-buttons" aria-label="전투 조작">

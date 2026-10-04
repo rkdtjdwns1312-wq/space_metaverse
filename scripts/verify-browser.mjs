@@ -146,7 +146,7 @@ try{
  await openMenuFromDock(teacher);await teacher.locator('#room-code').filter({hasText:/[A-Z0-9]{6}/}).waitFor({state:'attached'});
  const code=await teacher.locator('#room-code').innerText();check('Teacher creates a room from actual UI');
  await student.goto(url);await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
- await student.locator('#student-hours-note').filter({hasText:'시간 제한 없이 접속'}).waitFor();
+ await student.locator('#student-hours-note').filter({hasText:'테스트 기간 제한 없음'}).waitFor();
  await student.locator('#join-code').fill(code);await student.locator('#nickname').fill('허용안됨');await student.locator('#student-pin').fill('1234');
  await student.locator('#student-form .submit').click();
  await student.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});

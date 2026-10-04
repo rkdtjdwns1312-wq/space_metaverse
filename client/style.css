@@ -249,13 +249,13 @@ body.joined .topbar,body.joined .topline,body.joined .map-footer,body.joined .hu
 .map-wrap:has(.lobby:not([hidden]))::before{content:"";position:absolute;inset:0;z-index:7;background:linear-gradient(90deg,#111b4266,#1d245222 44%,#131a4066),url('/assets/lobby-milky-way.png') center/cover no-repeat}
 .map-wrap:has(.lobby:not([hidden])) #world-navigation,.map-wrap:has(.lobby:not([hidden])) .map-caption,.map-wrap:has(.lobby:not([hidden])) #interact-prompt{visibility:hidden}
 .lobby{z-index:10;width:min(820px,calc(100% - 36px));max-width:none;padding:27px 34px 20px;background:linear-gradient(145deg,#fffffff2,#f4f2ffef);border:2px solid #fff9;box-shadow:0 22px 70px #101b5080,0 0 25px #d6d0ff80;overflow-y:auto}
-.lobby h2{font-family:Georgia,"Malgun Gothic",serif;font-size:clamp(37px,5vw,62px);font-weight:900;letter-spacing:5px;line-height:1.1;margin:2px 0 8px;color:#534389;text-shadow:0 2px 0 #fff,0 4px 0 #c7b4e8,0 7px 2px #70539a70,0 0 17px #a893f1a6,0 0 32px #baa9ff80}
+.lobby h2{font-family:Jua,"Malgun Gothic",sans-serif;font-size:clamp(37px,5vw,62px);font-weight:900;letter-spacing:2px;line-height:1.1;margin:2px 0 8px;color:#534389;text-shadow:0 2px 0 #fff,0 4px 0 #c7b4e8,0 7px 2px #70539a70,0 0 17px #a893f1a6,0 0 32px #baa9ff80}
 .lobby>.muted{font-size:30px;line-height:1.3;margin:0 0 18px;color:#675e86}
 .lobby-entry{display:grid;grid-template-columns:190px minmax(0,1fr);gap:25px;align-items:start;text-align:left}
 .lobby .role-tabs{display:flex;flex-direction:column;gap:9px;background:transparent;padding:0;margin:24px 0 0}
 .lobby .role-tabs button{width:100%;min-height:56px;text-align:left;padding:12px 10px;border:1px solid #c6b9e1;background:#f1eff9;color:#493b6b;font-size:16px;font-weight:800}
 .lobby .role-tabs .selected{background:linear-gradient(110deg,#7361bb,#8e79c9);border-color:#8978c5;color:white;box-shadow:0 7px 17px #6755a647}
-.lobby-entry form{min-width:0}.lobby-entry form label:first-child{margin-top:0}.lobby-entry form input{background:#fffefee8}
+.lobby-entry form{display:contents}.lobby-entry .lobby-fields{grid-column:2;grid-row:1;min-width:0}.lobby-entry form label:first-child{margin-top:0}.lobby-entry form input{background:#fffefee8}
 .lobby-entry form label,.lobby-entry .class-mode-label{font-size:17px;color:#34264f;margin:14px 0 7px}
 .lobby-entry form input,.lobby-entry form select,.lobby-entry form textarea{font-size:17px;font-weight:600;color:#29213f;border:2px solid #c5badc;background:#fff;min-height:50px}
 .lobby-entry form input::placeholder,.lobby-entry form textarea::placeholder{font-size:16px;font-weight:500;color:#655b77;opacity:1}
@@ -264,10 +264,10 @@ body.joined .topbar,body.joined .topline,body.joined .map-footer,body.joined .hu
 .lobby-entry .class-mode-choices{margin-bottom:16px}.lobby-entry .class-mode-choices button,.lobby-entry #saved-classes-button{border:1.5px solid #b9abd6;background:#f5f0ff;color:#493865}
 .lobby-entry .class-mode-choices button.selected{background:#ddcff5;color:#382467;border-color:#9c80d5}
 .lobby-entry form .check{font-size:16px;color:#34264f;line-height:1.4}.lobby-entry form .check input{min-height:20px;width:20px;height:20px}
-.lobby .form-message{font-size:16px}.lobby-entry form .submit{font-size:19px;font-weight:800;min-height:54px}
-.lobby-entry form .submit{position:relative;left:-107.5px;width:min(280px,100%);margin:20px auto 0;justify-content:center;gap:18px;background:linear-gradient(105deg,#6a59b3,#8d75ca);box-shadow:0 5px 18px #6353ae40}
-.lobby .privacy-note{margin:12px 0 0}.lobby-credit{font-size:22px;color:#7c709b;text-align:right;margin:8px 0 0}
-@media(max-width:650px){.lobby{width:calc(100% - 20px);padding:20px 16px 12px;max-height:calc(100% - 18px)}.lobby-entry{grid-template-columns:1fr;gap:8px}.lobby .role-tabs{flex-direction:row;margin:0}.lobby .role-tabs button{font-size:14px;min-height:48px;padding:8px 6px;text-align:center}.lobby h2{font-size:36px}.lobby>.muted{font-size:24px;margin-bottom:10px}.lobby-entry form .submit{left:0;margin:14px auto 0}}
+.lobby .form-message{font-size:16px}.lobby-entry form .submit{grid-column:1/-1;grid-row:2;justify-self:center;display:flex;align-items:center;justify-content:center;width:min(280px,100%);min-height:54px;margin:20px 0 0;font-size:19px;font-weight:800;background:linear-gradient(105deg,#6a59b3,#8d75ca);box-shadow:0 5px 18px #6353ae40}
+.lobby-hours{font-size:20px;line-height:1.45;color:#625483;text-align:center;margin:12px 0 0;white-space:nowrap}.lobby-hours #student-hours-note{font-size:.85em}.lobby-credit{font-size:15px;color:#7c709b;text-align:right;margin:8px 0 0}
+@media(max-width:650px){.lobby{width:calc(100% - 20px);padding:20px 16px 12px;max-height:calc(100% - 18px)}.lobby-entry{grid-template-columns:1fr;gap:8px}.lobby .role-tabs{grid-column:1;grid-row:1;flex-direction:row;margin:0}.lobby .role-tabs button{font-size:14px;min-height:48px;padding:8px 6px;text-align:center}.lobby-entry .lobby-fields{grid-column:1;grid-row:2}.lobby-entry form .submit{grid-column:1;grid-row:3;margin-top:14px}.lobby h2{font-size:36px}.lobby>.muted{font-size:24px;margin-bottom:10px}.lobby-hours{font-size:clamp(15px,4vw,18px)}}
+@media(max-width:360px){.lobby{padding:13px 16px 8px}.lobby>.muted{font-size:20px;letter-spacing:-.3px;margin-bottom:7px}.lobby-entry{gap:4px}.lobby-entry form label{margin:8px 0 4px}.lobby-entry form input{min-height:46px}.lobby-entry form .submit{margin-top:8px}.lobby .form-message{margin:5px 0 0;line-height:1.3}.lobby-hours{margin-top:6px}.lobby-credit{font-size:13px;margin-top:3px}}
 #tutorial-dialog{width:min(480px,calc(100vw - 24px));padding:28px;border:2px solid #ece4ff;border-radius:24px;background:linear-gradient(160deg,#fffefa,#f4f0ff);box-shadow:0 22px 70px #181c5270;text-align:center;color:#49436d}
 #tutorial-dialog::backdrop{background:#0b143799}
 #tutorial-dialog .tutorial-mark{font-size:46px;color:#dfb16c;text-shadow:0 0 15px #f9d994}

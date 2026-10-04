@@ -244,7 +244,7 @@ function chooseClassMode(value){
     $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
   }
   const submitButton=$('teacher-form').querySelector('.submit');
-  submitButton.hidden=!value;submitButton.textContent=open?'기존 교실 입장하기 ↗':'설정한 교실 생성하기 ✦';
+  submitButton.hidden=!value;submitButton.textContent=open?'기존 교실 입장하기':'설정한 교실 생성하기';
 }
 $('choose-open-class').onclick=()=>chooseClassMode('open');
 $('choose-new-class').onclick=()=>chooseClassMode('new');
