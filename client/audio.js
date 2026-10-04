@@ -1,5 +1,10 @@
-// Procedural audio only: no downloaded samples, external services, or licensed assets.
+// 사용자가 제공한 맵 음원과 나머지 맵의 오리지널 합성 음악을 함께 관리합니다.
 const STORAGE_KEY = 'space-classroom-audio-v1';
+const FILE_BGM = Object.freeze({
+  lobby:'/assets/audio/login-in-front-of-love.mp3',
+  'star-street':'/assets/audio/star-street-pposong.mp3',
+  'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3'
+});
 const MAP_THEMES = {
   plaza: { notes: [60, 64, 67, 71, 67, 64, 62, 65, 69, 72, 69, 65], bass: [36, 43, 40, 35] },
   street: { notes: [62, 65, 69, 74, 72, 69, 65, 67, 71, 74, 71, 67], bass: [38, 45, 41, 36] },
@@ -8,22 +13,6 @@ const MAP_THEMES = {
   blackhole: { notes: [53, 57, 60, 65, 64, 60, 57, 55, 59, 62, 67, 62], bass: [29, 36, 33, 28] },
   default: { notes: [60, 64, 67, 72, 69, 67, 64, 62, 65, 69, 74, 69], bass: [36, 43, 40, 35] }
 };
-// 12개의 5초 구절(120박)이 한 바퀴 도는 오리지널 접속곡. 0.5초마다 한 박씩 진행합니다.
-// 멜로디와 화음을 함께 돌아오게 해 약 1분마다 자연스럽게 반복합니다.
-const LOBBY_PHRASES = [
-  [67,null,69,72,71,null,67,64,67,null], [69,null,67,74,72,null,71,67,62,null],
-  [64,67,69,null,72,76,72,null,69,67], [65,null,69,72,69,null,67,65,64,null],
-  [67,72,76,null,74,72,null,67,69,71], [69,null,72,77,76,null,72,69,65,null],
-  [71,74,76,null,79,76,74,72,71,null], [72,null,67,64,67,null,69,71,72,null],
-  [72,77,76,null,72,69,null,67,69,72], [76,null,72,69,72,null,76,74,72,null],
-  [74,71,69,null,67,71,72,null,69,67], [72,null,67,64,67,64,62,60,null,null]
-];
-const LOBBY_CHORDS=[
-  [48,52,55,59],[43,47,50,55],[45,48,52,57],[41,45,48,53],
-  [48,52,55,59],[38,41,45,50],[40,43,47,52],[48,52,55,59],
-  [41,45,48,53],[45,48,52,57],[43,47,50,55],[48,52,55,59]
-];
-const LOBBY_THEME={notes:LOBBY_PHRASES.flat(),chords:LOBBY_CHORDS,lobby:true};
 // 광장만을 위한 12개의 5초 구절. 잔잔한 시골 바람을 닮은 1분짜리 오리지널 곡입니다.
 const PLAZA_PHRASES=[
   [65,null,69,72,69,null,67,65,62,null], [64,null,67,69,72,null,69,67,65,null],
@@ -41,7 +30,7 @@ const PLAZA_CHORDS=[
 const PLAZA_THEME={notes:PLAZA_PHRASES.flat(),chords:PLAZA_CHORDS,plaza:true};
 const clamp = (n, min, max) => Math.min(max, Math.max(min, Number(n) || 0));
 /** Create a self-contained game audio controller. Call resume() from a user gesture to unlock playback. */
-export function createAudio({ storage = globalThis.localStorage, contextFactory } = {}) {
+export function createAudio({ storage = globalThis.localStorage, contextFactory, mediaFactory } = {}) {
   let settings;
   try {
     const saved = JSON.parse(storage?.getItem(STORAGE_KEY) || '{}');
@@ -49,7 +38,24 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory 
   } catch { settings = { muted: false, volume: 0.35 }; }
   const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
   let context = null, master = null, timer = null, theme = MAP_THEMES.default, step = 0, currentMap='';
+  const fileMedia=new Map();
   let started = false;
+
+  function ensureFileMedia(id) {
+    if(fileMedia.has(id))return fileMedia.get(id);
+    try {
+      const media=mediaFactory?mediaFactory(id,FILE_BGM[id]):typeof globalThis.Audio==='function'?new globalThis.Audio(FILE_BGM[id]):null;
+      if(!media)return null;
+      media.loop=true;media.preload='auto';media.volume=settings.volume;media.muted=settings.muted;
+      fileMedia.set(id,media);return media;
+    } catch { return null; }
+  }
+  function pauseFileMedia(exceptId='') {
+    for(const [id,media] of fileMedia)if(id!==exceptId){
+      media.pause();
+      try { media.currentTime=0; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
+    }
+  }
 
   function ensureContext() {
     if (context) return context;
@@ -74,21 +80,6 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory 
   function scheduleStep() {
     if (!started || !context || context.state !== 'running') return;
     const i = step++ % theme.notes.length;
-    if(theme.lobby){
-      const note=theme.notes[i], chord=theme.chords[Math.floor(i/10)], beat=i%10;
-      // 피아노 선율, 하프 분산화음, 부드러운 현악 패드, 작은 종소리와 저음.
-      if(beat===0){
-        tone(chord[0]-12,3.7,{wave:'sine',gain:0.023,attack:0.11});
-        for(const pitch of chord.slice(1))tone(pitch+12,4.7,{wave:'triangle',gain:0.009,attack:0.75});
-      }
-      if(beat%2===0)tone(chord[(beat/2)%4]+12,0.72,{wave:'triangle',gain:0.016,attack:0.012});
-      if(note!==null){
-        tone(note,beat===8?1.15:0.78,{wave:'sine',gain:0.037,attack:0.007});
-        tone(note+12,0.31,{wave:'triangle',gain:0.011,attack:0.005});
-      }
-      if(beat===4||beat===8)tone(chord[2]+24,1.25,{wave:'sine',gain:0.007,attack:0.014});
-      return;
-    }
     if(theme.plaza){
       const note=theme.notes[i],chord=theme.chords[Math.floor(i/10)],beat=i%10;
       // 부드러운 피아노·목관 선율, 하프의 분산화음, 현악의 긴 숨결과 낮은 현.
@@ -116,21 +107,30 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory 
   async function playBgm(mapId = 'default') {
     const id = String(mapId || 'default').toLowerCase();
     if(currentMap!==id){
-      const base=id==='lobby'?LOBBY_THEME:id.includes('plaza')?PLAZA_THEME:MAP_THEMES[id] || (id.includes('street') ? MAP_THEMES.street : id.includes('black') ? MAP_THEMES.blackhole : id.includes('temple')||id.includes('valley') ? MAP_THEMES.temple : id.includes('planet') ? MAP_THEMES.planet : MAP_THEMES.default);
+      pauseFileMedia(id);
+      currentMap=id;step=0;
+      if(timer!==null){clearInterval(timer);timer=null;}
+    }
+    if(FILE_BGM[id]){
+      started=true;
+      const media=ensureFileMedia(id);
+      if(!media)return false;
+      try {if(media.paused)await media.play();return !media.paused;} catch {return false;}
+    }
+    if(timer===null){
+      const base=id.includes('plaza')?PLAZA_THEME:MAP_THEMES[id] || (id.includes('street') ? MAP_THEMES.street : id.includes('black') ? MAP_THEMES.blackhole : id.includes('temple')||id.includes('valley') ? MAP_THEMES.temple : id.includes('planet') ? MAP_THEMES.planet : MAP_THEMES.default);
       const hash=[...id].reduce((value,char)=>(value*31+char.charCodeAt(0))>>>0,17);
       // 각 맵은 같은 조성 안에서 고유한 음 순서와 음역을 갖습니다.
       const rotate=hash%base.notes.length,octave=(hash%3)-1;
-      theme=base.lobby||base.plaza?base:{notes:base.notes.map((_,i)=>base.notes[(i+rotate)%base.notes.length]+octave*2),bass:base.bass};
-      currentMap=id;step=0;
-      if(started){clearInterval(timer);timer=setInterval(scheduleStep,base.lobby||base.plaza?500:520);}
+      theme=base.plaza?base:{notes:base.notes.map((_,i)=>base.notes[(i+rotate)%base.notes.length]+octave*2),bass:base.bass};
+      started=true;timer=setInterval(scheduleStep,base.plaza?500:520);
     }
-    if (!started) { started = true; step = 0; timer = setInterval(scheduleStep, theme.lobby||theme.plaza?500:520); }
     await resume(); if(step===0)scheduleStep();
     return true;
   }
-  function stopBgm() { started = false; if (timer !== null) clearInterval(timer); timer = null; }
-  function setMuted(muted) { settings.muted = Boolean(muted); persist(); if (master) master.gain.setTargetAtTime(settings.muted ? 0 : settings.volume, context.currentTime, 0.025); }
-  function setVolume(volume) { settings.volume = clamp(volume, 0, 1); persist(); if (master && !settings.muted) master.gain.setTargetAtTime(settings.volume, context.currentTime, 0.025); }
+  function stopBgm() { started = false; if (timer !== null) clearInterval(timer); timer = null; pauseFileMedia(); }
+  function setMuted(muted) { settings.muted = Boolean(muted); persist(); for(const media of fileMedia.values())media.muted=settings.muted; if (master) master.gain.setTargetAtTime(settings.muted ? 0 : settings.volume, context.currentTime, 0.025); }
+  function setVolume(volume) { settings.volume = clamp(volume, 0, 1); persist(); for(const media of fileMedia.values())media.volume=settings.volume; if (master && !settings.muted) master.gain.setTargetAtTime(settings.volume, context.currentTime, 0.025); }
   function playSfx(name, detail = {}) {
     const type = String(name || 'ui').toLowerCase();
     const sfx = {
