@@ -14,7 +14,10 @@ const check=text=>{checks.push(text);console.log(text);};
 async function join(name,code){
   const page=await browser.newPage({viewport:{width:1440,height:960}});page.on('pageerror',e=>errors.push(e.message));
   await page.goto(url,{waitUntil:'domcontentloaded'});await page.locator('#join-code').fill(code);await page.locator('#nickname').fill(name);await page.locator('#student-pin').fill('1234');
-  await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});return page;
+  await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  if(await page.locator('#password-offer-dialog').evaluate(dialog=>dialog.open))await page.locator('#password-offer-no').click();
+  if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();
+  return page;
 }
 try{
   const teacher=await browser.newPage({viewport:{width:1440,height:960}});teacher.on('pageerror',e=>errors.push(e.message));
@@ -26,7 +29,7 @@ try{
   const rock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
   actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:rock.x,y:rock.y+70});
   game.io.to(actor.socketId).emit('room:state',game.store.snapshot(room,actor));
-  await actorPage.locator('#interact-object').filter({hasText:'경고 주기'}).waitFor();
+  await actorPage.locator('#interact-object').filter({hasText:'경고 제어돌'}).waitFor();
   await actorPage.locator('#touch-interact').click();await actorPage.locator('#warning-dialog').waitFor({state:'visible'});
   assert.match(await actorPage.locator('#warning-title').textContent(),/규칙행성/);
   await actorPage.locator('#warning-threshold').fill('2');await actorPage.locator('#warning-threshold-save').click();
@@ -66,6 +69,11 @@ try{
   check('검은별 학생의 블랙홀 출구가 안내와 함께 차단됨');
   await teacher.locator('#dock-menu').click();await teacher.locator('#teacher-tools').click();
   await teacher.locator('#black-star-list-button').click();await teacher.locator('#black-star-dialog').waitFor({state:'visible'});
+  await teacher.locator('#teacher-warning-history-tab').click();
+  await teacher.locator('#teacher-warning-entries li').first().waitFor();
+  assert.equal(await teacher.locator('#teacher-warning-entries li').count(),2);
+  assert.match(await teacher.locator('#teacher-warning-entries').textContent(),/경고 시간:.*사유:/s);
+  await teacher.locator('#teacher-black-star-tab').click();await teacher.locator('#black-star-students li').first().waitFor();
   assert.match(await teacher.locator('#black-star-students').textContent(),/2 · 규칙행성 경고/);
   teacher.on('dialog',dialog=>{nativeDialogs.push(dialog.message());dialog.dismiss();});await teacher.locator('#black-star-students button').click();
   await teacher.locator('#black-star-confirm-dialog').waitFor({state:'visible'});assert.match(await teacher.locator('#black-star-confirm-message').textContent(),/2 친구/);
@@ -77,6 +85,23 @@ try{
   await teacher.locator('#black-star-empty').waitFor({state:'visible'});
   await targetPage.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();
   assert.equal(target.avatar.blackStar,null);check('선생님 명단에 경고 부서가 표시되고 해제 시 학생이 광장으로 돌아옴');
+  await actorPage.locator('#warning-close').click();
+  await actorPage.locator('#interact-object').filter({hasText:'경고 제어돌'}).waitFor();
+  await actorPage.locator('#touch-interact').click();await actorPage.locator('#warning-dialog').waitFor({state:'visible'});
+  for(const reason of ['다시 약속을 어김','또 약속을 어김']){
+    await actorPage.locator('#warning-target').selectOption(target.id);
+    await actorPage.locator('#warning-reason').fill(reason);
+    await actorPage.locator('#warning-issue').click();await actorPage.locator('#warning-confirm-yes').click();
+    await actorPage.locator('#warning-entries').filter({hasText:reason}).waitFor();
+  }
+  await targetPage.locator('#minimap-title').filter({hasText:'블랙홀 내부'}).waitFor();
+  await teacher.locator('#teacher-warning-history-tab').click();
+  await teacher.locator('#teacher-warning-entries').filter({hasText:'또 약속을 어김'}).waitFor();
+  await teacher.locator('#teacher-warning-entries button').first().click();
+  await teacher.locator('#teacher-warning-delete-yes').click();
+  await targetPage.locator('#minimap-title').filter({hasText:'별의 기원'}).waitFor();
+  assert.equal(target.avatar.blackStar,null);assert.equal(planet.warnings.entries.filter(entry=>entry.active).length,1);
+  check('교사가 최근 경고 하나만 삭제하면 이전 경고는 남고 검은별이 풀림');
   assert.deepEqual(errors,[]);
 }finally{await browser.close();await game.close();}
 console.log(JSON.stringify({checks:checks.length,errors}));

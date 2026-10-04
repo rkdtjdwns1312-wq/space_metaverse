@@ -59,7 +59,7 @@ import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
 import {inviteParty,respondParty,leaveParty} from './party.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
-import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
+import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
@@ -71,13 +71,13 @@ import {currentWeekRecords,resetWeeklyRanking} from './weekly-ranking.js';
 import {memoryRanking,startMemoryRun,cancelMemoryRun,flipMemoryCard} from './memory-game.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,selectTeacherEvolution,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
-import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList} from './warnings.js';
+import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
 import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
 import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
-import {addTask,completeTask} from './tasks.js';
+import {addTask,completeTask,setTaskStatus} from './tasks.js';
 import {interiorDecorTarget,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
@@ -318,6 +318,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       return startLifeRecovery(session.player,clock());
     },false);
+    action('tutorial:complete',()=>{
+      const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
+      session.player.tutorialCompleted=true;roster(session.room);
+      return {completed:true};
+    });
     action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
     action('exploration:explore',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const result=explore(s.room,s.player,clock());roster(s.room);return result;});
@@ -1032,6 +1037,19 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 검은별 명단을 볼 수 있어요.');
       return {students:blackStarList(s.room)};
     });
+    action('warning:teacher:history',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 경고 내역을 볼 수 있어요.');
+      const offset=data?.offset??0;
+      ensure(Number.isSafeInteger(offset)&&offset>=0,'경고 내역 위치가 올바르지 않아요.');
+      return teacherWarningHistory(s.room,offset);
+    });
+    action('warning:teacher:delete',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 경고를 삭제할 수 있어요.');
+      const result=deleteTeacherWarning(s.room,data?.warningId);
+      if(result.released&&result.target)whisper(s.room,result.target,'선생님이 경고를 삭제해 검은별 상태가 해제됐어요.');
+      roster(s.room);
+      return {...teacherWarningHistory(s.room),released:result.released,remaining:result.remaining};
+    });
     action('warning:teacher:clear',data=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 검은별 상태를 해제할 수 있어요.');
       const target=typeof data.targetId==='string'?s.room.players.get(data.targetId):null;
@@ -1082,21 +1100,39 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(typeof data.assignmentId==='string'&&data.assignmentId===marked.assignmentId,'알림장 과제가 바뀌었어요. 다시 열어주세요.');
       const assignment=assignmentById(room,marked.assignmentId);
       ensure(assignment&&assignment.text===line,'과제 내용이 바뀌었어요. 다시 열어주세요.');
+      ensure(!assignment.completedIds.includes(player.id),'선생님이 이미 확인한 과제예요.');
       const tasks=addTask(player,{assignmentId:assignment.id,text:line,sourceDate:notice.date,lineIndex:data.lineIndex},clock());
       roster(room);return {tasks};
     });
-    action('task:complete',data=>{
-      const s=socket.data.session;ensure(s?.player.role==='student','학생만 자신의 과제를 완료할 수 있어요.');
-      const task=s.player.tasks?.find(task=>task.id===data.taskId);
-      ensure(task,'과제를 찾지 못했어요.');
-      markAssignmentDone(s.room,task.assignmentId,s.player.id);
-      const tasks=completeTask(s.player,data.taskId);roster(s.room);return {tasks};
-    });
-    action('assignment:read',()=>{
+    const assignmentAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const portal=MAP.objects.find(o=>o.kind==='andromeda');
       ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
-      return recentAssignments(s.room,clock());
+      return s;
+    };
+    action('assignment:read',()=>{
+      const s=assignmentAccess();return recentAssignments(s.room,clock(),s.player);
+    });
+    action('assignment:status:set',data=>{
+      const s=assignmentAccess();ensure(s.player.role==='student','학생만 과제 상태를 바꿀 수 있어요.');
+      const assignment=typeof data.assignmentId==='string'?assignmentById(s.room,data.assignmentId):null;
+      ensure(assignment&&recentAssignments(s.room,clock()).weeks.some(week=>week.assignments.some(value=>value.id===assignment.id)),'최근 과제에서 골라주세요.');
+      ensure(!assignment.completedIds.includes(s.player.id),'선생님이 확인한 과제는 바꿀 수 없어요.');
+      setTaskStatus(s.player,assignment,data.status,clock());roster(s.room);
+      return recentAssignments(s.room,clock(),s.player);
+    });
+    action('assignment:confirm',data=>{
+      const s=assignmentAccess();ensure(s.player.role==='teacher','선생님만 과제를 확인할 수 있어요.');
+      const target=typeof data.studentId==='string'?s.room.players.get(data.studentId):null;
+      const assignment=typeof data.assignmentId==='string'?assignmentById(s.room,data.assignmentId):null;
+      const task=target?.tasks?.find(value=>value.assignmentId===assignment?.id);
+      ensure(target?.role==='student'&&assignment&&task?.status==='submitted','제출된 학생 과제를 골라주세요.');
+      markAssignmentDone(s.room,assignment.id,target.id);completeTask(target,task.id);roster(s.room);
+      return recentAssignments(s.room,clock(),s.player);
+    });
+    action('assignment:incomplete',()=>{
+      const s=assignmentAccess();ensure(s.player.role==='teacher','선생님만 과제 미완료자를 볼 수 있어요.');
+      return incompleteAssignments(s.room,clock());
     });
     action('shards:give',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');

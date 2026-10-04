@@ -5,7 +5,9 @@ export function createWarningUI({request,stop,toast,getSelfId}){
   const dialog=$('warning-dialog'),teacherDialog=$('black-star-dialog');
   const confirmation=$('warning-confirm-dialog');
   const releaseConfirmation=$('black-star-confirm-dialog');
-  let releaseTarget=null,releasing=false;
+  const deleteConfirmation=$('teacher-warning-delete-dialog');
+  let releaseTarget=null,releasing=false,deleteTarget=null,deleting=false,teacherMode=null,historyNextOffset=null,historyLoading=false;
+  const displayTime=at=>new Date(at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
   const render=data=>{
     $('warning-title').textContent=data.planetName+' · 경고 제어돌';
     $('warning-summary').textContent='경고 '+data.threshold+'회가 쌓이면 검은별이 되어 블랙홀로 이동해요.';
@@ -70,6 +72,8 @@ export function createWarningUI({request,stop,toast,getSelfId}){
     for(const student of data.students){
       const li=document.createElement('li');
       const name=document.createElement('span');name.textContent=student.nickname+' · '+student.planetName+' 경고';
+      const time=document.createElement('time');time.dateTime=new Date(student.at).toISOString();
+      time.textContent='검은별 상태가 된 시간: '+displayTime(student.at);name.append(document.createElement('br'),time);
       const button=document.createElement('button');button.className='small secondary';button.type='button';button.textContent='검은별 상태 해제';
       button.disabled=releasing;
       button.onclick=()=>{
@@ -83,7 +87,59 @@ export function createWarningUI({request,stop,toast,getSelfId}){
       li.append(name,button);list.append(li);
     }
   };
+  const showTeacherMode=mode=>{
+    teacherMode=mode;
+    $('teacher-warning-history').hidden=mode!=='history';
+    $('teacher-black-star-status').hidden=mode!=='black-star';
+    $('teacher-warning-history-tab').setAttribute('aria-pressed',String(mode==='history'));
+    $('teacher-black-star-tab').setAttribute('aria-pressed',String(mode==='black-star'));
+  };
+  const renderTeacherHistory=(data,append)=>{
+    const list=$('teacher-warning-entries');if(!append)list.replaceChildren();
+    for(const entry of data.entries){
+      const li=document.createElement('li'),title=document.createElement('strong'),time=document.createElement('time'),reason=document.createElement('p');
+      title.textContent=entry.targetName+' · '+entry.planetName+(entry.active?'':' · 해제됨');
+      time.dateTime=new Date(entry.at).toISOString();time.textContent='경고 시간: '+displayTime(entry.at)+' · 준 사람: '+entry.actorName;
+      reason.textContent='사유: '+entry.reason;
+      li.append(title,time,reason);list.append(li);
+      if(entry.active){
+        const button=document.createElement('button');button.type='button';button.className='small secondary';button.textContent='경고 삭제';
+        button.disabled=deleting;
+        button.onclick=()=>{
+          deleteTarget=entry.id;
+          $('teacher-warning-delete-message').textContent=entry.targetName+' 친구의 경고를 삭제할까요? 사유: '+entry.reason;
+          $('teacher-warning-delete-error').textContent='';deleteConfirmation.showModal();$('teacher-warning-delete-cancel').focus();
+        };
+        li.append(button);
+      }
+    }
+    $('teacher-warning-empty').hidden=list.children.length>0;
+    historyNextOffset=data.nextOffset;
+    $('teacher-warning-more').hidden=historyNextOffset===null;
+  };
+  const loadTeacherHistory=async(append=false)=>{
+    if(historyLoading)return;
+    historyLoading=true;$('teacher-warning-more').disabled=true;
+    if(!append){$('teacher-warning-entries').replaceChildren();$('teacher-warning-empty').hidden=true;}
+    try{
+      const data=await request('warning:teacher:history',{offset:append?historyNextOffset:0});
+      if(teacherDialog.open&&teacherMode==='history')renderTeacherHistory(data,append);
+    }catch(error){toast(error.message);}
+    finally{historyLoading=false;$('teacher-warning-more').disabled=false;}
+  };
   $('black-star-confirm-cancel').onclick=()=>releaseConfirmation.close();
+  $('teacher-warning-delete-cancel').onclick=()=>deleteConfirmation.close();
+  deleteConfirmation.addEventListener('close',()=>{deleteTarget=null;});
+  $('teacher-warning-delete-yes').onclick=async()=>{
+    if(!deleteTarget||deleting)return;
+    const warningId=deleteTarget;deleting=true;$('teacher-warning-delete-yes').disabled=true;
+    try{
+      const data=await request('warning:teacher:delete',{warningId});
+      renderTeacherHistory(data,false);deleteConfirmation.close();
+      toast(data.released?'경고를 삭제하고 검은별 상태를 해제했어요.':'경고를 삭제했어요.');
+    }catch(error){$('teacher-warning-delete-error').textContent=error.message;}
+    finally{deleting=false;$('teacher-warning-delete-yes').disabled=false;for(const button of $('teacher-warning-entries').querySelectorAll('button'))button.disabled=false;}
+  };
   releaseConfirmation.addEventListener('close',()=>{releaseTarget=null;});
   $('black-star-confirm-yes').onclick=async()=>{
     if(!releaseTarget||releasing)return;
@@ -95,10 +151,16 @@ export function createWarningUI({request,stop,toast,getSelfId}){
     finally{releasing=false;$('black-star-confirm-yes').disabled=false;for(const button of $('black-star-students').querySelectorAll('button'))button.disabled=false;}
   };
   $('black-star-list-button').onclick=async()=>{
-    try{const data=await request('warning:teacher:list',{});renderBlackStars(data);$('teacher-dialog').close();stop();teacherDialog.showModal();}
+    $('teacher-dialog').close();stop();showTeacherMode(null);teacherDialog.showModal();
+  };
+  $('teacher-warning-history-tab').onclick=()=>{showTeacherMode('history');loadTeacherHistory();};
+  $('teacher-warning-more').onclick=()=>{if(historyNextOffset!==null)loadTeacherHistory(true);};
+  $('teacher-black-star-tab').onclick=async()=>{
+    showTeacherMode('black-star');
+    try{const data=await request('warning:teacher:list',{});if(teacherDialog.open&&teacherMode==='black-star')renderBlackStars(data);}
     catch(error){toast(error.message);}
   };
   $('black-star-close').onclick=()=>teacherDialog.close();
-  teacherDialog.addEventListener('close',()=>{releaseTarget=null;releaseConfirmation.close();$('world').focus();});
-  return {open,reset(){planetId=null;pendingWarning=null;releaseTarget=null;canIssue=false;confirmation.close();releaseConfirmation.close();dialog.close();teacherDialog.close();}};
+  teacherDialog.addEventListener('close',()=>{releaseTarget=null;deleteTarget=null;showTeacherMode(null);releaseConfirmation.close();deleteConfirmation.close();$('world').focus();});
+  return {open,reset(){planetId=null;pendingWarning=null;releaseTarget=null;deleteTarget=null;canIssue=false;confirmation.close();releaseConfirmation.close();deleteConfirmation.close();dialog.close();teacherDialog.close();}};
 }

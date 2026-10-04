@@ -65,7 +65,7 @@ export function toRecord(room) {
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
-      muted:p.muted,notes:p.notes,tasks:p.tasks||[],cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
+      muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
       learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
@@ -114,6 +114,7 @@ export function fromRecord(r) {
     const avatar=structuredClone(p.avatar);avatar.blackStar=validateBlackStar(avatar.blackStar,new Set(room.planets.keys()));
     // 이전 버전의 LV6 초월체도 새 최종 단계 LV5로 읽으며 계보·소유물은 그대로 보존합니다.
     if(avatar.level>=PROGRESSION.transcendentLevel){avatar.level=PROGRESSION.transcendentLevel;avatar.form='transcendent';avatar.xp=0;}
+    if(p.tutorialCompleted!==undefined&&typeof p.tutorialCompleted!=='boolean')bad();
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
     const savedMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
@@ -126,7 +127,7 @@ export function fromRecord(r) {
     if(rabbitDraw)rabbitDraw.markerId=null;
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
-    room.players.set(p.id,offline({...structuredClone(p),equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+    room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){

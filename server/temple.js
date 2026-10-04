@@ -124,11 +124,37 @@ export function markAssignmentDone(room,id,studentId){
   if(!assignment)fail('assignment not found');
   if(!assignment.completedIds.includes(studentId))assignment.completedIds.push(studentId);
 }
-export function recentAssignments(room,now=Date.now()){
+export function recentAssignments(room,now=Date.now(),viewer=null){
   const temple=templeOf(room),first=weekStart(now),weeks=Array.from({length:3},(_,i)=>new Date(Date.parse(first+'T00:00:00Z')-i*7*86400000).toISOString().slice(0,10));
-  return {weeks:weeks.map((week,index)=>({week,label:index===0?'이번 주':index===1?'지난주':'2주 전',
-    assignments:temple.assignments.filter(a=>a.week===week).map(a=>({id:a.id,text:a.text,sourceDate:a.sourceDate,
-      completed:[...room.players.values()].filter(p=>a.completedIds.includes(p.id)).map(p=>p.nickname).sort((a,b)=>a.localeCompare(b,'ko',{numeric:true,sensitivity:'base'}))}))}))};
+  const players=room.players instanceof Map?[...room.players.values()]:room.players||[];
+  const viewAssignment=a=>({id:a.id,text:a.text,sourceDate:a.sourceDate,
+      completed:[...room.players.values()].filter(p=>a.completedIds.includes(p.id)).map(p=>p.nickname).sort((a,b)=>a.localeCompare(b,'ko',{numeric:true,sensitivity:'base'})),
+      ...(viewer?.role==='teacher'?{submitted:[...room.players.values()].filter(p=>p.role==='student'&&p.tasks?.some(task=>task.assignmentId===a.id&&task.status==='submitted'))
+        .map(p=>({id:p.id,nickname:p.nickname})).sort((a,b)=>a.nickname.localeCompare(b.nickname,'ko',{numeric:true,sensitivity:'base'}))}:{}),
+      ...(viewer?.role==='student'?{myStatus:a.completedIds.includes(viewer.id)?'completed':viewer.tasks?.some(task=>task.assignmentId===a.id)?viewer.tasks.find(task=>task.assignmentId===a.id).status||'working':'not-started'}:{})});
+  const recent=weeks.map((week,index)=>({week,label:index===0?'이번 주':index===1?'지난주':'2주 전',
+    assignments:temple.assignments.filter(a=>a.week===week).map(viewAssignment)}));
+  const archived=temple.assignments.filter(a=>a.week<weeks[2]&&players.some(p=>p.role==='student'&&p.tasks?.some(task=>task.assignmentId===a.id))&&
+    (viewer?.role!=='student'||viewer.tasks?.some(task=>task.assignmentId===a.id)));
+  if(archived.length)recent.push({week:null,label:'지난 미완료',assignments:archived.map(viewAssignment)});
+  return {canConfirm:viewer?.role==='teacher',weeks:recent};
+}
+export function incompleteAssignments(room,now=Date.now()){
+  const week=weekStart(now),oldest=new Date(Date.parse(week+'T00:00:00Z')-14*86400000).toISOString().slice(0,10);
+  const allPlayers=[...room.players.values()];
+  const assignments=templeOf(room).assignments.filter(a=>a.week>=oldest||allPlayers.some(p=>p.tasks?.some(task=>task.assignmentId===a.id)));
+  const students=[...room.players.values()].filter(p=>p.role==='student').map(player=>{
+    const missing=[],pending=[];
+    for(const assignment of assignments){
+      if(assignment.week<oldest&&!player.tasks?.some(task=>task.assignmentId===assignment.id))continue;
+      if(assignment.completedIds.includes(player.id))continue;
+      const task=player.tasks?.find(value=>value.assignmentId===assignment.id);
+      (task?.status==='submitted'?pending:missing).push({id:assignment.id,text:assignment.text,sourceDate:assignment.sourceDate});
+    }
+    return {id:player.id,nickname:player.nickname,missing,pending};
+  }).filter(row=>row.missing.length||row.pending.length)
+    .sort((a,b)=>a.nickname.localeCompare(b.nickname,'ko',{numeric:true,sensitivity:'base'}));
+  return {week,assignmentCount:assignments.length,students};
 }
 export function saveDaily(room, kind, text, now = Date.now()) {
   if (kind !== 'notice' && kind !== 'timetable') throw new Error('kind must be notice or timetable');

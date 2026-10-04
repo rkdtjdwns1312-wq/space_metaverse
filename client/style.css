@@ -234,6 +234,7 @@ body.joined:not(.placing) .map-caption{display:none}
 #assignment-dialog{width:min(620px,calc(100vw - 24px));box-sizing:border-box}
 .assignment-weeks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.assignment-weeks button.selected{background:#fff3c5;color:#62498d;border-color:#b99ce8}
 .assignment-items{list-style:none;padding:0;margin:0;display:grid;gap:8px}.assignment-items button{width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.assignment-status-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.assignment-incomplete-list{list-style:none;padding:0;display:grid;gap:10px;max-height:360px;overflow:auto}.assignment-incomplete-list>li{padding:10px;border:1px solid var(--line);border-radius:12px}.assignment-incomplete-list ul{margin:6px 0 0;padding-left:20px}.assignment-incomplete-list li{overflow-wrap:anywhere}
 #assignment-completed{max-height:230px;overflow:auto;padding:12px 12px 12px 38px;border-radius:14px;background:#f9f5ff}
 #chat-dialog{width:min(560px,calc(100vw - 24px))}
 #chat-log{height:clamp(140px,35vh,360px);overflow:auto}
@@ -243,6 +244,30 @@ body:not(.joined) .map-wrap{min-height:min(780px,calc(100dvh - 140px))}
 body.joined .interact{bottom:110px}
 body.joined{background:#dfeaf8;overflow:hidden}
 body.joined .topbar,body.joined .topline,body.joined .map-footer,body.joined .hud{display:none}
+
+/* 접속 화면은 게임 지도의 뒤가 아니라 독립된 은하수 무대입니다. */
+.map-wrap:has(.lobby:not([hidden]))::before{content:"";position:absolute;inset:0;z-index:7;background:linear-gradient(90deg,#111b4266,#1d245222 44%,#131a4066),url('/assets/lobby-milky-way.png') center/cover no-repeat}
+.map-wrap:has(.lobby:not([hidden])) #world-navigation,.map-wrap:has(.lobby:not([hidden])) .map-caption,.map-wrap:has(.lobby:not([hidden])) #interact-prompt{visibility:hidden}
+.lobby{z-index:10;width:min(820px,calc(100% - 36px));max-width:none;padding:27px 34px 20px;background:linear-gradient(145deg,#fffffff2,#f4f2ffef);border:2px solid #fff9;box-shadow:0 22px 70px #101b5080,0 0 25px #d6d0ff80;overflow-y:auto}
+.lobby .welcome-mark{font-size:17px;letter-spacing:15px;color:#c5a462}
+.lobby h2{font-family:Georgia,"Malgun Gothic",serif;font-size:clamp(37px,5vw,62px);letter-spacing:5px;line-height:1.1;margin:2px 0 8px;color:#534389;text-shadow:0 2px #fff,0 4px 12px #b3a3de}
+.lobby>.muted{font-size:15px;margin:0 0 18px;color:#675e86}
+.lobby-entry{display:grid;grid-template-columns:190px minmax(0,1fr);gap:25px;align-items:start;text-align:left}
+.lobby .role-tabs{display:flex;flex-direction:column;gap:9px;background:transparent;padding:0;margin:24px 0 0}
+.lobby .role-tabs button{width:100%;min-height:56px;text-align:left;padding:12px 17px;border:1px solid #d4cbec;background:#f1eff9;color:#645681;font-size:15px}
+.lobby .role-tabs .selected{background:linear-gradient(110deg,#7361bb,#8e79c9);border-color:#8978c5;color:white;box-shadow:0 7px 17px #6755a647}
+.lobby-entry form{min-width:0}.lobby-entry form label:first-child{margin-top:0}.lobby-entry form input{background:#fffefee8}
+.lobby-entry form .submit{width:min(280px,100%);margin:20px auto 0;justify-content:center;gap:18px;background:linear-gradient(105deg,#6a59b3,#8d75ca);box-shadow:0 5px 18px #6353ae40}
+.lobby .privacy-note{margin:12px 0 0}.lobby-credit{font-size:11px;color:#7c709b;text-align:right;margin:8px 0 0}
+@media(max-width:650px){.lobby{width:calc(100% - 20px);padding:20px 16px 12px;max-height:calc(100% - 18px)}.lobby-entry{grid-template-columns:1fr;gap:8px}.lobby .role-tabs{flex-direction:row;margin:0}.lobby .role-tabs button{font-size:12px;min-height:44px;padding:8px;text-align:center}.lobby h2{font-size:36px}.lobby>.muted{font-size:12px;margin-bottom:10px}.lobby-entry form .submit{margin:14px auto 0}.lobby .privacy-note{font-size:10px}}
+#tutorial-dialog{width:min(480px,calc(100vw - 24px));padding:28px;border:2px solid #ece4ff;border-radius:24px;background:linear-gradient(160deg,#fffefa,#f4f0ff);box-shadow:0 22px 70px #181c5270;text-align:center;color:#49436d}
+#tutorial-dialog::backdrop{background:#0b143799}
+#tutorial-dialog .tutorial-mark{font-size:46px;color:#dfb16c;text-shadow:0 0 15px #f9d994}
+#tutorial-progress{font-size:12px;color:#8b76ba;font-weight:800;letter-spacing:1px}
+#tutorial-title{font-size:23px;color:#514584;margin:10px 0}
+#tutorial-body{line-height:1.75;min-height:80px}
+#tutorial-dialog .dialog-actions{justify-content:center;flex-wrap:wrap}
+#tutorial-error{color:#a33e5b;font-size:13px}
 body.joined main{max-width:none;width:100vw;height:100vh;padding:0;display:block}
 body.joined .space-section{height:100vh}
 body.joined .map-wrap{position:fixed;inset:0;width:100vw;height:100vh;min-height:0;border:0;border-radius:0;box-shadow:none;background:#dfeaf8;z-index:0}
@@ -400,6 +425,7 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 #warning-dialog,#black-star-dialog{width:min(520px,calc(100vw - 28px));box-sizing:border-box}
 .warning-row{display:flex;align-items:center;gap:8px}.warning-row input{max-width:95px;margin:0}
 .warning-list{list-style:none;padding:0;margin:10px 0;max-height:220px;overflow:auto}.warning-list li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);font-size:13px}
+.teacher-warning-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.teacher-warning-tabs button[aria-pressed="true"]{background:var(--purple);color:#fff}.teacher-warning-history li{display:block}.teacher-warning-history time{display:block;font-size:12px;opacity:.78;margin:3px 0}.teacher-warning-history p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #warning-dialog label{display:block;margin:12px 0 5px}#warning-dialog>input,#warning-dialog>select{width:100%;box-sizing:border-box}#warning-issue{margin-top:12px}#warning-error{color:#a23b4c}
 #monster-picture{display:block;width:100%;max-width:300px;height:auto;border-radius:20px;margin:12px auto}
 .monster-menu{display:flex;flex-direction:column;gap:10px}.monster-menu button{width:100%}

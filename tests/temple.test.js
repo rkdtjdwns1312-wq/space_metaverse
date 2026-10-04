@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { koreaDay, weekStart, validateTemple, validateSchedule, saveDaily, saveNotice, readDaily, readTimetable, saveTimetable, markAssignmentDone, recentAssignments, recordReward, weeklyRewards } from '../server/temple.js';
+import { koreaDay, weekStart, validateTemple, validateSchedule, saveDaily, saveNotice, readDaily, readTimetable, saveTimetable, markAssignmentDone, recentAssignments, incompleteAssignments, recordReward, weeklyRewards } from '../server/temple.js';
 const ts = s => Date.parse(`${s}Z`);
 test('한국 날짜와 주 시작은 일요일에서 월요일로 넘어간다', () => {
   assert.equal(koreaDay(ts('2026-09-13T14:59:00')), '2026-09-13');
@@ -52,9 +52,10 @@ test('알림장 줄별 과제 표시와 최근 3주 완료 학생 이름순 목�
 });
 test('최근 3주 밖의 과제 기록은 정리하되 개인 미완료 과제 참조는 보존한다',()=>{
   const old=ts('2026-01-05T00:00:00'),now=ts('2026-09-17T00:00:00');
-  const student={id:'a',nickname:'가람',tasks:[]},room={players:new Map([['a',student]])};
+  const student={id:'a',nickname:'가람',role:'student',tasks:[]},peer={id:'b',nickname:'다희',role:'student',tasks:[]};
+  const room={players:new Map([['a',student],['b',peer]])};
   const first=saveNotice(room,'오래된 과제',[0],old).taskLines[0].assignmentId;
-  student.tasks.push({assignmentId:first});
+  student.tasks.push({assignmentId:first,status:'working'});
   const original=room.temple.assignments[0];
   for(let i=1;i<1000;i++)room.temple.assignments.push({...original,id:'old-'+i});
   const saved=saveNotice(room,'새 과제',[0],now);
@@ -63,6 +64,11 @@ test('최근 3주 밖의 과제 기록은 정리하되 개인 미완료 과제 �
   assert.ok(room.temple.assignments.some(a=>a.id===first));
   assert.ok(room.temple.assignments.some(a=>a.id===saved.taskLines[0].assignmentId));
   assert.deepEqual(room.temple.notices.find(n=>n.date==='2026-01-05').taskLines,[{lineIndex:0,assignmentId:first}]);
+  const archived=recentAssignments(room,now,student).weeks[3];
+  assert.equal(archived.label,'지난 미완료');assert.equal(archived.assignments[0].id,first);
+  assert.equal(archived.assignments[0].myStatus,'working');
+  assert.equal(incompleteAssignments(room,now).students[0].missing[0].id,first);
+  assert.equal(incompleteAssignments(room,now).students.find(row=>row.id==='b').missing.some(task=>task.id===first),false);
 });
 test('학생 닉네임 변경은 ID를 유지하고 교사는 제외한다', () => {
   const room = { players: [{ id: 'b', nickname: '나 2', role: 'student' }, { id: 'a', nickname: '가 10', role: 'student' }, { id: 't', nickname: '교사', role: 'teacher' }] };

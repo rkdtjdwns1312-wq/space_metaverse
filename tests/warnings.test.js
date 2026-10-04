@@ -64,6 +64,18 @@ test('소속 학생의 직접 경고가 누적되면 검은별로 이동하고 �
   Object.assign(target,{x:600,y:680});
   const denied=await call(targetSocket,'map:travel',{to:PLAZA_ID});
   assert.equal(denied.ok,false);assert.match(denied.error,/현재 검은별 상태입니다/);
+  assert.equal((await call(targetSocket,'warning:teacher:history',{})).ok,false);
+  const history=await call(teacher,'warning:teacher:history',{});
+  assert.equal(history.entries.length,2);assert.ok(history.entries.every(entry=>entry.reason&&entry.at));
+  assert.equal((await call(targetSocket,'warning:teacher:delete',{warningId:history.entries[0].id})).ok,false);
+  const deletedId=history.entries.find(entry=>entry.reason==='같은 약속을 다시 어김').id;
+  const deleted=await call(teacher,'warning:teacher:delete',{warningId:deletedId});
+  assert.equal(deleted.released,true);assert.equal(deleted.remaining,1);
+  assert.equal(target.avatar.blackStar,null);assert.equal(target.mapId,PLAZA_ID);
+  assert.equal(warningCount(planet,target.id),1);
+  assert.equal((await call(teacher,'warning:teacher:delete',{warningId:deletedId})).ok,false);
+  const repeated=await call(actorSocket,'warning:issue',{planetId:planet.id,targetId:target.id,reason:'또 다른 약속 위반'});
+  assert.equal(repeated.blackStar,true);
   assert.equal((await call(targetSocket,'warning:teacher:clear',{targetId:target.id})).ok,false);
   const released=await call(teacher,'warning:teacher:clear',{targetId:target.id});
   assert.equal(released.students.length,0);assert.equal(target.avatar.blackStar,null);assert.equal(target.mapId,PLAZA_ID);

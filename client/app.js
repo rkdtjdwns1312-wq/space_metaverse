@@ -26,6 +26,7 @@ import {createVitalsUI} from './vitals-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
 import {createAudio} from './audio.js';
+import {createTutorialUI} from './tutorial-ui.js';
 import { createSocialUI } from './social-ui.js';
 import {createPartyUI} from './party-ui.js';
 import { createAccountsUI } from './accounts-ui.js';
@@ -78,10 +79,16 @@ syncAudioControls();
 audioToggle.addEventListener('click',()=>{audio.resume();audioPanel.hidden=!audioPanel.hidden;audioToggle.setAttribute('aria-expanded',String(!audioPanel.hidden));});
 audioMute.addEventListener('click',()=>{audio.setMuted(!audio.muted);audio.resume();syncAudioControls();});
 audioVolume.addEventListener('input',()=>{audio.setVolume(Number(audioVolume.value)/100);if(Number(audioVolume.value)>0)audio.setMuted(false);audio.resume();syncAudioControls();});
-document.addEventListener('pointerdown',()=>audio.resume(),{once:true});
+function unlockLobbyAudio(){if(!$('lobby').hidden)audio.playBgm('lobby');else audio.resume();}
+document.addEventListener('pointerdown',unlockLobbyAudio,{once:true});
+document.addEventListener('keydown',unlockLobbyAudio,{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
+const tutorial=createTutorialUI({request,stop,toast});
+const tutorialButton=document.createElement('button');tutorialButton.id='tutorial-open';tutorialButton.className='secondary';tutorialButton.type='button';tutorialButton.textContent='첫 여행 안내 다시 보기';tutorialButton.hidden=true;
+$('menu-dialog').insertBefore(tutorialButton,$('my-password'));
+tutorialButton.onclick=()=>{$('menu-dialog').close();tutorial.open();};
 const holdings=createHoldingUI({request,toast,onChanged:()=>renderBag(myInventory()),onDraw:async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();}});
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
@@ -221,6 +228,7 @@ $('ability-choose-item').onclick=async()=>{
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function setMode(value){
   mode=value;$('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
+  if(value==='teacher'&&!classMode)chooseClassMode('open');
   for(const role of ['student','teacher']){$(role+'-tab').classList.toggle('selected',role===value);$(role+'-tab').setAttribute('aria-pressed',String(role===value));}
   $('form-message').textContent='';
 }
@@ -297,6 +305,7 @@ function updateRoom(value){
   $('crew-empty').hidden=room.players.length>0;
   const me=room.players.find(p=>p.id===selfId);
   const isTeacher=me?.role==='teacher';
+  tutorialButton.hidden=me?.role!=='student';
   const myMapId=me?.mapId||PLAZA_ID,inPlanet=Boolean(planetIdOfMap(myMapId)),inStreet=myMapId===STREET_ID;
   if(me)audio.playBgm(myMapId);
   $('players').replaceChildren(...room.players.filter(p=>p.connected).map(p=>{
@@ -410,10 +419,8 @@ function renderMyTasks(tasks){
   const list=$('my-tasks');list.replaceChildren();$('my-tasks-empty').hidden=tasks.length>0;
   for(const task of tasks){
     const li=document.createElement('li'),text=document.createElement('span');text.textContent=task.text;
-    const button=document.createElement('button');button.type='button';button.className='small primary';button.textContent='과제완료';
-    button.onclick=async()=>{button.disabled=true;try{const data=await request('task:complete',{taskId:task.id});const me=room?.players.find(p=>p.id===selfId);if(me)me.tasks=data.tasks;renderMyTasks(data.tasks);toast('과제를 완료했어요.');}
-      catch(error){button.disabled=false;toast(error.message);}};
-    li.append(text,button);list.append(li);
+    const status=document.createElement('strong');status.textContent=task.status==='submitted'?'제출 · 확인 대기':'작성중';
+    li.append(text,status);list.append(li);
   }
 }
 $('tasks-close').onclick=()=>$('tasks-dialog').close();
@@ -1139,10 +1146,11 @@ function reset(message){
   inventoryPages.reset();
   vitals.reset();
   accounts.reset();
+  tutorial.reset();tutorialButton.hidden=true;
   clearStudentAccountPins();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();partyUI.reset();document.querySelector('.top-right').append($('connection'));
-  stop();audio.stopBgm();selfId=null;room=null;saveToken(null);world.setRoom(null,null);
+  stop();audio.playBgm('lobby');selfId=null;room=null;saveToken(null);world.setRoom(null,null);
   $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   teacherInventory.update();
@@ -1187,7 +1195,7 @@ function reset(message){
 }
 async function submit(event,handler){
   event.preventDefault();if(busy)return;busy=true;controls();$('form-message').textContent='';
-  try{await accounts.ready;const result=await handler();enter(result);accounts.entered(result,{login:mode==='student'});}catch(e){$('form-message').textContent=e.message==='operation has timed out'?'응답이 늦어지고 있어요. 연결 상태를 확인해주세요.':e.message;}
+  try{await accounts.ready;const result=await handler();enter(result);accounts.entered(result,{login:mode==='student'});tutorial.startIfNeeded(result);}catch(e){$('form-message').textContent=e.message==='operation has timed out'?'응답이 늦어지고 있어요. 연결 상태를 확인해주세요.':e.message;}
   finally{busy=false;controls();}
 }
 $('student-form').onsubmit=e=>submit(e,async()=>{accounts.checkLink();const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});

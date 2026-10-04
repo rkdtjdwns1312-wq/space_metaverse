@@ -1,0 +1,43 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+
+const key=randomBytes(32).toString('hex');
+const game=createClassroomServer({teacherKey:key,studentHours:false});
+const address=await game.listen(),url=`http://127.0.0.1:${address.port}`;
+const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const errors=[];
+try{
+  const teacher=await browser.newPage({viewport:{width:1440,height:900}});teacher.on('pageerror',e=>errors.push(e.message));
+  await teacher.goto(url);
+  assert.equal(await teacher.locator('#lobby h2').textContent(),'우주 교실');
+  assert.equal(await teacher.locator('#student-tab').textContent(),'학생 접속하기');
+  const wide=await teacher.evaluate(()=>({card:document.querySelector('#lobby').getBoundingClientRect().width,over:document.documentElement.scrollWidth-innerWidth,background:getComputedStyle(document.querySelector('.map-wrap'),'::before').backgroundImage}));
+  assert.ok(wide.card>700&&wide.over<=0&&wide.background.includes('lobby-milky-way.png'));
+  await teacher.locator('#teacher-tab').click();
+  assert.equal(await teacher.locator('#open-code').isVisible(),true);
+  assert.equal(await teacher.locator('#saved-classes-button').isVisible(),true);
+  await teacher.locator('#teacher-key').fill(key);
+  await fillNewClass(teacher,['가람']);
+  await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+  const room=[...game.store.rooms.values()][0];
+  const student=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});student.on('pageerror',e=>errors.push(e.message));
+  await student.goto(url);
+  const narrow=await student.evaluate(()=>({card:document.querySelector('#lobby').getBoundingClientRect().width,over:document.documentElement.scrollWidth-innerWidth,button:document.querySelector('#student-form .submit').getBoundingClientRect().bottom}));
+  assert.ok(narrow.card<=390&&narrow.over<=0&&narrow.button<=844);
+  await student.locator('#join-code').fill(room.code);await student.locator('#nickname').fill('가람');await student.locator('#student-pin').fill('1234');
+  await student.locator('#student-form .submit').click();await student.locator('#lobby').waitFor({state:'hidden'});
+  if(await student.locator('#password-offer-dialog').evaluate(dialog=>dialog.open))await student.locator('#password-offer-no').click();
+  await student.locator('#tutorial-dialog').waitFor({state:'visible'});
+  assert.match(await student.locator('#tutorial-title').textContent(),/걸어볼까요/);
+  for(let i=0;i<5;i++)await student.locator('#tutorial-next').click();
+  assert.match(await student.locator('#tutorial-title').textContent(),/자유롭게/);
+  await student.locator('#tutorial-next').click();await student.locator('#tutorial-dialog').waitFor({state:'hidden'});
+  assert.equal([...room.players.values()].find(player=>player.nickname==='가람').tutorialCompleted,true);
+  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+  assert.equal(await student.locator('#tutorial-dialog').evaluate(dialog=>dialog.open),false);
+  assert.deepEqual(errors,[]);
+  console.log(JSON.stringify({desktop:wide.card,mobile:narrow.card,background:true,tutorialCompleted:true,errors}));
+}finally{await browser.close();await game.close();}

@@ -8,15 +8,23 @@ export function validateTasks(value){
     !task||typeof task.id!=='string'||typeof task.assignmentId!=='string'||typeof task.text!=='string'||!task.text.trim()||task.text.length>2000||
     typeof task.sourceDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(task.sourceDate)||
     !Number.isInteger(task.lineIndex)||task.lineIndex<0||task.lineIndex>2000||
-    !Number.isSafeInteger(task.at)||task.at<0)||new Set(value.map(task=>task.id)).size!==value.length)
+    !Number.isSafeInteger(task.at)||task.at<0||!['working','submitted'].includes(task.status??'working'))||
+    new Set(value.map(task=>task.id)).size!==value.length)
     throw new Error('과제 저장 데이터가 올바르지 않습니다.');
-  return structuredClone(value);
+  return structuredClone(value.map(task=>({...task,status:task.status??'working'})));
 }
 export function addTask(player,{assignmentId,text,sourceDate,lineIndex},now=Date.now()){
   player.tasks??=[];
   ensure(player.tasks.length<MAX_TASKS,'나의 과제가 가득 찼어요. 완료한 과제를 정리해주세요.');
   ensure(!player.tasks.some(task=>task.assignmentId===assignmentId),'이미 나의 과제로 가져왔어요.');
-  const task={id:randomUUID(),assignmentId,text,sourceDate,lineIndex,at:now};player.tasks.push(task);
+  const task={id:randomUUID(),assignmentId,text,sourceDate,lineIndex,at:now,status:'working'};player.tasks.push(task);
+  return structuredClone(player.tasks);
+}
+export function setTaskStatus(player,assignment,status,now=Date.now()){
+  ensure(['working','submitted'].includes(status),'작성중 또는 제출 상태를 골라주세요.');
+  let task=player.tasks?.find(task=>task.assignmentId===assignment.id);
+  if(!task){addTask(player,{assignmentId:assignment.id,text:assignment.text,sourceDate:assignment.sourceDate,lineIndex:assignment.lineIndex},now);task=player.tasks.find(value=>value.assignmentId===assignment.id);}
+  task.status=status;
   return structuredClone(player.tasks);
 }
 export function completeTask(player,taskId){

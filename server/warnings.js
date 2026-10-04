@@ -77,6 +77,29 @@ export function blackStarList(room){
     planetId:p.avatar.blackStar.planetId,planetName:room.planets.get(p.avatar.blackStar.planetId)?.name||'없어진 부서',at:p.avatar.blackStar.at}));
 }
 
+export function teacherWarningHistory(room,offset=0){
+  const entries=[...room.planets.values()].flatMap(planet=>(planet.warnings?.entries||[]).map(entry=>({
+    id:entry.id,planetName:planet.name,targetName:room.players.get(entry.targetId)?.nickname||'없는 학생',
+    actorName:room.players.get(entry.actorId)?.nickname||'없는 학생',reason:entry.reason,at:entry.at,active:entry.active
+  }))).sort((a,b)=>b.at-a.at||a.id.localeCompare(b.id));
+  const pageSize=50;
+  return {entries:entries.slice(offset,offset+pageSize),total:entries.length,
+    nextOffset:offset+pageSize<entries.length?offset+pageSize:null};
+}
+export function deleteTeacherWarning(room,warningId){
+  const planet=[...room.planets.values()].find(value=>value.warnings?.entries.some(entry=>entry.id===warningId));
+  const entry=planet?.warnings.entries.find(value=>value.id===warningId);
+  ensure(entry?.active,'삭제할 수 있는 경고를 찾지 못했어요.');
+  entry.active=false;
+  const target=room.players.get(entry.targetId);
+  let released=false;
+  if(target?.avatar.blackStar?.planetId===planet.id&&warningCount(planet,target.id)<planet.warnings.threshold){
+    target.avatar.blackStar=null;released=true;
+    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  }
+  return {target,released,remaining:target?warningCount(planet,target.id):0};
+}
+
 // 외부 행성 정보에는 횟수와 이름만 공개하고 경고 사유·작성자는 보내지 않습니다.
 export function warningSummary(room,planet){
   return [...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,nickname:p.nickname,count:warningCount(planet,p.id),blackStar:p.avatar.blackStar?.planetId===planet.id})).filter(p=>p.count>0||p.blackStar);

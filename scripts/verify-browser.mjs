@@ -138,7 +138,7 @@ try{
  for(const p of [teacher,student])p.on('pageerror',e=>errors.push(e.message));
  await teacher.goto(url);await teacher.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await teacher.screenshot({path:'.local/01-lobby.png',fullPage:true});
- await teacher.getByRole('button',{name:'선생님이에요'}).click();
+ await teacher.getByRole('button',{name:'선생님 접속하기'}).click();
  await teacher.locator('#teacher-key').fill(teacherKey);
  await fillNewClass(teacher,['1','2']);
  await teacher.locator('#teacher-form .submit').click();
@@ -147,9 +147,9 @@ try{
  await student.goto(url);await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await student.locator('#student-hours-note').filter({hasText:'시간 제한 없이 접속'}).waitFor();
  await student.locator('#join-code').fill(code);await student.locator('#nickname').fill('허용안됨');await student.locator('#student-pin').fill('1234');
- await student.getByRole('button',{name:'우주 교실 입장하기'}).click();
+ await student.locator('#student-form .submit').click();
  await student.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});
- await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');await student.getByRole('button',{name:'우주 교실 입장하기'}).click();
+ await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');await student.locator('#student-form .submit').click();
  await student.locator('#lobby').waitFor({state:'hidden'});
  await openSocialFromDock(teacher);await teacher.locator('#player-count').filter({hasText:'2 / 30'}).waitFor({state:'attached'});check('Allowlist enforced, same-room student appears');
  const room=game.store.rooms.get(code),p=[...room.players.values()].find(p=>p.role==='student'),id=p.id;
@@ -415,7 +415,7 @@ try{
  student2.on('pageerror',e=>errors.push(e.message));
  await student2.goto(url);await student2.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await student2.locator('#join-code').fill(code);await student2.locator('#nickname').fill('2');await student2.locator('#student-pin').fill('1234');
- await student2.getByRole('button',{name:'우주 교실 입장하기'}).click();
+ await student2.locator('#student-form .submit').click();
  await student2.locator('#lobby').waitFor({state:'hidden'});
  check('A second student (nickname 2) joins the same classroom');
  await worldClick(student2,cafeteria.x,cafeteria.y);
@@ -904,7 +904,7 @@ try{
  const teacher2=await teacher2Context.newPage();
  teacher2.on('pageerror',e=>errors.push(e.message));
  await teacher2.goto(url);await teacher2.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
- await teacher2.getByRole('button',{name:'선생님이에요'}).click();
+ await teacher2.getByRole('button',{name:'선생님 접속하기'}).click();
  await teacher2.locator('#teacher-key').fill(teacherKey);
  await fillNewClass(teacher2,['99']);
  await teacher2.locator('#seed-planets').check();
@@ -922,7 +922,7 @@ try{
  intruder.on('pageerror',e=>errors.push(e.message));
  await intruder.goto(url);await intruder.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await intruder.locator('#join-code').fill(code2);await intruder.locator('#nickname').fill(p.nickname);await intruder.locator('#student-pin').fill('1234');
- await intruder.getByRole('button',{name:'우주 교실 입장하기'}).click();
+ await intruder.locator('#student-form .submit').click();
  await intruder.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});
  check('Room isolation: first room student name is rejected by the second room allowlist');
  await intruderContext.close();
