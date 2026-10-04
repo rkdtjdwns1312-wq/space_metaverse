@@ -4,7 +4,8 @@ const FILE_BGM = Object.freeze({
   lobby:'/assets/audio/login-in-front-of-love.mp3',
   'star-street':'/assets/audio/star-street-pposong.mp3',
   'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3',
-  'space-plaza':'/assets/audio/space-plaza-my-captain.mp3'
+  'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
+  'moon-garden':'/assets/audio/moon-garden-picnic.mp3'
 });
 const MAP_THEMES = {
   plaza: { notes: [60, 64, 67, 71, 67, 64, 62, 65, 69, 72, 69, 65], bass: [36, 43, 40, 35] },

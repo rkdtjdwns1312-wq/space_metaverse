@@ -52,5 +52,13 @@ try{
   assert.equal(plaza.loop,true);assert.equal(plaza.paused,false);
   assert.ok(Number.isFinite(plaza.duration)&&plaza.duration>1);
   await page.evaluate(()=>window.__shelterController.stopBgm());
-  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),loop:true,volumeControl:true,muteControl:true}));
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('moon-garden'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>4&&window.__fileBgm[4].readyState>=2);
+  const crossroads=await page.evaluate(()=>{const media=window.__fileBgm[4];return {path:new URL(media.src).pathname,loop:media.loop,paused:media.paused,duration:media.duration};});
+  assert.equal(crossroads.path,'/assets/audio/moon-garden-picnic.mp3');
+  assert.equal(crossroads.loop,true);assert.equal(crossroads.paused,false);
+  assert.ok(Number.isFinite(crossroads.duration)&&crossroads.duration>1);
+  await page.evaluate(()=>window.__shelterController.stopBgm());
+  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),crossroadsAudio:crossroads.path,crossroadsSeconds:Math.round(crossroads.duration),loop:true,volumeControl:true,muteControl:true}));
 }finally{await browser.close();await game.close();}
