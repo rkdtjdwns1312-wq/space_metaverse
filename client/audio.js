@@ -5,7 +5,9 @@ const FILE_BGM = Object.freeze({
   'star-street':'/assets/audio/star-street-pposong.mp3',
   'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3',
   'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
-  'moon-garden':'/assets/audio/moon-garden-picnic.mp3'
+  'moon-garden':'/assets/audio/moon-garden-picnic.mp3',
+  'sun-paradise':'/assets/audio/sun-paradise-school-road.mp3',
+  'sun-paradise-2':'/assets/audio/sun-paradise-school-road.mp3'
 });
 const MAP_THEMES = {
   plaza: { notes: [60, 64, 67, 71, 67, 64, 62, 65, 69, 72, 69, 65], bass: [36, 43, 40, 35] },
@@ -44,16 +46,17 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   let started = false;
 
   function ensureFileMedia(id) {
-    if(fileMedia.has(id))return fileMedia.get(id);
+    const url=FILE_BGM[id];
+    if(fileMedia.has(url))return fileMedia.get(url);
     try {
-      const media=mediaFactory?mediaFactory(id,FILE_BGM[id]):typeof globalThis.Audio==='function'?new globalThis.Audio(FILE_BGM[id]):null;
+      const media=mediaFactory?mediaFactory(id,url):typeof globalThis.Audio==='function'?new globalThis.Audio(url):null;
       if(!media)return null;
       media.loop=true;media.preload='auto';media.volume=settings.volume;media.muted=settings.muted;
-      fileMedia.set(id,media);return media;
+      fileMedia.set(url,media);return media;
     } catch { return null; }
   }
-  function pauseFileMedia(exceptId='') {
-    for(const [id,media] of fileMedia)if(id!==exceptId){
+  function pauseFileMedia(exceptUrl='') {
+    for(const [url,media] of fileMedia)if(url!==exceptUrl){
       media.pause();
       try { media.currentTime=0; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
     }
@@ -109,7 +112,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   async function playBgm(mapId = 'default') {
     const id = String(mapId || 'default').toLowerCase();
     if(currentMap!==id){
-      pauseFileMedia(id);
+      pauseFileMedia(FILE_BGM[id]);
       currentMap=id;step=0;
       if(timer!==null){clearInterval(timer);timer=null;}
     }

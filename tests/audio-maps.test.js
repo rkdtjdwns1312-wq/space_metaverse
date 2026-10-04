@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAudio} from '../client/audio.js';
 
-test('제공된 파일 배경음악은 로그인·쉼터·계곡·광장·낙원 갈림길에서 반복하고 소리 설정을 따른다',async()=>{
+test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2가 재생 위치를 공유한다',async()=>{
   const players=new Map(),storage={getItem:()=>null,setItem:()=>{}};
   const audio=createAudio({storage,mediaFactory:(id,url)=>{
-    const media={src:url,paused:true,currentTime:0,volume:1,muted:false,loop:false,
-      async play(){this.paused=false;},pause(){this.paused=true;}};
+    const media={src:url,paused:true,currentTime:0,volume:1,muted:false,loop:false,playCount:0,
+      async play(){this.paused=false;this.playCount++;},pause(){this.paused=true;}};
     players.set(id,media);return media;
   }});
   try{
@@ -35,14 +35,24 @@ test('제공된 파일 배경음악은 로그인·쉼터·계곡·광장·낙원
     assert.equal(plaza.paused,true);
     assert.equal(crossroads.src,'/assets/audio/moon-garden-picnic.mp3');
     assert.equal(crossroads.loop,true);assert.equal(crossroads.paused,false);
-    audio.setVolume(.6);audio.setMuted(true);
-    assert.equal(lobby.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);assert.equal(plaza.volume,.6);assert.equal(crossroads.volume,.6);
-    assert.equal(lobby.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);assert.equal(plaza.muted,true);assert.equal(crossroads.muted,true);
-    audio.setMuted(false);assert.equal(crossroads.muted,false);
-    assert.equal(await audio.playBgm('star-origin-1'),true);
+    assert.equal(await audio.playBgm('sun-paradise'),true);
+    const sun=players.get('sun-paradise');
     assert.equal(crossroads.paused,true);
+    assert.equal(sun.src,'/assets/audio/sun-paradise-school-road.mp3');
+    sun.currentTime=37;
+    assert.equal(await audio.playBgm('sun-paradise-2'),true);
+    assert.equal(players.has('sun-paradise-2'),false);
+    assert.equal(sun.paused,false);assert.equal(sun.currentTime,37);assert.equal(sun.playCount,1);
+    assert.equal(await audio.playBgm('sun-paradise'),true);
+    assert.equal(sun.paused,false);assert.equal(sun.currentTime,37);assert.equal(sun.playCount,1);
+    audio.setVolume(.6);audio.setMuted(true);
+    assert.equal(lobby.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);assert.equal(plaza.volume,.6);assert.equal(crossroads.volume,.6);assert.equal(sun.volume,.6);
+    assert.equal(lobby.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);assert.equal(plaza.muted,true);assert.equal(crossroads.muted,true);assert.equal(sun.muted,true);
+    audio.setMuted(false);assert.equal(sun.muted,false);
+    assert.equal(await audio.playBgm('sun-paradise-3'),true);
+    assert.equal(sun.paused,true);assert.equal(sun.currentTime,0);
     assert.equal(await audio.playBgm('lobby'),true);
-    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);
+    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);
     audio.stopBgm();assert.equal(lobby.paused,true);
   }finally{audio.dispose();}
 });

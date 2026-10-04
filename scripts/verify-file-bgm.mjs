@@ -60,5 +60,19 @@ try{
   assert.equal(crossroads.loop,true);assert.equal(crossroads.paused,false);
   assert.ok(Number.isFinite(crossroads.duration)&&crossroads.duration>1);
   await page.evaluate(()=>window.__shelterController.stopBgm());
-  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),crossroadsAudio:crossroads.path,crossroadsSeconds:Math.round(crossroads.duration),loop:true,volumeControl:true,muteControl:true}));
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('sun-paradise'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>5&&window.__fileBgm[5].readyState>=2);
+  const sun=await page.evaluate(()=>{const media=window.__fileBgm[5];return {path:new URL(media.src).pathname,loop:media.loop,paused:media.paused,duration:media.duration};});
+  assert.equal(sun.path,'/assets/audio/sun-paradise-school-road.mp3');
+  assert.equal(sun.loop,true);assert.equal(sun.paused,false);
+  assert.ok(Number.isFinite(sun.duration)&&sun.duration>25);
+  await page.evaluate(()=>{window.__fileBgm[5].currentTime=20;});
+  await page.waitForFunction(()=>window.__fileBgm[5].currentTime>=19);
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('sun-paradise-2'),{once:true}));
+  await page.locator('#student-tab').click();
+  const shared=await page.evaluate(()=>({count:window.__fileBgm.length,paused:window.__fileBgm[5].paused,position:window.__fileBgm[5].currentTime}));
+  assert.equal(shared.count,6);assert.equal(shared.paused,false);assert.ok(shared.position>=19);
+  await page.evaluate(()=>window.__shelterController.stopBgm());
+  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),crossroadsAudio:crossroads.path,crossroadsSeconds:Math.round(crossroads.duration),sunAudio:sun.path,sunSeconds:Math.round(sun.duration),sunSharedPosition:true,loop:true,volumeControl:true,muteControl:true}));
 }finally{await browser.close();await game.close();}
