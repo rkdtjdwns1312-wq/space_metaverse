@@ -44,5 +44,13 @@ try{
   assert.equal(valley.loop,true);assert.equal(valley.paused,false);
   assert.ok(Number.isFinite(valley.duration)&&valley.duration>1);
   await page.evaluate(()=>window.__shelterController.stopBgm());
-  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),loop:true,volumeControl:true,muteControl:true}));
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('space-plaza'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>3&&window.__fileBgm[3].readyState>=2);
+  const plaza=await page.evaluate(()=>{const media=window.__fileBgm[3];return {path:new URL(media.src).pathname,loop:media.loop,paused:media.paused,duration:media.duration};});
+  assert.equal(plaza.path,'/assets/audio/space-plaza-my-captain.mp3');
+  assert.equal(plaza.loop,true);assert.equal(plaza.paused,false);
+  assert.ok(Number.isFinite(plaza.duration)&&plaza.duration>1);
+  await page.evaluate(()=>window.__shelterController.stopBgm());
+  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),loop:true,volumeControl:true,muteControl:true}));
 }finally{await browser.close();await game.close();}

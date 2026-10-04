@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAudio} from '../client/audio.js';
 
-test('제공된 파일 배경음악은 로그인·쉼터·은하수계곡에서 반복하고 소리 설정을 따른다',async()=>{
+test('제공된 파일 배경음악은 로그인·쉼터·계곡·광장에서 반복하고 소리 설정을 따른다',async()=>{
   const players=new Map(),storage={getItem:()=>null,setItem:()=>{}};
   const audio=createAudio({storage,mediaFactory:(id,url)=>{
     const media={src:url,paused:true,currentTime:0,volume:1,muted:false,loop:false,
@@ -25,14 +25,19 @@ test('제공된 파일 배경음악은 로그인·쉼터·은하수계곡에서 
     assert.equal(shelter.paused,true);
     assert.equal(valley.src,'/assets/audio/milky-valley-silent-morning.mp3');
     assert.equal(valley.loop,true);assert.equal(valley.paused,false);
-    audio.setVolume(.6);audio.setMuted(true);
-    assert.equal(lobby.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);
-    assert.equal(lobby.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);
-    audio.setMuted(false);assert.equal(valley.muted,false);
-    await audio.playBgm('space-plaza');
+    assert.equal(await audio.playBgm('space-plaza'),true);
+    const plaza=players.get('space-plaza');
     assert.equal(valley.paused,true);
+    assert.equal(plaza.src,'/assets/audio/space-plaza-my-captain.mp3');
+    assert.equal(plaza.loop,true);assert.equal(plaza.paused,false);
+    audio.setVolume(.6);audio.setMuted(true);
+    assert.equal(lobby.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);assert.equal(plaza.volume,.6);
+    assert.equal(lobby.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);assert.equal(plaza.muted,true);
+    audio.setMuted(false);assert.equal(plaza.muted,false);
+    assert.equal(await audio.playBgm('star-origin-1'),true);
+    assert.equal(plaza.paused,true);
     assert.equal(await audio.playBgm('lobby'),true);
-    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);
+    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);
     audio.stopBgm();assert.equal(lobby.paused,true);
   }finally{audio.dispose();}
 });
