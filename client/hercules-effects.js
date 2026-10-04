@@ -18,8 +18,19 @@ export function drawHerculesAttack(ctx,hit,elapsedMs,reducedMotion=false){
 }
 export function drawHerculesShield(ctx,shield,elapsedMs,reducedMotion=false){
   const id=`skill-lv${shield.stage}`;
-  const index=reducedMotion?12:elapsedMs<700?Math.floor(elapsedMs/700*6):elapsedMs>shield.durationMs-500?18+Math.floor((elapsedMs-(shield.durationMs-500))/500*6):6+Math.floor((elapsedMs-700)/85)%12;
-  frame(ctx,id,Math.min(23,index),shield.size*3.5);
+  const duration=shield.durationMs||5000,elapsed=Math.max(0,Math.min(duration,elapsedMs));
+  if(elapsed>=1000&&elapsed<duration-1000){
+    // 같은 시트의 방패 중심만 잘라 고정합니다. 돔·바닥 마법진은 유지 중에는 보이지 않습니다.
+    const image=imageOf(id);if(!image)return;
+    const frameX=(4%6)*256,frameY=0;
+    const width=shield.size*1.12,height=shield.size*2.47;
+    ctx.drawImage(image,frameX+87,frameY+27,82,181,-width/2,-height/2,width,height);
+    return;
+  }
+  const index=reducedMotion?(elapsed<1000?4:18):elapsed<1000?
+    Math.min(4,Math.floor(elapsed/1000*5)):
+    Math.min(23,12+Math.floor((elapsed-(duration-1000))/1000*12));
+  frame(ctx,id,index,shield.size*3.5);
 }
 export function drawHerculesBurst(ctx,burst,elapsedMs,reducedMotion=false){
   ctx.save();ctx.translate(burst.x,burst.y);

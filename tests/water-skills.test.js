@@ -7,7 +7,7 @@ import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
-import {waterFrameAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
+import {waterFrameAt,cetusAuraFrameAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
 
 const advance=(room,now)=>advanceProjectiles(room,now,combatEnemies,resolveWaterHit);
 function setup(id,level=4){
@@ -101,6 +101,12 @@ test('각 별자리 4시트×24F 등록과 10초 오라 발동·반복·소멸 �
   assert.equal(waterFrameAt(0),0);assert.equal(waterFrameAt(499),5);
   assert.equal(waterFrameAt(500),6);assert.equal(waterFrameAt(9499),17);
   assert.equal(waterFrameAt(9500),18);assert.equal(waterFrameAt(9999),23);
+});
+
+test('고래의 푸른 오라는 유지 중 같은 프레임으로 이음새 없이 반복된다',()=>{
+  assert.equal(cetusAuraFrameAt(0),cetusAuraFrameAt(2200));
+  assert.equal(cetusAuraFrameAt(1100),15);
+  assert.ok(Math.abs(cetusAuraFrameAt(2199)-cetusAuraFrameAt(2200))<.02);
 });
 
 test('물고기 연출은 앞으로 전진하며 중간에 솟고 사거리 끝 바닥에 착지한다',()=>{

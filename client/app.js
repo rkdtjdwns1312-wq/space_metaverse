@@ -22,6 +22,7 @@ import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
 import {createCharacterSkillsUI} from './character-skills-ui.js';
 import {createStatusUI} from './status-ui.js';
+import {createStatusDockUI} from './status-dock.js';
 import {createVitalsUI} from './vitals-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
@@ -86,6 +87,10 @@ document.addEventListener('keydown',unlockLobbyAudio,{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
+const statusDock=createStatusDockUI($('dock-statuses'),$('status-detail-dialog'),{
+  title:$('status-detail-title'),description:$('status-detail-description'),
+  expiry:$('status-detail-expiry'),count:$('status-detail-count'),close:$('status-detail-close')
+});
 const tutorial=createTutorialUI({request,stop,toast});
 const tutorialButton=document.createElement('button');tutorialButton.id='tutorial-open';tutorialButton.className='secondary';tutorialButton.type='button';tutorialButton.textContent='첫 여행 안내 다시 보기';tutorialButton.hidden=true;
 $('menu-dialog').insertBefore(tutorialButton,$('my-password'));
@@ -547,6 +552,7 @@ function effectText(e){
 }
 function renderSelfEffects(me){
   statuses.update(me);
+  statusDock.update(me);
   const list=(me?.effects||[]).filter(e=>e.until===null||e.until>Date.now());
   if(!list.length){
     const li=document.createElement('li');li.className='muted';li.textContent='지금은 특별한 효과가 없어요.';
@@ -1164,6 +1170,7 @@ function reset(message){
   $('self-department').textContent='아직 소속 행성이 없어요. 행성 가까이 가서 F를 눌러보세요.';
   renderWallet($('bag-currency'),null,{shardsId:'self-shards',energyId:'self-energy'});$('bag-currency').hidden=false;
   statuses.update(null);$('self-attack-power').textContent='공격력 · 설정 예정';
+  statusDock.update(null);
   $('self-effects').replaceChildren(Object.assign(document.createElement('li'),{className:'muted',textContent:'지금은 특별한 효과가 없어요.'}));
   $('self-level').textContent='LV 1 ★';$('card-foot').textContent='';
   $('self-form-name').textContent='소행성';
@@ -1340,7 +1347,9 @@ for(const button of document.querySelectorAll('[data-dx]')){
 // 입력 전송 간격은 그대로 두고, 물체 안내만 화면 프레임에 맞춰 카메라를 따라갑니다.
 setInterval(input,80);
 // 열린 내 정보만 갱신하여 만료된 배지를 통신 대기 없이 없앱니다.
-setInterval(()=>{if(room&&$('avatar-dialog').open)renderSelfEffects(room.players.find(p=>p.id===selfId));},1000);
+setInterval(()=>{if(!room)return;const me=room.players.find(p=>p.id===selfId);
+  if($('avatar-dialog').open)renderSelfEffects(me);else statusDock.update(me);
+},1000);
 function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
 requestAnimationFrame(interactionFrame);controls();socket.connect();
 

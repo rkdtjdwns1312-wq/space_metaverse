@@ -25,6 +25,7 @@ try{
   await page.locator('#nickname').fill('뱀검사');await page.locator('#student-pin').fill('1234');
   await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
   await page.locator('#password-offer-no').click();
+  if(await page.locator('#tutorial-dialog').evaluate(e=>e.open))await page.locator('#tutorial-later').click();
   const room=game.store.rooms.get(made.room.code),player=[...room.players.values()].find(p=>p.nickname==='뱀검사');
   room.monsters=new Map();
   Object.assign(player,{mapId:'star-origin-1',x:650,y:470,facing:{x:1,y:0},battleVitals:null,ophiuchusCooldownUntil:0});

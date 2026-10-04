@@ -33,6 +33,13 @@ export function waterFrameAt(elapsedMs,durationMs=10000){
   return 6+Math.floor((elapsedMs-500)/1000*12)%12;
 }
 
+// 고래의 오라는 커졌다 작아지는 시트 전체를 되감지 않고, 가운데 물결을 왕복 재생합니다.
+// 양 끝이 같은 프레임이므로 반복 경계에서 모양이 튀지 않습니다.
+export function cetusAuraFrameAt(elapsedMs){
+  const phase=((elapsedMs%2200)+2200)%2200/2200;
+  return 7+8*(1-Math.abs(phase*2-1));
+}
+
 // 물고기는 전진 거리와 높이를 함께 바꿉니다. 시작/착지는 바닥, 중간은 최고점입니다.
 export function waterProjectilePoint(cast,progress){
   const p=Math.max(0,Math.min(1,progress));

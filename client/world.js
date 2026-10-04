@@ -371,7 +371,7 @@ export function createWorld(canvas) {
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,size*.22);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
     if(corona){ctx.save();ctx.translate(-(p.facingX||1)*size*.24,0);drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);ctx.restore();}
-    if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.22,0);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
+    if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.19);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
     if(p.role==='teacher'&&!p.avatar?.teacherPreview){
       celestialAura(ctx,'#e9c77b',58,time);
@@ -598,9 +598,9 @@ export function createWorld(canvas) {
       for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);ctx.lineTo(Math.cos(a)*(radius+9),Math.sin(a)*(radius+9));ctx.stroke();}ctx.restore();
     }
     projectiles.draw(ctx,t,reducedMotion.matches);
-    waterPulses=waterPulses.filter(p=>t-p.startedAt<500);
+    waterPulses=waterPulses.filter(p=>t-p.startedAt<850);
     for(const pulse of waterPulses)drawWaterProjectile(ctx,{kind:'cetus-attack',vfxId:'attack',
-      x:pulse.x,y:pulse.y,dx:pulse.direction,dy:0,size:pulse.size,durationMs:500},t-pulse.startedAt,reducedMotion.matches);
+      x:pulse.x,y:pulse.y,dx:pulse.direction,dy:0,size:pulse.size,durationMs:850},t-pulse.startedAt,reducedMotion.matches);
     canvas.dataset.waterPulseCount=String(waterPulses.length);
     damageNumbers.draw(ctx,t,reducedMotion.matches);
     canvas.dataset.damageNumberCount=String(damageNumbers.size);

@@ -26,10 +26,24 @@ export function drawOphiuchusSkill(ctx,hit,elapsedMs,reducedMotion=false){
   const spec=OPHIUCHUS_VFX[hit.vfxId];if(!spec)return false;
   preloadOphiuchus([spec.id]);
   const frame=reducedMotion?12:ophiuchusFrameAt(elapsedMs);
-  const center=hit.size*.6+hit.range*.55;
-  ctx.save();ctx.translate(hit.x+hit.dx*center,hit.y+hit.dy*center);
+  const image=images.get(spec.url);
+  if(!image?.complete||!image.naturalWidth)return true;
+  const snakeSize=hit.size*hit.snakeScale*1.35*.3;
+  const start=hit.originOffset??hit.size*.6,end=start+hit.range;
+  const frameX=(frame%6)*256,frameY=Math.floor(frame/6)*256;
+  // 시트의 왼쪽 뱀은 캐릭터 바로 앞에 고정하고, 오른쪽 독기만 사거리까지 펼칩니다.
+  const split=180,snakeX=start-snakeSize*.15;
+  const plumeX=snakeX+snakeSize*split/256,plumeWidth=Math.max(0,end-plumeX);
+  ctx.save();ctx.translate(hit.x,hit.y);
   if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}
   else ctx.rotate(Math.atan2(hit.dy,hit.dx));
-  drawFrame(ctx,spec,frame,0,0,hit.size*hit.snakeScale*1.35*.3);
+  ctx.drawImage(image,frameX,frameY,256,256,snakeX,-snakeSize/2,snakeSize,snakeSize);
+  if(elapsedMs>=750&&elapsedMs<3000&&plumeWidth>0){
+    const reach=reducedMotion?1:Math.min(1,(elapsedMs-750)/250);
+    const venomFrame=Math.max(frame,8),venomX=(venomFrame%6)*256,venomY=Math.floor(venomFrame/6)*256;
+    ctx.save();ctx.beginPath();ctx.rect(plumeX,-snakeSize/2,plumeWidth*reach,snakeSize);ctx.clip();
+    ctx.drawImage(image,venomX+split,venomY,256-split,256,plumeX,-snakeSize/2,plumeWidth,snakeSize);
+    ctx.restore();
+  }
   ctx.restore();return true;
 }
