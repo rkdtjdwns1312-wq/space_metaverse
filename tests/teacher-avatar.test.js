@@ -12,7 +12,7 @@ test('교사 전용 능력은 role로만 적용되고 학생의 LV6 위조는 �
   const forged={role:'student',nickname:'학생',avatar:{level:6}};
   assert.equal(attackPowerOf(teacher.avatar.level,null,teacher),99999);
   assert.equal(defensePowerOf(teacher.avatar.level,null,teacher),3);
-  assert.deepEqual(vitalsOf(teacher.avatar.level,teacher),{hp:{current:99999,max:99999},mp:{current:40,max:40}});
+  assert.deepEqual(vitalsOf(teacher.avatar.level,teacher),{hp:{current:999,max:999},mp:{current:999,max:999}});
   assert.equal(attackPowerOf(6,null,forged),null);
   assert.equal(vitalsOf(6,forged),null);
   assert.deepEqual(avatarLabel(teacher),{name:'선생님',detail:'LV6 별의수호자'});
@@ -28,6 +28,6 @@ test('실제 소켓 스냅샷은 교사 LV6 능력·HP를 보장하고 학생 ro
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',role:'teacher',level:6});
   const teacherView=created.room.players.find(player=>player.role==='teacher');
   const studentView=joined.room.players.find(player=>player.id===joined.selfId);
-  assert.equal(teacherView.avatar.level,6);assert.equal(teacherView.combat.attackPower,99999);assert.deepEqual(teacherView.vitals.hp,{current:99999,max:99999});
+  assert.equal(teacherView.avatar.level,6);assert.equal(teacherView.combat.attackPower,99999);assert.deepEqual(teacherView.vitals.hp,{current:999,max:999});
   assert.equal(studentView.role,'student');assert.equal(studentView.avatar.level,1);assert.equal(studentView.combat.attackPower,null);
 });

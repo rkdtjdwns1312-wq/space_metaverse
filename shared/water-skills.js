@@ -37,7 +37,15 @@ export function waterFrameAt(elapsedMs,durationMs=10000){
 export function waterProjectilePoint(cast,progress){
   const p=Math.max(0,Math.min(1,progress));
   const distance=cast.range*p;
-  const rise=cast.kind==='pisces-skill'?cast.size*1.25*4*p*(1-p):0;
-  return {x:cast.x+cast.dx*distance,y:cast.y+cast.dy*distance-rise};
+  const fish=cast.kind==='pisces-skill';
+  const lateral=fish?(cast.fishLane||0)*cast.size*.22*Math.sin(Math.PI*p):0;
+  const rise=fish?cast.size*.625*4*p*(1-p):0;
+  const x=cast.x+cast.dx*distance-cast.dy*lateral;
+  const y=cast.y+cast.dy*distance+cast.dx*lateral-rise;
+  if(!fish)return {x,y};
+  const sideSlope=(cast.fishLane||0)*cast.size*.22*Math.PI*Math.cos(Math.PI*p);
+  const riseSlope=cast.size*.625*4*(1-2*p);
+  return {x,y,visualAngle:Math.atan2(cast.dy*cast.range+cast.dx*sideSlope-riseSlope,
+    cast.dx*cast.range-cast.dy*sideSlope)};
 }
 export const waterProjectileAngle=cast=>Math.atan2(cast.dy??0,cast.dx??1);

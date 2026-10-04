@@ -38,14 +38,11 @@ export function castSwan(room,player,now,{basic=false}={}){
   const base={x:player.x,y:player.y,size,range:size*spec.rangeWidths,width:size*.13,
     power,basic:true,kind:'cygnus-attack',vfxId:'attack',originOffset:attackGeometryOf(player).originOffset,durationMs:650,
     visualScale:boosted?1.2:1};
-  // Spread the feathers slightly, so 2/3/4 shots are visible and each has its
-  // own server-authoritative flight path and first-monster collision.
+  // 모든 깃털은 같은 곳에서 출발하며 중간에서 서로 교차합니다.
   const projectiles=[];
   for(let i=0;i<count;i++){
-    const lane=i-(count-1)/2,angle=lane*.11,cos=Math.cos(angle),sin=Math.sin(angle);
-    const sideways=lane*size*.34;
-    projectiles.push(...launchProjectiles(room,player,{...base,x:base.x-dy*sideways,y:base.y+dx*sideways,
-      dx:dx*cos-dy*sin,dy:dx*sin+dy*cos},now,1));
+    const lane=i-(count-1)/2;
+    projectiles.push(...launchProjectiles(room,player,{...base,dx,dy,swanLane:lane},now,1));
   }
   if(boosted){
     player.swanAura.remainingAttacks--;

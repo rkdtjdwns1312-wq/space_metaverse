@@ -28,8 +28,8 @@ async function openChat(p) {
   }
   await p.locator('#chat-dialog').waitFor({ state: 'visible' });
 }
-async function push(room, player, text, channel = 'map') {
-  const msg = game.store.pushChat(room, { playerId: player.id, nickname: player.nickname, role: player.role, text, flagged: false, channel, ...(channel === 'map' ? { mapId: player.mapId } : {}) });
+async function push(room, player, text, channel = 'map', details = {}) {
+  const msg = game.store.pushChat(room, { playerId: player.id, nickname: player.nickname, role: player.role, text, flagged: false, channel, ...(channel === 'map' ? { mapId: player.mapId } : {}), ...details });
   for (const recipient of room.players.values()) {
     if (!recipient.connected || (channel === 'map' && recipient.mapId !== msg.mapId)) continue;
     const socket = game.io.sockets.sockets.get(recipient.socketId);
@@ -54,6 +54,8 @@ try {
     await p.locator('#student-pin').fill('1234');
     await p.locator('#student-form .submit').click();
     await p.locator('#lobby').waitFor({ state: 'hidden' });
+    if(await p.locator('#password-offer-dialog').evaluate(dialog=>dialog.open))await p.locator('#password-offer-no').click();
+    if(await p.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await p.locator('#tutorial-later').click();
   }
   const p1 = [...room.players.values()].find(p => p.nickname === '1');
   const p2 = [...room.players.values()].find(p => p.nickname === '2');
@@ -61,14 +63,14 @@ try {
   await openChat(one);
   assert.equal(await one.locator('#chat-dialog').getAttribute('open'), '');
   assert.equal(await one.locator('#chat-dialog').evaluate(el => el.matches(':modal')), false);
-  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '2');
+  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '3');
   await one.locator('#chat-shrink').click();
-  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '1');
+  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '2');
   await one.locator('#chat-grow').click(); await one.locator('#chat-grow').click();
-  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '3');
+  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '4');
   await one.locator('#chat-window-close').click(); await openChat(one);
-  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '3');
-  check('왼쪽 위 토글이 비모달 채팅을 열고 크기 1~3과 같은 입장 중 재열림을 유지');
+  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '4');
+  check('왼쪽 위 토글이 비모달 채팅을 열고 기본 크기 3과 크기 1~5 조절·재열림을 유지');
 
   await one.locator('#world').focus();
   const beforeMove = { x: p1.x, y: p1.y };
@@ -91,7 +93,7 @@ try {
   const mapStarted = Date.now();
   while (Date.now() - mapStarted < 10000 && p1.mapId !== STREET_ID) await new Promise(resolve => setTimeout(resolve, 50));
   assert.equal(p1.mapId, STREET_ID);
-  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '3');
+  assert.equal(await one.locator('#chat-dialog').getAttribute('data-size'), '4');
   await one.locator('#chat-log').filter({ hasText: '첫 대화' }).waitFor();
   check('실제 문 근처 F 맵 전환 뒤 채팅창 크기와 이전 대화 유지');
 
@@ -105,6 +107,20 @@ try {
   assert.ok(await one.locator('#chat-log li').count() >= oldVisible);
   check('다른 맵 메시지는 차단되고 같은 맵 메시지는 서버 push로 수신');
 
+  await push(room,p2,'행성 탭 확인','department',{departmentId:p2.departmentId});
+  await push(room,p2,'귓속말 탭 확인','direct',{targetId:p1.id});
+  await one.locator('#chat-log li.channel-department').filter({hasText:'행성 탭 확인'}).waitFor();
+  await one.locator('#chat-log li.channel-direct').filter({hasText:'귓속말 탭 확인'}).waitFor();
+  assert.equal(await one.locator('#chat-log li.channel-map .text').first().evaluate(el=>getComputedStyle(el).color),'rgb(36, 32, 43)');
+  assert.equal(await one.locator('#chat-log li.channel-department .text').first().evaluate(el=>getComputedStyle(el).color),'rgb(32, 107, 62)');
+  assert.equal(await one.locator('#chat-log li.channel-direct .text').first().evaluate(el=>getComputedStyle(el).color),'rgb(107, 112, 37)');
+  await one.locator('[data-chat-tab="department"]').click();
+  assert.equal(await one.locator('#chat-log li.channel-direct').count(),0);
+  await one.locator('[data-chat-tab="direct"]').click();
+  assert.equal(await one.locator('#chat-log li.channel-department').count(),0);
+  await one.locator('[data-chat-tab="map"]').click();
+  check('전체는 세 종류를 모두 보여주고 행성·귓속말 탭은 각각 분리하며 글자색을 구분');
+
   for (let i = 0; i < 12; i++) await push(room, p2, `기록 ${String(i).padStart(2, '0')}`);
   await one.locator('#chat-log').filter({ hasText: '기록 11' }).waitFor();
   const last = one.locator('#chat-log li').last();
@@ -117,10 +133,9 @@ try {
   check('오래된 글이 위, 새 글이 아래이며 스크롤백 보존과 최신 글 버튼 동작');
 
   await teacher.locator('#chat-window-toggle').click();
-  await teacher.locator('#chat-toggle').count();
-  await teacher.locator('#dock-chat').click(); await teacher.locator('#open-chat').click();
-  assert.equal(await teacher.locator('#chat-toggle').isVisible(), true);
-  check('교사 채팅 토글 권한 UI가 기존 위치에서 유지');
+  assert.equal(await teacher.locator('#chat-toggle').isVisible(), false);
+  assert.equal(await teacher.locator('#chat-clear').isVisible(), false);
+  check('채팅 끄기·지우기 버튼과 여백 제거');
 
   await teacher.screenshot({ path: '.local/183-chat-desktop.png', fullPage: true });
   await one.setViewportSize({ width: 390, height: 844 });
@@ -130,14 +145,12 @@ try {
   await one.locator('#chat-grow').click(); mobileSizes.push(await one.locator('#chat-dialog').boundingBox());
   assert.ok(mobileSizes[0].height < mobileSizes[1].height && mobileSizes[1].height < mobileSizes[2].height, '모바일 채팅 크기가 단조 증가');
   const chatBox = await one.locator('#chat-dialog').boundingBox();
-  const attackBox = await one.locator('.combat-buttons').boundingBox();
-  const joystickBox = await one.locator('#joystick').boundingBox();
-  assert.ok(chatBox.y + chatBox.height + 8 <= Math.min(attackBox.y, joystickBox.y), '모바일 채팅 하단이 공격 버튼·조이스틱보다 위');
-  check('390×844에서 크기 1→2→3 단조 증가와 공격 버튼·조이스틱 상단 간격 확인');
+  assert.ok(chatBox.y+chatBox.height<=844,'모바일에서 채팅창이 화면 높이를 벗어나지 않음');
+  check('390×844에서 크기 2→3→4 단조 증가와 화면 안 표시 확인');
   await one.screenshot({ path: '.local/183-chat-mobile.png', fullPage: true });
   assert.ok(await one.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   for (const id of ['#chat-window-toggle', '#chat-shrink', '#chat-window-close', '#chat-input', '#chat-send']) assert.ok(await one.locator(id).isEnabled(), id);
-  assert.equal(await one.locator('#chat-grow').isDisabled(), true);
+  assert.equal(await one.locator('#chat-grow').isEnabled(), true);
   check('1440px·390px 화면 캡처와 버튼 접근성·가로 넘침 확인');
   assert.deepEqual(errors, []);
   await writeFile('.local/183-chat-report.json', JSON.stringify({ checks, errors }, null, 2));

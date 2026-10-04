@@ -9,7 +9,7 @@ export const CELESTIAL_MONSTER_ART=Object.freeze({
     frames:[[0,0,640,640,350,555],[640,0,640,640,340,555],[0,640,700,640,320,465],[700,640,580,640,300,472]]},
   'cool-star':{src:'/assets/monsters/cool-star-poses.png',effect:'moon',scale:1,
     frames:[[0,0,640,640,330,590],[640,0,640,640,335,586],[0,640,700,640,290,510],[700,640,580,640,280,530]]},
-  'grown-cool-star':{src:'/assets/monsters/grown-cool-star-poses.png',effect:'moon',scale:.55,
+  'grown-cool-star':{src:'/assets/monsters/grown-cool-star-poses.png',effect:'moon',scale:.9,
     frames:[[0,0,640,640,355,590],[640,0,640,640,350,600],[0,640,700,640,290,510],[700,640,580,640,265,510]]},
 });
 const images=new Map();

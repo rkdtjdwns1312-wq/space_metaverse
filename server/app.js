@@ -8,7 +8,7 @@ import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aq
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {castWater,advanceWaterAuras,waterAuraViews,waterCooldowns,resolveWaterHit} from './water-skills.js';
 import {castSwan,advanceSwanAuras,swanAuraViews,swanCooldowns} from './swan-skills.js';
-import {castOphiuchus,advanceOphiuchusPoison,ophiuchusCooldowns} from './ophiuchus-skills.js';
+import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusCooldowns} from './ophiuchus-skills.js';
 import {castGemini,geminiCooldowns} from './gemini-skills.js';
 import {castAries,advanceAriesClouds,ariesCloudViews,ariesCooldowns} from './aries-skills.js';
 import {castTaurus,advanceTaurusDashes,taurusDashViews,taurusCooldowns} from './taurus-skills.js';
@@ -16,13 +16,13 @@ import {castHercules,advanceHerculesShields,herculesShieldViews,herculesCooldown
 import {castLibra,advanceLibraAuras,libraAuraViews,libraCooldowns} from './libra-skills.js';
 import {castCorona,advanceCorona,coronaAuraViews,coronaCooldowns} from './corona-skills.js';
 import {castCapricorn,advanceCapricorn,capricornBlessingViews,capricornCooldowns} from './capricorn-skills.js';
-import {castLeo,advanceLeoCourage,leoCooldowns} from './leo-skills.js';
+import {castLeo,advanceLeoRoars,advanceLeoCourage,leoCooldowns} from './leo-skills.js';
 import {isWaterConstellation} from '../shared/water-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
 import {advancePassiveRecovery} from './passive-recovery.js';
-import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket} from './exploration.js';
+import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,updateExplorationCards} from './exploration.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
 import {useLv4Item,useLv4Holding,lv4Info,lv4TeacherInfo,confirmLv4,blackHolePreview,syncLv4Holdings,settleLv4Items,lv4ItemsDue} from './lv4-item-effects.js';
 import express from 'express';
@@ -73,7 +73,7 @@ import {evolutionInfo,changeConstellation,evolveConstellation,selectTeacherEvolu
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
 import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
-import {createRabbitDraw,rabbitDrawView} from './rabbit-draw.js';
+import {createRabbitDraw,rabbitDrawView,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
@@ -324,6 +324,8 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return {completed:true};
     });
     action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
+    action('exploration:update-cards',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      return updateExplorationCards(s.room,s.player,data?.cards,clock());});
     action('exploration:explore',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const result=explore(s.room,s.player,clock());roster(s.room);return result;});
     action('exploration:clear-results',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -343,6 +345,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       if(['corvus','aquarius','cygnus','ophiuchus','gemini','aries','taurus','hercules','libra','corona-borealis','capricorn','leo'].includes(player.avatar.constellationId)||isWaterConstellation(player)){
       const cast=player.avatar.constellationId==='aquarius'?castAquarius:player.avatar.constellationId==='corvus'?castCorvus:player.avatar.constellationId==='cygnus'?castSwan:player.avatar.constellationId==='ophiuchus'?castOphiuchus:player.avatar.constellationId==='gemini'?castGemini:player.avatar.constellationId==='aries'?castAries:player.avatar.constellationId==='taurus'?castTaurus:player.avatar.constellationId==='hercules'?castHercules:player.avatar.constellationId==='libra'?castLibra:player.avatar.constellationId==='corona-borealis'?castCorona:player.avatar.constellationId==='capricorn'?castCapricorn:player.avatar.constellationId==='leo'?castLeo:castWater;
       const result=cast(room,player,now,{basic:true});
+        if(result.targets?.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
         if(room.swanAuraChanged){room.swanAuraChanged=false;roster(room);}
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
           io.to(viewer.socketId).emit('combat:hit',result.hit);
@@ -350,7 +353,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           for(const target of result.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
           for(const fall of result.falls||[])io.to(viewer.socketId).emit('combat:corona-fall',fall);
         }
-        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
         return result;
       }
       if(isSagittarius(player)){
@@ -431,7 +433,6 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
           io.to(viewer.socketId).emit('combat:hit',result.hit);
           for(const target of result.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
         }
-        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
         return result;
       }
       if(player.avatar.constellationId==='gemini'){
@@ -1287,7 +1288,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       ensure(!equipmentOf(item.id),'장비는 우주에너지 상점에서만 살 수 있어요.');
       ensure(p.role==='teacher'||![2,3,4].includes(item.level),'LV2~LV4 아이템은 별빛 조합기로 만들 수 있어요. 직접 구매할 수 없어요.');
       ensure(p.role==='teacher'||(p.avatar?.level||1)>=(item.level||1),'아직 이 레벨 상점이 열리지 않았어요.');
-      ensure(p.role==='teacher'||item.forSale!==false,'이 물건은 지금 상점에서 판매하지 않아요.');
+      ensure(!item.shopHidden&&(p.role==='teacher'||item.forSale!==false),'이 물건은 지금 상점에서 판매하지 않아요.');
       ensure(p.role==='teacher'||(Number.isSafeInteger(item.price)&&item.price>=0),'아직 구매 가격이 정해지지 않았어요.');
       const quantity=data.quantity;
       ensure(Number.isInteger(quantity) && quantity>=1 && quantity<=10,'1~10개씩 사고팔 수 있어요.');
@@ -1368,7 +1369,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
       p.lastItemUseAt=now;p.rabbitUsedDay=koreaDay(now);
       // 즉시 뽑기는 지속 효과가 아닙니다. 미완료 뽑기는 별도 상태로만 저장합니다.
-      const draw=createRabbitDraw(now);p.rabbitDraw=draw;
+      const draw=createRabbitDraw(now,room.rabbitDrawCounts);p.rabbitDraw=draw;
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:p.id,
         targetNickname:p.nickname,itemId:item.id,itemName:item.name,secret:false});
       if(room.itemLog.length>ITEM_USE.logSize)room.itemLog.shift();
@@ -1388,6 +1389,14 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(room);return {...reward,starShards:p.starShards,inventory:[...p.inventory],avatar:p.avatar};
     });
     action('teacher:cards:catalog',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return teacherCardCatalog(s.room,s.player);},false);
+    action('teacher:cards:silver:update',data=>{
+      const s=socket.data.session;
+      ensure(s?.player.role==='teacher'&&s.room.players.get(s.player.id)===s.player&&s.player.connected,'선생님만 뽑기카드 구성을 수정할 수 있어요.');
+      s.room.rabbitDrawCounts=validateRabbitDrawCounts(data?.counts);
+      ensure(s.room.rabbitDrawCounts,'뽑기 카드 장수를 입력해주세요.');
+      roster(s.room);
+      return teacherCardCatalog(s.room,s.player);
+    });
     action('teacher:cards:update',data=>{
       const s=socket.data.session;
       ensure(s?.player.role==='teacher'&&s.room.players.get(s.player.id)===s.player&&s.player.connected,'선생님만 별카드 문구를 수정할 수 있어요.');
@@ -1796,7 +1805,9 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       for(const healed of capricorn.healed)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===healed.mapId)
         io.to(viewer.socketId).emit('combat:vitals',{playerId:healed.playerId,vitals:healed.vitals});
       if(capricorn.hits.some(hit=>hit.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-      if(advanceLeoCourage(room,now))roster(room);
+      const leo=advanceLeoRoars(room,now);
+      if(leo.changed||advanceLeoCourage(room,now))roster(room);
+      if(leo.hits.some(h=>h.targets.some(t=>t.defeated)))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
       for(const reflected of room.reflectedVitals?.splice(0)||[])
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===room.players.get(reflected.playerId)?.mapId)
           io.to(viewer.socketId).emit('combat:vitals',reflected);
@@ -1825,6 +1836,11 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       }
       if(room.waterAuraChanged){room.waterAuraChanged=false;roster(room);}
       if(advanceSwanAuras(room,clock()))roster(room);
+      for(const hit of advanceOphiuchusVenoms(room,clock())){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
+          for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
+        if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
+      }
       const poison=advanceOphiuchusPoison(room,clock());
       for(const hit of poison.events){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)

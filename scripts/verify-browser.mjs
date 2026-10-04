@@ -17,6 +17,7 @@ const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const errors=[],checks=[];
 const check=(...items)=>{checks.push(...items);writeFileSync('.local/browser-progress.json',JSON.stringify({checks,errors},null,2));console.log('Browser check '+checks.length+': '+items[items.length-1]);};
+const dismissTutorial=async page=>{if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();};
 const newContext=async options=>{const context=await browser.newContext(options);context.setDefaultTimeout(10000);return context;};
 mkdirSync('.local',{recursive:true});
 // Polls the chat input's live state instead of a fixed sleep, since room:state
@@ -151,6 +152,7 @@ try{
  await student.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});
  await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');await student.locator('#student-form .submit').click();
  await student.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student);
  await openSocialFromDock(teacher);await teacher.locator('#player-count').filter({hasText:'2 / 30'}).waitFor({state:'attached'});check('Allowlist enforced, same-room student appears');
  const room=game.store.rooms.get(code),p=[...room.players.values()].find(p=>p.role==='student'),id=p.id;
  const initialX=p.x;
@@ -160,6 +162,7 @@ try{
  const canvasAfter=await teacher.locator('#world').evaluate(c=>c.toDataURL());assert.notEqual(canvasBefore,canvasAfter);
  check('Student keyboard movement reaches server and changes teacher canvas');
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student);
  assert.equal(room.players.size,2);assert.equal([...room.players.values()].find(p=>p.role==='student').id,id);
  check('Browser refresh resumes the same student');
  await teacher.screenshot({path:'.local/02-classroom.png',fullPage:true});
@@ -216,16 +219,9 @@ try{
  assert.ok(!(await teacher.locator('#chat-log').innerText()).includes(blockedWord));
  check('Blocked words are masked with same-length circles and flagged "순화됨", original word absent from the log');
 
- await teacher.locator('#chat-toggle').filter({hasText:'채팅 끄기'}).click();
- await waitForChatInput(student,{disabled:true,placeholder:'선생님이 채팅을 껐어요'});
- await teacher.locator('#chat-log li').filter({hasText:'선생님이 채팅을 껐어요.'}).waitFor({state:'attached'});
- await student.locator('#chat-log li').filter({hasText:'선생님이 채팅을 껐어요.'}).waitFor({state:'attached'});
- await teacher.locator('#chat-input').fill('모두 잘 들려요?');
- await teacher.locator('#chat-input').press('Enter');
- await student.locator('#chat-log li').filter({hasText:'모두 잘 들려요?'}).waitFor({state:'attached'});
- await teacher.locator('#chat-toggle').filter({hasText:'채팅 켜기'}).click();
- await waitForChatInput(student,{disabled:false,placeholder:'친구들에게 말해요 (Enter)'});
- check('Teacher chat off/on disables student input with a system message while the teacher can still speak');
+ assert.equal(await teacher.locator('#chat-toggle').isVisible(),false);
+ assert.equal(await teacher.locator('#chat-clear').isVisible(),false);
+ check('Chat off/clear controls are removed from the visible chat window');
 
  // #players and its mute buttons now live inside #crew-dialog (new layout), so open it first.
  await closeOpenDialogs(teacher);await teacher.locator('#dock-chat').click();await teacher.locator('#social-dialog').waitFor({state:'visible'});await openSocialFromDock(teacher);await teacher.locator('#crew-button').click();
@@ -244,18 +240,10 @@ try{
  await teacher.locator('#crew-close').click();
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
 
- await openChatFromDock(teacher);
- await teacher.locator('#chat-clear').click();
- await teacher.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor({state:'attached'});
- await openChatFromDock(student);
- await student.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor({state:'attached'});
- assert.equal(await teacher.locator('#chat-log li').count(),1);
- assert.equal(await student.locator('#chat-log li').count(),1);
- check('Teacher clearing chat wipes both logs down to a single system message');
-
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student);
  await openChatFromDock(student);
- await student.locator('#chat-log li').filter({hasText:'선생님이 채팅 기록을 지웠어요.'}).waitFor({state:'attached'});
+ await student.locator('#chat-log li').filter({hasText:masked}).waitFor({state:'attached'});
  check('Chat history is restored to the student after reload/session resume');
 
  await student.waitForTimeout(1600);
@@ -417,6 +405,7 @@ try{
  await student2.locator('#join-code').fill(code);await student2.locator('#nickname').fill('2');await student2.locator('#student-pin').fill('1234');
  await student2.locator('#student-form .submit').click();
  await student2.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student2);
  check('A second student (nickname 2) joins the same classroom');
  await worldClick(student2,cafeteria.x,cafeteria.y);
  if(!(await student2.locator('#planet-dialog').isVisible())){
@@ -654,6 +643,7 @@ try{
 
  // Item 7: reload keeps the star shards and bag.
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student);
  await student.locator('#self-shards').filter({hasText:'22'}).waitFor({state:'attached'});
  assert.equal(await student.locator('#bag-list li').count(),1);
  check('Reloading resumes the same session with 22 star shards and the bag intact');
@@ -872,6 +862,7 @@ try{
  assert.equal(p.inventory.find(entry=>entry.id==='moon-rabbit-card').quantity,1);
  await student.locator('#draw-close').click();
  await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
+ await dismissTutorial(student);
  await openInventoryFromDock(student);
  await student.locator('#bag-list .slot-btn[aria-label="달토끼 × 1"]').click();
  await student.locator('#bag-detail .use').click();

@@ -89,6 +89,13 @@ test('별의 시작점 단계별 몬스터 크기는 1단계 기준 1·2·4배�
     assert.equal(matches.length,5);assert.ok(matches.every(m=>m.radius===radius));
   }
 });
+test('낙원 몬스터도 Lv2→3→4 순서로 충돌 크기와 그림 크기가 커진다',()=>{
+  const views=monsterViews({}),radius=id=>views.find(monster=>monster.typeId===id).radius;
+  assert.equal(radius('baby-energy-star'),48);
+  for(const id of ['warm-star','cool-star'])assert.equal(radius(id),96);
+  for(const id of ['grown-warm-star','grown-cool-star'])assert.equal(radius(id),120);
+  assert.equal(radius('noksera'),192);assert.equal(radius('leoon'),192);
+});
 
 test('3단계 대형 몬스터는 생성 직후 겹치지 않고 산책한다',()=>{
   const room={};monstersOf(room,0,()=>0);const before=monsterViews(room).filter(m=>m.mapId==='star-origin-3'&&m.radius===96).map(m=>({...m}));

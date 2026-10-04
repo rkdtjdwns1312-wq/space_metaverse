@@ -35,7 +35,7 @@ export function advanceLibraAuras(room,now){
   const casters=[...room.players.values()].filter(p=>p.connected&&!p.away&&p.libraAura?.endsAt>now&&p.mapId===p.libraAura.mapId&&ensureVitals(p).hp>0);
   let changed=false;
   for(const p of room.players.values()){
-    const bonus=Math.max(0,...casters.filter(c=>c.mapId===p.mapId&&Math.hypot(c.x-p.x,c.y-p.y)<=c.libraAura.radius)
+    const bonus=Math.max(0,...casters.filter(c=>c.mapId===p.mapId&&Math.hypot(c.x-p.x,c.y+c.libraAura.size*.22-p.y)<=c.libraAura.radius)
       .map(c=>c.libraAura.attackBonus));
     if((p.libraBuff?.bonus||0)!==bonus){p.libraBuff=bonus?{bonus}:null;changed=true;}
     if(p.libraAura&&p.libraAura.endsAt<=now){p.libraAura=null;changed=true;}

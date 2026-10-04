@@ -8,7 +8,7 @@ import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
 import {validateInteriorDecor} from './interior-decor.js';
 import {validateCardMarkers} from './item-cards.js';
-import {validateRabbitDraw} from './rabbit-draw.js';
+import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {validateAbilityState} from './constellation-abilities.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import { ClassFileStore } from './store.js';
@@ -56,6 +56,7 @@ export function toRecord(room) {
     temple:structuredClone(room.temple),exploration:validateExploration(room.exploration),
     starCards:validateStarCards(room.starCards),
     starCardText:validateStarCardText(room.starCardText),
+    rabbitDrawCounts:validateRabbitDrawCounts(room.rabbitDrawCounts),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
     memoryRanking:structuredClone(room.memoryRanking||[]),
@@ -85,6 +86,7 @@ export function fromRecord(r) {
     temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
     starCards:validateStarCards(r.starCards),
     starCardText:validateStarCardText(r.starCardText),
+    rabbitDrawCounts:validateRabbitDrawCounts(r.rabbitDrawCounts),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
     memoryRanking:validateMemoryRanking(r.memoryRanking),

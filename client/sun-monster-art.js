@@ -9,9 +9,7 @@ export const SUN_MONSTER_ART = Object.freeze({
       [0, 640, 700, 640, 350, 477], [700, 640, 580, 640, 289, 505]],
   }),
   'grown-warm-star': Object.freeze({
-    src: '/assets/monsters/grown-warm-star-poses.png', radius: 96, visualScale: .55,
-    // 큰 궤도 장식 때문에 반경96을 그림에 그대로 쓰면 과도하게 커집니다.
-    // 시각 크기만 조절하며 서버 반경·거리·충돌에는 관여하지 않습니다.
+    src: '/assets/monsters/grown-warm-star-poses.png', radius: 120, visualScale: .9,
     frames: [[0, 0, 640, 640, 344, 586], [640, 0, 640, 640, 350, 570],
       [0, 640, 640, 640, 351, 500], [640, 640, 640, 640, 350, 518]],
     // 회복 칸의 왼쪽 위로 넘어온 이웃 공격 칸의 빛만 제외하고 아래 궤도는 보존합니다.

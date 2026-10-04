@@ -7,7 +7,7 @@ import {io} from 'socket.io-client';
 import {RoomStore} from '../server/rooms.js';
 import {MAP} from '../shared/config.js';
 import {EXPLORATION_CARDS,EXPLORATION_GOAL} from '../shared/exploration.js';
-import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,validateExploration} from '../server/exploration.js';
+import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,validateExploration,updateExplorationCards} from '../server/exploration.js';
 import {createClassroomServer} from '../server/app.js';
 
 const flask=MAP.objects.find(object=>object.kind==='exploration');
@@ -26,6 +26,21 @@ test('탐사권을 써야 탐사하며 결과 10장은 0·1·2가 2·6·2장으�
   assert.equal(room.exploration.energy,2);assert.equal(room.exploration.results.length,0);
   assert.throws(()=>resetExploration(room,teacher),/가득 찼을 때/);
   assert.throws(()=>validateExploration({energy:16,results:[]}),/저장 데이터/);
+});
+
+test('교사가 수정한 탐사 카드만 다음 뽑기에 적용되고 이미 받은 기여량은 유지된다',()=>{
+  const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
+  const student=store.join({code:room.code,nickname:'별이'},'student').player;
+  Object.assign(teacher,{x:flask.x,y:flask.y});Object.assign(student,{x:flask.x,y:flask.y,explorationChances:2});
+  const cards=EXPLORATION_CARDS.map(card=>({...card}));cards[0]={...cards[0],title:'새 성운',story:'새로운 별빛을 발견했어요.',energy:2};
+  assert.throws(()=>updateExplorationCards(room,student,cards),/선생님만/);
+  assert.throws(()=>updateExplorationCards(room,teacher,cards.map(card=>({...card,energy:16}))),/확인/);
+  updateExplorationCards(room,teacher,cards);
+  const first=explore(room,student,1000,()=>0);assert.equal(first.result.card.title,'새 성운');assert.equal(first.energy,2);
+  cards[0]={...cards[0],title:'다시 쓴 성운',energy:0};updateExplorationCards(room,teacher,cards);
+  const view=readExploration(room,teacher);assert.equal(view.contributors[0].energy,2);
+  assert.equal(view.results[0].card.title,'새 성운');assert.equal(view.results[0].card.energy,2);
+  assert.equal(validateExploration(room.exploration).cards['quiet-nebula'].title,'다시 쓴 성운');
 });
 
 test('탐사권도 개기 일식 사용료와 사용 금지 상태를 적용하고 실패 때 보존한다',()=>{

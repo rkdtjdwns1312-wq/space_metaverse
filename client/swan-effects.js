@@ -18,7 +18,9 @@ export function drawSwanProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   const progress=Math.max(0,Math.min(1,elapsedMs/(cast.durationMs||650)));
   const frame=reducedMotion?12:Math.min(23,Math.floor(progress*24));
   const size=cast.size*.82*(cast.visualScale||1);
-  ctx.save();ctx.translate(cast.x,cast.y);ctx.rotate(Math.atan2(cast.dy??0,cast.dx??1));
+  ctx.save();ctx.translate(cast.x,cast.y);
+  if((cast.dx??1)<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(cast.dy??0,-cast.dx));}
+  else ctx.rotate(Math.atan2(cast.dy??0,cast.dx??1));
   ctx.shadowColor='#a8c8ff';ctx.shadowBlur=cast.visualScale>1?24:8;
   drawFrame(ctx,spec,frame,0,0,size);
   ctx.restore();return true;

@@ -36,22 +36,34 @@ export function castOphiuchus(room,player,now,{basic=false}={}){
   ensure(now>=(player.ophiuchusCooldownUntil||0),'뱀 스킬을 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.ophiuchusCooldownUntil=now+spec.cooldownMs;
-  const selected=venomTargets(room,player,dx,dy,size,spec),initial=Math.round(power*spec.directMultiplier*spec.effectAmount);
-  const hit=damageTargets(room,player,selected,initial,now);
-  for(const target of selected){
-    if(target.entity.hp===0||target.kind==='player'&&ensureVitals(target.entity).hp===0)continue;
-    const old=poisonOf(target.entity),active=old?.expiresAt>now&&old?.mapId===player.mapId;
-    const layers=active?[...old.layers]:[];
-    layers.push({sourceId:player.id,power:Math.round(power*spec.effectAmount)});
-    target.entity.combatPoison={mapId:player.mapId,layers,stacks:layers.length,
-      expiresAt:active?old.expiresAt+3000:now+spec.poisonMs,
-      nextTickAt:active?old.nextTickAt:now+1000};
-  }
-  return {ready:true,...hit,vitals:playerVitals(player),cooldowns:ophiuchusCooldowns(player),serverNow:now,
+  room.ophiuchusVenoms??=[];
+  room.ophiuchusVenoms.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx,dy,size,spec,power,hitAt:now+1000});
+  return {ready:true,targets:[],playerTargets:[],vitals:playerVitals(player),cooldowns:ophiuchusCooldowns(player),serverNow:now,
     hit:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx,dy,size,
-      kind:'ophiuchus-skill',vfxId:`skill-lv${spec.stage}`,durationMs:1000,
+      kind:'ophiuchus-skill',vfxId:`skill-lv${spec.stage}`,durationMs:4000,
       snakeScale:spec.snakeScale,range:size*spec.rangeWidths,halfWidth:size*spec.halfWidthWidths,
       originOffset:size*.6}};
+}
+export function advanceOphiuchusVenoms(room,now){
+  const events=[],keep=[];
+  for(const venom of room.ophiuchusVenoms||[]){
+    if(now<venom.hitAt){keep.push(venom);continue;}
+    const player=room.players.get(venom.playerId);
+    if(!player||!eligible(player)||player.mapId!==venom.mapId)continue;
+    const selected=venomTargets(room,{...player,x:venom.x,y:venom.y},venom.dx,venom.dy,venom.size,venom.spec);
+    const hit=damageTargets(room,player,selected,Math.round(venom.power*venom.spec.directMultiplier*venom.spec.effectAmount),now);
+    for(const target of selected){
+      if(target.entity.hp===0||target.kind==='player'&&ensureVitals(target.entity).hp===0)continue;
+      const old=poisonOf(target.entity),active=old?.expiresAt>now&&old?.mapId===venom.mapId;
+      const layers=active?[...old.layers]:[];
+      layers.push({sourceId:player.id,power:Math.round(venom.power*venom.spec.effectAmount)});
+      target.entity.combatPoison={mapId:venom.mapId,layers,stacks:layers.length,
+        expiresAt:active?old.expiresAt+3000:now+venom.spec.poisonMs,
+        nextTickAt:active?old.nextTickAt:now+1000};
+    }
+    events.push({mapId:venom.mapId,...hit});
+  }
+  room.ophiuchusVenoms=keep;return events;
 }
 
 export function advanceOphiuchusPoison(room,now){

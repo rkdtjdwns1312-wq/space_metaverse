@@ -10,6 +10,7 @@ import {drawLibraProjectile} from './libra-effects.js';
 import {drawCoronaProjectile} from './corona-effects.js';
 import {drawSagittarius} from './sagittarius-effects.js';
 import {waterProjectilePoint} from '/shared/water-skills.js';
+import {swanProjectilePoint} from '/shared/swan-skills.js';
 
 export function createProjectileEffects(canvas){
   const active=new Map();
@@ -27,7 +28,8 @@ export function createProjectileEffects(canvas){
         const age=now-p.startsAt;if(age<0)continue;
         if(age>=p.durationMs){active.delete(id);continue;}
         const progress=age/p.durationMs;
-        const visual={...p,...waterProjectilePoint(p,progress),projectile:true};
+        const point=p.kind==='cygnus-attack'?swanProjectilePoint(p,progress):waterProjectilePoint(p,progress);
+        const visual={...p,...point,projectile:true};
         if(p.visible!==false&&!drawCoronaProjectile(ctx,visual,age,reducedMotion)&&!drawLibraProjectile(ctx,visual,age,reducedMotion)&&!drawTaurusProjectile(ctx,visual,age,reducedMotion)&&!drawAriesProjectile(ctx,visual,age,reducedMotion)&&!drawGeminiProjectile(ctx,visual,age,reducedMotion)&&!drawOphiuchusProjectile(ctx,visual,age,reducedMotion)&&!drawSwanProjectile(ctx,visual,age,reducedMotion)&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
           !drawAquarius(ctx,visual,age,reducedMotion)&&!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
         count++;

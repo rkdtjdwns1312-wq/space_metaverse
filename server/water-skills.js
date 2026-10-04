@@ -28,16 +28,17 @@ export function castWater(room,player,now,{basic=false}={}){
   const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   const boosted=id==='cancer'&&active(player,'cancer',now);
   const power=attackPowerOf(player.avatar.level,id,player);
-  const visualScale=boosted?4:1;
-  const base={x:player.x,y:player.y,dx,dy,size,range:size*spec.rangeWidths,
+  const visualScale=boosted?3:1;
+  const base={x:player.x,y:player.y,dx,dy,size,range:size*spec.rangeWidths*(boosted?1.5:id==='pisces'&&!basic?1.2:1),
     width:size*(id==='cetus'?.28:.13)*visualScale,
     power:basic?Math.round(power*(boosted?spec.multiplier:1)):Math.round(power*spec.multiplier),
     basic,kind:`${id}-${basic?'attack':'skill'}`,vfxId:basic?'attack':`skill-lv${spec.stage}`,
     piercing:boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
-    originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:900};
-  // 물고기 네/두/한 마리의 타격은 서버에서 독립적으로 계산합니다.
-  // 화면은 한 번의 군집 연출을 그려 중첩된 스프라이트가 번쩍이지 않게 합니다.
-  const projectiles=launchProjectiles(room,player,base,now,basic?1:spec.hits);
+    originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:2000};
+  const projectiles=id==='pisces'&&!basic?
+    Array.from({length:spec.hits},(_,i)=>({...launchProjectiles(room,player,{...base,
+      fishLane:i-(spec.hits-1)/2,fishStage:spec.stage,durationMs:2000-i*120,visualScale:spec.stage===2?.68:spec.stage===3?1:1.85},now+i*120,1)[0],elapsedMs:-i*120})):
+    launchProjectiles(room,player,base,now,1);
   return {ready:true,target:null,targets:[],playerTargets:[],vitals:playerVitals(player),cooldowns:waterCooldowns(player),serverNow:now,
     hit:{...base,playerId:player.id,mapId:player.mapId,projectiles}};
 }

@@ -7,7 +7,7 @@ import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
-import {SWAN_VFX,SWAN_NAMES,swanFrameAt,swanSkillOf} from '../shared/swan-skills.js';
+import {SWAN_VFX,SWAN_NAMES,swanFrameAt,swanSkillOf,swanProjectilePoint} from '../shared/swan-skills.js';
 
 function setup(level=4){
   const player={id:'swan',role:'student',connected:true,away:false,mapId:'star-origin-1',x:500,y:450,
@@ -45,8 +45,21 @@ test('날개 단계마다 1/2/3쌍, 강화 깃털 2/3/4개, 마나 10',()=>{
     assert.equal(shot.hit.projectiles.length,stage);
     assert.equal(shot.hit.range,size*4);
     assert.ok(shot.hit.projectiles.every(p=>p.kind==='cygnus-attack'&&p.basic));
+    assert.ok(shot.hit.projectiles.every(p=>p.x===player.x&&p.y===player.y));
     assert.equal(player.swanAura.remainingAttacks,9);
   }
+});
+
+test('강화 깃털은 같은 곳에서 출발하고 절반 지점에서 교차한다',()=>{
+  const {room,player}=setup(4),now=Date.now();castSwan(room,player,now);
+  const shot=castSwan(room,player,now+1000,{basic:true}).hit.projectiles;
+  assert.equal(shot.length,4);
+  for(const p of shot){
+    assert.equal(swanProjectilePoint(p,0).y,player.y);
+    assert.ok(Math.abs(swanProjectilePoint(p,.5).y-player.y)<1e-8);
+  }
+  const before=shot.map(p=>swanProjectilePoint(p,.25).y),after=shot.map(p=>swanProjectilePoint(p,.75).y);
+  assert.ok(before[0]<before[3]&&after[0]>after[3]);
 });
 
 test('열 번째 일반 공격에서 날개가 끝나고 그때부터 10초 재사용 대기',()=>{
@@ -90,6 +103,6 @@ test('백조자리 시트 4종×24F와 날개 발동·유지·소멸 프레임',
   assert.equal(SWAN_NAMES[4],'세 번째 날개');
   assert.ok(Object.values(SWAN_VFX).every(spec=>spec.frames===24&&spec.frameSize===256));
   assert.equal(swanFrameAt(0),0);assert.equal(swanFrameAt(499),5);
-  assert.equal(swanFrameAt(500),6);assert.equal(swanFrameAt(19500),18);
+  assert.equal(swanFrameAt(500),12);assert.equal(swanFrameAt(19500),18);
   assert.equal(swanFrameAt(19999),23);
 });

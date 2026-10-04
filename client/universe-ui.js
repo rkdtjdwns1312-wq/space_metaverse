@@ -61,13 +61,14 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   }
   // 물체는 게임 화면에서 쓰는 원화의 작은 판을 사용합니다. 축소 지도용 도형을 따로
   // 유지하면 실제 상점·행성·문과 모양이 달라져 아이들이 위치를 알아보기 어렵습니다.
-  function drawSilhouette(ctx,o,x,y,r,theme){
+  function drawSilhouette(ctx,o,x,y,r,theme,scale){
     const kind=o.kind||'planet';
     const src=kind==='planet'?DEPARTMENT_ART[o.templateId]?.src:
       PAINTED_PROPS[kind]?'/assets/maps/'+PAINTED_PROPS[kind].file:
       ['gate','door'].includes(kind)?'/assets/maps/star-gate.png':
       kind==='pillar'?'/assets/maps/plaza-pillar.png':
       kind==='market'?'/assets/maps/plaza-bazaar.png':
+      kind==='exploration'?'/assets/maps/plaza-exploration-flask.png':
       kind==='andromeda'?'/assets/maps/plaza-andromeda.png':
       kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
       kind==='evolution'?'/assets/maps/evolution-altar.png':
@@ -75,6 +76,11 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       kind==='black-star'?'/assets/maps/black-star-sanctuary.png':
       ['board','mailbox','report-board','warning-rock','interior-decor-machine'].includes(kind)?'/assets/interior/'+({board:'board',mailbox:'mailbox','report-board':'report','warning-rock':'warning','interior-decor-machine':'control'}[kind])+'.png':null;
     const image=picture(src);
+    if(image&&kind==='market'){
+      // 시장은 구역 자체가 상호작용 범위이므로 radius로 그리면 지도 밖까지 커집니다.
+      const width=o.rx*1.7*scale,height=o.ry*1.75*scale;
+      ctx.drawImage(image,x-width/2,y-height/2,width,height);return;
+    }
     if(image){const height=Math.max(8,r*(kind==='planet'?3.5:kind==='market'?4:2.8)),width=Math.min(height*image.naturalWidth/image.naturalHeight,Math.max(12,r*4));ctx.drawImage(image,x-width/2,y+r*.65-height,width,height);return;}
     // 아직 그림이 도착하지 않은 순간에도 목적지를 찾을 수 있게 부드러운 빛만 남깁니다.
     ctx.save();const glow=ctx.createRadialGradient(x,y,0,x,y,Math.max(4,r*1.5));glow.addColorStop(0,kind==='black-hole'?'#584779':'#fff7d7');glow.addColorStop(1,'#ffffff00');ctx.fillStyle=glow;ctx.fillRect(x-r*1.5,y-r*1.5,r*3,r*3);ctx.restore();
@@ -106,7 +112,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     for(const o of info.objects){
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
-      drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme);
+      drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
       if(detailed){ctx.fillStyle='#54456e';ctx.font='15px Jua, sans-serif';ctx.textAlign='center';const label=o.name||'행성';ctx.fillText(label,Math.max(65,Math.min(w-65,x)),Math.min(h-9,y+o.radius*scale+20),125);}
     }
     const p=position||me();canvas.dataset.mapId=mapId;

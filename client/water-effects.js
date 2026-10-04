@@ -10,19 +10,26 @@ export function preloadWater(star,ids=Object.keys(WATER_VFX[star]||{})){
 function sprite(ctx,spec,frame,x,y,width,height,alpha=1){
   const image=images.get(spec.url);
   if(!image?.complete||!image.naturalWidth)return;
-  ctx.save();ctx.globalAlpha*=alpha;
-  ctx.drawImage(image,(frame%6)*256,Math.floor(frame/6)*256,256,256,x-width/2,y-height/2,width,height);
+  const first=Math.max(0,Math.min(23,Math.floor(frame))),blend=Math.max(0,Math.min(1,frame-first));
+  ctx.save();const baseAlpha=ctx.globalAlpha;ctx.globalAlpha=baseAlpha*alpha*(1-blend);
+  ctx.drawImage(image,(first%6)*256,Math.floor(first/6)*256,256,256,x-width/2,y-height/2,width,height);
+  if(blend&&first<23){ctx.globalAlpha=baseAlpha*alpha*blend;
+    ctx.drawImage(image,((first+1)%6)*256,Math.floor((first+1)/6)*256,256,256,x-width/2,y-height/2,width,height);}
   ctx.restore();
 }
 export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
-  const star=cast.kind?.split('-')[0],spec=WATER_VFX[star]?.[cast.vfxId];
+  const star=cast.kind?.split('-')[0],spec=WATER_VFX[star]?.[star==='pisces'&&cast.kind==='pisces-skill'?'skill-lv4':cast.vfxId];
   if(!spec)return false;
   preloadWater(star,[spec.id]);
   const progress=Math.max(0,Math.min(1,elapsedMs/(cast.durationMs||650)));
-  const frame=reducedMotion?12:Math.min(23,Math.floor(progress*24));
+  const frame=reducedMotion?12:Math.min(23,progress*23);
   const scale=cast.visualScale||1,size=cast.size*(star==='cetus'?1.55:1.2)*scale;
-  ctx.save();ctx.translate(cast.x,cast.y);ctx.rotate(waterProjectileAngle(cast));
-  sprite(ctx,spec,frame,0,0,size,size,reducedMotion?Math.sin(Math.PI*progress)*.7:1);
+  ctx.save();ctx.translate(cast.x,cast.y);
+  const angle=cast.kind==='pisces-skill'?cast.visualAngle:waterProjectileAngle(cast);
+  if((cast.dx??1)<0){ctx.scale(-1,1);ctx.rotate(Math.PI-angle);}
+  else ctx.rotate(angle);
+  const fade=Math.min(1,progress/.1,(1-progress)/.13);
+  sprite(ctx,spec,frame,0,0,size,size,reducedMotion?Math.sin(Math.PI*progress)*.7:fade);
   ctx.restore();return true;
 }
 export function drawWaterAura(ctx,aura,x,y,size,reducedMotion=false){

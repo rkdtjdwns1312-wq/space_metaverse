@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRabbitDraw,rabbitDrawView,validateRabbitDraw,RABBIT_DRAW_CATALOG} from '../server/rabbit-draw.js';
+import {createRabbitDraw,rabbitDrawView,validateRabbitDraw,validateRabbitDrawCounts,rabbitDrawEntries,RABBIT_DRAW_CATALOG} from '../server/rabbit-draw.js';
 import {awardDrawReward} from '../server/draw-rewards.js';
 import {SHOP} from '../shared/config.js';
 
@@ -18,6 +18,17 @@ test('old numeric ten-card draws remain valid and new draws validate after cloni
 test('tampered new draw is rejected',()=>{
   const draw=createRabbitDraw(); draw.cards[0].reward={kind:'shards',amount:999};
   assert.throws(()=>validateRabbitDraw(draw));
+});
+test('교사 지정 장수로 새 더미를 만들되 이미 시작한 뽑기 카드 구성은 유지한다',()=>{
+  const existing=createRabbitDraw(1),counts=rabbitDrawEntries().map(entry=>entry.count);
+  counts[0]=0;counts[1]+=2;
+  assert.deepEqual(validateRabbitDrawCounts(counts),counts);
+  const changed=createRabbitDraw(2,counts);
+  assert.equal(changed.cards.length,38);
+  assert.equal(changed.cards.filter(card=>card.reward.name==='우주 먼지').length,0);
+  assert.equal(validateRabbitDraw(existing).cards.length,54);
+  assert.equal(validateRabbitDraw(changed).cards.length,38);
+  assert.throws(()=>validateRabbitDrawCounts(counts.map(()=>0)));
 });
 test('draw reward validates capacity before mutating and applies XP overflow as shards',()=>{
   const p=player(); p.avatar={level:5,xp:0,form:'transcendent'}; p.starShards=9999;

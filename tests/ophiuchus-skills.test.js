@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {castOphiuchus,advanceOphiuchusPoison} from '../server/ophiuchus-skills.js';
+import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison} from '../server/ophiuchus-skills.js';
 import {advanceProjectiles} from '../server/projectiles.js';
 import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
 import {monstersOf} from '../server/monsters.js';
@@ -37,9 +37,12 @@ test('뱀 크기와 독 폭·거리가 LV2→4로 커지고 직접 피해·중�
     const mp=ensureVitals(player).mp,power=attackPowerOf(level,'ophiuchus',player);
     const result=castOphiuchus(room,player,now);
     assert.equal(mp-ensureVitals(player).mp,5);assert.equal(result.hit.snakeScale,[0,0,2,2.5,3][level]);
+    assert.equal(result.hit.durationMs,4000);assert.equal(near.hp,1000);
+    assert.deepEqual(advanceOphiuchusVenoms(room,now+999),[]);
+    advanceOphiuchusVenoms(room,now+1000);
     assert.equal(result.hit.range,avatarSizeOf(player)*spec.rangeWidths);
     assert.equal(near.hp,1000-power*(level-1));
-    assert.equal(near.combatPoison.expiresAt,now+level*2000);
+    assert.equal(near.combatPoison.expiresAt,now+1000+level*2000);
     assert.equal(edge.hp,level>=3?1000-power*(level-1):1000);
     assert.equal(out.hp,1000);
   }
@@ -48,14 +51,15 @@ test('뱀 크기와 독 폭·거리가 LV2→4로 커지고 직접 피해·중�
 test('중독은 초당 공격력100%, 재중독시 남은 시간+3초와 초당100% 누적',()=>{
   const {room,player,near}=setup(2),now=Date.now(),power=attackPowerOf(2,'ophiuchus',player);
   castOphiuchus(room,player,now);
-  advanceOphiuchusPoison(room,now+1000);
+  advanceOphiuchusVenoms(room,now+1000);advanceOphiuchusPoison(room,now+2000);
   assert.equal(near.hp,1000-power*2);
   const second={...player,id:'second',battleVitals:null,ophiuchusCooldownUntil:0};room.players.set(second.id,second);
   castOphiuchus(room,second,now+2000);
-  assert.equal(near.combatPoison.stacks,2);assert.equal(near.combatPoison.expiresAt,now+7000);
-  advanceOphiuchusPoison(room,now+2000);
+  advanceOphiuchusVenoms(room,now+3000);
+  assert.equal(near.combatPoison.stacks,2);assert.equal(near.combatPoison.expiresAt,now+8000);
+  advanceOphiuchusPoison(room,now+3000);
   assert.equal(near.hp,1000-power*5);
-  advanceOphiuchusPoison(room,now+7000);
+  advanceOphiuchusPoison(room,now+8000);
   assert.equal(near.combatPoison,null);
 });
 
@@ -65,15 +69,17 @@ test('서로 다른 시전자의 중독 중첩은 각 공격력·기여도로 �
   room.players.set(stronger.id,stronger);
   const firstPower=attackPowerOf(2,'ophiuchus',player),secondPower=attackPowerOf(4,'ophiuchus',stronger);
   castOphiuchus(room,player,now);
-  advanceOphiuchusPoison(room,now+1000);
-  castOphiuchus(room,stronger,now+1000);
-  const before=near.hp,firstCredit=near.contributors.get(player.id),secondCredit=near.contributors.get(stronger.id);
+  advanceOphiuchusVenoms(room,now+1000);
   advanceOphiuchusPoison(room,now+2000);
+  castOphiuchus(room,stronger,now+1000);
+  advanceOphiuchusVenoms(room,now+2000);
+  const before=near.hp,firstCredit=near.contributors.get(player.id),secondCredit=near.contributors.get(stronger.id);
+  advanceOphiuchusPoison(room,now+3000);
   assert.equal(before-near.hp,firstPower+secondPower);
   assert.equal(near.contributors.get(player.id)-firstCredit,firstPower);
   assert.equal(near.contributors.get(stronger.id)-secondCredit,secondPower);
   stronger.mapId='plaza';const after=near.hp;
-  advanceOphiuchusPoison(room,now+3000);
+  advanceOphiuchusPoison(room,now+4000);
   assert.equal(after-near.hp,firstPower);
   assert.equal(near.combatPoison.layers.length,1);
   assert.equal(near.combatPoison.layers[0].sourceId,player.id);
@@ -85,9 +91,11 @@ test('학생도 독 범위 안에서 피해와 임시 중독 상태를 받고, �
     x:player.x+size,y:player.y+size*.5,avatar:{level:4,constellationId:'cygnus'},effects:[]};
   room.players.set(other.id,other);const before=ensureVitals(other).hp;
   const result=castOphiuchus(room,player,now);
-  assert.equal(result.playerTargets.length,1);assert.ok(ensureVitals(other).hp<before);
-  assert.ok(playerEffectsView(other,false,now).some(effect=>effect.statusId==='poison'));
-  other.mapId='plaza';advanceOphiuchusPoison(room,now+1000);
+  assert.equal(result.playerTargets.length,0);
+  const hits=advanceOphiuchusVenoms(room,now+1000);
+  assert.equal(hits[0].playerTargets.length,1);assert.ok(ensureVitals(other).hp<before);
+  assert.ok(playerEffectsView(other,false,now+1000).some(effect=>effect.statusId==='poison'));
+  other.mapId='plaza';advanceOphiuchusPoison(room,now+2000);
   assert.equal(other.combatPoison,null);
 });
 
@@ -102,5 +110,7 @@ test('LV1·마나 부족·쿨타임은 효과 없이 거부하고 시트는 24F'
   assert.equal(castOphiuchus(room,player,now+5000).ready,true);
   assert.equal(Object.keys(OPHIUCHUS_VFX).length,4);
   assert.ok(Object.values(OPHIUCHUS_VFX).every(spec=>spec.frames===24));
-  assert.equal(ophiuchusFrameAt(0),0);assert.equal(ophiuchusFrameAt(999),23);
+  assert.equal(ophiuchusFrameAt(0),0);assert.equal(ophiuchusFrameAt(999),5);
+  assert.equal(ophiuchusFrameAt(1000),6);assert.equal(ophiuchusFrameAt(2999),17);
+  assert.equal(ophiuchusFrameAt(3999),23);
 });

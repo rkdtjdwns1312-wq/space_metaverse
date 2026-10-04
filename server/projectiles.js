@@ -1,10 +1,31 @@
 import {randomUUID} from 'node:crypto';
 import {ensureVitals} from './vitals.js';
+import {swanProjectilePoint} from '../shared/swan-skills.js';
 
 // 실제 이동 구간과 원형 피격 범위의 교차를 검사합니다. 낮은 tick에서도 적을 건너뛰지 않습니다.
 function contact(cast,target,end){
   const vx=target.entity.x-cast.x,vy=target.entity.y-cast.y;
-  const along=vx*cast.dx+vy*cast.dy,r=target.radius+cast.width;
+  // 그려진 투사체의 가장자리 바깥까지 작은 판정 여백을 둡니다.
+  const padding=target.kind==='monster'?Math.min(20,Math.max(4,(cast.size||0)*(cast.visualScale||1)*.08)):0;
+  const along=vx*cast.dx+vy*cast.dy,r=target.radius+cast.width+padding;
+  if(cast.kind==='cygnus-attack'&&cast.swanLane){
+    for(let distance=cast.distance;distance<=end+6;distance+=6){
+      const d=Math.min(end,distance),point=swanProjectilePoint(cast,d/cast.range);
+      if(Math.hypot(point.x-target.entity.x,point.y-target.entity.y)<=r)return d;
+      if(d===end)break;
+    }
+    return null;
+  }
+  if(cast.kind==='pisces-skill'&&cast.fishLane){
+    for(let distance=cast.distance;distance<=end+6;distance+=6){
+      const d=Math.min(end,distance),p=d/cast.range;
+      const lateral=cast.fishLane*cast.size*.22*Math.sin(Math.PI*p);
+      const x=cast.x+cast.dx*d-cast.dy*lateral,y=cast.y+cast.dy*d+cast.dx*lateral;
+      if(Math.hypot(x-target.entity.x,y-target.entity.y)<=r)return d;
+      if(d===end)break;
+    }
+    return null;
+  }
   if(along<0)return null;
   const perpendicular2=Math.max(0,vx*vx+vy*vy-along*along);
   if(perpendicular2>r*r)return null;
@@ -12,8 +33,8 @@ function contact(cast,target,end){
   return along+half>=cast.distance&&entry<=end?entry:null;
 }
 export function projectileView(cast,now){
-  const {id,playerId,mapId,x,y,dx,dy,range,durationMs,at,basic,kind,vfxId,size,originOffset,slot,visualScale,visible}=cast;
-  return {id,playerId,mapId,x,y,dx,dy,range,durationMs,basic,kind,vfxId,size,originOffset,slot,visualScale,visible,elapsedMs:now-at,projectile:true};
+  const {id,playerId,mapId,x,y,dx,dy,range,durationMs,at,basic,kind,vfxId,size,originOffset,slot,visualScale,visible,swanLane,fishLane,fishStage}=cast;
+  return {id,playerId,mapId,x,y,dx,dy,range,durationMs,basic,kind,vfxId,size,originOffset,slot,visualScale,visible,swanLane,fishLane,fishStage,elapsedMs:now-at,projectile:true};
 }
 export function launchProjectiles(room,player,base,now,count=1){
   room.projectiles??=[];

@@ -11,7 +11,8 @@ function drawFrame(ctx,id,index,size){const image=imageOf(id);if(!image)return;
 export function drawTaurusProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   if(cast.kind!=='taurus-attack')return false;
   ctx.save();ctx.translate(cast.x,cast.y);ctx.rotate(Math.atan2(cast.dy??0,cast.dx??1));
-  const index=reducedMotion?12:Math.min(23,Math.floor(elapsedMs/(cast.durationMs||650)*24));
+  // 첫 줄의 황금 코인만 재생합니다. 뒤쪽 프레임은 스킬용 황소 형상입니다.
+  const index=reducedMotion?4:3+Math.floor(elapsedMs/90)%3;
   drawFrame(ctx,'attack',index,cast.size*.9);ctx.restore();return true;
 }
 export function drawTaurusDash(ctx,dash,elapsedMs,reducedMotion=false){

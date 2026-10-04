@@ -33,12 +33,15 @@ export function drawSagittarius(ctx,effect,progress,time,reducedMotion=false){
         const frame=reducedMotion?12:Math.min(23,Math.floor(progress*24));
         const stage=Number(spec.id.slice(-1));const scale=effect.basic?.95:stage===2?1.5:stage===3?1.75:2;
         const width=size*scale;
-        ctx.rotate(Math.atan2(effect.dy??0,effect.dx??1));
+        if((effect.dx??1)<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(effect.dy??0,-effect.dx));}
+        else ctx.rotate(Math.atan2(effect.dy??0,effect.dx??1));
         ctx.drawImage(image,(frame%6)*256,Math.floor(frame/6)*256,256,256,-width/2,-width/2,width,width);
         ctx.restore();return;
       }
     }
-    ctx.rotate(Math.atan2(effect.dy,effect.dx));const start=size/2,end=effect.range;
+    if(effect.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(effect.dy,-effect.dx));}
+    else ctx.rotate(Math.atan2(effect.dy,effect.dx));
+    const start=size/2,end=effect.range;
     const head=effect.projectile?0:start+(end-start)*Math.min(1,progress*1.6);
     ctx.globalAlpha=1-progress*.7;arrow(ctx,head,0,size*(effect.basic ? .7 : 1.3),effect.basic?1:1.7);
     for(let i=0;i<3;i++){ctx.fillStyle=i%2?'#e4d5fa':'#fff5ce';star(ctx,head-size*(.25+i*.22),Math.sin(i*3+1)*10,3);}

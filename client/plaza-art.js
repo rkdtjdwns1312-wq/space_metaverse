@@ -4,7 +4,7 @@ import {drawStoneRim} from './stone-rim.js';
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
 const images={},tiles=new Map(),SIZE=768,LIMIT=16;
 let overview=null;
-for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png',temple:'plaza-temple.png'})){
+for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png',temple:'plaza-temple.png',flask:'plaza-exploration-flask.png'})){
   const image=new Image();image.onload=()=>{tiles.clear();overview=null;};image.src='/assets/maps/'+path;images[id]=image;
 }
 const ready=img=>img.complete&&img.naturalWidth>0;
@@ -46,6 +46,12 @@ export function drawPlazaPillar(ctx,o){
     ctx.drawImage(images.pillar,o.x-64,o.y-174,128,185);
   }else{ctx.fillStyle='#f6ecff';ctx.fillRect(o.x-19,o.y-145,38,145);}
   ctx.font='17px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#fffaf3';ctx.lineWidth=4;ctx.lineJoin='round';ctx.strokeText(o.name,o.x,o.y+9);ctx.fillStyle='#695382';ctx.fillText(o.name,o.x,o.y+9);ctx.restore();
+}
+export function drawExplorationFlask(ctx,o,time=0){
+  if(!ready(images.flask))return;
+  ctx.save();ctx.globalAlpha=.96+.04*Math.sin(time/780);
+  ctx.drawImage(images.flask,o.x-58,o.y-163,116,174);
+  ctx.restore();
 }
 export function drawDepartmentGuide(ctx){const z=DEPARTMENT_ZONE;ctx.save();ctx.fillStyle='#b5efca33';ctx.strokeStyle='#78a88a';ctx.lineWidth=10;ctx.setLineDash([22,15]);ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-120,z.ry-120,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.font='38px "Jua",sans-serif';ctx.fillStyle='#4c765e';ctx.textAlign='center';ctx.fillText('부서행성은 이 공간에 만들어요',z.x,z.y-z.ry+95);ctx.restore();}
 export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c4';ctx.lineWidth=24;ctx.stroke(edgePath);}

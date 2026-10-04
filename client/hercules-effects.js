@@ -11,14 +11,15 @@ function frame(ctx,id,index,size){const image=imageOf(id);if(!image)return;
 export function drawHerculesAttack(ctx,hit,elapsedMs,reducedMotion=false){
   if(hit.kind!=='hercules-attack')return false;
   ctx.save();ctx.translate(hit.x+hit.dx*hit.reach,hit.y+hit.dy*hit.reach);
-  ctx.rotate(Math.atan2(hit.dy,hit.dx));
+  if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}
+  else ctx.rotate(Math.atan2(hit.dy,hit.dx));
   frame(ctx,'attack',reducedMotion?12:Math.min(23,Math.floor(elapsedMs/(hit.durationMs||550)*24)),hit.size*1.25);
   ctx.restore();return true;
 }
 export function drawHerculesShield(ctx,shield,elapsedMs,reducedMotion=false){
   const id=`skill-lv${shield.stage}`;
   const index=reducedMotion?12:elapsedMs<700?Math.floor(elapsedMs/700*6):elapsedMs>shield.durationMs-500?18+Math.floor((elapsedMs-(shield.durationMs-500))/500*6):6+Math.floor((elapsedMs-700)/85)%12;
-  frame(ctx,id,Math.min(23,index),shield.size*1.75);
+  frame(ctx,id,Math.min(23,index),shield.size*3.5);
 }
 export function drawHerculesBurst(ctx,burst,elapsedMs,reducedMotion=false){
   ctx.save();ctx.translate(burst.x,burst.y);

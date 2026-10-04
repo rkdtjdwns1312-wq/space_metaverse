@@ -12,4 +12,4 @@ export function ophiuchusSkillOf(player){
     halfWidthWidths:stage===2?1:stage===3?1.25:1.5,
     directMultiplier:stage-1,poisonMs:(stage*2)*1000,effectAmount:1});
 }
-export const ophiuchusFrameAt=elapsed=>Math.max(0,Math.min(23,Math.floor(elapsed/1000*24)));
+export const ophiuchusFrameAt=elapsed=>Math.max(0,Math.min(23,Math.floor(elapsed/4000*24)));

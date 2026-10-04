@@ -37,6 +37,14 @@ test('교사만 카드 문구를 저장하고 학생 화면·재시작에 반영
   const used=useStarCard(room,player,Date.now(),()=>0);assert.equal(activeStarCards(room)[0].effect,update.effect);
   const view=activeStarCards(room)[0];Object.assign(player,{mapId:view.mapId,x:view.x,y:view.y});
   const read=await call(student,'star-card:read',{id:used.record.id});assert.ok(read.ok,read.error);assert.equal(read.definition.description,update.description);
+  const silverBefore=(await call(teacher,'teacher:cards:catalog')).silver;
+  const counts=silverBefore.map(entry=>entry.count);counts[0]=0;counts[1]++;
+  assert.equal((await call(student,'teacher:cards:silver:update',{counts})).ok,false);
+  assert.equal((await call(teacher,'teacher:cards:silver:update',{counts:[-1]})).ok,false);
+  const silverSaved=await call(teacher,'teacher:cards:silver:update',{counts});assert.ok(silverSaved.ok,silverSaved.error);
+  assert.deepEqual(silverSaved.silver.map(entry=>entry.count),counts);
+  assert.equal(silverSaved.silverTotal,counts.reduce((sum,count)=>sum+count,0));
+  assert.equal(game.store.rooms.get(code).rabbitDrawCounts[0],0);
   const save=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw Error('simulated storage failure');};
   try{assert.equal((await call(teacher,'teacher:cards:update',{...update,effect:'저장되면 안 돼요.'})).ok,false);}
   finally{game.store.files.save=save;}
@@ -44,4 +52,5 @@ test('교사만 카드 문구를 저장하고 학생 화면·재시작에 반영
   sockets.forEach(socket=>socket.disconnect());await game.close();await start();
   const reopened=await connect();assert.ok((await call(reopened,'room:open',{teacherKey:key,code})).ok);
   assert.equal((await call(reopened,'teacher:cards:catalog')).gold.find(card=>card.id===update.id).name,update.name);
+  assert.deepEqual((await call(reopened,'teacher:cards:catalog')).silver.map(entry=>entry.count),counts);
 });

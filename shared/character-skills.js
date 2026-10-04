@@ -56,7 +56,7 @@ export function characterAbilities(player){
     Object.assign(attack,{name:names.attack,iconUrl:WATER_VFX[id].attack.iconUrl,
       description:id==='cetus'?'바라보는 방향 앞에 파도를 일으켜 가로 크기의 2배까지 공격해요. 마나 소모 없이 1초에 한 번 사용해요.':
         `바라보는 방향으로 가로 크기의 4배까지 ${id==='cancer'?'물방울':'별빛 물고기'}를 날려요. 마나 소모 없이 1초에 한 번 사용해요.`});
-    const damage=id==='cancer'?`10초 동안 Q ${spec.multiplier*100}% · 폭 4배 · 관통 · 친구 회복`:
+    const damage=id==='cancer'?`10초 동안 Q ${spec.multiplier*100}% · 폭 3배 · 관통 · 친구 회복`:
       id==='cetus'?`10초 동안 방어력 +${spec.defenseBonus} · 주변 최대 3마리/초 공격`:
         `현재 공격력의 ${spec.multiplier*100}% × ${spec.hits}회 · 관통`;
     Object.assign(skill,{name:names[level],iconUrl:WATER_VFX[id][`skill-lv${level}`].iconUrl,ready:true,

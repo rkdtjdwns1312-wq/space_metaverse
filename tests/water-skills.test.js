@@ -22,7 +22,7 @@ function setup(id,level=4){
   return {room,player,size,near,far,monster};
 }
 
-test('게자리 Q는 평소 첫 몬스터에서 멈추고, E 후 10초간 폭4배·관통·친구 회복',()=>{
+test('게자리 Q는 평소 첫 몬스터에서 멈추고, E 후 10초간 폭3배·관통·친구 회복',()=>{
   const {room,player,size,near,far}=setup('cancer');const now=Date.now();
   const friend={id:'friend',role:'student',connected:true,mapId:player.mapId,x:player.x+size*2.3,y:player.y+size*.25,
     avatar:{level:4,constellationId:'leo'}};room.players.set(friend.id,friend);ensureVitals(friend).hp=1;
@@ -33,7 +33,8 @@ test('게자리 Q는 평소 첫 몬스터에서 멈추고, E 후 10초간 폭4�
   const result=castWater(room,player,now+1000);assert.equal(result.cooldowns[0],now+21000);
   assert.equal(ensureVitals(player).mp,mp-10);
   assert.equal(waterAuraViews(room,player.mapId,now+1000).length,1);
-  const enhanced=castWater(room,player,now+1100,{basic:true});assert.equal(enhanced.hit.width,size*.13*4);
+  const enhanced=castWater(room,player,now+1100,{basic:true});assert.equal(enhanced.hit.width,size*.13*3);
+  assert.equal(enhanced.hit.range,size*6);
   advance(room,now+1800);
   assert.equal(near.hp,1000-base-base*3);assert.equal(far.hp,1000-base*3);
   assert.equal(ensureVitals(friend).hp,friendBefore+base*3);
@@ -75,10 +76,11 @@ test('물고기자리 E는 단계별 4/2/1마리, 100/300/800% 관통·마나5·
   for(const [level,hits,multiplier] of [[2,4,1],[3,2,3],[4,1,8],[5,1,8]]){
     const {room,player,near,far,size}=setup('pisces',level),now=Date.now(),mp=ensureVitals(player).mp;
     const spec=waterSkillOf(player);assert.equal(spec.hits,hits);assert.equal(spec.multiplier,multiplier);
-    const result=castWater(room,player,now);assert.equal(result.hit.range,size*4);
+    const result=castWater(room,player,now);assert.equal(result.hit.range,size*4.8);
     assert.equal(result.hit.projectiles.length,hits);assert.equal(ensureVitals(player).mp,mp-5);
+    assert.deepEqual(result.hit.projectiles.map(projectile=>projectile.elapsedMs),Array.from({length:hits},(_,i)=>-i*120));
     assert.equal(result.cooldowns[0],now+10000);
-    advance(room,now+1600);
+    advance(room,now+2000);
     const damage=Math.round(attackPowerOf(level,'pisces',player)*multiplier)*hits;
     assert.equal(near.hp,1000-damage);assert.equal(far.hp,1000-damage);
     assert.throws(()=>castWater(room,player,now+9999),/기다려/);
@@ -105,7 +107,7 @@ test('물고기 연출은 앞으로 전진하며 중간에 솟고 사거리 끝 
   const cast={kind:'pisces-skill',x:100,y:200,dx:1,dy:0,range:400,size:80};
   const points=[0,.25,.5,.75,1].map(p=>waterProjectilePoint(cast,p));
   assert.deepEqual(points.map(point=>point.x),[100,200,300,400,500]);
-  assert.deepEqual(points.map(point=>point.y),[200,125,100,125,200]);
+  assert.deepEqual(points.map(point=>point.y),[200,162.5,150,162.5,200]);
 });
 
 test('물빛 투사체는 좌우뿐 아니라 수직 방향도 정확히 바라본다',()=>{

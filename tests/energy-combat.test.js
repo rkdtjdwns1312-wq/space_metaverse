@@ -40,6 +40,25 @@ test('첫 맵은 별게3·물별이2, 서버가 좌우 이동 방향을 전파�
   moveMonsters(room,4000,()=>.5);assert.equal(monsterViews(room)[0].facingX,-1);
 });
 
+test('근접 Q로 몬스터를 쓰러뜨리면 드롭을 즉시 화면에 알린다',async t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'melee-drop-')),key='melee-drop-test-key';
+  const game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,teacherManagedAccounts:false,unattended:true});
+  const {port}=await game.listen(),sockets=[];
+  t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();fs.rmSync(dir,{recursive:true,force:true});});
+  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(s);
+    await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});return s;};
+  const call=(s,event,data={})=>s.timeout(4000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1']});
+  const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});
+  const room=game.store.rooms.get(created.room.code),person=room.players.get(joined.selfId),monster=monstersOf(room).get('star-crab');
+  Object.assign(person,{mapId:monster.mapId,x:monster.x-45,y:monster.y,facing:{x:1,y:0}});
+  person.avatar.level=4;person.avatar.constellationId='leo';monster.hp=1;
+  let announced=null;student.on('energy:drops',data=>{announced=data;});
+  const attack=await call(student,'combat:attack');assert.ok(attack.ok,attack.error);assert.equal(attack.targets[0].defeated,true);
+  await new Promise(resolve=>setTimeout(resolve,30));
+  assert.ok(announced?.drops?.some(drop=>drop.mapId===person.mapId));
+});
+
 test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 번 지급→재시작 보존',async t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'energy-atomic-')),key='energy-atomic-test-key';
   const game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,teacherManagedAccounts:false,unattended:true});

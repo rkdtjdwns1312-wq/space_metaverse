@@ -60,6 +60,7 @@ function updateControlAlignment(){
   if(hud&&!hud.hidden){
     const vitalBox=hud.getBoundingClientRect();
     style.setProperty('--vitals-center-y',vitalBox.top+vitalBox.height/2+'px');
+    style.setProperty('--vitals-top',vitalBox.top+'px');
   }
 }
 const dockResizeObserver=new ResizeObserver(updateControlAlignment);
@@ -1023,7 +1024,7 @@ function applyShopAck(reply){
 function renderShopBuyList(){
   updateShopLevels();
   const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=hasUnlimitedShards(me);
-  const items=SHOP.items.filter(item=>shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)||teacher&&[2,3,4].includes(item.level)));
+  const items=SHOP.items.filter(item=>!item.shopHidden&&shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)||teacher&&[2,3,4].includes(item.level)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
@@ -1109,6 +1110,7 @@ const fmtTime=ms=>{const d=new Date(ms);return String(d.getHours()).padStart(2,'
 function addChatMessage(msg){
   $('chat-empty').hidden=true;
   const li=document.createElement('li');li.dataset.messageId=msg.id;
+  if(['map','department','direct'].includes(msg.channel))li.classList.add('channel-'+msg.channel);
   if(msg.role==='system')li.classList.add('system');
   if(msg.playerId===selfId&&msg.role!=='system')li.classList.add('mine');
   if(msg.flagged)li.classList.add('flagged');

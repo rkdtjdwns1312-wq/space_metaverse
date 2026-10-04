@@ -7,5 +7,5 @@ export const LIBRA_NAMES=Object.freeze({attack:'빛의 균형구',2:'균형의 �
 export function libraSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return transformedSkill(player,{level:2,stage,mana:5,cooldownMs:15000,durationMs:5000,
-    radiusWidths:3,attackBonus:stage-1});
+    radiusWidths:6,attackBonus:stage-1});
 }

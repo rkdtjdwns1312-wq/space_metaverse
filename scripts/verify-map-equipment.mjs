@@ -25,11 +25,13 @@ try{
   page=await browser.newPage({viewport:{width:1280,height:900}});page.on('pageerror',error=>errors.push(error.message));
   await page.goto(`${url}/?class=${code}`);await page.locator('#nickname').fill('별이');await page.locator('#student-pin').fill('1234');
   await page.locator('#student-form .submit').click();await page.locator('#password-offer-no').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();
   await page.locator('#minimap').screenshot({path:'.local/minimap-new.png'});
   await page.locator('#map-overview').click();await page.locator('#universe-dialog').waitFor({state:'visible'});
   assert.ok(await page.locator('#universe-links .universe-thumbnail').first().evaluate(canvas=>canvas.getBoundingClientRect().height<100));
   assert.ok(await page.locator('#universe-links canvas.universe-thumbnail').count()>=15);
   await page.locator('#universe-dialog').screenshot({path:'.local/universe-new.png'});
+  await page.locator('#universe-preview').screenshot({path:'.local/universe-preview-new.png'});
   check('현재 미니맵·전체 지도에서 같은 맵 원화와 장소별 축소 그림 표시');
   await page.locator('#universe-close').click();
   game.store.transact(()=>{saveNotice(room(),'새 알림');});publish();
@@ -66,6 +68,18 @@ try{
   await teacher.locator('#teacher-equipment-catalog-close').click();
   await teacher.locator('#energy-shop-close').click();
   check('선생님만 판매10종·보스 조합3종을 모든 아이템 보기에서 확인');
+  await teacher.locator('#dock-inventory').click();
+  await teacher.locator('#teacher-card-catalog-buttons [data-catalog="silver"]').click();
+  await teacher.locator('#teacher-card-catalog-dialog').waitFor({state:'visible'});
+  await teacher.locator('#teacher-card-catalog-edit').click();
+  await teacher.locator('#teacher-card-catalog-list [data-field="count"]').first().fill('17');
+  await teacher.locator('#teacher-card-catalog-save-silver').click();
+  await teacher.locator('#teacher-card-catalog-list .teacher-catalog-card').first().locator('.teacher-catalog-count').waitFor({state:'visible'});
+  assert.equal(await teacher.locator('#teacher-card-catalog-list .teacher-catalog-card').first().locator('.teacher-catalog-count').textContent(),'17장');
+  await teacher.locator('#teacher-card-catalog-dialog').screenshot({path:'.local/teacher-silver-catalog.png'});
+  await teacher.locator('#teacher-card-catalog-dialog > .dialog-actions button:last-child').click();
+  await teacher.locator('#inventory-dialog [data-close]').click();
+  check('선생님 뽑기카드 장수 수정·저장과 기존 버튼 디자인 확인');
   const flask=MAP.objects.find(o=>o.kind==='exploration'),priorityUntil=Date.now()+7*86400000;
   game.store.transact(()=>{
     student().lv4State={...student().lv4State,priorityUntil};
@@ -74,8 +88,19 @@ try{
   await teacher.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='별의 기원');
   await teacher.locator('#world').focus();await teacher.keyboard.press('f');
   await teacher.locator('#exploration-dialog').waitFor({state:'visible'});
+  await teacher.getByRole('button',{name:'특수 기능 보기'}).click();
   assert.match(await teacher.locator('#exploration-dialog').innerText(),/베텔기우스 급식 우선권[\s\S]*별이/);
+  await teacher.getByRole('button',{name:'수정하기'}).click();
+  assert.equal(await teacher.locator('.exploration-editor-row').count(),10);
+  await teacher.locator('.exploration-editor-row').first().locator('[data-field="energy"]').fill('2');
+  await teacher.getByRole('button',{name:'저장하기'}).click();
+  await teacher.locator('.exploration-editor').waitFor({state:'detached'});
+  await teacher.getByRole('button',{name:'수정하기'}).click();
+  assert.equal(await teacher.locator('.exploration-editor-row').first().locator('[data-field="energy"]').inputValue(),'2');
+  await teacher.getByRole('button',{name:'돌아가기'}).click();
+  await teacher.locator('#exploration-dialog').screenshot({path:'.local/exploration-new.png'});
   check('선생님 탐사 장치에서 베텔기우스 급식 우선권 종료일 확인');
+  check('탐사 카드 10장 문구·기운 편집과 저장 확인');
   assert.deepEqual(errors,[]);
 }finally{
   await browser?.close();await game?.close();

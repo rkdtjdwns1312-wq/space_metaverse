@@ -38,3 +38,12 @@ test('겹친 첫 몬스터는 함께 맞고 다른맵과 지나간 구간에는 
  const {room,near,far,fire,advance}=setup('sagittarius');far.x=near.x;fire(true);const hit=advance(1700)[0];assert.equal(hit.targets.length,2);
  near.hp=far.hp=1000;near.x=900;far.mapId='other';fire(false);advance(1400);near.x=510;advance(1800);assert.equal(near.hp,1000);assert.equal(far.hp,1000);
 });
+test('투사체 그림 가장자리 밖의 작은 몬스터 여백만 타격한다',()=>{
+ const {room,near,far,fire,advance}=setup('sagittarius');
+ near.x=650;near.y=40;far.mapId='other';
+ fire(true);const cast=room.projectiles[0];
+ near.y=cast.y+near.radius+cast.width+Math.min(20,Math.max(4,cast.size*.08))-1;
+ advance(1700);assert.ok(near.hp<1000);
+ const hp=near.hp;near.hp=1000;near.y+=3;fire(true);advance(1700);assert.equal(near.hp,1000);
+ assert.ok(hp<1000);
+});

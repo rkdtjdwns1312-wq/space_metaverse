@@ -63,5 +63,5 @@ test('실제 소켓은 인증과 거리를 검증하고 위조 회복량/대상�
   assert.deepEqual([value.hp,value.mp],[1,0]);
   const done=new Promise(resolve=>socket.once('life-star:complete',resolve));now+=5000;
   await Promise.race([done,new Promise((_,reject)=>setTimeout(()=>reject(Error('회복 완료 이벤트 없음')),2000))]);
-  assert.deepEqual([value.hp,value.mp],[99999,40]);
+  assert.deepEqual([value.hp,value.mp],[999,999]);
 });

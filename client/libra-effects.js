@@ -13,7 +13,13 @@ export function drawLibraProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   ctx.restore();return true;
 }
 export function drawLibraAura(ctx,aura,elapsedMs,reducedMotion=false){
-  const index=reducedMotion?12:elapsedMs<650?Math.floor(elapsedMs/650*6):elapsedMs>aura.durationMs-550?18+Math.floor((elapsedMs-(aura.durationMs-550))/550*6):6+Math.floor((elapsedMs-650)/85)%12;
-  frame(ctx,`skill-lv${aura.stage}`,Math.min(23,index),aura.size*2.15);
-  ctx.save();ctx.strokeStyle='#ffe3a388';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,0,aura.radius,aura.radius*.34,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+  const opening=elapsedMs<500,closing=elapsedMs>aura.durationMs-500;
+  const size=aura.size*4.3;
+  if(!opening&&!closing){
+    frame(ctx,`skill-lv${aura.stage}`,12,size);
+    return;
+  }
+  const index=reducedMotion?(opening?5:18):opening?Math.min(11,Math.floor(elapsedMs/500*12)):
+    Math.min(23,18+Math.floor((elapsedMs-(aura.durationMs-500))/500*6));
+  frame(ctx,`skill-lv${aura.stage}`,index,size);
 }

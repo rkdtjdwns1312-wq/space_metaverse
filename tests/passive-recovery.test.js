@@ -11,14 +11,14 @@ function fixture(level=4){
   return {p,room,value:ensureVitals(p)};
 }
 
-test('모든 아바타는 서버 시간 10초마다 최대 HP/MP의 10%를 회복하고 최대치를 넘지 않는다',()=>{
+test('모든 아바타는 10초마다 체력 10%와 마나 2를 회복하고 최대치를 넘지 않는다',()=>{
   const {p,room,value}=fixture();value.hp=10;value.mp=5;
   assert.equal(PASSIVE_RECOVERY_MS,10000);
   assert.deepEqual(advancePassiveRecovery(room,1000),[]);
   assert.deepEqual(advancePassiveRecovery(room,10999),[]);
   assert.deepEqual(advancePassiveRecovery(room,11000).map(u=>u.playerId),['p']);
-  assert.deepEqual([value.hp,value.mp],[19,9]);
-  advancePassiveRecovery(room,31000);assert.deepEqual([value.hp,value.mp],[37,17]);
+  assert.deepEqual([value.hp,value.mp],[19,7]);
+  advancePassiveRecovery(room,31000);assert.deepEqual([value.hp,value.mp],[37,11]);
   advancePassiveRecovery(room,200000);assert.deepEqual([value.hp,value.mp],[90,40]);
   assert.deepEqual(advancePassiveRecovery(room,210000),[]);
   p.avatar.level=1;const small=ensureVitals(p);small.hp=1;small.mp=0;
@@ -29,10 +29,10 @@ test('모든 아바타는 서버 시간 10초마다 최대 HP/MP의 10%를 회�
 test('맵 이동에도 주기는 유지하고 접속 종료·자리 비움·쓰러짐에는 누적하지 않는다',()=>{
   const {p,room,value}=fixture();value.hp=5;value.mp=5;
   advancePassiveRecovery(room,0);p.mapId='other';advancePassiveRecovery(room,10000);
-  assert.deepEqual([value.hp,value.mp],[14,9]);
+  assert.deepEqual([value.hp,value.mp],[14,7]);
   p.connected=false;advancePassiveRecovery(room,20000);p.connected=true;
-  advancePassiveRecovery(room,30000);assert.deepEqual([value.hp,value.mp],[14,9]);
-  advancePassiveRecovery(room,40000);assert.deepEqual([value.hp,value.mp],[23,13]);
+  advancePassiveRecovery(room,30000);assert.deepEqual([value.hp,value.mp],[14,7]);
+  advancePassiveRecovery(room,40000);assert.deepEqual([value.hp,value.mp],[23,9]);
   p.away=true;advancePassiveRecovery(room,50000);p.away=false;value.hp=0;
   advancePassiveRecovery(room,60000);assert.equal(value.hp,0);
   value.hp=1;advancePassiveRecovery(room,70000);advancePassiveRecovery(room,80000);
@@ -44,7 +44,7 @@ test('변신 중에는 늘어난 최대치 기준으로 같은 10초 주기만 �
   const value=ensureVitals(p);value.hp=10;value.mp=10;
   advancePassiveRecovery(room,0);advancePassiveRecovery(room,9999);
   assert.deepEqual([value.hp,value.mp],[10,10]);
-  advancePassiveRecovery(room,10000);assert.deepEqual([value.hp,value.mp],[18,17]);
+  advancePassiveRecovery(room,10000);assert.deepEqual([value.hp,value.mp],[18,12]);
 });
 
 test('접속 중 학생의 자동 회복은 서버가 같은 맵 화면에 전송한다',async t=>{
@@ -58,5 +58,5 @@ test('접속 중 학생의 자동 회복은 서버가 같은 맵 화면에 전�
   await new Promise(resolve=>setTimeout(resolve,120));
   const update=new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('자동 회복 전송 없음')),2000);student.on('combat:vitals',data=>{if(data.playerId===p.id&&data.vitals.hp.current===16){clearTimeout(timeout);resolve(data);}});});
   now+=10000;const result=await update;
-  assert.deepEqual([result.vitals.hp.current,result.vitals.mp.current],[16,4]);
+  assert.deepEqual([result.vitals.hp.current,result.vitals.mp.current],[16,2]);
 });

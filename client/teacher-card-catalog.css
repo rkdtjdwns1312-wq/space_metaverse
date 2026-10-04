@@ -20,6 +20,7 @@
 #teacher-card-catalog-dialog .teacher-catalog-field input,#teacher-card-catalog-dialog .teacher-catalog-field textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:9px;border:1px solid #7287b6;border-radius:8px;background:#101b30;color:#f4f6ff;font:inherit;resize:vertical}
 #teacher-card-catalog-dialog .teacher-catalog-save{margin-top:10px}
 #teacher-card-catalog-dialog .teacher-catalog-save-status{min-height:1.4em;margin-top:6px;color:#b9f2cc;font-size:.85rem;overflow-wrap:anywhere}
+#teacher-card-catalog-dialog .teacher-catalog-count-field{margin-top:10px}
 #teacher-card-catalog-dialog .teacher-catalog-unsaved{grid-column:1/-1;padding:12px;border:1px solid #f0c879;border-radius:10px;background:#302719;color:#fff1d2}
 #teacher-card-catalog-dialog .teacher-catalog-unsaved p{margin:0 0 8px;line-height:1.45;overflow-wrap:anywhere}
 #teacher-card-catalog-dialog .teacher-catalog-unsaved button+button{margin-left:6px}

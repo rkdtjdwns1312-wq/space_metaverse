@@ -55,7 +55,7 @@ test('화살 방향/사거리, 겹친 몬스터·학생 모두 명중, 자기·�
   const {room,player,monster,power,size}=setup(3);
   const twin={...monster,id:'second',attackers:new Map(),contributors:new Map()};room.monsters.set(twin.id,twin);
   const behind={...monster,id:'behind',x:400,attackers:new Map(),contributors:new Map()};room.monsters.set(behind.id,behind);
-  const far={...monster,id:'far',x:500+size*6+24+size*.13+1,attackers:new Map(),contributors:new Map()};room.monsters.set(far.id,far);
+  const far={...monster,id:'far',x:500+size*6+24+size*.13+25,attackers:new Map(),contributors:new Map()};room.monsters.set(far.id,far);
   const peer={...player,id:'friend',x:700,avatar:{level:5,constellationId:'taurus'}};
   room.players.set(peer.id,peer);room.players.set('immune',{...peer,id:'immune',avatar:{...peer.avatar,blackStar:true}});
   room.players.set('other',{...peer,id:'other',mapId:'star-origin-2'});

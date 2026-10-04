@@ -27,7 +27,9 @@ export function drawOphiuchusSkill(ctx,hit,elapsedMs,reducedMotion=false){
   preloadOphiuchus([spec.id]);
   const frame=reducedMotion?12:ophiuchusFrameAt(elapsedMs);
   const center=hit.size*.6+hit.range*.55;
-  ctx.save();ctx.translate(hit.x+hit.dx*center,hit.y+hit.dy*center);ctx.rotate(Math.atan2(hit.dy,hit.dx));
-  drawFrame(ctx,spec,frame,0,0,hit.size*hit.snakeScale*1.35);
+  ctx.save();ctx.translate(hit.x+hit.dx*center,hit.y+hit.dy*center);
+  if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}
+  else ctx.rotate(Math.atan2(hit.dy,hit.dx));
+  drawFrame(ctx,spec,frame,0,0,hit.size*hit.snakeScale*1.35*.3);
   ctx.restore();return true;
 }

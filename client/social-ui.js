@@ -21,7 +21,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('chat-window-toggle').onclick=()=>{$('chat-dialog').open?$('chat-dialog').close():openChat();};
   function render(){
     const channel=$('chat-channel').value,target=$('chat-recipient').value;
-    const visible=messages.filter(msg=>msg.role==='system'||msg.channel===channel&&(channel!=='direct'||(msg.playerId===getSelfId()?msg.targetId:msg.playerId)===target));
+    const visible=messages.filter(msg=>msg.role==='system'||channel==='map'||msg.channel===channel);
     const signature=channel+'|'+target+'|'+visible.map(m=>m.id).join(',');
     if(signature===renderedIds)return;
     const scroll=chatWindow.capture();clearMessages();for(const msg of visible)renderMessage(msg);
@@ -35,8 +35,9 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   function routing(){
     const channel=$('chat-channel').value,room=getRoom();
     $('chat-recipient').hidden=channel!=='direct';
+    for(const tab of document.querySelectorAll('[data-chat-tab]'))tab.setAttribute('aria-pressed',String(tab.dataset.chatTab===channel));
     const department=room?.planets.find(p=>p.id===me()?.departmentId);
-    $('chat-context').textContent=channel==='map'?'전체 대화는 지금 같은 맵에 있는 친구에게만 보여요.':channel==='department'?(department?department.name+' 소속 친구끼리 다른 맵에서도 대화해요.':'부서행성에 가입하면 사용할 수 있어요.'):'선택한 친구와 나만 볼 수 있는 1:1 대화예요.';
+    $('chat-context').textContent=channel==='map'?'전체·행성·귓속말을 함께 봐요. 보내는 글은 같은 맵의 친구에게 전달돼요.':channel==='department'?(department?department.name+' 소속 친구끼리 다른 맵에서도 대화해요.':'부서행성에 가입하면 사용할 수 있어요.'):'귓속말은 나와 상대만 볼 수 있어요. 아래에서 보낼 친구를 골라요.';
     render();
   }
   function openChat(targetId){
@@ -44,6 +45,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
     routing();closeRoots();chatWindow.open();unread=0;$('unread-count').hidden=true;$('chat-input').focus();refresh();
   }
   $('chat-channel').onchange=routing;$('chat-recipient').onchange=routing;
+  for(const tab of document.querySelectorAll('[data-chat-tab]'))tab.onclick=()=>{$('chat-channel').value=tab.dataset.chatTab;routing();};
   function friendState(){
     const room=getRoom(),p=room?.players.find(p=>p.id===friendId);
     if(!p){if($('friend-dialog').open)$('friend-dialog').close();return;}

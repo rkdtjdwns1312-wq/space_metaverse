@@ -19,12 +19,12 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map((spawn,i)=>{
     const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
-    const [baseX,baseY]=((type.radiusScale??({1:1,2:2,3:4}[type.level]||1))>=4?largeSpawns:spawns)[i%5];
+    const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
     const x=type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
-    // 단계가 오를수록 별자리 몬스터가 눈에 띄게 커집니다: 1단계×1, 2단계×2, 3단계×4.
+    // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
-    const multiplier=type.radiusScale??({1:1,2:2,3:4,4:4}[type.level]||1);
+    const multiplier={1:1,2:2,3:4,4:5}[type.level]||1;
     const radius=MONSTER_RULES.radius*(type.boss?8:multiplier);
     const patrolPhaseOffset=randomPatrolOffset(phaseRandom),patrolStartedAt=now+patrolPhaseOffset;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,

@@ -11,6 +11,19 @@ const DRAW_CATALOG=[
   ...[...Array(6).fill(2),...Array(2).fill(5),...Array(2).fill(10)].map(amount=>({kind:'xp',amount,name:amount===2?'성장':amount===5?'급성장':'과다 성장'}))
 ];
 export const RABBIT_DRAW_CATALOG=Object.freeze(DRAW_CATALOG.map(Object.freeze));
+const REWARD_GROUPS=[...new Map(RABBIT_DRAW_CATALOG.map(reward=>[JSON.stringify(reward),reward])).values()];
+const DEFAULT_COUNTS=REWARD_GROUPS.map(reward=>RABBIT_DRAW_CATALOG.filter(entry=>JSON.stringify(entry)===JSON.stringify(reward)).length);
+export function validateRabbitDrawCounts(value){
+  if(value==null)return null;
+  if(!Array.isArray(value)||value.length!==REWARD_GROUPS.length||value.some(count=>!Number.isSafeInteger(count)||count<0||count>200)||
+    value.reduce((sum,count)=>sum+count,0)<1||value.reduce((sum,count)=>sum+count,0)>500)
+    throw new Error('뽑기 카드 구성은 각 0~200장, 전체 1~500장으로 설정해주세요.');
+  return [...value];
+}
+export function rabbitDrawEntries(counts){
+  const selected=validateRabbitDrawCounts(counts)||DEFAULT_COUNTS;
+  return REWARD_GROUPS.map((reward,index)=>({id:String(index),...reward,count:selected[index]}));
+}
 
 // 1~10개 모두 나올 수 있고, 100회 기준 가중합은 정확히 300개입니다.
 export const RABBIT_REWARD_WEIGHTS=Object.freeze([35,19,14,10,7,5,4,3,2,1]);
@@ -27,8 +40,8 @@ export function rabbitReward(roll=randomInt(100)){
   throw new Error('뽑기 확률 설정을 확인해주세요.');
 }
 
-export function createRabbitDraw(now=Date.now()){
-  const cards=RABBIT_DRAW_CATALOG.map(reward=>({id:randomUUID(),reward:structuredClone(reward)}));
+export function createRabbitDraw(now=Date.now(),counts=null){
+  const cards=rabbitDrawEntries(counts).flatMap(({id,count,...reward})=>Array.from({length:count},()=>({id:randomUUID(),reward:structuredClone(reward)})));
   for(let i=cards.length-1;i>0;i--){const j=randomInt(i+1);[cards[i],cards[j]]=[cards[j],cards[i]];}
   return {id:randomUUID(),startedAt:now,markerId:null,cards};
 }
@@ -54,10 +67,9 @@ export function validateRabbitDraw(value){
     return structuredClone(value);
   }
   if(!value||typeof value.id!=='string'||!Number.isSafeInteger(value.startedAt)||value.startedAt<0||(value.markerId!==null&&typeof value.markerId!=='string')||
-    !Array.isArray(value.cards)||value.cards.length!==DRAW_COUNT||value.cards.some(card=>!card||typeof card.id!=='string'||!validNewReward(card.reward))||
-    new Set(value.cards.map(card=>card.id)).size!==DRAW_COUNT) throw new Error('달토끼 뽑기 저장 데이터가 올바르지 않습니다.');
-  const actual=value.cards.map(card=>JSON.stringify(card.reward)).sort();
-  const expected=RABBIT_DRAW_CATALOG.map(JSON.stringify).sort();
-  if(JSON.stringify(actual)!==JSON.stringify(expected))throw new Error('달토끼 뽑기 카드 구성이 올바르지 않습니다.');
+    !Array.isArray(value.cards)||value.cards.length<1||value.cards.length>500||value.cards.some(card=>!card||typeof card.id!=='string'||!validNewReward(card.reward))||
+    new Set(value.cards.map(card=>card.id)).size!==value.cards.length) throw new Error('달토끼 뽑기 저장 데이터가 올바르지 않습니다.');
+  const allowed=new Set(REWARD_GROUPS.map(JSON.stringify));
+  if(value.cards.some(card=>!allowed.has(JSON.stringify(card.reward))))throw new Error('달토끼 뽑기 카드 구성이 올바르지 않습니다.');
   return structuredClone(value);
 }
