@@ -5,9 +5,10 @@ import { resolve, dirname } from 'node:path';
 import { spawn } from 'node:child_process';
 import {startLocalClassroom} from './local-state.mjs';
 import {studentHoursFromEnv} from '../server/access-hours.js';
+import {configuredAdminPassword} from '../server/admin-password.js';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
-if(!existsSync('.env'))writeFileSync('.env','TEACHER_KEY='+randomBytes(32).toString('hex')+'\nPORT=3000\nHOST=127.0.0.1\nPUBLIC_ORIGIN=\n',{mode:0o600});
+if(!existsSync('.env'))writeFileSync('.env','TEACHER_KEY='+randomBytes(32).toString('hex')+'\nADMIN_PASSWORD='+randomBytes(24).toString('base64url')+'\nPORT=3000\nHOST=127.0.0.1\nPUBLIC_ORIGIN=\n',{mode:0o600});
 process.loadEnvFile('.env');
 const studentHours=studentHoursFromEnv();
 const hoursNotice=studentHours?'학생 이용 시간: 한국 시간 07:00~21:00':'테스트 기간 · 학생은 시간 제한 없이 접속할 수 있어요.';
@@ -25,7 +26,7 @@ function openTeacher(target){
  }else console.log('교사 화면: '+address);
 }
 let started;
-try{started=await startLocalClassroom({port,teacherKey:secret,dataDir:process.env.DATA_DIR||'data/classes',studentHours});}
+try{started=await startLocalClassroom({port,teacherKey:secret,adminPassword:configuredAdminPassword(process.env.ADMIN_PASSWORD),dataDir:process.env.DATA_DIR||'data/classes',studentHours,maxActiveRooms:process.env.MAX_ACTIVE_ROOMS===undefined?undefined:Number(process.env.MAX_ACTIVE_ROOMS)});}
 catch(error){console.error('교실을 시작하지 못했어요: '+error.message);process.exit(1);}
 const {existing}=started;
 if(existing){

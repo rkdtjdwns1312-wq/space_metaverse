@@ -1,5 +1,6 @@
 /* 자주 쓰는 학생 화면의 작은 글씨와 누르기 어려운 조작을 통일합니다. */
-.lobby .owner-entry{margin:8px 0 0;text-align:right}.lobby .owner-entry a{color:#4c3981;font-size:15px;font-weight:800;text-underline-offset:3px}
+.lobby .owner-entry{display:block;width:max-content;max-width:100%;margin:12px 0 0 auto;padding:8px 13px;border:1.5px solid #a99aca;border-radius:11px;background:#f1edfa;color:#47357d;font-size:15px;font-weight:800;text-decoration:none;box-shadow:0 2px 8px #3928661f}
+.lobby .owner-entry:hover{background:#e7def7}.lobby .owner-entry:focus-visible{outline:3px solid #7442ae;outline-offset:3px}
 .map-wrap:has(.lobby:not([hidden])) #classroom-clock,.space-section:has(.lobby:not([hidden])) .map-footer{display:none}
 body:has(.lobby:not([hidden])) .topbar .phase{display:none}
 body.joined .dock-button{font-size:15px;font-weight:800;line-height:1.2}

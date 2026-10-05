@@ -151,13 +151,13 @@ export function fromRecord(r) {
 }
 
 export class PersistentRoomStore extends RoomStore {
-  constructor(directory,{unattended=false,teacherManagedAccounts=false}={}) {
-    super();this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
+  constructor(directory,{unattended=false,teacherManagedAccounts=false,maxActiveRooms=RULES.maxRooms}={}) {
+    super({maxActiveRooms});this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
     try {for(const r of this.files.loadAll()){fromRecord(r);this.records.set(r.code,r);}}
     catch(error){this.files.close();throw error;}
   }
   newCode(){let code;do{code=super.newCode();}while(this.records.has(code));return code;}
-  create(data,socketId){
+  create(data,socketId,options){
     let accounts=null;
     if(data.studentAccounts!==undefined){
       ensure(this.teacherManagedAccounts,'학생 계정 동시 생성은 저장 교실에서만 가능해요.');
@@ -170,7 +170,7 @@ export class PersistentRoomStore extends RoomStore {
         return {nickname:name,pin:entry.pin};
       });
     }
-    const s=super.create(accounts?{...data,allowedNames:accounts.map(account=>account.nickname)}:data,socketId);
+    const s=super.create(accounts?{...data,allowedNames:accounts.map(account=>account.nickname)}:data,socketId,options);
     s.room.createdAt=Date.now();s.room.unattended=this.unattended;
     if(this.teacherManagedAccounts)s.credentials=(accounts||[...s.room.allowedNames].map(name=>({nickname:name,pin:String(randomInt(10000)).padStart(4,'0')}))).map(account=>{
       this.createStudent(s.room,account);return account;
@@ -192,7 +192,7 @@ export class PersistentRoomStore extends RoomStore {
       for(const p of active.players.values())if(p.role==='teacher')this.remove(active,p);
       return {room:active,player:this.add(active,'선생님','teacher',socketId)};
     }
-    ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요.');
+    ensure(this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요.');
     const record=this.records.get(code);ensure(record,'저장된 교실 코드를 확인해주세요.');
     const room=fromRecord(record);room.unattended=this.unattended;this.rooms.set(code,room);
     return {room,player:this.add(room,'선생님','teacher',socketId)};
@@ -203,7 +203,7 @@ export class PersistentRoomStore extends RoomStore {
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
     let room=this.rooms.get(code);
     if(!room&&this.unattended&&this.records.has(code)){
-      ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요.');
+      ensure(this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요.');
       room=fromRecord(this.records.get(code));room.unattended=true;this.rooms.set(code,room);
     }
     ensure(room,'선생님이 교실을 열었는지와 교실 코드를 확인해주세요.');
@@ -232,6 +232,11 @@ export class PersistentRoomStore extends RoomStore {
     this.records.set(room.code,structuredClone(toRecord(room)));
     super.destroy(room);
   }
+  deleteClass(code){
+    const room=this.rooms.get(code);
+    if(room)super.destroy(room);
+    this.records.delete(code);
+  }
   // 한 요청은 교실 하나만 바꿉니다. 파일 교체 성공 뒤에만 소켓 응답을 내보냅니다.
   // 실패하면 Map 간 참조까지 함께 복구하여 지급/구매/거래가 메모리에만 반영되지 않게 합니다.
   transact(work){
@@ -241,9 +246,14 @@ export class PersistentRoomStore extends RoomStore {
       try {result=work();}catch(e){if(e.commitOnError)denial=e;else throw e;}
       const candidates=new Map(this.records);
       for(const room of this.rooms.values())candidates.set(room.code,toRecord(room));
-      const changed=[...candidates].filter(([code,r])=>JSON.stringify(r)!==JSON.stringify(backup.records.get(code)));
+      const changed=[...new Set([...backup.records.keys(),...candidates.keys()])]
+        .filter(code=>JSON.stringify(candidates.get(code))!==JSON.stringify(backup.records.get(code)))
+        .map(code=>[code,candidates.get(code)]);
       if(changed.length>1)throw new Error('한 번에 여러 교실을 저장할 수 없습니다.');
-      for(const [code,r] of changed){this.files.save(r);this.records.set(code,structuredClone(r));}
+      for(const [code,r] of changed){
+        if(r===undefined)this.files.remove(code);
+        else{this.files.save(r);this.records.set(code,structuredClone(r));}
+      }
     }catch(error){Object.assign(this,backup);throw error;}
     if(denial)throw denial;
     return result;

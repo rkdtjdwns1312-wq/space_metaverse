@@ -34,6 +34,7 @@ import {isSagittarius} from '../shared/sagittarius-skills.js';
 import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns,combatEnemies,damageTargets} from './sagittarius-skills.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
+import {configuredAdminPassword} from './admin-password.js';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError, playerEffectsView, nickname } from './rooms.js';
@@ -140,9 +141,10 @@ const planetInput=(room,data) => {
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
   return {name,description,x,y,color:data.color,templateId:data.templateId};
 };
-export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom}={}) {
+export function createClassroomServer({teacherKey, adminPassword=randomBytes(24).toString('base64url'), publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, maxActiveRooms=RULES.maxRooms, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
-  const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts}):new RoomStore();
+  configuredAdminPassword(adminPassword);
+  const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts,maxActiveRooms}):new RoomStore({maxActiveRooms});
   const persistent=!!dataDir;
   const studentOpen=()=>!studentHours||studentAccessOpen(clock());
   // 브라우저의 미리 연결(preconnect)은 HTTP 요청 없이도 남을 수 있습니다.
@@ -588,14 +590,14 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     };
     action('admin:login',data=>{
       notJoined();const bucket=authBucket();
-      if(!equalSecret(data.key,teacherKey)){bucket.count++;throw new GameError('관리자 확인 키를 확인해주세요.');}
+      if(!equalSecret(data.key,adminPassword)){bucket.count++;throw new GameError('관리자 비밀번호를 확인해주세요.');}
       ensure(persistent,'저장 기능이 켜져 있지 않아요.');socket.data.owner=true;
       return {classes:adminClasses()};
     },false);
     action('admin:list',()=>{ownerOnly();return {classes:adminClasses()};},false);
     action('admin:create',data=>{
       ownerOnly();const label=teacherLabel(data.teacherName);
-      const session=store.create({title:data.title,allowedNames:[],allowEmpty:true},socket.id);
+      const session=store.create({title:data.title,allowedNames:[],allowEmpty:true},socket.id,{archivedCreation:true});
       const room=session.room;room.adminCreated=true;store.remove(room,session.player);
       const issued=issueTeacherCode(teacherKey);
       room.teacherAccess={digest:issued.digest,label,createdAt:clock()};
@@ -604,6 +606,19 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
     });
     action('admin:grant',data=>{ownerOnly();const teacherCode=changeTeacherAccess(data.code,teacherLabel(data.teacherName));return {teacherCode,classes:adminClasses()};});
     action('admin:revoke',data=>{ownerOnly();changeTeacherAccess(data.code,null);return {classes:adminClasses()};});
+    action('admin:delete',data=>{
+      ownerOnly();
+      const {room}=adminRoom(data.code);
+      ensure(data.confirmCode===data.code,'삭제하려는 교실 코드를 정확히 입력해주세요.');
+      if(room){
+        for(const player of room.players.values()){
+          const peer=io.sockets.sockets.get(player.socketId);
+          if(peer){peer.data.session=null;deliver(()=>{peer.emit('room:closed',{message:'관리자가 교실을 삭제했어요. 이 교실에는 다시 입장할 수 없어요.'});peer.leave(room.code);});}
+        }
+      }
+      store.deleteClass(data.code);
+      return {classes:adminClasses()};
+    });
     action('room:create',data=>{
       notJoined();authorizeTeacher(data);ensure(equalSecret(data.teacherKey,teacherKey),'홈페이지 관리자만 교실을 만들 수 있어요.');
       return enter(store.create({...data,allowEmpty:false},socket.id));

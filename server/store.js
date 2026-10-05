@@ -87,6 +87,15 @@ export class ClassFileStore {
     }
   }
 
+  remove(code) {
+    if(this.closed)throw new Error('이미 닫힌 저장소입니다.');
+    const target=path.join(this.directory,`${validateCode(code)}.json`);
+    try { fs.unlinkSync(target); }
+    catch(error){throw new Error(`교실 삭제에 실패했습니다(${code}): ${error.message}`,{cause:error});}
+    // 파일 삭제가 끝난 뒤의 폴더 동기화 오류는 삭제 실패로 돌려보내지 않습니다.
+    try {syncDirectory(this.directory);}catch(error){console.error('저장 폴더 동기화 확인 필요:',error.code);}
+  }
+
   close() {
     if (this.closed) return;
     this.closed = true;

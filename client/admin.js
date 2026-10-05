@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);
 const socket=io({reconnection:true});
 let loggedIn=false;
+let deleteTarget=null;
 const showMessage=text=>{$('admin-message').textContent=text;};
 async function request(event,data={}){
   if(!socket.connected)throw new Error('서버 연결을 기다려 주세요.');
@@ -30,7 +31,9 @@ function render(classes){
     grant.onclick=async()=>{grant.disabled=true;try{const reply=await request('admin:grant',{code:item.code,teacherName:name.value});render(reply.classes);showCode(item.code,reply.teacherCode);showMessage('새 코드를 발급했어요.');}catch(error){showMessage(error.message);}finally{grant.disabled=false;}};
     const revoke=document.createElement('button');revoke.type='button';revoke.className='secondary';revoke.textContent='선생님 코드 회수';revoke.disabled=!item.assigned;
     revoke.onclick=async()=>{if(!confirm(item.title+' 선생님 코드를 회수할까요? 담당 선생님은 다시 입장해야 해요.'))return;revoke.disabled=true;try{const reply=await request('admin:revoke',{code:item.code});render(reply.classes);$('issued-panel').hidden=true;showMessage('선생님 코드를 회수했어요.');}catch(error){showMessage(error.message);}finally{revoke.disabled=false;}};
-    actions.append(grant,revoke);row.append(h,info,current,label,actions);list.append(row);
+    const remove=document.createElement('button');remove.type='button';remove.className='danger';remove.textContent='교실 삭제';
+    remove.onclick=()=>{deleteTarget=item;$('delete-target').textContent=item.title+' · 교실 코드 '+item.code;$('delete-code').value='';$('delete-error').textContent='';$('delete-dialog').showModal();$('delete-code').focus();};
+    actions.append(grant,revoke,remove);row.append(h,info,current,label,actions);list.append(row);
   }
 }
 $('admin-login').onsubmit=async event=>{
@@ -46,4 +49,15 @@ $('create-class').onsubmit=async event=>{
 $('refresh-list').onclick=async()=>{try{render((await request('admin:list')).classes);showMessage('목록을 새로고침했어요.');}catch(error){showMessage(error.message);}};
 $('copy-code').onclick=async()=>{try{await navigator.clipboard.writeText($('issued-code').textContent);showMessage('코드를 복사했어요.');}catch{showMessage('복사할 수 없어요. 코드를 직접 선택해 복사해 주세요.');}};
 $('hide-issued').onclick=()=>{$('issued-code').textContent='';$('issued-panel').hidden=true;};
-socket.on('disconnect',()=>{if(loggedIn){loggedIn=false;$('admin-panel').hidden=true;$('login-panel').hidden=false;$('issued-code').textContent='';$('issued-panel').hidden=true;showMessage('연결이 끊어졌어요. 다시 입장해 주세요.');}});
+$('cancel-delete').onclick=()=>$('delete-dialog').close();
+$('delete-dialog').addEventListener('close',()=>{deleteTarget=null;$('delete-code').value='';});
+$('delete-class').onsubmit=async event=>{
+  event.preventDefault();
+  if(!deleteTarget)return;
+  const code=deleteTarget.code;
+  if($('delete-code').value!==code){$('delete-error').textContent='교실 코드를 정확히 입력해주세요.';return;}
+  const button=$('confirm-delete');button.disabled=true;
+  try{const reply=await request('admin:delete',{code,confirmCode:$('delete-code').value});$('delete-dialog').close();render(reply.classes);$('issued-panel').hidden=true;$('issued-code').textContent='';showMessage(code+' 교실을 삭제했어요.');}
+  catch(error){$('delete-error').textContent=error.message;}finally{button.disabled=false;}
+};
+socket.on('disconnect',()=>{if(loggedIn){if($('delete-dialog').open)$('delete-dialog').close();deleteTarget=null;loggedIn=false;$('admin-panel').hidden=true;$('login-panel').hidden=false;$('issued-code').textContent='';$('issued-panel').hidden=true;showMessage('연결이 끊어졌어요. 다시 입장해 주세요.');}});

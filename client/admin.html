@@ -13,8 +13,8 @@
     <header><a href="/">← 접속 화면</a><h1>우주 교실 관리자</h1><p>교실을 만들고 담당 선생님에게 접속 코드를 전해 주세요.</p></header>
     <section id="login-panel" class="panel" aria-labelledby="login-title">
       <h2 id="login-title">관리자 입장</h2>
-      <form id="admin-login"><label for="admin-key">관리자 확인 키</label><input id="admin-key" type="password" required minlength="16" autocomplete="off"><button type="submit">입장하기</button></form>
-      <p class="hint">이 키는 선생님에게 보내지 마세요. 교실별 접속 코드를 발급할 수 있어요.</p>
+      <form id="admin-login"><label for="admin-key">관리자 비밀번호</label><input id="admin-key" type="password" required minlength="12" autocomplete="off"><button type="submit">입장하기</button></form>
+      <p class="hint">관리자 비밀번호는 선생님에게 보내지 마세요. 교실별 접속 코드를 발급할 수 있어요.</p>
     </section>
     <div id="admin-panel" hidden>
       <section class="panel" aria-labelledby="new-title"><h2 id="new-title">새 교실 만들기</h2>
@@ -25,6 +25,17 @@
       </section>
       <section id="issued-panel" class="panel issued" hidden aria-live="polite"><h2>새 선생님 코드</h2><p id="issued-class"></p><div class="code-row"><code id="issued-code"></code><button id="copy-code" type="button">코드 복사</button></div><p>이 화면을 닫으면 코드는 다시 볼 수 없어요. 담당 선생님에게 비공개로 전달해 주세요.</p><button id="hide-issued" type="button" class="secondary">확인했어요</button></section>
       <section class="panel" aria-labelledby="classes-title"><h2 id="classes-title">내가 만든 교실</h2><p class="hint">코드를 다시 발급하면 이전 선생님 코드는 바로 사용할 수 없어요.</p><div id="class-list"></div><button id="refresh-list" type="button" class="secondary">목록 새로고침</button></section>
+      <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-warning">
+        <form id="delete-class">
+          <h2 id="delete-title">교실 삭제</h2>
+          <p id="delete-warning">교실과 학생 계정, 아이템, 활동 기록이 모두 삭제됩니다. 접속 중인 학생과 선생님도 퇴장합니다. 되돌릴 수 없습니다.</p>
+          <p id="delete-target"></p>
+          <label for="delete-code">삭제할 교실 코드를 그대로 입력하세요.</label>
+          <input id="delete-code" maxlength="6" autocomplete="off" spellcheck="false" required>
+          <p id="delete-error" role="alert"></p>
+          <div class="dialog-actions"><button id="cancel-delete" type="button" class="secondary">취소</button><button id="confirm-delete" type="submit" class="danger">교실 영구 삭제</button></div>
+        </form>
+      </dialog>
     </div>
     <p id="admin-message" role="status" aria-live="polite"></p>
   </main>

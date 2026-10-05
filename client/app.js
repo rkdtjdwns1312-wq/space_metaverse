@@ -235,7 +235,6 @@ $('ability-choose-item').onclick=async()=>{
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function setMode(value){
   mode=value;$('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
-  $('owner-entry').hidden=value!=='teacher';
   if(value==='teacher'&&!classMode)chooseClassMode('open');
   for(const role of ['student','teacher']){$(role+'-tab').classList.toggle('selected',role===value);$(role+'-tab').setAttribute('aria-pressed',String(role===value));}
   $('form-message').textContent='';

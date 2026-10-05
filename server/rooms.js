@@ -62,13 +62,17 @@ export function nickname(value) {
 export class RoomStore {
   rooms = new Map();
   sessions = new Map();
+  constructor({maxActiveRooms=RULES.maxRooms}={}) {
+    if(!Number.isSafeInteger(maxActiveRooms)||maxActiveRooms<1||maxActiveRooms>40)throw new Error('MAX_ACTIVE_ROOMS must be an integer from 1 to 40.');
+    this.maxActiveRooms=maxActiveRooms;
+  }
   newCode() {
     let code;
     do { code=Array.from({length:6},()=>letters[randomInt(letters.length)]).join(''); } while(this.rooms.has(code));
     return code;
   }
-  create(data,socketId) {
-    ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요. 잠시 후 다시 시도해주세요.');
+  create(data,socketId,{archivedCreation=false}={}) {
+    ensure(archivedCreation||this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요. 잠시 후 다시 시도해주세요.');
     const title=nickname(data.title || '우리 우주 교실');
     ensure(Array.isArray(data.allowedNames) && data.allowedNames.length>=(data.allowEmpty===true?0:1) && data.allowedNames.length<=29,
       '학생 닉네임을 1~29개 입력해주세요.');
