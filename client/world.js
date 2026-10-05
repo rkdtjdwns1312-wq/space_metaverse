@@ -202,7 +202,8 @@ export function createWorld(canvas) {
     for(const sign of PLAZA_SIGNS)drawPlazaSign(ctx,sign);
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
-      ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.8,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
+      const shadowY=o.kind==='exploration'?o.y+7:o.y+o.radius*.8;
+      ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,shadowY,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
       if(o.kind==='life-star'){
         drawLifeStar(ctx,o,time,reducedMotion.matches);
       } else if(o.kind==='exploration'){
@@ -231,7 +232,7 @@ export function createWorld(canvas) {
         // scenery의 받침대 중심은 o.y입니다. 글씨를 이미지 바닥에 겹쳐 붙입니다.
         ctx.save();ctx.strokeStyle='#fff6fc';ctx.lineWidth=4;ctx.lineJoin='round';
         ctx.strokeText(o.name,lx,o.y+5);ctx.fillText(o.name,lx,o.y+5);ctx.restore();
-      }else ctx.fillText(o.name,lx,o.y+o.radius+37);
+      }else ctx.fillText(o.name,lx,o.kind==='exploration'?o.y+38:o.y+o.radius+37);
       if(o.kind==='planet'){ctx.font='12px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#938aab';ctx.fillText('소속 '+(o.memberCount||0)+'명',lx,o.y+o.radius+53);}
       if(o.kind==='planet'&&o.reportPending){
         ctx.font='16px "Jua","Malgun Gothic",sans-serif';const width=ctx.measureText('실적제출확인요함').width+20;
@@ -708,8 +709,9 @@ export function createWorld(canvas) {
         const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
-          const d=Math.hypot(me.x-o.x,me.y-o.y);
-          if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
+          const d=config.interactionDistance?config.interactionDistance(me,o):Math.hypot(me.x-o.x,me.y-o.y);
+          const reach=config.interactionReach?config.interactionReach(o):(o.radius||PLANET.radius)+NEAR;
+          if(d<=reach&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
         return {...best};

@@ -24,6 +24,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
   let game = null;
   let selected = -1;
   let conflicts = new Set();
+  let answerCheckOn = false;
   let destroyed = false;
   let busy = false;
   let finished = false;
@@ -89,6 +90,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     gameArea.replaceChildren();
     selected = -1;
     conflicts = new Set();
+    answerCheckOn = false;
     finished = false;
     startTimer = setTimeout(() => {
       startTimer = null;
@@ -147,7 +149,9 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     keypad.append(button('지우기', 'sudoku-key sudoku-clear', clearSelected));
 
     const actions = element('div', undefined, 'sudoku-actions');
-    actions.append(button('정답 확인', 'sudoku-check', checkAnswer));
+    game.checkButton = button('정답 확인 켜기', 'sudoku-check', toggleAnswerCheck);
+    game.checkButton.setAttribute('aria-pressed','false');
+    actions.append(game.checkButton);
     gameArea.replaceChildren(grid, keypad, actions);
     game.cells = cells;
     refreshCells();
@@ -170,12 +174,13 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     game.cells.forEach((cell, index) => {
       const value = game.values[index];
       cell.textContent = value ? digitLabel(value) : '';
-      cell.classList.toggle('sudoku-conflict', conflicts.has(index));
+      const incorrect = answerCheckOn && value && !game.puzzle[index] && value !== game.solution[index];
+      cell.classList.toggle('sudoku-conflict', answerCheckOn && (conflicts.has(index) || incorrect));
       cell.classList.toggle('sudoku-selected', selected === index);
       cell.setAttribute('aria-pressed', String(selected === index));
       cell.setAttribute('aria-label', game.puzzle[index]
         ? `칸 ${index + 1}, ${digitLabel(game.puzzle[index])}, 처음 숫자`
-        : `칸 ${index + 1}, ${value ? digitLabel(value) : '빈칸'}${conflicts.has(index) ? ', 겹치는 숫자' : ''}`);
+        : `칸 ${index + 1}, ${value ? digitLabel(value) : '빈칸'}${answerCheckOn && (conflicts.has(index) || incorrect) ? ', 다시 확인할 숫자' : ''}`);
     });
   }
 
@@ -188,7 +193,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     if (!game || destroyed || finished || selected < 0 || game.puzzle[selected]) return;
     values()[selected] = value;
     refreshCells();
-    status.textContent = conflicts.size
+    status.textContent = answerCheckOn && conflicts.size
       ? '같은 줄이나 굵은 테두리 안에 숫자가 겹쳐요. 겹친 칸을 살펴봐요.'
       : '숫자를 넣었어요. 계속 채워 보세요.';
     if (!conflicts.size && isSudokuComplete(values(), game)) complete();
@@ -201,10 +206,18 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     status.textContent = '고른 칸을 비웠어요.';
   }
 
-  function checkAnswer() {
+  function toggleAnswerCheck() {
     if (finished) return;
     if (!game || destroyed) {
       status.textContent = '먼저 난이도를 고르고 스도쿠를 시작해 주세요.';
+      return;
+    }
+    answerCheckOn = !answerCheckOn;
+    game.checkButton.textContent = answerCheckOn ? '정답 확인 끄기' : '정답 확인 켜기';
+    game.checkButton.setAttribute('aria-pressed',String(answerCheckOn));
+    refreshCells();
+    if (!answerCheckOn) {
+      status.textContent = '정답 확인을 껐어요. 계속 풀어 보세요.';
       return;
     }
     if (conflicts.size) {
@@ -215,7 +228,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
       complete();
       return;
     }
-    status.textContent = '아직 빈 칸이 있어요. 모든 칸을 채운 뒤 다시 확인해요.';
+    status.textContent = '정답 확인을 켰어요. 다시 살펴볼 숫자는 빨갛게 표시돼요.';
   }
 
   function complete() {

@@ -16,6 +16,16 @@ export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, b
   speed: 620, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
 // 상호작용: 행성·문 가장자리에서 이 거리 안에 있으면 살펴보기/나가기를 할 수 있습니다. 서버도 같은 값으로 검사합니다.
 export const INTERACT = Object.freeze({ radius: 40 });
+// 키가 큰 탐사 장치는 발밑 충돌 원과 그림의 몸체가 다릅니다. 조사 판정만 그림 영역에 맞춥니다.
+export function interactionDistance(player, object) {
+  const box = object.interactionBox;
+  if (!box) return Math.hypot(player.x-object.x, player.y-object.y);
+  const left=object.x+box.left,right=object.x+box.right,top=object.y+box.top,bottom=object.y+box.bottom;
+  return Math.hypot(Math.max(left-player.x,0,player.x-right),Math.max(top-player.y,0,player.y-bottom));
+}
+export function interactionReach(object) {
+  return RULES.radius+INTERACT.radius+(object.interactionBox?0:object.radius);
+}
 // 행성 규칙 편집 한도(소속 친구와 선생님이 내부 규칙판 근처에서 수정).
 export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 });
 export const WARNING_RULES = Object.freeze({defaultThreshold:3,minThreshold:1,maxThreshold:10,maxReasonLength:120,maxEntries:3000});
@@ -33,7 +43,7 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
 export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:plazaPoint({x:3000,y:2340}),templeCenter:PLAZA_LAYOUT.center,
   objects: [
     {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
-    {id:'exploration-flask',name:'우주 탐사 장치',x:2280,y:1320,radius:56,kind:'exploration',color:'#dbb5ff'},
+    {id:'exploration-flask',name:'우주 탐사 장치',x:2280,y:1320,radius:56,kind:'exploration',color:'#dbb5ff',interactionBox:{left:-36,right:36,top:-160,bottom:20}},
     {id:'pillar-notice',name:'오늘의 알림장',x:1580,y:1210,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
     {id:'pillar-effects',name:'사용 중인 아이템',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},

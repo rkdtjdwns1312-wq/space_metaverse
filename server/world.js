@@ -1,7 +1,7 @@
 import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
-import { MAP, RULES, INTERACT, PLAZA_ID, PLANET, mapOf } from '../shared/config.js';
+import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionReach } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
 import {equipmentBonus} from '../shared/equipment.js';
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
@@ -48,7 +48,7 @@ export function exitPosition(room, planet, player) {
   return pos;
 }
 export function isNear(player, object) {
-  return Math.hypot(player.x-object.x, player.y-object.y) <= object.radius+RULES.radius+INTERACT.radius;
+  return interactionDistance(player,object) <= interactionReach(object);
 }
 // 광장 경계 안이고 별·행성·대기 신청 어느 것과도 겹치지 않는 자리인지 검사합니다.
 export function placementFree(room, x, y) {

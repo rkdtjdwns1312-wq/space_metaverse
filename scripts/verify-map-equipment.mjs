@@ -83,9 +83,11 @@ try{
   const flask=MAP.objects.find(o=>o.kind==='exploration'),priorityUntil=Date.now()+7*86400000;
   game.store.transact(()=>{
     student().lv4State={...student().lv4State,priorityUntil};
-    const p=[...room().players.values()].find(p=>p.role==='teacher');Object.assign(p,{mapId:MAP.id,x:flask.x,y:flask.y});
+    const p=[...room().players.values()].find(p=>p.role==='teacher');Object.assign(p,{mapId:MAP.id,x:flask.x+80,y:flask.y-85});
   });publish();
   await teacher.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='별의 기원');
+  await teacher.locator('#interact-prompt').filter({hasText:'우주 탐사 장치'}).waitFor();
+  await teacher.locator('#world').screenshot({path:'.local/428-exploration-world.png'});
   await teacher.locator('#world').focus();await teacher.keyboard.press('f');
   await teacher.locator('#exploration-dialog').waitFor({state:'visible'});
   await teacher.getByRole('button',{name:'특수 기능 보기'}).click();

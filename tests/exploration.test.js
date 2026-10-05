@@ -5,13 +5,23 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {io} from 'socket.io-client';
 import {RoomStore} from '../server/rooms.js';
-import {MAP} from '../shared/config.js';
+import {MAP,interactionDistance,interactionReach} from '../shared/config.js';
 import {EXPLORATION_CARDS,EXPLORATION_GOAL} from '../shared/exploration.js';
 import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,validateExploration,updateExplorationCards} from '../server/exploration.js';
 import {createClassroomServer} from '../server/app.js';
 
 const flask=MAP.objects.find(object=>object.kind==='exploration');
 const ticket=(player,n)=>{player.inventory=[{id:'exploration-ticket',quantity:n}];};
+test('탐사 장치 그림 몸체와 발밑에서 조사할 수 있고 멀리서는 조사할 수 없다',()=>{
+  const store=new RoomStore(),{room,player}=store.create({allowedNames:['별이']},'teacher');
+  for(const [x,y] of [[flask.x,flask.y-150],[flask.x+80,flask.y-85],[flask.x,flask.y+74]]){
+    Object.assign(player,{x,y});
+    assert.ok(interactionDistance(player,flask)<=interactionReach(flask));
+    assert.doesNotThrow(()=>readExploration(room,player));
+  }
+  Object.assign(player,{x:flask.x+160,y:flask.y-85});
+  assert.throws(()=>readExploration(room,player),/가까이/);
+});
 test('탐사권을 써야 탐사하며 결과 10장은 0·1·2가 2·6·2장으로 구성된다',()=>{
   const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
   const student=store.join({code:room.code,nickname:'별이'},'student').player;

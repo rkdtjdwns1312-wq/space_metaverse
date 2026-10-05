@@ -41,9 +41,17 @@ try{
   await cell(given).click({force:true});await page.locator('.sudoku-key[data-value="2"]').click();
   assert.equal((await cell(given).innerText()).trim(),givenText);
   check('하36칸·터치 숫자 입력·키보드 지우기·고정 단서 보존');
-  await page.locator('.sudoku-check').click();assert.ok(!/완성|축하/.test(await page.locator('.sudoku-status').innerText()));
-  for(let i=0;i<low.puzzle.length;i++)if(!low.puzzle[i]){await cell(i).click();await page.locator(`.sudoku-key[data-value="${low.solution[i]}"]`).click();}
+  const wrong=low.solution[empty]%low.size+1;
+  await cell(empty).click();await page.locator(`.sudoku-key[data-value="${wrong}"]`).click();
+  assert.equal(await cell(empty).evaluate(node=>node.classList.contains('sudoku-conflict')),false);
   await page.locator('.sudoku-check').click();
+  assert.equal(await page.locator('.sudoku-check').innerText(),'정답 확인 끄기');
+  assert.equal(await cell(empty).evaluate(node=>node.classList.contains('sudoku-conflict')),true);
+  await page.locator('.sudoku-check').click();
+  assert.equal(await page.locator('.sudoku-check').innerText(),'정답 확인 켜기');
+  assert.equal(await cell(empty).evaluate(node=>node.classList.contains('sudoku-conflict')),false);
+  check('정답 확인 켜기·끄기가 교대로 바뀌며 끈 뒤에는 오답 표시가 멈춤');
+  for(let i=0;i<low.puzzle.length;i++)if(!low.puzzle[i]){await cell(i).click();await page.locator(`.sudoku-key[data-value="${low.solution[i]}"]`).click();}
   assert.match(await page.locator('.sudoku-status').innerText(),/완성|축하|정답|성공/);
   check('빈칸이 남으면 완료되지 않고 모든 정답 입력 후 완료');
   for(const [difficulty,size] of [['medium',9],['high',12]]){
