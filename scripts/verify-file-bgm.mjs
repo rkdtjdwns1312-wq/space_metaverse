@@ -73,6 +73,21 @@ try{
   await page.locator('#student-tab').click();
   const shared=await page.evaluate(()=>({count:window.__fileBgm.length,paused:window.__fileBgm[5].paused,position:window.__fileBgm[5].currentTime}));
   assert.equal(shared.count,6);assert.equal(shared.paused,false);assert.ok(shared.position>=19);
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('sun-paradise-3'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>6&&window.__fileBgm[6].readyState>=2);
+  const battle=await page.evaluate(()=>({path:new URL(window.__fileBgm[6].src).pathname,loop:window.__fileBgm[6].loop,duration:window.__fileBgm[6].duration}));
+  assert.equal(battle.path,'/assets/audio/sun-paradise-3-last-battle.mp3');assert.equal(battle.loop,true);assert.ok(battle.duration>1);
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('moon-paradise-3'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>7&&window.__fileBgm[7].readyState>=2);
+  const moon=await page.evaluate(()=>({path:new URL(window.__fileBgm[7].src).pathname,loop:window.__fileBgm[7].loop,duration:window.__fileBgm[7].duration}));
+  assert.equal(moon.path,'/assets/audio/moon-paradise-3-ancient-kingdom.mp3');assert.equal(moon.loop,true);assert.ok(moon.duration>1);
+  await page.evaluate(()=>document.querySelector('#student-tab').addEventListener('click',()=>window.__shelterController.playBgm('planet:test-room'),{once:true}));
+  await page.locator('#student-tab').click();
+  await page.waitForFunction(()=>window.__fileBgm.length>8&&window.__fileBgm[8].readyState>=2);
+  const interior=await page.evaluate(()=>({path:new URL(window.__fileBgm[8].src).pathname,loop:window.__fileBgm[8].loop,duration:window.__fileBgm[8].duration}));
+  assert.equal(interior.path,'/assets/audio/planet-interior-waddle.mp3');assert.equal(interior.loop,true);assert.ok(interior.duration>1);
   await page.evaluate(()=>window.__shelterController.stopBgm());
-  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),crossroadsAudio:crossroads.path,crossroadsSeconds:Math.round(crossroads.duration),sunAudio:sun.path,sunSeconds:Math.round(sun.duration),sunSharedPosition:true,loop:true,volumeControl:true,muteControl:true}));
+  console.log(JSON.stringify({loginAudio:initial.path,loginSeconds:Math.round(initial.duration),shelterAudio:shelter.path,shelterSeconds:Math.round(shelter.duration),valleyAudio:valley.path,valleySeconds:Math.round(valley.duration),plazaAudio:plaza.path,plazaSeconds:Math.round(plaza.duration),crossroadsAudio:crossroads.path,crossroadsSeconds:Math.round(crossroads.duration),sunAudio:sun.path,sunSeconds:Math.round(sun.duration),sunSharedPosition:true,battleAudio:battle.path,battleSeconds:Math.round(battle.duration),moonAudio:moon.path,moonSeconds:Math.round(moon.duration),interiorAudio:interior.path,interiorSeconds:Math.round(interior.duration),loop:true,volumeControl:true,muteControl:true}));
 }finally{await browser.close();await game.close();}

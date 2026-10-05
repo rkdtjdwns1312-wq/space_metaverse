@@ -51,8 +51,25 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     audio.setMuted(false);assert.equal(sun.muted,false);
     assert.equal(await audio.playBgm('sun-paradise-3'),true);
     assert.equal(sun.paused,true);assert.equal(sun.currentTime,0);
+    const battle=players.get('sun-paradise-3');
+    assert.equal(battle.src,'/assets/audio/sun-paradise-3-last-battle.mp3');
+    assert.equal(battle.loop,true);assert.equal(battle.paused,false);
+    assert.equal(await audio.playBgm('moon-paradise-3'),true);
+    const moon=players.get('moon-paradise-3');
+    assert.equal(battle.paused,true);assert.equal(moon.src,'/assets/audio/moon-paradise-3-ancient-kingdom.mp3');
+    assert.equal(moon.loop,true);assert.equal(moon.paused,false);
+    assert.equal(await audio.playBgm('planet:dept-a'),true);
+    const interior=players.get('planet:dept-a');
+    assert.equal(moon.paused,true);assert.equal(interior.src,'/assets/audio/planet-interior-waddle.mp3');
+    assert.equal(interior.loop,true);assert.equal(interior.paused,false);
+    interior.currentTime=12;
+    assert.equal(await audio.playBgm('planet:dept-b'),true);
+    assert.equal(players.has('planet:dept-b'),false);assert.equal(interior.currentTime,12);
+    audio.setVolume(.42);audio.setMuted(true);
+    assert.equal(battle.volume,.42);assert.equal(moon.volume,.42);assert.equal(interior.volume,.42);
+    assert.equal(battle.muted,true);assert.equal(moon.muted,true);assert.equal(interior.muted,true);
     assert.equal(await audio.playBgm('lobby'),true);
-    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);
+    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);assert.equal(interior.paused,true);
     audio.stopBgm();assert.equal(lobby.paused,true);
   }finally{audio.dispose();}
 });

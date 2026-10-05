@@ -18,7 +18,9 @@ export function drawTaurusProjectile(ctx,cast,elapsedMs,reducedMotion=false){
 export function drawTaurusDash(ctx,dash,elapsedMs,reducedMotion=false){
   const progress=Math.min(1,Math.max(0,elapsedMs/dash.durationMs));
   const index=reducedMotion?12:Math.min(23,Math.floor(progress*24));
-  ctx.save();ctx.rotate(Math.atan2(dash.dy,dash.dx));
+  const left=dash.dx<0;
+  ctx.save();ctx.rotate(Math.atan2(left?-dash.dy:dash.dy,left?-dash.dx:dash.dx));
+  if(left)ctx.scale(-1,1); // 왼쪽은 수평으로만 반전해 황소의 위아래를 유지합니다.
   drawFrame(ctx,`skill-lv${dash.stage}`,index,dash.size*(dash.stage===2?1.6:dash.stage===3?1.9:2.2));
   ctx.restore();
 }

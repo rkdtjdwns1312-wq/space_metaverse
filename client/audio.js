@@ -7,8 +7,12 @@ const FILE_BGM = Object.freeze({
   'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
   'moon-garden':'/assets/audio/moon-garden-picnic.mp3',
   'sun-paradise':'/assets/audio/sun-paradise-school-road.mp3',
-  'sun-paradise-2':'/assets/audio/sun-paradise-school-road.mp3'
+  'sun-paradise-2':'/assets/audio/sun-paradise-school-road.mp3',
+  'sun-paradise-3':'/assets/audio/sun-paradise-3-last-battle.mp3',
+  'moon-paradise-3':'/assets/audio/moon-paradise-3-ancient-kingdom.mp3',
+  'planet:':'/assets/audio/planet-interior-waddle.mp3'
 });
+const bgmUrlFor=id=>FILE_BGM[id]||(id.startsWith('planet:')?FILE_BGM['planet:']:undefined);
 const MAP_THEMES = {
   plaza: { notes: [60, 64, 67, 71, 67, 64, 62, 65, 69, 72, 69, 65], bass: [36, 43, 40, 35] },
   street: { notes: [62, 65, 69, 74, 72, 69, 65, 67, 71, 74, 71, 67], bass: [38, 45, 41, 36] },
@@ -46,7 +50,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   let started = false;
 
   function ensureFileMedia(id) {
-    const url=FILE_BGM[id];
+    const url=bgmUrlFor(id);
     if(fileMedia.has(url))return fileMedia.get(url);
     try {
       const media=mediaFactory?mediaFactory(id,url):typeof globalThis.Audio==='function'?new globalThis.Audio(url):null;
@@ -111,12 +115,13 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   }
   async function playBgm(mapId = 'default') {
     const id = String(mapId || 'default').toLowerCase();
+    const url=bgmUrlFor(id);
     if(currentMap!==id){
-      pauseFileMedia(FILE_BGM[id]);
+      pauseFileMedia(url);
       currentMap=id;step=0;
       if(timer!==null){clearInterval(timer);timer=null;}
     }
-    if(FILE_BGM[id]){
+    if(url){
       started=true;
       const media=ensureFileMedia(id);
       if(!media)return false;

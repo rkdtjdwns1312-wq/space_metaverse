@@ -1,4 +1,8 @@
 // 서버가 고른 카드와 합계를 그대로 보여 줍니다. 카드 선택이나 재화 계산은 화면에서 하지 않습니다.
+const SCENE_ART=Object.fromEntries([
+  'quiet-nebula','sleeping-comet','silver-trail','whisper-star','moon-bridge',
+  'warm-spark','rainbow-dust','little-lighthouse','radiant-garden','festival-signal'
+].map(id=>[id,`/assets/cards/exploration-scenes/${id}.jpg`]));
 export function createExplorationUI({request,stop,toast}){
   const dialog=document.createElement('dialog');dialog.id='exploration-dialog';dialog.setAttribute('aria-label','우주 탐사');document.body.append(dialog);
   let state=null,selected=null,busy=false,viewPanel=null,editing=false;
@@ -7,9 +11,12 @@ export function createExplorationUI({request,stop,toast}){
     const card=node('div','','exploration-card');card.dataset.energy=String(result?.card?.energy??0);
     const seal=node('div','우주 탐사 결과','exploration-card-seal');
     const title=node('h3',result?.card?.title||'다음 이야기를 기다려요');
+    const art=node('div','','exploration-card-art');
+    const artPath=SCENE_ART[result?.card?.id];
+    if(artPath){const image=node('img');image.src=artPath;image.alt='';image.loading='lazy';art.append(image);}
     const story=node('p',result?.card?.story||'아직 탐사 결과가 없습니다.','exploration-card-story');
     const reward=node('p',result?`찬란한 별의 기운을 ${result.card.energy} 획득합니다.`:'탐사권을 사용하면 결과 카드가 나타나요.','exploration-card-reward');
-    card.append(seal,title,story,reward);return card;
+    card.append(seal,title,art,story,reward);return card;
   }
   function action(label,event,css='secondary'){
     const button=node('button',label,css);button.type='button';button.onclick=async()=>{

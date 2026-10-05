@@ -6,6 +6,7 @@ import {chromium} from 'playwright';
 import {createClassroomServer} from '../server/app.js';
 import {fillNewClass} from './class-setup.mjs';
 import {MAP,STREET,STREET_ID} from '../shared/config.js';
+import {EXPLORATION_CARDS} from '../shared/exploration.js';
 import {saveNotice} from '../server/temple.js';
 
 const key='isolated-map-equipment-key',dir=await mkdtemp(join(tmpdir(),'map-equipment-'));
@@ -84,12 +85,29 @@ try{
   game.store.transact(()=>{
     student().lv4State={...student().lv4State,priorityUntil};
     const p=[...room().players.values()].find(p=>p.role==='teacher');Object.assign(p,{mapId:MAP.id,x:flask.x+80,y:flask.y-85});
+    room().exploration.results=EXPLORATION_CARDS.map((card,index)=>({id:`art-${index}`,playerId:p.id,nickname:p.nickname,cardId:card.id,at:Date.now()+index}));
+    room().exploration.energy=10;
   });publish();
   await teacher.waitForFunction(()=>document.querySelector('#minimap-title')?.textContent==='별의 기원');
   await teacher.locator('#interact-prompt').filter({hasText:'우주 탐사 장치'}).waitFor();
   await teacher.locator('#world').screenshot({path:'.local/428-exploration-world.png'});
   await teacher.locator('#world').focus();await teacher.keyboard.press('f');
   await teacher.locator('#exploration-dialog').waitFor({state:'visible'});
+  assert.equal(await teacher.locator('.exploration-result-entry').count(),10);
+  for(let index=0;index<EXPLORATION_CARDS.length;index++){
+    await teacher.locator('.exploration-result-entry').nth(9-index).click();
+    const art=teacher.locator('.exploration-card-art img');
+    await art.evaluate(image=>image.decode());
+    assert.match(await art.getAttribute('src'),new RegExp(`/${EXPLORATION_CARDS[index].id}\\.jpg$`));
+    assert.ok(await teacher.locator('.exploration-card').evaluate(card=>{
+      const art=card.querySelector('.exploration-card-art').getBoundingClientRect();
+      const story=card.querySelector('.exploration-card-story').getBoundingClientRect();
+      const reward=card.querySelector('.exploration-card-reward').getBoundingClientRect();
+      return art.bottom<=story.top&&story.bottom<=reward.top;
+    }));
+  }
+  await teacher.locator('#exploration-dialog').screenshot({path:'.local/430-exploration-card.png'});
+  check('열 장의 탐사 결과마다 다른 그림 표시, 상황 설명이 보상 문구 바로 위에 배치');
   await teacher.getByRole('button',{name:'특수 기능 보기'}).click();
   assert.match(await teacher.locator('#exploration-dialog').innerText(),/베텔기우스 급식 우선권[\s\S]*별이/);
   await teacher.getByRole('button',{name:'수정하기'}).click();
