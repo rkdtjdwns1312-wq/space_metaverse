@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+
+const master='owner-test-key-for-teacher-scope';
+const call=(socket,event,data={})=>socket.timeout(5000).emitWithAck(event,data);
+
+test('owner issues per-room teacher codes, isolates classrooms, and rotation revokes an active teacher',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'teacher-access-'));
+  let game=createClassroomServer({teacherKey:master,dataDir:dir,studentHours:false,unattended:false});
+  let {port}=await game.listen();const sockets=[];
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();await rm(dir,{recursive:true,force:true});});
+  async function connect(){const socket=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;}
+  const owner=await connect(),stranger=await connect();
+  assert.equal((await call(stranger,'admin:list')).ok,false);
+  assert.equal((await call(stranger,'admin:login',{key:'incorrect-owner-key'})).ok,false);
+  assert.equal((await call(stranger,'room:create',{teacherKey:master,title:'빈교실위조',allowedNames:[],allowEmpty:true})).ok,false);
+  assert.ok((await call(owner,'admin:login',{key:master})).ok);
+  const a=await call(owner,'admin:create',{title:'별빛반',teacherName:'별빛 선생님'});
+  assert.ok(a.ok,a.error);assert.match(a.teacherCode,/^T-[A-Za-z0-9_-]{20}$/);
+  assert.equal(game.store.records.get(a.code).allowedNames.length,0);
+  const b=await call(owner,'admin:create',{title:'달빛반',teacherName:'달빛 선생님'});
+  assert.ok(b.ok,b.error);assert.notEqual(a.code,b.code);
+  const recordText=await readFile(join(dir,a.code+'.json'),'utf8');
+  assert.equal(recordText.includes(a.teacherCode),false);
+  assert.equal(recordText.includes(master),false);
+  const teacher=await connect();
+  const list=await call(teacher,'room:list',{teacherKey:a.teacherCode});
+  assert.deepEqual(list.classes.map(c=>c.code),[a.code]);
+  assert.equal((await call(teacher,'room:open',{teacherKey:a.teacherCode,code:b.code})).ok,false);
+  assert.equal((await call(teacher,'room:create',{teacherKey:a.teacherCode,title:'못만드는교실',allowedNames:['1']})).ok,false);
+  const opened=await call(teacher,'room:open',{teacherKey:a.teacherCode,code:a.code});assert.ok(opened.ok,opened.error);
+  assert.equal((await call(teacher,'student:create',{nickname:'별이',pin:'1234'})).ok,true);
+  const rotated=await call(owner,'admin:grant',{code:a.code,teacherName:'새 선생님'});assert.ok(rotated.ok,rotated.error);
+  assert.notEqual(rotated.teacherCode,a.teacherCode);
+  assert.equal((await call(teacher,'student:create',{nickname:'막힘',pin:'5678'})).ok,false);
+  assert.equal((await call(await connect(),'session:resume',{token:opened.token})).ok,false);
+  assert.equal((await call(await connect(),'room:list',{teacherKey:a.teacherCode})).ok,false);
+  const newTeacher=await connect();
+  assert.ok((await call(newTeacher,'room:open',{teacherKey:rotated.teacherCode,code:a.code})).ok);
+  assert.equal((await call(owner,'admin:revoke',{code:a.code})).ok,true);
+  assert.equal((await call(await connect(),'room:list',{teacherKey:rotated.teacherCode})).ok,false);
+  assert.equal((await call(newTeacher,'student:create',{nickname:'또막힘',pin:'5678'})).ok,false);
+  await game.close();game=createClassroomServer({teacherKey:master,dataDir:dir,studentHours:false,unattended:false});({port}=await game.listen());
+  const back=await connect();assert.ok((await call(back,'admin:login',{key:master})).ok);
+  assert.ok((await call(back,'admin:list')).classes.some(c=>c.code===a.code&&!c.assigned));
+  assert.equal((await call(await connect(),'room:list',{teacherKey:b.teacherCode})).classes[0].code,b.code);
+});

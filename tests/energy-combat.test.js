@@ -50,7 +50,8 @@ test('근접 Q로 몬스터를 쓰러뜨리면 드롭을 즉시 화면에 알린
   const call=(s,event,data={})=>s.timeout(4000).emitWithAck(event,data);
   const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1']});
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});
-  const room=game.store.rooms.get(created.room.code),person=room.players.get(joined.selfId),monster=monstersOf(room).get('star-crab');
+  // LV2 보상은 최소 6이므로, LV1의 합법적인 0 드랍에 따라 검사가 흔들리지 않습니다.
+  const room=game.store.rooms.get(created.room.code),person=room.players.get(joined.selfId),monster=monstersOf(room).get('star-scorpion-1');
   Object.assign(person,{mapId:monster.mapId,x:monster.x-45,y:monster.y,facing:{x:1,y:0}});
   person.avatar.level=4;person.avatar.constellationId='leo';monster.hp=1;
   let announced=null;student.on('energy:drops',data=>{announced=data;});

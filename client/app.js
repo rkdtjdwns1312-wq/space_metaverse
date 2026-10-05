@@ -166,7 +166,8 @@ let sessionToken=null;
 try{sessionToken=sessionStorage.getItem('space-session');}catch{}
 const saveToken=token=>{sessionToken=token;try{token?sessionStorage.setItem('space-session',token):sessionStorage.removeItem('space-session');}catch{}};
 const accounts=createAccountsUI({getRoom:()=>room,getSelfId:()=>selfId,request,toast,saveToken});
-const TEACHER_KEY_STORAGE='space-teacher-key';
+// 예전 버전에서 브라우저에 남겨 둔 공용 키를 지웁니다. 접속 코드는 브라우저에 저장하지 않습니다.
+try{sessionStorage.removeItem('space-teacher-key');}catch{}
 const cube=$('ability-cube');
 for(let face=1;face<=6;face++){
   const side=document.createElement('div');side.className='die-face';side.dataset.face=String(face);
@@ -234,6 +235,7 @@ $('ability-choose-item').onclick=async()=>{
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function setMode(value){
   mode=value;$('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
+  $('owner-entry').hidden=value!=='teacher';
   if(value==='teacher'&&!classMode)chooseClassMode('open');
   for(const role of ['student','teacher']){$(role+'-tab').classList.toggle('selected',role===value);$(role+'-tab').setAttribute('aria-pressed',String(role===value));}
   $('form-message').textContent='';
@@ -253,6 +255,11 @@ function chooseClassMode(value){
 }
 $('choose-open-class').onclick=()=>chooseClassMode('open');
 $('choose-new-class').onclick=()=>chooseClassMode('new');
+$('teacher-key').addEventListener('input',()=>{
+  const assignedCode=$('teacher-key').value.trim().startsWith('T-');
+  $('choose-new-class').disabled=assignedCode;
+  if(assignedCode&&classMode==='new')chooseClassMode('open');
+});
 const studentAccountDraft=[];
 function renderStudentAccountRows(){
   const count=Number($('student-count').value);
@@ -289,10 +296,6 @@ $('allowed-names').value=Array.from({length:29},(_,i)=>String(i+1)).join(', ');
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('teacher')){
   const key=fragment.get('teacher');$('teacher-key').value=key;setMode('teacher');history.replaceState(null,'',location.pathname);
-  try{sessionStorage.setItem(TEACHER_KEY_STORAGE,key);}catch{}
-}else{
-  let savedKey=null;try{savedKey=sessionStorage.getItem(TEACHER_KEY_STORAGE);}catch{}
-  if(savedKey){$('teacher-key').value=savedKey;setMode('teacher');}
 }
 function controls(){for(const b of document.querySelectorAll('.submit'))b.disabled=busy||!socket.connected;}
 async function request(event,data){
@@ -1224,7 +1227,7 @@ $('teacher-form').onsubmit=e=>submit(e,async()=>{
 });
 $('saved-classes-button').onclick=async()=>{
   const teacherKey=$('teacher-key').value;
-  if(!teacherKey){toast('교사 확인 키를 먼저 입력해 주세요.');return;}
+  if(!teacherKey){toast('선생님 접속 코드를 먼저 입력해 주세요.');return;}
   try{
     const result=await request('room:list',{teacherKey}),select=$('saved-classes');
     select.replaceChildren(...(result.classes||[]).map(c=>{const option=document.createElement('option');option.value=c.code;option.textContent=c.title+' · '+c.code+(c.open?' · 열림':'');return option;}));

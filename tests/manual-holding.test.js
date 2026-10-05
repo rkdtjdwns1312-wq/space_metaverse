@@ -69,7 +69,8 @@ test('315: comet removes one own warning only; invalid department does not consu
 });
 test('에일리언 보유 기한 연장과 퀸의 교사 확인 즉시 지급',()=>{
   const alien=fixture('alien-creature-card');use(alien);assert.equal(holdingStatus(alien.room,alien.p,'alien-creature-card',MONDAY-1).items[0].activeUntil,MONDAY);
-  assert.equal(alien.p.cardMarkers[0].until,MONDAY);assert.equal(validateCardMarkers(alien.p.cardMarkers)[0].holdingAbility,true);
+  assert.equal(alien.p.cardMarkers[0].until,MONDAY);
+  assert.equal(validateCardMarkers([{...alien.p.cardMarkers[0],until:Date.now()+WEEK}])[0].holdingAbility,true);
   assert.equal(holdingStatus(alien.room,alien.p,'alien-creature-card',MONDAY).items[0].activeUntil,null);
   const f=fixture('alien-queen-card');reject(f,()=>use(f),/보유능력이 없는/);reject(f,()=>confirmLv4(f.room,f.p,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1),/선생님/);
   confirmLv4(f.room,f.teacher,{action:'queen-writing',playerId:'a',reference:'1'},MONDAY-1);assert.equal(f.p.starShards,11);

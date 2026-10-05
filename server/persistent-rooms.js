@@ -53,6 +53,8 @@ function offline(p) {
 }
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
+    ...(room.adminCreated?{adminCreated:true}:{}),
+    ...(room.teacherAccess?{teacherAccess:structuredClone(room.teacherAccess)}:{}),
     temple:structuredClone(room.temple),exploration:validateExploration(room.exploration),
     starCards:validateStarCards(room.starCards),
     starCardText:validateStarCardText(room.starCardText),
@@ -76,13 +78,18 @@ export function toRecord(room) {
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
 export function fromRecord(r) {
   const bad=()=>{throw new Error('교실 저장 데이터가 올바르지 않습니다: '+r.code);};
-  if(!Array.isArray(r.allowedNames)||r.allowedNames.length<1||r.allowedNames.length>29 ||
+  if(!Array.isArray(r.allowedNames)||r.allowedNames.length<(r.adminCreated?0:1)||r.allowedNames.length>29 ||
     !Array.isArray(r.students)||r.students.length>29||!Array.isArray(r.planets)||!Array.isArray(r.proposals)||
     !Array.isArray(r.itemLog)||!Array.isArray(r.tradeLog)||!Array.isArray(r.chat?.history)||
     typeof r.chat.enabled!=='boolean'||!Number.isFinite(r.createdAt))bad();
+  if(r.teacherAccess && (typeof r.teacherAccess!=='object'||
+    typeof r.teacherAccess.label!=='string'||!r.teacherAccess.label.trim()||r.teacherAccess.label.length>40||
+    typeof r.teacherAccess.digest!=='string'||!/^[0-9a-f]{64}$/.test(r.teacherAccess.digest)||
+    !Number.isFinite(r.teacherAccess.createdAt)))bad();
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
-  const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,allowedNames,players:new Map(),
+  const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),
+    teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
     temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
     starCards:validateStarCards(r.starCards),
     starCardText:validateStarCardText(r.starCardText),
@@ -180,12 +187,11 @@ export class PersistentRoomStore extends RoomStore {
   open(data,socketId){
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
     const active=this.rooms.get(code);
-    if(active&&this.unattended){
+    if(active){
       ensure(![...active.players.values()].some(p=>p.role==='teacher'&&p.connected),'이미 열린 교실이에요. 원래 선생님 창에서 계속해주세요.');
       for(const p of active.players.values())if(p.role==='teacher')this.remove(active,p);
       return {room:active,player:this.add(active,'선생님','teacher',socketId)};
     }
-    ensure(!active,'이미 열린 교실이에요. 원래 선생님 창에서 계속해주세요.');
     ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요.');
     const record=this.records.get(code);ensure(record,'저장된 교실 코드를 확인해주세요.');
     const room=fromRecord(record);room.unattended=this.unattended;this.rooms.set(code,room);

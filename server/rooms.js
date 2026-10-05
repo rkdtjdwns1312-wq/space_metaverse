@@ -70,7 +70,7 @@ export class RoomStore {
   create(data,socketId) {
     ensure(this.rooms.size<RULES.maxRooms,'지금은 교실이 가득 찼어요. 잠시 후 다시 시도해주세요.');
     const title=nickname(data.title || '우리 우주 교실');
-    ensure(Array.isArray(data.allowedNames) && data.allowedNames.length>=1 && data.allowedNames.length<=29,
+    ensure(Array.isArray(data.allowedNames) && data.allowedNames.length>=(data.allowEmpty===true?0:1) && data.allowedNames.length<=29,
       '학생 닉네임을 1~29개 입력해주세요.');
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');

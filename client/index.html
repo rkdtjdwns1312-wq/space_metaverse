@@ -20,9 +20,10 @@
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" type="module"></script>
 <link rel="stylesheet" href="/lv4-item-ui.css">
+<link rel="stylesheet" href="/readability.css">
 </head>
 <body>
-<header class="topbar"><a class="brand" href="/">✦ <span>사이버 교실<small>우리들의 작은 우주</small></span></a>
+<header class="topbar"><a class="brand" href="/">✦ <span>우주 교실<small>우리들의 작은 우주</small></span></a>
   <div class="top-right"><span class="phase">일곱 번째 여행 · 별빛 거리</span></div>
 </header>
 <main>
@@ -59,11 +60,12 @@
         </form>
         <form id="teacher-form" hidden>
           <div class="lobby-fields">
-          <label for="teacher-key">교사 확인 키</label><input id="teacher-key" type="password" autocomplete="off" minlength="16" required placeholder="교사용 시작 파일에서 자동 입력">
+          <label for="teacher-key">선생님 접속 코드</label><input id="teacher-key" type="password" autocomplete="off" minlength="16" required placeholder="관리자에게 받은 선생님 코드" aria-describedby="teacher-key-help">
+          <small id="teacher-key-help">이 코드는 담당 교실 입장에만 써요. 학생에게 알려주지 마세요.</small>
           <span class="class-mode-label">교실 방식</span>
           <div class="class-mode-choices" role="group" aria-label="교실 방식">
             <button id="choose-open-class" class="secondary" type="button" aria-pressed="false">기존 교실 입장하기</button>
-            <button id="choose-new-class" class="secondary" type="button" aria-pressed="false">교실 만들기</button>
+            <button id="choose-new-class" class="secondary" type="button" aria-pressed="false">교실 만들기(관리자)</button>
           </div>
           <div id="open-class-fields" hidden><label for="open-code">기존 교실 코드</label><input id="open-code" autocomplete="off" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="저장된 교실 코드 6자리"><button id="saved-classes-button" class="small secondary" type="button">저장된 교실 목록 불러오기</button><select id="saved-classes" hidden aria-label="저장된 교실"></select></div>
           <fieldset id="new-class-fields" hidden disabled>
@@ -80,6 +82,7 @@
           <button class="primary submit" type="submit" hidden>입장하기</button>
         </form>
         </div>
+        <p id="owner-entry" class="owner-entry" hidden><a href="/admin.html">홈페이지 관리자 · 교실 발급</a></p>
         <p id="form-message" class="form-message" role="alert"></p>
         <p class="lobby-hours"><span>서버 오픈시간 오전 7시 ~ 오후 10시</span><br><span id="student-hours-note">학생 접속시간 확인 중…</span></p>
         <p class="lobby-credit">제작자 우주ssam</p>

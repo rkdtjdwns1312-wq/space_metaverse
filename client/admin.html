@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>우주 교실 · 홈페이지 관리자</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <main class="admin-shell">
+    <header><a href="/">← 접속 화면</a><h1>우주 교실 관리자</h1><p>교실을 만들고 담당 선생님에게 접속 코드를 전해 주세요.</p></header>
+    <section id="login-panel" class="panel" aria-labelledby="login-title">
+      <h2 id="login-title">관리자 입장</h2>
+      <form id="admin-login"><label for="admin-key">관리자 확인 키</label><input id="admin-key" type="password" required minlength="16" autocomplete="off"><button type="submit">입장하기</button></form>
+      <p class="hint">이 키는 선생님에게 보내지 마세요. 교실별 접속 코드를 발급할 수 있어요.</p>
+    </section>
+    <div id="admin-panel" hidden>
+      <section class="panel" aria-labelledby="new-title"><h2 id="new-title">새 교실 만들기</h2>
+        <form id="create-class"><label for="class-name">교실 이름</label><input id="class-name" maxlength="12" required placeholder="예: 별빛 4학년 1반">
+          <label for="teacher-name">담당 선생님 이름</label><input id="teacher-name" maxlength="40" required placeholder="예: 김 선생님">
+          <button type="submit">교실과 선생님 코드 만들기</button></form>
+        <p class="hint">학생 계정은 담당 선생님이 교실에 입장한 뒤 만들 수 있어요.</p>
+      </section>
+      <section id="issued-panel" class="panel issued" hidden aria-live="polite"><h2>새 선생님 코드</h2><p id="issued-class"></p><div class="code-row"><code id="issued-code"></code><button id="copy-code" type="button">코드 복사</button></div><p>이 화면을 닫으면 코드는 다시 볼 수 없어요. 담당 선생님에게 비공개로 전달해 주세요.</p><button id="hide-issued" type="button" class="secondary">확인했어요</button></section>
+      <section class="panel" aria-labelledby="classes-title"><h2 id="classes-title">내가 만든 교실</h2><p class="hint">코드를 다시 발급하면 이전 선생님 코드는 바로 사용할 수 없어요.</p><div id="class-list"></div><button id="refresh-list" type="button" class="secondary">목록 새로고침</button></section>
+    </div>
+    <p id="admin-message" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>

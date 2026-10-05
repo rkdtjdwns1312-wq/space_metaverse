@@ -1,0 +1,25 @@
+/* 자주 쓰는 학생 화면의 작은 글씨와 누르기 어려운 조작을 통일합니다. */
+.lobby .owner-entry{margin:8px 0 0;text-align:right}.lobby .owner-entry a{color:#4c3981;font-size:15px;font-weight:800;text-underline-offset:3px}
+.map-wrap:has(.lobby:not([hidden])) #classroom-clock,.space-section:has(.lobby:not([hidden])) .map-footer{display:none}
+body:has(.lobby:not([hidden])) .topbar .phase{display:none}
+body.joined .dock-button{font-size:15px;font-weight:800;line-height:1.2}
+body.joined .dock-status-button{width:44px;height:44px;min-height:44px}
+body.joined #avatar-dialog{--info-text-scale:1.45}
+body.joined .dock-button:focus-visible,body.joined dialog button:focus-visible,body.joined dialog input:focus-visible,body.joined dialog select:focus-visible{outline:3px solid #7442ae;outline-offset:3px}
+body.joined dialog :is(button,select,input):not(.slot-btn):not([type="checkbox"]):not([type="radio"]){min-height:44px}
+body.joined dialog :is(p,li,label,small,.hint,.muted){line-height:1.55}
+body.joined dialog small,body.joined dialog .hint,body.joined dialog .item-list .info :is(p,.meta),body.joined dialog .item-list :is(.qty,.type,.level-hint){font-size:15px}
+body.joined #inventory-dialog :is(.bag-detail,.bag-flavor,#bag-empty){font-size:15px;color:#51436c}
+body.joined #inventory-dialog .bag-item-summary .bag-flavor,body.joined #shop-buy-list .info .bag-flavor{font-size:15px;color:#51436c}
+body.joined #shop-buy-list .shop-item-picture .item-info{min-height:44px;font-size:15px}
+body.joined #shop-buy-list .info strong,body.joined #bag-detail .bag-item-summary .info strong{font-size:18px}
+body.joined #shop-dialog .shop-level-tabs button{min-height:44px;font-size:16px}
+body.joined #chat-dialog .chat-tabs button{min-height:44px;font-size:15px}
+body.joined #chat-dialog .chat-window-actions button{min-width:44px;min-height:44px;font-size:16px}
+body.joined #chat-dialog #chat-log li{font-size:16px;line-height:1.5}
+body.joined #chat-dialog #chat-log .who{font-size:15px}
+body.joined #chat-dialog #chat-log .time{font-size:13px;color:#625c77}
+body.joined #chat-dialog :is(#chat-context,#chat-empty,#chat-count,#chat-rate-hint,#chat-feedback,#chat-status){font-size:14px;line-height:1.4;color:#4f4766}
+body.joined #chat-dialog #chat-input{height:44px;font-size:16px}
+#tutorial-progress{font-size:16px;color:#59457e}#tutorial-body{font-size:18px;line-height:1.65}#tutorial-error{font-size:15px}
+@media(max-width:520px){body.joined #chat-dialog .chat-titlebar{gap:6px}body.joined #chat-dialog .chat-tabs{flex-wrap:wrap}body.joined #shop-buy-list .info .bag-flavor{font-size:14px}}

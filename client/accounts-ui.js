@@ -12,11 +12,10 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
     $('allowed-names').required=!managed;
     document.body.dataset.accountMode=managed?'managed':'open';
     if(managed){
-      $('join-code').value=classCode;$('join-code').required=false;$('join-code').hidden=true;
-      document.querySelector('label[for="join-code"]').hidden=true;
+      $('join-code').value=classCode;$('join-code').required=!classCode;$('join-code').hidden=!!classCode;
+      document.querySelector('label[for="join-code"]').hidden=!!classCode;
       $('nickname').placeholder='선생님이 알려주신 이름';document.querySelector('label[for="nickname"]').textContent='이름';
       $('pin-help').textContent='선생님이 알려주신 비밀번호로 들어오세요.';
-      if(!classCode)$('form-message').textContent='선생님이 보내주신 학생 입장 링크로 접속해주세요.';
       $('names-help').textContent='학생 이름을 쉼표나 줄바꿈으로 구분 · 최대 29명. 계정과 임시 비밀번호가 만들어져요.';
     }
   }).catch(()=>{throw new Error('입장 설정을 불러오지 못했어요. 새로고침해주세요.');});
@@ -84,6 +83,6 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
       else if(login&&result.room.managedAccounts)$('password-offer-dialog').showModal();
     },
     reset(){issuedPins.clear();$('credentials-text').value='';renderCredentials(null);},
-    checkLink(){if(managed&&!classCode)throw new Error('선생님이 보내주신 학생 입장 링크로 접속해주세요.');}
+    checkLink(){if(managed&&!/^[A-Z0-9]{6}$/.test($('join-code').value.trim().toUpperCase()))throw new Error('선생님이 알려주신 교실 코드 6자리를 적어주세요.');}
   };
 }

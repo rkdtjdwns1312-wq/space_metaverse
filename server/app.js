@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError, playerEffectsView, nickname } from './rooms.js';
 import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
+import {issueTeacherCode,matchesTeacherCode} from './teacher-access.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
 import { CRAFTING } from '../shared/crafting.js';
@@ -299,6 +300,7 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
         const execute=save?transaction:work=>work();
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
+          if(session?.teacherAccessDigest)ensure(session.room.teacherAccess?.digest===session.teacherAccessDigest,'선생님 접속 코드가 바뀌었어요. 다시 입장해주세요.');
           if(session&&name.startsWith('combat:')&&expireTransformation(session.player,clock()))roster(session.room);
           if(session&&['combat:attack','combat:skill','combat:transform','map:travel','evolution:evolve','evolution:change','evolution:teacher-select'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
@@ -542,23 +544,86 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       return {token:player.token,selfId:player.id,room:store.snapshot(room,player),chat:{messages},...(credentials?{credentials}:{})};
     };
     const notJoined=()=>ensure(!socket.data.session,'먼저 현재 교실에서 나가주세요.');
-    const authorizeTeacher=data=>{
+    const authBucket=()=>{
       const ip=socket.handshake.address,now=Date.now();
       let bucket=authAttempts.get(ip);
       if(!bucket || now-bucket.at>60_000){bucket={at:now,count:0};authAttempts.set(ip,bucket);}
-      ensure(bucket.count<10,'교사 확인을 여러 번 시도했어요. 1분 후 다시 시도해주세요.');
-      if(!equalSecret(data.teacherKey,teacherKey)){bucket.count++;throw new GameError('교사용 시작 링크 또는 교사 확인 키를 확인해주세요.');}
+      ensure(bucket.count<10,'접속 코드 확인을 여러 번 시도했어요. 1분 후 다시 시도해주세요.');
+      return bucket;
     };
-    action('room:create',data=>{
-      notJoined();authorizeTeacher(data);
-      return enter(store.create(data,socket.id));
+    const authorizeTeacher=(data,roomCode)=>{
+      const bucket=authBucket();
+      if(equalSecret(data.teacherKey,teacherKey))return null;
+      const access=roomCode&&(store.rooms.get(roomCode)?.teacherAccess||store.records?.get(roomCode)?.teacherAccess);
+      if(matchesTeacherCode(teacherKey,data.teacherKey,access))return access.digest;
+      bucket.count++;throw new GameError('선생님 접속 코드와 교실 코드를 확인해주세요.');
+    };
+    const ownerOnly=()=>ensure(socket.data.owner===true,'홈페이지 관리자만 할 수 있어요.');
+    const adminClasses=()=>[...store.records.values()].map(r=>({code:r.code,title:r.title,open:[...(store.rooms.get(r.code)?.players.values()||[])].some(p=>p.role==='teacher'&&p.connected),teacherName:r.teacherAccess?.label||'',assigned:!!r.teacherAccess}));
+    const adminRoom=code=>{
+      ensure(typeof code==='string'&&/^[A-Z2-9]{6}$/.test(code),'교실 코드를 확인해주세요.');
+      const record=store.records.get(code);ensure(record,'교실을 찾지 못했어요.');
+      return {record,room:store.rooms.get(code)};
+    };
+    const teacherLabel=value=>{
+      const label=typeof value==='string'?value.normalize('NFKC').trim():'';
+      ensure(label.length>=1&&label.length<=40&&!/[\u0000-\u001f\u007f]/.test(label),'선생님 이름은 1~40자로 적어주세요.');
+      return label;
+    };
+    const changeTeacherAccess=(code,label)=>{
+      const {record,room}=adminRoom(code),previous=room?.teacherAccess?.digest||record.teacherAccess?.digest;
+      const issued=label?issueTeacherCode(teacherKey):null;
+      const access=issued?{digest:issued.digest,label,createdAt:clock()}:null;
+      if(room)room.teacherAccess=access;
+      store.records.set(code,{...record,...(access?{teacherAccess:access}:{teacherAccess:null})});
+      if(previous){
+        for(const session of [...store.sessions.values()])if(session.room.code===code&&session.teacherAccessDigest===previous){
+          const peer=io.sockets.sockets.get(session.player.socketId);
+          store.remove(session.room,session.player);
+          if(peer){peer.data.session=null;deliver(()=>{peer.leave(code);peer.emit('room:closed',{message:'선생님 접속 코드가 바뀌었어요. 새 코드로 다시 입장해주세요.'});});}
+        }
+      }
+      if(room&&previous)roster(room);
+      return issued?.code||null;
+    };
+    action('admin:login',data=>{
+      notJoined();const bucket=authBucket();
+      if(!equalSecret(data.key,teacherKey)){bucket.count++;throw new GameError('관리자 확인 키를 확인해주세요.');}
+      ensure(persistent,'저장 기능이 켜져 있지 않아요.');socket.data.owner=true;
+      return {classes:adminClasses()};
+    },false);
+    action('admin:list',()=>{ownerOnly();return {classes:adminClasses()};},false);
+    action('admin:create',data=>{
+      ownerOnly();const label=teacherLabel(data.teacherName);
+      const session=store.create({title:data.title,allowedNames:[],allowEmpty:true},socket.id);
+      const room=session.room;room.adminCreated=true;store.remove(room,session.player);
+      const issued=issueTeacherCode(teacherKey);
+      room.teacherAccess={digest:issued.digest,label,createdAt:clock()};
+      store.destroy(room);
+      return {code:room.code,teacherCode:issued.code,classes:adminClasses()};
     });
-    action('room:list',data=>{notJoined();authorizeTeacher(data);ensure(persistent,'저장 기능이 켜져 있지 않아요.');return {classes:store.list()};});
+    action('admin:grant',data=>{ownerOnly();const teacherCode=changeTeacherAccess(data.code,teacherLabel(data.teacherName));return {teacherCode,classes:adminClasses()};});
+    action('admin:revoke',data=>{ownerOnly();changeTeacherAccess(data.code,null);return {classes:adminClasses()};});
+    action('room:create',data=>{
+      notJoined();authorizeTeacher(data);ensure(equalSecret(data.teacherKey,teacherKey),'홈페이지 관리자만 교실을 만들 수 있어요.');
+      return enter(store.create({...data,allowEmpty:false},socket.id));
+    });
+    action('room:list',data=>{notJoined();ensure(persistent,'저장 기능이 켜져 있지 않아요.');
+      if(equalSecret(data.teacherKey,teacherKey)){authorizeTeacher(data);return {classes:store.list()};}
+      const bucket=authBucket(),classes=[...store.records.values()].filter(r=>matchesTeacherCode(teacherKey,data.teacherKey,r.teacherAccess)).map(r=>({code:r.code,title:r.title,open:store.rooms.has(r.code)}));
+      if(!classes.length){bucket.count++;throw new GameError('선생님 접속 코드를 확인해주세요.');}
+      return {classes};
+    });
     action('room:studentLink',()=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
       return {url:(publicOrigin||'http://'+socket.handshake.headers.host)+'/?class='+s.room.code};
     });
-    action('room:open',data=>{notJoined();authorizeTeacher(data);ensure(persistent,'저장 기능이 켜져 있지 않아요.');return enter(store.open(data,socket.id));});
+    action('room:open',data=>{notJoined();ensure(persistent,'저장 기능이 켜져 있지 않아요.');
+      const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
+      const digest=authorizeTeacher(data,code),session=store.open(data,socket.id);
+      if(digest){session.teacherAccessDigest=digest;store.sessions.set(session.player.token,session);}
+      return enter(session);
+    });
     action('student:pin:set',data=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
       ensure(persistent,'저장 기능이 켜져 있지 않아요.');
@@ -602,9 +667,12 @@ export function createClassroomServer({teacherKey, publicOrigin='', reconnectMs=
       roster(s.room);return {};
     });
     action('room:join',data=>{notJoined();ensure(studentOpen(),STUDENT_HOURS_MESSAGE);return enter(store.join(data,socket.id));});
-    action('session:resume',data=>{notJoined();const old=store.sessions.get(data.token);if(old?.player.role==='student')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);return enter(store.resume(data.token,socket.id));});
+    action('session:resume',data=>{notJoined();const old=store.sessions.get(data.token);if(old?.player.role==='student')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
+      if(old?.teacherAccessDigest)ensure(old.room.teacherAccess?.digest===old.teacherAccessDigest,'선생님 접속 코드가 바뀌었어요. 다시 입장해주세요.');
+      return enter(store.resume(data.token,socket.id));
+    });
     action('room:leave',()=>{detach(socket,true);return {};});
-    // 아직 교사 관리 패널은 없지만 종료 권한부터 서버에서 검사합니다.
+    // 교실 종료는 해당 교실에 입장한 선생님만 할 수 있습니다.
     action('room:close',()=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 교실을 종료할 수 있어요.');
       roomClosed(s.room);return {};
