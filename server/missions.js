@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {ensure} from './rooms.js';
 
 export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10});
-export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage']);
+export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete']);
 const autoObjectives=new Set(AUTO_OBJECTIVES);
 const difficulties=new Set(['low','medium','high']);
 const uniqueIds=value=>Array.isArray(value)&&value.every(id=>typeof id==='string'&&id.length>0)&&new Set(value).size===value.length;
@@ -25,6 +25,7 @@ export function validateMissions(value){
         (mission.objective==='craft-level'&&(!Number.isSafeInteger(mission.itemLevel)||mission.itemLevel<2||mission.itemLevel>5))||
         (['baseball-win','sudoku-win'].includes(mission.objective)&&!difficulties.has(mission.difficulty))||
         (mission.objective==='signal-stage'&&(!Number.isSafeInteger(mission.stage)||mission.stage<1||mission.stage>6||mission.goal!==1))||
+        (['tutorial-complete','life-star-complete'].includes(mission.objective)&&mission.goal!==1)||
         !mission.progress||typeof mission.progress!=='object'||Array.isArray(mission.progress)||
         Object.entries(mission.progress).some(([id,count])=>!mission.acceptedIds.includes(id)||!Number.isSafeInteger(count)||count<0||count>mission.goal))))throw new Error('Invalid missions');
     ids.add(mission.id);return structuredClone(mission);
@@ -44,6 +45,7 @@ export function createMission(room,data,now=Date.now()){
     if(data.objective==='craft-level')ensure(Number.isSafeInteger(data.itemLevel)&&data.itemLevel>=2&&data.itemLevel<=5,'조합할 아이템 레벨을 골라 주세요.');
     if(['baseball-win','sudoku-win'].includes(data.objective))ensure(difficulties.has(data.difficulty),'게임 난이도를 골라 주세요.');
     if(data.objective==='signal-stage')ensure(Number.isSafeInteger(data.stage)&&data.stage>=1&&data.stage<=6&&data.goal===1,'우주 신호 단계를 골라 주세요.');
+    if(['tutorial-complete','life-star-complete'].includes(data.objective))ensure(data.goal===1,'이 조건은 한 번 완료하면 달성돼요.');
   }
   room.missions??=[];ensure(room.missions.length<MISSION_LIMITS.count,'미션은 교실당 30개까지 만들 수 있어요.');
   const mission={id:randomUUID(),title,description,rewardShards:data.rewardShards,distribution:data.distribution,at:now,
@@ -52,6 +54,10 @@ export function createMission(room,data,now=Date.now()){
       ...(data.objective==='math-correct'?{grade:data.grade}:{}),...(data.objective==='craft-level'?{itemLevel:data.itemLevel}:{}),
       ...(['baseball-win','sudoku-win'].includes(data.objective)?{difficulty:data.difficulty}:{}),
       ...(data.objective==='signal-stage'?{stage:data.stage}:{})}:{})};
+  // 첫 여행 안내는 한 번만 끝낼 수 있으므로, 미션 제작 전에 완료한 친구도 즉시 달성 상태로 둡니다.
+  if(mission.objective==='tutorial-complete')for(const id of mission.acceptedIds){
+    if(room.players.get(id)?.tutorialCompleted){mission.progress[id]=1;mission.completedIds.push(id);}
+  }
   room.missions.push(mission);return mission;
 }
 
@@ -60,7 +66,9 @@ export function acceptMission(room,player,missionId){
   const mission=room.missions?.find(m=>m.id===missionId);
   ensure(mission?.distribution==='board','게시판에서 받을 수 있는 미션이 아니에요.');
   ensure(!mission.acceptedIds.includes(player.id),'이미 받은 미션이에요.');
-  mission.acceptedIds.push(player.id);return mission;
+  mission.acceptedIds.push(player.id);
+  if(mission.objective==='tutorial-complete'&&player.tutorialCompleted){mission.progress[player.id]=1;mission.completedIds.push(player.id);}
+  return mission;
 }
 
 export function completeMission(room,studentId,missionId){

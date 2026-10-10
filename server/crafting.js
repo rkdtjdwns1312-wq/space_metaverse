@@ -1,4 +1,4 @@
-import { CRAFTING } from '../shared/crafting.js';
+import { CRAFTING,SPIRIT_CLOAK_RECIPE } from '../shared/crafting.js';
 import { SHOP } from '../shared/config.js';
 import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import {shardCost} from '../shared/economy.js';
@@ -50,13 +50,35 @@ function validRecipe(recipe, catalog, maxQuantity) {
   return { ingredients, output };
 }
 
+function craftSpiritCloak(player, ingredient, catalog) {
+  const recipe=SPIRIT_CLOAK_RECIPE,output=catalog.find(item=>item.id===recipe.output.id);
+  if(!output)return fail(player,'invalid-recipe');
+  const owned=player.inventory.find(entry=>entry.id===ingredient.id);
+  if(!owned||owned.quantity<1)return fail(player,'insufficient-ingredients');
+  if(!Number.isSafeInteger(player.cosmicEnergy)||player.cosmicEnergy<recipe.cosmicEnergy)return fail(player,'insufficient-energy');
+  if(player.starShards<recipe.starShards)return fail(player,'insufficient-fee');
+  const existing=player.inventory.find(entry=>entry.id===output.id);
+  if(existing?.quantity>=CRAFTING.maxQuantity)return fail(player,'output-stack-full');
+  if(player.inventory.length-(owned.quantity===1?1:0)+(existing?0:1)>SHOP.maxKinds)return fail(player,'inventory-full');
+  // 모든 검증을 마친 뒤에만 재료·두 재화를 함께 차감합니다.
+  owned.quantity--;
+  if(!owned.quantity)player.inventory.splice(player.inventory.indexOf(owned),1);
+  if(existing)existing.quantity++;
+  else player.inventory.push({id:output.id,quantity:1});
+  player.starShards-=recipe.starShards;
+  player.cosmicEnergy-=recipe.cosmicEnergy;
+  if(!(player.learnedRecipeIds||[]).includes(output.id))player.learnedRecipeIds=[...(player.learnedRecipeIds||[]),output.id];
+  return {success:true,item:output,error:null,balance:player.starShards,energyBalance:player.cosmicEnergy,inventory:player.inventory};
+}
+
 // 서버에서만 호출하며, 검증 실패는 재화와 재료를 함께 보존합니다.
 export function attemptCraft(player, input, { recipes = [], catalog = [...SHOP.items,...EQUIPMENT_ITEMS] } = {}) {
   if (!player || !Array.isArray(player.inventory) || !Number.isSafeInteger(player.starShards) || player.starShards < 0 ||
       !Array.isArray(recipes) || !Array.isArray(catalog)) return fail(player || {}, 'invalid-player');
-  if (recipes.length === 0) return fail(player, 'invalid-recipe');
   const ingredients = normalizeIngredients(input, CRAFTING.maxQuantity);
   if (!ingredients) return fail(player, 'invalid-input');
+  if (sameMultiset(ingredients,SPIRIT_CLOAK_RECIPE.ingredients))return craftSpiritCloak(player,ingredients[0],catalog);
+  if (recipes.length === 0) return fail(player, 'invalid-recipe');
   const known = new Map(catalog.filter(item => validId(item?.id)).map(item => [item.id, item]));
   if (ingredients.some(part => !known.has(part.id))) return fail(player, 'unknown-ingredient');
   const owned = new Map(player.inventory.filter(item => validId(item?.id)).map(item => [item.id, item]));

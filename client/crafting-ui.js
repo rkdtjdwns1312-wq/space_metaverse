@@ -1,6 +1,7 @@
 import {itemOf} from '/shared/config.js';
 import {hasUnlimitedShards,shardCost} from '/shared/economy.js';
 import {renderWallet} from './wallet-ui.js';
+import {SPIRIT_CLOAK_RECIPE} from '/shared/crafting.js';
 
 // 선택한 재료는 화면에서만 예약합니다. 닫기/실패/연결 종료 때 아이템을 잃지 않습니다.
 export function createCraftingUI({getPlayer,request,stop,toast}) {
@@ -11,7 +12,8 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
       <h3>선생님 전용 조합법</h3><div id="crafting-recipe-tabs" role="tablist" aria-label="완성 아이템 레벨">
       <button type="button" role="tab" data-recipe-level="2" aria-selected="true">LV2</button>
       <button type="button" role="tab" data-recipe-level="3" aria-selected="false">LV3</button>
-      <button type="button" role="tab" data-recipe-level="4" aria-selected="false">LV4</button></div>
+      <button type="button" role="tab" data-recipe-level="4" aria-selected="false">LV4</button>
+      <button type="button" role="tab" data-recipe-level="5" aria-selected="false">LV5</button></div>
       <p id="crafting-recipes-status" role="status"></p><ul id="crafting-recipes-list"></ul>
       <button id="crafting-recipes-close" type="button" class="secondary">조합법 닫기</button>
     </section>
@@ -40,11 +42,11 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
         const li=document.createElement('li'),output=itemOf(recipe.output.id);
         const title=document.createElement('strong');title.textContent=output.name+' × '+recipe.output.quantity;
         const image=document.createElement('span');image.className='recipe-output';icon(image,output);image.append(title);
-        const parts=document.createElement('p');parts.textContent=recipe.ingredients.map(p=>itemOf(p.id).name+' × '+p.quantity).join(' + ');
+        const parts=document.createElement('p');parts.textContent=recipe.ingredients.map(p=>itemOf(p.id).name+' × '+p.quantity).join(' + ')+(recipe.cosmicEnergy?' · 별 파편 '+recipe.starShards+'개 · 우주에너지 '+recipe.cosmicEnergy.toLocaleString()+'개':'');
         li.append(image,parts);$('crafting-recipes-list').append(li);
       }
       const player=getPlayer(),cost=shardCost(player,fee);
-      $('crafting-recipes-status').textContent=info.recipes.length?'LV'+level+' 조합법 '+info.recipes.length+'개 · 조합 비용 '+(hasUnlimitedShards(player)?'교사 무료 (합계 0)':'별 파편 '+cost+'개'):'등록된 조합법이 없습니다.';
+      $('crafting-recipes-status').textContent=info.recipes.length?'LV'+level+' 조합법 '+info.recipes.length+'개'+(level===5?' · 성령왕의 망토는 표시된 재화가 필요해요.':' · 일반 조합 비용 '+(hasUnlimitedShards(player)?'교사 무료 (합계 0)':'별 파편 '+cost+'개')):'등록된 조합법이 없습니다.';
     }catch(e){if(ticket===recipeRequest)$('crafting-recipes-status').textContent=e.message;}
   }
   $('crafting-recipes-open').onclick=()=>showRecipes(2);
@@ -76,10 +78,11 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
       button.append(Object.assign(document.createElement('span'),{textContent:item.name+' · '+available+'개'}));button.setAttribute('aria-label',item.name+' 넣기, 남은 '+available+'개');button.disabled=busy||available===0;
       button.onclick=()=>{if(!selected.has(entry.id)&&selected.size>=16){toast('재료는 16종류까지 넣을 수 있어요.');return;}selected.set(entry.id,count+1);render();};$('crafting-bag').append(button);
     }
-    const cost=shardCost(player,fee),teacher=hasUnlimitedShards(player);
+    const spirit=selected.size===1&&selected.get('spirit-king-soul')===1;
+    const cost=spirit?SPIRIT_CLOAK_RECIPE.starShards:shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
-    $('crafting-submit').textContent=teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
-    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost;
+    $('crafting-submit').textContent=spirit?'성령왕의 망토 조합 · 별 파편 10 · 우주에너지 10,000':teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
+    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(spirit&&(player.cosmicEnergy||0)<SPIRIT_CLOAK_RECIPE.cosmicEnergy);
     $('crafting-clear').disabled=busy||!selected.size;
   }
   $('crafting-close').onclick=()=>dialog.close();$('crafting-clear').onclick=()=>{selected.clear();render();};
@@ -95,7 +98,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
   };
   return {
     async open(){
-      try{const info=await request('crafting:open',{});enabled=info.enabled;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=enabled?(hasUnlimitedShards(player)?'선생님은 무료로 조합할 수 있어요. 실패하면 재료는 그대로 남아요.':'조합할 때 별 파편 '+shardCost(player,fee)+'개가 사용돼요. 실패하면 재료는 그대로 남아요.'):'조합법과 상위 레벨 아이템을 준비 중이에요. 재료를 미리 담아 볼 수 있고 별 파편은 소모되지 않아요.';render();stop();if(!dialog.open)dialog.showModal();}
+      try{const info=await request('crafting:open',{});enabled=info.enabled;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=(hasUnlimitedShards(player)?'일반 조합은 교사 무료예요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+' 성령왕의 망토는 영혼 1개·별 파편 10개·우주에너지 10,000개가 필요해요.';render();stop();if(!dialog.open)dialog.showModal();}
       catch(e){toast(e.message);}
     },
     update(){if(dialog.open)render();},

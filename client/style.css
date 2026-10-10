@@ -367,7 +367,8 @@ body.joined #universe-links canvas.universe-thumbnail,body.joined #universe-plan
 #temple-content .notice-lines li{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;overflow-wrap:anywhere}
 #temple-content .notice-lines li span{flex:1;min-width:0}#temple-content .notice-lines li button{flex:0 0 auto}
 #temple-content .notice-lines small{padding:2px 7px;border-radius:999px;background:#e9defa;color:#665087}
-#map-area-view{margin-top:18px}
+#universe-dialog>.universe-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#universe-dialog>.universe-actions button{flex:0 0 auto}
 @media(max-width:520px){.notice-editor-row{gap:4px}.notice-editor-row .notice-line{font-size:13px}.notice-editor-row .notice-remove-line{padding:5px 7px;font-size:13px}.timetable-table{border-spacing:2px;font-size:12px}.timetable-table th{padding:4px 1px}.timetable-table td{padding:1px}.timetable-table input{font-size:12px}.timetable-table tbody th{font-size:11px}}
 @media(max-width:390px){body.joined:not(.placing) #world-navigation{width:150px;padding:9px;gap:5px}#world-navigation #map-overview{font-size:13px;padding:7px 6px}#minimap-title{font-size:22px}}
 

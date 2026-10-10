@@ -96,10 +96,6 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
   });
   window.addEventListener('blur', () => heldNumberKeys.clear());
 
-  function levelOf(player) {
-    return player?.role === 'teacher' ? 6 : (player?.avatar?.level || 1);
-  }
-
   function layout() {
     if (!count || group.hidden) return;
     const parentRect = controls.getBoundingClientRect();
@@ -143,7 +139,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
     const urls = iconUrls[player?.avatar?.constellationId] || [];
     setSlotIcon(skill, unlocked ? characterAbilities(player)[1].iconUrl : '');
     if(unlocked){skill.title=characterAbilities(player)[1].name+' (E)';skill.setAttribute('aria-label',skill.title);}
-    const wanted = player && levelOf(player)>=5 && player.role!=='teacher' ? 1 : 0;
+    const wanted = player?.avatar?.level===5 ? 1 : 0;
     if (wanted !== count) {
       count = wanted;
       group.replaceChildren();

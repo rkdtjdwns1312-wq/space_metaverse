@@ -2,7 +2,9 @@ import {createProjectileEffects} from './projectile-effects.js';
 import {createAquariusEffects,preloadAquarius} from './aquarius-effects.js';
 import {preloadWater,drawWaterAura,drawWaterProjectile} from './water-effects.js';
 import {preloadSwan,drawSwanAura} from './swan-effects.js';
-import {waterFrameAt} from '/shared/water-skills.js';
+import {waterFrameAt,cetusAuraFrameAt} from '/shared/water-skills.js';
+import {cetusWalkFrames,drawCetusAura} from './cetus-animation.js';
+import {geminiWalkFrames} from './gemini-animation.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,drawOphiuchusSkill} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -97,6 +99,8 @@ export function createWorld(canvas) {
   const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
+  const cetusLastPoint=new Map(),cetusMovingUntil=new Map();
+  const geminiLastPoint=new Map(),geminiMovingUntil=new Map(),geminiMovingSince=new Map();
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set();
@@ -366,7 +370,14 @@ export function createWorld(canvas) {
     const size=avatarSizeOf(p)*(aura?.kind==='cetus'?2:1);
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
-    if(aura)drawWaterAura(ctx,{...aura,elapsedMs:time-aura.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
+    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
+    const whaleSprite=constellation?.id==='cetus'?loadedAvatarSprite(constellation.sprite):null;
+    if(aura?.kind==='cetus'){
+      const elapsed=time-aura.startsAt,opacity=Math.max(0,Math.min(1,elapsed/450,(aura.durationMs-elapsed)/450));
+      drawCetusAura(ctx,whaleSprite,x,y,size,aura.stage,reducedMotion.matches?0:cetusAuraFrameAt(elapsed),opacity,
+        (p.facingX===-1?-1:1)*(constellation?.spriteFacingX||1));
+      canvas.dataset.cetusAuraFrame=String(cetusAuraFrameAt(elapsed));
+    }else if(aura)drawWaterAura(ctx,{...aura,elapsedMs:time-aura.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
     const swanVisual=swanVisualFor(p.id,swan,time);
     if(swanVisual)drawSwanAura(ctx,{...swanVisual,elapsedMs:time-swanVisual.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
     if(effects.some(e=>e.style==='glow')){
@@ -374,12 +385,11 @@ export function createWorld(canvas) {
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
-    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
+    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&!(constellation?.id==='gemini'&&constellation.assetLevel===2)){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,-size*.28);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
     if(corona){ctx.save();ctx.translate(-(p.facingX||1)*size*.24,0);drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);ctx.restore();}
     if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.19);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
-    const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
     if(p.role==='teacher'&&!p.avatar?.teacherPreview){
       celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
@@ -395,7 +405,36 @@ export function createWorld(canvas) {
       const sprite=loadedAvatarSprite(constellation.sprite);
       if(constellation.celestial)celestialAura(ctx,constellation.color,size*.63,time);
       // 몸 그림만 반전합니다. 이름표·말풍선·HP 글자는 원래 방향을 유지합니다.
-      if(sprite){ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);ctx.drawImage(sprite,-size/2,-size/2,size,size);ctx.restore();}
+      if(sprite){
+        let visible= sprite;
+        if(constellation.id==='cetus'&&constellation.assetLevel<=4){
+          const previous=cetusLastPoint.get(p.id);
+          if(previous&&Math.hypot(x-previous.x,y-previous.y)>.12)cetusMovingUntil.set(p.id,time+180);
+          cetusLastPoint.set(p.id,{x,y});
+          if(!reducedMotion.matches&&cetusMovingUntil.get(p.id)>time){
+            const frames=cetusWalkFrames(sprite);
+            const index=Math.floor(time/185)%8;
+            if(frames)visible=frames[index];
+            canvas.dataset.cetusWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='gemini'&&constellation.assetLevel<=4){
+          const previous=geminiLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          geminiLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((geminiMovingUntil.get(p.id)||0)<time)geminiMovingSince.set(p.id,time);
+            geminiMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&geminiMovingUntil.get(p.id)>time){
+            const frames=geminiWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/205)%8;
+            if(frames)visible=frames[index];
+            canvas.dataset.geminiWalkFrame=String(index);
+          }
+        }
+        ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
+        ctx.drawImage(visible,-size/2,-size/2,size,size);ctx.restore();
+      }
       else{const radius=size*.4;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
@@ -640,7 +679,7 @@ export function createWorld(canvas) {
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];coronaFalls=[];capricornBlessings=[];leoRoars=[];}
+      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);

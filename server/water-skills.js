@@ -33,7 +33,7 @@ export function castWater(room,player,now,{basic=false}={}){
     width:size*(id==='cetus'?.28:.13)*visualScale,
     power:basic?Math.round(power*(boosted?spec.multiplier:1)):Math.round(power*spec.multiplier),
     basic,kind:`${id}-${basic?'attack':'skill'}`,vfxId:basic?'attack':`skill-lv${spec.stage}`,
-    piercing:boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
+    piercing:id==='cetus'||boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:2000};
   const projectiles=id==='pisces'&&!basic?
     Array.from({length:spec.hits},(_,i)=>({...launchProjectiles(room,player,{...base,

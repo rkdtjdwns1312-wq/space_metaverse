@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 import {createClassroomServer} from '../server/app.js';
 import {toRecord,fromRecord,pinHash} from '../server/persistent-rooms.js';
 import {MAP,STREET,SHARDS} from '../shared/config.js';
 import {advanceMissions} from '../server/missions.js';
 import {ENGLISH_WORDS} from '../shared/learning-questions.js';
+import {ensureVitals} from '../server/vitals.js';
 
 test('게시판 미션은 학생 수락·교사 달성 확인·본인 완료 보상 순서로 한 번만 처리된다',async t=>{
   const key='mission-test-key',game=createClassroomServer({teacherKey:key,studentHours:false});
@@ -126,4 +130,87 @@ test('자동미션은 서버에서 확인한 행동만 세고 학생이 완료 �
   assert.equal(fromRecord(saved).missions[0].progress[student.id],1);
   assert.equal((await call(studentSocket,'mission:auto:create',{title:'속임수',description:'가짜',rewardShards:1,distribution:'all',objective:'map-travel',goal:1})).ok,false);
   assert.equal((await call(teacher,'mission:auto:create',{title:'잘못된 조건',description:'가짜',rewardShards:1,distribution:'all',objective:'fake',goal:1})).ok,false);
+});
+
+test('첫 여행 안내와 생명의별 자동미션은 서버의 실제 완료 이벤트만 센다',async t=>{
+  const key='guided-missions-key',game=createClassroomServer({teacherKey:key,studentHours:false});
+  const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,sockets=[];
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();});
+  const connect=async()=>{const socket=io(url,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(socket);
+    await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'탐험 미션',allowedNames:['1']});
+  assert.equal(created.ok,true,created.error);
+  const room=game.store.rooms.get(created.room.code),studentSocket=await connect();
+  const joined=await call(studentSocket,'room:join',{code:room.code,nickname:'1'});assert.equal(joined.ok,true,joined.error);
+  const student=room.players.get(joined.selfId),star=MAP.objects.find(object=>object.kind==='life-star');
+  const make=async(objective,title)=>call(teacher,'mission:auto:create',{title,description:title,rewardShards:1,distribution:'all',objective,goal:1});
+  const tutorial=await make('tutorial-complete','첫 안내');assert.equal(tutorial.ok,true,tutorial.error);
+  const life=await make('life-star-complete','별 회복');assert.equal(life.ok,true,life.error);
+  const invalid=await call(teacher,'mission:auto:create',{title:'잘못된 횟수',description:'두 번',rewardShards:1,distribution:'all',objective:'tutorial-complete',goal:2});
+  assert.equal(invalid.ok,false);
+  assert.equal((await call(studentSocket,'tutorial:complete')).ok,true);
+  assert.equal(room.missions[0].progress[student.id],1);
+  assert.deepEqual(room.missions[1].progress,{});
+  assert.equal((await call(studentSocket,'tutorial:complete')).ok,true);
+  assert.equal(room.missions[0].progress[student.id],1);
+  const lateTutorial=await make('tutorial-complete','뒤늦은 첫 안내');
+  assert.equal(lateTutorial.ok,true,lateTutorial.error);
+  assert.equal(room.missions[2].progress[student.id],1);
+  assert.equal(room.missions[2].completedIds.includes(student.id),true);
+  assert.equal((await call(studentSocket,'mission:claim',{missionId:lateTutorial.missionId})).ok,true);
+  const boardTutorial=await call(teacher,'mission:auto:create',{title:'게시판의 첫 안내',description:'안내 완료',rewardShards:1,distribution:'board',objective:'tutorial-complete',goal:1});
+  assert.equal(boardTutorial.ok,true,boardTutorial.error);
+  const board=MAP.objects.find(object=>object.kind==='mission-board');
+  Object.assign(student,{mapId:MAP.id,x:board.x,y:board.y+board.radius+5});
+  assert.equal((await call(studentSocket,'mission:accept',{missionId:boardTutorial.missionId})).ok,true);
+  assert.equal(room.missions[3].progress[student.id],1);
+  assert.equal((await call(studentSocket,'mission:claim',{missionId:boardTutorial.missionId})).ok,true);
+  Object.assign(student,{mapId:MAP.id,x:star.x,y:star.y+star.radius+5});
+  ensureVitals(student).hp=1;ensureVitals(student).mp=0;
+  const recovering=await call(studentSocket,'life-star:recover');assert.equal(recovering.ok,true,recovering.error);
+  student.battleVitals.lifeRecovery.startedAt=Date.now()-6000;
+  const deadline=Date.now()+2500;
+  while(room.missions[1].progress[student.id]!==1&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
+  assert.equal(room.missions[1].progress[student.id],1);
+  assert.equal(room.missions[1].completedIds.includes(student.id),true);
+});
+
+test('두 교실의 생명의 별 미션은 첫 저장 실패 후 재시도하여 각각 영구 저장된다',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'life-mission-persistence-'));
+  let now=Date.now();
+  const key='two-room-life-mission-key',game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,teacherManagedAccounts:false,clock:()=>now});
+  const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,sockets=[];
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();await rm(dir,{recursive:true,force:true});});
+  const connect=async()=>{const socket=io(url,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(socket);
+    await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
+  const star=MAP.objects.find(object=>object.kind==='life-star'),rooms=[];
+  for(let index=0;index<2;index++){
+    const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:`미션 교실 ${index+1}`,allowedNames:['1']});
+    assert.equal(created.ok,true,created.error);
+    const studentSocket=await connect(),joined=await call(studentSocket,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});
+    assert.equal(joined.ok,true,joined.error);
+    const room=game.store.rooms.get(created.room.code),student=room.players.get(joined.selfId);
+    const mission=await call(teacher,'mission:auto:create',{title:'생명의 별 한 번',description:'생명의 별에서 회복 완료',rewardShards:1,distribution:'all',objective:'life-star-complete',goal:1});
+    assert.equal(mission.ok,true,mission.error);
+    game.store.transact(()=>{Object.assign(student,{mapId:MAP.id,x:star.x,y:star.y+star.radius+5});ensureVitals(student).hp=1;ensureVitals(student).mp=0;});
+    const started=await call(studentSocket,'life-star:recover');assert.equal(started.ok,true,started.error);
+    assert.ok(game.store.rooms.get(room.code).players.get(student.id).battleVitals?.lifeRecovery,`교실 ${index+1}의 회복 시작`);
+    rooms.push({code:room.code,studentId:student.id,studentSocket,missionId:mission.missionId});
+  }
+  const save=game.store.files.save.bind(game.store.files);let failures=0;
+  game.store.files.save=(...args)=>{if(failures++===0)throw new Error('simulated life mission disk failure');return save(...args);};
+  now+=6000;
+  const deadline=Date.now()+3500;
+  while(rooms.some(({code,studentId})=>game.store.rooms.get(code).missions[0].progress[studentId]!==1)&&Date.now()<deadline)
+    await new Promise(resolve=>setTimeout(resolve,50));
+  assert.ok(failures>=3,`실패 1회와 교실별 재시도 저장이 발생해야 합니다. 저장 시도 ${failures}회, 상태 ${rooms.map(({code,studentId})=>{const room=game.store.rooms.get(code),player=room.players.get(studentId);return [room.missions[0].progress[studentId]||0,player.battleVitals?.lifeRecovery?.step,player.battleVitals?.hp,player.connected].join('/');}).join(',')}`);
+  for(const {code,studentId,studentSocket,missionId} of rooms){
+    const room=game.store.rooms.get(code);
+    assert.equal(room.missions[0].progress[studentId],1);
+    const claim=await call(studentSocket,'mission:claim',{missionId});assert.equal(claim.ok,true,claim.error);
+    assert.equal(game.store.rooms.get(code).players.get(studentId).starShards,1);
+    assert.equal(game.store.records.get(code).missions[0].claimedIds.includes(studentId),true);
+  }
 });

@@ -7,10 +7,12 @@ import {chromium} from 'playwright';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {ensureVitals} from '../server/vitals.js';
+import {constellationOf} from '../shared/constellations.js';
+import {vitalsOf} from '../shared/vitals.js';
 
 const dataDir=await mkdtemp(join(tmpdir(),'space-auxiliary-skills-'));
 const teacherKey=randomBytes(24).toString('hex');
-const game=createClassroomServer({teacherKey,studentHours:false});
+const game=createClassroomServer({teacherKey,studentHours:false,dataDir,teacherManagedAccounts:false});
 const address=await game.listen();
 const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 const errors=[],checks=[];let teacher;
@@ -53,6 +55,12 @@ try{
   assert.equal(await probe.evaluate(()=>window.__auxProbe.transforms),3);
   check('modal, input/button focus, and unavailable action state do not trigger transformation');
 
+  await probe.evaluate(()=>{window.__auxProbe.player={role:'teacher',avatar:{level:5,constellationId:'aries',teacherPreview:true}};window.__auxProbe.canAct=true;window.__auxProbe.instance.update();});
+  assert.equal(await probe.locator('[data-probe="true"] .auxiliary-skill[data-skill-slot="transformation"]').count(),1);
+  await probe.locator('#aux-world-probe').focus();await probe.keyboard.press('1');
+  assert.equal(await probe.evaluate(()=>window.__auxProbe.transforms),4);
+  check('teacher LV5 preview also exposes the transformation button and key 1');
+
   await probe.close();
 
   const requests=[];game.io.on('connection',socket=>socket.onAny(event=>{if(['combat:skill','combat:transform'].includes(event))requests.push({id:socket.id,event});}));
@@ -61,13 +69,15 @@ try{
   const created=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey,allowedNames:['보조검증']});assert.equal(created.ok,true);
   const page=await browser.newPage({viewport:{width:1440,height:960},hasTouch:true});page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   await page.goto(`http://127.0.0.1:${address.port}/`,{waitUntil:'domcontentloaded',timeout:20000});
-  await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('보조검증');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  await page.locator('#student-tab').click();await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('보조검증');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();
+  try{await page.locator('#lobby').waitFor({state:'hidden'});}catch(error){throw new Error('학생 검사 입장 실패: '+await page.locator('#form-message').textContent(),{cause:error});}
+  if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();
   const room=game.store.rooms.get(created.room.code),actor=[...room.players.values()].find(p=>p.nickname==='보조검증');
   const publish=()=>game.io.to(actor.socketId).emit('room:state',game.store.snapshot(room,actor));
   const setLevel=async(level,role='student')=>{
-    actor.role=role;actor.avatar={...actor.avatar,level,form:level>=2?'constellation':'asteroid',constellationId:level>=2?'aries':null};publish();
+    actor.role=role;actor.transformation=null;actor.avatar={...actor.avatar,level,form:level>=2?'constellation':'asteroid',constellationId:level>=2?'aries':null,teacherPreview:role==='teacher'};publish();
     await page.waitForFunction(({level,role})=>{
-      const expected=level===5&&role!=='teacher'?1:0;
+      const expected=level===5?1:0;
       return document.querySelectorAll('.auxiliary-skill').length===expected&&
         document.querySelectorAll('.auxiliary-skill[data-skill-slot="transformation"]').length===expected&&
         document.getElementById('touch-skill').disabled===(level<2&&role!=='teacher');
@@ -98,7 +108,7 @@ try{
   await page.locator('.auxiliary-skill[data-skill-slot="transformation"]').click();
   await page.waitForFunction(()=>document.querySelector('.auxiliary-skill.is-transforming')!==null||
     document.querySelector('.auxiliary-skill .skill-cooldown:not([hidden])')!==null);
-  assert.equal(actor.transformation.active,true);assert.equal(ensureVitals(actor).hp,60);assert.equal(ensureVitals(actor).mp,40);
+  assert.equal(actor.transformation.active,true);assert.equal(ensureVitals(actor).hp,vitalsOf(5,actor).hp.max);assert.equal(ensureVitals(actor).mp,vitalsOf(5,actor).mp.max);
   const hp=await ensureVitals(actor).hp,mp=await ensureVitals(actor).mp;
   const box=await transformButton.boundingBox();assert.ok(box);
   const transformsBefore=()=>requests.filter(r=>r.event==='combat:transform').length;
@@ -107,11 +117,23 @@ try{
   await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);await page.waitForTimeout(100);
   assert.equal(transformsBefore(),countBefore+1);
   assert.equal(ensureVitals(actor).hp,hp);assert.equal(ensureVitals(actor).mp,mp);
-  check('real LV5 1-key transformation calls combat:transform and restores special-class HP/MP to 60/40; 2/3 do not send further requests');
+  check('real LV5 1-key transformation calls combat:transform and restores HP/MP to the current limits; 2/3 do not send further requests');
+  await setLevel(5,'teacher');
+  await page.waitForFunction(sprite=>document.getElementById('world').dataset.selfSprite===sprite,constellationOf('aries',4).sprite);
+  assert.equal(await page.locator('.auxiliary-skill[data-skill-slot="transformation"]').count(),1);
+  await page.locator('#dock-avatar').click();await page.locator('#avatar-dialog').waitFor({state:'visible'});
+  assert.equal(await page.locator('#self-form-name').textContent(),'양자리');
+  assert.match(await page.locator('#self-level').textContent(),/LV5/);
+  assert.match(await page.locator('#avatar-portrait').getAttribute('aria-label'),/양자리/);
+  await page.locator('#avatar-dialog [data-close]').click();
+  await page.locator('.auxiliary-skill[data-skill-slot="transformation"]').click();
+  await page.waitForFunction(sprite=>document.getElementById('world').dataset.selfSprite===sprite,constellationOf('aries',5).sprite);
+  assert.equal(actor.transformation.active,true);
+  check('teacher LV5 preview card names the chosen constellation, uses LV4 sprite at rest and LV5 sprite only after transformation');
   await setLevel(1,'teacher');assert.equal(await page.locator('.auxiliary-skill').count(),0);
   await page.locator('#touch-attack').click();await page.waitForTimeout(100);
-  assert.equal(transformsBefore(),countBefore+1);
-  check('teacher receives no auxiliary transformation slot');
+  assert.equal(transformsBefore(),countBefore+2);
+  check('teacher LV1 receives no transformation slot');
   assert.deepEqual(errors,[]);
   await mkdir('.local',{recursive:true});await writeFile('.local/auxiliary-skills-browser-result.json',JSON.stringify({checks,pageErrors:errors},null,2));
   console.log(JSON.stringify({checks,pageErrors:errors},null,2));await page.close();

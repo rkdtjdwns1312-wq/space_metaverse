@@ -52,3 +52,22 @@ test('형식이 깨진 레시피만 있으면 비용 없이 거절한다', () =>
   });
   assert.equal(result.success, false); assert.equal(result.error, 'invalid-recipe'); assert.equal(p.starShards, 3);
 });
+
+test('성령왕의 영혼은 공개 조합법으로 재화 두 종류를 소비해 LV5 망토를 만든다',()=>{
+  const p={role:'student',avatar:{level:5},inventory:[{id:'spirit-king-soul',quantity:1}],starShards:10,cosmicEnergy:10000};
+  const result=attemptCraft(p,[{id:'spirit-king-soul',quantity:1}]);
+  assert.equal(result.success,true);
+  assert.equal(result.item.id,'spirit-king-cloak');
+  assert.deepEqual(p.inventory,[{id:'spirit-king-cloak',quantity:1}]);
+  assert.equal(p.starShards,0);assert.equal(p.cosmicEnergy,0);
+  assert.deepEqual(p.learnedRecipeIds,['spirit-king-cloak']);
+});
+
+test('성령왕 망토 조합은 별 파편·우주에너지 부족이나 꽉 찬 가방에서 원자적으로 거절한다',()=>{
+  for(const [shards,energy,extra,error] of [[9,10000,[], 'insufficient-fee'],[10,9999,[], 'insufficient-energy'],
+    [10,10000,[{id:'spirit-king-cloak',quantity:99}],'output-stack-full']]){
+    const p={inventory:[{id:'spirit-king-soul',quantity:1},...extra],starShards:shards,cosmicEnergy:energy};
+    const before=structuredClone(p),result=attemptCraft(p,[{id:'spirit-king-soul',quantity:1}]);
+    assert.equal(result.error,error);assert.deepEqual(p,before);
+  }
+});

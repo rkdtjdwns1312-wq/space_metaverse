@@ -11,6 +11,7 @@ import { createClassroomServer } from '../server/app.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {avatarLabel} from '../shared/avatar-label.js';
 import {attackPowerOf} from '../shared/combat.js';
+import {appearanceLevelOf} from '../shared/character-skills.js';
 
 const evolutionStar = VALLEY.objects.find(object => object.id === 'evolution-star');
 const growthStar = VALLEY.objects.find(object => object.id === 'growth-star');
@@ -244,6 +245,11 @@ test('teacher socket may choose a full constellation and any stage without xp, s
   assert.equal(chosen.ok,true,chosen.error);
   assert.deepEqual({level:teacher.avatar.level,id:teacher.avatar.constellationId,preview:teacher.avatar.teacherPreview},
     {level:5,id:'aries',preview:true});
+  assert.equal(appearanceLevelOf(teacher),4);
+  const transformed=await fixture.call(fixture.teacher,'combat:transform');
+  assert.equal(transformed.ok,true,transformed.error);
+  assert.equal(teacher.transformation.active,true);
+  assert.equal(appearanceLevelOf(teacher),5);
   const student=classroom.players.get(fixture.playerId);
   Object.assign(student,{mapId:VALLEY_ID,x:evolutionStar.x,y:evolutionStar.y});
   const denied=await fixture.call(fixture.student,'evolution:teacher-select',{level:5,constellationId:'aries'});

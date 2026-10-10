@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buyEquipment,equip,unequip} from '../server/equipment.js';
-import {equipmentBonus,validateEquipmentSlots} from '../shared/equipment.js';
+import {EQUIPMENT_ITEMS,equipmentBonus,validateEquipmentSlots} from '../shared/equipment.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {vitalsOf} from '../shared/vitals.js';
 
@@ -30,4 +30,17 @@ test('부족한 재화·레벨·칸·가방 상한은 구매·장착·해제 상
   p.inventory=Array.from({length:60},(_,i)=>({id:'filler-'+i,quantity:1}));
   assert.throws(()=>unequip(p,1),/가방/);assert.equal(p.equipmentSlots[0],'star-heart');
   assert.throws(()=>validateEquipmentSlots(['star-heart','star-heart',null]),/올바르지/);
+});
+
+test('추가 장비는 단계별 수량·구매 가능 여부를 지키고 성령왕 망토는 조합 전용이다',()=>{
+  const counts=[1,2,3,4].map(level=>EQUIPMENT_ITEMS.filter(item=>item.level===level&&!item.craftOnly).length);
+  assert.deepEqual(counts,[6,6,5,3]);
+  const cloak=EQUIPMENT_ITEMS.find(item=>item.id==='spirit-king-cloak');
+  assert.equal(cloak.level,5);assert.equal(cloak.craftOnly,true);assert.equal(cloak.price,null);
+  const p=player();p.avatar.level=5;p.cosmicEnergy=20000;
+  assert.throws(()=>buyEquipment(p,'spirit-king-cloak'),/상점의 물건/);
+  p.inventory.push({id:'spirit-king-cloak',quantity:1});
+  equip(p,'spirit-king-cloak',1);
+  assert.equal(equipmentBonus(p).hp,30);
+  assert.equal(equipmentBonus(p).attack,3);
 });

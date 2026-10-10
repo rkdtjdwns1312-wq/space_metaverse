@@ -20,7 +20,7 @@ import {castLeo,advanceLeoRoars,advanceLeoCourage,leoCooldowns} from './leo-skil
 import {isWaterConstellation} from '../shared/water-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
-import {startLifeRecovery,advanceLifeRecovery} from './life-star.js';
+import {startLifeRecovery,advanceLifeRecovery,finishLifeRecovery} from './life-star.js';
 import {advancePassiveRecovery} from './passive-recovery.js';
 import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,updateExplorationCards} from './exploration.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
@@ -42,7 +42,7 @@ import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
 import {issueTeacherCode,matchesTeacherCode} from './teacher-access.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
-import { CRAFTING } from '../shared/crafting.js';
+import { CRAFTING,SPIRIT_CLOAK_RECIPE } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
 import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
@@ -333,8 +333,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('tutorial:complete',()=>{
       const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
       const player=session.player;
-      if(player.tutorialCompleted)return {completed:true};
-      player.tutorialCompleted=true;roster(session.room);
+      if(player.tutorialCompleted){if(advanceMissions(session.room,player,'tutorial-complete'))roster(session.room);return {completed:true};}
+      player.tutorialCompleted=true;advanceMissions(session.room,player,'tutorial-complete');roster(session.room);
       return {completed:true};
     });
     const missionBoardAccess=()=>{
@@ -1446,31 +1446,30 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return s;
     };
     action('crafting:open',()=>{
-      const {player}=requireCrafting();return {enabled:craftingRecipes.length>0,fee:shardCost(player,CRAFTING.fee)};
+      const {player}=requireCrafting();return {enabled:true,fee:shardCost(player,CRAFTING.fee)};
     },false);
     action('recipes:learned',data=>{
       const s=socket.data.session;
       ensure(s?.player.role==='student'&&s.player.connected&&!s.player.away,'학생 본인만 배운 조합법을 볼 수 있어요.');
       ensure((data.playerId===undefined||data.playerId===s.player.id)&&(data.targetId===undefined||data.targetId===s.player.id),'다른 학생의 조합법은 볼 수 없어요.');
-      return {recipes:learnedRecipesView(s.player,craftingRecipes)};
+      return {recipes:learnedRecipesView(s.player,[...craftingRecipes,SPIRIT_CLOAK_RECIPE])};
     },false);
     action('crafting:recipes',data=>{
       const s=socket.data.session;
       ensure(s?.player.role==='teacher','선생님만 조합법을 볼 수 있어요.');
       requireCrafting();
-      ensure([2,3,4].includes(data.level),'LV2, LV3, LV4 중 하나를 골라주세요.');
+      ensure([2,3,4,5].includes(data.level),'LV2~LV5 중 하나를 골라주세요.');
       // 비공개 파일의 필요한 필드만 인증된 교사에게 응답합니다. 방 방송/공개 스냅샷에는 넣지 않습니다.
-      const recipes=craftingRecipes.filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
-        output:{id:r.output.id,quantity:1},ingredients:r.ingredients.map(p=>({id:p.id,quantity:p.quantity}))
+      const recipes=[...craftingRecipes,SPIRIT_CLOAK_RECIPE].filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
+        output:{id:r.output.id,quantity:1},ingredients:r.ingredients.map(p=>({id:p.id,quantity:p.quantity})),
+        ...(r.cosmicEnergy?{starShards:r.starShards,cosmicEnergy:r.cosmicEnergy}:{})
       }));
       return {level:data.level,recipes};
     },false);
     action('crafting:combine',data=>{
       const {room,player}=requireCrafting();
-      // 조합법은 교사가 정한 뒤 추가합니다. 준비 중에는 직접 요청해도 비용이 없습니다.
-      ensure(craftingRecipes.length>0,'조합법과 상위 레벨 아이템을 준비 중이에요. 별 파편과 재료는 그대로예요.');
       const result=attemptCraft(player,data.ingredients,{recipes:craftingRecipes});
-      const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
+      const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','insufficient-energy':'우주에너지가 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
       ensure(!result.error||result.error==='recipe-mismatch',messages[result.error]||'조합할 수 없어요.');
       if(result.success)advanceMissions(room,player,'craft-level',result.item?.level);
       roster(room);return {...result,itemId:result.item?.id??null};
@@ -2089,12 +2088,22 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         const visible=damageNumbers.filter(hit=>hit.mapId===viewer.mapId);
         if(visible.length)io.to(viewer.socketId).emit('combat:damage-numbers',{hits:visible});
       }
+      let lifeSaveFailed=false;
       for(const update of advanceLifeRecovery(room,clock())){
         const player=room.players.get(update.playerId);
-        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+        if(update.complete){
+          try{transaction(()=>{
+            finishLifeRecovery(player);
+            if(advanceMissions(room,player,'life-star-complete'))roster(room);
+            deliver(()=>{for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+              io.to(viewer.socketId).emit('combat:vitals',update);});
+            deliver(()=>io.to(player.socketId).emit('life-star:complete'));
+          });}catch(error){console.error('생명의 별 미션 저장 실패:',error.message);lifeSaveFailed=true;break;}
+        }else for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
           io.to(viewer.socketId).emit('combat:vitals',update);
-        if(update.complete)io.to(player.socketId).emit('life-star:complete');
       }
+      // 저장 실패 복구는 방 Map 자체를 교체하므로, 다음 틱에서 새 참조로 재시도합니다.
+      if(lifeSaveFailed)break;
       for(const update of advancePassiveRecovery(room,clock())){
         const player=room.players.get(update.playerId);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)

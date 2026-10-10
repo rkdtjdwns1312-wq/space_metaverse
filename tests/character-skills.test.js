@@ -35,6 +35,14 @@ test('LV5 권한을 그대로 보존하면서 LV4 외형/크기, 실제 변신 �
   const p=player(5);assert.equal(appearanceLevelOf(p),4);assert.equal(p.avatar.level,5);
   assert.equal(avatarSizeOf(p),avatarSizeOf(player(4)));
   p.transformation={active:true};assert.equal(appearanceLevelOf(p),5);assert.ok(avatarSizeOf(p)>avatarSizeOf(player(4)));
+  const teacher={...player(5),role:'teacher',avatar:{level:5,constellationId:'corvus',teacherPreview:true}};
+  assert.equal(appearanceLevelOf(teacher),4);
+  assert.equal(avatarSizeOf(teacher),avatarSizeOf(player(4)));
+  startTransformation(teacher,1000);
+  assert.equal(appearanceLevelOf(teacher),5);
+  assert.ok(avatarSizeOf(teacher)>avatarSizeOf(player(4)));
+  assert.equal(expireTransformation(teacher,31000),true);
+  assert.equal(appearanceLevelOf(teacher),4);
   assert.equal(appearanceLevelOf({...p,role:'teacher',avatar:{level:6}}),6);
 });
 test('변신 낮은레벨/검은별/자리비움은 차단',()=>{

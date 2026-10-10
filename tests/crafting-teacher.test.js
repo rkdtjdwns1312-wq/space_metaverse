@@ -83,10 +83,12 @@ test('교사의 맵 이탈·기계와 거리 이탈·away·미접속·전투 제
   assert.equal((await call(socket,'crafting:recipes',{level:2})).ok,false);
 });
 
-test('level은 숫자 2·3·4만 허용한다',async t=>{
+test('level은 숫자 2·3·4·5만 허용하고 공개 LV5 망토 조합을 보여 준다',async t=>{
   const {game,connect,call}=await fixture(t),{socket,room:created}=await createTeacher(connect,call);
   placeAtMachine([...game.store.rooms.get(created.room.code).players.values()].find(value=>value.role==='teacher'));
-  for(const level of ['2',1,5,null,{},0])
+  const lv5=await call(socket,'crafting:recipes',{level:5});
+  assert.equal(lv5.ok,true);assert.equal(lv5.recipes.some(recipe=>recipe.output.id==='spirit-king-cloak'),true);
+  for(const level of ['2',1,6,null,{},0])
     assert.equal((await call(socket,'crafting:recipes',{level})).ok,false,`level=${String(level)}`);
 });
 

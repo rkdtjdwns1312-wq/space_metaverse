@@ -25,6 +25,8 @@ export function advanceLifeRecovery(room,now){
   for(const player of room.players.values()){
     const value=player.battleVitals,recovery=value?.lifeRecovery;
     if(!recovery)continue;
+    // 완료 기록을 저장할 때 실패해도 다음 틱에서 같은 완료를 다시 전달합니다.
+    if(recovery.step===STEPS){updates.push({playerId:player.id,vitals:playerVitals(player),complete:true});continue;}
     if(!player.connected||player.away||value.hp<=0||ensureVitals(player)!==value){delete value.lifeRecovery;continue;}
     const step=Math.min(STEPS,Math.floor((now-recovery.startedAt)/(LIFE_RECOVERY_MS/STEPS)));
     if(step<=recovery.step)continue;
@@ -33,8 +35,11 @@ export function advanceLifeRecovery(room,now){
     value.mp=Math.min(limits.mp.max,value.mp+Math.floor((limits.mp.max-value.mp)*fraction));
     recovery.step=step;
     const complete=step===STEPS;
-    if(complete)delete value.lifeRecovery;
     updates.push({playerId:player.id,vitals:playerVitals(player),complete});
   }
   return updates;
+}
+
+export function finishLifeRecovery(player){
+  if(player.battleVitals?.lifeRecovery?.step===STEPS)delete player.battleVitals.lifeRecovery;
 }

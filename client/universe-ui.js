@@ -45,6 +45,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   onParadiseArtReady(refreshArt);onOriginArtReady(refreshArt);onStreetArtReady(refreshArt);
   function close(){dialog.close();}
   $('universe-close').onclick=close;
+  $('universe-footer-close').onclick=close;
   $('minimap-toggle').onclick=()=>setMinimapOpen(!minimapOpen);
   $('map-overview').onclick=()=>{
     if(!me())return;stop();selected=me().mapId;signature='';render();
@@ -110,11 +111,46 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
     mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
     // 실세계에는 사각 테두리가 없습니다. 지도에서도 인공적인 외곽선을 덧그리지 않습니다.
+    const labels=[];
     for(const o of info.objects){
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
       drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
-      if(detailed){ctx.fillStyle='#54456e';ctx.font='15px Jua, sans-serif';ctx.textAlign='center';const label=o.name||'행성';ctx.fillText(label,Math.max(65,Math.min(w-65,x)),Math.min(h-9,y+o.radius*scale+20),125);}
+      if(detailed&&o.name)labels.push({text:o.name,x,y,r:Math.max(detailed?5:2.5,o.radius*scale)});
+    }
+    if(detailed){
+      ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+      const placed=[];
+      for(const item of labels){
+        const maxWidth=Math.min(132,info.width*scale-24),fontSize=Math.max(10,Math.min(14,Math.round(w/68)));
+        ctx.font=`${fontSize}px Jua, "Malgun Gothic", sans-serif`;
+        const words=item.text.split(/\s+/),lines=[];let line='';
+        for(const word of words){const candidate=line?line+' '+word:word;if(line&&ctx.measureText(candidate).width>maxWidth){lines.push(line);line=word;}else line=candidate;}
+        if(line)lines.push(line);
+        while(lines.some(text=>ctx.measureText(text).width>maxWidth)&&lines.length<3){
+          const index=lines.findIndex(text=>ctx.measureText(text).width>maxWidth);if(index<0)break;
+          const text=lines[index];let cut=text.length;while(cut>1&&ctx.measureText(text.slice(0,cut)).width>maxWidth)cut--;
+          lines.splice(index,1,text.slice(0,cut),text.slice(cut));
+        }
+        const lineHeight=fontSize+2,height=lines.length*lineHeight,width=Math.min(maxWidth,Math.max(...lines.map(text=>ctx.measureText(text).width)));
+        const clampX=x=>Math.max(ox+width/2+8,Math.min(ox+info.width*scale-width/2-8,x));
+        const clampY=y=>Math.max(oy+height/2+7,Math.min(oy+info.height*scale-height/2-7,y));
+        const candidates=[
+          [item.x,item.y+item.r+16+height/2],[item.x,item.y-item.r-15-height/2],
+          [item.x+item.r+width/2+9,item.y],[item.x-item.r-width/2-9,item.y],
+          ...[1,2,3].flatMap(n=>[[item.x,item.y+item.r+16+height/2+n*(height+6)],
+            [item.x,item.y-item.r-15-height/2-n*(height+6)]])
+        ].map(([x,y])=>({x:clampX(x),y:clampY(y)}));
+        const overlap=(a,b)=>Math.max(0,(a.width+b.width)/2+6-Math.abs(a.x-b.x))*
+          Math.max(0,(a.height+b.height)/2+3-Math.abs(a.y-b.y));
+        const scored=candidates.map(candidate=>({...candidate,width,height,score:placed.reduce((sum,p)=>sum+overlap({...candidate,width,height},p),0)}));
+        const position=scored.find(candidate=>candidate.score===0)||scored.reduce((best,candidate)=>candidate.score<best.score?candidate:best);
+        placed.push(position);
+        ctx.fillStyle='#54456e';ctx.strokeStyle='#f8f5ffde';ctx.lineWidth=3;ctx.lineJoin='round';
+        lines.forEach((text,index)=>{const y=position.y+(index-(lines.length-1)/2)*lineHeight;
+          ctx.strokeText(text,position.x,y,maxWidth);ctx.fillText(text,position.x,y,maxWidth);});
+      }
+      ctx.restore();
     }
     const p=position||me();canvas.dataset.mapId=mapId;
     if(p&&p.mapId===mapId){

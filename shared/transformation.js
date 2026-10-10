@@ -24,6 +24,7 @@ export function transformedSkill(player,spec){
   return result;
 }
 export function transformationDescription(player){
+  if(player?.role==='teacher')return '30초 동안 선택한 별자리의 LV5 모습으로 변신해요. 평소에는 LV4 모습이에요. 마나 소모 없음 · 쿨타임 300초. 선생님의 체력·마나 999와 관리용 능력치는 그대로 유지돼요.';
   const b=transformationProfile(player),signed=n=>n>=0?`+${n}`:String(n);
   const extra=b.skillCooldownFactor===.5?' 일반 스킬 쿨타임 50% 감소.':b.skillAmountFactor===2?' 스킬 피해·회복·효과량 2배(마나 소모·쿨타임 유지).':'';
   return `30초 동안 LV5 모습으로 변신해요. 마나 소모 없음 · 쿨타임 300초. 공격력 ${signed(b.attackBonus)} · 방어력 ${signed(b.defenseBonus)}(최소 0) · 최대 체력 +${b.hpBonus} · 최대 마나 +${b.mpBonus}.${extra} 변신 시작 시 체력·마나를 모두 회복해요. 자동 회복은 10초마다 체력 최대치의 10%, 마나 2예요. 종료 시 원래 최대치로 돌아가며 초과 현재치만 제한해요.`;

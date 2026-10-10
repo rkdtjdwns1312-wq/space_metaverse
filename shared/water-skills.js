@@ -33,11 +33,16 @@ export function waterFrameAt(elapsedMs,durationMs=10000){
   return 6+Math.floor((elapsedMs-500)/1000*12)%12;
 }
 
-// 고래의 오라는 커졌다 작아지는 시트 전체를 되감지 않고, 가운데 물결을 왕복 재생합니다.
-// 양 끝이 같은 프레임이므로 반복 경계에서 모양이 튀지 않습니다.
+// 푸른 테두리 오라는 8장만 천천히 순환합니다. 이동속도와 재생 속도를 묶지 않습니다.
 export function cetusAuraFrameAt(elapsedMs){
-  const phase=((elapsedMs%2200)+2200)%2200/2200;
-  return 7+8*(1-Math.abs(phase*2-1));
+  return Math.floor((((elapsedMs%1520)+1520)%1520)/190);
+}
+
+// 몸에서 작게 출발해 거리 2/3에서 가장 커지고 끝에서 사라지는 한 번의 쓸기.
+export function cetusWaveScaleAt(progress){
+  const p=Math.max(0,Math.min(1,progress));
+  const smooth=t=>t*t*(3-2*t);
+  return p<=2/3?.22+.98*smooth(p/(2/3)):1.2*(1-smooth((p-2/3)/(1/3)));
 }
 
 // 물고기는 전진 거리와 높이를 함께 바꿉니다. 시작/착지는 바닥, 중간은 최고점입니다.

@@ -150,7 +150,7 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
 // 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
-  {id:'spirit-king-soul',name:'성령왕의 영혼',description:'성령의 왕이 남긴 영혼의 결정입니다.',special:'초월 단계의 특별한 조합 재료',art:'/assets/items/spirit-king-soul.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'spirit-king-soul',name:'성령왕의 영혼',description:'성령의 왕이 남긴 영혼의 결정입니다.',special:'성령왕의 영혼 1개와 우주에너지 10,000개, 별 파편 10개를 가지고 별빛 조합기에서 성령왕의 망토(Lv5 장비)를 만들 수 있습니다.',art:'/assets/items/spirit-king-soul.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'exploration-ticket',name:'탐사권',forSale:false,usable:true,description:'우주 탐사 기회 1번을 얻어요. 선생님이 지급합니다.',special:'광장 제단 오른쪽의 우주 탐사 장치에서 사용할 수 있어요.',art:'/assets/items/exploration-ticket.svg',icon:'🎟️',type:'tool',level:1,price:0,targets:'self',secret:false,mode:'exploration-ticket',effect:{label:'우주 탐사 기회',icon:'✦',durationMs:0,style:'card'}},

@@ -7,7 +7,7 @@ import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
-import {waterFrameAt,cetusAuraFrameAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
+import {waterFrameAt,cetusAuraFrameAt,cetusWaveScaleAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
 
 const advance=(room,now)=>advanceProjectiles(room,now,combatEnemies,resolveWaterHit);
 function setup(id,level=4){
@@ -72,6 +72,15 @@ test('고래자리 자동 공격 원의 지름은 확대된 몸의 4배이며 �
   assert.ok(inside.hp<1000);assert.equal(outside.hp,1000);
 });
 
+test('고래자리 Q는 앞쪽 사거리 2배 안의 두 몬스터를 관통한다',()=>{
+  const {room,player,size,near,far}=setup('cetus'),now=Date.now();
+  far.x=player.x+size*1.9;
+  const q=castWater(room,player,now,{basic:true});
+  assert.equal(q.hit.range,size*2);assert.equal(room.projectiles[0].piercing,true);
+  advance(room,now+700);
+  assert.ok(near.hp<1000);assert.ok(far.hp<1000);
+});
+
 test('물고기자리 E는 단계별 4/2/1마리, 100/300/800% 관통·마나5·10초 쿨타임',()=>{
   for(const [level,hits,multiplier] of [[2,4,1],[3,2,3],[4,1,8],[5,1,8]]){
     const {room,player,near,far,size}=setup('pisces',level),now=Date.now(),mp=ensureVitals(player).mp;
@@ -103,10 +112,13 @@ test('각 별자리 4시트×24F 등록과 10초 오라 발동·반복·소멸 �
   assert.equal(waterFrameAt(9500),18);assert.equal(waterFrameAt(9999),23);
 });
 
-test('고래의 푸른 오라는 유지 중 같은 프레임으로 이음새 없이 반복된다',()=>{
-  assert.equal(cetusAuraFrameAt(0),cetusAuraFrameAt(2200));
-  assert.equal(cetusAuraFrameAt(1100),15);
-  assert.ok(Math.abs(cetusAuraFrameAt(2199)-cetusAuraFrameAt(2200))<.02);
+test('고래 오라는 8프레임으로 반복하고 파도는 거리 2/3에서 가장 커졌다 끝에서 사라진다',()=>{
+  assert.equal(cetusAuraFrameAt(0),0);assert.equal(cetusAuraFrameAt(760),4);
+  assert.equal(cetusAuraFrameAt(1519),7);assert.equal(cetusAuraFrameAt(1520),0);
+  assert.ok(cetusWaveScaleAt(0)<cetusWaveScaleAt(.33));
+  assert.ok(cetusWaveScaleAt(.33)<cetusWaveScaleAt(2/3));
+  assert.ok(cetusWaveScaleAt(.9)<cetusWaveScaleAt(2/3));
+  assert.equal(cetusWaveScaleAt(1),0);
 });
 
 test('물고기 연출은 앞으로 전진하며 중간에 솟고 사거리 끝 바닥에 착지한다',()=>{

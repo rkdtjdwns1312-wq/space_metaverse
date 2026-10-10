@@ -35,7 +35,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   function summary() {
     if (!info) return '정보를 불러오는 중…';
     const avatar = info.avatar;
-    if (info.teacherMode) return avatar.teacherPreview ? '선생님 미리보기: LV'+avatar.level+' · 별자리와 단계를 자유롭게 선택할 수 있어요.' : '선생님 · 모든 별자리와 LV1~LV5 선택 가능';
+    if (info.teacherMode) return avatar.teacherPreview ? '선생님 미리보기: LV'+avatar.level+(avatar.level===5?' · 평소 LV4 모습, 변신 중 LV5 모습':' · 별자리와 단계를 자유롭게 선택할 수 있어요.') : '선생님 · 모든 별자리와 LV1~LV5 선택 가능';
     if (avatar.level >= PROGRESSION.transcendentLevel) return '현재 단계: LV5 · 변신 해금 · 평소 LV4 모습';
     return '현재 단계: LV' + avatar.level + ' · 경험치 ' + avatar.xp + ' / ' + info.requiredXp +
       ' · 별 파편 ' + info.starShards + '개';
@@ -46,8 +46,8 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     button.className = 'constellation-choice';
     button.dataset.constellationId = option.id;
     button.style.setProperty('--constellation-color', option.color);
-    // 학생 LV5는 평소 LV4 외형, 선생님 미리보기는 선택한 단계를 보여 줍니다.
-    const previewLevel=Math.max(2,Math.min(info.teacherMode?5:4,info.teacherMode?selectedLevel:info.avatar.level));
+    // LV5는 선생님 미리보기에서도 평소 LV4 외형을 보여 줍니다.
+    const previewLevel=Math.max(2,Math.min(4,info.teacherMode?selectedLevel:info.avatar.level));
     button.dataset.previewLevel=String(previewLevel);
     button.disabled = busy || !option.available || mode==='change'&&(option.current||info.starShards<info.changeCost);
     if (option.current) button.classList.add('current');
@@ -56,7 +56,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     if(sprite){const art=document.createElement('img');art.src=sprite;art.alt='';art.loading='lazy';icon.append(art);
       const type=document.createElement('small');type.className='constellation-art-type';type.textContent=option.type;icon.append(type);}
     else icon.textContent=option.icon;
-    if(sprite){const level=document.createElement('small');level.className='constellation-preview-level';level.textContent=`LV${previewLevel}${!info.teacherMode&&info.avatar.level>=5?' 평소 모습':''}`;icon.append(level);}
+    if(sprite){const level=document.createElement('small');level.className='constellation-preview-level';level.textContent=`LV${previewLevel}${(info.teacherMode?selectedLevel:info.avatar.level)>=5?' 평소 모습':''}`;icon.append(level);}
     const name = document.createElement('span'); name.className = 'constellation-name'; name.textContent = option.name;
     const count = document.createElement('span'); count.className = 'constellation-count';
     count.textContent = info.teacherMode?option.type+ (option.current&&selectedLevel===info.avatar.level?' · 현재':'') :

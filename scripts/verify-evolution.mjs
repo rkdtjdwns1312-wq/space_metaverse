@@ -207,10 +207,13 @@ try {
   await page.locator('#evolution-teacher').click();
   await page.locator('#evolution-levels [data-level="5"]').click();
   assert.equal(await page.locator('#evolution-grid .constellation-choice').count(),16);
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').getAttribute('data-preview-level'),'4');
+  await page.locator('[data-constellation-id="gemini"] .constellation-preview-level').filter({hasText:'LV4 평소 모습'}).waitFor();
   assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(),false);
   await page.locator('[data-constellation-id="gemini"]').click();
   await page.locator('#evolution-yes').click();
   await page.locator('#evolution-summary').filter({hasText:'LV5'}).waitFor();
+  await page.locator('#evolution-summary').filter({hasText:'평소 LV4 모습, 변신 중 LV5 모습'}).waitFor();
   assert.deepEqual((await page.evaluate(()=>window.calls.findLast(value=>value.event==='evolution:teacher-select'))).data,
     {level:5,constellationId:'gemini'});
   await page.locator('#evolution-levels [data-level="1"]').click();

@@ -18,7 +18,7 @@ import {LEO_VFX,LEO_NAMES,leoSkillOf} from './leo-skills.js';
 // 레벨(입장/아이템 권한)과 현재 외형을 분리합니다. LV5는 평소 LV4 모습입니다.
 export function appearanceLevelOf(player){
   const level=player?.avatar?.level||1;
-  return player?.role!=='teacher'&&level===5&&!player.transformation?.active?4:level;
+  return level===5&&!player.transformation?.active?4:level;
 }
 export const skillStageOf=player=>Math.max(2,Math.min(4,player?.avatar?.level||2));
 // 변신 수치는 서버와 설명 UI가 공유합니다. 레벨 권한은 그대로 유지합니다.

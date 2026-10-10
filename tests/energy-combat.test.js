@@ -89,7 +89,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const collected=await call(student,'energy:collect',{dropId:drop.id,amount:999});assert.ok(collected.ok,collected.error);assert.equal(collected.amount,amount);
   assert.equal(person().cosmicEnergy,amount);assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);
   const shop=STREET.objects.find(o=>o.kind==='energy-shop');assert.equal((await call(student,'shop:energy:open')).ok,false);
-  Object.assign(person(),{mapId:STREET_ID,x:shop.x,y:shop.y});const opened=await call(student,'shop:energy:open');assert.ok(opened.ok);assert.equal(opened.items.filter(item=>!item.craftOnly).length,10);
+  Object.assign(person(),{mapId:STREET_ID,x:shop.x,y:shop.y});const opened=await call(student,'shop:energy:open');assert.ok(opened.ok);assert.equal(opened.items.filter(item=>!item.craftOnly).length,20);
   assert.equal((await call(student,'shop:energy:buy',{itemId:'celestial-crown'})).ok,false); // LV4 제한
   assert.equal((await call(student,'shop:buy',{itemId:'comet-compass',quantity:1})).ok,false); // 별상점 우회 방지
   const bought=await call(student,'shop:energy:buy',{itemId:'comet-compass'});assert.ok(bought.ok,bought.error);

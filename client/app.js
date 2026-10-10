@@ -400,16 +400,18 @@ function updateRoom(value){
   $('bag-currency').hidden=false;
   $('draw-resume').hidden=!me?.rabbitDrawPending;
   const myLv=myLevel();
+  const previewLv=isTeacher&&me?.avatar?.teacherPreview?me.avatar.level:null;
+  const cardLv=previewLv??myLv;
   vitals.update(me?.vitals);
   // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
-  $('self-form-name').textContent=isTeacher?'별의수호자':myLv>=2?(constellationOf(me?.avatar?.constellationId,myLv)?.name||'별자리'):'소행성';
-  const transcendent=myLv>=PROGRESSION.transcendentLevel;
-  $('self-level').textContent=isTeacher?'LV6':transcendent?PROGRESSION.transcendentName:'LV '+myLv+' '+'★'.repeat(myLv);
-  const constellationType=myLv>=2?constellationOf(me?.avatar?.constellationId,myLv)?.type:null;
+  $('self-form-name').textContent=isTeacher&&!previewLv?'별의수호자':cardLv>=2?(constellationOf(me?.avatar?.constellationId,cardLv)?.name||'별자리'):'소행성';
+  const transcendent=cardLv>=PROGRESSION.transcendentLevel;
+  $('self-level').textContent=isTeacher&&!previewLv?'LV6':transcendent?(isTeacher?'LV5 ':'')+PROGRESSION.transcendentName:'LV '+cardLv+' '+'★'.repeat(cardLv);
+  const constellationType=cardLv>=2?constellationOf(me?.avatar?.constellationId,cardLv)?.type:null;
   $('self-constellation-type').hidden=!constellationType;
   $('self-constellation-type').textContent=constellationType||'';
   const abilityConstellation=myLv>=2&&me?.role==='student'?constellationOf(me.avatar.constellationId,appearanceLevelOf(me)):null;
-  const required=PROGRESSION.nextLevelXp[myLv-1],xp=me?.avatar.xp||0;
+  const required=PROGRESSION.nextLevelXp[cardLv-1]??1,xp=me?.avatar.xp||0;
   $('self-xp').textContent=isTeacher?'교사 전용':transcendent?'최고 단계':xp+' / '+required;
   $('experience-bar').max=transcendent?1:required;$('experience-bar').value=transcendent?1:xp;
   $('experience-next').textContent=isTeacher?'모든 맵을 관리할 수 있어요.':transcendent?'LV5 변신을 해금했어요. 평소에는 LV4 모습이에요.':(myLv+1===PROGRESSION.transcendentLevel?'LV5 초월체':'LV '+(myLv+1))+'까지 '+Math.max(0,required-xp)+' 남았어요.';
@@ -418,7 +420,7 @@ function updateRoom(value){
   $('avatar-card').classList.toggle('teacher-card',isTeacher);
   $('avatar-card').classList.toggle('celestial-card',!!abilityConstellation?.celestial);
   $('avatar-card').style.setProperty('--celestial-color',abilityConstellation?.color||'#b9a8f0');
-  $('avatar-portrait').setAttribute('aria-label',isTeacher?'별의수호자 아바타 그림':myLv>=2?(abilityConstellation?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
+  $('avatar-portrait').setAttribute('aria-label',isTeacher&&!previewLv?'별의수호자 아바타 그림':cardLv>=2?(constellationOf(me?.avatar?.constellationId,cardLv)?.name||'별자리')+' 아바타 그림':'내 소행성 그림');
   if(me)renderPortrait($('avatar-portrait'),{...me,deptIcon:myPlanetIcon},me.effects);
   renderEquipmentSlots(me);
   $('hint').textContent=isTeacher
@@ -505,6 +507,7 @@ function itemVisual(item){
 }
 function itemUseText(item){
   if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'체력',mp:'마나',speed:'이동속도',regen:'10초 회복'}[key]+' +'+(key==='speed'||key==='regen'?Math.round(value*100)+'%':value))).join(' · ');
+  if(item.mode==='material')return '별빛 조합기에 넣는 재료예요.';
   if(item.passiveOnly)return item.description;
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
   if(item.mode==='meteor')return '선택한 부서가 나에게 준 활성 경고를 즉시 해제해요.';

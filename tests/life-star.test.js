@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MAP,PLAZA_ID} from '../shared/config.js';
 import {ensureVitals,damagePlayer} from '../server/vitals.js';
-import {startLifeRecovery,advanceLifeRecovery} from '../server/life-star.js';
+import {startLifeRecovery,advanceLifeRecovery,finishLifeRecovery} from '../server/life-star.js';
 import {createClassroomServer} from '../server/app.js';
 import {io} from 'socket.io-client';
 
@@ -24,6 +24,8 @@ test('서버 시간 5초에 걸쳐 HP/MP 회복, 5초 직전은 미완료',()=>{
   advanceLifeRecovery(room,5999);assert.ok(player.battleVitals.hp<60&&player.battleVitals.mp<40);
   assert.equal(advanceLifeRecovery(room,6000)[0].complete,true);
   assert.deepEqual([player.battleVitals.hp,player.battleVitals.mp],[60,40]);
+  assert.equal(advanceLifeRecovery(room,12000)[0].complete,true);
+  finishLifeRecovery(player);
   assert.equal(player.battleVitals.lifeRecovery,undefined);assert.deepEqual(advanceLifeRecovery(room,12000),[]);
 });
 test('원거리·다른 맵·접속 해제·사망 중의 시작 거부, 반복 요청 중첩 없음',()=>{

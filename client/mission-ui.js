@@ -64,28 +64,30 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId}){
     catch(error){$('mission-board-error').textContent=error.message;}
     finally{button.disabled=false;}
   };
-  $('mission-auto-objective').insertAdjacentHTML('beforeend','<option value="math-correct">별 수학 발전소 학년별 정답</option><option value="craft-level">레벨별 아이템 조합 성공</option><option value="baseball-win">숫자야구 난이도별 성공</option><option value="sudoku-win">별빛 스도쿠 난이도별 성공</option><option value="signal-stage">우주 신호 목표 단계 성공</option>');
+  $('mission-auto-objective').insertAdjacentHTML('beforeend','<option value="math-correct">별 수학 발전소 학년별 정답</option><option value="craft-level">레벨별 아이템 조합 성공</option><option value="baseball-win">숫자야구 난이도별 성공</option><option value="sudoku-win">별빛 스도쿠 난이도별 성공</option><option value="signal-stage">우주 신호 목표 단계 성공</option><option value="tutorial-complete">첫 여행 안내 완료</option><option value="life-star-complete">생명의별 회복 완료</option>');
   const starOption=$('mission-auto-objective').querySelector('[value="stars-win"]');starOption.value='tetris-lines';starOption.textContent='별 테트리스 줄 지우기';
   $('mission-auto-objective').querySelector('[value="memory-win"]').textContent='별그림 짝맞추기 상 성공';
   starOption.insertAdjacentHTML('afterend','<option value="dodge-record">별 피하기 내 신기록 달성</option>');
   $('mission-auto-item-level-row').insertAdjacentHTML('afterend','<div id="mission-auto-difficulty-row" hidden><label for="mission-auto-difficulty">게임 난이도</label><select id="mission-auto-difficulty"><option value="low">하</option><option value="medium">중</option><option value="high">상</option></select></div><div id="mission-auto-stage-row" hidden><label for="mission-auto-stage">목표 단계</label><select id="mission-auto-stage"><option value="1">1단계</option><option value="2">2단계</option><option value="3">3단계</option><option value="4">4단계</option><option value="5">5단계</option><option value="6">6단계</option></select></div>');
   $('mission-auto-goal').max='100';
-  const objectiveText={'map-travel':'다른 맵으로 이동하기','energy-collect':'우주에너지 줍기','tetris-lines':'별 테트리스 줄 지우기','dodge-record':'별 피하기 내 신기록 달성하기','memory-win':'별그림 짝맞추기 상 난이도 성공하기','english-success':'별 영어 발전소 10문제 중 7문제 이상 맞히기'};
-  const objectiveGuide={'map-travel':'맵의 문을 지나 다른 맵으로 이동할 때 1회로 셉니다.','energy-collect':'우주에너지 드랍을 직접 주울 때 1회로 셉니다.','tetris-lines':'한 판이 끝나면 그 판에서 지운 줄 수를 더해요.','dodge-record':'이전 나의 기록보다 더 오래 별을 피하면 1회입니다. 첫 기록도 신기록으로 셉니다.','memory-win':'별그림 짝맞추기 상 난이도를 성공하면 1회로 셉니다.','english-success':'영어 문제 10개 중 7개 이상 맞히면 성공 1회입니다.','math-correct':'선택한 학년 단계의 문제를 맞힐 때마다 1회로 셉니다.','craft-level':'선택한 레벨의 아이템 조합에 성공할 때마다 1회로 셉니다.','baseball-win':'선택한 난이도에서 숫자야구를 이기면 1회입니다.','sudoku-win':'선택한 난이도의 스도쿠를 완성하면 1회입니다.','signal-stage':'선택한 단계에 도달하면 달성합니다.'};
+  const objectiveText={'map-travel':'다른 맵으로 이동하기','energy-collect':'우주에너지 줍기','tetris-lines':'별 테트리스 줄 지우기','dodge-record':'별 피하기 내 신기록 달성하기','memory-win':'별그림 짝맞추기 상 난이도 성공하기','english-success':'별 영어 발전소 10문제 중 7문제 이상 맞히기','tutorial-complete':'첫 여행 안내 완료하기','life-star-complete':'생명의별 회복 완료하기'};
+  const objectiveGuide={'map-travel':'맵의 문을 지나 다른 맵으로 이동할 때 1회로 셉니다.','energy-collect':'우주에너지 드랍을 직접 주울 때 1회로 셉니다.','tetris-lines':'한 판이 끝나면 그 판에서 지운 줄 수를 더해요.','dodge-record':'이전 나의 기록보다 더 오래 별을 피하면 1회입니다. 첫 기록도 신기록으로 셉니다.','memory-win':'별그림 짝맞추기 상 난이도를 성공하면 1회로 셉니다.','english-success':'영어 문제 10개 중 7개 이상 맞히면 성공 1회입니다.','math-correct':'선택한 학년 단계의 문제를 맞힐 때마다 1회로 셉니다.','craft-level':'선택한 레벨의 아이템 조합에 성공할 때마다 1회로 셉니다.','baseball-win':'선택한 난이도에서 숫자야구를 이기면 1회입니다.','sudoku-win':'선택한 난이도의 스도쿠를 완성하면 1회입니다.','signal-stage':'선택한 단계에 도달하면 달성합니다.','tutorial-complete':'첫 여행 안내의 모든 단계를 마치면 달성합니다.','life-star-complete':'광장에서 생명의별을 조사하고 회복을 끝내면 달성합니다.'};
   $('mission-auto-objective').onchange=()=>{const objective=$('mission-auto-objective').value;
     $('mission-auto-guide').textContent=objectiveGuide[objective];
     $('mission-auto-grade-row').hidden=objective!=='math-correct';
     $('mission-auto-item-level-row').hidden=objective!=='craft-level';
     $('mission-auto-difficulty-row').hidden=!['baseball-win','sudoku-win'].includes(objective);
     $('mission-auto-stage-row').hidden=objective!=='signal-stage';
-    $('mission-auto-goal').disabled=objective==='signal-stage';if(objective==='signal-stage')$('mission-auto-goal').value='1';
+    const oneTime=['signal-stage','tutorial-complete','life-star-complete'].includes(objective);
+    $('mission-auto-goal').disabled=oneTime;if(oneTime)$('mission-auto-goal').value='1';
   };
   $('mission-auto-create-button').onclick=async()=>{
     const button=$('mission-auto-create-button');button.disabled=true;$('mission-board-error').textContent='';
     try{const objective=$('mission-auto-objective').value,goal=Number($('mission-auto-goal').value),
       grade=Number($('mission-auto-grade').value),itemLevel=Number($('mission-auto-item-level').value),
       difficulty=$('mission-auto-difficulty').value,stage=Number($('mission-auto-stage').value),
-      description=objective==='math-correct'?`별 수학 발전소 ${grade}학년 단계 정답 ${goal}회 맞히기`
+      description=['tutorial-complete','life-star-complete'].includes(objective)?objectiveText[objective]
+        :objective==='math-correct'?`별 수학 발전소 ${grade}학년 단계 정답 ${goal}회 맞히기`
         :objective==='craft-level'?`LV${itemLevel} 아이템 조합 ${goal}회 성공하기`
         :objective==='signal-stage'?`우주 신호 따라하기 ${stage}단계 성공하기`
         :['baseball-win','sudoku-win'].includes(objective)?`${objective==='baseball-win'?'숫자야구':'별빛 스도쿠'} ${difficulty==='high'?'상':difficulty==='medium'?'중':'하'} ${goal}회 성공하기`
