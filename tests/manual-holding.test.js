@@ -13,7 +13,10 @@ import {validateCardMarkers} from '../server/item-cards.js';
 import {PersistentRoomStore} from '../server/persistent-rooms.js';
 import {createClassroomServer} from '../server/app.js';
 import {SHARDS,SHOP,MAP,PLAZA_ID} from '../shared/config.js';
-const WEEK=7*86400000,MONDAY=Date.parse('2026-10-05T00:00:00+09:00');
+const WEEK=7*86400000;
+const kstToday=new Date(Date.now()+9*3600000);
+const daysUntilMonday=(8-kstToday.getUTCDay())%7||7;
+const MONDAY=Date.UTC(kstToday.getUTCFullYear(),kstToday.getUTCMonth(),kstToday.getUTCDate()+daysUntilMonday)-9*3600000;
 function fixture(id='galaxy-card',quantity=1){
   const p={id:'a',nickname:'검사',role:'student',connected:true,away:false,avatar:{level:4},inventory:[{id,quantity}],starShards:10,cardMarkers:[],effects:[],abilityState:{markers:[],blocks:[]},lastItemUseAt:0,
     lv2State:{galaxyNextAt:[MONDAY-5*WEEK]},lv3State:{clusterNextAt:[MONDAY-5*WEEK],supernovaUsed:{}},lv4State:validateLv4State()};

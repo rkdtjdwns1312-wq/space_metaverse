@@ -18,6 +18,19 @@ const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],..
 const errors=[],checks=[];
 const check=(...items)=>{checks.push(...items);writeFileSync('.local/browser-progress.json',JSON.stringify({checks,errors},null,2));console.log('Browser check '+checks.length+': '+items[items.length-1]);};
 const dismissTutorial=async page=>{if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();};
+async function rejoinStudentAfterReload(page,code){
+ await page.reload();
+ await page.locator('#lobby-choice').waitFor({state:'visible'});
+ assert.equal(await page.locator('#lobby').getAttribute('data-step'),'choose','새로고침 후에는 입장 방법 선택이 첫 화면이어야 해요.');
+ await page.locator('#student-tab').click();
+ await page.locator('#join-code').fill(code);
+ await page.locator('#nickname').fill('1');
+ await page.locator('#student-pin').fill('1234');
+ await page.locator('#student-form .submit').click();
+ try{await page.locator('#lobby').waitFor({state:'hidden'});}
+ catch(error){throw new Error('새로고침 후 학생 재입장 실패: '+await page.locator('#form-message').textContent(),{cause:error});}
+ await dismissTutorial(page);
+}
 const newContext=async options=>{const context=await browser.newContext(options);context.setDefaultTimeout(10000);return context;};
 mkdirSync('.local',{recursive:true});
 // Polls the chat input's live state instead of a fixed sleep, since room:state
@@ -145,9 +158,16 @@ try{
  await teacher.locator('#teacher-form .submit').click();
  await openMenuFromDock(teacher);await teacher.locator('#room-code').filter({hasText:/[A-Z0-9]{6}/}).waitFor({state:'attached'});
  const code=await teacher.locator('#room-code').innerText();check('Teacher creates a room from actual UI');
+ await teacher.reload();
+ assert.equal(await teacher.locator('#lobby').getAttribute('data-step'),'choose');
+ await teacher.locator('#teacher-tab').click();
+ await teacher.locator('#teacher-resume').click();
+ await teacher.locator('#lobby').waitFor({state:'hidden'});
+ assert.equal(await teacher.locator('#room-code').innerText(),code);
+ check('Teacher refresh starts at role choice and can resume the same temporary classroom');
  await student.goto(url);await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
  await student.locator('#student-tab').click();
- await student.locator('#student-hours-note').filter({hasText:'테스트 기간 제한 없음'}).waitFor();
+ assert.equal(await student.locator('#student-hours-note').count(),0,'학생 접속 테스트 문구는 입력 화면에 없어야 해요.');
  await student.locator('#join-code').fill(code);await student.locator('#nickname').fill('허용안됨');await student.locator('#student-pin').fill('1234');
  await student.locator('#student-form .submit').click();
  await student.locator('#form-message').filter({hasText:'허용한'}).waitFor({state:'attached'});
@@ -162,10 +182,9 @@ try{
  await student.waitForTimeout(220);assert.ok(p.x>initialX+20);
  const canvasAfter=await teacher.locator('#world').evaluate(c=>c.toDataURL());assert.notEqual(canvasBefore,canvasAfter);
  check('Student keyboard movement reaches server and changes teacher canvas');
- await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
- await dismissTutorial(student);
+ await rejoinStudentAfterReload(student,code);
  assert.equal(room.players.size,2);assert.equal([...room.players.values()].find(p=>p.role==='student').id,id);
- check('Browser refresh resumes the same student');
+ check('Browser refresh starts at role choice, and manual login restores the same student');
  await teacher.screenshot({path:'.local/02-classroom.png',fullPage:true});
  await student.setViewportSize({width:390,height:844});
  await student.screenshot({path:'.local/03-mobile.png',fullPage:true});
@@ -241,11 +260,10 @@ try{
  await teacher.locator('#crew-close').click();
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
 
- await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
- await dismissTutorial(student);
+ await rejoinStudentAfterReload(student,code);
  await openChatFromDock(student);
  await student.locator('#chat-log li').filter({hasText:masked}).waitFor({state:'attached'});
- check('Chat history is restored to the student after reload/session resume');
+ check('Chat history is restored to the student after reload and manual login');
 
  await student.waitForTimeout(1600);
  const bubbleCanvasBefore=await teacher.locator('#world').evaluate(c=>c.toDataURL());
@@ -644,11 +662,10 @@ try{
  check('At 390px chat and avatar open separately without horizontal overflow, and friends are reachable from the dock');
 
  // Item 7: reload keeps the star shards and bag.
- await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
- await dismissTutorial(student);
+ await rejoinStudentAfterReload(student,code);
  await student.locator('#self-shards').filter({hasText:'22'}).waitFor({state:'attached'});
  assert.equal(await student.locator('#bag-list li').count(),1);
- check('Reloading resumes the same session with 22 star shards and the bag intact');
+ check('Reloading then signing in keeps 22 star shards and the bag intact');
  // --- End STEP 7 ----------------------------------------------------------------------------
 
  // Item 11: second student's next proposal is rejected by the teacher.
@@ -863,8 +880,7 @@ try{
  assert.equal(await student.locator('#draw-spread .draw-card').count(),1);
  assert.equal(p.inventory.find(entry=>entry.id==='moon-rabbit-card').quantity,1);
  await student.locator('#draw-close').click();
- await student.reload();await student.locator('#lobby').waitFor({state:'hidden'});
- await dismissTutorial(student);
+ await rejoinStudentAfterReload(student,code);
  await openInventoryFromDock(student);
  await student.locator('#bag-list .slot-btn[aria-label="달토끼 × 1"]').click();
  await student.locator('#bag-detail .use').click();
@@ -929,7 +945,7 @@ try{
  check('Second classroom closes independently without affecting the first');
  await teacher2Context.close();
  await openMenuFromDock(teacher);await teacher.getByRole('button',{name:'교실 종료하기'}).click();await teacher.locator('#confirm-leave').click();
- await student.locator('#form-message').filter({hasText:'종료'}).waitFor({state:'attached'});assert.equal(game.store.rooms.size,0);
+ await student.locator('#form-message').filter({hasText:'종료'}).waitFor({state:'visible'});assert.equal(game.store.rooms.size,0);
  check('Teacher ending room returns student to entrance');
  const persistence=await verifyPersistence(browser);
  check(...persistence.checks);errors.push(...persistence.errors);

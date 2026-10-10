@@ -1,7 +1,7 @@
 import {validateJoinRequests} from './planet-membership.js';
 import {relocateDepartments} from './plaza-migration.js';
 import {validateLv4State} from './lv4-item-effects.js';
-import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
@@ -11,6 +11,8 @@ import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {validateAbilityState} from './constellation-abilities.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
+import {pinHash,checkPin} from './pin-auth.js';
+export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
 import { ClassFileStore } from './store.js';
 import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import { spawnPosition,spawnInside } from './world.js';
@@ -26,26 +28,6 @@ import {validateExploration,validateExplorationChances} from './exploration.js';
 import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
-export const PIN_RULES = { attempts:5, lockMs:60_000 };
-export function pinHash(pin) {
-  ensure(typeof pin==='string' && /^\d{4}$/.test(pin),'비밀번호는 숫자 4자리로 입력해주세요.');
-  const salt=randomBytes(16).toString('hex');
-  return {salt,hash:scryptSync(pin,salt,32).toString('hex'),failures:0,lockedUntil:0};
-}
-export function checkPin(player,pin) {
-  ensure(typeof pin==='string' && /^\d{4}$/.test(pin),'비밀번호는 숫자 4자리로 입력해주세요.');
-  const auth=player.pin,now=Date.now();
-  ensure(auth.lockedUntil<=now,'비밀번호를 여러 번 틀렸어요. 1분 후 다시 시도해주세요.');
-  const valid=timingSafeEqual(Buffer.from(auth.hash,'hex'),scryptSync(pin,auth.salt,32));
-  if(!valid){
-    auth.failures++;
-    if(auth.failures>=PIN_RULES.attempts){auth.lockedUntil=now+PIN_RULES.lockMs;auth.failures=0;}
-    // 실패 횟수도 저장하여 연결이나 서버를 다시 켜서 잠금을 피하지 못하게 합니다.
-    const error=new GameError('비밀번호가 맞지 않아요. 잊었다면 선생님께 알려주세요.');
-    error.commitOnError=true;throw error;
-  }
-  auth.failures=0;auth.lockedUntil=0;
-}
 function offline(p) {
   Object.assign(p,{connected:false,socketId:null,token:null,expiresAt:null,away:true,
     x:0,y:0,mapId:PLAZA_ID,input:{x:0,y:0,at:0},effects:[],lastChatAt:0,lastItemUseAt:0});

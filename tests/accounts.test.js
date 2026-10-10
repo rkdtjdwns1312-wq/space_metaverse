@@ -5,8 +5,32 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
+import {RoomStore,GameError} from '../server/rooms.js';
 const key='managed-classroom-test-private-key';
 const call=(s,event,data={})=>s.timeout(5000).emitWithAck(event,data);
+test('새로고침 뒤 학생은 PIN으로 같은 비저장 교실 계정에 다시 입장한다',()=>{
+  const store=new RoomStore(),{room}=store.create({title:'별빛교실',allowedNames:['별이']},'teacher-socket');
+  const first=store.join({code:room.code,nickname:'별이',pin:'1234'},'student-one').player;
+  first.starShards=7;
+  const oldToken=first.token;
+  first.connected=false;first.expiresAt=Date.now()+60_000;
+  assert.throws(()=>store.join({code:room.code,nickname:'별이',pin:'0000'},'student-two'),GameError);
+  assert.equal(first.connected,false);
+  const second=store.join({code:room.code,nickname:'별이',pin:'1234'},'student-three').player;
+  assert.equal(second.id,first.id);
+  assert.equal(second.starShards,7);
+  assert.equal(store.sessions.has(oldToken),false);
+  assert.equal(store.sessions.has(second.token),true);
+});
+test('PIN 없이 만들었던 임시 계정은 예전 토큰 없이는 인계하지 못한다',()=>{
+  const store=new RoomStore(),{room}=store.create({title:'별빛교실',allowedNames:['별이']},'teacher-socket');
+  const first=store.join({code:room.code,nickname:'별이'},'student-one').player;
+  first.starShards=7;first.connected=false;first.expiresAt=Date.now()+60_000;
+  assert.throws(()=>store.join({code:room.code,nickname:'별이',pin:'0000'},'stranger'),GameError);
+  assert.equal(first.connected,false);
+  const resumed=store.join({code:room.code,nickname:'별이',token:first.token},'student-two').player;
+  assert.equal(resumed.id,first.id);assert.equal(resumed.starShards,7);
+});
 test('teacher creates accounts; students cannot self-enroll; own password and teacher edits persist with stable assets',async t=>{
   const dir=await mkdtemp(join(tmpdir(),'managed-accounts-')),sockets=[];
   let game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false}),address=await game.listen();

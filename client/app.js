@@ -164,8 +164,14 @@ $('planet-types').append(...PLANET_TEMPLATES.map(t=>{
   label.append(input,icon,name);return label;
 }));
 let sessionToken=null;
-try{sessionToken=sessionStorage.getItem('space-session');}catch{}
-const saveToken=token=>{sessionToken=token;try{token?sessionStorage.setItem('space-session',token):sessionStorage.removeItem('space-session');}catch{}};
+let teacherResumeToken=null;
+// 공용 교실 기기에서는 새로 연 화면마다 입장 유형을 먼저 선택합니다.
+try{teacherResumeToken=sessionStorage.getItem('space-teacher-session');sessionStorage.removeItem('space-session');}catch{}
+const saveToken=(token,role)=>{
+  sessionToken=token;
+  teacherResumeToken=token&&role==='teacher'?token:null;
+  try{teacherResumeToken?sessionStorage.setItem('space-teacher-session',teacherResumeToken):sessionStorage.removeItem('space-teacher-session');}catch{}
+};
 const accounts=createAccountsUI({getRoom:()=>room,getSelfId:()=>selfId,request,toast,saveToken});
 // 예전 버전에서 브라우저에 남겨 둔 공용 키를 지웁니다. 접속 코드는 브라우저에 저장하지 않습니다.
 try{sessionStorage.removeItem('space-teacher-key');}catch{}
@@ -236,19 +242,23 @@ $('ability-choose-item').onclick=async()=>{
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function showLobbyChoice(focusChoice=true){
   $('lobby').dataset.step='choose';$('lobby-choice').hidden=false;$('lobby-details').hidden=true;
+  $('lobby').append($('form-message'));
   if(focusChoice)$('student-tab').focus();
 }
 function setMode(value){
   mode=value;$('lobby').dataset.step='details';$('lobby-choice').hidden=true;$('lobby-details').hidden=false;
   $('lobby-details').insertBefore($('connection'),$('lobby-details').querySelector('.lobby-hours'));
+  $('lobby-details').insertBefore($('form-message'),$('lobby-details').querySelector('.lobby-hours'));
   $('lobby-role-title').textContent=value==='student'?'학생 입장하기':'선생님 입장하기';
   $('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
+  $('teacher-resume').hidden=value!=='teacher'||!teacherResumeToken;
   if(value==='teacher'&&!classMode)chooseClassMode('open');
   $('form-message').textContent='';
+  controls();
   $(value==='student'?'join-code':'teacher-key').focus();
 }
 $('student-tab').onclick=()=>setMode('student');$('teacher-tab').onclick=()=>setMode('teacher');
-$('lobby-back').onclick=()=>showLobbyChoice();
+$('lobby-back').onclick=()=>{$('form-message').textContent='';showLobbyChoice();};
 const ownerDialog=$('owner-dialog'),ownerFrame=$('owner-frame');
 $('owner-entry').onclick=()=>{
   ownerDialog.showModal();
@@ -317,7 +327,7 @@ const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('teacher')){
   const key=fragment.get('teacher');$('teacher-key').value=key;setMode('teacher');history.replaceState(null,'',location.pathname);
 }
-function controls(){for(const b of document.querySelectorAll('.submit'))b.disabled=busy||!socket.connected;}
+function controls(){for(const b of document.querySelectorAll('.submit, #teacher-resume'))b.disabled=busy||!socket.connected;}
 async function request(event,data){
   if(!socket.connected)throw new Error('연결을 기다리고 있어요. 잠시 후 다시 시도해주세요.');
   const reply=await socket.timeout(6000).emitWithAck(event,data);
@@ -1157,7 +1167,7 @@ function addChatMessage(msg){
 }
 function clearChat(){$('chat-log').replaceChildren();$('chat-empty').hidden=false;}
 function enter(result){
-  social.reset();selfId=result.selfId;saveToken(result.token);updateRoom(result.room);$('lobby').hidden=true;
+  social.reset();selfId=result.selfId;saveToken(result.token,result.room.players.find(p=>p.id===result.selfId)?.role);updateRoom(result.room);$('lobby').hidden=true;
   $('menu-dialog').prepend($('connection'));
   $('room-badge').hidden=false;$('leave').hidden=false;$('chat-panel').hidden=false;
   $('crew-button').hidden=false;
@@ -1231,6 +1241,7 @@ async function submit(event,handler){
   finally{busy=false;controls();}
 }
 $('student-form').onsubmit=e=>submit(e,async()=>{accounts.checkLink();const result=await request('room:join',{code:$('join-code').value,nickname:$('nickname').value,pin:$('student-pin').value});$('student-pin').value='';return result;});
+$('teacher-resume').onclick=e=>submit(e,()=>request('session:resume',{token:teacherResumeToken}));
 $('teacher-form').onsubmit=e=>submit(e,async()=>{
   const teacherKey=$('teacher-key').value;
   if(classMode==='open')return request('room:open',{teacherKey,code:$('open-code').value});
@@ -1257,13 +1268,14 @@ $('saved-classes-button').onclick=async()=>{
   }catch(e){toast(e.message);}
 };
 socket.on('connect',async()=>{
-  $('connection').textContent='우주와 연결되었어요';controls();
-  if(sessionToken){busy=true;controls();try{enter(await request('session:resume',{token:sessionToken}));}
+  $('connection').textContent='우주와 연결되었어요';$('connection').classList.add('is-connected');controls();
+  // 새로 연 화면은 먼저 학생/선생님 선택을 보여 주고, 플레이 중 끊긴 연결만 복구합니다.
+  if(selfId&&sessionToken){busy=true;controls();try{enter(await request('session:resume',{token:sessionToken}));}
     catch(e){reset(e.message);}finally{busy=false;controls();}}
 });
-socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';controls();});
+socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
-socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';controls();});
+socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});
 socket.on('combat:projectile-end',data=>{if(selfId)world.projectileEnd(data);});

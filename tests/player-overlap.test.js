@@ -8,7 +8,7 @@ const roomData={title:'겹침 테스트 교실',allowedNames:['1','2']};
 
 test('advance lets both student and teacher pass through another player',()=>{
   const store=new RoomStore(), {room,player:teacher}=store.create(roomData,'teacher');
-  const student=store.join({code:room.code,nickname:'1'},'student').player;
+  const student=store.join({code:room.code,nickname:'1',pin:'1234'},'student').player;
   const x=MAP.spawn.x+200,y=MAP.spawn.y+200;
   teacher.x=x; teacher.y=y; student.x=x+RULES.radius*2; student.y=y;
   teacher.input={x:1,y:0,at:0}; student.input={x:-1,y:0,at:0};

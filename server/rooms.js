@@ -14,7 +14,8 @@ import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 import {EXPLORATION_GOAL} from '../shared/exploration.js';
 import {objectSignals} from './object-signals.js';
 import {partyView,leaveParty} from './party.js';
-export class GameError extends Error {}
+import {GameError,pinHash,checkPin} from './pin-auth.js';
+export {GameError} from './pin-auth.js';
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
   if (!rename) return null;
@@ -93,9 +94,21 @@ export class RoomStore {
     ensure([...room.players.values()].some(p=>p.role==='teacher' && p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
     const name=nickname(data.nickname);
     ensure(room.allowedNames.has(name),'선생님이 허용한 닉네임이나 번호로 입장해주세요.');
-    ensure(![...room.players.values()].some(p=>p.nickname===name),'이미 사용 중인 닉네임이에요. 재접속 중이라면 원래 창을 사용해주세요.');
+    const previous=[...room.players.values()].find(p=>p.nickname===name);
+    if(previous){
+      ensure(!previous.connected,'이미 사용 중인 닉네임이에요. 원래 창에서 계속해주세요.');
+      if(previous.pin)checkPin(previous,data.pin);
+      else ensure(previous.expiresAt>Date.now()&&data.token===previous.token,
+        '이전 접속 정보가 없어요. 다시 입장하려면 선생님께 알려주세요.');
+      this.sessions.delete(previous.token);
+      previous.token=randomBytes(32).toString('hex');
+      Object.assign(previous,{socketId,connected:true,expiresAt:null,input:{x:0,y:0,at:0}});
+      const session={room,player:previous};this.sessions.set(previous.token,session);return session;
+    }
+    // 저장하지 않는 임시 교실의 기존 소켓 호출은 PIN을 보내지 않을 수 있습니다.
+    const pin=data.pin===undefined?null:pinHash(data.pin);
     ensure(room.players.size<RULES.maxPlayers,'교실 정원 30명이 모두 찼어요.');
-    return {room,player:this.add(room,name,'student',socketId)};
+    const player=this.add(room,name,'student',socketId);player.pin=pin;return {room,player};
   }
   add(room,name,role,socketId) {
     const token=randomBytes(32).toString('hex');

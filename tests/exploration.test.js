@@ -24,7 +24,7 @@ test('탐사 장치 그림 몸체와 발밑에서 조사할 수 있고 멀리서
 });
 test('탐사권을 써야 탐사하며 결과 10장은 0·1·2가 2·6·2장으로 구성된다',()=>{
   const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
-  const student=store.join({code:room.code,nickname:'별이'},'student').player;
+  const student=store.join({code:room.code,nickname:'별이',pin:'1234'},'student').player;
   Object.assign(student,{x:flask.x,y:flask.y});
   assert.deepEqual([0,1,2].map(n=>EXPLORATION_CARDS.filter(card=>card.energy===n).length),[2,6,2]);
   assert.throws(()=>explore(room,student,1000,()=>0),/탐사권/);
@@ -40,7 +40,7 @@ test('탐사권을 써야 탐사하며 결과 10장은 0·1·2가 2·6·2장으�
 
 test('교사가 수정한 탐사 카드만 다음 뽑기에 적용되고 이미 받은 기여량은 유지된다',()=>{
   const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
-  const student=store.join({code:room.code,nickname:'별이'},'student').player;
+  const student=store.join({code:room.code,nickname:'별이',pin:'1234'},'student').player;
   Object.assign(teacher,{x:flask.x,y:flask.y});Object.assign(student,{x:flask.x,y:flask.y,explorationChances:2});
   const cards=EXPLORATION_CARDS.map(card=>({...card}));cards[0]={...cards[0],title:'새 성운',story:'새로운 별빛을 발견했어요.',energy:2};
   assert.throws(()=>updateExplorationCards(room,student,cards),/선생님만/);
@@ -55,7 +55,7 @@ test('교사가 수정한 탐사 카드만 다음 뽑기에 적용되고 이미 
 
 test('탐사권도 개기 일식 사용료와 사용 금지 상태를 적용하고 실패 때 보존한다',()=>{
   const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
-  const student=store.join({code:room.code,nickname:'별이'},'student').player,now=Date.now();
+  const student=store.join({code:room.code,nickname:'별이',pin:'1234'},'student').player,now=Date.now();
   ticket(student,1);student.starShards=0;
   student.cardMarkers.push({id:'eclipse',itemId:'total-eclipse-card',fromId:teacher.id,fromNickname:teacher.nickname,until:now+100000,at:now});
   assert.throws(()=>useExplorationTicket(room,student,now),/별 파편 1개/);
@@ -68,7 +68,7 @@ test('탐사권도 개기 일식 사용료와 사용 금지 상태를 적용하�
 
 test('기운 15가 되면 축제가 열리고 선생님만 초기화하며 베텔기우스 우선권은 당일 실제 기운에 비례한다',()=>{
   const store=new RoomStore(),{room,player:teacher}=store.create({allowedNames:['별이']},'teacher');
-  const student=store.join({code:room.code,nickname:'별이'},'student').player;
+  const student=store.join({code:room.code,nickname:'별이',pin:'1234'},'student').player;
   Object.assign(student,{x:flask.x,y:flask.y,explorationChances:12,lv4State:{betelgeuseDay:'2026-10-03',priorityUntil:null}});
   Object.assign(teacher,{x:flask.x,y:flask.y});
   const now=Date.parse('2026-10-03T10:00:00+09:00');

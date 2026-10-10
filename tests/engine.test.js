@@ -22,7 +22,7 @@ test('garden uses its own map size and collision boundaries, not the enlarged pl
 });
 test('students start as level-one asteroids, teacher is a guardian; identities and secrets are separated',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'teacher');
- const {player:student}=store.join({code:room.code,nickname:'1',role:'teacher',level:5,x:9999},'student');
+ const {player:student}=store.join({code:room.code,nickname:'1',pin:'1234',role:'teacher',level:5,x:9999},'student');
  assert.equal(student.role,'student');assert.equal(student.avatar.level,1);assert.equal(student.avatar.constellationId,null);
  assert.equal(student.avatar.form,'asteroid');assert.equal(player.avatar.form,'star-guardian');assert.equal(player.avatar.level,6);assert.equal(student.starShards,0);
  assert.deepEqual(student.inventory,[]);
@@ -32,7 +32,7 @@ test('students start as level-one asteroids, teacher is a guardian; identities a
 });
 test('capacity is 30 including teacher, with non-overlapping spawn positions',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'teacher');
- for(let i=1;i<=29;i++)store.join({code:room.code,nickname:String(i)},'s'+i);
+ for(let i=1;i<=29;i++)store.join({code:room.code,nickname:String(i),pin:'1234'},'s'+i);
  assert.equal(room.players.size,RULES.maxPlayers);
  for(const p of room.players.values())assert.ok(isFree(room,p.x,p.y,p.id));
  assert.throws(()=>store.join({code:room.code,nickname:'30'},'extra'));assert.equal(room.players.size,30);
@@ -85,7 +85,7 @@ test('interior maps block boundary and board, allow doors, isolate collisions pe
  const board=map.objects.find(o=>o.kind==='board'), door=map.objects.find(o=>o.kind==='door');
  assert.equal(isFree(room, board.x, board.y, null, mapId), false);
  assert.equal(isFree(room, door.x, door.y, null, mapId), true);
- const inside=store.join({code:room.code,nickname:'1'},'s').player;
+ const inside=store.join({code:room.code,nickname:'1',pin:'1234'},'s').player;
  inside.mapId=mapId;inside.x=600;inside.y=400;
  assert.equal(isFree(room, 600, 400, null, mapId), false);
  assert.equal(isFree(room, MAP.spawn.x, MAP.spawn.y, null, PLAZA_ID), true);
@@ -100,7 +100,7 @@ test('spawnInside places players near the interior spawn point without overlap',
  const players=[];
  for(let i=0;i<5;i++){
   const pos=spawnInside(room,mapId);
-  const p=store.join({code:room.code,nickname:String(i+1)},'s'+i).player;
+  const p=store.join({code:room.code,nickname:String(i+1),pin:'1234'},'s'+i).player;
   Object.assign(p,pos,{mapId});
   players.push(p);
  }
@@ -143,9 +143,9 @@ test('snapshot(room, teacher) exposes seeded planets (default rules, no members)
 });
 test('snapshot(room, viewer) keeps star shards/inventory/item-user/trade secret between students; teacher history is only available through the market endpoint',()=>{
  const store=new RoomStore(),{room,player:teacher}=store.create(roomData,'t');
- const student=store.join({code:room.code,nickname:'1'},'s').player;
- const other=store.join({code:room.code,nickname:'2'},'s2').player;
- const third=store.join({code:room.code,nickname:'3'},'s3').player;
+ const student=store.join({code:room.code,nickname:'1',pin:'1234'},'s').player;
+ const other=store.join({code:room.code,nickname:'2',pin:'1234'},'s2').player;
+ const third=store.join({code:room.code,nickname:'3',pin:'1234'},'s3').player;
  student.starShards=7;student.inventory=[{id:'star-sticker',quantity:2}];
  other.starShards=9;other.inventory=[{id:'space-snack',quantity:1}];
  student.effects=[{itemId:'star-sticker',icon:'⭐',label:'반짝반짝',style:'sparkle',until:Date.now()+1000,

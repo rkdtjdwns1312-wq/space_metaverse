@@ -67,7 +67,11 @@ try{
     await login.screenshot({path:`.local/login-choice-${width}.png`,fullPage:true});
     await login.locator('#teacher-tab').click();
     assert.equal(await login.locator('#teacher-key').isVisible(),true);
-    assert.equal(await login.locator('#connection').isVisible(),true,'입장 입력 화면에서 연결 상태를 확인할 수 있어야 해요.');
+    assert.equal(await login.locator('#connection').isVisible(),false,'정상 연결 문구는 입장 입력 화면에 보이지 않아야 해요.');
+    assert.equal(await login.locator('#lobby-back').textContent(),'뒤로 가기');
+    assert.equal(await login.locator('#lobby-back').evaluate(element=>getComputedStyle(element).borderTopStyle),'solid');
+    assert.equal(await login.locator('#student-hours-note').count(),0);
+    assert.equal(await login.locator('.lobby-hours').textContent(),'서버 오픈시간 오전 7시 ~ 오후 10시');
     assert.equal(await login.locator('#student-form').isVisible(),false);
     assert.equal(await login.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'접속 화면 가로 넘침: '+width);
     await login.screenshot({path:`.local/login-teacher-${width}.png`,fullPage:true});
