@@ -5,19 +5,31 @@ import {createAudio} from '../client/audio.js';
 test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2가 재생 위치를 공유한다',async()=>{
   const players=new Map(),storage={getItem:()=>null,setItem:()=>{}};
   const audio=createAudio({storage,mediaFactory:(id,url)=>{
+    const listeners=new Map();
     const media={src:url,paused:true,currentTime:0,volume:1,muted:false,loop:false,playCount:0,
-      async play(){this.paused=false;this.playCount++;},pause(){this.paused=true;}};
+      async play(){this.paused=false;this.playCount++;},pause(){this.paused=true;},
+      addEventListener(name,callback){listeners.set(name,callback);},
+      emit(name){listeners.get(name)?.();}};
     players.set(id,media);return media;
   }});
   try{
     assert.equal(await audio.playBgm('lobby'),true);
     const lobby=players.get('lobby');
+    const violin=players.get('lobby-violin');
     assert.equal(lobby.src,'/assets/audio/login-in-front-of-love.mp3');
     assert.equal(lobby.loop,true);assert.equal(lobby.paused,false);
+    assert.equal(violin.src,'/assets/audio/login-violin-layer.wav');
+    assert.equal(violin.loop,true);assert.equal(violin.paused,false);
+    lobby.currentTime=8;violin.currentTime=7;
+    lobby.emit('timeupdate');assert.equal(violin.currentTime,8);
+    lobby.emit('waiting');assert.equal(violin.paused,true);
+    lobby.currentTime=9;lobby.emit('playing');
+    assert.equal(violin.paused,false);assert.equal(violin.currentTime,9);
     lobby.currentTime=10;
     assert.equal(await audio.playBgm('star-street'),true);
     const shelter=players.get('star-street');
     assert.equal(lobby.paused,true);assert.equal(lobby.currentTime,0);
+    assert.equal(violin.paused,true);assert.equal(violin.currentTime,0);
     assert.equal(shelter.src,'/assets/audio/star-street-pposong.mp3');
     assert.equal(shelter.loop,true);assert.equal(shelter.paused,false);
     assert.equal(await audio.playBgm('milky-valley'),true);
@@ -46,8 +58,8 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     assert.equal(await audio.playBgm('sun-paradise'),true);
     assert.equal(sun.paused,false);assert.equal(sun.currentTime,37);assert.equal(sun.playCount,1);
     audio.setVolume(.6);audio.setMuted(true);
-    assert.equal(lobby.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);assert.equal(plaza.volume,.6);assert.equal(crossroads.volume,.6);assert.equal(sun.volume,.6);
-    assert.equal(lobby.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);assert.equal(plaza.muted,true);assert.equal(crossroads.muted,true);assert.equal(sun.muted,true);
+    assert.equal(lobby.volume,.6);assert.equal(violin.volume,.6);assert.equal(shelter.volume,.6);assert.equal(valley.volume,.6);assert.equal(plaza.volume,.6);assert.equal(crossroads.volume,.6);assert.equal(sun.volume,.6);
+    assert.equal(lobby.muted,true);assert.equal(violin.muted,true);assert.equal(shelter.muted,true);assert.equal(valley.muted,true);assert.equal(plaza.muted,true);assert.equal(crossroads.muted,true);assert.equal(sun.muted,true);
     audio.setMuted(false);assert.equal(sun.muted,false);
     assert.equal(await audio.playBgm('sun-paradise-3'),true);
     assert.equal(sun.paused,true);assert.equal(sun.currentTime,0);
@@ -69,7 +81,8 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     assert.equal(battle.volume,.42);assert.equal(moon.volume,.42);assert.equal(interior.volume,.42);
     assert.equal(battle.muted,true);assert.equal(moon.muted,true);assert.equal(interior.muted,true);
     assert.equal(await audio.playBgm('lobby'),true);
-    assert.equal(lobby.paused,false);assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);assert.equal(interior.paused,true);
-    audio.stopBgm();assert.equal(lobby.paused,true);
+    assert.equal(lobby.paused,false);assert.equal(violin.paused,false);assert.equal(violin.currentTime,lobby.currentTime);
+    assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);assert.equal(interior.paused,true);
+    audio.stopBgm();assert.equal(lobby.paused,true);assert.equal(violin.paused,true);
   }finally{audio.dispose();}
 });

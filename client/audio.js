@@ -2,6 +2,7 @@
 const STORAGE_KEY = 'space-classroom-audio-v1';
 const FILE_BGM = Object.freeze({
   lobby:'/assets/audio/login-in-front-of-love.mp3',
+  'lobby-violin':'/assets/audio/login-violin-layer.wav',
   'star-street':'/assets/audio/star-street-pposong.mp3',
   'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3',
   'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
@@ -47,6 +48,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
   let context = null, master = null, timer = null, theme = MAP_THEMES.default, step = 0, currentMap='';
   const fileMedia=new Map();
+  let lobbySyncAttached=false;
   let started = false;
 
   function ensureFileMedia(id) {
@@ -59,10 +61,19 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
       fileMedia.set(url,media);return media;
     } catch { return null; }
   }
-  function pauseFileMedia(exceptUrl='') {
-    for(const [url,media] of fileMedia)if(url!==exceptUrl){
+  function pauseFileMedia(exceptUrls=[]) {
+    const keep=new Set(exceptUrls);
+    for(const [url,media] of fileMedia)if(!keep.has(url)){
       media.pause();
       try { media.currentTime=0; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
+    }
+  }
+
+  function syncLobbyViolin(lobby,violin) {
+    const drift=Math.abs((lobby.currentTime||0)-(violin.currentTime||0));
+    const duration=Number.isFinite(lobby.duration)?lobby.duration:0;
+    if(Math.min(drift,duration?Math.abs(duration-drift):drift)>.2){
+      try { violin.currentTime=lobby.currentTime; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
     }
   }
 
@@ -117,7 +128,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
     const id = String(mapId || 'default').toLowerCase();
     const url=bgmUrlFor(id);
     if(currentMap!==id){
-      pauseFileMedia(url);
+      pauseFileMedia(id==='lobby'?[url,FILE_BGM['lobby-violin']]:url?[url]:[]);
       currentMap=id;step=0;
       if(timer!==null){clearInterval(timer);timer=null;}
     }
@@ -125,7 +136,30 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
       started=true;
       const media=ensureFileMedia(id);
       if(!media)return false;
-      try {if(media.paused)await media.play();return !media.paused;} catch {return false;}
+      try {
+        if(media.paused)await media.play();
+        if(id==='lobby'&&!media.paused){
+          const violin=ensureFileMedia('lobby-violin');
+          if(violin){
+            if(violin.paused){
+              try { violin.currentTime=media.currentTime; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
+            }else syncLobbyViolin(media,violin);
+            if(!lobbySyncAttached&&typeof media.addEventListener==='function'){
+              media.addEventListener('timeupdate',()=>{if(currentMap==='lobby')syncLobbyViolin(media,violin);});
+              media.addEventListener('seeked',()=>{if(currentMap==='lobby')syncLobbyViolin(media,violin);});
+              media.addEventListener('waiting',()=>{if(currentMap==='lobby')violin.pause();});
+              media.addEventListener('playing',()=>{
+                if(currentMap!=='lobby'||!started||!violin.paused)return;
+                try { violin.currentTime=media.currentTime; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
+                void violin.play().catch(()=>{});
+              });
+              lobbySyncAttached=true;
+            }
+            try {if(violin.paused)await violin.play();} catch { /* 원곡은 계속 재생합니다. */ }
+          }
+        }
+        return !media.paused;
+      } catch {return false;}
     }
     if(timer===null){
       const base=id.includes('plaza')?PLAZA_THEME:MAP_THEMES[id] || (id.includes('street') ? MAP_THEMES.street : id.includes('black') ? MAP_THEMES.blackhole : id.includes('temple')||id.includes('valley') ? MAP_THEMES.temple : id.includes('planet') ? MAP_THEMES.planet : MAP_THEMES.default);
