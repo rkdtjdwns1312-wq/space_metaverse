@@ -38,7 +38,7 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   for(const route of bridgeRoutes){
     const {map,a,b,end}=route,start=point(a,b,.30),finish=point(a,b,end);
     const p={...avatar,avatar:{...avatar.avatar},mapId:map.id,input:{x:0,y:0,at:0}};
-    const room={players:new Map([[p.id,p]]),planets:new Map(),unattended:true};
+    const room={players:new Map([[p.id,p]]),planets:new Map(),monsters:new Map(),unattended:true};
     // 객체가 있는 섬의 한복판까지 가는 검사가 아니라 다리 양끝의 연결부 통행 검사입니다.
     for(const [from,to] of [[start,finish],[finish,start]]){
       Object.assign(p,from);let tick=0;

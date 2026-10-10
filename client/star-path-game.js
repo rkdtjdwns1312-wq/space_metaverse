@@ -1,63 +1,76 @@
-const LEVELS=[
-  {stars:[20,12,4],rocks:[6,8,16,18]},
-  {stars:[24,12,0],rocks:[6,8,16,18,22]},
-  {stars:[20,14,4],rocks:[7,9,16,18]}
-];
-const adjacent=(a,b)=>Math.abs(Math.floor(a/5)-Math.floor(b/5))+Math.abs(a%5-b%5)===1;
+const PUZZLES={
+  low:[
+    {points:[[.18,.2],[.82,.2],[.82,.8],[.18,.8],[.5,.5]],edges:[[0,1],[1,2],[2,3],[3,0],[0,4]]},
+    {points:[[.15,.25],[.5,.13],[.85,.25],[.75,.8],[.25,.8]],edges:[[0,1],[1,2],[2,3],[3,4],[4,0],[1,3]]}
+  ],
+  medium:[
+    {points:[[.15,.2],[.5,.12],[.85,.2],[.85,.72],[.5,.88],[.15,.72],[.5,.5],[.26,.5]],edges:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,3],[0,6],[6,7],[7,0]]},
+    {points:[[.18,.18],[.5,.1],[.82,.18],[.88,.5],[.82,.82],[.5,.9],[.18,.82],[.12,.5]],edges:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0],[0,4],[4,2],[2,6]]}
+  ],
+  high:[
+    {points:[[.14,.18],[.5,.12],[.86,.18],[.9,.5],[.86,.82],[.5,.88],[.14,.82],[.1,.5],[.5,.5]],edges:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0],[0,4],[4,2],[2,6],[0,8],[8,2],[2,0]]},
+    {points:[[.13,.18],[.5,.12],[.87,.18],[.9,.5],[.87,.82],[.5,.88],[.13,.82],[.1,.5],[.5,.5]],edges:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0],[0,8],[8,4],[4,2],[2,6],[6,8],[8,2]]}
+  ]
+};
+const labels={low:'하',medium:'중',high:'상'};
+export function oneStrokePuzzle(difficulty,random=Math.random){
+  const choices=PUZZLES[difficulty];if(!choices)throw new Error('난이도를 골라 주세요.');
+  const template=choices[Math.floor(random()*choices.length)],turn=Math.floor(random()*4),flip=random()>.5;
+  const points=template.points.map(([initialX,initialY])=>{
+    let x=flip?1-initialX:initialX,y=initialY;
+    for(let i=0;i<turn;i++)[x,y]=[1-y,x];
+    return [x,y];
+  });
+  return {points,edges:template.edges.map(edge=>[...edge])};
+}
 
 export function createStarPathGame({board,setScore}={}){
-  let level=0,path=[],nextStar=1,seconds=90,playing=false,finished=false,tick=null,advance=null;
+  let difficulty='low',puzzle=null,current=null,used=new Set(),moves=[],finished=false,active=true;
   const root=document.createElement('section');root.className='star-path-game';
-  const start=document.createElement('button');start.className='arcade-go';start.textContent='별길 시작하기';
-  const help=document.createElement('p');help.className='star-path-help';help.textContent='빛나는 별을 1 → 2 → 3 순서로 이어 주세요. 옆 칸으로만 갈 수 있어요.';
-  const grid=document.createElement('div');grid.className='star-path-grid';grid.setAttribute('aria-label','별길 5칸 격자');
-  root.append(start,help,grid);board.append(root);
-  const update=message=>setScore(`단계 ${Math.min(level+1,3)}/3 · ${seconds}초 남음${message?' · '+message:''}`);
-  function draw(){
-    const focused=grid.contains(document.activeElement)?document.activeElement.dataset.cell:null;
-    const {stars,rocks}=LEVELS[level];grid.replaceChildren();
-    for(let i=0;i<25;i++){
-      const cell=document.createElement('button');cell.type='button';cell.className='star-path-cell';cell.dataset.cell=String(i);
-      const mark=stars.indexOf(i),isRock=rocks.includes(i);
-      cell.textContent=isRock?'◆':mark>=0?String(mark+1):path.includes(i)?'✦':'·';
-      cell.setAttribute('aria-label',`${Math.floor(i/5)+1}행 ${i%5+1}열${isRock?' 바위':mark>=0?' 별 '+(mark+1):''}`);
-      if(isRock)cell.classList.add('rock');
-      cell.disabled=isRock||!playing;
-      if(mark>=0)cell.classList.add('star');
-      if(path.includes(i))cell.classList.add('path');
-      if(path.at(-1)===i)cell.classList.add('head');
-      cell.onclick=()=>choose(i);grid.append(cell);
-    }
-    if(playing){
-      const nextFocus=grid.querySelector(`[data-cell="${focused??path.at(-1)}"]`);
-      (nextFocus&&!nextFocus.disabled?nextFocus:grid.querySelector('.head'))?.focus({preventScroll:true});
-    }
+  const levels=document.createElement('div');levels.className='star-path-levels';
+  for(const [key,label] of Object.entries(labels)){
+    const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.difficulty=key;
+    button.onclick=()=>{difficulty=key;start();};levels.append(button);
   }
-  function finish(won){
-    playing=false;finished=true;clearInterval(tick);clearTimeout(advance);grid.querySelectorAll('button').forEach(b=>b.disabled=true);
-    setScore(won?`성공! 별길 3개 완성 · ${seconds}초 남음`:'게임 종료 · 다음에는 별길을 찾아봐요');
-  }
-  function choose(i){
-    if(!playing||finished)return;
-    const {stars,rocks}=LEVELS[level];if(rocks.includes(i))return;
-    const last=path.at(-1);
-    if(path.length>1&&i===path.at(-2)){path.pop();nextStar=stars.findIndex(s=>!path.includes(s));draw();update('한 칸 되돌렸어요');return;}
-    if(path.includes(i)||!adjacent(last,i)){update('바로 옆 칸을 골라요');return;}
-    const mark=stars.indexOf(i);
-    if(mark>=0&&mark!==nextStar){update(`${nextStar+1}번 별부터 찾아요`);return;}
-    path.push(i);if(mark===nextStar)nextStar++;
-    draw();
-    if(nextStar===stars.length){
-      if(level===LEVELS.length-1){finish(true);return;}
-      playing=false;update('좋아요! 다음 별길');
-      advance=setTimeout(()=>{level++;path=[LEVELS[level].stars[0]];nextStar=1;playing=true;draw();update();},750);
-    }else update();
-  }
-  start.onclick=()=>{
-    clearInterval(tick);clearTimeout(advance);level=0;seconds=90;path=[LEVELS[0].stars[0]];nextStar=1;playing=true;finished=false;
-    start.hidden=true;draw();update();
-    tick=setInterval(()=>{if(finished)return;seconds--;if(seconds<=0)finish(false);else update();},1000);
+  const help=document.createElement('p');help.className='star-path-help';help.textContent='같은 선을 두 번 지나지 않고 모든 선을 이어 보세요. 점은 다시 지나갈 수 있어요.';
+  const field=document.createElement('div');field.className='star-path-field';
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('aria-hidden','true');
+  const nodes=document.createElement('div');nodes.className='star-path-nodes';field.append(svg,nodes);
+  const controls=document.createElement('div');controls.className='star-path-actions';
+  const undo=document.createElement('button');undo.textContent='한 선 되돌리기';undo.type='button';undo.onclick=()=>{
+    if(!moves.length||finished)return;const last=moves.pop();used.delete(last.edgeIndex);current=last.from;draw();update('한 선을 되돌렸어요');
   };
-  path=[LEVELS[0].stars[0]];draw();setScore('시작 전 · 별길을 차례대로 이어 주세요');
-  return {destroy(){clearInterval(tick);clearTimeout(advance);root.remove();}};
+  const reset=document.createElement('button');reset.textContent='새 도형';reset.type='button';reset.onclick=start;
+  controls.append(undo,reset);root.append(levels,help,field,controls);board.append(root);
+  const update=message=>setScore(`${labels[difficulty]} 난이도 · ${used.size}/${puzzle?.edges.length||0}개 선${message?' · '+message:''}`);
+  function draw(){
+    svg.replaceChildren();nodes.replaceChildren();
+    puzzle.edges.forEach(([a,b],index)=>{
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      const [x1,y1]=puzzle.points[a],[x2,y2]=puzzle.points[b];
+      line.setAttribute('x1',x1*100);line.setAttribute('y1',y1*100);line.setAttribute('x2',x2*100);line.setAttribute('y2',y2*100);
+      line.setAttribute('class',used.has(index)?'drawn':'');svg.append(line);
+    });
+    puzzle.points.forEach(([x,y],index)=>{
+      const button=document.createElement('button');button.type='button';button.className='star-path-node';
+      button.style.left=`${x*100}%`;button.style.top=`${y*100}%`;button.textContent=current===index?'✦':'•';
+      button.setAttribute('aria-label',`${index+1}번 점${current===index?' 현재 위치':''}`);button.onclick=()=>choose(index);nodes.append(button);
+    });
+    undo.disabled=!moves.length||finished;
+  }
+  function choose(index){
+    if(!active||finished)return;
+    if(current===null){current=index;draw();update('출발했어요');return;}
+    const edgeIndex=puzzle.edges.findIndex(([a,b],id)=>!used.has(id)&&(a===current&&b===index||b===current&&a===index));
+    if(edgeIndex<0){update('이어진 새 선을 골라요');return;}
+    used.add(edgeIndex);moves.push({edgeIndex,from:current,to:index});current=index;
+    draw();
+    if(used.size===puzzle.edges.length){finished=true;setScore(`성공! ${labels[difficulty]} 난이도 한붓그리기 완성`);}
+    else update();
+  }
+  function start(){puzzle=oneStrokePuzzle(difficulty);current=null;used=new Set();moves=[];finished=false;
+    for(const button of levels.children)button.setAttribute('aria-pressed',String(button.dataset.difficulty===difficulty));
+    draw();update('아무 점에서 시작해 보세요');}
+  start();
+  return {destroy(){active=false;root.remove();}};
 }

@@ -64,7 +64,7 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     assert.equal(await audio.playBgm('sun-paradise-3'),true);
     assert.equal(sun.paused,true);assert.equal(sun.currentTime,0);
     const battle=players.get('sun-paradise-3');
-    assert.equal(battle.src,'/assets/audio/sun-paradise-3-last-battle.mp3');
+    assert.equal(battle.src,'/assets/audio/sun-paradise-3-boss-raid.mp3');
     assert.equal(battle.loop,true);assert.equal(battle.paused,false);
     assert.equal(await audio.playBgm('moon-paradise-3'),true);
     const moon=players.get('moon-paradise-3');

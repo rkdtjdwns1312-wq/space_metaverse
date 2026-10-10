@@ -67,7 +67,7 @@ import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './m
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
-import {starRanking,startStarRun,cancelStarRun,clickStar} from './star-game.js';
+import {starRanking} from './star-game.js';
 import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords,resetWeeklyRanking} from './weekly-ranking.js';
 import {memoryRanking,startMemoryRun,cancelMemoryRun,flipMemoryCard} from './memory-game.js';
@@ -80,6 +80,13 @@ import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityS
 import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
 import {addTask,completeTask,setTaskStatus} from './tasks.js';
+import {createMission,acceptMission,completeMission,claimMission,advanceMissions,missionBoardViews} from './missions.js';
+import {createEnglishStation} from './english-station.js';
+import {createMathStation} from './math-station.js';
+import {createBaseballRuns} from './baseball-game.js';
+import {createSignalRuns,signalRanking} from './signal-game.js';
+import {createTetrisRuns,tetrisRanking} from './tetris-game.js';
+import {createSudokuRuns} from './sudoku-runs.js';
 import {interiorDecorTarget,interiorDecorColor} from '../shared/interior-decor.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
@@ -165,7 +172,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url))));
   app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
   // 교사 키 무작위 대입은 연결을 새로 열어도 제한되도록 주소별로 집계합니다.
-  const authAttempts=new Map(),lastAttacks=new WeakMap(),lastSkills=new WeakMap();
+  const authAttempts=new Map(),lastAttacks=new WeakMap(),lastSkills=new WeakMap(),englishStation=createEnglishStation(),mathStation=createMathStation(),baseballRuns=createBaseballRuns(),signalRuns=createSignalRuns(),tetrisRuns=createTetrisRuns(),sudokuRuns=createSudokuRuns();
   // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
   let pending=null;
   const deliver=fn=>pending?pending.push(fn):fn();
@@ -326,11 +333,89 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('tutorial:complete',()=>{
       const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
       const player=session.player;
-      if(player.tutorialCompleted)return {completed:true,rewarded:false};
-      ensure(player.starShards<SHARDS.max,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 안내를 마쳐 주세요.');
-      player.tutorialCompleted=true;player.starShards++;
-      recordReward(session.room,player.id,1,clock());roster(session.room);
-      return {completed:true,rewarded:true,starShards:player.starShards};
+      if(player.tutorialCompleted)return {completed:true};
+      player.tutorialCompleted=true;roster(session.room);
+      return {completed:true};
+    });
+    const missionBoardAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const board=MAP.objects.find(object=>object.kind==='mission-board');
+      ensure(session.player.role==='teacher'||session.player.mapId===PLAZA_ID&&isNear(session.player,board),'별 미션 게시판 가까이에서 확인해주세요.');
+      return session;
+    };
+    action('mission:board:read',()=>{
+      const session=missionBoardAccess();return {missions:missionBoardViews(session.room,session.player)};
+    },false);
+    action('mission:create',data=>{
+      const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 미션을 만들 수 있어요.');
+      ensure(data?.objective===undefined,'자동미션 제작하기에서 조건을 골라 주세요.');
+      const mission=createMission(session.room,data,clock());roster(session.room);return {missionId:mission.id};
+    });
+    action('mission:auto:create',data=>{
+      const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 미션을 만들 수 있어요.');
+      ensure(data?.objective!==undefined,'자동미션 조건을 골라 주세요.');
+      const mission=createMission(session.room,data,clock());
+      roster(session.room);return {missionId:mission.id};
+    });
+    action('mission:accept',data=>{
+      const session=missionBoardAccess();const mission=acceptMission(session.room,session.player,data?.missionId);
+      roster(session.room);return {missionId:mission.id};
+    });
+    action('mission:confirm',data=>{
+      const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 달성을 확인할 수 있어요.');
+      const student=session.room.players.get(data?.studentId);
+      ensure(student?.role==='student','학생을 골라 주세요.');
+      const mission=completeMission(session.room,student.id,data?.missionId);
+      roster(session.room);return {missionId:mission.id,studentId:student.id};
+    });
+    action('mission:claim',data=>{
+      const session=socket.data.session;ensure(session?.player.role==='student','학생만 미션 보상을 받을 수 있어요.');
+      const player=session.player;
+      const tutorial=data?.missionId==='first-journey';
+      if(tutorial){ensure(player.tutorialCompleted,'첫 여행 안내 5단계를 마쳐 주세요.');ensure(!player.tutorialRewardClaimed,'이미 받은 미션 보상이에요.');}
+      else{const mission=session.room.missions?.find(m=>m.id===data?.missionId);ensure(mission,'알 수 없는 미션이에요.');
+        ensure(mission.acceptedIds.includes(player.id)&&mission.completedIds.includes(player.id),'아직 완료 조건이 확인되지 않았어요.');
+        ensure(!mission.claimedIds.includes(player.id),'이미 받은 미션 보상이에요.');}
+      const reward=tutorial?1:session.room.missions.find(m=>m.id===data.missionId).rewardShards;
+      ensure(player.starShards<=SHARDS.max-reward,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 받아 주세요.');
+      if(tutorial)player.tutorialRewardClaimed=true;else claimMission(session.room,player,data.missionId);
+      player.starShards+=reward;
+      recordReward(session.room,player.id,reward,clock());roster(session.room);
+      return {missionId:data.missionId,rewardShards:reward,starShards:player.starShards};
+    });
+    const englishStationAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const station=STREET.objects.find(object=>object.kind==='english-station');
+      ensure(session.player.mapId===STREET_ID&&isNear(session.player,station),'별 영어 발전소 가까이에서 풀어 주세요.');
+      return session;
+    };
+    action('learning:english:start',()=>{
+      const session=englishStationAccess();return englishStation.start(session.player);
+    },false);
+    action('learning:english:next',()=>{
+      const session=englishStationAccess();return englishStation.next(session.player);
+    },false);
+    action('learning:english:answer',data=>{
+      const session=englishStationAccess(),result=englishStation.answer(session.player,data);
+      if(result.success&&advanceMissions(session.room,session.player,'english-success'))roster(session.room);
+      return result;
+    });
+    const mathStationAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const station=STREET.objects.find(object=>object.kind==='math-station');
+      ensure(session.player.mapId===STREET_ID&&isNear(session.player,station),'별 수학 발전소 가까이에서 풀어 주세요.');
+      return session;
+    };
+    action('learning:math:start',data=>{
+      const session=mathStationAccess();return mathStation.start(session.player,data?.grade);
+    },false);
+    action('learning:math:next',()=>{
+      const session=mathStationAccess();return mathStation.next(session.player);
+    },false);
+    action('learning:math:answer',data=>{
+      const session=mathStationAccess(),result=mathStation.answer(session.player,data);
+      if(result.right&&advanceMissions(session.room,session.player,'math-correct',result.grade))roster(session.room);
+      return result;
     });
     action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
     action('exploration:update-cards',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -391,6 +476,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('energy:collect',data=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=collectEnergyDrop(session.room,session.player,data.dropId,clock());
+      if(result.amount>0)advanceMissions(session.room,session.player,'energy-collect');
       roster(session.room);return result;
     });
     action('party:roll',data=>{
@@ -1069,6 +1155,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
       ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
       Object.assign(p,arrivePosition(room,data.to,gate.arrival,p),{mapId:data.to,input:{x:0,y:0,at:0}});
+      advanceMissions(room,p,'map-travel');
       roster(room);
       return {};
     });
@@ -1250,6 +1337,50 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(machine&&s.player.mapId===STREET_ID&&isNear(s.player,machine),'오락기에 더 가까이 가주세요.');
       return {gameId:machine.gameId};
     });
+    const baseballAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(object=>object.gameId==='baseball');
+      ensure(session.player.mapId===STREET_ID&&isNear(session.player,machine),'숫자야구 오락기 가까이에서 이용해 주세요.');
+      return session;
+    };
+    action('baseball:start',data=>{
+      const session=baseballAccess();return baseballRuns.start(session.player,data?.difficulty);
+    },false);
+    action('baseball:submit',data=>{
+      const session=baseballAccess(),result=baseballRuns.submit(session.player,data);
+      if(result.won&&advanceMissions(session.room,session.player,'baseball-win',result.difficulty))roster(session.room);
+      return result;
+    });
+    const signalAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(object=>object.gameId==='signal');
+      ensure(session.player.mapId===STREET_ID&&isNear(session.player,machine),'우주 신호 오락기 가까이에서 이용해 주세요.');
+      return session;
+    };
+    action('signal:ranking',()=>{const session=signalAccess();return {ranking:signalRanking(session.room),canReset:session.player.role==='teacher'};},false);
+    action('signal:ranking:reset',()=>{
+      const session=signalAccess();resetWeeklyRanking(session.room,session.player,'signal');
+      deliver(()=>io.to(session.room.code).emit('signal:ranking',{ranking:[]}));roster(session.room);
+      return {ranking:[],canReset:true};
+    });
+    action('signal:start',()=>{const session=signalAccess();return signalRuns.start(session.player);},false);
+    action('signal:choose',data=>{
+      const session=signalAccess(),result=signalRuns.choose(session.room,session.player,data,clock());
+      if(result.stageCleared){
+        advanceMissions(session.room,session.player,'signal-stage',result.stageCleared);
+        deliver(()=>io.to(session.room.code).emit('signal:ranking',{ranking:result.ranking}));roster(session.room);
+      }
+      return result;
+    });
+    const sudokuAccess=()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(object=>object.gameId==='sudoku');
+      ensure(session.player.mapId===STREET_ID&&isNear(session.player,machine),'별빛 스도쿠 오락기 가까이에서 이용해 주세요.');return session;
+    };
+    action('sudoku:start',data=>{const s=sudokuAccess();return sudokuRuns.start(s.player,data.difficulty);},false);
+    action('sudoku:check',data=>{const s=sudokuAccess();return sudokuRuns.check(s.player,data);},false);
+    action('sudoku:complete',data=>{const s=sudokuAccess(),result=sudokuRuns.complete(s.player,data);
+      if(advanceMissions(s.room,s.player,'sudoku-win',result.difficulty))roster(s.room);return result;});
     const avatarSession=()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return s;};
     action('evolution:info',()=>{const s=avatarSession();return evolutionInfo(s.room,s.player);});
     action('evolution:change',data=>{const s=avatarSession(),result=changeConstellation(s.room,s.player,data);roster(s.room);return result;});
@@ -1257,19 +1388,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('evolution:teacher-select',data=>{const s=avatarSession(),result=selectTeacherEvolution(s.room,s.player,data);roster(s.room);return result;});
     action('growth:info',()=>{const s=avatarSession();return growthInfo(s.room,s.player);});
     action('growth:buy',data=>{const s=avatarSession(),result=buyExperience(s.room,s.player,data);roster(s.room);return result;});
-    const starAccess=()=>{
+    const tetrisAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const machine=STREET.objects.find(o=>o.gameId==='stars');
-      ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'반짝별 찾기 오락기 가까이에서 이용해주세요.');return s;
+      const machine=STREET.objects.find(o=>o.gameId==='tetris');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,machine),'별 테트리스 오락기 가까이에서 이용해 주세요.');return s;
     };
-    action('stars:ranking',()=>{const s=starAccess();return {ranking:starRanking(s.room),canReset:s.player.role==='teacher'};});
-    action('stars:start',()=>{const s=starAccess();return startStarRun(s.room,s.player);});
-    action('stars:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelStarRun(s.room,s.player,data.runId);return {};});
-    action('stars:click',data=>{
-      const s=starAccess(),result=clickStar(s.room,s.player,data);
-      if(result.done){deliver(()=>io.to(s.room.code).emit('stars:ranking',{ranking:result.ranking}));roster(s.room);}
-      return result;
-    });
+    action('tetris:ranking',()=>{const s=tetrisAccess();return {ranking:tetrisRanking(s.room),canReset:s.player.role==='teacher'};},false);
+    action('tetris:ranking:reset',()=>{const s=tetrisAccess();resetWeeklyRanking(s.room,s.player,'tetris');
+      deliver(()=>io.to(s.room.code).emit('tetris:ranking',{ranking:[]}));roster(s.room);return {ranking:[],canReset:true};});
+    action('tetris:start',()=>{const s=tetrisAccess();return tetrisRuns.start(s.player);},false);
+    action('tetris:state',data=>{const s=tetrisAccess();return tetrisRuns.state(s.player,data);},false);
+    action('tetris:move',data=>{const s=tetrisAccess();return tetrisRuns.move(s.player,data);},false);
+    action('tetris:finish',data=>{const s=tetrisAccess(),result=tetrisRuns.finish(s.room,s.player,data);
+      if(result.lines)advanceMissions(s.room,s.player,'tetris-lines',result.lines);
+      deliver(()=>io.to(s.room.code).emit('tetris:ranking',{ranking:result.ranking}));roster(s.room);return result;});
     const dodgeAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const machine=STREET.objects.find(o=>o.gameId==='dodge');
@@ -1285,11 +1417,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('memory:start',data=>{const s=memoryAccess();return startMemoryRun(s.room,s.player,data);});
     action('memory:flip',data=>{
       const s=memoryAccess(),result=flipMemoryCard(s.room,s.player,data);
-      if(result.won){deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));roster(s.room);}
+      if(result.won){advanceMissions(s.room,s.player,'memory-win');deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));roster(s.room);}
       return result;
     });
     action('memory:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelMemoryRun(s.room,s.player,data.runId);return {};});
-    for(const [game,access] of [['memory',memoryAccess],['stars',starAccess],['dodge',dodgeAccess]]){
+    for(const [game,access] of [['memory',memoryAccess],['dodge',dodgeAccess]]){
       action(`${game}:ranking:reset`,()=>{
         const s=access();resetWeeklyRanking(s.room,s.player,game);
         const result={ranking:[],canReset:true};
@@ -1340,6 +1472,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=attemptCraft(player,data.ingredients,{recipes:craftingRecipes});
       const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
       ensure(!result.error||result.error==='recipe-mismatch',messages[result.error]||'조합할 수 없어요.');
+      if(result.success)advanceMissions(room,player,'craft-level',result.item?.level);
       roster(room);return {...result,itemId:result.item?.id??null};
     });
     const requireShop=p=>{
@@ -1871,7 +2004,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       for(const hit of moveMonsters(room,clock())){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           io.to(viewer.socketId).emit('combat:monster-hit',hit);
-          io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
+          if(!hit.attackOnly)io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
         }
       }
       for(const burst of advanceHerculesShields(room,now)){
@@ -1974,6 +2107,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           if(now<(room.dodgeSaveRetryAt||0))continue;
           try{transaction(()=>{
             const result=completeDodgeRun(room,player,update.state.runId);
+            if(result.personalBest)advanceMissions(room,player,'dodge-record');
             deliver(()=>io.to(player.socketId).emit('dodge:state',{...update,result}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:result.ranking}));
             roster(room);
@@ -2012,13 +2146,15 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           catch(error){console.error('별자리 능력 만료 저장 실패:',error.message);continue;}
         }
         // 열린 랭킹 창도 한국 시간 월요일 0시를 지나면 즉시 비웁니다.
-        if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking','memoryRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
+        if(now>=(room.rankingRetryAt||0)&&['starRanking','dodgeRanking','memoryRanking','signalRanking','tetrisRanking'].some(key=>currentWeekRecords(room[key]||[]).length!==(room[key]||[]).length)){
           try{transaction(()=>{
             room.starRanking=currentWeekRecords(room.starRanking||[]);room.dodgeRanking=currentWeekRecords(room.dodgeRanking||[]);
-            room.memoryRanking=currentWeekRecords(room.memoryRanking||[]);
+            room.memoryRanking=currentWeekRecords(room.memoryRanking||[]);room.signalRanking=currentWeekRecords(room.signalRanking||[]);room.tetrisRanking=currentWeekRecords(room.tetrisRanking||[]);
             deliver(()=>io.to(room.code).emit('memory:ranking',{ranking:memoryRanking(room)}));
             deliver(()=>io.to(room.code).emit('stars:ranking',{ranking:starRanking(room)}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:dodgeRanking(room)}));
+            deliver(()=>io.to(room.code).emit('signal:ranking',{ranking:signalRanking(room)}));
+            deliver(()=>io.to(room.code).emit('tetris:ranking',{ranking:tetrisRanking(room)}));
             roster(room);
           });}catch(error){const restored=store.rooms.get(room.code);if(restored)restored.rankingRetryAt=now+5000;console.error('주간 순위 초기화 저장 실패:',error.message);continue;}
         }

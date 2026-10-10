@@ -9,7 +9,13 @@ import {recipeItemId} from '../shared/recipe-items.js';
 // 바닥 드랍은 전투처럼 임시 상태입니다. 습득할 때만 잔액과 함께 원자적으로 저장합니다.
 export function pruneEnergyDrops(room,now=Date.now()){
   let changed=false;
-  for(const [id,drop] of room.energyDrops||[])if(drop.expiresAt<=now){room.energyDrops.delete(id);changed=true;}
+  for(const [id,drop] of room.energyDrops||[]){
+    if(drop.expiresAt<=now){room.energyDrops.delete(id);changed=true;continue;}
+    if(!drop.publicOpened&&drop.publicAt<=now){
+      drop.publicOpened=true;drop.rollState=null;drop.partyRollEligible=null;
+      room.lootRolls?.delete(id);changed=true;
+    }
+  }
   for(const [id,display] of room.lootRolls||[])if(display.expiresAt<=now)room.lootRolls.delete(id);
   return changed;
 }
@@ -34,15 +40,30 @@ export function addEnergyDrop(room,monster,contributions,now=Date.now(),roll=ran
   const total=roll(bounds[0],bounds[1]+1);
   if(total===0)return null;
   pruneEnergyDrops(room,now);room.energyDrops??=new Map();
-  // 몬스터 15마리/재생성10초/유효5분보다 넉넉한 상한입니다.
+  // 몬스터 15마리/재생성10초/유효1분보다 넉넉한 상한입니다.
   if(room.energyDrops.size>=ENERGY_DROPS.maxPerRoom&&!type?.boss)return null;
   const base=Math.floor(total/ids.length),remainder=total%ids.length;
   const shares=new Map(ids.map((id,i)=>[id,base+(i<remainder?1:0)]).filter(([,amount])=>amount>0));
-  const drop={id:randomUUID(),mapId:monster.mapId,x:monster.x,y:monster.y,total,shares,expiresAt:now+ENERGY_DROPS.lifetimeMs};
+  const drop={id:randomUUID(),mapId:monster.mapId,x:monster.x,y:monster.y,total,shares,
+    publicAt:now+ENERGY_DROPS.publicAfterMs,expiresAt:now+ENERGY_DROPS.lifetimeMs};
   room.energyDrops.set(drop.id,drop);return drop;
 }
 const bossMaterial=Object.freeze({noksera:'noksera-horn',leoon:'leoon-claw'});
 export function addBossDrops(room,monster,contributions,now=Date.now(),roll=randomInt){
+  if(monster.typeId==='spirit-king'){
+    const ids=rewardRecipients(room,monster,contributions);if(!ids.length)return [];
+    pruneEnergyDrops(room,now);room.energyDrops??=new Map();
+    const drops=[];
+    const count=roll(1,3);
+    for(const itemId of ['spirit-king-soul','gold-big-bang-card',...Array.from({length:count},()=> 'exploration-ticket')]){
+      const drop={id:randomUUID(),kind:'item',itemId,mapId:monster.mapId,
+        x:monster.x+(drops.length-1)*30,y:monster.y,total:1,
+        shares:new Map(ids.map(playerId=>[playerId,1])),partyRollEligible:ids.length>1?[...ids]:null,
+        publicAt:now+ENERGY_DROPS.publicAfterMs,expiresAt:now+ENERGY_DROPS.lifetimeMs};
+      room.energyDrops.set(drop.id,drop);drops.push(drop);
+    }
+    return drops;
+  }
   const itemId=bossMaterial[monster.typeId];
   if(!itemId)return [];
   const ids=rewardRecipients(room,monster,contributions);if(!ids.length)return [];
@@ -51,7 +72,7 @@ export function addBossDrops(room,monster,contributions,now=Date.now(),roll=rand
     const drop={id:randomUUID(),kind:'item',itemId:id,mapId:monster.mapId,
       x:monster.x+22*(drops.length+1),y:monster.y,total:1,
       shares:new Map(ids.map(playerId=>[playerId,1])),partyRollEligible:ids.length>1?[...ids]:null,
-      expiresAt:now+ENERGY_DROPS.lifetimeMs};
+      publicAt:now+ENERGY_DROPS.publicAfterMs,expiresAt:now+ENERGY_DROPS.lifetimeMs};
     room.energyDrops.set(drop.id,drop);drops.push(drop);
   };
   pruneEnergyDrops(room,now);room.energyDrops??=new Map();
@@ -77,12 +98,15 @@ export function addRecipeDrop(room,monster,contributions,now=Date.now(),roll=ran
   if(room.energyDrops.size>=ENERGY_DROPS.maxPerRoom)return null;
   const drop={id:randomUUID(),kind:'recipe',itemId:recipeItemId(outputs[index]),
     mapId:monster.mapId,x:monster.x,y:monster.y,total:1,shares:new Map(ids.map(playerId=>[playerId,1])),
-    partyRollEligible:ids.length>1?[...ids]:null,expiresAt:now+ENERGY_DROPS.lifetimeMs};
+    partyRollEligible:ids.length>1?[...ids]:null,
+    publicAt:now+ENERGY_DROPS.publicAfterMs,expiresAt:now+ENERGY_DROPS.lifetimeMs};
   room.energyDrops.set(drop.id,drop);return drop;
 }
 export function energyDropViews(room,now=Date.now()){
   return [...(room.energyDrops?.values()||[])].filter(d=>d.expiresAt>now).map(d=>({
-    id:d.id,mapId:d.mapId,x:d.x,y:d.y,radius:ENERGY_DROPS.radius,expiresAt:d.expiresAt,
+    id:d.id,mapId:d.mapId,x:d.x,y:d.y,radius:ENERGY_DROPS.radius,
+    publicAt:d.publicAt,expiresAt:d.expiresAt,
+    remaining:['recipe','item'].includes(d.kind)?1:[...d.shares.values()].reduce((sum,amount)=>sum+amount,0),
     shares:[...d.shares].map(([playerId,amount])=>({playerId,amount})),
     ...(['recipe','item'].includes(d.kind)?{kind:d.kind,itemId:d.itemId}:{})
   }));
@@ -113,7 +137,7 @@ function rollLoot(room,drop,ids,round,now,roll){
 }
 export function rerollPartyLoot(room,player,dropId,now=Date.now(),roll=randomInt){
   const drop=room.energyDrops?.get(dropId);
-  ensure(drop?.rollState?.participantIds.includes(player.id)&&drop.expiresAt>now,'다시 주사위를 굴릴 대상이 아니에요.');
+  ensure(drop?.rollState?.participantIds.includes(player.id)&&drop.expiresAt>now&&now<drop.publicAt,'다시 주사위를 굴릴 대상이 아니에요.');
   const ids=drop.rollState.participantIds.filter(id=>room.players.get(id)?.connected&&room.players.get(id)?.mapId===drop.mapId);
   ensure(ids.length>0,'주사위를 굴릴 친구가 없어요.');
   return rollLoot(room,drop,ids,drop.rollState.round+1,now,roll);
@@ -124,9 +148,10 @@ export function collectEnergyDrop(room,player,id,now=Date.now(),roll=randomInt){
   const drop=room.energyDrops?.get(id);
   ensure(drop&&drop.expiresAt>now,'이미 주웠거나 사라진 우주에너지예요.');
   ensure(player.mapId===drop.mapId&&Math.hypot(player.x-drop.x,player.y-drop.y)<=ENERGY_DROPS.pickupDistance,'우주에너지 가까이 가주세요.');
-  const amount=drop.shares.get(player.id);
+  const publicDrop=now>=drop.publicAt;
+  const amount=publicDrop?['recipe','item'].includes(drop.kind)?1:[...drop.shares.values()].reduce((sum,value)=>sum+value,0):drop.shares.get(player.id);
   ensure(Number.isSafeInteger(amount)&&amount>0,'내 몫의 우주에너지가 아니거나 이미 주웠어요.');
-  if(drop.partyRollEligible?.length>1){
+  if(!publicDrop&&drop.partyRollEligible?.length>1){
     if(drop.rollState)return {pendingRoll:true,roll:room.lootRolls.get(drop.id)};
     const ids=drop.partyRollEligible.filter(id=>room.players.get(id)?.connected&&room.players.get(id)?.mapId===drop.mapId);
     if(ids.length>1)return rollLoot(room,drop,ids,1,now,roll);
@@ -139,12 +164,14 @@ export function collectEnergyDrop(room,player,id,now=Date.now(),roll=randomInt){
     ensure((entry?.quantity||0)<SHOP.maxStack,'아이템은 99개까지만 담을 수 있어요.');
     ensure(entry||player.inventory.length<SHOP.maxKinds,'가방이 가득 찼어요.');
     if(entry)entry.quantity++;else player.inventory.push({id:item.id,quantity:1});
-    drop.shares.delete(player.id);if(!drop.shares.size)room.energyDrops.delete(drop.id);
+    if(publicDrop){room.energyDrops.delete(drop.id);room.lootRolls?.delete(drop.id);}
+    else{drop.shares.delete(player.id);if(!drop.shares.size)room.energyDrops.delete(drop.id);}
     return {kind:drop.kind,itemId:item.id,quantity:1,inventory:structuredClone(player.inventory)};
   }
   const before=player.cosmicEnergy??0;
   ensure(Number.isSafeInteger(before)&&before>=0&&Number.isSafeInteger(before+amount),'우주에너지를 더 담을 수 없어요.');
-  player.cosmicEnergy=before+amount;drop.shares.delete(player.id);
-  if(!drop.shares.size)room.energyDrops.delete(drop.id);
+  player.cosmicEnergy=before+amount;
+  if(publicDrop){room.energyDrops.delete(drop.id);room.lootRolls?.delete(drop.id);}
+  else{drop.shares.delete(player.id);if(!drop.shares.size)room.energyDrops.delete(drop.id);}
   return {amount,cosmicEnergy:player.cosmicEnergy};
 }

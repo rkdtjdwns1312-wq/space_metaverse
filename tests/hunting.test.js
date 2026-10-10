@@ -12,9 +12,9 @@ test('LV1~5 HP/MP 1/20/40/60/60·1/20/30/40/40, 범위 밖 단계는 null',()=>{
  assert.deepEqual(vitalsOf(5),{hp:{current:60,max:60},mp:{current:40,max:40}});
  for(const level of [0,6,99,'2'])assert.equal(vitalsOf(level),null);
 });
-test('일반35마리와 보스2마리 체력·방향·거리·맵 검사, 한 마리 타격, 처치/재등장과 방 격리',()=>{
+test('일반35마리와 보스3마리 체력·방향·거리·맵 검사, 한 마리 타격, 처치/재등장과 방 격리',()=>{
  const room={players:new Map()},other={},monsters=monstersOf(room,0),rabbit=monsters.get('star-crab');
- for(const m of monsters.values())assert.equal(m.hp,{'star-origin-1':50,'star-origin-2':100,'star-origin-3':300,'moon-garden':100,'sun-paradise':300,'sun-paradise-2':1000,'moon-paradise-1':300,'moon-paradise-2':1000,'sun-paradise-3':2000,'moon-paradise-3':2000}[m.mapId]);
+ for(const m of monsters.values())assert.equal(m.hp,{'star-origin-1':50,'star-origin-2':100,'star-origin-3':300,'moon-garden':100,'sun-paradise':300,'sun-paradise-2':1000,'moon-paradise-1':300,'moon-paradise-2':1000,'sun-paradise-3':2000,'moon-paradise-3':2000,'star-paradise':10000}[m.mapId]);
  const p={id:'hunter',role:'student',connected:true,avatar:{level:4,constellationId:'sagittarius'},mapId:rabbit.mapId,x:rabbit.x-62,y:rabbit.y,facing:{x:1,y:0}};room.players.set(p.id,p);
  assert.equal(strikeMonster(room,p,10,0).hp,40);assert.equal(monstersOf(other).get('star-crab').hp,50);
  p.facing.x=-1;assert.equal(strikeMonster(room,p,3,0),null);p.facing.x=1;

@@ -24,7 +24,7 @@ export function objectSignals(room,viewer){
     put(inside,'warning-rock',pl.warnings||[]);
     put(inside,'department-control-machine',pl.interiorDecor||{});
   }
-  put(STREET_ID,'arcade-stars',room.starRanking||[]);
+  put(STREET_ID,'arcade-tetris',room.tetrisRanking||[]);
   put(STREET_ID,'arcade-dodge',room.dodgeRanking||[]);
   put(STREET_ID,'arcade-memory',room.memoryRanking||[]);
   return signals;

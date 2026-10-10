@@ -56,13 +56,14 @@
 
 .star-path-game,.space-signal-game{display:grid;justify-items:center;gap:10px}
 #arcade-board .star-path-help,#arcade-board .space-signal-game p{max-width:430px;margin:0;font-size:15px;line-height:1.45}
-.star-path-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;width:min(100%,390px);aspect-ratio:1}
-#arcade-board .star-path-cell{min-height:0;padding:0;border:2px solid #d4c4eb;border-radius:11px;background:#fff;color:#8b7aa2;font-size:24px}
-#arcade-board .star-path-cell.star{background:#ffefb8;border-color:#dba94d;color:#79511d;font-size:25px}
-#arcade-board .star-path-cell.path{background:#d1f2e5;border-color:#6eba9a;color:#28775c}
-#arcade-board .star-path-cell.head{box-shadow:0 0 0 3px #7cccad inset}
-#arcade-board .star-path-cell.rock{background:#e6e1ec;border-color:#cbc3d4;color:#988e9f}
-#arcade-board .star-path-cell:disabled{opacity:1}
+.star-path-levels,.star-path-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#arcade-board .star-path-levels button,#arcade-board .star-path-actions button{min-width:85px;min-height:44px;padding:6px;font-size:16px}
+.star-path-field{position:relative;width:min(100%,390px);aspect-ratio:1;border:2px solid #dacaf0;border-radius:20px;background:radial-gradient(circle at 50% 42%,#fcfaff,#e9e4f8);touch-action:none}
+.star-path-field svg,.star-path-nodes{position:absolute;inset:0;width:100%;height:100%}
+.star-path-field svg line{stroke:#b9afd4;stroke-width:1.8;stroke-linecap:round;filter:drop-shadow(0 0 1px #fff)}
+.star-path-field svg line.drawn{stroke:#79c5b8;stroke-width:3.2;filter:drop-shadow(0 0 2px #7fe9cc)}
+#arcade-board .star-path-node{position:absolute;transform:translate(-50%,-50%);min-width:37px;min-height:37px;width:37px;height:37px;padding:0;border-radius:50%;border:2px solid #c9addd;background:#fff5cd;color:#8461a7;font-size:23px;box-shadow:0 2px 8px #8777aa50}
+#arcade-board .star-path-node:hover{transform:translate(-50%,-50%) scale(1.06)}
 #arcade-board .space-signal-cue{min-height:23px;color:#54417e;font-weight:800;text-align:center}
 .space-signal-pad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:min(100%,360px)}
 #arcade-board .space-signal-cell{min-height:104px;border-width:3px;font-size:40px;transition:filter .12s,box-shadow .12s,transform .12s}
@@ -73,6 +74,17 @@
 #arcade-board .space-signal-cell.lit{filter:brightness(1.2) saturate(1.4);box-shadow:0 0 0 5px #fff inset,0 0 26px #ffe59d;transform:scale(1.05)}
 #arcade-board .space-signal-cell:disabled{opacity:1}
 .baseball-game h3{margin:2px 0 0;font-size:17px}
+.tetris-game{display:grid;gap:12px}
+.tetris-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tetris-play{display:grid;grid-template-columns:1fr;gap:12px;align-items:start;justify-content:center}
+.tetris-grid{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(20,1fr);width:min(100%,250px);aspect-ratio:1/2;gap:2px;padding:4px;margin:auto;border:3px solid #b5a9d4;border-radius:10px;background:#e9e3f5;box-sizing:border-box}
+.tetris-cell{min-width:0;min-height:0;border-radius:3px;background:#faf7ff}
+.tetris-cell.filled{background:var(--block-color);border:1px solid #ffffffc8;box-shadow:inset 0 0 5px #fff,inset 0 -3px 4px #ffffff88,0 0 7px var(--block-color)}
+.tetris-side{min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:4px 8px}.tetris-side p{font-size:15px;line-height:1.4}
+.tetris-side>p:nth-child(3),.tetris-side .tetris-controls,.tetris-side .tetris-key-help{grid-column:1/-1}
+.tetris-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#arcade-board .tetris-controls button{min-height:56px;padding:5px;font-size:15px}
+.tetris-key-help{font-size:13px!important}
 #baseball-attempts{box-sizing:border-box;max-height:190px;overflow:auto;margin:0;padding:0 0 0 30px}
 #baseball-attempts li{margin:5px 0;font-size:15px;line-height:1.35}
 
@@ -81,7 +93,7 @@
   #arcade-title{font-size:23px}
   #arcade-dialog button{min-height:48px;padding:9px 10px;font-size:17px}
   #arcade-board{min-width:0;padding:9px}
-  #arcade-board .star-path-cell{font-size:20px}
+  #arcade-board .star-path-node{min-width:32px;min-height:32px;width:32px;height:32px;font-size:20px}
   #arcade-board .space-signal-cell{min-height:88px;font-size:34px}
   .memory-controls{grid-template-columns:minmax(0,1fr) auto}
   .memory-grid{gap:4px}

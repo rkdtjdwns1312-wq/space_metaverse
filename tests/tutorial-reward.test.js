@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
+import {toRecord,fromRecord,pinHash} from '../server/persistent-rooms.js';
 
 test('첫 여행 안내는 학생에게 별 파편 1개를 정확히 한 번만 준다',async t=>{
   const key='tutorial-reward-test-key',game=createClassroomServer({teacherKey:key,studentHours:false});
@@ -16,11 +17,24 @@ test('첫 여행 안내는 학생에게 별 파편 1개를 정확히 한 번만 
   assert.equal(joined.ok,true,joined.error);
   const player=game.store.rooms.get(created.room.code).players.get(joined.selfId);
   assert.equal(player.starShards,0);assert.equal(player.tutorialCompleted,false);
+  assert.equal((await call(student,'mission:claim',{missionId:'first-journey'})).ok,false);
   assert.equal((await call(teacher,'tutorial:complete')).ok,false);
   const first=await call(student,'tutorial:complete');
-  assert.equal(first.ok,true,first.error);assert.equal(first.rewarded,true);
-  assert.equal(player.starShards,1);assert.equal(player.tutorialCompleted,true);
+  assert.equal(first.ok,true,first.error);
+  assert.equal(player.starShards,0);assert.equal(player.tutorialCompleted,true);
   const repeated=await call(student,'tutorial:complete');
-  assert.equal(repeated.ok,true,repeated.error);assert.equal(repeated.rewarded,false);
+  assert.equal(repeated.ok,true,repeated.error);
+  assert.equal((await call(teacher,'mission:claim',{missionId:'first-journey'})).ok,false);
+  assert.equal((await call(student,'mission:claim',{missionId:'unknown'})).ok,false);
+  const claimed=await call(student,'mission:claim',{missionId:'first-journey'});
+  assert.equal(claimed.ok,true,claimed.error);
   assert.equal(player.starShards,1);
+  assert.equal(player.tutorialRewardClaimed,true);
+  assert.equal((await call(student,'mission:claim',{missionId:'first-journey'})).ok,false);
+  assert.equal(player.starShards,1);
+  player.pin=pinHash('1234');
+  const saved=toRecord(game.store.rooms.get(created.room.code));saved.createdAt=Date.now();
+  assert.equal(fromRecord(saved).players.get(player.id).tutorialRewardClaimed,true);
+  delete saved.students.find(p=>p.id===player.id).tutorialRewardClaimed;
+  assert.equal(fromRecord(saved).players.get(player.id).tutorialRewardClaimed,true,'기존 완료자의 보상을 다시 주지 않는다');
 });

@@ -10,7 +10,7 @@ export function drawParadiseFloor(ctx,map,mini=false){
   const f=paradiseFloor(map);if(!f)return;
   const moon=map.theme==='moon-paradise',sun=map.theme==='sun-paradise';
   const rim=moon?'#8a8caf':sun?'#b39480':'#9989a8';
-  drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],moon?'moon':sun?'sun':'silver',map.height);
+  drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],moon?'moon':sun?'sun':map.theme==='star-paradise'?'starland':'crossroads',map.height);
   ctx.save();ctx.translate(0,12);outline(ctx,f.points);ctx.fillStyle=rim;
   if(!mini){ctx.shadowColor='#30283c66';ctx.shadowBlur=20;ctx.shadowOffsetY=12;}
   ctx.fill();ctx.shadowBlur=0;ctx.shadowOffsetY=0;ctx.translate(0,-12);

@@ -54,7 +54,8 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
       arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡',x:1800,y:2562,radius:38,kind:'gate',target:'milky-valley',arrival:VALLEY_LAYOUT.spawn,color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
-    {id:'assignment-andromeda',name:'과제별서고',x:600,y:510,radius:144,kind:'andromeda',passable:true},
+    {id:'assignment-andromeda',name:'과제별서고',x:430,y:510,radius:144,kind:'andromeda',passable:true},
+    {id:'star-mission-board',name:'별 미션 게시판',x:800,y:510,radius:90,kind:'mission-board',passable:true},
     {id:'black-hole-portal',name:'블랙홀',x:3090,y:510,radius:144,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
     MARKET
   ] });
@@ -70,8 +71,8 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     {id:'english-station',name:'별 영어 발전소',x:1255,y:400,radius:86,kind:'english-station'},
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
-      ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
-      ['path','별길 잇기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
+      ['tetris','별 테트리스','#ffdfd5'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
+      ['path','별 길 한번에 그리기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:2120,radius:32,kind:'arcade'})),
     {id:'crafting-machine',name:'별빛 조합기',x:1430,y:1170,radius:62,kind:'crafting',color:'#cdb8ef'},
     {id:'playground-sign',name:'놀이터가는길',x:1100,y:1580,radius:24,kind:'street-sign',passable:true},
@@ -149,6 +150,7 @@ export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 export const BAG = Object.freeze({ columns: 5, rows: 4 });
 // 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
+  {id:'spirit-king-soul',name:'성령왕의 영혼',description:'성령의 왕이 남긴 영혼의 결정입니다.',special:'초월 단계의 특별한 조합 재료',art:'/assets/items/spirit-king-soul.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'exploration-ticket',name:'탐사권',forSale:false,usable:true,description:'우주 탐사 기회 1번을 얻어요. 선생님이 지급합니다.',special:'광장 제단 오른쪽의 우주 탐사 장치에서 사용할 수 있어요.',art:'/assets/items/exploration-ticket.svg',icon:'🎟️',type:'tool',level:1,price:0,targets:'self',secret:false,mode:'exploration-ticket',effect:{label:'우주 탐사 기회',icon:'✦',durationMs:0,style:'card'}},

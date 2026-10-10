@@ -71,7 +71,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
   const code=created.room.code,id=joined.selfId;
   const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);
-  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';m.hp=1;});
+  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(m,{x:600,y:450,spawnX:600,spawnY:450,hp:1,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:538,y:450,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';});
   const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);
   // 물병 Q는 서버 투사체가 실제 적에게 도착한 뒤 처치와 드랍이 발생합니다.
   for(let i=0;i<40&&![...(current().energyDrops?.values()||[])].some(drop=>drop.kind!=='recipe');i++)await new Promise(r=>setTimeout(r,50));

@@ -1,4 +1,4 @@
-import {SUDOKU_LEVELS, generateSudoku, findConflicts, isSudokuComplete} from '/shared/sudoku.js';
+import {SUDOKU_LEVELS, findConflicts, isSudokuComplete} from '/shared/sudoku.js';
 
 const LEVELS = [
   ['low', '하 · 6×6'],
@@ -6,7 +6,7 @@ const LEVELS = [
   ['high', '상 · 12×12']
 ];
 
-export function createSudokuGame({board, toast = () => {}} = {}) {
+export function createSudokuGame({board, request, toast = () => {}} = {}) {
   if (!board) throw new TypeError('board가 필요합니다.');
 
   const styleUrl = new URL('./sudoku-game.css', import.meta.url).href;
@@ -29,6 +29,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
   let busy = false;
   let finished = false;
   let startTimer = null;
+  let incorrectIndices = new Set(),checkToken=0,submitting=false;
 
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -91,13 +92,15 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     selected = -1;
     conflicts = new Set();
     answerCheckOn = false;
+    incorrectIndices=new Set();checkToken++;
     finished = false;
-    startTimer = setTimeout(() => {
+    startTimer = setTimeout(async () => {
       startTimer = null;
       if (destroyed) return;
       try {
-        const generated = generateSudoku(difficulty);
-        if (!generated || generated.size !== config.size || !Array.isArray(generated.puzzle) || !Array.isArray(generated.solution)) {
+        const generated = await request('sudoku:start',{difficulty});
+        if(destroyed)return;
+        if (!generated || generated.size !== config.size || !Array.isArray(generated.puzzle)) {
           throw new Error('스도쿠 판을 만들지 못했어요.');
         }
         game = {...generated, values: [...generated.puzzle]};
@@ -174,7 +177,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     game.cells.forEach((cell, index) => {
       const value = game.values[index];
       cell.textContent = value ? digitLabel(value) : '';
-      const incorrect = answerCheckOn && value && !game.puzzle[index] && value !== game.solution[index];
+      const incorrect = answerCheckOn && incorrectIndices.has(index);
       cell.classList.toggle('sudoku-conflict', answerCheckOn && (conflicts.has(index) || incorrect));
       cell.classList.toggle('sudoku-selected', selected === index);
       cell.setAttribute('aria-pressed', String(selected === index));
@@ -192,6 +195,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
   function enterValue(value) {
     if (!game || destroyed || finished || selected < 0 || game.puzzle[selected]) return;
     values()[selected] = value;
+    if(answerCheckOn)refreshAnswerCheck();
     refreshCells();
     status.textContent = answerCheckOn && conflicts.size
       ? '같은 줄이나 굵은 테두리 안에 숫자가 겹쳐요. 겹친 칸을 살펴봐요.'
@@ -202,6 +206,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
   function clearSelected() {
     if (!game || destroyed || finished || selected < 0 || game.puzzle[selected]) return;
     values()[selected] = 0;
+    if(answerCheckOn)refreshAnswerCheck();
     refreshCells();
     status.textContent = '고른 칸을 비웠어요.';
   }
@@ -213,6 +218,7 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
       return;
     }
     answerCheckOn = !answerCheckOn;
+    if(answerCheckOn)refreshAnswerCheck();else{checkToken++;incorrectIndices=new Set();}
     game.checkButton.textContent = answerCheckOn ? '정답 확인 끄기' : '정답 확인 켜기';
     game.checkButton.setAttribute('aria-pressed',String(answerCheckOn));
     refreshCells();
@@ -231,11 +237,23 @@ export function createSudokuGame({board, toast = () => {}} = {}) {
     status.textContent = '정답 확인을 켰어요. 다시 살펴볼 숫자는 빨갛게 표시돼요.';
   }
 
-  function complete() {
-    if (finished) return;
-    finished = true;
-    status.textContent = '모두 맞게 채웠어요! 스도쿠를 완성했어요. 축하해요!';
-    toast('스도쿠를 완성했어요! 정말 잘했어요!');
+  async function refreshAnswerCheck(){
+    if(!game||!answerCheckOn)return;
+    const token=++checkToken,runId=game.runId,snapshot=[...values()];
+    try{const result=await request('sudoku:check',{runId,values:snapshot});
+      if(!destroyed&&answerCheckOn&&game?.runId===runId&&token===checkToken){incorrectIndices=new Set(result.incorrectIndices);refreshCells();}
+    }catch(error){if(!destroyed)toast(error.message);}
+  }
+
+  async function complete() {
+    if (finished||submitting) return;
+    submitting=true;
+    try{await request('sudoku:complete',{runId:game.runId,values:[...values()]});
+      if(destroyed)return;
+      finished=true;status.textContent='모두 맞게 채웠어요! 스도쿠를 완성했어요. 축하해요!';
+      toast('스도쿠를 완성했어요! 정말 잘했어요!');
+    }catch(error){if(!destroyed){status.textContent=error.message;if(answerCheckOn)refreshAnswerCheck();}}
+    finally{submitting=false;}
   }
 
   function onKeyDown(event) {

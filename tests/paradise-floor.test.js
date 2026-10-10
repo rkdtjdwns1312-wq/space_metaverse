@@ -18,6 +18,23 @@ test('낙원8맵 중앙 공간 확대·모든 문과 입장 좌표가 바닥 안
   const arrival=MAP.objects.find(o=>o.target===GARDEN.id).arrival;
   assert.ok(onParadiseFloor(GARDEN,arrival.x,arrival.y,RULES.radius));
 });
+test('태양·달의 낙원 1은 20%, 2는 40% 넓고 보스 맵은 기존 크기를 유지한다',()=>{
+  for(const prefix of ['sun-paradise','moon-paradise']){
+    const ids=[prefix==='sun-paradise'?prefix:prefix+'-1',prefix+'-2',prefix+'-3'];
+    for(const [index,original] of [1.55,1.62,1.68].entries()){
+      const map=STATIC_MAPS[ids[index]],scale=original*[1.2,1.4,1][index],floor=paradiseFloor(map);
+      assert.equal(paradiseScale(map.id),scale);
+      assert.equal(map.width,1200*scale);assert.equal(map.height,760*scale);
+      assert.ok(Math.abs(floor.rx-660*scale/1.5)<1e-9);
+      assert.ok(Math.abs(floor.ry-370*scale/1.5)<1e-9);
+    }
+  }
+  assert.equal(paradiseScale(STAR_PARADISE.id),1.5*1.3);
+  assert.ok(Math.abs(STAR_PARADISE.width-1200*1.5*1.3)<1e-9);
+  assert.ok(Math.abs(STAR_PARADISE.height-760*1.5*1.3)<1e-9);
+  assert.equal(paradiseFloor(STAR_PARADISE).rx,660*1.3);
+  assert.equal(paradiseFloor(STAR_PARADISE).ry,370*1.3);
+});
 test('낙원 원형 벽과 다리 양쪽은 안팎 모두 이동 금지, 다리 접합부는 열린다',()=>{
   for(const map of maps){
     const f=paradiseFloor(map),r=room();

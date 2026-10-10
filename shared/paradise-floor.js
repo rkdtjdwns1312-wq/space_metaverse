@@ -8,10 +8,11 @@ import {onStreetFloor,isStarlightStreet} from './street-layout.js';
 export const PARADISE_SCALE=1.5;
 export const PARADISE_FLOOR=Object.freeze({rx:660,ry:370,bridgeWidth:180*BRIDGE_WIDTH_SCALE,landing:55,wallWidth:12});
 export const isParadise=id=>id==='moon-garden'||id==='star-paradise'||/^sun-paradise(?:-[23])?$/.test(id)||/^moon-paradise-[123]$/.test(id);
-// LV3·LV4 몬스터와 보스가 있는 낙원은 단계마다 중앙 마당도 조금씩 커집니다.
+// 1·2단계는 지도와 중앙 마당을 함께 넓힙니다. 3단계 보스 맵은 기존 크기를 유지합니다.
 export function paradiseScale(id){
+  if(id==='star-paradise')return PARADISE_SCALE*1.3;
   const stage=String(id).match(/^(?:sun-paradise(?:-([23]))?|moon-paradise-([123]))$/);
-  return stage?[1.55,1.62,1.68][Number(stage[1]||stage[2]||1)-1]:PARADISE_SCALE;
+  return stage?[1.55*1.2,1.62*1.4,1.68][Number(stage[1]||stage[2]||1)-1]:PARADISE_SCALE;
 }
 export const paradisePoint=(p,scale=PARADISE_SCALE)=>({x:p.x*scale,y:p.y*scale});
 export function enlargeParadise(map){

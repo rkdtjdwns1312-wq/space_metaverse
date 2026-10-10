@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAvatar,STREET_ID} from '../shared/config.js';
 import {ENERGY_DROPS} from '../shared/energy-drops.js';
-import {addEnergyDrop,rewardRecipients,collectEnergyDrop,energyDropViews,pruneEnergyDrops} from '../server/energy-drops.js';
+import {addEnergyDrop,addBossDrops,rewardRecipients,collectEnergyDrop,energyDropViews,pruneEnergyDrops} from '../server/energy-drops.js';
 import {ensureVitals} from '../server/vitals.js';
 
 const makePlayer=(id,overrides={})=>({id,nickname:id,role:'student',connected:true,away:false,mapId:'star-origin-1',x:100,y:100,
@@ -76,4 +76,34 @@ test('만료 정리·가시성 필터와 잔액 overflow 실패 때 소유 몫�
   assert.throws(()=>collectEnergyDrop(room,p,'live',6));assert.equal(live.shares.get('p'),6);
   p.avatar.blackStar=false;p.away=true;
   assert.throws(()=>collectEnergyDrop(room,p,'live',6));assert.equal(live.shares.get('p'),6);
+});
+
+test('드랍 30초 전에는 소유권, 30초부터 남은 우주에너지 공개, 60초에 제거',()=>{
+  const a=makePlayer('a'),b=makePlayer('b'),c=makePlayer('c'),room=makeRoom([a,b,c]),born=1000;
+  room.parties=new Map([['p',{memberIds:['a','b']}]]);
+  const drop=addEnergyDrop(room,monster('star-scorpion'),new Map([['a',10]]),born,fixedRoll(10));
+  assert.equal(drop.publicAt,born+30_000);assert.equal(drop.expiresAt,born+60_000);
+  assert.equal(collectEnergyDrop(room,a,drop.id,born+1).amount,5);
+  assert.throws(()=>collectEnergyDrop(room,c,drop.id,drop.publicAt-1),/내 몫/);
+  assert.equal(energyDropViews(room,drop.publicAt)[0].remaining,5);
+  assert.equal(collectEnergyDrop(room,c,drop.id,drop.publicAt).amount,5);
+  assert.throws(()=>collectEnergyDrop(room,b,drop.id,drop.publicAt),/사라진/);
+  const later=addEnergyDrop(room,monster('star-scorpion'),new Map([['a',10]]),born+100_000,fixedRoll(10));
+  assert.equal(energyDropViews(room,later.expiresAt-1).length,1);
+  assert.equal(pruneEnergyDrops(room,later.expiresAt),true);
+  assert.equal(energyDropViews(room,later.expiresAt).length,0);
+  assert.throws(()=>collectEnergyDrop(room,c,later.id,later.expiresAt),/사라진/);
+});
+
+test('보스 아이템도 30초부터 다른 친구가 주울 수 있고 파티 주사위가 종료된다',()=>{
+  const a=makePlayer('a',{inventory:[]}),b=makePlayer('b',{inventory:[]}),c=makePlayer('c',{inventory:[]});
+  const room=makeRoom([a,b,c]),born=2000;
+  room.parties=new Map([['p',{memberIds:['a','b']}]]);
+  const [drop]=addBossDrops(room,monster('leoon'),new Map([['a',10]]),born,()=>1);
+  assert.throws(()=>collectEnergyDrop(room,c,drop.id,drop.publicAt-1),/내 몫/);
+  assert.equal(pruneEnergyDrops(room,drop.publicAt),true);
+  const result=collectEnergyDrop(room,c,drop.id,drop.publicAt);
+  assert.equal(result.itemId,'leoon-claw');assert.equal(c.inventory[0].quantity,1);
+  assert.equal(room.energyDrops.has(drop.id),false);
+  assert.throws(()=>collectEnergyDrop(room,a,drop.id,drop.publicAt),/사라진/);
 });

@@ -1,6 +1,6 @@
 import {createChatWindow} from './chat-window.js';
 // 하단 메뉴와 친구 기능. 게임 렌더러와 서버 권한 로직은 별도 파일에 둡니다.
-export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessage,clearMessages}) {
+export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessage,clearMessages,onMissionCreate}) {
   const $=id=>document.getElementById(id);
   let messages=[],context='',revision=0,friendId=null,invitationId=null,unread=0;
   const chatWindow=createChatWindow({stop});
@@ -18,6 +18,11 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('menu-dialog').addEventListener('click',e=>{if(e.target.closest('#teacher-tools,#planet-new,#planet-exit,#planet-info,#leave'))closeRoots();},true);
   $('crew-button').addEventListener('click',closeRoots,true);
   $('open-chat').onclick=()=>openChat();
+  $('open-missions').onclick=()=>me()?.role==='teacher'?open('mission-create-menu'):open('tasks-dialog');
+  $('mission-create-menu-close').onclick=()=>$('mission-create-menu').close();
+  for(const [id,mode] of [['mission-manual-open','manual'],['mission-auto-open','auto']])$(id).onclick=()=>{
+    $('mission-create-menu').close();onMissionCreate(mode);
+  };
   $('chat-window-toggle').onclick=()=>{$('chat-dialog').open?$('chat-dialog').close():openChat();};
   function render(){
     const channel=$('chat-channel').value,target=$('chat-recipient').value;

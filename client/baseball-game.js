@@ -1,6 +1,6 @@
-import {BASEBALL_LEVELS,generateBaseballAnswer,scoreBaseballQuestion,validateBaseballInput} from '../shared/baseball.js';
+import {BASEBALL_LEVELS,validateBaseballInput} from '../shared/baseball.js';
 
-export function createBaseballGame({board,setScore=()=>{},toast=()=>{},random=Math.random}={}){
+export function createBaseballGame({board,setScore=()=>{},toast=()=>{},request}={}){
   if(!board)throw new TypeError('board가 필요합니다.');
   const root=document.createElement('section');root.className='baseball-game';root.setAttribute('aria-label','숫자야구');
   const levelGroup=document.createElement('div');levelGroup.className='baseball-levels';levelGroup.setAttribute('role','group');levelGroup.setAttribute('aria-label','난이도 선택');
@@ -15,7 +15,7 @@ export function createBaseballGame({board,setScore=()=>{},toast=()=>{},random=Ma
   const history=document.createElement('ol');history.id='baseball-attempts';history.setAttribute('aria-label','시도 목록');
   root.append(levelGroup,form,feedback,historyTitle,history);board.replaceChildren(root);
 
-  let level=null,answer='',attempts=0,ended=false,destroyed=false;
+  let level=null,answer='',attempts=0,ended=false,destroyed=false,runId=null,busy=false;
   const remaining=()=>20-attempts;
   const updateScore=()=>setScore(`${level?.name??''} · ${attempts}/20회 · 남은 기회 ${remaining()}회`);
   const setEnabled=enabled=>{input.disabled=!enabled;askButton.disabled=!enabled;guessButton.disabled=!enabled;};
@@ -25,11 +25,15 @@ export function createBaseballGame({board,setScore=()=>{},toast=()=>{},random=Ma
     setScore(`${won?'성공':'종료'} · ${attempts}/20회 · 남은 기회 ${remaining()}회 · 정답 ${answer}`);
     toast(won?'숫자야구 정답을 맞혔어요!':`기회가 끝났어요. 정답은 ${answer}입니다.`);
   };
-  const selectLevel=next=>{
-    level=next;answer=generateBaseballAnswer(level.digits,random);attempts=0;ended=false;
+  const selectLevel=async next=>{
+    if(busy)return;busy=true;setEnabled(false);
+    try{const result=await request('baseball:start',{difficulty:next.id});
+    if(destroyed)return;
+    level=next;runId=result.runId;answer='';attempts=0;ended=false;
     for(const button of levelGroup.children)button.setAttribute('aria-pressed',String(button.dataset.level===level.id));
     history.replaceChildren();feedback.textContent=`${level.digits}자리 숫자가 준비됐어요.`;input.value='';input.maxLength=level.digits;input.placeholder=`${level.digits}자리 숫자`;
     setEnabled(true);updateScore();input.focus();
+    }catch(error){feedback.textContent=error.message;toast(error.message);}finally{busy=false;}
   };
   const appendAttempt=(value,mode,result,correct)=>{
     const item=document.createElement('li');item.dataset.mode=mode;item.dataset.value=value;
@@ -37,18 +41,20 @@ export function createBaseballGame({board,setScore=()=>{},toast=()=>{},random=Ma
     item.textContent=`${attempts}회 · ${value} · ${mode==='question'?'질문':'정답 도전'} · ${outcome} · 남은 기회 ${remaining()}회`;
     history.append(item);item.scrollIntoView({block:'nearest'});
   };
-  const submit=mode=>{
-    if(ended||destroyed||!level)return;
+  const submit=async mode=>{
+    if(ended||destroyed||!level||busy)return;
     const validation=validateBaseballInput(input.value,level.digits);
     if(!validation.valid){feedback.textContent=validation.message;toast(validation.message);input.focus();return;}
-    attempts++;
-    const result=scoreBaseballQuestion(answer,validation.value);
-    const correct=mode==='guess'&&validation.value===answer;
-    appendAttempt(validation.value,mode,result,correct);
-    if(correct){finish(true,'정답이에요!');return;}
-    if(attempts===20){finish(false,mode==='guess'?'마지막 정답 도전이 틀렸어요.':'마지막 질문까지 사용했어요.');return;}
-    feedback.textContent=mode==='question'?`${result.strikes}스트라이크 ${result.balls}볼이에요.`:'오답이에요. 질문 결과를 살펴보고 다시 도전하세요.';
-    updateScore();input.select();
+    busy=true;setEnabled(false);
+    try{const result=await request('baseball:submit',{runId,mode,value:validation.value});
+      if(destroyed)return;
+      attempts=result.attempts;answer=result.answer||'';
+      appendAttempt(validation.value,mode,result.score,result.won);
+      if(result.done){finish(result.won,result.won?'정답이에요!':mode==='guess'?'마지막 정답 도전이 틀렸어요.':'마지막 질문까지 사용했어요.');return;}
+      feedback.textContent=mode==='question'?`${result.score.strikes}스트라이크 ${result.score.balls}볼이에요.`:'오답이에요. 질문 결과를 살펴보고 다시 도전하세요.';
+      setEnabled(true);updateScore();input.select();
+    }catch(error){feedback.textContent=error.message;toast(error.message);setEnabled(true);}
+    finally{busy=false;}
   };
 
   for(const item of BASEBALL_LEVELS){

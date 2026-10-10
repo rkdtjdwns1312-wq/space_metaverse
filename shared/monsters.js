@@ -3,13 +3,14 @@ export const MONSTER_VISUAL_AREA=Object.freeze({'star-origin-1':1.5,'star-origin
 // 대기 원화의 불투명 몸체 외곽(따뜻한별 485×462, 서늘한별 400×412)을 기준으로
 // 투명 여백이 다른 태양·달 몬스터의 화면 점유 면적을 맞춥니다.
 export const WARM_STAR_VISUAL_SCALE=Math.sqrt((400*412)/(485*462));
-export const monsterVisualScale=(mapId,typeId)=>['noksera','leoon'].includes(typeId)?1:Math.sqrt(MONSTER_VISUAL_AREA[mapId]||1)*(typeId==='warm-star'?WARM_STAR_VISUAL_SCALE:1);
+export const monsterVisualScale=(mapId,typeId)=>['noksera','leoon','spirit-king'].includes(typeId)?1:Math.sqrt(MONSTER_VISUAL_AREA[mapId]||1)*(typeId==='warm-star'?WARM_STAR_VISUAL_SCALE:1);
 // 별의 시작점에서 만나는 귀여운 동물별자리 상상 디자인 목록입니다.
 export const MONSTER_LEVEL_STATS=Object.freeze({
   1:Object.freeze({hp:50,power:3,defense:0}),
   2:Object.freeze({hp:100,power:6,defense:1}),
   3:Object.freeze({hp:300,power:10,defense:2}),
-  4:Object.freeze({hp:1000,power:15,defense:4})
+  4:Object.freeze({hp:1000,power:15,defense:4}),
+  6:Object.freeze({hp:10000,power:30,defense:0})
 });
 export const MONSTER_HP=Object.freeze({'star-origin-1':50,'star-origin-2':100,'star-origin-3':300,'moon-garden':100,'sun-paradise':300,'sun-paradise-2':1000,'moon-paradise-1':300,'moon-paradise-2':1000});
 const combatFor=(level,speedFactor)=>Object.freeze({power:MONSTER_LEVEL_STATS[level].power,defense:MONSTER_LEVEL_STATS[level].defense,speedFactor});
@@ -38,7 +39,9 @@ export const MONSTER_TYPES = Object.freeze([
   { id: 'star-dragon', name: 'Lv3 별용이', description: '별빛 비늘을 두른 용이', mapId: 'star-origin-3', shape: 'star-dragon', color: '#67c8ff', level: 3 },
   { id: 'star-phoenix', name: 'Lv3 별사조', description: '별의 불꽃을 품은 사조', mapId: 'star-origin-3', shape: 'star-phoenix', color: '#ff9f45', level: 3 },
   {id:'noksera',name:'노크세라',description:'달빛의 뿔로 별의 꿈을 지키는 보스',mapId:'moon-paradise-3',shape:'noksera',color:'#e3d9ff',level:1,boss:true,hp:2000,defense:5,power:20},
-  {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:2000,defense:5,power:20}
+  {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:2000,defense:5,power:20},
+  {id:'spirit-king',name:'성령의 왕',description:'별들의 낙원을 지키는 Lv6 성령왕',mapId:'star-paradise',shape:'spirit-king',color:'#d6c9ff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
+    combat:Object.freeze({power:30,defense:0,speedFactor:1.5,attackMs:3000,warningMs:2000,warningRadius:90})}
 ]);
 
 export function monsterType(id) {
@@ -57,5 +60,5 @@ export const MONSTER_SPAWNS=Object.freeze([
   ...Array.from({length:2},(_,i)=>({id:`star-phoenix-${i+1}`,typeId:'star-phoenix'})),
   ...Array.from({length:5},(_,i)=>({id:`baby-energy-star-${i+1}`,typeId:'baby-energy-star'})),
   ...['warm-star','grown-warm-star','cool-star','grown-cool-star'].flatMap(typeId=>Array.from({length:5},(_,i)=>({id:`${typeId}-${i+1}`,typeId}))),
-  {id:'noksera-boss',typeId:'noksera'}, {id:'leoon-boss',typeId:'leoon'}
+  {id:'noksera-boss',typeId:'noksera'}, {id:'leoon-boss',typeId:'leoon'}, {id:'spirit-king-boss',typeId:'spirit-king'}
 ]);

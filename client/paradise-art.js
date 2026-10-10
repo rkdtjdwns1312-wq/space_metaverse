@@ -46,6 +46,11 @@ export function drawParadiseBackdrop(ctx,map){
   ctx.fillStyle=moon?'#8995bd':sun?'#d6b4b1':'#9997bb';ctx.fillRect(0,0,map.width,map.height);
   if(ready(images.sky))ctx.drawImage(images.sky,0,0,map.width,map.height);
   ctx.fillStyle=sun?'#f8d4a37a':moon?'#aebee435':'#d8c5e42e';ctx.fillRect(0,0,map.width,map.height);
-  const bodies=map.vista?[[map.vista,moon]]:map.theme==='star-paradise'?[[{bodyX:220,bodyY:180,bodyRadius:145},false],[{bodyX:1580,bodyY:960,bodyRadius:155},true]]:[];
+  // 별들의 낙원은 양쪽 낙원 3의 천체와 같은 지름으로, 넓어진 화면의 대각선에 놓습니다.
+  const starRadius=235*1.68;
+  const bodies=map.vista?[[map.vista,moon]]:map.theme==='star-paradise'?[
+    [{bodyX:starRadius*.96,bodyY:starRadius*.84,bodyRadius:starRadius},false],
+    [{bodyX:map.width-starRadius*.96,bodyY:map.height-starRadius*.84,bodyRadius:starRadius},true]
+  ]:[];
   for(const [v,isMoon] of bodies){const im=isMoon?images.moon:images.sun;if(ready(im))ctx.drawImage(im,v.bodyX-v.bodyRadius,v.bodyY-v.bodyRadius,v.bodyRadius*2,v.bodyRadius*2);else fallbackBody(ctx,{vista:v},isMoon);}
 }

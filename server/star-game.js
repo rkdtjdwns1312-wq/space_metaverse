@@ -29,10 +29,12 @@ export function clickStar(room,player,data,now=performance.now()){
   const elapsedMs=Math.max(1,Math.ceil(now-run.startedAt));
   if(run.step===STAR_GAME.clicks){
     room.starRuns.delete(player.id);
+    const personalBest=player.starBestMs==null||elapsedMs<player.starBestMs;
+    if(personalBest)player.starBestMs=elapsedMs;
     // 경험치/재화는 주지 않습니다. 소규모 교실의 최고 기록 열 개만 보관합니다.
     const entry={id:run.runId,playerId:player.id,nickname:player.nickname,elapsedMs,at:Date.now()};
     room.starRanking=[...currentWeekRecords(room.starRanking||[]),entry].sort((a,b)=>a.elapsedMs-b.elapsedMs||a.at-b.at).slice(0,STAR_GAME.top);
-    return {done:true,step:run.step,elapsedMs,rank:room.starRanking.findIndex(r=>r.id===entry.id)+1||null,ranking:starRanking(room)};
+    return {done:true,step:run.step,elapsedMs,personalBest,rank:room.starRanking.findIndex(r=>r.id===entry.id)+1||null,ranking:starRanking(room)};
   }
   run.target=targetAfter(run.target);
   return {done:false,runId:run.runId,step:run.step,target:run.target,elapsedMs};

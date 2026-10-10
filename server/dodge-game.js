@@ -178,10 +178,12 @@ export function completeDodgeRun(room,player,runId){
   ensure(run&&run.runId===runId&&run.status==='pending','끝난 별 피하기 기록을 찾지 못했어요.');
   room.dodgeRanking=currentWeekRecords(room.dodgeRanking||[]);
   const entry={id:run.runId,playerId:player.id,nickname:player.nickname,elapsedMs:run.elapsedMs,at:Date.now()};
+  const personalBest=player.dodgeBestMs==null||entry.elapsedMs>player.dodgeBestMs;
+  if(personalBest)player.dodgeBestMs=entry.elapsedMs;
   room.dodgeRanking.push(entry);
   room.dodgeRanking.sort((a,b)=>b.elapsedMs-a.elapsedMs||a.at-b.at||a.id.localeCompare(b.id));
   room.dodgeRanking=room.dodgeRanking.slice(0,DODGE_RULES.top);
   const rank=room.dodgeRanking.findIndex(record=>record.id===entry.id);
   room.dodgeRuns.delete(player.id);
-  return {elapsedMs:entry.elapsedMs,rank:rank<0?null:rank+1,ranking:dodgeRanking(room)};
+  return {elapsedMs:entry.elapsedMs,personalBest,rank:rank<0?null:rank+1,ranking:dodgeRanking(room)};
 }

@@ -6,6 +6,9 @@ import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
+import {validateMissions} from './missions.js';
+import {validateSignalRanking} from './signal-game.js';
+import {validateTetrisRanking} from './tetris-game.js';
 import {validateInteriorDecor} from './interior-decor.js';
 import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
@@ -43,14 +46,15 @@ export function toRecord(room) {
     rabbitDrawCounts:validateRabbitDrawCounts(room.rabbitDrawCounts),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
-    memoryRanking:structuredClone(room.memoryRanking||[]),
+    memoryRanking:structuredClone(room.memoryRanking||[]),signalRanking:validateSignalRanking(room.signalRanking),tetrisRanking:validateTetrisRanking(room.tetrisRanking),missions:validateMissions(room.missions),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
-      muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
+      muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
+      starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
       learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
@@ -78,7 +82,7 @@ export function fromRecord(r) {
     rabbitDrawCounts:validateRabbitDrawCounts(r.rabbitDrawCounts),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
-    memoryRanking:validateMemoryRanking(r.memoryRanking),
+    memoryRanking:validateMemoryRanking(r.memoryRanking),signalRanking:validateSignalRanking(r.signalRanking),tetrisRanking:validateTetrisRanking(r.tetrisRanking),missions:validateMissions(r.missions),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
     itemLog:structuredClone(r.itemLog),tradeLog:structuredClone(r.tradeLog),trades:new Map()};
   for(const pl of r.planets){
@@ -106,6 +110,8 @@ export function fromRecord(r) {
     // 이전 버전의 LV6 초월체도 새 최종 단계 LV5로 읽으며 계보·소유물은 그대로 보존합니다.
     if(avatar.level>=PROGRESSION.transcendentLevel){avatar.level=PROGRESSION.transcendentLevel;avatar.form='transcendent';avatar.xp=0;}
     if(p.tutorialCompleted!==undefined&&typeof p.tutorialCompleted!=='boolean')bad();
+    if(p.tutorialRewardClaimed!==undefined&&typeof p.tutorialRewardClaimed!=='boolean')bad();
+    if([p.starBestMs,p.dodgeBestMs].some(value=>value!==undefined&&value!==null&&(!Number.isSafeInteger(value)||value<1)))bad();
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
     const savedMarkers=validateCardMarkers(p.cardMarkers),rabbitDraw=validateRabbitDraw(p.rabbitDraw);
@@ -118,7 +124,8 @@ export function fromRecord(r) {
     if(rabbitDraw)rabbitDraw.markerId=null;
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
-    room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+    room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
+      starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
   for(const pr of r.proposals){
@@ -222,6 +229,7 @@ export class PersistentRoomStore extends RoomStore {
   // 한 요청은 교실 하나만 바꿉니다. 파일 교체 성공 뒤에만 소켓 응답을 내보냅니다.
   // 실패하면 Map 간 참조까지 함께 복구하여 지급/구매/거래가 메모리에만 반영되지 않게 합니다.
   transact(work){
+    const originalPlayers=new Map([...this.rooms].map(([code,room])=>[code,new Map(room.players)]));
     const backup=structuredClone({rooms:this.rooms,sessions:this.sessions,records:this.records});
     let result,denial;
     try {
@@ -236,7 +244,23 @@ export class PersistentRoomStore extends RoomStore {
         if(r===undefined)this.files.remove(code);
         else{this.files.save(r);this.records.set(code,structuredClone(r));}
       }
-    }catch(error){Object.assign(this,backup);throw error;}
+    }catch(error){
+      // 실행 중인 오락기와 공격 쿨타임은 플레이어 객체를 참조합니다. 복제된
+      // 방 상태를 복구하되 기존 플레이어 객체의 정체성은 유지합니다.
+      for(const [code,room] of backup.rooms){
+        const originals=originalPlayers.get(code);
+        for(const [id,saved] of room.players){
+          const player=originals?.get(id);if(!player)continue;
+          for(const key of Object.keys(player))if(!Object.hasOwn(saved,key))delete player[key];
+          Object.assign(player,saved);room.players.set(id,player);
+        }
+      }
+      for(const session of backup.sessions.values()){
+        const room=backup.rooms.get(session.room.code);
+        if(room){session.room=room;session.player=room.players.get(session.player.id)||session.player;}
+      }
+      Object.assign(this,backup);throw error;
+    }
     if(denial)throw denial;
     return result;
   }

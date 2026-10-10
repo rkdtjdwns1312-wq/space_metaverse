@@ -70,6 +70,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       kind==='market'?'/assets/maps/plaza-bazaar.png':
       kind==='exploration'?'/assets/maps/plaza-exploration-flask.png':
       kind==='andromeda'?'/assets/maps/plaza-andromeda.png':
+      kind==='mission-board'?'/assets/maps/plaza-mission-board.png':
       kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
       kind==='evolution'?'/assets/maps/evolution-altar.png':
       kind==='growth'?'/assets/maps/growth-altar.png':

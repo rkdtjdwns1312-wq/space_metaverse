@@ -1,8 +1,9 @@
 import {lv2MonsterPose} from './lv2-monster-art.js';
 
 const ART=Object.freeze({
-  noksera:{src:'/assets/monsters/noksera-v2.png',color:'#c9d6ff',face:-1,width:2.05,aspect:1221/1289},
-  leoon:{src:'/assets/monsters/leoon.png',walkSrc:'/assets/monsters/leoon-walk.png',color:'#ffd47a',face:1,width:2,aspect:1254/1254,walkAspect:1145/1374}
+  noksera:{src:'/assets/monsters/noksera-v2.png',walkSrc:'/assets/monsters/noksera-walk.png',color:'#c9d6ff',face:-1,width:2.05,aspect:1221/1289,walkAspect:1},
+  leoon:{src:'/assets/monsters/leoon.png',walkSrc:'/assets/monsters/leoon-walk.png',color:'#ffd47a',face:1,width:2,aspect:1254/1254,walkAspect:1145/1374},
+  'spirit-king':{src:'/assets/monsters/spirit-king-walk.png',walkSrc:'/assets/monsters/spirit-king-walk.png',attackSrc:'/assets/monsters/spirit-king-attack.png',color:'#bcb3ff',face:1,width:2.2,aspect:512/384,walkAspect:512/384,frames:8}
 });
 const images=new Map();
 function sprite(shape,walking=false){
@@ -12,7 +13,15 @@ function sprite(shape,walking=false){
   }
   return images.get(key);
 }
-export async function preloadBossArt(){await Promise.all(Object.keys(ART).flatMap(id=>[sprite(id)?.decode(),ART[id].walkSrc&&sprite(id,true)?.decode()].filter(Boolean)));}
+export async function preloadBossArt(shape){await Promise.all((shape?[shape]:Object.keys(ART)).flatMap(id=>{
+  const art=ART[id],files=[sprite(id)?.decode(),art.walkSrc&&sprite(id,true)?.decode()];
+  if(art.attackSrc&&typeof Image!=='undefined'){
+    const key=`${id}:attack`;
+    if(!images.has(key)){const image=new Image();image.src=art.attackSrc;images.set(key,image);}
+    files.push(images.get(key).decode());
+  }
+  return files.filter(Boolean);
+}));}
 export function bossMonsterBounds(m,walking=false){
   const art=ART[m.shape],r=m.radius,w=r*art.width,h=w*(walking?art.walkAspect:art.aspect);
   const top=m.y+r*.9-h,bottom=m.y+r*.9;
@@ -22,7 +31,9 @@ export function drawBossMonster(ctx,m,time=0,attack){
   const art=ART[m?.shape];if(!art)return false;if(!ctx)return true;
   const r=m.radius,pose=lv2MonsterPose(time,attack),active=pose.active;
   const walking=!!art.walkSrc&&m.moving&&!active;
-  const image=sprite(m.shape,walking);if(!image?.complete||!image.naturalWidth)return false;
+  const key=art.frames&&active?'spirit-king:attack':null;
+  if(key&&!images.has(key)&&typeof Image!=='undefined'){const attackImage=new Image();attackImage.src=art.attackSrc;images.set(key,attackImage);}
+  const image=key?images.get(key):sprite(m.shape,walking);if(!image?.complete||!image.naturalWidth)return false;
   const direction=m.facingX<0?-1:1,flip=direction===art.face?1:-1;
   const progress=pose.progress,brace=active&&progress<.36?Math.sin(progress/.36*Math.PI):0;
   const strike=active&&progress>=.36&&progress<.8?Math.sin((progress-.36)/.44*Math.PI):0;
@@ -34,7 +45,11 @@ export function drawBossMonster(ctx,m,time=0,attack){
   ctx.translate(-direction*r*.12*brace+direction*r*.22*strike,-r*.05*brace);
   if(active)ctx.rotate(-flip*.035*brace);
   ctx.shadowColor=art.color;ctx.shadowBlur=active?10+strike*24:8;
-  if(walking){
+  if(art.frames){
+    const index=active?Math.min(7,Math.floor(progress*8)):walking?Math.floor(time/130)%8:0;
+    const sw=image.naturalWidth/4,sh=image.naturalHeight/2;
+    ctx.drawImage(image,(index%4)*sw,Math.floor(index/4)*sh,sw,sh,-w/2,-h,w,h);
+  }else if(walking){
     const index=Math.floor(time/180)%4,sw=image.naturalWidth/2,sh=image.naturalHeight/2;
     ctx.drawImage(image,(index%2)*sw,Math.floor(index/2)*sh,sw,sh,-w/2,-h,w,h);
   }else ctx.drawImage(image,-w/2,-h,w,h);

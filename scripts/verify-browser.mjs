@@ -786,12 +786,11 @@ try{
  await student.screenshot({path:'.local/08-card-bag.png',fullPage:true});
 
  // Scenario 3: star-shard balances are secret between students (client/app.js: the crew dialog
- // badge shows only when isTeacher||p.id===selfId). Player list order is stable insertion order
- // (teacher, student1, student2), so #players li nth(1)/nth(2) are the two students.
+ // badge shows only when isTeacher||p.id===selfId). Name/connect-time sorting can change row order.
  await openSocialFromDock(student2);await student2.locator('#crew-button').click();
  await student2.locator('#crew-dialog').waitFor({state:'visible'});
- assert.equal(await student2.locator('#players li').nth(1).locator('.shards-badge').count(),0);
- assert.equal(await student2.locator('#players li').nth(2).locator('.shards-badge').count(),1);
+ assert.equal(await student2.locator('#players li[data-name="1"] .shards-badge').count(),0);
+ assert.equal(await student2.locator('#players li[data-name="2"] .shards-badge').count(),1);
  check('Student 2\'s crew dialog shows no star-shards badge on student 1\'s row but shows one on their own row');
  await student2.locator('#crew-close').click();
  await student2.locator('#crew-dialog').waitFor({state:'hidden'});

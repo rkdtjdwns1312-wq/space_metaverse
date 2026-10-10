@@ -16,14 +16,14 @@ function singleMonster(id){
 }
 
 test('각 맵 5마리·별의기원3 3용이+2사조·방별 독립 몬스터 상태',()=>{
-  const a={},b={};assert.equal(monstersOf(a).size,42);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,13);
+  const a={},b={};assert.equal(monstersOf(a).size,43);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,14);
   for(const map of ['star-origin-1','star-origin-2','star-origin-3','moon-garden','sun-paradise','sun-paradise-2','moon-paradise-1','moon-paradise-2'])
     assert.equal(monsterViews(a).filter(m=>m.mapId===map).length,5);
   const second=monsterViews(a).filter(m=>m.mapId==='star-origin-2');
   assert.deepEqual(second.filter(m=>m.typeId==='star-scorpion').map(m=>m.id),['star-scorpion-1','star-scorpion-2','star-scorpion-3']);
   assert.deepEqual(second.filter(m=>m.typeId==='chameleon-star').map(m=>m.id),['chameleon-star-1','chameleon-star-2']);
-  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,42);
+  assert.equal(new Set(MONSTER_SPAWNS.map(m=>m.id)).size,43);
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise').map(m=>[m.id,m.level]),[['warm-star',3]]);
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sun-paradise-2').map(m=>[m.id,m.level]),[['grown-warm-star',4]]);
   const origin3=monsterViews(a).filter(m=>m.mapId==='star-origin-3');
@@ -206,7 +206,7 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
-  assert.equal(packet.monsters.length,42);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
+  assert.equal(packet.monsters.length,43);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
 });
 
 test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 좌표가 함께 온다',async t=>{

@@ -28,11 +28,12 @@ test('LV2~5 능력치와 다섯 계열 보정은 단계별 반올림·0 하한�
   }
 });
 
-test('몬스터 LV1~4 공격·방어·체력과 최소 피해 1',()=>{
+test('몬스터 LV1~4·LV6 공격·방어·체력과 최소 피해 1',()=>{
   assert.deepEqual(MONSTER_LEVEL_STATS,{
     1:{hp:50,power:3,defense:0},2:{hp:100,power:6,defense:1},
-    3:{hp:300,power:10,defense:2},4:{hp:1000,power:15,defense:4}});
-  for(const level of [1,2,3,4]){
+    3:{hp:300,power:10,defense:2},4:{hp:1000,power:15,defense:4},
+    6:{hp:10000,power:30,defense:0}});
+  for(const level of [1,2,3,4,6]){
     const monster={id:'m',typeId:null,level,mapId:'star-origin-1',x:0,y:0,
       hp:MONSTER_LEVEL_STATS[level].hp,maxHp:MONSTER_LEVEL_STATS[level].hp,
       attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0};

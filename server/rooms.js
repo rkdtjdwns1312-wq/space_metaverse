@@ -13,6 +13,7 @@ import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 import {EXPLORATION_GOAL} from '../shared/exploration.js';
 import {objectSignals} from './object-signals.js';
+import {missionViews} from './missions.js';
 import {partyView,leaveParty} from './party.js';
 import {GameError,pinHash,checkPin} from './pin-auth.js';
 export {GameError} from './pin-auth.js';
@@ -81,7 +82,7 @@ export class RoomStore {
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
     const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
-      planets:new Map(), proposals:new Map(), itemLog:[], tradeLog:[], trades:new Map(), starCardText:{},exploration:{energy:0,results:[]} };
+      planets:new Map(), proposals:new Map(), missions:[], signalRanking:[], tetrisRanking:[], itemLog:[], tradeLog:[], trades:new Map(), starCardText:{},exploration:{energy:0,results:[]} };
     this.rooms.set(room.code,room);
     // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
     if (data.seedPlanets===true) for (const seed of EXAMPLE_PLANETS) addPlanet(room,{...seed,createdBy:null});
@@ -102,7 +103,7 @@ export class RoomStore {
         '이전 접속 정보가 없어요. 다시 입장하려면 선생님께 알려주세요.');
       this.sessions.delete(previous.token);
       previous.token=randomBytes(32).toString('hex');
-      Object.assign(previous,{socketId,connected:true,expiresAt:null,input:{x:0,y:0,at:0}});
+      Object.assign(previous,{socketId,connected:true,connectedAt:Date.now(),expiresAt:null,input:{x:0,y:0,at:0}});
       const session={room,player:previous};this.sessions.set(previous.token,session);return session;
     }
     // 저장하지 않는 임시 교실의 기존 소켓 호출은 PIN을 보내지 않을 수 있습니다.
@@ -114,9 +115,10 @@ export class RoomStore {
     const token=randomBytes(32).toString('hex');
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], equipmentSlots:[null,null,null], starShards:0, cosmicEnergy:0, connected:true, socketId,
-      expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false };
+      connectedAt:Date.now(),expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
+      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,starBestMs:null,dodgeBestMs:null };
     room.players.set(p.id,p);
+    if(role==='student')for(const mission of room.missions||[])if(mission.distribution==='all')mission.acceptedIds.push(p.id);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
     return p;
@@ -127,7 +129,7 @@ export class RoomStore {
     ensure(session && this.rooms.has(session.room.code),'교실 연결 시간이 끝났어요. 다시 입장해주세요.');
     ensure(!session.player.connected,'이 접속은 다른 창에서 사용 중이에요.');
     ensure(session.player.expiresAt>now,'재접속 시간이 지났어요. 다시 입장해주세요.');
-    Object.assign(session.player,{ connected:true, socketId, expiresAt:null, input:{x:0,y:0,at:0} });
+    Object.assign(session.player,{ connected:true, connectedAt:now,socketId, expiresAt:null, input:{x:0,y:0,at:0} });
     return session;
   }
   remove(room,p) { leaveParty(room,p.id);this.sessions.delete(p.token); room.players.delete(p.id); }
@@ -142,6 +144,7 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room),energyDrops:energyDropViews(room),
+      missions:missionViews(room,viewer),
       starCards:activeStarCards(room),exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},
       shopDiscounts:starCardShopDiscounts(room,viewer),
@@ -154,10 +157,10 @@ export class RoomStore {
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
-          connected:p.connected,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
+          connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
-        if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
+        if(viewer && viewer.id===p.id){out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
         return out;

@@ -1,4 +1,5 @@
-import {avatarFitsFloor} from '../shared/avatar-boundary.js';
+import {avatarFitsFloor,avatarFloorRadius} from '../shared/avatar-boundary.js';
+import {monstersOf} from './monsters.js';
 import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
 import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionReach } from '../shared/config.js';
@@ -8,6 +9,17 @@ export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlaye
   const r = RULES.radius, map = mapOf(mapId, room.planets.values());
   if (!avatarFitsFloor(map,x,y,boundaryPlayer)) return false;
   if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
+  const footRadius=Math.min(26,Math.max(8,avatarFloorRadius(boundaryPlayer)*.4));
+  for(const monster of monstersOf(room).values()){
+    if(monster.hp<=0||monster.mapId!==mapId)continue;
+    const mx=monster.x,my=monster.y+monster.radius*.8;
+    const rx=monster.radius*.55+footRadius,ry=monster.radius*.2+footRadius;
+    const distance=(px,py)=>((px-mx)/rx)**2+((py-my)/ry)**2;
+    if(distance(x,y)>=1)continue;
+    // 추격 중 몬스터 발에 걸친 친구는 바깥으로 빠져나갈 수 있습니다.
+    if(!avoidPlayers&&boundaryPlayer?.mapId===mapId&&distance(boundaryPlayer.x,boundaryPlayer.y)<1&&distance(x,y)>distance(boundaryPlayer.x,boundaryPlayer.y))continue;
+    return false;
+  }
   if (!avoidPlayers) return true;
   return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
 }

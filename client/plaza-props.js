@@ -3,7 +3,7 @@ import {drawPaintedProp} from './painted-props.js';
 export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
-for(const name of ['market','bazaar','andromeda','black-hole']){
+for(const name of ['market','bazaar','andromeda','mission-board','black-hole']){
   const img=new Image();img.src='/assets/maps/plaza-'+name+'.png';art[name]=img;
 }
 const ready=name=>art[name].complete&&art[name].naturalWidth>0;
@@ -15,6 +15,10 @@ export function drawPlazaLandmark(ctx,o){
   const w=o.kind==='andromeda'?360:290,h=o.kind==='andromeda'?330:330;
   sprite(ctx,name,o.x,o.y+110,w,h);
   label(ctx,o.name,o.x,o.y+125,21);
+}
+export function drawMissionBoard(ctx,o){
+  sprite(ctx,'mission-board',o.x,o.y+100,250,250);
+  label(ctx,o.name,o.x,o.y+116,20);
 }
 export function drawBazaar(ctx,o){
   const zone=L.islands.find(z=>z.id==='market');

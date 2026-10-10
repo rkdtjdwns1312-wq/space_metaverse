@@ -20,7 +20,7 @@ import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
 import {avatarFloorRadius} from '/shared/avatar-boundary.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {inMarket} from '/shared/market.js';
-import {drawPlazaLandmark,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
+import {drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {floorRenderPoint} from '/shared/paradise-floor.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
@@ -35,7 +35,7 @@ import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
 import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-art.js';
-import {drawBossMonster,bossMonsterBounds} from './boss-monster-art.js';
+import {drawBossMonster,bossMonsterBounds,preloadBossArt} from './boss-monster-art.js';
 import {drawBabyStar} from './baby-star-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
 import {drawEnergyShop} from './energy-shop-art.js';
@@ -110,7 +110,8 @@ export function createWorld(canvas) {
     return {...previous,startsAt:time-(previous.durationMs-500)-(time-previous.vanishedAt)};
   }
   let sagittariusCasts=[],sagittariusEffects=[];
-  const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&d.shares.some(s=>s.playerId===selfId&&s.amount>0));
+  const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&
+    (d.publicAt<=Date.now()?d.remaining>0:d.shares.some(s=>s.playerId===selfId&&s.amount>0)));
   const damageNumbers=createDamageNumbers();
   let monsters=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
@@ -219,6 +220,8 @@ export function createWorld(canvas) {
         drawBlackHole(o,time);continue;
       } else if(o.kind==='andromeda'){
         drawAndromeda(o,time);continue;
+      } else if(o.kind==='mission-board'){
+        drawMissionBoard(ctx,o);continue;
       } else if(o.kind==='market'){
         drawBazaar(ctx,o);continue;
       } else if(o.kind==='pillar'){
@@ -279,12 +282,12 @@ export function createWorld(canvas) {
   // 모든 정적 맵과 부서 출구에 공통 원화를 적용합니다.
   function drawGate(o){
     drawPaintedGate(ctx,o);
-    ctx.font='600 15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
+    ctx.font='600 19.5px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
-    const labelX=o.x,labelY=gateVisualBox(o).y-30;
-    const width=Math.max(60,Math.min(265,2*Math.min(o.x,bounds.width-o.x)-12));
+    const labelX=o.x,labelY=gateVisualBox(o).y-34;
+    const width=Math.max(78,Math.min(345,2*Math.min(o.x,bounds.width-o.x)-12));
     const label=destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
-    ctx.strokeStyle='#fff9fc';ctx.lineWidth=4;ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
+    ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.
   function drawShop(o){drawPaintedStarShop(ctx,o);}
@@ -464,8 +467,8 @@ export function createWorld(canvas) {
     const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
     canvas.dataset.monsterRenderX=firstMonsterPoint?.x??'';
     canvas.dataset.monsterRenderY=firstMonsterPoint?.y??'';
-    for(const m of visibleMonsters){
-      const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)continue;
+    const drawMonsterLayer=m=>{
+      const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)return;
       const attack=monsterAttacks.get(m.id);
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
       const visualRadius=m.radius*monsterVisualScale(m.mapId,m.typeId);
@@ -475,7 +478,7 @@ export function createWorld(canvas) {
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
       const barScale=type.boss?1.75:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
-      const bossBounds=type.boss?bossMonsterBounds(body,type.id==='leoon'&&m.moving&&!activeAttack):null;
+      const bossBounds=type.boss?bossMonsterBounds(body,m.moving&&!activeAttack):null;
       const barWidth=type.boss?200:64,barY=type.boss?bossBounds.bottom+3:pos.y-visualRadius*barScale-18;
       const barHeight=type.boss?14:9;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,barHeight,4);ctx.fill();
@@ -497,7 +500,7 @@ export function createWorld(canvas) {
         ctx.fillText(type.name,pos.x,nameY);
       }else{ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x,nameY);ctx.fillText(type.name,pos.x,nameY);}
       ctx.restore();
-    }
+    };
     const visibleDrops=myEnergyDrops();canvas.dataset.energyDropCount=String(visibleDrops.length);
     for(const drop of visibleDrops){
       if(drop.kind==='recipe'||drop.kind==='item'){
@@ -511,7 +514,7 @@ export function createWorld(canvas) {
         ctx.font='13px "Jua","Malgun Gothic",sans-serif';ctx.strokeStyle='#463052';ctx.lineWidth=3;ctx.fillStyle='#fff3d9';
         const label=itemOf(drop.itemId)?.name||'아이템';ctx.strokeText(label,0,34);ctx.fillText(label,0,34);ctx.restore();continue;
       }
-      const amount=drop.shares.find(s=>s.playerId===selfId).amount;
+      const amount=drop.publicAt<=Date.now()?drop.remaining:drop.shares.find(s=>s.playerId===selfId)?.amount??0;
       const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
       const icon=loadedAvatarSprite('/assets/currencies/cosmic-energy.svg');
       ctx.save();ctx.shadowColor='#62cfff';ctx.shadowBlur=15;ctx.fillStyle='#8adfff35';
@@ -519,6 +522,20 @@ export function createWorld(canvas) {
       if(icon)ctx.drawImage(icon,drop.x-18,drop.y-22+bob,36,36);
       ctx.shadowBlur=0;ctx.textAlign='center';ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e7faff';ctx.strokeStyle='#294776';ctx.lineWidth=3;
       ctx.strokeText('우주에너지 '+amount,drop.x,drop.y+35);ctx.fillText('우주에너지 '+amount,drop.x,drop.y+35);ctx.restore();
+    }
+    const warnings=visibleMonsters.filter(m=>m.warning&&m.warning.endsAt>Date.now());
+    canvas.dataset.monsterWarningCount=String(warnings.length);
+    for(const m of warnings){
+      const mark=m.warning,remaining=Math.max(0,(mark.endsAt-Date.now())/1000);
+      ctx.save();ctx.translate(mark.x,mark.y);
+      ctx.fillStyle='#a495ff30';ctx.strokeStyle='#ffebad';ctx.shadowColor='#bfa9ff';ctx.shadowBlur=15;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(0,0,mark.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.shadowBlur=0;ctx.strokeStyle='#fff7d9';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,mark.radius*.22,0,Math.PI*2);ctx.stroke();
+      ctx.font='bold 24px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#fff6df';ctx.strokeStyle='#61529d';ctx.lineWidth=5;
+      ctx.strokeText(remaining.toFixed(1),0,0);ctx.fillText(remaining.toFixed(1),0,0);
+      ctx.restore();
     }
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
     canvas.dataset.waterAuraCount=String(waterAuras.length);
@@ -537,7 +554,11 @@ export function createWorld(canvas) {
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
-    }else for(const p of visiblePlayers.sort((a,b)=>a.y-b.y))drawAvatar(p,t);
+    }else{
+      const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
+        ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)}))];
+      for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
+    }
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
     for(const roll of lootRolls)if(roll.mapId===myMapId&&roll.expiresAt>Date.now())
       for(const result of roll.rolls||[]){
@@ -634,6 +655,7 @@ export function createWorld(canvas) {
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
+      if(monsters.some(m=>m.typeId==='spirit-king'&&m.mapId===myMapId))void preloadBossArt('spirit-king').catch(()=>{});
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
       const now=performance.now();for(const p of players)recordPosition(p,now);
@@ -674,8 +696,9 @@ export function createWorld(canvas) {
       if(data.mapId!==myMapId||!monsters.some(monster=>monster.id===data.monsterId))return;
       // 범위 공격이 여러 명에게 맞아도 같은 물보라 모션은 한 번만 시작합니다.
       const previous=monsterAttacks.get(data.monsterId),startedAt=performance.now();
-      if(!previous||startedAt-previous.startedAt>80)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs:600});
-      canvas.dataset.lastMonsterEffect=monsterType(monsters.find(m=>m.id===data.monsterId)?.typeId)?.shape||'';
+      const shape=monsterType(monsters.find(m=>m.id===data.monsterId)?.typeId)?.shape;
+      if(!previous||startedAt-previous.startedAt>80)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs:shape==='spirit-king'?800:600});
+      canvas.dataset.lastMonsterEffect=shape||'';
       hits.push({...data,kind:'monster',until:performance.now()+ATTACK_VISUAL.durationMs});if(hits.length>60)hits.shift();
       canvas.dataset.lastMonsterDamage=String(data.damage);
       canvas.dataset.lastMonsterTarget=String(data.targetId);
@@ -708,12 +731,12 @@ export function createWorld(canvas) {
       const me=players.find(p=>p.id===selfId);if(!me)return null;
       const drop=myEnergyDrops().filter(d=>Math.hypot(me.x-d.x,me.y-d.y)<=ENERGY_DROPS.pickupDistance)
         .sort((a,b)=>Math.hypot(me.x-a.x,me.y-a.y)-Math.hypot(me.x-b.x,me.y-b.y))[0];
-      if(drop)return {...drop,kind:'energy-drop',name:['recipe','item'].includes(drop.kind)?(itemOf(drop.itemId)?.name||'아이템')+' 줍기':'우주에너지 '+drop.shares.find(s=>s.playerId===selfId).amount+' 줍기'};
+      if(drop)return {...drop,kind:'energy-drop',name:['recipe','item'].includes(drop.kind)?(itemOf(drop.itemId)?.name||'아이템')+' 줍기':'우주에너지 '+(drop.publicAt<=Date.now()?drop.remaining:drop.shares.find(s=>s.playerId===selfId)?.amount)+' 줍기'};
       if(myMapId===PLAZA_ID){
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda')];
+        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance?config.interactionDistance(me,o):Math.hypot(me.x-o.x,me.y-o.y);

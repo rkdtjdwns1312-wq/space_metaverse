@@ -37,7 +37,7 @@ function routeLabel(ctx){
 }
 function paint(ctx,map){
   backdrop(ctx,map);
-  drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'rainbow',map.height);
+  drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
   ctx.save();ctx.clip(shape);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,map.width,map.height);
   if(ready('paving')){const pattern=ctx.createPattern(images.paving,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.globalAlpha=.88;ctx.fillStyle=pattern;ctx.fillRect(0,0,map.width,map.height);ctx.globalAlpha=1;}}
@@ -54,7 +54,7 @@ export function drawStreetGround(ctx,map){
   ctx.drawImage(canvas,0,0);
 }
 export function drawStreetMiniFloor(ctx,map){
-  backdrop(ctx,map);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'rainbow',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);
+  backdrop(ctx,map);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);
   ctx.fillStyle='#d7ddff55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.north.x,STREET_LAYOUT.north.y,STREET_LAYOUT.north.rx-35,STREET_LAYOUT.north.ry-30,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#ffe0ed55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.upper.x,STREET_LAYOUT.upper.y,STREET_LAYOUT.upper.rx-42,STREET_LAYOUT.upper.ry-34,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#c9eddf66';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.lower.x,STREET_LAYOUT.lower.y,STREET_LAYOUT.lower.rx-38,STREET_LAYOUT.lower.ry-30,0,0,Math.PI*2);ctx.fill();

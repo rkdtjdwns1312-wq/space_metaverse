@@ -49,18 +49,21 @@ test('저장된 별 찾기 기록은 손상·음수·10개 초과를 조용히 �
   assert.equal(validateStarRanking(rows).length,1);assert.deepEqual(validateStarRanking(undefined),[]);
   for(const value of [null,[{...rows[0],elapsedMs:-1}],Array(11).fill(rows[0])])assert.throws(()=>validateStarRanking(value));
 });
-test('실제 소켓은 오락기 근접을 확인하며 같은 교실의 랭킹만 반환한다',async t=>{
+test('별 테트리스 소켓은 오락기 근접과 교실별 랭킹 격리를 확인한다',async t=>{
   const key='star-test-private-teacher',game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen(),sockets=[];
   t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
   const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise(r=>s.once('connect',r));return s;};
   const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),a=await connect(),b=await connect();
-  assert.equal((await call(a,'stars:start')).ok,false);
+  assert.equal((await call(a,'tetris:start')).ok,false);
   const ra=await call(a,'room:create',{teacherKey:key,allowedNames:['1']}),rb=await call(b,'room:create',{teacherKey:key,allowedNames:['2']});
-  assert.equal((await call(a,'stars:start')).ok,false);
-  const room=game.store.rooms.get(ra.room.code),p=room.players.get(ra.selfId),machine=STREET.objects.find(o=>o.gameId==='stars');Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+60});
-  let state=await call(a,'stars:start');assert.equal(state.ok,true);
-  for(let i=0;i<10;i++)state=await call(a,'stars:click',{runId:state.runId,step:state.step,target:state.target,elapsedMs:1});
-  assert.equal(state.done,true);assert.equal((await call(a,'stars:ranking')).ranking.length,1);
+  assert.equal((await call(a,'tetris:start')).ok,false);
+  const room=game.store.rooms.get(ra.room.code),p=room.players.get(ra.selfId),machine=STREET.objects.find(o=>o.gameId==='tetris');Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+60});
+  const state=await call(a,'tetris:start');assert.equal(state.ok,true);
+  assert.equal(state.board.length,20);
+  assert.equal((await call(a,'tetris:finish',{runId:state.runId,lines:999})).ok,false);
+  assert.equal((await call(a,'tetris:ranking')).ranking.length,0);
+  room.tetrisRanking=[{id:'record',playerId:p.id,nickname:p.nickname,lines:4,at:Date.now()}];
+  assert.equal((await call(a,'tetris:ranking')).ranking.length,1);
   const other=game.store.rooms.get(rb.room.code).players.get(rb.selfId);Object.assign(other,{mapId:STREET_ID,x:machine.x,y:machine.y+60});
-  assert.equal((await call(b,'stars:ranking')).ranking.length,0);
+  assert.equal((await call(b,'tetris:ranking')).ranking.length,0);
 });

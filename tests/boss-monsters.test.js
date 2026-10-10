@@ -11,6 +11,7 @@ import {equip,buyEquipment} from '../server/equipment.js';
 import {equipmentBonus} from '../shared/equipment.js';
 import {monsterType} from '../shared/monsters.js';
 import {itemOf} from '../shared/config.js';
+import {isFree} from '../server/world.js';
 
 const owner=(id,mapId)=>({id,role:'student',nickname:id,connected:true,away:false,mapId,
   x:900,y:570,avatar:{level:4,constellationId:'taurus'},inventory:[],
@@ -67,6 +68,55 @@ test('보스 공격 간격은 2초이며 일반 LV3 몬스터보다 느리다',(
   assert.ok(hits.length>=1);
   assert.equal(boss.nextAttackAt,3000);
   assert.equal(moveMonsters(room,2000,()=>0).length,0);
+});
+
+test('초월 보스는 독립 능력치와 확정 보상, 탐사권 1~2장을 가진다',()=>{
+  for(const ticketCount of [1,2]){
+    const {room,player,boss}=roomFor('spirit-king');
+    assert.equal(boss.mapId,'star-paradise');assert.equal(boss.maxHp,10000);
+    assert.equal(monsterViews(room)[0].attackPower,30);
+    assert.equal(damageMonster(room,boss,player,10,1100).damage,10);
+    const result=damageMonster(room,boss,player,9990,1200,{
+      energyRoll:(min,max)=>{assert.deepEqual([min,max],[1400,1601]);return 1500;},
+      bossRoll:(min,max)=>min===1?ticketCount:min
+    });
+    assert.equal(result.defeated,true);
+    const drops=[...room.energyDrops.values()];
+    assert.equal(drops.find(drop=>!drop.kind).total,1500);
+    assert.equal(drops.filter(drop=>drop.itemId==='exploration-ticket').length,ticketCount);
+    assert.equal(drops.filter(drop=>drop.itemId==='gold-big-bang-card').length,1);
+    assert.equal(drops.filter(drop=>drop.itemId==='spirit-king-soul').length,1);
+    assert.ok(drops.every(drop=>drop.publicAt===31200&&drop.expiresAt===61200));
+  }
+});
+
+test('성령의 왕은 2초 경고 영역을 보여준 뒤 그 안에 남은 친구만 공격한다',()=>{
+  const {room,player,boss}=roomFor('spirit-king');
+  player.x=boss.x+boss.radius+20;player.y=boss.y;
+  boss.attackers.set(player.id,1);boss.targetId=player.id;boss.nextAttackAt=1000;
+  assert.equal(moveMonsters(room,1000,()=>0).length,0);
+  assert.deepEqual(monsterViews(room,1000)[0].warning.endsAt,3000);
+  assert.equal(moveMonsters(room,2999,()=>0).length,0);
+  player.x+=500;
+  const missed=moveMonsters(room,3000,()=>0);
+  assert.equal(missed.length,1,'공격 동작은 회피해도 재생된다');assert.equal(missed[0].attackOnly,true);
+  assert.equal(monsterViews(room,3000)[0].warning,undefined);
+  player.x=boss.x+boss.radius+20;
+  boss.nextAttackAt=6000;
+  assert.equal(moveMonsters(room,6000,()=>0).length,0);
+  const hits=moveMonsters(room,8000,()=>0);
+  assert.equal(hits.length,1);assert.ok(hits[0].damage>0);
+  assert.equal(boss.nextAttackAt,11000);
+});
+
+test('몬스터 발의 접지 영역만 이동을 막고, 발에 걸린 친구는 바깥으로 빠져나간다',()=>{
+  const {room,player,boss}=roomFor('spirit-king');room.planets=new Map();
+  const footY=boss.y+boss.radius*.8;
+  assert.equal(isFree(room,boss.x,footY,player.id,boss.mapId,true,player),false);
+  assert.equal(isFree(room,boss.x,boss.y-boss.radius*.3,player.id,boss.mapId,true,player),true);
+  player.x=boss.x;player.y=footY;
+  assert.equal(isFree(room,boss.x+5,footY,player.id,boss.mapId,false,player),true);
+  assert.equal(isFree(room,boss.x,footY,player.id,boss.mapId,false,player),false);
 });
 
 test('보스 장비 조합은 비공개 파일에서 읽어 별 파편·재료를 소모하고 장착된다',t=>{

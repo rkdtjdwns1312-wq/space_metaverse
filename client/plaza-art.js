@@ -14,7 +14,7 @@ for(const poly of PLAZA_POLYGONS){floorPath.moveTo(poly[0].x,poly[0].y);for(cons
 const edgePath=new Path2D();for(const [a,b] of PLAZA_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function ground(ctx){
-  drawFloatingIslands(ctx,[L.center,...L.islands],'silver',L.height);
+  drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
   if(ready(images.floor)){const pattern=ctx.createPattern(images.floor,'repeat');pattern.setTransform(new DOMMatrix().scale(.30));ctx.fillStyle=pattern;ctx.fillRect(0,0,L.width,L.height);}
@@ -56,4 +56,4 @@ export function drawExplorationFlask(ctx,o,time=0){
   ctx.restore();
 }
 export function drawDepartmentGuide(ctx){const z=DEPARTMENT_ZONE;ctx.save();const glow=ctx.createRadialGradient(z.x,z.y,Math.min(z.rx,z.ry)*.28,z.x,z.y,Math.max(z.rx,z.ry)*.9);glow.addColorStop(0,'#c9f5d019');glow.addColorStop(.7,'#b5efca33');glow.addColorStop(1,'#b5efca00');ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-95,z.ry-95,0,0,Math.PI*2);ctx.fill();ctx.font='38px "Jua",sans-serif';ctx.fillStyle='#4c765e';ctx.textAlign='center';ctx.fillText('부서행성은 이 공간에 만들어요',z.x,z.y-z.ry+95);ctx.restore();}
-export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);drawFloatingIslands(ctx,[L.center,...L.islands],'silver',L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c455';ctx.lineWidth=7;ctx.stroke(edgePath);}
+export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c455';ctx.lineWidth=7;ctx.stroke(edgePath);}

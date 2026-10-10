@@ -12,4 +12,5 @@
 .energy-shop-picture{width:86px;height:86px;object-fit:contain;grid-row:span 2;filter:drop-shadow(0 4px 4px #536e8740)}
 .energy-shop-details{min-width:0}.energy-shop-details strong{color:#4e5887}.energy-shop-details p{margin:5px 0;color:#7b7e98}.energy-shop-details small{display:block;color:#4c8c99;font-weight:700;line-height:1.35}
 .energy-shop-actions{grid-column:2;display:flex;align-items:center;justify-content:space-between;gap:7px;color:#487d99;font-weight:700}
+.energy-shop-craft-notice{white-space:pre-line;text-align:left;color:#b54458;font-size:12px;line-height:1.25;min-height:50px;display:flex;align-items:center}
 @media(max-width:580px){.energy-shop-list{grid-template-columns:1fr}.energy-shop-item{grid-template-columns:68px minmax(0,1fr)}.energy-shop-picture{width:68px;height:68px}}

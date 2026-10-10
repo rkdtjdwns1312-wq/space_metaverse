@@ -96,9 +96,9 @@ test('실제 소켓: 근접·학생 위조 거부·교실 격리·초기화 실�
   const run=game.store.rooms.get(created.room.code).memoryRuns.get(joined.selfId);
   for(const index of pairs(run))state={...state,...await call(student,'memory:flip',{runId:state.runId,step:state.step,index,remainingMs:999999})};
   assert.equal(state.won,true);assert.ok(state.remainingMs<60000);
-  for(const [gameId,field] of [['memory','memoryRanking'],['stars','starRanking'],['dodge','dodgeRanking']]){
+  for(const [gameId,field] of [['memory','memoryRanking'],['tetris','tetrisRanking'],['dodge','dodgeRanking']]){
     const {room}=place(created.room.code,created.selfId,gameId);place(created.room.code,joined.selfId,gameId);place(otherCreated.room.code,otherCreated.selfId,gameId);
-    if(gameId!=='memory')game.store.transact(()=>{room[field]=[{id:gameId,playerId:joined.selfId,nickname:'1',elapsedMs:1000,at:Date.now()}];});
+    if(gameId!=='memory')game.store.transact(()=>{room[field]=[{id:gameId,playerId:joined.selfId,nickname:'1',...(gameId==='tetris'?{lines:5}:{elapsedMs:1000}),at:Date.now()}];});
     assert.equal((await call(other,`${gameId}:ranking`)).ranking.length,0);
     assert.equal((await call(student,`${gameId}:ranking`)).canReset,false);
     assert.equal((await call(student,`${gameId}:ranking:reset`,{role:'teacher',playerId:created.selfId,teacherKey:key,game:'other'})).ok,false);

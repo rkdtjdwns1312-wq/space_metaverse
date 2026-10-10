@@ -75,7 +75,9 @@ function paintBackground(ctx, width, height) {
     const w = sky.naturalWidth * scale, h = sky.naturalHeight * scale;
     ctx.drawImage(sky, (width - w) / 2, (height - h) / 2, w, h);
   }
-  drawFloatingIslands(ctx,[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples],'moon',height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.center],'valley',height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[0]],'evolution',height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[1]],'growth',height);
   drawFloor(ctx);templeLabels(ctx);
 }
 
@@ -101,7 +103,9 @@ export function drawValleyGround(ctx, map, time = 0) {
 // 실제 공유 바닥 경로를 그대로 축소하며 장식 원이나 개별 다리 선을 덧그리지 않습니다.
 export function drawValleyMiniFloor(ctx) {
   ctx.save();ctx.fillStyle = '#3e436c';ctx.fillRect(0, 0, VALLEY_LAYOUT.width, VALLEY_LAYOUT.height);
-  drawFloatingIslands(ctx,[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples],'moon',VALLEY_LAYOUT.height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.center],'valley',VALLEY_LAYOUT.height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[0]],'evolution',VALLEY_LAYOUT.height);
+  drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[1]],'growth',VALLEY_LAYOUT.height);
   traceValleyFloor(ctx);ctx.fillStyle = floorTint(ctx, true);ctx.fill();
   ctx.strokeStyle = '#aaa5c455';ctx.lineWidth = 7;ctx.lineJoin = 'round';ctx.stroke();ctx.restore();
 }

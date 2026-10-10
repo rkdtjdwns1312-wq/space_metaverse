@@ -1,6 +1,6 @@
 import {createResetConfirmation} from './reset-confirm.js';
 
-// 세 게임이 같은 하단 버튼 순서와 게임 안 확인창을 사용합니다.
+// 랭킹을 쓰는 오락기가 같은 하단 버튼과 게임 안 확인창을 사용합니다.
 export function createArcadeRanking({game,prefix,root,footer,request,subscribe,toast=()=>{}}){
   const panel=root.querySelector(`#${prefix}-ranking-panel`),list=root.querySelector(`#${prefix}-ranking`);
   const button=document.createElement('button');button.type='button';button.id=`${prefix}-ranking-toggle`;button.textContent='랭킹 보기';button.setAttribute('aria-expanded','false');
@@ -14,7 +14,9 @@ export function createArcadeRanking({game,prefix,root,footer,request,subscribe,t
     if(typeof canReset==='boolean')reset.hidden=!canReset;
     list.replaceChildren(...ranking.map(r=>{
       const li=document.createElement('li');
-      li.textContent=`${r.rank}위 · ${r.nickname} · ${game==='memory'?'남은 시간 ':''}${((game==='memory'?r.remainingMs:r.elapsedMs)/1000).toFixed(2)}초`;return li;
+      li.textContent=game==='signal'?`${r.rank}위 · ${r.nickname} · ${r.stage}단계 완성`
+        :game==='tetris'?`${r.rank}위 · ${r.nickname} · ${r.lines}줄 지움`
+        :`${r.rank}위 · ${r.nickname} · ${game==='memory'?'남은 시간 ':''}${((game==='memory'?r.remainingMs:r.elapsedMs)/1000).toFixed(2)}초`;return li;
     }));
     if(!ranking.length){const li=document.createElement('li');li.textContent=game==='stars'?'아직 기록이 없어요. 첫 기록에 도전해요!':'아직 이번 주 기록이 없어요.';list.append(li);}
   }

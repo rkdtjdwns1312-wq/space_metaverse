@@ -19,7 +19,7 @@ export function createTutorialUI({request,stop,toast}){
     if(busy)return;
     if(index<STEPS.length-1){index++;render();return;}
     busy=true;$('next').disabled=true;
-    try{const result=await request('tutorial:complete',{});dialog.close();toast(result.rewarded?'첫 여행 안내 완료! 별 파편 1개를 받았어요.':'첫 여행 안내를 다시 읽었어요. 즐거운 탐험 되세요!');}
+    try{await request('tutorial:complete',{});dialog.close();toast('첫 여행 안내를 마쳤어요. 소통 → 미션 보기에서 완료를 눌러 보상을 받아요.');}
     catch(error){$('error').textContent=error.message;}
     finally{busy=false;$('next').disabled=false;}
   };
@@ -31,5 +31,5 @@ export function createTutorialUI({request,stop,toast}){
     if(offer.open)offer.addEventListener('close',()=>{if(document.getElementById('lobby').hidden)open();},{once:true});
     else open();
   }
-  return {open,startIfNeeded,reset(){if(dialog.open)dialog.close();}};
+  return {steps:STEPS.map(step=>step.title),open,startIfNeeded,reset(){if(dialog.open)dialog.close();}};
 }

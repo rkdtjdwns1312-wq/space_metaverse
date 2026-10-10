@@ -160,6 +160,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .crew-list li .dept{font-size:10px;background:#efe9fc;color:#6d4fa0;border-radius:8px;padding:1px 6px;margin-left:6px;font-weight:700}
 .crew-list li .shards-badge{font-size:11px;color:#a06b21;font-weight:700}
 .crew-list li .effects{font-size:13px;margin-left:2px}
+.crew-sort-label{display:inline-block;margin:10px 8px 0 0;font-weight:700;color:#665483}#crew-sort{min-height:40px;padding:6px 10px;border:2px solid #c9b4e7;border-radius:10px;background:#fff;color:#4b3d68;font-size:16px}.crew-list{max-height:min(48vh,400px);overflow-y:auto}
 .dialog-count{font-size:13px;color:#827694;font-weight:600}
 .proposals ul{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:10px}.proposals li{font-size:13px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.proposals li strong{width:100%;color:#4a4361}.proposals li span{color:#847ca0;font-size:12px}.proposals li small{width:100%;color:#8a879c}
 #teacher-dialog h3,#shop-dialog h3,#trade-dialog h3{font-size:14px;margin:0 0 8px;color:#5d4795}
@@ -179,7 +180,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#37304beF;color:#fff;padding:14px 22px;border-radius:15px;max-width:90%;font-size:14px;z-index:10}
 .chat{min-height:180px}#chat-teacher-controls{display:flex;gap:8px;margin:6px 0 10px}#chat-log{list-style:none;margin:10px 0;padding:0;max-height:220px;overflow-y:auto;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:8px}#chat-log li{background:#f7f6fd;border-radius:12px;padding:7px 10px;font-size:13px;line-height:1.5;display:flex;flex-wrap:wrap;column-gap:8px;align-items:baseline}#chat-log li.mine{background:#efe9fc}#chat-log li.system{background:transparent;color:#8a879c;font-style:italic;padding-left:2px}#chat-log li.private{background:#f1edfc}#chat-log .who{font-weight:700;color:#5d4795;font-size:12px}#chat-log li.system .who{color:#8a879c;font-weight:600}#chat-log .text{flex:1 1 100%;color:#37334d}#chat-log li.system .text{color:#8a879c}#chat-log .time{font-size:10px;color:#a29cb8}#chat-log .badge{font-size:10px;background:#fde8d2;color:#a06b21;border-radius:8px;padding:1px 6px}#chat-log .private-badge{background:#e5ddf7;color:#5d4795}#chat-empty{margin:10px 0;font-size:13px}#chat-form{display:flex;gap:8px;margin-top:6px}#chat-input{flex:1;min-width:0;height:40px}#chat-input:disabled{background:#f1f0f7;color:#a29cb8}#chat-send{flex-shrink:0}
 dialog{border:1px solid var(--line);border-radius:22px;padding:28px;max-width:min(450px,90vw);color:#333452}dialog::backdrop{background:#29243f66}.dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:24px}
-#crew-dialog{max-width:min(480px,92vw)}#teacher-dialog{max-width:min(520px,92vw)}#shop-dialog{max-width:min(640px,94vw)}#use-dialog{max-width:min(420px,92vw)}#trade-dialog{max-width:min(520px,92vw)}
+#crew-dialog{max-width:min(480px,92vw)}#teacher-dialog{max-width:min(520px,92vw)}#shop-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 26px));max-width:min(760px,calc(100vw - 26px));max-height:86vh;background:linear-gradient(160deg,#f5fbff,#f4efff);border:2px solid #a9cbe2}#use-dialog{max-width:min(420px,92vw)}#trade-dialog{max-width:min(520px,92vw)}
 .shop-level-tabs{display:flex;gap:6px;margin:0 0 12px;overflow-x:auto}.shop-level-tabs button{border:1px solid var(--line);border-radius:10px;background:#f7f4fc;color:#67588a;padding:7px 12px;font-weight:700;white-space:nowrap}.shop-level-tabs button.selected,.shop-level-tabs button[aria-selected="true"]{background:#6f55a5;color:#fff;border-color:#6f55a5}.shop-level-tabs button:focus-visible{outline:3px solid #f0b35b;outline-offset:2px}.shop-level-badge{display:inline-block;margin-left:6px;font-size:10px;line-height:1.4;border-radius:6px;padding:1px 5px;background:#eee8fa;color:#6f55a5;vertical-align:middle}
 .teacher-footer{flex-wrap:nowrap}.teacher-footer button{flex:1 1 0;min-width:0}
 #credentials-panel textarea{width:100%;box-sizing:border-box;margin-bottom:8px}
@@ -231,6 +232,10 @@ body.joined:not(.placing) .map-caption{display:none}
 #tasks-dialog .task-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}
 #tasks-dialog .task-list li{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e7dff5;border-radius:13px;background:#faf7ff;overflow-wrap:anywhere}
 #tasks-dialog .task-list li span{flex:1;min-width:0}#tasks-dialog .task-list li button{flex:0 0 auto}
+#tutorial-mission{padding:14px;border:1px solid #ded0ef;border-radius:14px;background:#faf7ff}#tutorial-mission h3{margin:0 0 6px}#tutorial-mission p{margin:0 0 8px}#tutorial-mission ol{margin:8px 0 12px;padding-left:24px;line-height:1.7}#tutorial-mission li{padding-left:2px}
+.tutorial-mission-actions{display:flex;gap:8px;flex-wrap:wrap}.tutorial-mission-actions>button{min-height:44px}
+.mission-list{display:grid;gap:10px;max-height:45vh;overflow-y:auto}.mission-card{padding:13px;border:1px solid #d9c9ec;border-radius:14px;background:#fbf8ff;overflow-wrap:anywhere}.mission-card h4{margin:0 0 6px;font-size:18px;color:#5e4884}.mission-card p{margin:5px 0;line-height:1.5}.mission-card .mission-reward{font-weight:800;color:#95632e}.mission-card .mission-status{color:#6d6082}.mission-card>button{margin-top:8px;min-height:42px}.mission-students{display:grid;gap:7px;margin-top:10px}.mission-students>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.mission-students button{min-height:34px}
+#mission-board-dialog{width:min(570px,calc(100vw - 24px))}#mission-create,#mission-auto-create{display:grid;gap:7px;margin:12px 0 20px;padding:14px;border:1px solid #d9c9ec;border-radius:14px;background:#faf7ff}#mission-create[hidden],#mission-auto-create[hidden]{display:none}#mission-create label,#mission-auto-create label{font-weight:700}#mission-create input,#mission-create textarea,#mission-create select,#mission-auto-create input,#mission-auto-create select{width:100%;font-size:16px;padding:9px;border:2px solid #cfbce9;border-radius:10px;background:white;color:#473967}#mission-create-button,#mission-auto-create-button{margin-top:7px;min-height:44px}#mission-board-list{max-height:40vh}#mission-board-error{color:#a33e5b}
 #assignment-dialog{width:min(620px,calc(100vw - 24px));box-sizing:border-box}
 .assignment-weeks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.assignment-weeks button.selected{background:#fff3c5;color:#62498d;border-color:#b99ce8}
 .assignment-items{list-style:none;padding:0;margin:0;display:grid;gap:8px}.assignment-items button{width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere}
@@ -468,7 +473,7 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 
 .mailbox-list{list-style:none;padding:0;max-height:55vh;overflow:auto}.mailbox-list li{padding:14px;margin:10px 0;border:2px solid #d8c7f2;border-radius:16px;background:#faf7ff}.mailbox-list li>div{display:flex;gap:8px;margin-top:10px}#planet-warning-status section{padding:10px 14px;border:1px solid #dfd0f6;border-radius:12px;margin-top:8px}#planet-warning-status h4{margin:0;color:#7651ac}#planet-warning-status p{margin:6px 0 0;overflow-wrap:anywhere}
 
-.social-friends-row{display:flex;align-items:center;justify-content:space-between;gap:16px}.social-friends-row>div{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.social-friends-row button{flex-shrink:0}.social-chat-row{display:flex;justify-content:flex-start;margin-top:16px}
+.social-friends-count{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 14px;color:#605477}.social-action-list{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}.social-action-list>button{width:100%;min-height:50px;justify-content:center;font-size:17px}
 
 /* 교실 메뉴: 운영 버튼은 한 줄에 하나씩, 교실 코드 영역은 별도 묶음. */
 body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#menu-dialog .topline-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}#menu-dialog .topline-actions>button{width:100%;justify-content:center}#menu-dialog #room-badge{flex-wrap:wrap;justify-content:center;max-width:100%;margin-bottom:8px}#menu-dialog #my-password{width:100%;margin-bottom:12px}
@@ -536,6 +541,11 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 #shop-buy-list .info strong{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
 #shop-buy-list .info .bag-flavor{font-size:13px;line-height:1.5;color:#817193;word-break:keep-all;overflow-wrap:anywhere}
 #shop-buy-list .item-actions{grid-column:1/-1;flex-wrap:wrap}
+#shop-buy-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:55vh;overflow:auto;padding:3px}
+#shop-buy-list .item{min-width:0;min-height:145px;border:0;border-radius:18px;background:#ffffffb8;box-shadow:0 3px 12px #6884a71a}
+#shop-buy-list .item-actions{margin-left:0;justify-content:flex-end;gap:7px}
+#shop-buy-list .item-actions .price{margin-right:auto;white-space:normal}
+@media(max-width:580px){#shop-buy-list{grid-template-columns:1fr}}
 @media(max-width:380px){#shop-buy-list .item{gap:10px}#shop-buy-list .info strong{font-size:14px}#shop-buy-list .info .bag-flavor{font-size:12px}}
 .holding-dialog{max-width:520px;width:calc(100% - 28px)}
 .holding-dialog p{line-height:1.7;overflow-wrap:anywhere}
