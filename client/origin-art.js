@@ -1,5 +1,6 @@
 import {originFloor} from '/shared/origin-floor.js';
 import {drawStoneRim,rimEdges} from './stone-rim.js';
+import {drawFloatingIslands} from './floating-island.js';
 
 const image=typeof Image==='undefined'?null:new Image();
 let revision=0;
@@ -21,6 +22,7 @@ export function drawOriginArt(ctx,map){
     }
   }
   const path=pathFor(f);
+  drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],'moon',map.height);
   ctx.save();ctx.translate(0,Math.max(3,map.height*.008));ctx.fillStyle='#10172c99';ctx.shadowColor='#03061199';ctx.shadowBlur=24;ctx.fill(path);ctx.restore();
   ctx.save();ctx.clip(path);ctx.fillStyle='#c9c7de';ctx.fillRect(0,0,map.width,map.height);
   if(pavingImage?.complete&&pavingImage.naturalWidth){const pattern=ctx.createPattern(pavingImage,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.fillStyle=pattern;ctx.globalAlpha=.92;ctx.fillRect(0,0,map.width,map.height);}}
@@ -33,6 +35,7 @@ if(pavingImage){pavingImage.onload=()=>{revision++;for(const fn of listeners)fn(
 
 export function drawOriginMiniFloor(ctx,map){
   const f=originFloor(map);if(!f)return;
+  drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],'moon',map.height);
   const path=pathFor(f);ctx.fillStyle='#484968';ctx.fill(path);ctx.fillStyle='#d2cfe4';ctx.save();ctx.clip(path);ctx.fillRect(0,0,map.width,map.height);ctx.restore();
-  ctx.strokeStyle='#8883a6';ctx.lineWidth=Math.max(12,map.width*.012);ctx.lineJoin='round';ctx.stroke(path);
+  ctx.strokeStyle='#8883a655';ctx.lineWidth=7;ctx.lineJoin='round';ctx.stroke(path);
 }

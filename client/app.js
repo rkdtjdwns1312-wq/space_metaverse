@@ -36,6 +36,7 @@ import {createObjectUpdates} from './object-updates.js';
 import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
+import {createLearningStation} from './learning-station.js';
 import { createDepartmentWorkUI } from './department-work-ui.js';
 import {createPlanetRulesUI} from './planet-rules-ui.js';
 import {createEvolutionUI} from './evolution-ui.js';
@@ -47,6 +48,7 @@ import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
 import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
+const learningStation=createLearningStation();
 const objectUpdates=createObjectUpdates();
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
@@ -286,7 +288,8 @@ function chooseClassMode(value){
 $('choose-open-class').onclick=()=>chooseClassMode('open');
 $('choose-new-class').onclick=()=>chooseClassMode('new');
 $('teacher-key').addEventListener('input',()=>{
-  const assignedCode=$('teacher-key').value.trim().startsWith('T-');
+  const key=$('teacher-key').value.trim();
+  const assignedCode=key.startsWith('T-')||/^(?=.*[a-z])(?=.*[A-Z])(?=.*[2-9])(?=.*[!@])[A-Za-z2-9!@]{8}$/.test(key);
   $('choose-new-class').disabled=assignedCode;
   if(assignedCode&&classMode==='new')chooseClassMode('open');
 });
@@ -920,6 +923,7 @@ function doInteract(){
   else if(n.kind==='interior-decor-machine')interiorDecor.open(planetIdOfMap(world.currentMapId()),n.id);
   else if(n.kind==='andromeda')assignmentUI.open();
   else if(n.kind==='arcade'){stop();request('arcade:open',{objectId:n.id}).then(r=>{if(selfId&&!document.querySelector('dialog:modal'))arcade.open(r.gameId);}).catch(e=>toast(e.message));}
+  else if(n.kind==='math-station'||n.kind==='english-station'){stop();learningStation.open(n.kind);}
 }
 $('interact-prompt').onclick=doInteract;
 $('touch-interact').onclick=doInteract;

@@ -1,8 +1,12 @@
 import {STREET_LAYOUT,STREET_POLYGONS,STREET_EDGES} from '/shared/street-layout.js';
 import {drawStoneRim} from './stone-rim.js';
+import {drawFloatingIslands} from './floating-island.js';
 
 export const STREET_BACKDROP_SRC='/assets/maps/starlight-street.png';
-export const STREET_ROUTE_LABEL=Object.freeze({text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
+export const STREET_ROUTE_LABELS=Object.freeze([
+  {text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:750},
+  {text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1580}
+]);
 const images={};let revision=0;
 const listeners=new Set(),tiles=new Map();
 for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png'})){
@@ -27,11 +31,13 @@ function backdrop(ctx,map){
   }
 }
 function routeLabel(ctx){
-  const label=STREET_ROUTE_LABEL;
-  ctx.save();ctx.font=label.font;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=6;ctx.strokeStyle=label.outline;ctx.strokeText(label.text,label.x,label.y);ctx.fillStyle=label.color;ctx.fillText(label.text,label.x,label.y);ctx.restore();
+  ctx.save();ctx.font='26px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=6;ctx.strokeStyle='#fffaf4';ctx.fillStyle='#7650a8';
+  for(const label of STREET_ROUTE_LABELS){ctx.strokeText(label.text,label.x,label.y);ctx.fillText(label.text,label.x,label.y);}
+  ctx.restore();
 }
 function paint(ctx,map){
   backdrop(ctx,map);
+  drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'rainbow',map.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
   ctx.save();ctx.clip(shape);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,map.width,map.height);
   if(ready('paving')){const pattern=ctx.createPattern(images.paving,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.globalAlpha=.88;ctx.fillStyle=pattern;ctx.fillRect(0,0,map.width,map.height);ctx.globalAlpha=1;}}
@@ -48,8 +54,9 @@ export function drawStreetGround(ctx,map){
   ctx.drawImage(canvas,0,0);
 }
 export function drawStreetMiniFloor(ctx,map){
-  backdrop(ctx,map);ctx.fillStyle='#eee8f4';ctx.fill(shape);
+  backdrop(ctx,map);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'rainbow',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);
+  ctx.fillStyle='#d7ddff55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.north.x,STREET_LAYOUT.north.y,STREET_LAYOUT.north.rx-35,STREET_LAYOUT.north.ry-30,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#ffe0ed55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.upper.x,STREET_LAYOUT.upper.y,STREET_LAYOUT.upper.rx-42,STREET_LAYOUT.upper.ry-34,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#c9eddf66';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.lower.x,STREET_LAYOUT.lower.y,STREET_LAYOUT.lower.rx-38,STREET_LAYOUT.lower.ry-30,0,0,Math.PI*2);ctx.fill();
-  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#a39ab2';ctx.lineWidth=18;ctx.stroke(edgePath);ctx.strokeStyle='#fff7e9';ctx.lineWidth=5;ctx.stroke(edgePath);ctx.restore();
+  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#a39ab255';ctx.lineWidth=7;ctx.stroke(edgePath);ctx.restore();
 }

@@ -1,5 +1,6 @@
 import {PLAZA_LAYOUT as L,PLAZA_POLYGONS,PLAZA_EDGES,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawStoneRim} from './stone-rim.js';
+import {drawFloatingIslands} from './floating-island.js';
 // 원화는 로드 후 재사용합니다. 3720px 전체 배경 캔버스를 만들지 않고 화면에 보이는
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
 const images={},tiles=new Map(),SIZE=768,LIMIT=16;
@@ -13,6 +14,7 @@ for(const poly of PLAZA_POLYGONS){floorPath.moveTo(poly[0].x,poly[0].y);for(cons
 const edgePath=new Path2D();for(const [a,b] of PLAZA_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function ground(ctx){
+  drawFloatingIslands(ctx,[L.center,...L.islands],'silver',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
   if(ready(images.floor)){const pattern=ctx.createPattern(images.floor,'repeat');pattern.setTransform(new DOMMatrix().scale(.30));ctx.fillStyle=pattern;ctx.fillRect(0,0,L.width,L.height);}
@@ -53,5 +55,5 @@ export function drawExplorationFlask(ctx,o,time=0){
   ctx.drawImage(images.flask,o.x-58,o.y-163,116,174);
   ctx.restore();
 }
-export function drawDepartmentGuide(ctx){const z=DEPARTMENT_ZONE;ctx.save();ctx.fillStyle='#b5efca33';ctx.strokeStyle='#78a88a';ctx.lineWidth=10;ctx.setLineDash([22,15]);ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-120,z.ry-120,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.font='38px "Jua",sans-serif';ctx.fillStyle='#4c765e';ctx.textAlign='center';ctx.fillText('부서행성은 이 공간에 만들어요',z.x,z.y-z.ry+95);ctx.restore();}
-export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c4';ctx.lineWidth=24;ctx.stroke(edgePath);}
+export function drawDepartmentGuide(ctx){const z=DEPARTMENT_ZONE;ctx.save();const glow=ctx.createRadialGradient(z.x,z.y,Math.min(z.rx,z.ry)*.28,z.x,z.y,Math.max(z.rx,z.ry)*.9);glow.addColorStop(0,'#c9f5d019');glow.addColorStop(.7,'#b5efca33');glow.addColorStop(1,'#b5efca00');ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-95,z.ry-95,0,0,Math.PI*2);ctx.fill();ctx.font='38px "Jua",sans-serif';ctx.fillStyle='#4c765e';ctx.textAlign='center';ctx.fillText('부서행성은 이 공간에 만들어요',z.x,z.y-z.ry+95);ctx.restore();}
+export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);drawFloatingIslands(ctx,[L.center,...L.islands],'silver',L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c455';ctx.lineWidth=7;ctx.stroke(edgePath);}

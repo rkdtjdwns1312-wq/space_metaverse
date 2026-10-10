@@ -5,10 +5,18 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
+import {matchesTeacherCode,teacherCodeDigest} from '../server/teacher-access.js';
 
 const master='owner-test-key-for-teacher-scope';
 const adminPassword='owner-test-password-separate';
 const call=(socket,event,data={})=>socket.timeout(5000).emitWithAck(event,data);
+
+test('새 코드는 8자리이고 기존 긴 코드는 재발급 전까지 계속 유효하다',()=>{
+  const legacy='T-abcdefghijklmnopqrst';
+  const access={digest:teacherCodeDigest(master,legacy)};
+  assert.equal(matchesTeacherCode(master,legacy,access),true);
+  assert.equal(matchesTeacherCode(master,legacy.slice(0,-1)+'x',access),false);
+});
 
 test('owner issues per-room teacher codes, isolates classrooms, and rotation revokes an active teacher',async t=>{
   const dir=await mkdtemp(join(tmpdir(),'teacher-access-'));
@@ -23,7 +31,8 @@ test('owner issues per-room teacher codes, isolates classrooms, and rotation rev
   assert.equal((await call(stranger,'room:create',{teacherKey:master,title:'빈교실위조',allowedNames:[],allowEmpty:true})).ok,false);
   assert.ok((await call(owner,'admin:login',{key:adminPassword})).ok);
   const a=await call(owner,'admin:create',{title:'별빛반',teacherName:'별빛 선생님'});
-  assert.ok(a.ok,a.error);assert.match(a.teacherCode,/^T-[A-Za-z0-9_-]{20}$/);
+  assert.ok(a.ok,a.error);
+  assert.match(a.teacherCode,/^(?=.*[a-z])(?=.*[A-Z])(?=.*[2-9])(?=.*[!@])[A-Za-z2-9!@]{8}$/);
   assert.equal(game.store.records.get(a.code).allowedNames.length,0);
   const b=await call(owner,'admin:create',{title:'달빛반',teacherName:'달빛 선생님'});
   assert.ok(b.ok,b.error);assert.notEqual(a.code,b.code);

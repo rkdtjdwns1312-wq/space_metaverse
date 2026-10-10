@@ -15,6 +15,7 @@ try{
   for(const width of [1440,390]){
     const page=await browser.newPage({viewport:{width,height:900}});
     await page.goto(base+'/admin.html');
+    assert.equal(await page.locator('#login-panel .hint').count(),0,'관리자 입장 단추 아래 설명문구는 없어야 해요.');
     await page.locator('#admin-key').fill('admin-browser-wrong-password');
     await page.locator('#admin-login button').click();
     await page.locator('#admin-message').filter({hasText:/비밀번호|관리자|올바르/}).waitFor();
@@ -27,7 +28,18 @@ try{
     await page.locator('#issued-panel').waitFor();
     assert.equal(await page.locator('.class-row').count(),1);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'관리자 화면 가로 넘침: '+width);
-    await page.locator('#issued-code').evaluate(element=>element.textContent='T-••••••••••••••••••••');
+    const teacherCode=await page.locator('#issued-code').textContent();
+    assert.match(teacherCode,/^(?=.*[a-z])(?=.*[A-Z])(?=.*[2-9])(?=.*[!@])[A-Za-z2-9!@]{8}$/);
+    const teacherLogin=await browser.newPage({viewport:{width,height:900}});
+    await teacherLogin.goto(base+'/');
+    await teacherLogin.locator('#teacher-tab').click();
+    await teacherLogin.locator('#teacher-key').fill(teacherCode);
+    assert.equal(await teacherLogin.locator('#choose-new-class').isDisabled(),true,'발급된 8자리 코드는 새 교실 생성 단추를 잠가야 해요.');
+    await teacherLogin.locator('#open-code').fill((await page.locator('.class-row .code').textContent()).trim());
+    await teacherLogin.locator('#teacher-form .submit').click();
+    await teacherLogin.locator('#lobby').waitFor({state:'hidden'});
+    await teacherLogin.close();
+    await page.locator('#issued-code').evaluate(element=>element.textContent='••••••••');
     await page.screenshot({path:`.local/admin-${width}.png`,fullPage:true});
     await page.locator('.class-row .danger').click();
     await page.evaluate(()=>socket.disconnect());

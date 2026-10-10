@@ -17,6 +17,7 @@ export const bridgeRoutes=[
   ...V.temples.map(z=>({map:STATIC_MAPS['milky-valley'],a:V.center,b:z,end:.78})),
   {map:STATIC_MAPS['milky-valley'],a:V.center,b:V.gate,end:.76},
   {map:STREET,a:S.upper,b:S.lower,end:.78},
+  {map:STREET,a:S.upper,b:S.north,end:.78},
   {map:STREET,a:S.upper,b:S.westGate,end:.91},
 ];
 for(const map of Object.values(STATIC_MAPS)){
@@ -51,5 +52,6 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   }
   const p={...avatar,mapId:MAP.id},room={players:new Map([[p.id,p]]),planets:new Map()};
   assert.equal(isFree(room,3100,P.center.y+P.bridgeWidth/2+10,p.id,MAP.id,false),false,'광장 동쪽 다리 바깥');
-  assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,1175,p),false,'놀이터 다리 바깥');
+  assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,1695,p),false,'놀이터 다리 바깥');
+  assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,710,p),false,'발전소 다리 바깥');
 });

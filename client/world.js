@@ -56,6 +56,8 @@ import {TEACHER_AVATAR} from '/shared/teacher-avatar.js';
 import {ENERGY_DROPS} from '/shared/energy-drops.js';
 import {avatarSizeOf} from '/shared/avatar-size.js';
 const TEACHER_SPRITE=TEACHER_AVATAR.sprite;
+const ASTEROID_SPRITE='/assets/avatars/little-asteroid.png';
+const ASTEROID_CROP=Object.freeze({x:310,y:347,width:633,height:613});
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const avatarSprites=new Map();
 const portraitPlayers=new WeakMap();
@@ -303,6 +305,7 @@ export function createWorld(canvas) {
       if(o.kind==='shop'){drawShop(o);continue;}
       if(o.kind==='energy-shop'){drawEnergyShop(ctx,o);continue;}
       if(o.kind==='crafting'){drawCraftingMachine(ctx,o);continue;}
+      if(o.kind==='math-station'||o.kind==='english-station'){drawPaintedProp(ctx,o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
       if(o.kind==='arcade'){
         if(drawPaintedProp(ctx,o))continue;
@@ -394,12 +397,16 @@ export function createWorld(canvas) {
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
     }else{
+    const sprite=loadedAvatarSprite(ASTEROID_SPRITE);
+    if(sprite){ctx.save();ctx.scale(p.facingX===-1?-1:1,1);ctx.drawImage(sprite,ASTEROID_CROP.x,ASTEROID_CROP.y,ASTEROID_CROP.width,ASTEROID_CROP.height,-size/2,-size/2,size,size);ctx.restore();}
+    else{
     ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=16+[1,0,2,-1,1,0,1,-1,0][i];
       i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
     ctx.closePath();ctx.fillStyle='#c9c1e6';ctx.fill();ctx.strokeStyle='#aaa0ce';ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle='#afa4d0';ctx.beginPath();ctx.arc(-6,-7,4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(9,8,3,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#524969';ctx.beginPath();ctx.arc(-4,1,1.6,0,Math.PI*2);ctx.arc(4,1,1.6,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#66577e';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,5,3,.15,Math.PI-.15);ctx.stroke();
+    }
     }
     if(effects.some(e=>e.style==='sparkle')){
       for(let i=0;i<3;i++){
@@ -717,7 +724,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=currentMap().objects.filter(o=>['gate','shop','energy-shop','arcade','crafting','evolution','growth','black-star'].includes(o.kind));
+        const candidates=currentMap().objects.filter(o=>['gate','shop','energy-shop','arcade','crafting','math-station','english-station','evolution','growth','black-star'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);
@@ -795,12 +802,16 @@ export function renderPortrait(canvas,player,effects){
       ctx.strokeStyle='#ffffffa0';ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='38px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,2);ctx.textBaseline='alphabetic';}
   }else{
+  const sprite=loadedAvatarSprite(ASTEROID_SPRITE,()=>{if(portraitPlayers.get(canvas)===player)renderPortrait(canvas,player,effects);});
+  if(sprite)ctx.drawImage(sprite,ASTEROID_CROP.x,ASTEROID_CROP.y,ASTEROID_CROP.width,ASTEROID_CROP.height,-48,-48,96,96);
+  else{
   ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=34+[2,0,4,-2,2,0,2,-2,0][i];
     i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
   ctx.closePath();ctx.fillStyle='#c9c1e6';ctx.fill();ctx.strokeStyle='#aaa0ce';ctx.lineWidth=3;ctx.stroke();
   ctx.fillStyle='#afa4d0';ctx.beginPath();ctx.arc(-13,-15,8,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(19,17,6,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#524969';ctx.beginPath();ctx.arc(-8,2,3.2,0,Math.PI*2);ctx.arc(8,2,3.2,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#66577e';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(0,10,6,.15,Math.PI-.15);ctx.stroke();
+  }
   }
   if(list.some(e=>e.style==='sparkle')){
     for(let i=0;i<3;i++){

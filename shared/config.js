@@ -59,22 +59,25 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     MARKET
   ] });
 export const PLAZA_ID = MAP.id;
-// 두 번째 맵 '오색별빛 쉼터': 위쪽 상점 마당과 아래쪽 놀이 마당을 잇는 공간입니다.
+// 두 번째 맵 '오색별빛 쉼터': 북쪽 발전소와 상점·놀이 마당을 잇는 공간입니다.
 export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 쉼터', theme:'starlight-street', width: STREET_LAYOUT.width, height: STREET_LAYOUT.height, spawn: STREET_LAYOUT.spawn,
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
-    { id: 'shop', name: '별 상점', x: 580, y: 350, radius: 72, kind: 'shop', color: '#ffe59b' },
-    { id: 'energy-shop', name: '우주에너지 상점', x: 1180, y: 367, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
+    { id: 'shop', name: '별 상점', x: 580, y: 870, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'energy-shop', name: '우주에너지 상점', x: 1180, y: 887, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
+    {id:'math-station',name:'별 수학 발전소',x:545,y:400,radius:86,kind:'math-station'},
+    {id:'english-station',name:'별 영어 발전소',x:1255,y:400,radius:86,kind:'english-station'},
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
       ['path','별길 잇기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
-    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:1600,radius:32,kind:'arcade'})),
-    {id:'crafting-machine',name:'별빛 조합기',x:1430,y:650,radius:62,kind:'crafting',color:'#cdb8ef'},
-    {id:'playground-sign',name:'놀이터가는길',x:1100,y:1060,radius:24,kind:'street-sign',passable:true},
-    { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 650, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
-    { id: 'lamp-right', name: '별빛 가로등', x: 1480, y: 820, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
+    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:2120,radius:32,kind:'arcade'})),
+    {id:'crafting-machine',name:'별빛 조합기',x:1430,y:1170,radius:62,kind:'crafting',color:'#cdb8ef'},
+    {id:'playground-sign',name:'놀이터가는길',x:1100,y:1580,radius:24,kind:'street-sign',passable:true},
+    {id:'station-sign',name:'별 발전소 가는길',x:900,y:750,radius:24,kind:'street-sign',passable:true},
+    { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 1170, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
+    { id: 'lamp-right', name: '별빛 가로등', x: 1480, y: 1340, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.

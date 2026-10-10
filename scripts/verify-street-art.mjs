@@ -23,20 +23,20 @@ try{
     const [config,street,props,gates]=await Promise.all([import('/shared/config.js'),import('/street-art.js'),import('/painted-props.js'),import('/gate-art.js')]);
     await Promise.all([street.preloadStreetArt(),props.preloadPaintedProps(),gates.preloadGateArt()]);
     const imageFiles=await Promise.all(Object.values(props.PAINTED_PROPS).map(async spec=>{const image=new Image();image.src='/assets/maps/'+spec.file;await image.decode();return {file:spec.file,width:image.naturalWidth,height:image.naturalHeight};}));
-    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1000;const ctx=canvas.getContext('2d');ctx.scale(.5,.5);street.drawStreetGround(ctx,config.STREET);
+    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1350;const ctx=canvas.getContext('2d');ctx.scale(.5,.5);street.drawStreetGround(ctx,config.STREET);
     const painted=[];
-    for(const o of config.STREET.objects){if(['shop','energy-shop','crafting','arcade'].includes(o.kind))painted.push({id:o.id,kind:o.kind,file:props.PAINTED_PROPS[o.kind].file,drawn:props.drawPaintedProp(ctx,o)});else if(o.kind==='gate')gates.drawPaintedGate(ctx,o);}
+    for(const o of config.STREET.objects){if(['shop','energy-shop','crafting','arcade','math-station','english-station'].includes(o.kind))painted.push({id:o.id,kind:o.kind,file:props.PAINTED_PROPS[o.kind].file,drawn:props.drawPaintedProp(ctx,o)});else if(o.kind==='gate')gates.drawPaintedGate(ctx,o);}
     const closeup=document.createElement('canvas');closeup.width=2040;closeup.height=1170;
     closeup.getContext('2d').drawImage(canvas,140,20,680,390,0,0,2040,1170);
     const signAssetRequested=performance.getEntriesByType('resource').some(entry=>entry.name.includes('/assets/maps/plaza-sign.png'));
-    return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabel:street.STREET_ROUTE_LABEL,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
+    return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabels:street.STREET_ROUTE_LABELS,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
   });
-  assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png'].sort());
-  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,10);assert.ok(loaded.painted.every(x=>x.drawn));
+  assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png','math-station-front.png','english-station-front.png'].sort());
+  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,12);assert.ok(loaded.painted.every(x=>x.drawn));
   assert.equal(loaded.painted.filter(x=>x.kind==='arcade').length,7);
   assert.equal(await page.locator('#minimap').getAttribute('data-map-id'),STREET_ID);
-  const routeLabel=loaded.routeLabel;assert.deepEqual(routeLabel,{text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
-  assert.ok(onStreetFloor(STREET,routeLabel.x,routeLabel.y),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');
+  const routeLabels=loaded.routeLabels;assert.deepEqual(routeLabels,[{text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:750},{text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1580}]);
+  assert.ok(routeLabels.every(label=>onStreetFloor(STREET,label.x,label.y)),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');
   assert.equal(loaded.signAssetRequested,false,'푯말 그림 PNG를 내려받지 않습니다.');
   await page.screenshot({path:'.local/request279-street-game.png'});
   const gallery=await browser.newPage({viewport:{width:1000,height:1120}});gallery.on('pageerror',e=>errors.push(e.message));await gallery.goto(`${url}/health`);
@@ -45,6 +45,6 @@ try{
   await gallery.evaluate(data=>{const image=document.createElement('img');image.id='closeup';image.style='display:block;width:min(1400px,96vw);height:auto;margin:16px auto';image.src=data.closeup;document.querySelector('main').prepend(image);},loaded);
   await gallery.locator('#closeup').evaluate(img=>img.decode());await gallery.locator('#closeup').screenshot({path:'.local/request279-street-signs-closeup.png'});
   assert.deepEqual(errors,[]);
-  const result={checks:7,background:loaded.backdrop,assets:loaded.imageFiles,drawnProps:loaded.painted.map(({id,kind,file})=>({id,kind,file})),routeLabel,signAssetRequested:loaded.signAssetRequested,screenshots:['.local/request279-street-overview.png','.local/request279-street-game.png','.local/request279-street-signs-closeup.png']};
+  const result={checks:7,background:loaded.backdrop,assets:loaded.imageFiles,drawnProps:loaded.painted.map(({id,kind,file})=>({id,kind,file})),routeLabels,signAssetRequested:loaded.signAssetRequested,screenshots:['.local/request279-street-overview.png','.local/request279-street-game.png','.local/request279-street-signs-closeup.png']};
   await writeFile('.local/request279-street-art-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
 }finally{await browser.close();await game.close();}
