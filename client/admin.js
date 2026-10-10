@@ -1,4 +1,7 @@
 const $=id=>document.getElementById(id);
+const embedded=new URLSearchParams(location.search).has('embedded');
+if(embedded)document.documentElement.classList.add('embedded');
+const notifyParent=type=>{if(embedded&&window.parent!==window)window.parent.postMessage(type,location.origin);};
 const socket=io({reconnection:true});
 let loggedIn=false;
 let deleteTarget=null;
@@ -38,7 +41,7 @@ function render(classes){
 }
 $('admin-login').onsubmit=async event=>{
   event.preventDefault();const button=event.target.querySelector('button');button.disabled=true;showMessage('');
-  try{const reply=await request('admin:login',{key:$('admin-key').value});$('admin-key').value='';loggedIn=true;$('login-panel').hidden=true;$('admin-panel').hidden=false;render(reply.classes);}
+  try{const reply=await request('admin:login',{key:$('admin-key').value});$('admin-key').value='';loggedIn=true;$('login-panel').hidden=true;$('admin-panel').hidden=false;render(reply.classes);notifyParent('admin:entered');}
   catch(error){showMessage(error.message);}finally{button.disabled=false;}
 };
 $('create-class').onsubmit=async event=>{
@@ -60,4 +63,4 @@ $('delete-class').onsubmit=async event=>{
   try{const reply=await request('admin:delete',{code,confirmCode:$('delete-code').value});$('delete-dialog').close();render(reply.classes);$('issued-panel').hidden=true;$('issued-code').textContent='';showMessage(code+' 교실을 삭제했어요.');}
   catch(error){$('delete-error').textContent=error.message;}finally{button.disabled=false;}
 };
-socket.on('disconnect',()=>{if(loggedIn){if($('delete-dialog').open)$('delete-dialog').close();deleteTarget=null;loggedIn=false;$('admin-panel').hidden=true;$('login-panel').hidden=false;$('issued-code').textContent='';$('issued-panel').hidden=true;showMessage('연결이 끊어졌어요. 다시 입장해 주세요.');}});
+socket.on('disconnect',()=>{if(loggedIn){if($('delete-dialog').open)$('delete-dialog').close();deleteTarget=null;loggedIn=false;$('admin-panel').hidden=true;$('login-panel').hidden=false;$('issued-code').textContent='';$('issued-panel').hidden=true;showMessage('연결이 끊어졌어요. 다시 입장해 주세요.');notifyParent('admin:logged-out');}});

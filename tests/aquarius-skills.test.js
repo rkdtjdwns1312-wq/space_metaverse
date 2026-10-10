@@ -61,6 +61,13 @@ test('타원 범위는 가로가 넓고 맵분리·현재 위치 판정',()=>{
   assert.ok(inAquariusArea(c,{x:c.x+c.rx*.9,y:c.y}));assert.ok(!inAquariusArea(c,{x:c.x,y:c.y+c.rx*.9}));
   monster.mapId='other';ally.mapId='other';advanceAquarius(room,5000);assert.equal(monster.hp,1000);assert.equal(ensureVitals(ally).hp,1);
 });
+test('물병 타원 테두리에 걸친 몬스터는 맞고 완전히 벗어난 몬스터는 맞지 않는다',()=>{
+  const {room,p,monster}=setup();castAquarius(room,p,0);const c=[...room.aquariusCasts.values()][0];
+  monster.x=c.x+c.rx+monster.radius-.01;monster.y=c.y;
+  advanceAquarius(room,1000);assert.ok(monster.hp<1000);
+  monster.hp=1000;monster.x=c.x+c.rx+monster.radius+.01;
+  advanceAquarius(room,2000);assert.equal(monster.hp,1000);
+});
 test('24F는 발동6·중간12 반복·소멸6, 5초 범위의 마지막 프레임까지 재생',()=>{
   assert.equal(aquariusFrameAt(0),0);assert.equal(aquariusFrameAt(499),5);assert.equal(aquariusFrameAt(500),6);
   assert.equal(aquariusFrameAt(1500),6);assert.equal(aquariusFrameAt(4499),17);assert.equal(aquariusFrameAt(4500),18);assert.equal(aquariusFrameAt(4999),23);

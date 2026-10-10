@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+
+test('첫 여행 안내는 학생에게 별 파편 1개를 정확히 한 번만 준다',async t=>{
+  const key='tutorial-reward-test-key',game=createClassroomServer({teacherKey:key,studentHours:false});
+  const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,sockets=[];
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();});
+  const connect=async()=>{const socket=io(url,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(socket);
+    await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'튜토리얼',allowedNames:['1']});
+  assert.equal(created.ok,true,created.error);
+  const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1'});
+  assert.equal(joined.ok,true,joined.error);
+  const player=game.store.rooms.get(created.room.code).players.get(joined.selfId);
+  assert.equal(player.starShards,0);assert.equal(player.tutorialCompleted,false);
+  assert.equal((await call(teacher,'tutorial:complete')).ok,false);
+  const first=await call(student,'tutorial:complete');
+  assert.equal(first.ok,true,first.error);assert.equal(first.rewarded,true);
+  assert.equal(player.starShards,1);assert.equal(player.tutorialCompleted,true);
+  const repeated=await call(student,'tutorial:complete');
+  assert.equal(repeated.ok,true,repeated.error);assert.equal(repeated.rewarded,false);
+  assert.equal(player.starShards,1);
+});

@@ -3,7 +3,7 @@ import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const STREET_LAYOUT=Object.freeze({
   id:'star-street',width:1800,height:2000,wallWidth:10,bridgeWidth:180*BRIDGE_WIDTH_SCALE,
   upper:Object.freeze({x:900,y:650,rx:760,ry:490}),
-  lower:Object.freeze({x:900,y:1550,rx:680,ry:330}),
+  lower:Object.freeze({x:900,y:1550,rx:800,ry:355}),
   westGate:Object.freeze({x:80,y:650}),spawn:Object.freeze({x:260,y:650})
 });
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;

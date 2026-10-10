@@ -6,8 +6,10 @@ import {monstersOf,damageMonster} from './monsters.js';
 import {ensureVitals,playerVitals} from './vitals.js';
 import {isFree} from './world.js';
 import {ensure} from './rooms.js';
+import {RULES} from '../shared/config.js';
 
 export const taurusCooldowns=p=>({0:p.taurusCooldownUntil||0});
+export const taurusContactRadius=dash=>dash.size*({2:.62,3:.72,4:.84}[dash.stage]||.62);
 export function castTaurus(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='taurus'&&player.avatar.level>=2,'LV2 황소자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
@@ -25,7 +27,8 @@ export function castTaurus(room,player,now,{basic=false}={}){
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.taurusCooldownUntil=now+spec.cooldownMs;
   player.taurusDash={mapId:player.mapId,at:now,endsAt:now+spec.durationMs,dx,dy,distance:size*spec.rangeWidths,
-    startX:player.x,startY:player.y,progress:0,stage:spec.stage,size,power:Math.round(power*spec.multiplier),seen:new Set()};
+    lastAt:now,lastInputAt:0,controlled:false,inputX:dx,inputY:dy,progress:0,
+    stage:spec.stage,size,power:Math.round(power*spec.multiplier),seen:new Set()};
   player.taurusImmuneUntil=player.taurusDash.endsAt+spec.immuneAfterMs;
   player.input={x:0,y:0,at:0};
   return {ready:true,vitals:playerVitals(player),cooldowns:taurusCooldowns(player),serverNow:now};
@@ -41,26 +44,37 @@ export function advanceTaurusDashes(room,now){
     const dash=player.taurusDash;if(!dash)continue;
     if(dash.mapId!==player.mapId){player.taurusDash=null;player.taurusImmuneUntil=0;continue;}
     if(!player.connected||player.away||player.avatar.constellationId!=='taurus'||ensureVitals(player).hp<=0){player.taurusDash=null;continue;}
-    const targetProgress=Math.min(1,Math.max(0,(now-dash.at)/(dash.endsAt-dash.at)));
-    const target=targetProgress*dash.distance;
-    // 짧은 구간마다 실제 바닥·오브젝트 경계를 검사해 가느다란 다리를 건너뛰지 않습니다.
-    while(dash.progress+0.001<target){
-      const next=Math.min(target,dash.progress+Math.max(8,dash.size*.18));
-      const x=dash.startX+dash.dx*next,y=dash.startY+dash.dy*next;
-      if(!isFree(room,x,y,player.id,player.mapId,false,player)){
-        dash.endsAt=now;player.taurusImmuneUntil=now+1000;break;
-      }
-      player.x=x;player.y=y;dash.progress=next;
+    const until=Math.min(now,dash.endsAt),dt=Math.max(0,until-dash.lastAt);dash.lastAt=until;
+    if(player.input?.at>dash.at&&player.input.at>dash.lastInputAt){
+      dash.lastInputAt=player.input.at;dash.controlled=true;
+      dash.inputX=player.input.x;dash.inputY=player.input.y;
+    }
+    const fresh=!dash.controlled||now-dash.lastInputAt<=RULES.inputExpiryMs;
+    const length=fresh?Math.hypot(dash.inputX,dash.inputY):0;
+    const dx=length?dash.inputX/length:0,dy=length?dash.inputY/length:0;
+    if(length){dash.dx=dx;dash.dy=dy;}
+    const hitNearby=()=>{
       for(const monster of monstersOf(room,now).values()){
         if(monster.hp<=0||monster.mapId!==player.mapId||dash.seen.has(monster.id))continue;
-        if(Math.hypot(monster.x-x,monster.y-y)>monster.radius+dash.size*.38)continue;
+        if(Math.hypot(monster.x-player.x,monster.y-player.y)>monster.radius+taurusContactRadius(dash))continue;
         dash.seen.add(monster.id);
         const hit=damageMonster(room,monster,player,dash.power,now);
         if(hit){if(monster.hp>0)monster.stunUntil=Math.max(monster.stunUntil||0,now+1000);
           hits.push({mapId:player.mapId,...hit});}
       }
+    };
+    hitNearby();
+    let remaining=Math.min(Math.max(0,dash.distance-dash.progress),dash.distance*dt/(dash.endsAt-dash.at));
+    // 조작 방향으로 작은 구간씩 이동해 회전한 경로에서도 벽과 몬스터를 건너뛰지 않습니다.
+    while(length&&remaining>0.001){
+      const step=Math.min(remaining,Math.max(8,dash.size*.18));
+      const x=player.x+dx*step,y=player.y+dy*step;
+      if(!isFree(room,x,y,player.id,player.mapId,false,player))break;
+      player.x=x;player.y=y;dash.progress+=step;remaining-=step;
+      player.facing={x:dx,y:dy};if(Math.abs(dx)>1e-6)player.facingX=dx<0?-1:1;
+      hitNearby();
     }
-    if(targetProgress>=1||dash.endsAt<=now)player.taurusDash=null;
+    if(dash.endsAt<=now)player.taurusDash=null;
   }
   return hits;
 }

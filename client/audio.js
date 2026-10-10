@@ -157,7 +157,10 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
     if (type === 'shop-buy' || type === 'shop_buy') key = 'buy';
     if (type === 'shop-sell' || type === 'shop_sell') key = 'sell';
     if (type.startsWith('arcade')) key = detail.result === 'win' ? 'arcadeWin' : detail.result === 'lose' ? 'arcadeLose' : type.includes('match') ? 'arcadeMatch' : 'arcade';
-    const notes = sfx[key] || (type === 'ui-error' ? sfx.error : type === 'ui-confirm' ? sfx.confirm : sfx.ui);
+    const signalNotes=[60,64,67,72];
+    const notes = detail.gameId==='signal'&&detail.result==='cue'&&Number.isInteger(detail.signalIndex)&&detail.signalIndex>=0&&detail.signalIndex<4
+      ?[[signalNotes[detail.signalIndex],0]]
+      :sfx[key] || (type === 'ui-error' ? sfx.error : type === 'ui-confirm' ? sfx.confirm : sfx.ui);
     const identity=String(detail.constellationId||detail.monsterId||detail.gameId||'');
     const variation=[...identity].reduce((value,char)=>value+char.charCodeAt(0),0)%7-3;
     const gameVariation=detail.gameId==='memory'?2:detail.gameId==='baseball'?-2:detail.gameId==='stars'?5:detail.gameId==='sudoku'?0:detail.gameId==='dodge'?-4:0;

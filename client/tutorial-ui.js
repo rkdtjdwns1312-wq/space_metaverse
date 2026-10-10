@@ -3,8 +3,7 @@ const STEPS=[
   {icon:'✧',title:'별빛 물체 살펴보기',body:'물체 가까이에서 F를 누르거나 화면의 조사하기 버튼을 눌러 보세요. 새로운 공간과 이야기를 만날 수 있어요.'},
   {icon:'✉',title:'알림장과 과제',body:'광장에서 알림장을 읽고 내 과제를 확인하세요. 과제별서고에서 작성중·제출 상태를 고르면 선생님이 확인해 주세요.'},
   {icon:'☄',title:'친구와 이야기하기',body:'접속 중인 친구를 누르면 함께할 수 있어요. 채팅에서는 서로 기분 좋은 말을 건네 주세요.'},
-  {icon:'★',title:'가방과 별상점',body:'가방에서 모은 물건을 살펴보고, 별상점에서는 필요한 물건의 정보를 먼저 읽어 보세요.'},
-  {icon:'✦',title:'이제 자유롭게 탐험해요!',body:'궁금한 길을 따라 걸어 보세요. 언제든 교실 메뉴의 첫 여행 안내를 다시 열 수 있어요.'}
+  {icon:'★',title:'가방과 별상점',body:'가방에서 물건을 살펴보고 별상점에서 정보를 읽어 보세요. 안내를 마치면 별 파편 1개를 받고 자유롭게 탐험할 수 있어요.'}
 ];
 
 export function createTutorialUI({request,stop,toast}){
@@ -20,7 +19,7 @@ export function createTutorialUI({request,stop,toast}){
     if(busy)return;
     if(index<STEPS.length-1){index++;render();return;}
     busy=true;$('next').disabled=true;
-    try{await request('tutorial:complete',{});dialog.close();toast('첫 여행 안내를 마쳤어요. 즐거운 탐험 되세요!');}
+    try{const result=await request('tutorial:complete',{});dialog.close();toast(result.rewarded?'첫 여행 안내 완료! 별 파편 1개를 받았어요.':'첫 여행 안내를 다시 읽었어요. 즐거운 탐험 되세요!');}
     catch(error){$('error').textContent=error.message;}
     finally{busy=false;$('next').disabled=false;}
   };

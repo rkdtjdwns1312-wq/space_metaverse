@@ -41,15 +41,17 @@
       <span id="map-caption" class="map-caption">✦ 같은 교실의 친구들과 함께하는 공간</span>
       <button id="interact-prompt" class="interact" type="button" hidden><small id="interact-object"></small><span>F 상호작용하기</span></button>
       <button id="interior-decorate" class="small secondary" type="button" hidden>🎨 꾸미기</button>
-      <div id="lobby" class="lobby">
+      <div id="lobby" class="lobby" data-step="choose">
         <h2>우주 교실</h2>
-        <p class="muted">별빛 아래, 우리의 우주 공간</p>
-        <div class="lobby-entry">
-        <div class="role-tabs" aria-label="입장 방법">
-          <button id="student-tab" class="selected" aria-pressed="true" type="button">학생 접속하기</button>
-          <button id="teacher-tab" aria-pressed="false" type="button">선생님 접속하기</button>
+        <div id="lobby-choice" class="lobby-choice" aria-label="입장 방법">
+          <button id="student-tab" class="primary" type="button">학생 입장하기</button>
+          <button id="teacher-tab" class="secondary" type="button">선생님 입장하기</button>
         </div>
-        <form id="student-form">
+        <div id="lobby-details" hidden>
+        <button id="lobby-back" class="lobby-back" type="button">← 뒤로가기</button>
+        <h3 id="lobby-role-title"></h3>
+        <div class="lobby-entry">
+        <form id="student-form" hidden>
           <div class="lobby-fields">
           <label for="join-code">교실 코드</label><input id="join-code" autocomplete="off" maxlength="6" required placeholder="예: ABCD12" pattern="[A-Za-z0-9]{6}">
           <label for="nickname">내 번호 또는 닉네임</label><input id="nickname" autocomplete="off" maxlength="12" required placeholder="선생님이 허용한 이름을 입력해요">
@@ -82,11 +84,16 @@
           <button class="primary submit" type="submit" hidden>입장하기</button>
         </form>
         </div>
-        <p id="form-message" class="form-message" role="alert"></p>
         <p class="lobby-hours"><span>서버 오픈시간 오전 7시 ~ 오후 10시</span><br><span id="student-hours-note">학생 접속시간 확인 중…</span></p>
-        <a id="owner-entry" class="owner-entry" href="/admin.html">홈페이지 관리자</a>
-        <p class="lobby-credit">제작자 우주ssam</p>
+        </div>
+        <p id="form-message" class="form-message" role="alert"></p>
       </div>
+      <button id="owner-entry" class="owner-entry" type="button" aria-label="관리자 비밀번호 입력" aria-haspopup="dialog" aria-controls="owner-dialog"></button>
+      <dialog id="owner-dialog" class="owner-dialog" aria-label="관리자 비밀번호 입력">
+        <button id="owner-dialog-close" class="owner-dialog-close" type="button" aria-label="관리자 창 닫기">닫기</button>
+        <iframe id="owner-frame" title="우주 교실 관리자"></iframe>
+      </dialog>
+      <p class="lobby-credit"><span>제작자 우주ssam</span><span>rkdtjdwns11@naver.com</span></p>
       <div id="mobile-controls" aria-label="모바일 이동 및 상호작용">
         <div class="combat-buttons" aria-label="전투 조작">
           <button id="touch-attack" type="button" class="is-locked" disabled aria-label="공격(Q)" title="공격 (Q)">

@@ -13,7 +13,11 @@ import {ensure} from './rooms.js';
 
 const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
 export const aquariusCooldowns=p=>({0:p.aquariusCooldownUntil||0});
-export const inAquariusArea=(cast,p)=>((p.x-cast.x)/cast.rx)**2+((p.y-cast.y)/cast.ry)**2<=1;
+// 물병 지대의 그림 가장자리에 몬스터 몸 일부가 걸쳐도 맞도록 반경을 포함합니다.
+export const inAquariusArea=(cast,p)=>{
+  const margin=p.radius||0;
+  return ((p.x-cast.x)/(cast.rx+margin))**2+((p.y-cast.y)/(cast.ry+margin))**2<=1;
+};
 export function castAquarius(room,player,now,{basic=false}={}){
   ensure(player.avatar.constellationId==='aquarius'&&player.avatar.level>=2,'LV2 물병자리부터 사용할 수 있어요.');
   ensure(valid(player),'지금은 스킬을 사용할 수 없어요.');

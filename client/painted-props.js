@@ -28,7 +28,7 @@ export function drawPaintedProp(ctx,o){
   }
   if(o.kind==='arcade'){
     ctx.fillStyle='#65517d';ctx.font='20px "Jua",sans-serif';
-    ctx.fillText(({memory:'▦',baseball:'⚾',stars:'★',sudoku:'1·9',dodge:'☄'})[o.gameId]||'★',o.x,y+h*.385);
+    ctx.fillText(({memory:'▦',baseball:'⚾',stars:'★',sudoku:'1·9',dodge:'☄',path:'✧',signal:'◇'})[o.gameId]||'★',o.x,y+h*.385);
     ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.strokeStyle='#fffaf4';ctx.lineWidth=4;ctx.lineJoin='round';
     ctx.strokeText(o.name,o.x,o.y+62);ctx.fillText(o.name,o.x,o.y+62);
   }

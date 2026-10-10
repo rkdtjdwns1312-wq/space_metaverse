@@ -53,6 +53,25 @@
 .baseball-form{display:grid;gap:8px}
 #baseball-input{box-sizing:border-box;width:100%;min-width:0;padding:11px;border:3px solid #d5c8e9;border-radius:14px;background:#fff;color:#46375f;text-align:center;font:inherit;font-size:28px;letter-spacing:.18em}
 #arcade-board .baseball-feedback{min-height:24px;margin:0;font-size:16px}
+
+.star-path-game,.space-signal-game{display:grid;justify-items:center;gap:10px}
+#arcade-board .star-path-help,#arcade-board .space-signal-game p{max-width:430px;margin:0;font-size:15px;line-height:1.45}
+.star-path-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;width:min(100%,390px);aspect-ratio:1}
+#arcade-board .star-path-cell{min-height:0;padding:0;border:2px solid #d4c4eb;border-radius:11px;background:#fff;color:#8b7aa2;font-size:24px}
+#arcade-board .star-path-cell.star{background:#ffefb8;border-color:#dba94d;color:#79511d;font-size:25px}
+#arcade-board .star-path-cell.path{background:#d1f2e5;border-color:#6eba9a;color:#28775c}
+#arcade-board .star-path-cell.head{box-shadow:0 0 0 3px #7cccad inset}
+#arcade-board .star-path-cell.rock{background:#e6e1ec;border-color:#cbc3d4;color:#988e9f}
+#arcade-board .star-path-cell:disabled{opacity:1}
+#arcade-board .space-signal-cue{min-height:23px;color:#54417e;font-weight:800;text-align:center}
+.space-signal-pad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:min(100%,360px)}
+#arcade-board .space-signal-cell{min-height:104px;border-width:3px;font-size:40px;transition:filter .12s,box-shadow .12s,transform .12s}
+#arcade-board .space-signal-cell:nth-child(1){background:#d7eafd;border-color:#91bae9;color:#346aab}
+#arcade-board .space-signal-cell:nth-child(2){background:#eee2ff;border-color:#c4a2ed;color:#7854ae}
+#arcade-board .space-signal-cell:nth-child(3){background:#e0f5e9;border-color:#9cd6b6;color:#39805d}
+#arcade-board .space-signal-cell:nth-child(4){background:#fff0c6;border-color:#e9cb79;color:#a97519}
+#arcade-board .space-signal-cell.lit{filter:brightness(1.2) saturate(1.4);box-shadow:0 0 0 5px #fff inset,0 0 26px #ffe59d;transform:scale(1.05)}
+#arcade-board .space-signal-cell:disabled{opacity:1}
 .baseball-game h3{margin:2px 0 0;font-size:17px}
 #baseball-attempts{box-sizing:border-box;max-height:190px;overflow:auto;margin:0;padding:0 0 0 30px}
 #baseball-attempts li{margin:5px 0;font-size:15px;line-height:1.35}
@@ -62,6 +81,8 @@
   #arcade-title{font-size:23px}
   #arcade-dialog button{min-height:48px;padding:9px 10px;font-size:17px}
   #arcade-board{min-width:0;padding:9px}
+  #arcade-board .star-path-cell{font-size:20px}
+  #arcade-board .space-signal-cell{min-height:88px;font-size:34px}
   .memory-controls{grid-template-columns:minmax(0,1fr) auto}
   .memory-grid{gap:4px}
   #arcade-board .memory-card{min-width:0;min-height:44px;padding:1px;font-size:clamp(19px,6vw,25px);border-width:2px;border-radius:11px}

@@ -538,3 +538,45 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 .holding-dialog{max-width:520px;width:calc(100% - 28px)}
 .holding-dialog p{line-height:1.7;overflow-wrap:anywhere}
 .holding-choices select{width:100%;margin:10px 0;min-height:42px}
+
+/* 첫 입장은 작은 선택 카드, 다음 화면에서만 입력란을 보여 줍니다. */
+body:has(.lobby:not([hidden])){overflow:hidden;background:#17234c}
+body:has(.lobby:not([hidden])) .topbar,body:has(.lobby:not([hidden])) .hud{display:none}
+body:has(.lobby:not([hidden])) main{max-width:none;width:100vw;height:100dvh;margin:0;padding:0;display:block}
+body:has(.lobby:not([hidden])) .space-section{width:100%;height:100%}
+body:has(.lobby:not([hidden])) .map-wrap{width:100%;height:100%;min-height:0;border:0;border-radius:0;box-shadow:none;display:block}
+body:has(.lobby:not([hidden])) #world{width:100%;height:100%;max-height:none;min-height:0;aspect-ratio:auto}
+.map-wrap:has(.lobby:not([hidden]))::before{background-position:center,right center}
+.lobby[data-step="choose"]{width:min(390px,calc(100% - 28px));padding:32px 30px 34px}
+.lobby[data-step="choose"] h2{font-size:clamp(40px,5vw,56px);margin:0 0 26px}
+.lobby-choice{display:grid;gap:14px}
+.lobby-choice button{width:100%;min-height:62px;font-size:21px;font-weight:800;box-shadow:0 5px 17px #35296a27}
+.lobby-choice button.primary{background:linear-gradient(105deg,#6a59b3,#8d75ca)}
+.lobby[data-step="details"]{width:min(620px,calc(100% - 28px));padding:24px 32px 20px}
+.lobby[data-step="details"] h2{font-size:clamp(37px,4vw,49px);margin:0 0 8px}
+.lobby-back{display:block;background:transparent;color:#604f88;font-size:17px;padding:5px 7px;min-height:40px;text-align:left}
+.lobby-back:hover{background:#eae4fa}
+.lobby #lobby-role-title{font-size:24px;color:#48356e;text-align:left;margin:4px 0 12px}
+.lobby .lobby-entry,.lobby .lobby-entry form{display:block}
+.lobby #connection{display:block;margin:12px 0 0;text-align:center;font-size:15px;font-weight:700}
+.lobby-entry form .submit{margin:20px auto 0}
+.lobby .form-message:empty{display:none}
+.map-wrap:has(.lobby:not([hidden])) #owner-entry{position:absolute;z-index:9;right:4%;top:13%;width:10%;height:17%;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;opacity:0;cursor:default}
+.map-wrap:has(.lobby:not([hidden])) #owner-entry:focus-visible{opacity:1;outline:3px solid #fff;outline-offset:3px;background:#ffffff30}
+.map-wrap:has(.lobby[data-step="details"]) #owner-entry{display:none}
+.map-wrap:has(.lobby[hidden]) #owner-entry{display:none}
+.owner-dialog{z-index:30;width:min(440px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:14px 16px 16px;border:2px solid #d7cef2;border-radius:22px;background:#fffdfb;box-shadow:0 20px 65px #080d37aa;overflow:hidden}
+.owner-dialog::backdrop{background:#111c47a6}
+.owner-dialog.authenticated{width:min(840px,calc(100vw - 28px))}
+.owner-dialog-close{display:block;margin-left:auto;min-height:38px;padding:5px 14px;font-size:16px}
+.owner-dialog iframe{display:block;width:100%;height:min(290px,calc(100dvh - 100px));border:0;background:transparent}
+.owner-dialog.authenticated iframe{height:calc(100dvh - 100px)}
+.map-wrap .lobby-credit{position:absolute;right:18px;bottom:max(16px,env(safe-area-inset-bottom));z-index:9;display:grid;gap:3px;margin:0;padding:10px 14px;border:1px solid #ced2ff77;border-radius:13px;background:#172551d9;color:#fff;text-align:right;font-size:15px;font-weight:700;line-height:1.35;box-shadow:0 5px 18px #08123555;pointer-events:none}
+.map-wrap:has(.lobby[hidden]) .lobby-credit{display:none}
+@media(max-width:650px){
+  .lobby[data-step="choose"]{width:min(350px,calc(100% - 20px));padding:25px 20px 27px}
+  .lobby[data-step="details"]{width:calc(100% - 20px);padding:18px 18px 12px}
+  .lobby-choice button{min-height:56px;font-size:19px}
+  .map-wrap:has(.lobby:not([hidden])) #owner-entry{left:52%;right:auto;top:15%;width:28%;height:14%}
+  .map-wrap .lobby-credit{right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:8px 11px;font-size:13px}
+}

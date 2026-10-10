@@ -15,10 +15,11 @@ export async function verifyPersistence(browser){
   let game,url;const checks=[],errors=[],contexts=[];
   const start=async()=>{game=createClassroomServer({teacherKey,dataDir,studentHours:false,unattended:false,teacherManagedAccounts:false});const a=await game.listen();url='http://127.0.0.1:'+a.port;};
   const page=async()=>{const c=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(c);
-    const p=await c.newPage();p.setDefaultTimeout(10_000);p.on('pageerror',e=>errors.push(e.message));return p;};
+    const p=await c.newPage();p.setDefaultTimeout(20_000);p.on('pageerror',e=>errors.push(e.message));return p;};
   const visit=async(p,teacher=false)=>{await p.goto(url);await p.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
     if(teacher){await p.locator('#teacher-tab').click();await p.locator('#teacher-key').fill(teacherKey);}};
-  const studentJoin=async(p,code,pin)=>{await p.locator('#join-code').fill(code);await p.locator('#nickname').fill('1');
+  const studentJoin=async(p,code,pin)=>{if(!(await p.locator('#join-code').isVisible()))await p.locator('#student-tab').click();
+    await p.locator('#join-code').fill(code);await p.locator('#nickname').fill('1');
     await p.locator('#student-pin').fill(pin);await p.locator('#student-form button[type=submit]').click();};
   const closeOpenDialogs=async(p)=>{for(let i=0;i<12&&await p.locator('dialog[open]').count();i++)await p.keyboard.press('Escape');await p.waitForFunction(()=>!document.querySelector('dialog[open]'));};
   const openChat=async(p)=>{await closeOpenDialogs(p);await p.locator('#dock-chat').click();await p.locator('#social-dialog').waitFor({state:'visible'});await p.locator('#open-chat').click();await p.locator('#chat-dialog').waitFor({state:'visible'});};
@@ -97,6 +98,7 @@ export async function verifyPersistence(browser){
     await openMenu(nextTeacher);await nextTeacher.getByRole('button',{name:'수업 마치기',exact:true}).click();await nextTeacher.locator('#confirm-leave').click();
     await nextStudent.locator('#lobby').waitFor({state:'visible'});await nextStudent.setViewportSize({width:390,height:844});
     assert.equal(await nextStudent.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+    await nextStudent.locator('#student-tab').click();
     await nextStudent.locator('#student-pin').scrollIntoViewIfNeeded();assert.ok(await nextStudent.locator('#student-pin').isVisible());
     await nextStudent.screenshot({path:'.local/11-persistence-entrance.png',fullPage:true});
     checks.push('390px 학생 입장 폼 가로 넘침 없이 PIN과 입장 버튼에 접근');

@@ -7,7 +7,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {MAP,STREET,PLAZA_ID,STREET_ID,GARDEN_ID} from '../shared/config.js';
 const key='temple-test-private-not-real-key';
-test('five arcade machines require an authenticated player on the correct map and nearby',async()=>{
+test('seven arcade machines require an authenticated player on the correct map and nearby',async()=>{
  const game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen();
  const socket=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false});
  const call=(event,data={})=>new Promise((r,j)=>socket.timeout(3000).emit(event,data,(e,v)=>e?j(e):r(v)));
@@ -16,7 +16,7 @@ test('five arcade machines require an authenticated player on the correct map an
   assert.equal((await call('arcade:open',{objectId:'arcade-memory'})).ok,false);
   const created=await call('room:create',{teacherKey:key,title:'오락기 검사',allowedNames:['1']});const room=game.store.rooms.get(created.room.code),p=room.players.get(created.selfId);
   assert.equal((await call('arcade:open',{objectId:'arcade-memory'})).ok,false);
-  const machines=STREET.objects.filter(o=>o.kind==='arcade');assert.equal(machines.length,5);
+  const machines=STREET.objects.filter(o=>o.kind==='arcade');assert.equal(machines.length,7);
   for(const machine of machines){Object.assign(p,{mapId:STREET_ID,x:machine.x,y:machine.y+65});const r=await call('arcade:open',{objectId:machine.id});assert.equal(r.gameId,machine.gameId);}
   assert.equal((await call('arcade:open',{objectId:'made-up-game'})).ok,false);assert.equal(p.starShards,0);
  }finally{socket.disconnect();await game.close();}

@@ -155,7 +155,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   const io=new Server(http,{maxHttpBufferSize:32768,allowRequest:(req,done)=>done(null,originAllowed(req))});
   app.disable('x-powered-by');
   app.use((req,res,next)=>{
-    res.set({'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    const frameAncestors=req.path==='/admin.html'?"'self'":"'none'";
+    res.set({'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors "+frameAncestors,
       'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store'});
     next();
   });
@@ -324,8 +325,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('tutorial:complete',()=>{
       const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
-      session.player.tutorialCompleted=true;roster(session.room);
-      return {completed:true};
+      const player=session.player;
+      if(player.tutorialCompleted)return {completed:true,rewarded:false};
+      ensure(player.starShards<SHARDS.max,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 안내를 마쳐 주세요.');
+      player.tutorialCompleted=true;player.starShards++;
+      recordReward(session.room,player.id,1,clock());roster(session.room);
+      return {completed:true,rewarded:true,starShards:player.starShards};
     });
     action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
     action('exploration:update-cards',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');

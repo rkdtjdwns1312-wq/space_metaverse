@@ -32,8 +32,8 @@ try{
     return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabel:street.STREET_ROUTE_LABEL,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
   });
   assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png'].sort());
-  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,8);assert.ok(loaded.painted.every(x=>x.drawn));
-  assert.equal(loaded.painted.filter(x=>x.kind==='arcade').length,5);
+  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,10);assert.ok(loaded.painted.every(x=>x.drawn));
+  assert.equal(loaded.painted.filter(x=>x.kind==='arcade').length,7);
   assert.equal(await page.locator('#minimap').getAttribute('data-map-id'),STREET_ID);
   const routeLabel=loaded.routeLabel;assert.deepEqual(routeLabel,{text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1060,font:'26px "Jua","Malgun Gothic",sans-serif',color:'#7650a8',outline:'#fffaf4'});
   assert.ok(onStreetFloor(STREET,routeLabel.x,routeLabel.y),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');

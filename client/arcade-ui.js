@@ -3,13 +3,17 @@ import {createBaseballGame} from './baseball-game.js';
 import {createStarGame} from './star-game.js';
 import {createSudokuGame} from './sudoku-game.js';
 import {createDodgeGame} from './dodge-game.js';
+import {createStarPathGame} from './star-path-game.js';
+import {createSpaceSignalGame} from './space-signal-game.js';
 
 const GAMES={
   memory:{title:'별 그림 짝 맞추기',instructions:'난이도를 고른 뒤 시작을 눌러요. 60초 안에 같은 그림을 찾아요.',score:'난이도를 선택하세요 · 시작 전'},
   baseball:{title:'숫자야구',instructions:'숫자 질문과 정답 도전을 합쳐 20번 안에 맞혀요.',score:'난이도를 선택하세요 · 시작 전'},
   stars:{title:'반짝별 찾기',instructions:'4×4 칸에서 별을 열 번 찾아요. 기록은 우리 교실에서 함께 봐요.',score:''},
   sudoku:{title:'별빛 스도쿠',instructions:'가로·세로·굵은 테두리 안에 같은 숫자가 겹치지 않게 빈칸을 채워요.',score:''},
-  dodge:{title:'별 피하기',instructions:'움직여서 날아오는 별을 피하고 오래 살아남아요.',score:''}
+  dodge:{title:'별 피하기',instructions:'움직여서 날아오는 별을 피하고 오래 살아남아요.',score:''},
+  path:{title:'별길 잇기',instructions:'이웃한 칸을 눌러 1번부터 3번 별까지 길을 이어 주세요.',score:''},
+  signal:{title:'우주 신호 따라하기',instructions:'네 가지 빛이 반짝이는 순서를 기억하고 따라 눌러요.',score:''}
 };
 
 export function createArcadeUI({
@@ -42,7 +46,9 @@ export function createArcadeUI({
     baseball:()=>createBaseballGame({board,setScore,toast}),
     stars:()=>createStarGame({board,request,subscribeStarRanking,toast,footer:rankingActions}),
     sudoku:()=>createSudokuGame({board,toast}),
-    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions})
+    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions}),
+    path:()=>createStarPathGame({board,setScore}),
+    signal:()=>createSpaceSignalGame({board,setScore,onCue:index=>onSound('signal','cue',index)})
   };
   board.addEventListener('click',event=>{if(event.target.closest('button,[role="button"],.cell,.card'))onSound(current,'move');});
   board.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')onSound(current,'move');});

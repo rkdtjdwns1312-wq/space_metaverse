@@ -68,8 +68,9 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     { id: 'energy-shop', name: '우주에너지 상점', x: 1180, y: 367, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
-      ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1']
-    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:420+i*240,y:1600,radius:32,kind:'arcade'})),
+      ['stars','반짝별 찾기','#ffdf9c'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
+      ['path','별길 잇기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
+    ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:1600,radius:32,kind:'arcade'})),
     {id:'crafting-machine',name:'별빛 조합기',x:1430,y:650,radius:62,kind:'crafting',color:'#cdb8ef'},
     {id:'playground-sign',name:'놀이터가는길',x:1100,y:1060,radius:24,kind:'street-sign',passable:true},
     { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 650, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },

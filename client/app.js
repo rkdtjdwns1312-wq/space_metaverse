@@ -107,6 +107,7 @@ const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,
 const partyUI=createPartyUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 $('avatar-card').append($('experience-panel'));
 document.querySelector('.top-right').append($('connection'));
+$('connection').setAttribute('role','status');
 let overview=false;
 const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,onAreaView:()=>{overview=!overview;world.setOverview(overview);$('map-area-view').textContent=overview?'내 주변으로 돌아가기':'현재 맵 한눈에 보기';$('world').focus();}});
 const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
@@ -125,7 +126,7 @@ const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;ren
 setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag(myInventory());},30000);
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const subscribe=(event,listener)=>{socket.on(event,listener);return()=>socket.off(event,listener);};
-const arcade=createArcadeUI({stop,toast,request,onSound:(gameId,result)=>audio.playSfx('arcade',{gameId,result}),
+const arcade=createArcadeUI({stop,toast,request,onSound:(gameId,result,signalIndex)=>audio.playSfx('arcade',{gameId,result,signalIndex}),
   subscribeMemoryRanking:listener=>subscribe('memory:ranking',listener),
   subscribeStarRanking:listener=>subscribe('stars:ranking',listener),
   sendDodgeInput:data=>socket.volatile.emit('dodge:input',data),
@@ -233,13 +234,33 @@ $('ability-choose-item').onclick=async()=>{
   catch(error){toast(error.message);}finally{button.disabled=false;}
 };
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
+function showLobbyChoice(focusChoice=true){
+  $('lobby').dataset.step='choose';$('lobby-choice').hidden=false;$('lobby-details').hidden=true;
+  if(focusChoice)$('student-tab').focus();
+}
 function setMode(value){
-  mode=value;$('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
+  mode=value;$('lobby').dataset.step='details';$('lobby-choice').hidden=true;$('lobby-details').hidden=false;
+  $('lobby-details').insertBefore($('connection'),$('lobby-details').querySelector('.lobby-hours'));
+  $('lobby-role-title').textContent=value==='student'?'학생 입장하기':'선생님 입장하기';
+  $('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
   if(value==='teacher'&&!classMode)chooseClassMode('open');
-  for(const role of ['student','teacher']){$(role+'-tab').classList.toggle('selected',role===value);$(role+'-tab').setAttribute('aria-pressed',String(role===value));}
   $('form-message').textContent='';
+  $(value==='student'?'join-code':'teacher-key').focus();
 }
 $('student-tab').onclick=()=>setMode('student');$('teacher-tab').onclick=()=>setMode('teacher');
+$('lobby-back').onclick=()=>showLobbyChoice();
+const ownerDialog=$('owner-dialog'),ownerFrame=$('owner-frame');
+$('owner-entry').onclick=()=>{
+  ownerDialog.showModal();
+  ownerFrame.src='/admin.html?embedded=1';
+};
+$('owner-dialog-close').onclick=()=>ownerDialog.close();
+ownerDialog.addEventListener('close',()=>{ownerFrame.src='about:blank';ownerDialog.classList.remove('authenticated');});
+window.addEventListener('message',event=>{
+  if(event.origin!==location.origin||event.source!==ownerFrame.contentWindow)return;
+  if(event.data==='admin:entered')ownerDialog.classList.add('authenticated');
+  if(event.data==='admin:logged-out')ownerDialog.classList.remove('authenticated');
+});
 let classMode='';
 function chooseClassMode(value){
   classMode=value;
@@ -1161,7 +1182,7 @@ function reset(message){
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();partyUI.reset();document.querySelector('.top-right').append($('connection'));
   stop();audio.playBgm('lobby');selfId=null;room=null;saveToken(null);world.setRoom(null,null);
-  $('lobby').hidden=false;$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
+  $('lobby').hidden=false;showLobbyChoice(false);$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   teacherInventory.update();
   teacherCardCatalog.reset();

@@ -10,3 +10,8 @@ button.danger{border-color:#a93349;background:#ad3650;color:#fff}button.danger:h
 dialog{width:min(500px,calc(100% - 24px));border:3px solid #b14a65;border-radius:20px;padding:24px;color:#292342;background:#fffdfb;box-shadow:0 20px 70px #23173588}dialog::backdrop{background:#1a1239aa}
 dialog h2{margin-bottom:4px}#delete-warning{font-weight:700;color:#88344a}#delete-target{font-weight:900;color:#563c92}.dialog-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:12px}
 #delete-error{min-height:1.4em;margin:0;color:#9f2f4b;font-weight:800}
+.embedded,.embedded body{min-height:0;background:transparent}
+.embedded .admin-shell{width:100%;margin:0}
+.embedded .admin-shell>header{display:none}
+.embedded #login-panel{margin:0;padding:6px 2px;border:0;box-shadow:none;background:transparent}
+.embedded #admin-panel .panel:first-child{margin-top:0}
