@@ -1,0 +1,13 @@
+{
+  "image": "attack-wave-v2.png",
+  "columns": 6,
+  "rows": 5,
+  "frames": 30,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "order": "row-major",
+  "origin": {"x": 128, "y": 215},
+  "facing": "right",
+  "durationMs": 650,
+  "phases": {"formation": [1, 6], "growth": [7, 12], "crest": [13, 16], "breaking": [17, 24], "fade": [25, 30]}
+}

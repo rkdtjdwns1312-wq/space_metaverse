@@ -337,7 +337,7 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 #universe-dialog h3{margin:18px 0 8px;color:#5d4795}
 #universe-planets{display:flex;flex-wrap:wrap;gap:8px;max-height:48px;overflow:auto}
 #universe-planets{max-height:180px}
-#universe-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+#universe-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(6,auto)}
 #universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
 #universe-links .universe-node{min-width:0;padding:9px 5px}
 #universe-links .universe-node,.universe-node{overflow:hidden;background:linear-gradient(145deg,#fff9f0,#eee8fa);border-color:#c9b6db;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16}

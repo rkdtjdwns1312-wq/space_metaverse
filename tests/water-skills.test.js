@@ -7,7 +7,7 @@ import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
-import {waterFrameAt,cetusAuraFrameAt,cetusWaveScaleAt,cetusWavePoseAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
+import {waterFrameAt,cetusAuraFrameAt,cetusWavePoseAt,waterProjectileAngle,waterProjectilePoint,waterSkillOf,WATER_VFX} from '../shared/water-skills.js';
 
 const advance=(room,now)=>advanceProjectiles(room,now,combatEnemies,resolveWaterHit);
 function setup(id,level=4){
@@ -115,16 +115,13 @@ test('각 별자리 4시트×24F 등록과 10초 오라 발동·반복·소멸 �
 test('고래 오라는 8프레임으로 반복하고 파도는 몸에서 생성되어 거리 중간에서 최대·전방으로 덮치며 소멸',()=>{
   assert.equal(cetusAuraFrameAt(0),0);assert.equal(cetusAuraFrameAt(760),4);
   assert.equal(cetusAuraFrameAt(1519),7);assert.equal(cetusAuraFrameAt(1520),0);
-  assert.ok(cetusWaveScaleAt(0)<cetusWaveScaleAt(.33));
-  assert.ok(cetusWaveScaleAt(.33)<cetusWaveScaleAt(.5));
-  assert.ok(cetusWaveScaleAt(.9)<cetusWaveScaleAt(.5));
-  assert.equal(cetusWaveScaleAt(0),0);
-  assert.equal(cetusWaveScaleAt(1),0);
-  assert.ok(cetusWavePoseAt(.1).frame<cetusWavePoseAt(.5).frame);
-  assert.ok(cetusWavePoseAt(.8).height<cetusWavePoseAt(.8).width);
-  assert.ok(cetusWavePoseAt(.8).lean>cetusWavePoseAt(.5).lean);
-  for(let i=1;i<=10;i++)assert.ok(cetusWaveScaleAt(i/20)>cetusWaveScaleAt((i-1)/20));
-  for(let i=11;i<=20;i++)assert.ok(cetusWaveScaleAt(i/20)<cetusWaveScaleAt((i-1)/20));
+  assert.equal(WATER_VFX.cetus.attack.frames,30);
+  assert.equal(cetusWavePoseAt(-1).frame,0);assert.equal(cetusWavePoseAt(2).frame,29);
+  for(let i=0;i<30;i++){
+    const pose=cetusWavePoseAt(i/29);
+    assert.ok(Math.abs(pose.frame-i)<1e-10);
+    assert.deepEqual([pose.width,pose.height,pose.lean],[1,1,0]);
+  }
 });
 
 test('물고기 연출은 앞으로 전진하며 중간에 솟고 사거리 끝 바닥에 착지한다',()=>{

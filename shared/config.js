@@ -54,8 +54,9 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
       arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡',x:1800,y:2562,radius:38,kind:'gate',target:'milky-valley',arrival:VALLEY_LAYOUT.spawn,color:'#c5cff8',passable:true},
     {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
-    {id:'assignment-andromeda',name:'과제별서고',x:430,y:510,radius:144,kind:'andromeda',passable:true},
-    {id:'star-mission-board',name:'별 미션 게시판',x:800,y:510,radius:90,kind:'mission-board',passable:true},
+    // Lv4 아바타 한 높이(80×1.15²=105.8px)만큼 함께 위로 이동합니다.
+    {id:'assignment-andromeda',name:'과제별서고',x:430,y:404.2,radius:144,kind:'andromeda',passable:true},
+    {id:'star-mission-board',name:'별 미션 게시판',x:800,y:404.2,radius:90,kind:'mission-board',passable:true},
     {id:'black-hole-portal',name:'블랙홀',x:3090,y:510,radius:144,kind:'black-hole',target:'black-hole',arrival:{x:600,y:390},passable:true},
     MARKET
   ] });
@@ -124,10 +125,10 @@ export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부'
   {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:5150,y:1230}),passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
-// 위쪽 맵은 1→2→3으로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
+// 위쪽 맵은 1→2→3→4로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
 // 문과 귀환 좌표는 각 맵 크기에서 계산해 서로 다른 크기에서도 같은 상대 위치를 유지합니다.
-export const STAR_ORIGIN = Object.freeze({baseWidth:1200,baseHeight:900,scale:1.2,maxStage:3});
-export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>{
+export const STAR_ORIGIN = Object.freeze({baseWidth:1200,baseHeight:900,scale:1.2,maxStage:4});
+export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},(_,i)=>i+1).map(n=>{
   const factor=STAR_ORIGIN.scale**(n-1),width=STAR_ORIGIN.baseWidth*factor,height=STAR_ORIGIN.baseHeight*factor;
   const previousFactor=STAR_ORIGIN.scale**Math.max(0,n-2),previousWidth=STAR_ORIGIN.baseWidth*previousFactor,
     nextFactor=STAR_ORIGIN.scale**n,nextWidth=STAR_ORIGIN.baseWidth*nextFactor,nextHeight=STAR_ORIGIN.baseHeight*nextFactor;
@@ -135,10 +136,21 @@ export const ORIGIN_MAPS=Object.freeze([1,2,3].map(n=>{
     spawn:{x:width/2,y:height-160*factor},objects:[
       {id:'gate-back',name:(n===1?'별의 기원':'별의 시작점 '+(n-1))+' ↓',x:width/2,y:height-80*factor,radius:38,kind:'gate',
         target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?plazaPoint({x:3000,y:250}):{x:previousWidth/2,y:175*previousFactor},color:'#d2d3ef',passable:true},
-      ...(n<3?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:width/2,y:80*factor,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:nextWidth/2,y:nextHeight-160*nextFactor},color:'#e0d6ff',passable:true}]:[])
+      ...(n<STAR_ORIGIN.maxStage?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:width/2,y:80*factor,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:nextWidth/2,y:nextHeight-160*nextFactor},color:'#e0d6ff',passable:true}]:[]),
+      ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2+80,radius:58,kind:'goddess-statue'}]:[])
     ]});
 }));
 export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
+// 우주 지도 선택 화면의 5열×6행 배치입니다. 각 맵은 서로 다른 칸을 사용합니다.
+export const UNIVERSE_MAP_LAYOUT=Object.freeze([
+  ...[...ORIGIN_MAPS.map((map,i)=>({id:map.id,icon:'✧',row:4-i,column:4}))].reverse(),
+  {id:BLACK_HOLE_ID,icon:'◉',row:4,column:5},
+  ...PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☀',row:4,column:3-i})),
+  ...MOON_PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☾',row:6,column:3-i})),
+  {id:STAR_PARADISE.id,icon:'✵',row:5,column:1},{id:GARDEN_ID,icon:'✧',row:5,column:3},
+  {id:PLAZA_ID,icon:'★',row:5,column:4},{id:STREET_ID,icon:'✦',row:5,column:5},
+  {id:VALLEY_ID,icon:'≋',row:6,column:4}
+].map(Object.freeze));
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
 export const SHARDS = Object.freeze({ max: 9999, giveMax: 999 });
 // 별상점 목록. 사는 값은 price, 파는 값은 floor(price * sellRate).

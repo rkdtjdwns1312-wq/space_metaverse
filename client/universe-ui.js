@@ -2,13 +2,13 @@ import {drawParadiseFloor} from './paradise-floor.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
 import {drawPlazaGround} from './plaza-art.js';
 import {drawValleyGround} from './valley-art.js';
-import {drawOriginArt,onOriginArtReady} from './origin-art.js';
+import {drawOriginArt,ORIGIN_STATUE_RENDER,onOriginArtReady} from './origin-art.js';
 import {drawStreetGround,onStreetArtReady} from './street-art.js';
 import {drawBlackHoleGround} from './black-hole-art.js';
 import {drawInteriorFloor} from './interior-art.js';
 import {DEPARTMENT_ART} from './department-art.js';
 import {PAINTED_PROPS} from './painted-props.js';
-import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,BLACK_HOLE_ID,ORIGIN_MAPS,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
+import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,UNIVERSE_MAP_LAYOUT,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
 export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
@@ -73,11 +73,17 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       kind==='andromeda'?'/assets/maps/plaza-andromeda.png':
       kind==='mission-board'?'/assets/maps/plaza-mission-board.png':
       kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
+      kind==='goddess-statue'?'/assets/maps/star-goddess-statue.png':
       kind==='evolution'?'/assets/maps/evolution-altar.png':
       kind==='growth'?'/assets/maps/growth-altar.png':
       kind==='black-star'?'/assets/maps/black-star-sanctuary.png':
       ['board','mailbox','report-board','warning-rock','interior-decor-machine'].includes(kind)?'/assets/interior/'+({board:'board',mailbox:'mailbox','report-board':'report','warning-rock':'warning','interior-decor-machine':'control'}[kind])+'.png':null;
     const image=picture(src);
+    if(kind==='goddess-statue'&&!image)return;
+    if(image&&kind==='goddess-statue'){
+      const width=ORIGIN_STATUE_RENDER.width*scale,height=width*image.naturalHeight/image.naturalWidth;
+      ctx.drawImage(image,x-width/2,y-height*ORIGIN_STATUE_RENDER.footY,width,height);return;
+    }
     if(image&&kind==='market'){
       // 시장은 구역 자체가 상호작용 범위이므로 radius로 그리면 지도 밖까지 커집니다.
       const width=o.rx*1.7*scale,height=o.ry*1.75*scale;
@@ -168,10 +174,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const next=JSON.stringify([p.mapId,selected,planets().map(p=>[p.id,p.name,p.color])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
-      const layout=[...ORIGIN_MAPS.map((m,i)=>[m.id,'✧',3-i,4]).reverse(),[BLACK_HOLE_ID,'◉',3,5],
-        ...PARADISE_MAPS.map((m,i)=>[m.id,'☀',3,3-i]),...MOON_PARADISE_MAPS.map((m,i)=>[m.id,'☾',5,3-i]),
-        [STAR_PARADISE.id,'✵',4,1],[GARDEN_ID,'✧',4,3],[PLAZA_ID,'★',4,4],[STREET_ID,'✦',4,5],[VALLEY_ID,'≋',5,4]];
-      $('universe-links').replaceChildren(...layout.map(([id,icon,row,column])=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
+      $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
       $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
       if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
     }

@@ -8,6 +8,9 @@ import {geminiWalkFrames} from './gemini-animation.js';
 import {aquariusWalkFrames} from './aquarius-animation.js';
 import {capricornWalkFrames} from './capricorn-animation.js';
 import {taurusWalkFrames} from './taurus-animation.js';
+import {libraWalkFrames} from './libra-animation.js';
+import {herculesWalkFrames} from './hercules-animation.js';
+import {corvusWalkFrames} from './corvus-animation.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,drawOphiuchusSkill} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -51,6 +54,7 @@ import {drawSkillEffect} from './skill-effects.js';
 import {drawSagittarius,preloadSagittarius} from './sagittarius-effects.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap, itemOf } from '/shared/config.js';
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
+import {drawOriginStatue} from './origin-art.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
 import {monsterType,monsterVisualScale} from '/shared/monsters.js';
@@ -107,6 +111,9 @@ export function createWorld(canvas) {
   const aquariusLastPoint=new Map(),aquariusMovingUntil=new Map(),aquariusMovingSince=new Map();
   const capricornLastPoint=new Map(),capricornMovingUntil=new Map(),capricornMovingSince=new Map();
   const taurusLastPoint=new Map(),taurusMovingUntil=new Map(),taurusMovingSince=new Map();
+  const libraLastPoint=new Map(),libraMovingUntil=new Map(),libraMovingSince=new Map();
+  const herculesLastPoint=new Map(),herculesMovingUntil=new Map(),herculesMovingSince=new Map();
+  const corvusLastPoint=new Map(),corvusMovingUntil=new Map(),corvusMovingSince=new Map();
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set();
@@ -480,6 +487,48 @@ export function createWorld(canvas) {
             canvas.dataset.taurusWalkFrame=String(index);
           }
         }
+        if(constellation.id==='libra'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+          const previous=libraLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          libraLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((libraMovingUntil.get(p.id)||0)<time)libraMovingSince.set(p.id,time);
+            libraMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&libraMovingUntil.get(p.id)>time){
+            const frames=libraWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(libraMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.libraWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='hercules'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+          const previous=herculesLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          herculesLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((herculesMovingUntil.get(p.id)||0)<time)herculesMovingSince.set(p.id,time);
+            herculesMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&herculesMovingUntil.get(p.id)>time){
+            const frames=herculesWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(herculesMovingSince.get(p.id)||time))/130)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.herculesWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='corvus'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+          const previous=corvusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          corvusLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((corvusMovingUntil.get(p.id)||0)<time)corvusMovingSince.set(p.id,time);
+            corvusMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&corvusMovingUntil.get(p.id)>time){
+            const frames=corvusWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(corvusMovingSince.get(p.id)||time))/130)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.corvusWalkFrame=String(index);
+          }
+        }
         ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
         ctx.drawImage(visible,-size/2,-size/2,size,size);ctx.restore();
       }
@@ -549,7 +598,7 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects)drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
@@ -649,7 +698,8 @@ export function createWorld(canvas) {
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
       const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
-        ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)}))];
+        ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
+        ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
@@ -732,7 +782,7 @@ export function createWorld(canvas) {
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
+      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);
@@ -839,7 +889,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=currentMap().objects.filter(o=>['gate','shop','energy-shop','arcade','crafting','math-station','english-station','evolution','growth','black-star'].includes(o.kind));
+        const candidates=currentMap().objects.filter(o=>['gate','shop','energy-shop','arcade','crafting','math-station','english-station','evolution','growth','black-star','goddess-statue'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=Math.hypot(me.x-o.x,me.y-o.y);

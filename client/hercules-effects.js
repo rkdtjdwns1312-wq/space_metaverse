@@ -56,7 +56,7 @@ export function drawHerculesShield(ctx,shield,elapsedMs,reducedMotion=false){
   ctx.save();ctx.globalAlpha*=ease;
   const scale=shield.size*2.0/art.height*(.75+.25*ease);
   ctx.scale(scale,scale);
-  if(phase<1){ctx.save();ctx.globalAlpha*=Math.sin(phase*Math.PI)*(reducedMotion?.3:.8);ctx.drawImage(art.effects,-128,-art.centerY);ctx.restore();}
+  if(phase<1&&shield.stage!==3){ctx.save();ctx.globalAlpha*=Math.sin(phase*Math.PI)*(reducedMotion?.3:.8);ctx.drawImage(art.effects,-128,-art.centerY);ctx.restore();}
   ctx.drawImage(art.image,-128,-art.centerY);ctx.restore();
 }
 export function drawHerculesBurst(ctx,burst,elapsedMs,reducedMotion=false){

@@ -23,7 +23,8 @@ test('별의 시작점 3 몬스터는 반경과 그림 크기가 기존의 정�
 });
 
 test('별의 시작점 맵은 1.2배씩 커지고 문과 귀환 좌표가 실제 크기를 따른다',()=>{
-  assert.deepEqual(ORIGIN_MAPS.map(map=>[map.width,map.height]),[[1200,900],[1440,1080],[1728,1296]]);
+  assert.deepEqual(ORIGIN_MAPS.slice(0,3).map(map=>[map.width,map.height]),[[1200,900],[1440,1080],[1728,1296]]);
+  assert.ok(Math.abs(ORIGIN_MAPS[3].width-2073.6)<1e-9&&Math.abs(ORIGIN_MAPS[3].height-1555.2)<1e-9);
   for(const map of ORIGIN_MAPS){
     const back=map.objects.find(object=>object.id==='gate-back');
     assert.equal(back.x,map.width/2);assert.equal(back.y,map.height-80*(map.width/1200));
@@ -57,7 +58,7 @@ test('세 맵의 몬스터 배치가 실제 맵 경계 안이고 안전 간격�
   const room={};const list=monsterViews(room);
   for(const map of ORIGIN_MAPS){
     const monsters=list.filter(monster=>monster.mapId===map.id);
-    assert.equal(monsters.length,5);
+    assert.equal(monsters.length,map.id==='star-origin-4'?0:5);
     for(const monster of monsters){
       assert.ok(monster.x>=Math.max(120,monster.radius));
       assert.ok(monster.x<=map.width-Math.max(120,monster.radius));
@@ -67,6 +68,15 @@ test('세 맵의 몬스터 배치가 실제 맵 경계 안이고 안전 간격�
     for(const monster of monsters) for(const other of monsters)
       if(monster.id<other.id) assert.ok(Math.hypot(monster.x-other.x,monster.y-other.y)>=monster.radius+other.radius+10);
   }
+});
+
+test('별의 시작점 4는 왕복 문과 발밑 석상 충돌 지점만 두고 보스·자동 몬스터를 만들지 않는다',()=>{
+  const map=ORIGIN_MAPS[3],back=map.objects.find(object=>object.id==='gate-back'),statue=map.objects.find(object=>object.kind==='goddess-statue');
+  assert.equal(back.target,'star-origin-3');
+  assert.deepEqual(map.objects.filter(object=>object.id==='gate-next'),[]);
+  assert.deepEqual([statue.x,statue.y,statue.radius],[map.width/2,map.height/2+80,58]);
+  const room={},spawns=monsterViews(room).filter(monster=>monster.mapId===map.id);
+  assert.deepEqual(spawns,[]);
 });
 
 test('처치 몬스터가 다른 살아있는 몬스터와 겹치는 위치에서는 리스폰하지 않는다',()=>{

@@ -11,6 +11,10 @@ const FILE_BGM = Object.freeze({
   'sun-paradise-2':'/assets/audio/sun-paradise-school-road.mp3',
   'sun-paradise-3':'/assets/audio/sun-paradise-3-boss-raid.mp3',
   'star-paradise':'/assets/audio/star-paradise-o-magnum-mysterium.mp3',
+  'star-origin-1':'/assets/audio/star-origin-mochanova.mp3',
+  'star-origin-2':'/assets/audio/star-origin-mochanova.mp3',
+  'star-origin-3':'/assets/audio/star-origin-mochanova.mp3',
+  'star-origin-4':'/assets/audio/star-origin-mochanova.mp3',
   'moon-paradise-3':'/assets/audio/moon-paradise-3-ancient-kingdom.mp3',
   'planet:':'/assets/audio/planet-interior-waddle.mp3'
 });

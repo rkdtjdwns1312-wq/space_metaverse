@@ -10,11 +10,12 @@ export function preloadWater(star,ids=Object.keys(WATER_VFX[star]||{})){
 function sprite(ctx,spec,frame,x,y,width,height,alpha=1){
   const image=images.get(spec.url);
   if(!image?.complete||!image.naturalWidth)return;
-  const first=Math.max(0,Math.min(23,Math.floor(frame))),blend=Math.max(0,Math.min(1,frame-first));
+  const last=spec.frames-1,side=spec.frameSize,columns=spec.columns;
+  const first=Math.max(0,Math.min(last,Math.floor(frame))),blend=Math.max(0,Math.min(1,frame-first));
   ctx.save();const baseAlpha=ctx.globalAlpha;ctx.globalAlpha=baseAlpha*alpha*(1-blend);
-  ctx.drawImage(image,(first%6)*256,Math.floor(first/6)*256,256,256,x-width/2,y-height/2,width,height);
-  if(blend&&first<23){ctx.globalAlpha=baseAlpha*alpha*blend;
-    ctx.drawImage(image,((first+1)%6)*256,Math.floor((first+1)/6)*256,256,256,x-width/2,y-height/2,width,height);}
+  ctx.drawImage(image,(first%columns)*side,Math.floor(first/columns)*side,side,side,x-width/2,y-height/2,width,height);
+  if(blend&&first<last){ctx.globalAlpha=baseAlpha*alpha*blend;
+    ctx.drawImage(image,((first+1)%columns)*side,Math.floor((first+1)/columns)*side,side,side,x-width/2,y-height/2,width,height);}
   ctx.restore();
 }
 export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
@@ -30,10 +31,10 @@ export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   else ctx.rotate(angle);
   const fade=Math.min(1,progress/.1,(1-progress)/.13);
   if(star==='cetus'){
-    const wave=cetusWavePoseAt(progress),width=size*wave.width,height=size*wave.height;
-    // 바닥을 고정한 채 생성→성장→앞으로 덮침→물거품 소멸. 원화의 물마루는 왼쪽을 향하므로 내부에서 반전합니다.
-    ctx.translate(0,cast.size*.22);ctx.transform(1,0,-wave.lean,1,0,0);ctx.scale(-1,1);
-    sprite(ctx,spec,wave.frame,0,-height*.37,width,height,Math.min(1,progress/.06,(1-progress)/.14));
+    const wave=cetusWavePoseAt(progress);
+    // 오른쪽을 향한 새 원화를 사용하며 좌우 반전은 위의 공통 방향 처리에서 한 번만 합니다.
+    ctx.translate(0,cast.size*.22);
+    sprite(ctx,spec,wave.frame,0,-size*(215/256-.5),size,size,Math.min(1,progress/.06,(1-progress)/.14));
   }else sprite(ctx,spec,frame,0,0,size,size,reducedMotion?Math.sin(Math.PI*progress)*.7:fade);
   ctx.restore();return true;
 }

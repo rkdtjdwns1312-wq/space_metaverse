@@ -77,11 +77,22 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     interior.currentTime=12;
     assert.equal(await audio.playBgm('planet:dept-b'),true);
     assert.equal(players.has('planet:dept-b'),false);assert.equal(interior.currentTime,12);
+    assert.equal(await audio.playBgm('star-origin-1'),true);
+    const origin=players.get('star-origin-1');
+    assert.equal(origin.src,'/assets/audio/star-origin-mochanova.mp3');assert.equal(origin.loop,true);
+    origin.currentTime=47;
+    for(const id of ['star-origin-2','star-origin-3','star-origin-4','star-origin-2','star-origin-1']){
+      assert.equal(await audio.playBgm(id),true);
+      assert.equal(origin.currentTime,47);assert.equal(origin.playCount,1);assert.equal(origin.paused,false);
+    }
+    assert.equal(players.has('star-origin-2'),false);assert.equal(players.has('star-origin-3'),false);
     audio.setVolume(.42);audio.setMuted(true);
     assert.equal(battle.volume,.42);assert.equal(moon.volume,.42);assert.equal(interior.volume,.42);
     assert.equal(battle.muted,true);assert.equal(moon.muted,true);assert.equal(interior.muted,true);
+    assert.equal(origin.volume,.42);assert.equal(origin.muted,true);
     assert.equal(await audio.playBgm('lobby'),true);
     assert.equal(lobby.paused,false);assert.equal(violin.paused,false);assert.equal(violin.currentTime,lobby.currentTime);
+    assert.equal(origin.paused,true);assert.equal(origin.currentTime,0);
     assert.equal(shelter.paused,true);assert.equal(valley.paused,true);assert.equal(plaza.paused,true);assert.equal(crossroads.paused,true);assert.equal(sun.paused,true);assert.equal(interior.paused,true);
     audio.stopBgm();assert.equal(lobby.paused,true);assert.equal(violin.paused,true);
   }finally{audio.dispose();}

@@ -22,7 +22,7 @@ export const CONSTELLATIONS = Object.freeze([
   ['aries', '양자리', '#f29b86', '♈', '특수계'],
   ['pisces', '물고기자리', '#86a5dc', '♓', '특수계']
 ].map(([id, name, color, icon, type]) => Object.freeze({ id, name, color, icon, type,
-  art:'/assets/constellation-cards/'+id+'.png',sprite:'/assets/avatars/'+id+'.png',ability:CONSTELLATION_ABILITIES[id] })));
+  art:'/assets/constellation-cards/'+id+'.png',sprite:'/assets/avatars/'+(id==='hercules'?'hercules-front':id)+'.png',ability:CONSTELLATION_ABILITIES[id] })));
 
 // 과거 저장 교실의 다섯 계보는 현재 학생이 진화·변경할 때까지 읽을 수 있게만 남깁니다.
 export const LEGACY_CONSTELLATIONS=Object.freeze([

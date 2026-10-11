@@ -3,8 +3,8 @@ import {sustainedSkill} from './skill-duration.js';
 
 export const WATER_VFX=Object.freeze(Object.fromEntries(['cancer','cetus','pisces'].map(star=>[
   star,Object.freeze(Object.fromEntries(['attack','skill-lv2','skill-lv3','skill-lv4'].map(id=>[
-    id,Object.freeze({id,url:`/assets/skills/${star}/${id}.png`,iconUrl:`/assets/skills/${star}/${id}-icon.png`,
-      columns:6,rows:4,frames:24,frameSize:256,anchor:{x:.5,y:.5}})
+    id,Object.freeze({id,url:`/assets/skills/${star}/${star==='cetus'&&id==='attack'?'attack-wave-v2':id}.png`,iconUrl:`/assets/skills/${star}/${id}-icon.png`,
+      columns:6,rows:star==='cetus'&&id==='attack'?5:4,frames:star==='cetus'&&id==='attack'?30:24,frameSize:256,anchor:{x:.5,y:.5}})
   ])))
 ])));
 
@@ -39,17 +39,10 @@ export function cetusAuraFrameAt(elapsedMs){
   return Math.floor((((elapsedMs%1520)+1520)%1520)/190);
 }
 
-// 몸에서 생성되어 사거리의 중간에서 최대가 되고 끝에서 완전히 사라집니다.
-export function cetusWaveScaleAt(progress){
-  const p=Math.max(0,Math.min(1,progress));
-  const smooth=t=>t*t*(3-2*t);
-  return p<=.5?1.2*smooth(p*2):1.2*(1-smooth((p-.5)*2));
-}
+// 30장의 서로 다른 파도 형태를 순서대로 재생합니다. 캔버스 크기와 바닥은 고정합니다.
 export function cetusWavePoseAt(progress){
-  const p=Math.max(0,Math.min(1,progress)),fall=Math.max(0,(p-.5)*2);
-  const scale=cetusWaveScaleAt(p);
-  // 원본 시트의 깨진 후반 칸 대신, 정상적인 생성 프레임을 재생한 뒤 물마루를 앞으로 눕힙니다.
-  return {frame:Math.min(9,p*18),width:scale,height:scale*(1-.72*fall),lean:.38*Math.sin(fall*Math.PI/2)};
+  const p=Math.max(0,Math.min(1,progress));
+  return {frame:p*(WATER_VFX.cetus.attack.frames-1),width:1,height:1,lean:0};
 }
 
 // 물고기는 전진 거리와 높이를 함께 바꿉니다. 시작/착지는 바닥, 중간은 최고점입니다.

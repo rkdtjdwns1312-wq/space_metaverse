@@ -943,6 +943,7 @@ function doInteract(){
   else if(n.kind==='gate')travelTo(n.target);
   else if(n.kind==='black-hole')travelTo(n.target);
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
+  else if(n.kind==='goddess-statue')toast('별의 여신 석상은 아직 잠들어 있어요. 깨어날 준비 중이에요.');
   else if(n.kind==='shop')openShopDialog();
   else if(n.kind==='energy-shop')energyShopUI.open();
   else if(n.kind==='crafting')craftingUI.open();
@@ -968,7 +969,7 @@ function updateInteractPrompt(){
   if(!selfId||placing||document.querySelector('dialog:modal')){hide();return;}
   const n=world.nearby();
   if(!n){hide();return;}
-  const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.name;
+  const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
   const caption=$('interact-object');
   if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · F 상호작용하기');}
   if(prompt.hidden)prompt.hidden=false;

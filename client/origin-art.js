@@ -7,6 +7,12 @@ let revision=0;
 const listeners=new Set();
 if(image){image.onload=()=>{revision++;for(const fn of listeners)fn();};image.src='/assets/maps/origin-starlight.png';}
 const ready=()=>!!image?.complete&&image.naturalWidth>0;
+const templeImage=typeof Image==='undefined'?null:new Image();
+if(templeImage){templeImage.onload=()=>{revision++;for(const fn of listeners)fn();};templeImage.src='/assets/maps/plaza-temple.png';}
+const statueImage=typeof Image==='undefined'?null:new Image();
+if(statueImage){statueImage.onload=()=>{revision++;for(const fn of listeners)fn();};statueImage.src='/assets/maps/star-goddess-statue.png';}
+// 일반 보스의 약384px 높이에 맞춥니다. 세로 원화 비율을 보존하고 받침대를 신전 중앙에 세웁니다.
+export const ORIGIN_STATUE_RENDER=Object.freeze({width:256,footY:1475/1536});
 export const originArtCacheKey=()=>revision;
 export function onOriginArtReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
 
@@ -28,7 +34,20 @@ export function drawOriginArt(ctx,map){
   if(pavingImage?.complete&&pavingImage.naturalWidth){const pattern=ctx.createPattern(pavingImage,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.fillStyle=pattern;ctx.globalAlpha=.92;ctx.fillRect(0,0,map.width,map.height);}}
   else{const g=ctx.createLinearGradient(f.cx-f.rx,f.cy-f.ry,f.cx+f.rx,f.cy+f.ry);g.addColorStop(0,'#eeeaf4');g.addColorStop(1,'#aaa9c9');ctx.fillStyle=g;ctx.fillRect(0,0,map.width,map.height);}
   const wash=ctx.createLinearGradient(0,0,map.width,map.height);wash.addColorStop(0,'#e9d9ff22');wash.addColorStop(.5,'#ffffff00');wash.addColorStop(1,'#a9ddff30');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
+  if(map.id==='star-origin-4'){
+    const cx=map.width/2,cy=map.height/2;
+    // 광장 신전 바닥 원화(720×480)를 각 변 40% 키운 같은 비율로 재사용합니다.
+    if(templeImage?.complete&&templeImage.naturalWidth)ctx.drawImage(templeImage,cx-504,cy-336,1008,672);
+  }
   drawStoneRim(ctx,rimEdges(f.points),'moon');
+}
+// 석상은 고정 배경에 합성하지 않고 플린스 발 좌표를 기준으로 월드 깊이 레이어에서 그립니다.
+export function drawOriginStatue(ctx,map){
+  if(map?.id!=='star-origin-4'||!statueImage?.complete||!statueImage.naturalWidth)return false;
+  const statue=map.objects.find(o=>o.kind==='goddess-statue');if(!statue)return false;
+  const width=ORIGIN_STATUE_RENDER.width,height=width*statueImage.naturalHeight/statueImage.naturalWidth;
+  ctx.drawImage(statueImage,statue.x-width/2,statue.y-height*ORIGIN_STATUE_RENDER.footY,width,height);
+  return true;
 }
 const pavingImage=typeof Image==='undefined'?null:new Image();
 if(pavingImage){pavingImage.onload=()=>{revision++;for(const fn of listeners)fn();};pavingImage.src='/assets/maps/plaza-paving.png';}
