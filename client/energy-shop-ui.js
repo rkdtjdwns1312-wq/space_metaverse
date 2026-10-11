@@ -30,9 +30,14 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
   catalogDialog.addEventListener('close',()=>{if(dialog.open)dialog.querySelector('#energy-shop-catalog-open').focus();});
   const bonusText=bonus=>[
     bonus.attack&&'공격력 +'+bonus.attack,bonus.defense&&'방어력 +'+bonus.defense,
-    bonus.hp&&'체력 +'+bonus.hp,bonus.mp&&'마나 +'+bonus.mp,
+    bonus.hp&&'최대 체력 +'+bonus.hp,bonus.mp&&'최대 마나 +'+bonus.mp,
     bonus.speed&&'이동속도 +'+Math.round(bonus.speed*100)+'%',
-    bonus.regen&&'10초 회복 +'+Math.round(bonus.regen*100)+'%'
+    bonus.regen&&'10초 회복 비율 +'+Math.round(bonus.regen*100)+'%',
+    bonus.hpRegen&&'10초마다 체력 회복 +'+bonus.hpRegen,
+    bonus.mpRegen&&'10초마다 마나 회복 +'+bonus.mpRegen,
+    bonus.durationMs&&'지속형 스킬 지속시간 +'+bonus.durationMs/1000+'초',
+    bonus.skillDamage&&'스킬 피해량 +'+Math.round(bonus.skillDamage*100)+'%',
+    bonus.cooldownReduction&&'일반 스킬 쿨타임 -'+Math.round(bonus.cooldownReduction*100)+'%'
   ].filter(Boolean).join(' · ');
   function render(){
     const player=getPlayer();if(!player)return;

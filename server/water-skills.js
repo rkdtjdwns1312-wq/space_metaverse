@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {waterSkillOf,isWaterConstellation} from '../shared/water-skills.js';
@@ -21,7 +22,7 @@ export function castWater(room,player,now,{basic=false}={}){
     vitals.mp-=spec.mana;player.waterCooldownUntil=now+spec.cooldownMs;
     if(id==='cancer'||id==='cetus'){
       player.waterAura={kind:id,stage:spec.stage,at:now,endsAt:now+spec.durationMs,nextPulseAt:now+1000,
-        mapId:player.mapId,defenseBonus:id==='cetus'?spec.defenseBonus:0};
+        mapId:player.mapId,skillDamageFactor:skillDamageFactor(player),defenseBonus:id==='cetus'?spec.defenseBonus:0};
       return {ready:true,vitals:playerVitals(player),cooldowns:waterCooldowns(player),serverNow:now};
     }
   }
@@ -31,7 +32,7 @@ export function castWater(room,player,now,{basic=false}={}){
   const visualScale=boosted?3:1;
   const base={x:player.x,y:player.y,dx,dy,size,range:size*spec.rangeWidths*(boosted?1.5:id==='pisces'&&!basic?1.2:1),
     width:size*(id==='cetus'?.28:.13)*visualScale,
-    power:basic?Math.round(power*(boosted?spec.multiplier:1)):Math.round(power*spec.multiplier),
+    power:basic?Math.round(power*(boosted?spec.multiplier:1)):skillDamage(power*spec.multiplier,skillDamageFactor(player)),
     basic,kind:`${id}-${basic?'attack':'skill'}`,vfxId:basic?'attack':`skill-lv${spec.stage}`,
     piercing:id==='cetus'||boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:2000};
@@ -84,7 +85,7 @@ export function advanceWaterAuras(room,now){
         Math.hypot(m.x-player.x,m.y-player.y)<=radius+m.radius)
         .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))
         .slice(0,spec.maxTargets);
-      const power=attackPowerOf(player.avatar.level,'cetus',player),targets=[];
+      const power=skillDamage(attackPowerOf(player.avatar.level,'cetus',player),aura.skillDamageFactor),targets=[];
       for(const monster of monsters){const hit=damageMonster(room,monster,player,power,aura.nextPulseAt);if(hit)targets.push(hit);}
       results.push({mapId:player.mapId,playerId:player.id,targets,
         pulses:targets.map((t,i)=>({targetId:t.monsterId,direction:(Math.random()<.5?-1:1),index:i}))});

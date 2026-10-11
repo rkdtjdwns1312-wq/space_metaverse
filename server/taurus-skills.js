@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {taurusSkillOf} from '../shared/taurus-skills.js';
@@ -28,7 +29,7 @@ export function castTaurus(room,player,now,{basic=false}={}){
   vitals.mp-=spec.mana;player.taurusCooldownUntil=now+spec.cooldownMs;
   player.taurusDash={mapId:player.mapId,at:now,endsAt:now+spec.durationMs,dx,dy,distance:size*spec.rangeWidths,
     lastAt:now,lastInputAt:0,controlled:false,inputX:dx,inputY:dy,progress:0,
-    stage:spec.stage,size,power:Math.round(power*spec.multiplier),seen:new Set()};
+    stage:spec.stage,size,power:skillDamage(power*spec.multiplier,skillDamageFactor(player)),seen:new Set()};
   player.taurusImmuneUntil=player.taurusDash.endsAt+spec.immuneAfterMs;
   player.input={x:0,y:0,at:0};
   return {ready:true,vitals:playerVitals(player),cooldowns:taurusCooldowns(player),serverNow:now};
@@ -67,7 +68,7 @@ export function advanceTaurusDashes(room,now){
     let remaining=Math.min(Math.max(0,dash.distance-dash.progress),dash.distance*dt/(dash.endsAt-dash.at));
     // 조작 방향으로 작은 구간씩 이동해 회전한 경로에서도 벽과 몬스터를 건너뛰지 않습니다.
     while(length&&remaining>0.001){
-      const step=Math.min(remaining,Math.max(8,dash.size*.18));
+      const step=Math.min(remaining,8);
       const x=player.x+dx*step,y=player.y+dy*step;
       if(!isFree(room,x,y,player.id,player.mapId,false,player))break;
       player.x=x;player.y=y;dash.progress+=step;remaining-=step;

@@ -31,10 +31,14 @@ test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, �
  assert.equal((await call(a,'combat:transform',{level:5})).ok,false);
  p.avatar.level=5;ensureVitals(p).hp=1;ensureVitals(p).mp=0;
  const transformed=await call(a,'combat:transform',{durationMs:999999,cooldownMs:0,attackBonus:99999});assert.equal(transformed.ok,true);
- assert.equal(transformed.endsAt,now+30000);assert.equal(transformed.cooldownUntil,now+300000);assert.equal(ensureVitals(p).hp,80);assert.equal(ensureVitals(p).mp,70);
+ assert.equal(transformed.endsAt,now+30000);assert.equal(transformed.cooldownUntil,now+120000);assert.equal(ensureVitals(p).hp,80);assert.equal(ensureVitals(p).mp,70);
  assert.equal((await call(a,'combat:transform')).ok,false);
  damagePlayer(p,10,now);assert.ok(ensureVitals(p).hp<80);const hp=ensureVitals(p).hp;now+=5000;
  await new Promise(r=>setTimeout(r,80));assert.equal(ensureVitals(p).hp,hp);
  now+=25000;await call(a,'combat:skill',{slot:3});assert.equal(p.transformation.active,false);assert.equal(ensureVitals(p).hp<=60,true);
+ assert.equal((await call(a,'combat:transform')).ok,false);now+=89999;
+ assert.equal((await call(a,'combat:transform')).ok,false);now++;
+ const transformedAgain=await call(a,'combat:transform');assert.equal(transformedAgain.ok,true);
+ assert.equal(transformedAgain.endsAt,now+30000);assert.equal(transformedAgain.cooldownUntil,now+120000);
  const saved=JSON.stringify(toRecord(room));for(const privateKey of ['projectiles','corvusCasts','corvusCooldownUntil','damageNumbers','transformation'])assert.ok(!saved.includes(privateKey));
 });

@@ -389,8 +389,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(session.player.mapId===STREET_ID&&isNear(session.player,station),'별 영어 발전소 가까이에서 풀어 주세요.');
       return session;
     };
-    action('learning:english:start',()=>{
-      const session=englishStationAccess();return englishStation.start(session.player);
+    action('learning:english:start',data=>{
+      const session=englishStationAccess();return englishStation.start(session.player,data?.level);
     },false);
     action('learning:english:next',()=>{
       const session=englishStationAccess();return englishStation.next(session.player);
@@ -2180,7 +2180,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         const before=previous.get(room.code)||new Map(),next=new Map(),positions=[];
         for(const p of room.players.values()){
           if(p.away)continue;
-          const point=[p.id,Math.round(p.x*10)/10,Math.round(p.y*10)/10,p.facingX||1];
+          // 경계에 접한 안전 좌표를 반올림하면 클라이언트에서 바닥 밖이 될 수 있습니다.
+          const point=[p.id,p.x,p.y,p.facingX||1];
           next.set(p.id,point);
           const old=before.get(p.id);
           if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]||old[3]!==point[3]) positions.push(point);

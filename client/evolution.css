@@ -19,7 +19,7 @@
 .evolution-types { display: grid; gap: 8px; margin: 12px 0; }
 .evolution-levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .evolution-levels button { flex: 1 1 70px; }
-.evolution-type-button { background: #7542a8; color: #fff; border: 2px solid #5e328b; }
+.evolution-type-button { background: var(--button-bg); color: var(--button-text); border: 2px solid var(--button-border); }
 .evolution-types-back { margin-bottom: 4px; }
 .constellation-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
 .constellation-choice { display: grid; justify-items: center; gap: 3px; padding: 10px 4px; border: 2px solid color-mix(in srgb, var(--constellation-color), #72598e 30%); background: #f8f6ff; color: #40304f; }

@@ -5,6 +5,9 @@ import {preloadSwan,drawSwanAura} from './swan-effects.js';
 import {waterFrameAt,cetusAuraFrameAt} from '/shared/water-skills.js';
 import {cetusWalkFrames,drawCetusAura} from './cetus-animation.js';
 import {geminiWalkFrames} from './gemini-animation.js';
+import {aquariusWalkFrames} from './aquarius-animation.js';
+import {capricornWalkFrames} from './capricorn-animation.js';
+import {taurusWalkFrames} from './taurus-animation.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,drawOphiuchusSkill} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -19,11 +22,11 @@ import {drawBlackHoleGround,drawBlackStar} from './black-hole-art.js';
 import {createDamageNumbers} from './damage-numbers.js';
 import {drawCorvus,preloadCorvus} from './corvus-effects.js';
 import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
-import {avatarFloorRadius} from '/shared/avatar-boundary.js';
+import {avatarRenderPoint} from '/shared/avatar-boundary.js';
+import {equipmentBonus} from '/shared/equipment.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {inMarket} from '/shared/market.js';
 import {drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
-import {floorRenderPoint} from '/shared/paradise-floor.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
 import {drawLifeStar} from './life-star-art.js';
@@ -101,6 +104,9 @@ export function createWorld(canvas) {
   const points=new Map(),tracks=new Map(),bubbles=new Map();
   const cetusLastPoint=new Map(),cetusMovingUntil=new Map();
   const geminiLastPoint=new Map(),geminiMovingUntil=new Map(),geminiMovingSince=new Map();
+  const aquariusLastPoint=new Map(),aquariusMovingUntil=new Map(),aquariusMovingSince=new Map();
+  const capricornLastPoint=new Map(),capricornMovingUntil=new Map(),capricornMovingSince=new Map();
+  const taurusLastPoint=new Map(),taurusMovingUntil=new Map(),taurusMovingSince=new Map();
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set();
@@ -385,11 +391,11 @@ export function createWorld(canvas) {
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
-    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&!(constellation?.id==='gemini'&&constellation.assetLevel===2)){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
+    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,-size*.28);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
     if(corona){ctx.save();ctx.translate(-(p.facingX||1)*size*.24,0);drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);ctx.restore();}
-    if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.19);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
+    if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.34);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
     if(p.role==='teacher'&&!p.avatar?.teacherPreview){
       celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
@@ -412,7 +418,7 @@ export function createWorld(canvas) {
           if(previous&&Math.hypot(x-previous.x,y-previous.y)>.12)cetusMovingUntil.set(p.id,time+180);
           cetusLastPoint.set(p.id,{x,y});
           if(!reducedMotion.matches&&cetusMovingUntil.get(p.id)>time){
-            const frames=cetusWalkFrames(sprite);
+            const frames=cetusWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor(time/185)%8;
             if(frames)visible=frames[index];
             canvas.dataset.cetusWalkFrame=String(index);
@@ -427,9 +433,51 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&geminiMovingUntil.get(p.id)>time){
             const frames=geminiWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/205)%8;
+            const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/110)%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.geminiWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='aquarius'&&constellation.assetLevel<=4){
+          const previous=aquariusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          aquariusLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((aquariusMovingUntil.get(p.id)||0)<time)aquariusMovingSince.set(p.id,time);
+            aquariusMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&aquariusMovingUntil.get(p.id)>time){
+            const frames=aquariusWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(aquariusMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.aquariusWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='capricorn'&&constellation.assetLevel<=4){
+          const previous=capricornLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          capricornLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((capricornMovingUntil.get(p.id)||0)<time)capricornMovingSince.set(p.id,time);
+            capricornMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&capricornMovingUntil.get(p.id)>time){
+            const frames=capricornWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(capricornMovingSince.get(p.id)||time))/125)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.capricornWalkFrame=String(index);
+          }
+        }
+        if(constellation.id==='taurus'&&constellation.assetLevel<=4){
+          const previous=taurusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
+          taurusLastPoint.set(p.id,{x,y});
+          if(moving){
+            if((taurusMovingUntil.get(p.id)||0)<time)taurusMovingSince.set(p.id,time);
+            taurusMovingUntil.set(p.id,time+190);
+          }
+          if(!reducedMotion.matches&&taurusMovingUntil.get(p.id)>time){
+            const frames=taurusWalkFrames(sprite,constellation.assetLevel);
+            const index=Math.floor((time-(taurusMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            if(frames)visible=frames[index];
+            canvas.dataset.taurusWalkFrame=String(index);
           }
         }
         ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
@@ -478,7 +526,11 @@ export function createWorld(canvas) {
     // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
     for(const p of players){
       const position=tracks.get(p.id)?.at(t)||{x:p.x,y:p.y};
-      points.set(p.id,floorRenderPoint(mapOf(p.mapId,planets),position,{x:p.x,y:p.y},avatarFloorRadius(p)));
+      const previous=points.get(p.id);
+      // 모서리에서 막힌 보간을 복구할 때도 한 프레임에 밀린 거리를 뛰지 않습니다.
+      const maxDistance=previous?(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)*Math.max(0,t-previous.time)/1000+.1:Infinity;
+      points.set(p.id,{...avatarRenderPoint(mapOf(p.mapId,planets),position,{x:p.x,y:p.y},p,monsters,
+        previous?.mapId===p.mapId?previous:null,maxDistance),mapId:p.mapId,time:t});
     }
     for(const m of monsters)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
@@ -501,6 +553,8 @@ export function createWorld(canvas) {
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
+    // 물의 영역은 바닥 위·캐릭터 아래에 깔아 얼굴과 몸을 가리지 않습니다.
+    aquarius.draw(ctx,t,reducedMotion.matches);
     const visibleMonsters=monsters.filter(m=>m.alive&&m.mapId===myMapId);
     canvas.dataset.monsterCount=String(visibleMonsters.length);
     const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
@@ -627,7 +681,6 @@ export function createWorld(canvas) {
     for(const fall of coronaFalls)drawCoronaFall(ctx,fall,t-fall.startsAt,reducedMotion.matches);
     leoRoars=leoRoars.filter(roar=>roar.until>t);
     for(const roar of leoRoars)drawLeoRoar(ctx,roar,t-roar.startsAt,reducedMotion.matches);
-    aquarius.draw(ctx,t,reducedMotion.matches);
     sagittariusEffects=sagittariusEffects.filter(e=>e.until>t&&e.mapId===myMapId);
     sagittariusCasts=sagittariusCasts.filter(e=>e.until>t&&e.mapId===myMapId);
     for(const cast of sagittariusCasts){
@@ -679,7 +732,7 @@ export function createWorld(canvas) {
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
+      if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);

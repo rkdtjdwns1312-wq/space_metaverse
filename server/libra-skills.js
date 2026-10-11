@@ -1,3 +1,4 @@
+import {skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {libraSkillOf} from '../shared/libra-skills.js';
@@ -22,7 +23,7 @@ export function castLibra(room,player,now,{basic=false}={}){
   ensure(now>=(player.libraCooldownUntil||0),'천칭 스킬을 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.libraCooldownUntil=now+spec.cooldownMs;
-  player.libraAura={at:now,endsAt:now+spec.durationMs,stage:spec.stage,size,radius:size*spec.radiusWidths,attackBonus:spec.attackBonus,mapId:player.mapId};
+  player.libraAura={at:now,endsAt:now+spec.durationMs,stage:spec.stage,size,skillDamageFactor:skillDamageFactor(player),radius:size*spec.radiusWidths,attackBonus:spec.attackBonus,mapId:player.mapId};
   advanceLibraAuras(room,now);
   return {ready:true,vitals:playerVitals(player),cooldowns:libraCooldowns(player),serverNow:now};
 }

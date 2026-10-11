@@ -506,7 +506,7 @@ function itemVisual(item){
   const image=document.createElement('img');image.className='item-art';image.src=item.art;image.alt='';image.loading='lazy';return image;
 }
 function itemUseText(item){
-  if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'체력',mp:'마나',speed:'이동속도',regen:'10초 회복'}[key]+' +'+(key==='speed'||key==='regen'?Math.round(value*100)+'%':value))).join(' · ');
+  if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'최대 체력',mp:'최대 마나',speed:'이동속도',regen:'10초 회복 비율',hpRegen:'10초마다 체력 회복',mpRegen:'10초마다 마나 회복',durationMs:'지속형 스킬 지속시간',skillDamage:'스킬 피해량',cooldownReduction:'일반 스킬 쿨타임'}[key]+(key==='cooldownReduction'?' -':' +')+(key==='speed'||key==='regen'||key==='skillDamage'||key==='cooldownReduction'?Math.round(value*100)+'%':key==='durationMs'?value/1000+'초':value))).join(' · ');
   if(item.mode==='material')return '별빛 조합기에 넣는 재료예요.';
   if(item.passiveOnly)return item.description;
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';

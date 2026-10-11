@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {geminiSkillOf} from '../shared/gemini-skills.js';
@@ -21,7 +22,7 @@ export function castGemini(room,player,now,{basic=false}={}){
   const length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   const power=attackPowerOf(player.avatar.level,'gemini',player);
   const base={x:player.x,y:player.y,dx,dy,size,range:size*4,width:size*.13,
-    power:basic?power:Math.round(power*spec.multiplier*spec.effectAmount),basic,
+    power:basic?power:skillDamage(power*spec.multiplier*spec.effectAmount,skillDamageFactor(player)),basic,
     piercing:!basic,kind:basic?'gemini-attack':'gemini-skill',
     vfxId:basic?'attack':`skill-lv${spec.stage}`,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:900};

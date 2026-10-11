@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {avatarFitsFloor,avatarFloorRadius} from '../shared/avatar-boundary.js';
+import {avatarFitsFloor,avatarFloorRadius,avatarCollisionShape} from '../shared/avatar-boundary.js';
+import {avatarSizeOf} from '../shared/avatar-size.js';
 import {advance,arrivePosition,isFree} from '../server/world.js';
 import {RULES,STATIC_MAPS,STREET,STREET_ID} from '../shared/config.js';
 import {STREET_LAYOUT} from '../shared/street-layout.js';
@@ -9,11 +10,14 @@ const student=level=>({id:'student',role:'student',avatar:{level},connected:true
   x:STREET.spawn.x,y:STREET.spawn.y,input:{x:0,y:0,at:0},facing:{x:1,y:0},facingX:1});
 const roomWith=player=>({players:new Map([[player.id,player]]),planets:new Map(),proposals:new Map(),unattended:true});
 
-test('바닥 보호 반지름은 화면 크기에 맞고 이동·물체 반경은 16으로 유지된다',()=>{
-  const expected=[18,42,48,55,55];
-  for(let level=1;level<=5;level++)assert.equal(avatarFloorRadius({role:'student',avatar:{level}}),expected[level-1],`학생 LV${level}`);
-  assert.equal(avatarFloorRadius({role:'teacher',avatar:{level:6}}),50);
-  assert.equal(RULES.radius,16,'이동 충돌과 물체·공격 상호작용 반경은 기존 값');
+test('하반신 반경과 아래쪽 offset은 키의 1/4이고 전투 상호작용 수치는 유지된다',()=>{
+  for(let level=1;level<=5;level++){
+    const p={role:'student',avatar:{level}},r=avatarSizeOf(p)/4;
+    assert.equal(avatarFloorRadius(p),r);assert.deepEqual(avatarCollisionShape(p),{halfWidth:r,offsetY:r,radius:r});
+  }
+  assert.equal(avatarFloorRadius({role:'teacher',avatar:{level:6}}),24);
+  assert.equal(avatarFloorRadius({role:'student',avatar:{blackStar:true}}),13);
+  assert.equal(RULES.radius,16,'전투·상호작용 기본 상수는 유지');
 });
 
 test('config에 등록된 모든 맵에서 큰 아바타 스폰은 안전하고 네 바깥 경계는 거부된다',()=>{
@@ -24,8 +28,8 @@ test('config에 등록된 모든 맵에서 큰 아바타 스폰은 안전하고 
     assert.ok(avatarFitsFloor(map,x,y,player),`${map.id} 스폰·r=${r}`);
     assert.equal(avatarFitsFloor(map,r-1,y,player),false,`${map.id} 왼쪽 경계·r=${r}`);
     assert.equal(avatarFitsFloor(map,map.width-r+1,y,player),false,`${map.id} 오른쪽 경계·r=${r}`);
-    assert.equal(avatarFitsFloor(map,x,r-1,player),false,`${map.id} 위쪽 경계·r=${r}`);
-    assert.equal(avatarFitsFloor(map,x,map.height-r+1,player),false,`${map.id} 아래쪽 경계·r=${r}`);
+    assert.equal(avatarFitsFloor(map,x,-1,player),false,`${map.id} 허리가 위쪽 경계를 넘음·r=${r}`);
+    assert.equal(avatarFitsFloor(map,x,map.height-r*2+1,player),false,`${map.id} 발이 아래쪽 경계를 넘음·r=${r}`);
   }
 });
 
@@ -50,7 +54,8 @@ test('경계 입력은 멈추고 진화 직후 커진 몸과 잘못된 현재 �
   Object.assign(p,{x,y,input:{x:0,y:1,at:100}});
   for(const now of [100,150,200]){
     p.input={x:0,y:1,at:now};advance(room,now);
-    assert.deepEqual({x:p.x,y:p.y},{x,y},'계속 누른 경계 입력도 바닥 밖으로 이동하지 않는다');
+    assert.equal(p.x,x);assert.ok(avatarFitsFloor(STREET,p.x,p.y,p),'하반신이 바닥 안에 남는다');
+    assert.equal(avatarFitsFloor(STREET,p.x,p.y+8,p),false,'벽 직전까지 이동하고 멈춘다');
   }
 
   p.avatar.level=5;p.input={x:0,y:0,at:250};

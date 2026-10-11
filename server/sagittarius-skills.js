@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {transformedSkill} from '../shared/transformation.js';
 import {launchProjectiles} from './projectiles.js';
 import {randomUUID} from 'node:crypto';
@@ -57,7 +58,7 @@ function execute(room,player,skill,now,basic){
   let result={targets:[],playerTargets:[]},effects=[];
   if(basic||slot===0){
     const range=size*skill.rangeWidths,width=size*.13;
-    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:power*skill.multiplier,
+    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:skillDamage(power*skill.multiplier,skillDamageFactor(player)),
       piercing:!basic,vfxId:basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();

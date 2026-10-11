@@ -1,5 +1,6 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {randomUUID} from 'node:crypto';
-import {aquariusSkillOf} from '../shared/aquarius-skills.js';
+import {aquariusSkillOf,aquariusAreaAt,AQUARIUS_TIMING} from '../shared/aquarius-skills.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {mapOf} from '../shared/config.js';
@@ -14,7 +15,9 @@ import {ensure} from './rooms.js';
 const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
 export const aquariusCooldowns=p=>({0:p.aquariusCooldownUntil||0});
 // 물병 지대의 그림 가장자리에 몬스터 몸 일부가 걸쳐도 맞도록 반경을 포함합니다.
-export const inAquariusArea=(cast,p)=>{
+export const inAquariusArea=(cast,p,elapsedMs)=>{
+  if(elapsedMs!==undefined)cast=aquariusAreaAt(cast,elapsedMs);
+  if(cast.rx<=0||cast.ry<=0)return false;
   const margin=p.radius||0;
   return ((p.x-cast.x)/(cast.rx+margin))**2+((p.y-cast.y)/(cast.ry+margin))**2<=1;
 };
@@ -31,11 +34,12 @@ export function castAquarius(room,player,now,{basic=false}={}){
   }
   ensure(now>=(player.aquariusCooldownUntil||0),'스킬을 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
-  const x=player.x+dx*size*spec.summonWidths,y=player.y+dy*size*spec.summonWidths,map=mapOf(player.mapId,room.planets?.values()||[]);
-  ensure(x>=0&&y>=0&&x<=map.width&&y<=map.height&&onPlazaFloor(map,x,y)&&onValleyFloor(map,x,y)&&onParadiseFloor(map,x,y),'물병을 소환할 수 있는 바닥을 바라봐 주세요.');
+  const map=mapOf(player.mapId,room.planets?.values()||[]),{x:floorX,y:floorY}=player;
+  ensure(floorX>=0&&floorY>=0&&floorX<=map.width&&floorY<=map.height&&onPlazaFloor(map,floorX,floorY)&&onValleyFloor(map,floorX,floorY)&&onParadiseFloor(map,floorX,floorY),'물결을 펼칠 수 있는 바닥에 서 주세요.');
+  const x=player.x,y=player.y+size*spec.centerOffset;
   const cast={id:randomUUID(),playerId:player.id,mapId:player.mapId,constellationId:'aquarius',level:player.avatar.level,
     kind:'aquarius-fountain',vfxId:`skill-lv${spec.stage}`,x,y,dx,dy,size,rx:size*spec.radiusWidths,ry:size*spec.radiusWidths*spec.verticalRatio,
-    at:now,durationMs:spec.durationMs,tick:0,power:Math.round(power*spec.multiplier),healCap:spec.healingAmount,healRatio:spec.effectAmount,healBudgets:new Map()};
+    at:now,durationMs:spec.durationMs,tick:0,power:skillDamage(power*spec.multiplier,skillDamageFactor(player)),healCap:spec.healingAmount,healRatio:spec.effectAmount,healBudgets:new Map()};
   vitals.mp-=spec.mana;player.aquariusCooldownUntil=now+spec.cooldownMs;
   room.aquariusCasts??=new Map();room.aquariusCasts.set(cast.id,cast);
   return {ready:true,vitals:playerVitals(player),cooldowns:aquariusCooldowns(player),serverNow:now};
@@ -51,14 +55,15 @@ export function advanceAquarius(room,now){
   for(const [id,cast] of room.aquariusCasts||[]){
     const player=room.players.get(cast.playerId);
     if(!valid(player)||player.mapId!==cast.mapId||player.avatar.constellationId!=='aquarius'||player.avatar.level!==cast.level){room.aquariusCasts.delete(id);continue;}
-    // 누적 총량의 차이를 사용해 작은 공격력도 5회 반올림으로 부풀지 않습니다.
-    while(cast.tick<5&&now>=cast.at+(cast.tick+1)*1000){
-      const tick=++cast.tick,amount=total=>Math.floor(total*tick/5)-Math.floor(total*(tick-1)/5),targets=[],healed=[];
+    // 기존 5초 기준 총량/1초 주기를 유지하고, 각 틱 당시의 확장·축소 범위로 판정합니다.
+    const {tickMs,amountTicks}=AQUARIUS_TIMING;
+    while((cast.tick+1)*tickMs<cast.durationMs&&now>=cast.at+(cast.tick+1)*tickMs){
+      const tick=++cast.tick,elapsedMs=tick*tickMs,amount=total=>Math.floor(total*tick/amountTicks)-Math.floor(total*(tick-1)/amountTicks),targets=[],healed=[];
       const damage=amount(cast.power);
-      if(damage>0)for(const monster of monstersOf(room).values())if(monster.hp>0&&monster.mapId===cast.mapId&&inAquariusArea(cast,monster)){
-        const hit=damageMonster(room,monster,player,damage,cast.at+tick*1000);if(hit)targets.push(hit);
+      if(damage>0)for(const monster of monstersOf(room).values())if(monster.hp>0&&monster.mapId===cast.mapId&&inAquariusArea(cast,monster,elapsedMs)){
+        const hit=damageMonster(room,monster,player,damage,cast.at+elapsedMs);if(hit)targets.push(hit);
       }
-      for(const target of room.players.values())if(valid(target)&&target.mapId===cast.mapId&&inAquariusArea(cast,target)){
+      for(const target of room.players.values())if(valid(target)&&target.mapId===cast.mapId&&inAquariusArea(cast,target,elapsedMs)){
         const state=playerVitals(target),value=ensureVitals(target);
         if(!cast.healBudgets.has(target.id))cast.healBudgets.set(target.id,Math.floor(Math.min(state.hp.max*cast.healRatio,cast.healCap)));
         const gain=Math.min(state.hp.max-value.hp,amount(cast.healBudgets.get(target.id)));
@@ -66,7 +71,7 @@ export function advanceAquarius(room,now){
       }
       results.push({mapId:cast.mapId,targets,healed});
     }
-    if(cast.tick===5)room.aquariusCasts.delete(id);
+    if(now>=cast.at+cast.durationMs)room.aquariusCasts.delete(id);
   }
   return results;
 }

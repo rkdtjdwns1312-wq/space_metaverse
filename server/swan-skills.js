@@ -9,12 +9,12 @@ const eligible=player=>player?.connected&&!player.away&&!player.avatar?.blackSta
 const active=(player,now)=>player?.swanAura&&player.swanAura.endsAt>now&&player.swanAura.remainingAttacks>0;
 export const swanCooldowns=(player,now=Date.now())=>({0:active(player,now)?player.swanAura.endsAt:player.swanCooldownUntil||0});
 
-// A buff can finish either on the tenth Q or on its 20-second limit. Its ten-second
-// cooldown always begins at that actual finish time, never at E activation.
+// 10회 Q 또는 지속 종료 때 재사용을 시작합니다. 시전 때 확정한 보정 시간을
+// 저장하므로 날개 유지 중/재사용 대기 중 장착을 바꿔도 소급 변경하지 않습니다.
 export function finishSwan(player,now){
   const aura=player.swanAura;if(!aura)return false;
   player.swanAura=null;
-  player.swanCooldownUntil=Math.max(player.swanCooldownUntil||0,now+10000);
+  player.swanCooldownUntil=Math.max(player.swanCooldownUntil||0,now+(aura.cooldownMs??10000));
   return true;
 }
 
@@ -28,7 +28,7 @@ export function castSwan(room,player,now,{basic=false}={}){
     ensure(now>=(player.swanCooldownUntil||0),'날개 스킬을 다시 쓰려면 조금 기다려주세요.');
     ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
     vitals.mp-=spec.mana;
-    player.swanAura={stage:spec.stage,at:now,endsAt:now+spec.durationMs,remainingAttacks:spec.maxAttacks};
+    player.swanAura={stage:spec.stage,at:now,endsAt:now+spec.durationMs,cooldownMs:spec.cooldownMs,remainingAttacks:spec.maxAttacks};
     return {ready:true,vitals:playerVitals(player),cooldowns:swanCooldowns(player,now),serverNow:now};
   }
   const boosted=active(player,now),size=avatarSizeOf(player),facing=player.facing||{x:0,y:1};

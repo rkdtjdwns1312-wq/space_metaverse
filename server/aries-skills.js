@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {randomUUID} from 'node:crypto';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
@@ -35,7 +36,7 @@ export function castAries(room,player,now,{basic=false}={}){
   for(const monster of targets){
     const cloud={id:randomUUID(),playerId:player.id,mapId:player.mapId,monsterId:monster.id,
       x:player.x,y:player.y-size*.55,at:now,endsAt:now+spec.durationMs,
-      stage:spec.stage,size:size*spec.cloudScale,power:Math.round(power*spec.finishMultiplier*spec.effectAmount)};
+      stage:spec.stage,size:size*spec.cloudScale,power:skillDamage(power*spec.finishMultiplier*spec.effectAmount,skillDamageFactor(player))};
     room.ariesClouds.set(cloud.id,cloud);
     monster.sleepUntil=Math.max(monster.sleepUntil||0,cloud.endsAt);
   }

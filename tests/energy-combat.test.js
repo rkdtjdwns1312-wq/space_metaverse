@@ -71,13 +71,13 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
   const code=created.room.code,id=joined.selfId;
   const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);
-  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(m,{x:600,y:450,spawnX:600,spawnY:450,hp:1,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:538,y:450,facing:{x:1,y:0}});p.avatar.level=3;p.avatar.constellationId='aquarius';});
+  game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(m,{x:600,y:450,spawnX:600,spawnY:450,hp:1,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:538,y:450,facing:{x:1,y:0},cosmicEnergy:100});p.avatar.level=3;p.avatar.constellationId='aquarius';});
   const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);
   // 물병 Q는 서버 투사체가 실제 적에게 도착한 뒤 처치와 드랍이 발생합니다.
   for(let i=0;i<40&&![...(current().energyDrops?.values()||[])].some(drop=>drop.kind!=='recipe');i++)await new Promise(r=>setTimeout(r,50));
   assert.equal(monstersOf(current()).get('star-scorpion-1').hp,0);
   // The independent 1% recipe roll may insert a recipe before the energy reward.
-  const drop=[...current().energyDrops.values()].find(value=>value.kind!=='recipe'),amount=drop.total;assert.equal(person().cosmicEnergy,0);
+  const drop=[...current().energyDrops.values()].find(value=>value.kind!=='recipe'),amount=drop.total;assert.equal(person().cosmicEnergy,100);
   const thief=await connect(),other=await call(thief,'room:join',{code,nickname:'2',pin:'1234'});assert.ok(other.ok,other.error);
   Object.assign(current().players.get(other.selfId),{mapId:drop.mapId,x:drop.x,y:drop.y});
   assert.equal((await call(thief,'energy:collect',{dropId:drop.id,amount:999,playerId:id})).ok,false);
@@ -85,20 +85,20 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   Object.assign(person(),{x:drop.x,y:drop.y});
   const originalSave=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw new Error('simulated energy save failure');};
   try{assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);}finally{game.store.files.save=originalSave;}
-  assert.equal(person().cosmicEnergy,0);assert.equal(current().energyDrops.get(drop.id).shares.get(id),amount);
+  assert.equal(person().cosmicEnergy,100);assert.equal(current().energyDrops.get(drop.id).shares.get(id),amount);
   const collected=await call(student,'energy:collect',{dropId:drop.id,amount:999});assert.ok(collected.ok,collected.error);assert.equal(collected.amount,amount);
-  assert.equal(person().cosmicEnergy,amount);assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);
+  assert.equal(person().cosmicEnergy,100+amount);assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);
   const shop=STREET.objects.find(o=>o.kind==='energy-shop');assert.equal((await call(student,'shop:energy:open')).ok,false);
   Object.assign(person(),{mapId:STREET_ID,x:shop.x,y:shop.y});const opened=await call(student,'shop:energy:open');assert.ok(opened.ok);assert.equal(opened.items.filter(item=>!item.craftOnly).length,20);
   assert.equal((await call(student,'shop:energy:buy',{itemId:'celestial-crown'})).ok,false); // LV4 제한
   assert.equal((await call(student,'shop:buy',{itemId:'comet-compass',quantity:1})).ok,false); // 별상점 우회 방지
   const bought=await call(student,'shop:energy:buy',{itemId:'comet-compass'});assert.ok(bought.ok,bought.error);
-  assert.equal(bought.cosmicEnergy,amount-4);
+  assert.equal(bought.cosmicEnergy,amount);
   assert.equal((await call(student,'equipment:equip',{itemId:'comet-compass',slot:4})).ok,false);
   const equipped=await call(student,'equipment:equip',{itemId:'comet-compass',slot:1});assert.ok(equipped.ok,equipped.error);
   assert.deepEqual(equipped.equipmentSlots,['comet-compass',null,null]);
   assert.equal((await call(student,'shop:buy',{itemId:'space-food-card',quantity:1})).ok,false);
   sockets.forEach(s=>s.disconnect());await game.close();
   const reopened=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false});
-  try{const record=reopened.store.records.get(code).students.find(p=>p.id===id);assert.equal(record.cosmicEnergy,amount-4);assert.equal(record.starShards,0);assert.deepEqual(record.equipmentSlots,['comet-compass',null,null]);}finally{await reopened.close();}
+  try{const record=reopened.store.records.get(code).students.find(p=>p.id===id);assert.equal(record.cosmicEnergy,amount);assert.equal(record.starShards,0);assert.deepEqual(record.equipmentSlots,['comet-compass',null,null]);}finally{await reopened.close();}
 });

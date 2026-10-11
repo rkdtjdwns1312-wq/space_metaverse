@@ -1,4 +1,4 @@
-import {WATER_VFX,waterFrameAt,cetusWaveScaleAt,waterProjectileAngle} from '/shared/water-skills.js';
+import {WATER_VFX,waterFrameAt,cetusWavePoseAt,waterProjectileAngle} from '/shared/water-skills.js';
 
 const images=new Map();
 export function preloadWater(star,ids=Object.keys(WATER_VFX[star]||{})){
@@ -22,7 +22,7 @@ export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   if(!spec)return false;
   preloadWater(star,[spec.id]);
   const progress=Math.max(0,Math.min(1,elapsedMs/(cast.durationMs||650)));
-  const frame=star==='cetus'?9:reducedMotion?12:Math.min(23,progress*23);
+  const frame=reducedMotion?12:Math.min(23,progress*23);
   const scale=cast.visualScale||1,size=cast.size*(star==='cetus'?1.55:1.2)*scale;
   ctx.save();ctx.translate(cast.x,cast.y);
   const angle=cast.kind==='pisces-skill'?cast.visualAngle:waterProjectileAngle(cast);
@@ -30,8 +30,10 @@ export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   else ctx.rotate(angle);
   const fade=Math.min(1,progress/.1,(1-progress)/.13);
   if(star==='cetus'){
-    const waveSize=size*cetusWaveScaleAt(progress);
-    sprite(ctx,spec,frame,0,0,waveSize,waveSize,Math.min(1,progress/.08,(1-progress)/.08));
+    const wave=cetusWavePoseAt(progress),width=size*wave.width,height=size*wave.height;
+    // 바닥을 고정한 채 생성→성장→앞으로 덮침→물거품 소멸. 원화의 물마루는 왼쪽을 향하므로 내부에서 반전합니다.
+    ctx.translate(0,cast.size*.22);ctx.transform(1,0,-wave.lean,1,0,0);ctx.scale(-1,1);
+    sprite(ctx,spec,wave.frame,0,-height*.37,width,height,Math.min(1,progress/.06,(1-progress)/.14));
   }else sprite(ctx,spec,frame,0,0,size,size,reducedMotion?Math.sin(Math.PI*progress)*.7:fade);
   ctx.restore();return true;
 }

@@ -10,7 +10,7 @@ function sourcePixels(sprite){
   ctx.drawImage(sprite,0,0,SIDE,SIDE);
   return ctx.getImageData(0,0,SIDE,SIDE);
 }
-export function cetusWalkFrames(sprite){
+export function cetusWalkFrames(sprite,level=2){
   if(!sprite?.complete||!sprite.naturalWidth)return null;
   if(walkCache.has(sprite))return walkCache.get(sprite);
   const source=sourcePixels(sprite),frames=[];
@@ -19,15 +19,21 @@ export function cetusWalkFrames(sprite){
     const c=canvas(),ctx=c.getContext('2d'),out=ctx.createImageData(SIDE,SIDE);
     for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
       const u=x/SIDE,v=y/SIDE;
-      const tail=(1-smooth(.25,.53,u))*smooth(.08,.2,v)*(1-smooth(.55,.75,v));
-      const finNear=clamp(1-Math.hypot((u-.36)/.28,(v-.77)/.20));
-      const finFar=clamp(1-Math.hypot((u-.88)/.16,(v-.76)/.20));
-      const sx=Math.round(x-tail*2.8*tailSwing-finNear*1.5*nearSwing);
-      const sy=Math.round(y-tail*8*tailSwing-finNear*4*nearSwing-finFar*3*farSwing);
+      // 꼬리의 넓은 끝부분만 좌우로 움직이고 꼬리줄기·몸통은 고정합니다.
+      const tailEnd=level===4?.30:level===3?.40:.42;
+      const tail=(1-smooth(tailEnd-.10,tailEnd,v))*(1-smooth(.47,.51,u));
+      // 몸통에 닿는 뿌리를 제외한 지느러미 끝만 위아래로 작게 움직입니다.
+      const finNear=smooth(level===4?.68:.67,.79,v)*(1-smooth(.46,.53,u));
+      const finFar=smooth(level===4?.82:.74,level===4?.91:.82,v)*smooth(.82,.89,u);
+      const sx=x-tail*2.2*tailSwing;
+      const sy=y-finNear*2.1*nearSwing-finFar*1.7*farSwing;
       if(sx<0||sy<0||sx>=SIDE||sy>=SIDE)continue;
-      const from=(sy*SIDE+sx)*4,to=(y*SIDE+x)*4;
-      out.data[to]=source.data[from];out.data[to+1]=source.data[from+1];
-      out.data[to+2]=source.data[from+2];out.data[to+3]=source.data[from+3];
+      const ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy,to=(y*SIDE+x)*4;
+      const a=(iy*SIDE+ix)*4,b=(iy*SIDE+Math.min(SIDE-1,ix+1))*4;
+      const c=(Math.min(SIDE-1,iy+1)*SIDE+ix)*4,d=(Math.min(SIDE-1,iy+1)*SIDE+Math.min(SIDE-1,ix+1))*4;
+      for(let channel=0;channel<4;channel++)out.data[to+channel]=
+        (source.data[a+channel]*(1-fx)+source.data[b+channel]*fx)*(1-fy)+
+        (source.data[c+channel]*(1-fx)+source.data[d+channel]*fx)*fy;
     }
     ctx.putImageData(out,0,0);frames.push(c);
   }

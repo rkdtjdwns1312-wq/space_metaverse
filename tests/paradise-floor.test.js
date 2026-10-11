@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {STATIC_MAPS,RULES,MAP,GARDEN,PARADISE_MAPS,MOON_PARADISE_MAPS,STAR_PARADISE} from '../shared/config.js';
 import {paradiseFloor,onParadiseFloor,floorRenderPoint,paradiseScale} from '../shared/paradise-floor.js';
 import {isFree,advance,arrivePosition,spawnInside} from '../server/world.js';
+import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 const maps=[GARDEN,...PARADISE_MAPS,...MOON_PARADISE_MAPS,STAR_PARADISE];
 const room=()=>({players:new Map(),planets:new Map(),unattended:true});
 test('낙원8맵 중앙 공간 확대·모든 문과 입장 좌표가 바닥 안에 연결된다',()=>{
@@ -68,8 +69,8 @@ test('서버 연속·대각선 입력으로 벽이나 다리 옆을 뚫을 수 �
 test('친구 호출·붐비는 입장도 바닥 내부에 배치하고 낙원 외 맵은 영향 없다',()=>{
   for(const map of maps){
     const r=room();
-    for(let i=0;i<30;i++){const p=arrivePosition(r,map.id,map.objects[0]);assert.ok(onParadiseFloor(map,p.x,p.y,RULES.radius));r.players.set(String(i),{...p,id:String(i),mapId:map.id});}
-    const spawn=spawnInside(r,map.id);assert.ok(onParadiseFloor(map,spawn.x,spawn.y,RULES.radius));
+    for(let i=0;i<30;i++){const p=arrivePosition(r,map.id,map.objects[0]);assert.ok(avatarFitsFloor(map,p.x,p.y));r.players.set(String(i),{...p,id:String(i),mapId:map.id});}
+    const spawn=spawnInside(r,map.id);assert.ok(avatarFitsFloor(map,spawn.x,spawn.y));
   }
   assert.ok(isFree(room(),MAP.spawn.x,MAP.spawn.y,null,MAP.id));
   assert.ok(onParadiseFloor(MAP,MAP.spawn.x,MAP.spawn.y));

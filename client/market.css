@@ -26,10 +26,10 @@ dialog.market-dialog {
   appearance: none;
   min-height: 42px;
   padding: 9px 16px;
-  border: 2px solid #9464c4;
+  border: 2px solid var(--button-border);
   border-radius: 14px;
-  background: #8050ae;
-  color: white;
+  background: var(--button-bg);
+  color: var(--button-text);
   font: inherit;
   font-size: 16px;
   line-height: 1.3;
@@ -38,7 +38,7 @@ dialog.market-dialog {
   overflow-wrap: anywhere;
 }
 .market-button.market-secondary { background: #fff; color: #714b98; border-color: #d4bdeb; }
-.market-button:not(:disabled):hover { background: #6b4098; color: #fff; border-color: #8152b1; }
+.market-button:not(:disabled):hover { background: #e3d9fa; color: #4e3c7c; border-color: #957bbd; }
 .market-button:disabled { opacity: .5; cursor: default; box-shadow: none; }
 .market-button:focus-visible, .market-currency-input input:focus-visible { outline: 3px solid #ad79e0; outline-offset: 3px; }
 .market-hint, .market-empty { color: #786789; font-size: 14px; }

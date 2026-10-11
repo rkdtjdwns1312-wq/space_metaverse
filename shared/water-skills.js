@@ -1,4 +1,5 @@
 import {transformedSkill} from './transformation.js';
+import {sustainedSkill} from './skill-duration.js';
 
 export const WATER_VFX=Object.freeze(Object.fromEntries(['cancer','cetus','pisces'].map(star=>[
   star,Object.freeze(Object.fromEntries(['attack','skill-lv2','skill-lv3','skill-lv4'].map(id=>[
@@ -17,9 +18,9 @@ export const isWaterConstellation=player=>['cancer','cetus','pisces'].includes(p
 
 export function waterSkillOf(player){
   const stage=waterStageOf(player),id=player?.avatar?.constellationId;
-  if(id==='cancer')return transformedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
+  if(id==='cancer')return sustainedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
     rangeWidths:4,multiplier:stage-1});
-  if(id==='cetus')return transformedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
+  if(id==='cetus')return sustainedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
     rangeWidths:2,defenseBonus:stage-1,maxTargets:3,areaDiameterWidths:4});
   if(id==='pisces')return transformedSkill(player,{level:2,stage,mana:5,cooldownMs:10000,
     rangeWidths:4,hits:stage===2?4:stage===3?2:1,multiplier:stage===2?1:stage===3?3:8});
@@ -38,11 +39,17 @@ export function cetusAuraFrameAt(elapsedMs){
   return Math.floor((((elapsedMs%1520)+1520)%1520)/190);
 }
 
-// 몸에서 작게 출발해 거리 2/3에서 가장 커지고 끝에서 사라지는 한 번의 쓸기.
+// 몸에서 생성되어 사거리의 중간에서 최대가 되고 끝에서 완전히 사라집니다.
 export function cetusWaveScaleAt(progress){
   const p=Math.max(0,Math.min(1,progress));
   const smooth=t=>t*t*(3-2*t);
-  return p<=2/3?.22+.98*smooth(p/(2/3)):1.2*(1-smooth((p-2/3)/(1/3)));
+  return p<=.5?1.2*smooth(p*2):1.2*(1-smooth((p-.5)*2));
+}
+export function cetusWavePoseAt(progress){
+  const p=Math.max(0,Math.min(1,progress)),fall=Math.max(0,(p-.5)*2);
+  const scale=cetusWaveScaleAt(p);
+  // 원본 시트의 깨진 후반 칸 대신, 정상적인 생성 프레임을 재생한 뒤 물마루를 앞으로 눕힙니다.
+  return {frame:Math.min(9,p*18),width:scale,height:scale*(1-.72*fall),lean:.38*Math.sin(fall*Math.PI/2)};
 }
 
 // 물고기는 전진 거리와 높이를 함께 바꿉니다. 시작/착지는 바닥, 중간은 최고점입니다.

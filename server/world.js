@@ -1,4 +1,4 @@
-import {avatarFitsFloor,avatarFloorRadius} from '../shared/avatar-boundary.js';
+import {avatarFitsFloor,avatarPositionIsClear,avatarFootprint,avatarTouchesObject} from '../shared/avatar-boundary.js';
 import {monstersOf} from './monsters.js';
 import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
@@ -6,22 +6,14 @@ import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionRe
 import {isDefeated} from './vitals.js';
 import {equipmentBonus} from '../shared/equipment.js';
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
-  const r = RULES.radius, map = mapOf(mapId, room.planets.values());
-  if (!avatarFitsFloor(map,x,y,boundaryPlayer)) return false;
-  if (map.objects.some(o => !o.passable && Math.hypot(x-o.x, y-o.y) < r+o.radius)) return false;
-  const footRadius=Math.min(26,Math.max(8,avatarFloorRadius(boundaryPlayer)*.4));
-  for(const monster of monstersOf(room).values()){
-    if(monster.hp<=0||monster.mapId!==mapId)continue;
-    const mx=monster.x,my=monster.y+monster.radius*.8;
-    const rx=monster.radius*.55+footRadius,ry=monster.radius*.2+footRadius;
-    const distance=(px,py)=>((px-mx)/rx)**2+((py-my)/ry)**2;
-    if(distance(x,y)>=1)continue;
-    // 추격 중 몬스터 발에 걸친 친구는 바깥으로 빠져나갈 수 있습니다.
-    if(!avoidPlayers&&boundaryPlayer?.mapId===mapId&&distance(boundaryPlayer.x,boundaryPlayer.y)<1&&distance(x,y)>distance(boundaryPlayer.x,boundaryPlayer.y))continue;
-    return false;
-  }
+  const map = mapOf(mapId, room.planets.values());
+  if(!avatarPositionIsClear(map,x,y,boundaryPlayer,monstersOf(room).values(),avoidPlayers?null:boundaryPlayer))return false;
   if (!avoidPlayers) return true;
-  return ![...room.players.values()].some(p => !p.away && p.id !== ignoreId && p.mapId === mapId && Math.hypot(x-p.x, y-p.y) < r*2+2);
+  const foot=avatarFootprint(boundaryPlayer,x,y);
+  return ![...room.players.values()].some(p => {
+    if(p.away||p.id===ignoreId||p.mapId!==mapId)return false;
+    const other=avatarFootprint(p);return Math.hypot(foot.x-other.x,foot.y-other.y)<foot.radius+other.radius+2;
+  });
 }
 export function spawnPosition(room) {
   // 광장 아래부터 일정 간격으로 탐색하여 새 아바타가 서로 겹치지 않게 합니다.
@@ -82,7 +74,7 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
     rules: [...rules], createdBy, createdAt: Date.now(), rename: null, templateId, interiorDecor:{} };
   room.planets.set(planet.id, planet);
   for (const p of room.players.values())
-    if (p.mapId === PLAZA_ID && Math.hypot(p.x-planet.x, p.y-planet.y) < planet.radius+RULES.radius)
+    if (p.mapId === PLAZA_ID && avatarTouchesObject(p,p.x,p.y,planet))
       Object.assign(p, exitPosition(room, planet, p));
   return planet;
 }
@@ -100,8 +92,12 @@ export function advance(room, now) {
     const step=RULES.speed*(1+equipmentBonus(p).speed)*RULES.tickMs/1000;
     const dx=p.input.x/length*step, dy=p.input.y/length*step;
     const beforeX=p.x,beforeY=p.y;
-    if (isFree(room,p.x+dx,p.y,p.id,p.mapId,false)) p.x+=dx;
-    if (isFree(room,p.x,p.y+dy,p.id,p.mapId,false)) p.y+=dy;
+    // 작은 하반신이 한 틱(31px)의 이동으로 얇은 벽/발 영역을 건너뛰지 않습니다.
+    const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/8));
+    for(let i=0;i<steps;i++){
+      if (isFree(room,p.x+dx/steps,p.y,p.id,p.mapId,false)) p.x+=dx/steps;
+      if (isFree(room,p.x,p.y+dy/steps,p.id,p.mapId,false)) p.y+=dy/steps;
+    }
     // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
     const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
     if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};

@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
 import {ophiuchusSkillOf} from '../shared/ophiuchus-skills.js';
@@ -37,7 +38,7 @@ export function castOphiuchus(room,player,now,{basic=false}={}){
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.ophiuchusCooldownUntil=now+spec.cooldownMs;
   room.ophiuchusVenoms??=[];
-  room.ophiuchusVenoms.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx,dy,size,spec,power,hitAt:now+1000});
+  room.ophiuchusVenoms.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx,dy,size,spec,power,skillDamageFactor:skillDamageFactor(player),hitAt:now+1000});
   return {ready:true,targets:[],playerTargets:[],vitals:playerVitals(player),cooldowns:ophiuchusCooldowns(player),serverNow:now,
     hit:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,dx,dy,size,
       kind:'ophiuchus-skill',vfxId:`skill-lv${spec.stage}`,durationMs:4000,
@@ -51,13 +52,14 @@ export function advanceOphiuchusVenoms(room,now){
     const player=room.players.get(venom.playerId);
     if(!player||!eligible(player)||player.mapId!==venom.mapId)continue;
     const selected=venomTargets(room,{...player,x:venom.x,y:venom.y},venom.dx,venom.dy,venom.size,venom.spec);
-    const hit=damageTargets(room,player,selected,Math.round(venom.power*venom.spec.directMultiplier*venom.spec.effectAmount),now);
+    const hit=damageTargets(room,player,selected,skillDamage(venom.power*venom.spec.directMultiplier*venom.spec.effectAmount,venom.skillDamageFactor),now);
     for(const target of selected){
       if(target.entity.hp===0||target.kind==='player'&&ensureVitals(target.entity).hp===0)continue;
       const old=poisonOf(target.entity),active=old?.expiresAt>now&&old?.mapId===venom.mapId;
       const layers=active?[...old.layers]:[];
-      layers.push({sourceId:player.id,power:Math.round(venom.power*venom.spec.effectAmount)});
+      layers.push({sourceId:player.id,power:skillDamage(venom.power*venom.spec.effectAmount,venom.skillDamageFactor)});
       target.entity.combatPoison={mapId:venom.mapId,layers,stacks:layers.length,
+        // 장비는 최초 중독 시간만 늘립니다. 덧씌우기는 기존 +3초 규칙입니다.
         expiresAt:active?old.expiresAt+3000:now+venom.spec.poisonMs,
         nextTickAt:active?old.nextTickAt:now+1000};
     }

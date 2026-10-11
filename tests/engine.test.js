@@ -1,4 +1,4 @@
-import {avatarFitsFloor} from '../shared/avatar-boundary.js';
+import {avatarFitsFloor,avatarCollisionShape} from '../shared/avatar-boundary.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
@@ -80,8 +80,14 @@ test('interior maps block boundary and board, allow doors, isolate collisions pe
  const store=new RoomStore(),{room}=store.create({...roomData,seedPlanets:true},'t');
  const planet=[...room.planets.values()].find(pl=>pl.name===EXAMPLE_PLANETS[0].name);
  const mapId=interiorIdOf(planet.id), map=mapOf(mapId, room.planets.values());
- assert.equal(isFree(room, RULES.radius-1, 100, null, mapId), false);
- assert.equal(isFree(room, map.width-RULES.radius+1, 100, null, mapId), false);
+ for(const actor of [undefined,{role:'student',avatar:{level:2}},{role:'teacher',avatar:{level:6}}]){
+  const {radius,offsetY}=avatarCollisionShape(actor);
+  const free=(x,y)=>isFree(room,x,y,null,mapId,true,actor);
+  assert.equal(free(radius-1,100),false);assert.equal(free(radius,100),true);
+  assert.equal(free(map.width-radius+1,100),false);assert.equal(free(map.width-radius,100),true);
+  assert.equal(free(100,radius-offsetY-1),false);assert.equal(free(100,radius-offsetY),true);
+  assert.equal(free(100,map.height-radius-offsetY+1),false);assert.equal(free(100,map.height-radius-offsetY),true);
+ }
  const board=map.objects.find(o=>o.kind==='board'), door=map.objects.find(o=>o.kind==='door');
  assert.equal(isFree(room, board.x, board.y, null, mapId), false);
  assert.equal(isFree(room, door.x, door.y, null, mapId), true);

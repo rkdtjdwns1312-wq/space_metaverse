@@ -1,21 +1,23 @@
 import {randomUUID} from 'node:crypto';
 import {englishQuestion} from '../shared/learning-questions.js';
+import {ENGLISH_LEVELS} from '../shared/english-vocabulary.js';
 import {ensure} from './rooms.js';
 
 export const ENGLISH_SUCCESS_SCORE=7;
 
 // 한 번 연습에 10문제. 정답은 서버에만 두고 각 문제는 한 번만 제출할 수 있습니다.
 export function createEnglishStation(){
-  const questionView=run=>({questionId:run.questionId,prompt:run.question.prompt,choices:run.question.choices,round:run.round,correct:run.correct});
+  const questionView=run=>({questionId:run.questionId,prompt:run.question.prompt,choices:run.question.choices,round:run.round,correct:run.correct,level:run.level});
   function setQuestion(run){
-    run.question=englishQuestion(Math.random,run.used);
+    run.question=englishQuestion(Math.random,run.used,run.level);
     run.used.add(run.question.prompt);
     run.questionId=randomUUID();run.answered=false;
     return questionView(run);
   }
   return {
-    start(player){
-      const run={round:0,correct:0,used:new Set(),answered:false};
+    start(player,level='grade-1'){
+      ensure(ENGLISH_LEVELS.some(item=>item.id===level),'영어 단계를 골라 주세요.');
+      const run={level,round:0,correct:0,used:new Set(),answered:false};
       player.englishRun=run;return setQuestion(run);
     },
     answer(player,data){

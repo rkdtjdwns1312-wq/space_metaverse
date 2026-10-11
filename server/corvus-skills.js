@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {corvusSkillOf} from '../shared/character-skills.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf,attackGeometryOf} from '../shared/combat.js';
@@ -17,7 +18,7 @@ export function castCorvus(room,player,now,{basic=false}={}){
   const size=avatarSizeOf(player),direction=player.facing||{x:0,y:1},length=Math.hypot(direction.x,direction.y)||1;
   const cast={playerId:player.id,mapId:player.mapId,constellationId:'corvus',level:player.avatar.level,x:player.x,y:player.y,
     dx:direction.x/length,dy:direction.y/length,range:size*5,width:size*.13,
-    power:Math.round(attackPowerOf(player.avatar.level,'corvus',player)*(basic?1:spec.multiplier)),
+    power:skillDamage(attackPowerOf(player.avatar.level,'corvus',player)*(basic?1:spec.multiplier),basic?1:skillDamageFactor(player)),
     basic,kind:basic?'corvus-attack':'skill',vfxId:basic?'attack':`skill-lv${spec.stage}`,size,originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:900};
   const damage={targets:[],playerTargets:[]};
   if(!basic){

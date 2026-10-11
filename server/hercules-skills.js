@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {herculesSkillOf} from '../shared/hercules-skills.js';
@@ -25,7 +26,7 @@ export function castHercules(room,player,now,{basic=false}={}){
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.herculesCooldownUntil=now+spec.cooldownMs;
   player.herculesShield={at:now,endsAt:now+spec.durationMs,hp:vitals.hp,maxHp:vitals.hp,absorbed:0,
-    stage:spec.stage,size,power:Math.round(power*spec.multiplier)};
+    stage:spec.stage,size,skillDamageFactor:skillDamageFactor(player),power:Math.round(power*spec.multiplier)};
   return {ready:true,vitals:playerVitals(player),cooldowns:herculesCooldowns(player),serverNow:now};
 }
 export function herculesShieldViews(room,mapId,now){
@@ -41,7 +42,7 @@ export function advanceHerculesShields(room,now){
     if(shield.hp>0&&shield.endsAt>now&&player.connected&&player.mapId&&player.avatar.constellationId==='hercules')continue;
     player.herculesShield=null;
     if(!player.connected||player.away||player.avatar.constellationId!=='hercules'||ensureVitals(player).hp<=0)continue;
-    const power=shield.absorbed+shield.power,radius=shield.size*2;
+    const power=skillDamage(shield.absorbed+shield.power,shield.skillDamageFactor),radius=shield.size*2;
     const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId&&Math.hypot(m.x-player.x,m.y-player.y)<=m.radius+radius)
       .map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
     const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x,y:player.y,radius,sourceId:player.id},power,now);

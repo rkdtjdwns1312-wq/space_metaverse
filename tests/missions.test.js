@@ -79,18 +79,28 @@ test('영어 발전소 자동미션은 서버 채점 10문제 중 7개 이상인
   const made=await call(teacher,'mission:auto:create',{title:'영어 별빛',description:'10문제 중 7문제 이상 성공 1회',rewardShards:3,distribution:'all',objective:'english-success',goal:1});
   assert.equal(made.ok,true,made.error);
   const meanings=new Map(ENGLISH_WORDS);
-  async function play(correctCount){
-    let question=await call(studentSocket,'learning:english:start');assert.equal(question.ok,true,question.error);
+  assert.equal((await call(studentSocket,'learning:english:start',{level:'grade-7'})).ok,false);
+  const previous=await call(studentSocket,'learning:english:start',{level:'grade-2'});
+  assert.equal(previous.ok,true,previous.error);assert.equal(previous.level,'grade-2');
+  const switched=await call(studentSocket,'learning:english:start',{level:'grade-3'});
+  assert.equal(switched.ok,true,switched.error);assert.equal(switched.level,'grade-3');
+  assert.equal(student.englishRun.round,0);assert.equal(student.englishRun.correct,0);
+  assert.equal((await call(studentSocket,'learning:english:answer',{questionId:previous.questionId,answer:previous.choices[0]})).ok,false,
+    '단계 전환 뒤 이전 문제 ID는 무효여야 해요.');
+  async function play(correctCount,level='grade-1'){
+    let question=await call(studentSocket,'learning:english:start',{level});assert.equal(question.ok,true,question.error);
+    assert.equal(question.level,level);
     for(let index=0;index<10;index++){
       const answer=meanings.get(question.prompt),selected=index<correctCount?answer:question.choices.find(choice=>choice!==answer);
-      const result=await call(studentSocket,'learning:english:answer',{questionId:question.questionId,answer:selected});
+      const result=await call(studentSocket,'learning:english:answer',{questionId:question.questionId,answer:selected,level:'grade-1'});
       assert.equal(result.ok,true,result.error);assert.equal(result.right,index<correctCount);
+      assert.equal(student.englishRun.level,level,'answer 요청의 단계 주입은 현재 run 단계를 바꾸면 안 돼요.');
       if(index===0)assert.equal((await call(studentSocket,'learning:english:answer',{questionId:question.questionId,answer:selected})).ok,false);
-      if(index<9){question=await call(studentSocket,'learning:english:next');assert.equal(question.ok,true,question.error);}
+      if(index<9){question=await call(studentSocket,'learning:english:next');assert.equal(question.ok,true,question.error);assert.equal(question.level,level);}
       else return result;
     }
   }
-  const failed=await play(6);assert.equal(failed.success,false);assert.equal(room.missions[0].completedIds.length,0);
+  const failed=await play(6,'grade-6');assert.equal(failed.success,false);assert.equal(room.missions[0].completedIds.length,0);
   assert.equal((await call(studentSocket,'mission:claim',{missionId:made.missionId})).ok,false);
   const passed=await play(7);assert.equal(passed.success,true);assert.equal(room.missions[0].progress[student.id],1);
   assert.equal(student.starShards,0);

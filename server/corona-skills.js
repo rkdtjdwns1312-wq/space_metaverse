@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {randomUUID} from 'node:crypto';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf} from '../shared/combat.js';
@@ -31,7 +32,7 @@ export function castCorona(room,player,now,{basic=false}={}){
       for(const target of targets){
         const m=monstersOf(room,now).get(target.monsterId);if(!m||m.hp<=0)continue;
         const fall={id:randomUUID(),playerId:player.id,monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y-m.radius,
-          at:now,dueAt:now+300,power,stage:player.coronaAura.stage,size};
+          at:now,dueAt:now+300,power:skillDamage(power,player.coronaAura.skillDamageFactor),stage:player.coronaAura.stage,size};
         room.coronaFalls.set(fall.id,fall);falls.push(fall);
       }
     }
@@ -42,7 +43,7 @@ export function castCorona(room,player,now,{basic=false}={}){
   ensure(now>=(player.coronaCooldownUntil||0),'왕관 스킬을 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.coronaCooldownUntil=now+spec.cooldownMs;
-  player.coronaAura={at:now,endsAt:now+spec.durationMs,stage:spec.stage,size,mapId:player.mapId,successfulHits:0};
+  player.coronaAura={at:now,endsAt:now+spec.durationMs,stage:spec.stage,size,skillDamageFactor:skillDamageFactor(player),mapId:player.mapId,successfulHits:0};
   return {ready:true,vitals:playerVitals(player),cooldowns:coronaCooldowns(player),serverNow:now};
 }
 export function coronaAuraViews(room,mapId,now){
@@ -67,7 +68,7 @@ export function advanceCorona(room,now){
     if(!target)continue;
     const dx=(target.monster.x-player.x)/(target.distance||1),dy=(target.monster.y-player.y)/(target.distance||1);
     const base={x:player.x,y:player.y,dx,dy,size:aura.size,range:aura.size*4,width:aura.size*.17,
-      power:attackPowerOf(player.avatar.level,'corona-borealis',player)*aura.successfulHits,basic:true,
+      power:skillDamage(attackPowerOf(player.avatar.level,'corona-borealis',player)*aura.successfulHits,aura.skillDamageFactor),basic:true,
       kind:'corona-finale',vfxId:'attack',originOffset:aura.size/2,durationMs:650,visualScale:2};
     const projectiles=launchProjectiles(room,player,base,now);
     finals.push({playerId:player.id,mapId:player.mapId,projectiles,successfulHits:aura.successfulHits});

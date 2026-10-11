@@ -1,3 +1,4 @@
+import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {leoSkillOf} from '../shared/leo-skills.js';
@@ -28,7 +29,7 @@ export function castLeo(room,player,now,{basic=false}={}){
   const rx=size*2,ry=size,durationMs=3000;
   room.leoRoars??=[];
   room.leoRoars.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,stage:spec.stage,size,rx,ry,
-    power:Math.round(power*spec.multiplier),attackBonus:spec.attackBonus,buffMs:spec.durationMs,
+    power:skillDamage(power*spec.multiplier,skillDamageFactor(player)),attackBonus:spec.attackBonus,buffMs:spec.durationMs,
     hitAt:now+durationMs*12/23,endsAt:now+durationMs});
   return {ready:true,targets:[],buffed:[],vitals:playerVitals(player),cooldowns:leoCooldowns(player),serverNow:now,
     visual:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,stage:spec.stage,size,rx,ry,durationMs}};

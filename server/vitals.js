@@ -1,3 +1,4 @@
+import {skillDamage} from '../shared/skill-damage.js';
 import {vitalsOf} from '../shared/vitals.js';
 import {defensePowerOf,damageAfterDefense} from '../shared/combat.js';
 
@@ -22,7 +23,7 @@ export function damagePlayer(player,power,now,{skipLibra=false}={}){
   if((player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const damage=damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
   if(!skipLibra&&player.libraAura?.endsAt>now&&player.libraAura.mapId===player.mapId)
-    return {damage:0,reflectedDamage:damage,vitals:playerVitals(player),defeated:false};
+    return {damage:0,reflectedDamage:skillDamage(damage,player.libraAura.skillDamageFactor),vitals:playerVitals(player),defeated:false};
   let remaining=damage;
   if(player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
     const absorbed=Math.min(remaining,player.herculesShield.hp);

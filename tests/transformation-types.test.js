@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {transformationBonus,transformationProfile,transformedSkill,TRANSFORMATION_TYPES} from '../shared/transformation.js';
+import {transformationBonus,transformationProfile,transformedSkill,TRANSFORMATION,TRANSFORMATION_TYPES} from '../shared/transformation.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {vitalsOf} from '../shared/vitals.js';
 import {startTransformation,expireTransformation} from '../server/transformation.js';
@@ -56,7 +56,9 @@ test('특수계의 2배 효과량은 마나·기본 쿨타임·타격 수를 유
   startTransformation(p,500);
   const adjusted=transformedSkill(p,original);
   assert.deepEqual(adjusted,{cooldownMs:10000,mana:9,hits:4,multiplier:4,healingAmount:12,effectAmount:6});
-  assert.equal(p.transformation.cooldownUntil,300500);
+  assert.equal(TRANSFORMATION.cooldownMs,120000);
+  assert.equal(p.transformation.endsAt,30500);
+  assert.equal(p.transformation.cooldownUntil,120500);
   assert.deepEqual(original,{cooldownMs:10000,mana:9,hits:4,multiplier:2,healingAmount:6,effectAmount:3});
   expireTransformation(p,30500);
   assert.deepEqual(transformedSkill(p,original),original);

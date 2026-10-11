@@ -1,6 +1,7 @@
 import {constellationOf} from './constellations.js';
+import {equipmentBonus} from './equipment.js';
 
-export const TRANSFORMATION=Object.freeze({ready:true,durationMs:30000,cooldownMs:300000});
+export const TRANSFORMATION=Object.freeze({ready:true,durationMs:30000,cooldownMs:120000});
 const profile=(attackBonus,defenseBonus,hpBonus,mpBonus,skillCooldownFactor=1,skillAmountFactor=1)=>
   Object.freeze({attackBonus,defenseBonus,hpBonus,mpBonus,skillCooldownFactor,skillAmountFactor});
 export const TRANSFORMATION_TYPES=Object.freeze({
@@ -19,13 +20,16 @@ export const transformationBonus=player=>player?.role!=='teacher'&&player?.avata
 export function transformedSkill(player,spec){
   if(!spec)return spec;
   const bonus=transformationBonus(player),result={...spec};
-  if(Number.isFinite(result.cooldownMs))result.cooldownMs*=bonus.skillCooldownFactor;
+  if(Number.isFinite(result.cooldownMs)){
+    // 일반 E(공용 정의는 slot 생략, 사수 E는 0)만 장비 재사용 감소를 받습니다.
+    // Q·초월·이전 사수의 별도 슬롯은 제외하며 서버는 시전 때 종료 시각을 저장합니다.
+    const ordinaryE=result.slot===undefined||result.slot===0;
+    const equipmentFactor=ordinaryE?1-Math.min(1,Math.max(0,equipmentBonus(player).cooldownReduction||0)):1;
+    result.cooldownMs=Math.round(result.cooldownMs*bonus.skillCooldownFactor*equipmentFactor);
+  }
   for(const key of ['multiplier','healingAmount','effectAmount'])if(Number.isFinite(result[key]))result[key]*=bonus.skillAmountFactor;
   return result;
 }
 export function transformationDescription(player){
-  if(player?.role==='teacher')return '30초 동안 선택한 별자리의 LV5 모습으로 변신해요. 평소에는 LV4 모습이에요. 마나 소모 없음 · 쿨타임 300초. 선생님의 체력·마나 999와 관리용 능력치는 그대로 유지돼요.';
-  const b=transformationProfile(player),signed=n=>n>=0?`+${n}`:String(n);
-  const extra=b.skillCooldownFactor===.5?' 일반 스킬 쿨타임 50% 감소.':b.skillAmountFactor===2?' 스킬 피해·회복·효과량 2배(마나 소모·쿨타임 유지).':'';
-  return `30초 동안 LV5 모습으로 변신해요. 마나 소모 없음 · 쿨타임 300초. 공격력 ${signed(b.attackBonus)} · 방어력 ${signed(b.defenseBonus)}(최소 0) · 최대 체력 +${b.hpBonus} · 최대 마나 +${b.mpBonus}.${extra} 변신 시작 시 체력·마나를 모두 회복해요. 자동 회복은 10초마다 체력 최대치의 10%, 마나 2예요. 종료 시 원래 최대치로 돌아가며 초과 현재치만 제한해요.`;
+  return '30초동안 별자리 근원의 초월적인 모습으로 돌아갑니다. 능력치가 크게 상승하게 되고 특수한 효과를 부여받습니다.\n쿨타임: 120초';
 }

@@ -13,8 +13,8 @@ body.joined #chat-window-toggle{display:block}
 #chat-dialog .chat-titlebar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex-shrink:0;margin:0 0 10px}
 #chat-dialog .chat-titlebar h2{margin:0;font-size:18px;line-height:1.2}
 #chat-dialog .chat-tabs{display:flex;gap:4px}
-#chat-dialog .chat-tabs button{min-height:34px;padding:5px 9px;border-radius:9px;background:#7056ac;color:#fff;font-size:13px;font-weight:800}
-#chat-dialog .chat-tabs button[aria-pressed="true"]{background:#493480;box-shadow:0 0 0 2px #c3b1ec}
+#chat-dialog .chat-tabs button{min-height:34px;padding:5px 9px;border-radius:9px;background:var(--button-bg);color:var(--button-text);box-shadow:inset 0 0 0 1px var(--button-border);font-size:13px;font-weight:800}
+#chat-dialog .chat-tabs button[aria-pressed="true"]{background:#e3d9fa;color:#4e3c7c;box-shadow:inset 0 0 0 2px #957bbd}
 #chat-dialog #chat-status{font-size:11px;color:#827694}
 #chat-dialog .chat-window-actions{display:flex;align-items:center;gap:4px;margin-left:auto}
 #chat-dialog .chat-window-actions button{min-width:30px;padding:5px 8px}

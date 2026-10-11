@@ -6,7 +6,7 @@ import {VALLEY_LAYOUT as V} from '../shared/valley-layout.js';
 import {STREET_LAYOUT as S} from '../shared/street-layout.js';
 import {PARADISE_FLOOR,paradiseFloor} from '../shared/paradise-floor.js';
 import {originFloor,ORIGIN_FLOOR_RULES} from '../shared/origin-floor.js';
-import {avatarFitsFloor} from '../shared/avatar-boundary.js';
+import {avatarFitsFloor,avatarCollisionShape} from '../shared/avatar-boundary.js';
 import {advance,isFree} from '../server/world.js';
 
 const avatar={id:'walker',role:'student',avatar:{level:5,constellationId:'sagittarius'},connected:true};
@@ -29,7 +29,7 @@ test('5개 맵 계열의 다리 폭은 이전보다 정확히40% 넓다',()=>{
   assert.equal(P.bridgeWidth,156*1.4);assert.equal(V.bridgeWidth,160*1.4);
   assert.equal(S.bridgeWidth,180*1.4);assert.equal(PARADISE_FLOOR.bridgeWidth,180*1.4);assert.equal(ORIGIN_FLOOR_RULES.bridgeWidth,.14*1.4);
 });
-test('LV5 몸 전체가 모든 직선·대각선 다리 및 원형 바닥 접합부에서 이어진다',()=>{
+test('LV5 하반신이 모든 직선·대각선 다리 및 원형 바닥 접합부에서 이어진다',()=>{
   for(const {map,a,b,end} of bridgeRoutes)for(let i=0;i<=100;i++){
     const p=point(a,b,end*i/100);assert.ok(avatarFitsFloor(map,p.x,p.y,avatar),`${map.id} ${JSON.stringify(b)} ${i}%`);
   }
@@ -53,5 +53,10 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   const p={...avatar,mapId:MAP.id},room={players:new Map([[p.id,p]]),planets:new Map()};
   assert.equal(isFree(room,3100,P.center.y+P.bridgeWidth/2+10,p.id,MAP.id,false),false,'광장 동쪽 다리 바깥');
   assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,1695,p),false,'놀이터 다리 바깥');
-  assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,710,p),false,'발전소 다리 바깥');
+  const {offsetY}=avatarCollisionShape(p),sideX=S.upper.x+S.bridgeWidth/2+10;
+  // y는 이제 허리 좌표입니다. 이전 y=710은 발 중심이 아래쪽 마당으로
+  // 들어간 정상 위치이므로, 다리 위 발 중심 710을 유지해서 벽을 검사합니다.
+  assert.equal(avatarFitsFloor(STREET,sideX,710,p),true,'하반신이 넓은 상점 마당에 들어간 위치');
+  assert.equal(avatarFitsFloor(STREET,S.upper.x,710-offsetY,p),true,'발전소 다리 안쪽');
+  assert.equal(avatarFitsFloor(STREET,sideX,710-offsetY,p),false,'발전소 다리 바깥');
 });

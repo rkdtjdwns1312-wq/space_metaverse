@@ -19,9 +19,9 @@ export function advancePassiveRecovery(room,now){
     value.nextPassiveRecoveryAt+=periods*PASSIVE_RECOVERY_MS;
     const limits=playerVitals(player),beforeHp=value.hp,beforeMp=value.mp;
     // LV1 최대치 1도 10초 뒤 회복할 수 있도록 최소 1로 올림합니다.
-    const ratio=PASSIVE_RECOVERY_RATIO+equipmentBonus(player).regen;
-    value.hp=Math.min(limits.hp.max,value.hp+periods*Math.ceil(limits.hp.max*ratio));
-    value.mp=Math.min(limits.mp.max,value.mp+periods*PASSIVE_MANA_RECOVERY);
+    const gear=equipmentBonus(player),hpRatio=PASSIVE_RECOVERY_RATIO+gear.regen;
+    value.hp=Math.min(limits.hp.max,value.hp+periods*(Math.ceil(limits.hp.max*hpRatio)+gear.hpRegen));
+    value.mp=Math.min(limits.mp.max,value.mp+periods*(PASSIVE_MANA_RECOVERY+gear.mpRegen));
     if(value.hp!==beforeHp||value.mp!==beforeMp)updates.push({playerId:player.id,vitals:playerVitals(player)});
   }
   return updates;

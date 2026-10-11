@@ -29,7 +29,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     if(spec){
       if(player.avatar.level<spec.level){toast(`LV${spec.level}부터 사용할 수 있어요.`);return;}
       const remaining=owner===player.id?(cooldowns[slot]||0)-Date.now()-serverOffset:0;
-      if(remaining>0){toast(`${Math.ceil(remaining/1000)}초 뒤에 다시 사용할 수 있어요.`);return;}
+      if(remaining>0)return;
     }else{
       if(slot!==0){toast('보조 스킬은 준비 중이에요.');return;}
       if(performance.now()-last.skill<SKILL_COOLDOWN_MS)return;last.skill=performance.now();
@@ -46,7 +46,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     if(player.avatar.level<2){toast('LV2부터 공격할 수 있어요.');return;}
     const power=player.combat?.attackPower;
     if(power==null){toast('이 단계의 공격력은 설정 준비 중이에요.');return;}
-    try{const result=await request('combat:attack',{});onSound('q',player.avatar.constellationId);if(result.cooldowns)sync(result);if((result.targets||[result.target]).some(target=>target?.defeated))toast('별자리 몬스터를 잡았어요! 잠시 뒤 다시 나타나요.');}catch(error){toast(error.message);}
+    try{const result=await request('combat:attack',{});onSound('q',player.avatar.constellationId);if(result.cooldowns)sync(result);}catch(error){toast(error.message);}
   }
   attack.onclick=()=>act('attack');skill.onclick=()=>act('skill');
   window.addEventListener('keydown',event=>{

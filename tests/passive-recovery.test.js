@@ -47,6 +47,39 @@ test('변신 중에는 늘어난 최대치 기준으로 같은 10초 주기만 �
   advancePassiveRecovery(room,10000);assert.deepEqual([value.hp,value.mp],[18,12]);
 });
 
+test('장착한 고정 회복 장비는 기존 비율 체력·기본 마나 회복에 더해지고 해제하면 사라진다',()=>{
+  const {p,room,value}=fixture();value.hp=10;value.mp=10;
+  advancePassiveRecovery(room,0);
+  p.equipmentSlots=['dawn-ribbon','stardew-ring',null];
+  advancePassiveRecovery(room,10000);
+  assert.deepEqual([value.hp,value.mp],[20,13]);
+  p.equipmentSlots=[null,null,null];
+  advancePassiveRecovery(room,20000);
+  assert.deepEqual([value.hp,value.mp],[29,15]);
+});
+
+test('회복의 수정은 비율 회복 장비와 더하지 않고 고정 체력·마나 회복을 각각 1 더한다',()=>{
+  const {p,room,value}=fixture();value.hp=10;value.mp=10;
+  advancePassiveRecovery(room,0);
+  p.equipmentSlots=['healing-crystal',null,null];
+  advancePassiveRecovery(room,10000);
+  assert.deepEqual([value.hp,value.mp],[20,13]);
+  p.equipmentSlots=[null,null,null];
+  advancePassiveRecovery(room,20000);
+  assert.deepEqual([value.hp,value.mp],[29,15]);
+});
+
+test('별하트와 은하수 목걸이는 장착 중 10초마다 체력·마나를 각각 2 추가 회복한다',()=>{
+  const {p,room,value}=fixture();value.hp=10;value.mp=10;
+  advancePassiveRecovery(room,0);
+  p.equipmentSlots=['star-heart','galaxy-pendant',null];
+  advancePassiveRecovery(room,10000);
+  assert.deepEqual([value.hp,value.mp],[22,14]);
+  p.equipmentSlots=[null,null,null];
+  advancePassiveRecovery(room,20000);
+  assert.deepEqual([value.hp,value.mp],[31,16]);
+});
+
 test('접속 중 학생의 자동 회복은 서버가 같은 맵 화면에 전송한다',async t=>{
   let now=1000000;const key='passive-recovery-test',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now}),{port}=await game.listen();
   const sockets=[];t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});

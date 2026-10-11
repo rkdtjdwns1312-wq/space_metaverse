@@ -1,19 +1,6 @@
-// 수학은 브라우저 연습용, 영어는 서버가 같은 문제 목록에서 출제·채점합니다.
-const WORDS=Object.freeze([
-  ['apple','사과'],['banana','바나나'],['bread','빵'],['water','물'],['milk','우유'],
-  ['school','학교'],['teacher','선생님'],['student','학생'],['friend','친구'],['family','가족'],
-  ['mother','어머니'],['father','아버지'],['sister','자매'],['brother','형제'],['home','집'],
-  ['book','책'],['pencil','연필'],['desk','책상'],['chair','의자'],['door','문'],
-  ['window','창문'],['garden','정원'],['flower','꽃'],['tree','나무'],['leaf','잎'],
-  ['sun','태양'],['moon','달'],['star','별'],['sky','하늘'],['rain','비'],
-  ['snow','눈'],['wind','바람'],['river','강'],['mountain','산'],['ocean','바다'],
-  ['happy','행복한'],['kind','친절한'],['brave','용감한'],['small','작은'],['large','큰'],
-  ['morning','아침'],['evening','저녁'],['today','오늘'],['tomorrow','내일'],['yesterday','어제'],
-  ['read','읽다'],['write','쓰다'],['listen','듣다'],['speak','말하다'],['learn','배우다'],
-  ['walk','걷다'],['run','달리다'],['jump','뛰다'],['play','놀다'],['help','돕다'],
-  ['color','색깔'],['number','숫자'],['music','음악'],['picture','그림'],['story','이야기']
-]);
-export const ENGLISH_WORDS=WORDS;
+// 수학·영어 모두 서버가 출제·채점합니다.
+import {ENGLISH_LEVELS} from './english-vocabulary.js';
+export {ENGLISH_WORDS} from './english-vocabulary.js';
 const pick=(rng,n)=>Math.min(n-1,Math.max(0,Math.floor(rng()*n)));
 const shuffle=(items,rng)=>{const copy=[...items];for(let i=copy.length-1;i>0;i--){const j=pick(rng,i+1);[copy[i],copy[j]]=[copy[j],copy[i]];}return copy;};
 function numberChoices(answer,rng,step=1){
@@ -64,10 +51,14 @@ export function mathQuestion(level='grade-1',rng=Math.random){
   }else throw new RangeError(`알 수 없는 수학 단계: ${level}`);
   return {prompt,answer,choices:numberChoices(answer,rng,step)};
 }
-export function englishQuestion(rng=Math.random,used=new Set()){
-  const available=WORDS.filter(([word])=>!used.has(word));
-  const pool=available.length?available:WORDS;
+const meaningParts=meaning=>meaning.split(/[,;/·]/).map(text=>text.replace(/[~…\s]/g,'')).filter(Boolean);
+export function englishQuestion(rng=Math.random,used=new Set(),level='grade-1'){
+  const words=ENGLISH_LEVELS.find(item=>item.id===level)?.words;
+  if(!words)throw new RangeError('영어 단계를 다시 선택해 주세요.');
+  const available=words.filter(([word])=>!used.has(word));
+  const pool=available.length?available:words;
   const [word,answer]=pool[pick(rng,pool.length)];
-  const others=WORDS.filter(([,meaning])=>meaning!==answer).map(([,meaning])=>meaning);
+  const meanings=meaningParts(answer);
+  const others=[...new Set(words.filter(([,meaning])=>!meaningParts(meaning).some(part=>meanings.includes(part))).map(([,meaning])=>meaning))];
   return {prompt:word,answer,choices:shuffle([answer,...shuffle(others,rng).slice(0,3)],rng)};
 }

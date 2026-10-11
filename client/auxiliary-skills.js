@@ -65,7 +65,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
 
   const group = document.createElement('div');
   group.className = 'auxiliary-skills';
-  group.setAttribute('aria-label', 'LV5 변신');
+  group.setAttribute('aria-label', '별자리초월');
   controls.append(group);
   let count = 0;
   const heldNumberKeys = new Set();
@@ -160,7 +160,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
     }
     [...group.children].forEach((button, index) => {
       setSlotIcon(button, characterAbilities(player)[2].iconUrl);
-      button.setAttribute('aria-label','LV5 변신 (1)');button.dataset.skillSlot='transformation';
+      button.setAttribute('aria-label','별자리초월 (1)');button.dataset.skillSlot='transformation';
       button.title=button.getAttribute('aria-label');
     });
     layout();
