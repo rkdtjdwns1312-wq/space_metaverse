@@ -16,6 +16,12 @@ export function drawLibraAura(ctx,aura,elapsedMs,reducedMotion=false){
   const opening=elapsedMs<500,closing=elapsedMs>aura.durationMs-500;
   const size=aura.size*4.3;
   if(!opening&&!closing){
+    if(aura.stage===4){
+      const key='lv4-core';let core=images.get(key);
+      if(!core){core=new Image();core.src='/assets/skills/libra/source/scale-lv4-painted.png';images.set(key,core);}
+      // 큰 실제 표시 크기에서도 사슬과 금빛 조각이 흐려지지 않도록 원해상도로 표시합니다.
+      if(core.complete&&core.naturalWidth){ctx.drawImage(core,-size*106/256,-size*108/256,size*212/256,size*212/256);return;}
+    }
     frame(ctx,`skill-lv${aura.stage}`,12,size);
     return;
   }

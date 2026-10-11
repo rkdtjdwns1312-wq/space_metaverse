@@ -33,13 +33,13 @@ export function drawCoronaAttack(ctx,hit,elapsedMs,reducedMotion=false){
   ctx.restore();return true;
 }
 export function drawCoronaAura(ctx,aura,elapsedMs,reducedMotion=false){
-  const size=aura.size*(aura.stage===2?1.3:aura.stage===3?1.55:1.8);
+  const size=aura.size*(aura.stage===2?.72:aura.stage===3?.84:.96);
   const id=`crown-lv${aura.stage}`;
   if(!images.has(id)){const image=new Image();image.src=`/assets/skills/corona-borealis/${id}.png`;images.set(id,image);}
   const image=images.get(id);if(!image.complete||!image.naturalWidth)return;
-  // 불꽃이 섞인 시트 대신 왕관만 사용합니다. 소환/소멸도 같은 그림의 부드러운 페이드입니다.
-  ctx.save();ctx.globalAlpha*=coronaOpacity(aura,elapsedMs);
-  ctx.drawImage(image,-size/2,-size/2,size,size);ctx.restore();
+  // 기존 단계별 왕관 원화를 머리 위 아이콘 크기로 표시하고 몸 오라는 별도 렌더러에 둡니다.
+  const height=size*image.naturalHeight/image.naturalWidth,opacity=coronaOpacity(aura,elapsedMs);
+  ctx.save();ctx.globalAlpha*=opacity;ctx.drawImage(image,-size/2,-aura.size*.55-height,size,height);ctx.restore();
 }
 export function drawCoronaBodyAura(ctx,sprite,aura,elapsedMs,size,reducedMotion=false){
   if(!sprite)return;

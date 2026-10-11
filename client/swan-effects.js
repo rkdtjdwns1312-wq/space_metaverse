@@ -32,13 +32,7 @@ export function drawSwanAura(ctx,aura,x,y,size,reducedMotion=false){
   const frame=reducedMotion?12:swanFrameAt(elapsed,aura.durationMs);
   const width=size*(aura.stage===2?2.2:aura.stage===3?2.55:2.95);
   ctx.save();ctx.globalAlpha*=reducedMotion?.78:1;
-  // A distinct smaller pair is added at every evolution stage. Keep these
-  // behind the main pair so the avatar and the stage-specific sheet stay clear.
-  for(let pair=aura.stage-2;pair>=1;pair--){
-    ctx.save();ctx.globalAlpha*=.62;
-    drawFrame(ctx,SWAN_VFX['skill-lv2'],frame,x,y-size*(.36+.19*pair),width*(1-.22*pair));
-    ctx.restore();
-  }
+  // 각 단계 원화에 1/2/3쌍이 이미 포함되어 있어 중복 날개를 겹치지 않습니다.
   drawFrame(ctx,spec,frame,x,y-size*.36,width);
   ctx.restore();
 }

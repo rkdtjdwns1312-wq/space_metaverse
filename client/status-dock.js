@@ -6,23 +6,17 @@ const iconUrls=new Map(STATUS_ICONS.map(({id,url})=>[id,url]));
 export function statusRemainingText(until,now=Date.now()){
   if(until===null)return '해제될 때까지 지속';
   const seconds=Math.max(0,Math.ceil((until-now)/1000));
-  const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600);
-  const minutes=Math.floor(seconds%3600/60),rest=seconds%60;
-  return `${days?days+'일 ':''}${hours?hours+'시간 ':''}${minutes?minutes+'분 ':''}${rest||seconds===0?rest+'초':''} 남음`.trim();
+  return `${seconds}초`;
 }
 
 export function createStatusDockUI(container,dialog,{title,description,expiry,count,close}){
   let states=[],signature='',selectedId=null;
-  const expiryDate=new Intl.DateTimeFormat('ko-KR',{
-    timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'
-  });
   function showDetail(now){
     const state=states.find(item=>item.id===selectedId);
     if(!state){if(dialog.open)dialog.close();return;}
     title.textContent=state.name;
     description.textContent=state.description;
-    expiry.textContent=state.until===null?'지속 시간 · 해제될 때까지':
-      `지속 시간 · ${statusRemainingText(state.until,now)} · ${expiryDate.format(state.until)}까지`;
+    expiry.textContent=`지속시간: ${statusRemainingText(state.until,now)}`;
     count.textContent=state.count>1?`같은 상태 ${state.count}개 적용 중`:'';
     count.hidden=state.count<=1;
   }

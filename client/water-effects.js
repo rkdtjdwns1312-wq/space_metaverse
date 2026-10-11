@@ -1,9 +1,10 @@
 import {WATER_VFX,waterFrameAt,cetusWavePoseAt,waterProjectileAngle} from '/shared/water-skills.js';
-import {drawPiscesBullet} from './pisces-bullet.js';
+import {drawPiscesBullet,preloadPiscesBullet} from './pisces-bullet.js';
 import {drawPiscesPortalFish} from './pisces-portals.js';
 
 const images=new Map();
 export function preloadWater(star,ids=Object.keys(WATER_VFX[star]||{})){
+  if(star==='pisces')preloadPiscesBullet();
   for(const id of ids){
     const spec=WATER_VFX[star]?.[id];if(!spec||images.has(spec.url))continue;
     const image=new Image();image.src=spec.url;images.set(spec.url,image);

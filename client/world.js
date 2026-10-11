@@ -408,7 +408,7 @@ export function createWorld(canvas) {
     if(!dash&&p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,-size*.28);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
-    if(corona){ctx.save();ctx.translate(-(p.facingX||1)*size*.24,0);drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);ctx.restore();}
+    if(corona)drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);
     if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.34);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
     if(p.role==='teacher'&&!p.avatar?.teacherPreview){
       celestialAura(ctx,'#e9c77b',58,time);
@@ -711,6 +711,9 @@ export function createWorld(canvas) {
     canvas.dataset.libraAuraCount=String(libraAuras.length);
     canvas.dataset.coronaAuraCount=String(coronaAuras.length);
     canvas.dataset.capricornBlessingCount=String(capricornBlessings.length);
+    // 포효 소환체와 파동은 캐릭터를 그리기 전에 배치해 몸과 얼굴을 가리지 않습니다.
+    leoRoars=leoRoars.filter(roar=>roar.until>t);
+    for(const roar of leoRoars)drawLeoRoar(ctx,roar,t-roar.startsAt,reducedMotion.matches);
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
@@ -748,8 +751,6 @@ export function createWorld(canvas) {
     for(const burst of herculesBursts)drawHerculesBurst(ctx,burst,t-burst.startsAt,reducedMotion.matches);
     coronaFalls=coronaFalls.filter(fall=>fall.until>t);
     for(const fall of coronaFalls)drawCoronaFall(ctx,fall,t-fall.startsAt,reducedMotion.matches);
-    leoRoars=leoRoars.filter(roar=>roar.until>t);
-    for(const roar of leoRoars)drawLeoRoar(ctx,roar,t-roar.startsAt,reducedMotion.matches);
     sagittariusEffects=sagittariusEffects.filter(e=>e.until>t&&e.mapId===myMapId);
     sagittariusCasts=sagittariusCasts.filter(e=>e.until>t&&e.mapId===myMapId);
     for(const cast of sagittariusCasts){

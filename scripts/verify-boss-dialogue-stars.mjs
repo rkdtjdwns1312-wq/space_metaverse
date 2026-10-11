@@ -14,7 +14,8 @@ try{
  await page.goto(`http://127.0.0.1:${port}`);
  const visuals=await page.evaluate(async()=>{
   const {TRANSCENDENT_STARS,drawTranscendentStars}=await import('/transcendent-stars.js');
-  const {drawPiscesBullet}=await import('/pisces-bullet.js');
+  const {drawPiscesBullet,preloadPiscesBullet}=await import('/pisces-bullet.js');
+  await preloadPiscesBullet().decode();
   const make=(w,h)=>Object.assign(document.createElement('canvas'),{width:w,height:h});
   const load=async src=>{const im=new Image();im.src=src;await im.decode();return im;};
   const sheet=make(1000,1000),ctx=sheet.getContext('2d');ctx.fillStyle='#152442';ctx.fillRect(0,0,1000,1000);

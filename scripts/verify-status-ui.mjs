@@ -37,7 +37,7 @@ try{
  await page.locator('#dock-statuses [data-status-id="uv"]').click();
  assert.match(await page.locator('#status-detail-title').innerText(),/자외선/);
  assert.match(await page.locator('#status-detail-description').innerText(),/아이템/);
- assert.match(await page.locator('#status-detail-expiry').innerText(),/남음/);
+ assert.match(await page.locator('#status-detail-expiry').innerText(),/^지속시간: \d+초$/);
  assert.ok((await page.locator('#dock-statuses').boundingBox()).x<(await page.locator('#dock-avatar').boundingBox()).x);
  await page.locator('#status-detail-close').click();
  await page.locator('#dock-avatar').click();check('내정보 왼쪽 상태 아이콘·효과·남은 시간 표시');

@@ -52,7 +52,8 @@ test('지속형 11종 LV2~5·초월: 지속만 +1초, 쿨다운/마나/주기/�
     const lines=characterAbilities(player)[1].description.split('\n');assert.equal(lines.length,4);
     assert.deepEqual(lines.slice(2),oldLines.slice(2));
     const seconds=equipped[id==='aquarius'?'holdMs':id==='ophiuchus'?'poisonMs':'durationMs']/1000;
-    assert.ok(lines[1].includes(`${seconds}초`),`${id} ${lines[1]}`);
+    if(id==='aquarius')assert.equal(lines[1],`특수효과: 범위 안 아군 체력 5초간 ${equipped.effectAmount*100}% 회복(최대 ${equipped.healingAmount}, 1초마다 적용)`);
+    else assert.ok(lines[1].includes(`${seconds}초`),`${id} ${lines[1]}`);
   }
 });
 
@@ -83,6 +84,42 @@ for(const [id,cast,advance,views,key,cooldown,statusId] of auras)test(`${id}: �
     assert.equal(player[cooldown],id==='cygnus'?end+10000:now+spec.cooldownMs);
     if(id==='libra')assert.equal(player.libraBuff,null);
     if(id==='capricorn')assert.equal(monster.capricornCurses.size,0);
+  }
+});
+
+test('염소 축복은 자신과 가장 가까운 유효 동료 최대 2명, 동료가 없으면 기존 몬스터 저주를 유지',()=>{
+  for(const level of [2,3,4]){
+    const {room,player,monster}=setup('capricorn',level,false),size=avatarSizeOf(player),now=Date.now();
+    const add=(id,x,{mapId=player.mapId,connected=true,away=false,hp=100000,blackStar=false}={})=>{
+      const ally={id,role:'student',connected,away,mapId,x,y:player.y,avatar:{level:2,constellationId:'aries',blackStar},battleVitals:{level:2,role:'student',hp,mp:100,defeatedAt:null}};
+      room.players.set(id,ally);return ally;
+    };
+    const far=add('far',player.x+size*3.2);
+    const near=add('near',player.x+size*.5);
+    const middle=add('middle',player.x+size*1.1);
+    add('other-map',player.x+1,{mapId:'star-origin-2'});
+    add('away',player.x+1,{away:true});
+    add('disconnected',player.x+1,{connected:false});
+    add('defeated',player.x+1,{hp:0});
+    add('black-star',player.x+1,{blackStar:true});
+
+    const result=castCapricorn(room,player,now);
+    assert.deepEqual(result.recipientIds,['caster','near','middle'],`LV${level}: self and two nearest valid allies`);
+    assert.ok(player.capricornBlessing&&near.capricornBlessing&&middle.capricornBlessing);
+    for(const excluded of [far,'other-map','away','disconnected','defeated','black-star']){
+      const target=typeof excluded==='string'?room.players.get(excluded):excluded;
+      assert.equal(target.capricornBlessing,undefined,`LV${level}: excluded ${target.id}`);
+    }
+    assert.deepEqual(result.cursed,[]);
+    assert.equal(monster.capricornCurses,undefined);
+  }
+
+  for(const level of [2,3,4]){
+    const {room,player,monster}=setup('capricorn',level,false),now=Date.now();
+    const result=castCapricorn(room,player,now);
+    assert.deepEqual(result.recipientIds,['caster'],`LV${level}: self is always blessed`);
+    assert.deepEqual(result.cursed,['target'],`LV${level}: no allies keeps the nearest monster curse`);
+    assert.ok(monster.capricornCurses.has(player.id));
   }
 });
 

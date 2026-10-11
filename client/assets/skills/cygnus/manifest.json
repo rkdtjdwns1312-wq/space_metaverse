@@ -6,59 +6,45 @@
   "frameWidth": 256,
   "frameHeight": 256,
   "frameOrder": "row-major",
-  "loopFrames": [
-    7,
-    18
+  "source": "source/painted-atlas.png",
+  "sourceTool": "built-in image_gen",
+  "buildScript": "scripts/build-cygnus-painted.mjs",
+  "anchor": {
+    "x": 0.5,
+    "y": 0.5
+  },
+  "heldFrames": [
+    6,
+    17
   ],
-  "buildScript": "scripts/build-water-vfx.py",
-  "assets": {
-    "attack": {
-      "sourceSha256": "d1b24a2f945e755490f70f4a1ba18a302838ccfd8930070fc1edf30d74748be7",
+  "assets": [
+    {
+      "id": "attack",
       "frames": 24,
-      "distinctFrames": 24,
-      "canvas": [
-        256,
-        256
-      ],
-      "transparentBorders": true,
-      "playablePreviewFrames": 60,
-      "loopSeamMeanDifference": 0.04896
+      "distinctFrames": 23,
+      "holdStable": false,
+      "emptyEnds": true
     },
-    "skill-lv2": {
-      "sourceSha256": "4dcfddee5e3ff465e51ea17f4c3743ab2587308b83fdf5459a284b4140563af3",
+    {
+      "id": "skill-lv2",
       "frames": 24,
-      "distinctFrames": 24,
-      "canvas": [
-        256,
-        256
-      ],
-      "transparentBorders": true,
-      "playablePreviewFrames": 60,
-      "loopSeamMeanDifference": 0.0692
+      "distinctFrames": 10,
+      "holdStable": true,
+      "emptyEnds": true
     },
-    "skill-lv3": {
-      "sourceSha256": "ef7c46ae3a277fd6340659023ae059b3bb10bb9a6155ac395dffc655d2c98e4d",
+    {
+      "id": "skill-lv3",
       "frames": 24,
-      "distinctFrames": 24,
-      "canvas": [
-        256,
-        256
-      ],
-      "transparentBorders": true,
-      "playablePreviewFrames": 60,
-      "loopSeamMeanDifference": 0.07296
+      "distinctFrames": 10,
+      "holdStable": true,
+      "emptyEnds": true
     },
-    "skill-lv4": {
-      "sourceSha256": "3c6b3fa38510cf6313d50225703866eaee9b99ab829cd5190977092b98362cf3",
+    {
+      "id": "skill-lv4",
       "frames": 24,
-      "distinctFrames": 24,
-      "canvas": [
-        256,
-        256
-      ],
-      "transparentBorders": true,
-      "playablePreviewFrames": 60,
-      "loopSeamMeanDifference": 0.09562
+      "distinctFrames": 10,
+      "holdStable": true,
+      "emptyEnds": true
     }
-  }
+  ]
 }

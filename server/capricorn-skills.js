@@ -26,8 +26,10 @@ export function castCapricorn(room,player,now,{basic=false}={}){
   ensure(now>=(player.capricornCooldownUntil||0),'염소의 뿔 스킬을 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.capricornCooldownUntil=now+spec.cooldownMs;
-  const recipients=[...room.players.values()].filter(p=>p.connected&&!p.away&&p.mapId===player.mapId&&
-    ensureVitals(p)?.hp>0&&Math.hypot(p.x-player.x,p.y-player.y)<=size*spec.radiusWidths);
+  const companions=[...room.players.values()].filter(p=>p.id!==player.id&&p.connected&&!p.away&&p.mapId===player.mapId&&
+    !p.avatar?.blackStar&&ensureVitals(p)?.hp>0&&Math.hypot(p.x-player.x,p.y-player.y)<=size*spec.radiusWidths)
+    .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
+  const recipients=[player,...companions.slice(0,2)];
   for(const target of recipients){
     const current=target.capricornBlessing;
     if(!current||current.endsAt<now+spec.durationMs)target.capricornBlessing={ownerId:player.id,at:now,endsAt:now+spec.durationMs,

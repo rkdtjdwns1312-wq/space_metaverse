@@ -49,16 +49,21 @@
       "loopSeamMeanDifference": 0.0638
     },
     "skill-lv4": {
-      "sourceSha256": "3eb54a6cda5185d4a13d46bbb6ae1dd17446804ea2c3930d38b49982dcca37d0",
+      "source": "source/scale-lv4-painted.png",
+      "sourceTool": "built-in image_gen",
+      "buildScript": "scripts/build-libra-painted.mjs",
       "frames": 24,
-      "distinctFrames": 24,
       "canvas": [
         256,
         256
       ],
-      "transparentBorders": true,
-      "playablePreviewFrames": 60,
-      "loopSeamMeanDifference": 0.09714
+      "holdFrames": [
+        12,
+        17
+      ],
+      "holdStable": true,
+      "emptyEnds": true,
+      "distinctFrames": 16
     }
   }
 }
