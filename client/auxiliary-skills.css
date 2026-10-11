@@ -56,3 +56,9 @@
   .combat-buttons > .auxiliary-skills { --aux-size: 28px; }
   .combat-buttons > .auxiliary-skills > .auxiliary-skill { font-size: 11px; }
 }
+/* 백조의 흰 깃털/날개는 밝은 슬롯에서도 형태를 읽을 수 있도록 윤곽을 둡니다. */
+.combat-slot-icon img[src^="/assets/skills/cygnus/"][src$="-icon.png"],
+.skill-placeholder img[src^="/assets/skills/cygnus/"][src$="-icon.png"] {
+  filter: drop-shadow(1px 0 0 #26334b) drop-shadow(-1px 0 0 #26334b)
+    drop-shadow(0 1px 0 #26334b) drop-shadow(0 -1px 0 #26334b);
+}
