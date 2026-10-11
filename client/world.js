@@ -11,6 +11,7 @@ import {taurusWalkFrames} from './taurus-animation.js';
 import {libraWalkFrames} from './libra-animation.js';
 import {herculesWalkFrames} from './hercules-animation.js';
 import {corvusWalkFrames} from './corvus-animation.js';
+import {constellationWalkFrame,prepareConstellationWalk,locomotionProfile,createLocomotionClock} from './constellation-locomotion.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,drawOphiuchusSkill} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -117,6 +118,7 @@ export function createWorld(canvas) {
   const libraLastPoint=new Map(),libraMovingUntil=new Map(),libraMovingSince=new Map();
   const herculesLastPoint=new Map(),herculesMovingUntil=new Map(),herculesMovingSince=new Map();
   const corvusLastPoint=new Map(),corvusMovingUntil=new Map(),corvusMovingSince=new Map();
+  const extraLocomotion=createLocomotionClock();
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   let hits=[],starCards=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena();
@@ -533,6 +535,13 @@ export function createWorld(canvas) {
             canvas.dataset.corvusWalkFrame=String(index);
           }
         }
+        const walkProfile=locomotionProfile(constellation.id,constellation.assetLevel);
+        if(walkProfile){
+          if(!reducedMotion.matches)prepareConstellationWalk(sprite,constellation.id,constellation.assetLevel);
+          const pose=extraLocomotion.sample(p.id,`${myMapId}:${constellation.sprite}`,x,y,time,walkProfile.ms||110,reducedMotion.matches);
+          if(pose.moving)visible=constellationWalkFrame(sprite,constellation.id,constellation.assetLevel,pose.index)||sprite;
+          if(p.id===selfId){canvas.dataset.locomotionId=constellation.id;canvas.dataset.locomotionLevel=String(constellation.assetLevel);canvas.dataset.locomotionFrame=String(pose.index);canvas.dataset.locomotionMoving=String(pose.moving);}
+        }else if(p.id===selfId){delete canvas.dataset.locomotionId;delete canvas.dataset.locomotionLevel;delete canvas.dataset.locomotionFrame;delete canvas.dataset.locomotionMoving;}
         ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
         drawEquipmentAura(ctx,visible,p,size,time,reducedMotion.matches);
         ctx.drawImage(visible,-size/2,-size/2,size,size);ctx.restore();
@@ -789,8 +798,10 @@ export function createWorld(canvas) {
     setRoom(room,id){
       serena=room?.serena||dormantSerena();
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
+      if(nextMap!==myMapId||id!==selfId)extraLocomotion.clear();
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
+      extraLocomotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));
       if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
       for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);
       if(players.some(p=>p.avatar?.constellationId==='cygnus'))preloadSwan(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='cygnus').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
