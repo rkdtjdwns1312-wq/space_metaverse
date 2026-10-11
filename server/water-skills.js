@@ -7,6 +7,7 @@ import {damageTargets} from './sagittarius-skills.js';
 import {monstersOf,damageMonster} from './monsters.js';
 import {ensureVitals,playerVitals} from './vitals.js';
 import {ensure} from './rooms.js';
+import {piscesPortalGeometry,piscesPortalTiming} from '../shared/pisces-portals.js';
 
 const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
 export const waterCooldowns=p=>({0:p.waterCooldownUntil||0});
@@ -36,9 +37,11 @@ export function castWater(room,player,now,{basic=false}={}){
     basic,kind:`${id}-${basic?'attack':'skill'}`,vfxId:basic?'attack':`skill-lv${spec.stage}`,
     piercing:id==='cetus'||boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:2000};
+  const timing=piscesPortalTiming(spec.stage);
   const projectiles=id==='pisces'&&!basic?
     Array.from({length:spec.hits},(_,i)=>({...launchProjectiles(room,player,{...base,
-      fishLane:i-(spec.hits-1)/2,fishStage:spec.stage,durationMs:2000-i*120,visualScale:spec.stage===2?.68:spec.stage===3?1:1.85},now+i*120,1)[0],elapsedMs:-i*120})):
+      piscesPortal:true,fishIndex:i,fishStage:spec.stage,width:piscesPortalGeometry({...base,fishStage:spec.stage}).height/2,
+      durationMs:timing.durationMs,visualScale:spec.stage===2?.68:spec.stage===3?1:1.85},now+i*timing.stagger,1)[0],elapsedMs:-i*timing.stagger})):
     launchProjectiles(room,player,base,now,1);
   return {ready:true,target:null,targets:[],playerTargets:[],vitals:playerVitals(player),cooldowns:waterCooldowns(player),serverNow:now,
     hit:{...base,playerId:player.id,mapId:player.mapId,projectiles}};

@@ -1,5 +1,6 @@
 import {transformedSkill} from './transformation.js';
 import {sustainedSkill} from './skill-duration.js';
+import {piscesPortalGeometry} from './pisces-portals.js';
 
 export const WATER_VFX=Object.freeze(Object.fromEntries(['cancer','cetus','pisces'].map(star=>[
   star,Object.freeze(Object.fromEntries(['attack','skill-lv2','skill-lv3','skill-lv4'].map(id=>[
@@ -48,6 +49,7 @@ export function cetusWavePoseAt(progress){
 // 물고기는 전진 거리와 높이를 함께 바꿉니다. 시작/착지는 바닥, 중간은 최고점입니다.
 export function waterProjectilePoint(cast,progress){
   const p=Math.max(0,Math.min(1,progress));
+  if(cast.piscesPortal){const g=piscesPortalGeometry(cast,p);return {x:cast.x+cast.dx*g.center,y:cast.y+cast.dy*g.center,visualAngle:Math.atan2(cast.dy,cast.dx)};}
   const distance=cast.range*p;
   const fish=cast.kind==='pisces-skill';
   const lateral=fish?(cast.fishLane||0)*cast.size*.22*Math.sin(Math.PI*p):0;

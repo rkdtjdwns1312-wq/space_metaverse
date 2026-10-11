@@ -63,6 +63,7 @@ test('소켓 소환 저장 실패는 성공 응답과 active 알림을 보내지
 
 test('실제 서버 틱은 처치 저장 실패를 재시도하고 24시간 경계에서 석상만 복원한다',async t=>{
   const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  const dialogues=[],elsewhere=[];f.a.on('combat:boss-defeated',e=>dialogues.push(e));f.b.on('combat:boss-defeated',e=>elsewhere.push(e));
   const drops=[],states=[];f.a.on('energy:drops',r=>drops.push(r));f.a.on('world:positions',r=>states.push(r.serena));
   const save=f.game.store.files.save.bind(f.game.store.files);f.game.store.files.save=()=>{throw Error('simulated death save failure');};
   try{
@@ -70,15 +71,18 @@ test('실제 서버 틱은 처치 저장 실패를 재시도하고 24시간 경�
     await until(()=>f.room.bossSaveRetryAt>f.now);
     assert.equal(f.disk().serena.state,'active');assert.equal(f.room.energyDrops?.size||0,0);
     assert.ok(drops.every(r=>r.drops.length===0));
+    assert.equal(dialogues.length,0);
   }finally{f.game.store.files.save=save;}
   // 60초 넘게 지연된 재시도에서도 보상은 새 정산 시각부터 온전히 유지됩니다.
   const deathAt=f.now;f.now+=65001;
   await until(()=>f.room.serena.state==='recovering');
   await until(()=>drops.some(r=>r.drops.some(d=>d.itemId==='radiant-star-origin')));
+  await until(()=>dialogues.length===1);assert.equal(dialogues[0].bossId,'serena');assert.equal(elsewhere.length,0);
   const untilAt=deathAt+86400000;assert.equal(f.disk().serena.respawnAt,untilAt);
   assert.equal([...f.room.energyDrops.values()].filter(d=>d.itemId==='radiant-star-origin').length,1);
   assert.ok([...f.room.energyDrops.values()].every(d=>d.publicAt===f.now+30000&&d.expiresAt===f.now+60000));
   f.now=untilAt-1;await pause(120);assert.equal(f.room.serena.state,'recovering');
+  assert.equal(dialogues.length,1,'다음 틱에도 반복 대화 없음');
   f.now=untilAt;await until(()=>f.room.serena.state==='dormant');
   await until(()=>states.some(s=>s.state==='dormant'));
   assert.equal(f.disk().serena.state,'dormant');assert.equal(f.room.monsters.has(SERENA.monsterId),false);

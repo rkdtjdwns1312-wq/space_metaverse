@@ -2100,6 +2100,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           console.error('보스 처치/복원 저장 실패:',error.message);break;
         }
       }
+      for(const event of room.bossDialogueEvents?.splice(0)||[]){
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===event.mapId)
+          io.to(viewer.socketId).emit('combat:boss-defeated',event);
+      }
       const damageNumbers=room.damageNumbers?.splice(0)||[];
       for(const player of room.players.values())damageNumbers.push(...(player.damageNumbers?.splice(0)||[]));
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){

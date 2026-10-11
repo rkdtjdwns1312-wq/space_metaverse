@@ -77,7 +77,7 @@ test('안전하지 않은 출입 도착점은 플레이어 크기에 맞는 가�
 
 test('별의 시작점 4 석상 충돌은 원화 플린스 발 위치에만 놓인다',()=>{
   const map=ORIGIN_MAPS[3],statue=map.objects.find(object=>object.kind==='goddess-statue'),p=student(1);
-  assert.equal(statue.y,map.height/2+80,'받침대가 신전 중앙 안쪽에 놓임');
+  assert.equal(statue.y,map.height/2,'요청574: 받침대가 신전 정중앙에 놓임');
   assert.ok(avatarPositionIsClear(map,statue.x,statue.y-80,p),'발밑 충돌점 바깥은 지나갈 수 있다');
   assert.equal(avatarPositionIsClear(map,statue.x,statue.y-24,p),false,'플린스 발 위치의 충돌 원은 막는다');
 });

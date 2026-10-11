@@ -1,6 +1,7 @@
 import {createProjectileEffects} from './projectile-effects.js';
 import {createAquariusEffects,preloadAquarius} from './aquarius-effects.js';
 import {preloadWater,drawWaterAura,drawWaterProjectile} from './water-effects.js';
+import {drawTranscendentStars} from './transcendent-stars.js';
 import {preloadSwan,drawSwanAura} from './swan-effects.js';
 import {waterFrameAt,cetusAuraFrameAt} from '/shared/water-skills.js';
 import {cetusWalkFrames,drawCetusAura} from './cetus-animation.js';
@@ -545,7 +546,9 @@ export function createWorld(canvas) {
         ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
         drawEquipmentAura(ctx,visible,p,size,time,reducedMotion.matches);
         if(corona)drawCoronaBodyAura(ctx,visible,corona,time-corona.startsAt,size,reducedMotion.matches);
-        ctx.drawImage(visible,-size/2,-size/2,size,size);ctx.restore();
+        ctx.drawImage(visible,-size/2,-size/2,size,size);
+        if(constellation.celestial)drawTranscendentStars(ctx,constellation.id,size,time,reducedMotion.matches,sprite);
+        ctx.restore();
       }
       else{const radius=size*.4;
         star(0,0,radius,constellation.color);ctx.strokeStyle='#ffffffcf';ctx.lineWidth=1.5;ctx.stroke();

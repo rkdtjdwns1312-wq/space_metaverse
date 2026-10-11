@@ -74,7 +74,7 @@ test('별의 시작점 4는 왕복 문과 발밑 석상 충돌 지점만 두고 
   const map=ORIGIN_MAPS[3],back=map.objects.find(object=>object.id==='gate-back'),statue=map.objects.find(object=>object.kind==='goddess-statue');
   assert.equal(back.target,'star-origin-3');
   assert.deepEqual(map.objects.filter(object=>object.id==='gate-next'),[]);
-  assert.deepEqual([statue.x,statue.y,statue.radius],[map.width/2,map.height/2+80,58]);
+  assert.deepEqual([statue.x,statue.y,statue.radius],[map.width/2,map.height/2,58]);
   const room={},spawns=monsterViews(room).filter(monster=>monster.mapId===map.id);
   assert.deepEqual(spawns,[]);
 });

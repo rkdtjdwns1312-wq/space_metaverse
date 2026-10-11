@@ -87,7 +87,8 @@ test('물고기자리 E는 단계별 4/2/1마리, 100/300/800% 관통·마나5·
     const spec=waterSkillOf(player);assert.equal(spec.hits,hits);assert.equal(spec.multiplier,multiplier);
     const result=castWater(room,player,now);assert.equal(result.hit.range,size*4.8);
     assert.equal(result.hit.projectiles.length,hits);assert.equal(ensureVitals(player).mp,mp-5);
-    assert.deepEqual(result.hit.projectiles.map(projectile=>projectile.elapsedMs),Array.from({length:hits},(_,i)=>-i*120));
+    assert.deepEqual(result.hit.projectiles.map(projectile=>projectile.elapsedMs),Array.from({length:hits},(_,i)=>-i*(hits===2?500:300)));
+    assert.ok(result.hit.projectiles.every(p=>p.piscesPortal&&p.visible&&p.level===level));
     assert.equal(result.cooldowns[0],now+10000);
     advance(room,now+2000);
     const damage=Math.round(attackPowerOf(level,'pisces',player)*multiplier)*hits;

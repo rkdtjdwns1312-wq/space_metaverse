@@ -26,6 +26,9 @@ export function finishBossDefeat(room,monster,contributors,deathAt,rolls={},cred
   addRecipeDrop(room,monster,contributors,settledAt,rolls.recipeRoll);
   addEnergyDrop(room,monster,contributors,settledAt,rolls.energyRoll);
   addBossDrops(room,monster,contributors,settledAt,rolls.bossRoll);
+  // 저장 트랜잭션에 포함되지만 디스크에는 기록하지 않는 일회성 알림입니다.
+  room.bossDialogueEvents??=[];
+  room.bossDialogueEvents.push({id:`${monster.id}:${deathAt}`,bossId:monster.typeId,mapId:monster.mapId});
 }
 // 영구 교실에서는 저장 성공 전까지 보상을 공개하지 않습니다. 실패 롤백 뒤 큐로 재시도합니다.
 export function settleBossDeaths(room,now=Date.now()){

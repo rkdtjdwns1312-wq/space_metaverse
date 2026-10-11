@@ -34,6 +34,7 @@ import { createAccountsUI } from './accounts-ui.js';
 import { createUniverseUI } from './universe-ui.js';
 import {createObjectUpdates} from './object-updates.js';
 import {createSerenaUI} from './serena-ui.js';
+import {createBossDialogueUI} from './boss-dialogue-ui.js';
 import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
@@ -352,6 +353,7 @@ async function request(event,data){
 }
 let serenaWorldState=null;
 const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
+const bossDialogueUI=createBossDialogueUI({getMapId:()=>room?.players.find(p=>p.id===selfId)?.mapId,onOpen:()=>stop(),onClose:()=>$('world').focus({preventScroll:true})});
 function updateBgm(mapId,serenaOverride){
   const serena=serenaOverride||serenaWorldState||room?.serena;
   const statueMap=mapId==='star-origin-4';
@@ -360,6 +362,7 @@ function updateBgm(mapId,serenaOverride){
 }
 function updateRoom(value){
   room=value;world.setRoom(room,selfId);starCardUI.update();
+  bossDialogueUI.update();
   if(room.serena)serenaWorldState=room.serena;
   world.setObjectUpdates(objectUpdates.update(room,selfId));
   universe.update();
@@ -1229,6 +1232,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
+  bossDialogueUI.reset();
   recipeBook.reset();
   holdings.reset();
   characterSkills.reset();
@@ -1325,7 +1329,8 @@ socket.on('connect',async()=>{
 });
 socket.on('connect_error',()=>{$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
-socket.on('disconnect',()=>{held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
+socket.on('disconnect',()=>{bossDialogueUI.reset();held.clear();touch={x:0,y:0};$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('room:state',data=>{if(selfId)updateRoom(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});
 socket.on('combat:projectile-end',data=>{if(selfId)world.projectileEnd(data);});

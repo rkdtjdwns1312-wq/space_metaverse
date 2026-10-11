@@ -1,0 +1,20 @@
+{
+  "frames": 48,
+  "columns": 8,
+  "rows": 6,
+  "frameWidth": 640,
+  "frameHeight": 220,
+  "anchor": {
+    "x": 40,
+    "y": 110
+  },
+  "durationMs": 2000,
+  "order": "row-major",
+  "levels": [
+    2,
+    3,
+    4
+  ],
+  "runtime": "continuous Canvas clipping at display refresh rate; no fish scale animation",
+  "source": "../portal-fish.png"
+}

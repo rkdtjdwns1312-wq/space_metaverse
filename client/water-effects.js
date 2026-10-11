@@ -1,4 +1,6 @@
 import {WATER_VFX,waterFrameAt,cetusWavePoseAt,waterProjectileAngle} from '/shared/water-skills.js';
+import {drawPiscesBullet} from './pisces-bullet.js';
+import {drawPiscesPortalFish} from './pisces-portals.js';
 
 const images=new Map();
 export function preloadWater(star,ids=Object.keys(WATER_VFX[star]||{})){
@@ -19,6 +21,8 @@ function sprite(ctx,spec,frame,x,y,width,height,alpha=1){
   ctx.restore();
 }
 export function drawWaterProjectile(ctx,cast,elapsedMs,reducedMotion=false){
+  if(cast.kind==='pisces-attack')return drawPiscesBullet(ctx,cast,elapsedMs,reducedMotion);
+  if(cast.kind==='pisces-skill'&&cast.piscesPortal)return drawPiscesPortalFish(ctx,cast,elapsedMs,reducedMotion);
   const star=cast.kind?.split('-')[0],spec=WATER_VFX[star]?.[star==='pisces'&&cast.kind==='pisces-skill'?'skill-lv4':cast.vfxId];
   if(!spec)return false;
   preloadWater(star,[spec.id]);

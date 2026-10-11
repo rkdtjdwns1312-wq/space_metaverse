@@ -50,13 +50,17 @@ test('세레나 처치 저장 실패에는 보상도 복원 시각도 공개하�
   assert.equal(f.room.energyDrops?.size||0,0);assert.equal(f.room.pendingBossDeaths.size,1);
   const save=f.store.files.save.bind(f.store.files);f.store.files.save=()=>{throw Error('test disk unavailable');};
   assert.throws(()=>f.store.transact(()=>settleBossDeaths(f.room)));
+  assert.equal(f.room.bossDialogueEvents?.length||0,0,'저장 실패에는 대화도 공개하지 않음');
   assert.equal(f.room.energyDrops?.size||0,0);assert.equal(f.room.pendingBossDeaths.size,1);
   assert.equal(f.room.serena.state,'active');assert.equal(f.disk().serena.state,'active');
   f.store.files.save=save;f.store.transact(()=>settleBossDeaths(f.room));
   const until=now+10+BOSS_RESPAWN_MS,drops=f.room.energyDrops.size;
   assert.equal(f.disk().serena.respawnAt,until);assert.equal(f.disk().bossRespawns[SERENA.monsterId],until);
   assert.ok(drops>=4);f.store.transact(()=>settleBossDeaths(f.room));assert.equal(f.room.energyDrops.size,drops);
+  assert.equal(f.room.bossDialogueEvents.length,1,'재정산에도 대화는 한 번만 발생');
+  assert.equal(f.room.bossDialogueEvents[0].bossId,'serena');
   f.restart();assert.equal(f.room.serena.state,'recovering');assert.equal(f.room.serena.respawnAt,until);
+  assert.equal(f.room.bossDialogueEvents?.length||0,0,'재접속으로 처치 대화 재생 안 함');
   assert.equal(monstersOf(f.room,until-1).has(SERENA.monsterId),false);locate(f.player);
   assert.throws(()=>f.store.transact(()=>summonSerena(f.room,f.player,until-1)));
   assert.equal(f.store.transact(()=>restoreSerenaStatue(f.room,until)),true);

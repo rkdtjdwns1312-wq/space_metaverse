@@ -52,15 +52,15 @@ export function drawLeoAttack(ctx,hit,elapsedMs,reducedMotion=false){
 export function drawLeoRoar(ctx,roar,elapsedMs,reducedMotion=false){
   const duration=roar.durationMs||3000,elapsed=Math.max(0,Math.min(duration,elapsedMs));
   const appear=duration*.42,fade=duration*.75;
-  const index=reducedMotion?14:elapsed<appear?14*elapsed/appear:
-    elapsed<fade?14:14+9*(elapsed-fade)/(duration-fade);
-  const opacity=reducedMotion?1:Math.min(1,elapsed/180,(duration-elapsed)/230);
+  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+  // 한 장의 완성된 사자만 사용: 얼굴 프레임 교체·흔들림 없이 소환/소멸.
+  const opacity=smooth(elapsed/appear)*(1-smooth((elapsed-fade)/(duration-fade)));
   ctx.save();ctx.translate(roar.x,roar.y);ctx.globalAlpha*=Math.max(0,opacity);
   // 소환이 끝난 뒤에는 사자 프레임을 고정하고 입에서 황금빛 포효만 퍼집니다.
-  frame(ctx,`skill-lv${roar.stage}`,index,roar.size*2.8);
-  if(!reducedMotion&&elapsed>=appear-100&&elapsed<fade){
+  frame(ctx,`skill-lv${roar.stage}`,14,roar.size*2.8);
+  if(!reducedMotion&&elapsed>=appear&&elapsed<fade){
     const mouthX=roar.size*.12,mouthY=-roar.size*.14;
-    const waveStart=appear-100,travel=duration*12/23-waveStart;
+    const waveStart=appear,travel=duration*12/23-waveStart;
     ctx.save();ctx.translate(mouthX,mouthY);
     ctx.shadowColor='#ffcd65';ctx.shadowBlur=12;
     for(let i=0;i<3;i++){
@@ -69,7 +69,7 @@ export function drawLeoRoar(ctx,roar,elapsedMs,reducedMotion=false){
       const wave=Math.min(1,phase),tail=phase>1?(1.3-phase)/.3:1;
       ctx.strokeStyle=`rgba(255,229,140,${(.7-i*.13)*tail*(1-wave*.35)})`;
       ctx.lineWidth=Math.max(2,roar.size*.055*(1-wave*.5));
-      ctx.beginPath();ctx.ellipse(0,0,Math.max(2,roar.rx*wave),Math.max(2,roar.ry*wave),0,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,Math.max(2,roar.rx*wave),0,Math.PI*2);ctx.stroke();
     }
     ctx.restore();
   }
