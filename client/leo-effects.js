@@ -1,6 +1,16 @@
 import {LEO_VFX} from '/shared/leo-skills.js';
 const images=new Map();
 const softened=new Map();
+// 36개 기준 포즈 사이를 보간해 마지막 할퀴기까지 크기와 불투명도가 연속으로 줄어듭니다.
+const attackPoses=Array.from({length:36},(_,i)=>{
+  const progress=i/35,t=Math.max(0,Math.min(1,(progress-.45)/.55)),fade=t*t*(3-2*t);
+  return {scale:1-.9*fade,alpha:1-fade};
+});
+export function leoAttackPose(progress){
+  const position=Math.max(0,Math.min(1,progress))*35,index=Math.floor(position),blend=position-index;
+  const a=attackPoses[index],b=attackPoses[Math.min(35,index+1)];
+  return {scale:a.scale+(b.scale-a.scale)*blend,alpha:a.alpha+(b.alpha-a.alpha)*blend};
+}
 function softFrame(image,id,index){
   const key=`${id}:${index}`;if(softened.has(key))return softened.get(key);
   const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
@@ -30,11 +40,13 @@ export function drawLeoAttack(ctx,hit,elapsedMs,reducedMotion=false){
   if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}
   else ctx.rotate(Math.atan2(hit.dy,hit.dx));
   const progress=Math.min(1,elapsedMs/(hit.durationMs||500));
+  const pose=leoAttackPose(progress);
+  ctx.globalAlpha*=pose.alpha;
   // 원본 첫 세 장의 얇은 금빛 할퀴기만 사용합니다. 이후 프레임의 사자 형상은 스킬용입니다.
-  frame(ctx,'attack',reducedMotion?2:1+Math.min(1,progress*3),hit.size*1.2);
-  ctx.globalAlpha=.3*(1-progress);
+  frame(ctx,'attack',reducedMotion?2:1+Math.min(1,progress*3),hit.size*1.2*(reducedMotion?1:pose.scale));
+  ctx.globalAlpha*=.3*(1-progress);
   ctx.translate(-hit.size*.14,0);
-  frame(ctx,'attack',2,hit.size*1.2);
+  frame(ctx,'attack',2,hit.size*1.2*(reducedMotion?1:pose.scale));
   ctx.restore();return true;
 }
 export function drawLeoRoar(ctx,roar,elapsedMs,reducedMotion=false){

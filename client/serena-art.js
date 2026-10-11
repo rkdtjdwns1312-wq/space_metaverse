@@ -1,6 +1,6 @@
 // Twelve painted poses share a 256×512 canvas and the same foot anchor.
 export const SERENA_ART={src:'/assets/monsters/serena.png',columns:4,rows:3,frameWidth:256,frameHeight:512,footY:496};
-let image,blendCanvas;
+let image;
 export function preloadSerenaArt(){if(!image&&typeof Image!=='undefined'){image=new Image();image.src=SERENA_ART.src;}return image?.decode();}
 export function serenaBounds(m){const height=m.radius*2.7,width=height/2,bottom=m.y+m.radius*.9;return {width,height,top:bottom-height*496/512,bottom:bottom+height*16/512};}
 const clamp=x=>Math.max(0,Math.min(1,x));
@@ -16,14 +16,12 @@ export function drawSerena(ctx,m,time,attack){
   if(m.shape!=='serena')return false;if(!ctx)return true;
   if(!image)void preloadSerenaArt()?.catch(()=>{});
   if(!image?.complete||!image.naturalWidth)return true;
-  const pose=serenaPose(m,time,attack),first=Math.floor(pose),mix=pose-first;
-  const next=first<4?(first+1)%4:Math.min(11,first+1);
+  const pose=serenaPose(m,time,attack);
+  const frame=pose<4?Math.round(pose)%4:Math.min(11,Math.round(pose));
   const {width,height,top}=serenaBounds(m);
-  blendCanvas??=Object.assign(document.createElement('canvas'),{width:256,height:512});
-  const blend=blendCanvas.getContext('2d');blend.clearRect(0,0,256,512);blend.globalCompositeOperation='lighter';
-  const draw=(frame,alpha)=>{blend.globalAlpha=alpha;blend.drawImage(image,(frame%4)*256,Math.floor(frame/4)*512,256,512,0,0,256,512);};
-  draw(first,1-mix);if(mix>0)draw(next,mix);
-  ctx.drawImage(blendCanvas,m.x-width/2,top,width,height);
+  // 다른 자세를 반투명하게 겹치면 팔·머리 윤곽이 이중으로 보입니다.
+  // 위치 이동 보간은 world에 맡기고 몸 그림은 항상 한 장만 선명하게 그립니다.
+  ctx.drawImage(image,(frame%4)*256,Math.floor(frame/4)*512,256,512,m.x-width/2,top,width,height);
   return true;
 }
 // The blast is centered on the server's warning circle, including when it misses.

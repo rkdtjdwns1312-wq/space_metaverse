@@ -12,7 +12,8 @@ if(templeImage){templeImage.onload=()=>{revision++;for(const fn of listeners)fn(
 const statueImage=typeof Image==='undefined'?null:new Image();
 if(statueImage){statueImage.onload=()=>{revision++;for(const fn of listeners)fn();};statueImage.src='/assets/maps/star-goddess-statue.png';}
 // 일반 보스의 약384px 높이에 맞춥니다. 세로 원화 비율을 보존하고 받침대를 신전 중앙에 세웁니다.
-export const ORIGIN_STATUE_RENDER=Object.freeze({width:256,footY:1475/1536});
+// 받침대의 바닥 접촉면 중앙(하단 모서리보다 위)을 오브젝트/제단 중심에 맞춥니다.
+export const ORIGIN_STATUE_RENDER=Object.freeze({width:256,footY:1390/1536});
 export const originArtCacheKey=()=>revision;
 export function onOriginArtReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
 

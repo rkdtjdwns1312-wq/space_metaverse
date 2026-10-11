@@ -19,7 +19,7 @@ import {preloadAries,drawAriesCloud} from './aries-effects.js';
 import {drawTaurusDash} from './taurus-effects.js';
 import {drawHerculesAttack,drawHerculesShield,drawHerculesBurst} from './hercules-effects.js';
 import {drawLibraAura} from './libra-effects.js';
-import {drawCoronaAttack,drawCoronaAura,drawCoronaFall} from './corona-effects.js';
+import {drawCoronaAttack,drawCoronaAura,drawCoronaBodyAura,drawCoronaFall} from './corona-effects.js';
 import {drawCapricornAttack,drawCapricornBlessing} from './capricorn-effects.js';
 import {drawLeoAttack,drawLeoRoar} from './leo-effects.js';
 import {drawBlackHoleGround,drawBlackStar} from './black-hole-art.js';
@@ -404,7 +404,7 @@ export function createWorld(canvas) {
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
-    if(p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
+    if(!dash&&p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,-size*.28);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
     if(corona){ctx.save();ctx.translate(-(p.facingX||1)*size*.24,0);drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);ctx.restore();}
@@ -544,6 +544,7 @@ export function createWorld(canvas) {
         }else if(p.id===selfId){delete canvas.dataset.locomotionId;delete canvas.dataset.locomotionLevel;delete canvas.dataset.locomotionFrame;delete canvas.dataset.locomotionMoving;}
         ctx.save();ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
         drawEquipmentAura(ctx,visible,p,size,time,reducedMotion.matches);
+        if(corona)drawCoronaBodyAura(ctx,visible,corona,time-corona.startsAt,size,reducedMotion.matches);
         ctx.drawImage(visible,-size/2,-size/2,size,size);ctx.restore();
       }
       else{const radius=size*.4;
@@ -648,7 +649,8 @@ export function createWorld(canvas) {
       });
       if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
-      const nameY=type.boss?Math.max(bossBounds.top-12,view.y+96/scale):pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
+      // 보스 이름은 머리 위 월드 좌표에 고정합니다. 화면 위 경계에서 따로 내려오지 않습니다.
+      const nameY=type.boss?bossBounds.top-12:pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
       if(type.boss){
         ctx.font='bold 30px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle=type.id==='leoon'?'#fff0b2':'#edf3ff';
         ctx.shadowColor=type.id==='leoon'?'#ff9d32':'#89a5f8';ctx.shadowBlur=15;

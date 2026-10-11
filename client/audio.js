@@ -7,6 +7,8 @@ const FILE_BGM = Object.freeze({
   'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3',
   'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
   'moon-garden':'/assets/audio/moon-garden-picnic.mp3',
+  'moon-paradise-1':'/assets/audio/moon-paradise-shared-wolhumu.mp3',
+  'moon-paradise-2':'/assets/audio/moon-paradise-shared-wolhumu.mp3',
   'sun-paradise':'/assets/audio/sun-paradise-school-road.mp3',
   'sun-paradise-2':'/assets/audio/sun-paradise-school-road.mp3',
   'sun-paradise-3':'/assets/audio/sun-paradise-3-boss-raid.mp3',

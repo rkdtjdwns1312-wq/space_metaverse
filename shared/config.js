@@ -137,7 +137,7 @@ export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},
       {id:'gate-back',name:(n===1?'별의 기원':'별의 시작점 '+(n-1))+' ↓',x:width/2,y:height-80*factor,radius:38,kind:'gate',
         target:n===1?PLAZA_ID:'star-origin-'+(n-1),arrival:n===1?plazaPoint({x:3000,y:250}):{x:previousWidth/2,y:175*previousFactor},color:'#d2d3ef',passable:true},
       ...(n<STAR_ORIGIN.maxStage?[{id:'gate-next',name:'별의 시작점 '+(n+1)+' ↑',x:width/2,y:80*factor,radius:38,kind:'gate',target:'star-origin-'+(n+1),arrival:{x:nextWidth/2,y:nextHeight-160*nextFactor},color:'#e0d6ff',passable:true}]:[]),
-      ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2+80,radius:58,kind:'goddess-statue'}]:[])
+      ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2,radius:58,kind:'goddess-statue'}]:[])
     ]});
 }));
 export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });

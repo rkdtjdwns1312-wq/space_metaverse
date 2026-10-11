@@ -1,6 +1,12 @@
 import {CORONA_VFX} from '/shared/corona-skills.js';
 
 const images=new Map();
+const bodyAuras=new WeakMap();
+const clamp=value=>Math.max(0,Math.min(1,value));
+const smooth=value=>{const t=clamp(value);return t*t*(3-2*t);};
+export function coronaOpacity(aura,elapsedMs){
+  return Math.min(smooth(elapsedMs/1000),smooth((aura.durationMs-elapsedMs)/1000));
+}
 function frame(ctx,id,index,size){let image=images.get(id);
   if(!image){image=new Image();image.src=CORONA_VFX[id].url;images.set(id,image);}
   if(!image.complete||!image.naturalWidth)return;
@@ -28,23 +34,29 @@ export function drawCoronaAttack(ctx,hit,elapsedMs,reducedMotion=false){
 }
 export function drawCoronaAura(ctx,aura,elapsedMs,reducedMotion=false){
   const size=aura.size*(aura.stage===2?1.3:aura.stage===3?1.55:1.8);
-  const opening=elapsedMs<1000,closing=elapsedMs>aura.durationMs-1000;
-  if(!opening&&!closing){
-    // 원본 프레임의 중앙 왕관만 남기고 바깥 붉은 고리·입자·그림자는 제외합니다.
-    ctx.save();
-    ctx.beginPath();
-    const crownOutline=[[128,27],[151,80],[177,65],[181,105],[209,93],[194,169],
-      [178,190],[78,190],[62,169],[47,93],[75,105],[79,65],[105,80]];
-    crownOutline.forEach(([x,y],i)=>{const px=(x/256-.5)*size,py=(y/256-.5)*size;
-      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});
-    ctx.closePath();ctx.clip();
-    frame(ctx,`skill-lv${aura.stage}`,13,size);
-    ctx.restore();
-    return;
+  const id=`crown-lv${aura.stage}`;
+  if(!images.has(id)){const image=new Image();image.src=`/assets/skills/corona-borealis/${id}.png`;images.set(id,image);}
+  const image=images.get(id);if(!image.complete||!image.naturalWidth)return;
+  // 불꽃이 섞인 시트 대신 왕관만 사용합니다. 소환/소멸도 같은 그림의 부드러운 페이드입니다.
+  ctx.save();ctx.globalAlpha*=coronaOpacity(aura,elapsedMs);
+  ctx.drawImage(image,-size/2,-size/2,size,size);ctx.restore();
+}
+export function drawCoronaBodyAura(ctx,sprite,aura,elapsedMs,size,reducedMotion=false){
+  if(!sprite)return;
+  let layer=bodyAuras.get(sprite);
+  if(!layer){
+    const tint=document.createElement('canvas');tint.width=tint.height=256;
+    const tc=tint.getContext('2d');tc.drawImage(sprite,0,0,256,256);
+    tc.globalCompositeOperation='source-in';tc.fillStyle='#ee3457';tc.fillRect(0,0,256,256);
+    layer=document.createElement('canvas');layer.width=layer.height=320;
+    const lc=layer.getContext('2d');lc.shadowColor='#d91946';lc.shadowBlur=13;lc.globalAlpha=.32;
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;lc.drawImage(tint,32+Math.cos(a)*5,32+Math.sin(a)*5);}
+    lc.shadowBlur=0;lc.globalAlpha=1;lc.globalCompositeOperation='destination-out';lc.drawImage(sprite,32,32,256,256);
+    bodyAuras.set(sprite,layer);
   }
-  const index=reducedMotion?(opening?12:17):opening?Math.min(12,Math.floor(elapsedMs/1000*13)):
-    Math.min(23,16+Math.floor((elapsedMs-(aura.durationMs-1000))/1000*8));
-  frame(ctx,`skill-lv${aura.stage}`,index,size);
+  const breathing=reducedMotion?1:.87+.10*Math.sin(elapsedMs/700);
+  ctx.save();ctx.globalAlpha*=coronaOpacity(aura,elapsedMs)*breathing;
+  ctx.drawImage(layer,-size*.625,-size*.625,size*1.25,size*1.25);ctx.restore();
 }
 export function drawCoronaFall(ctx,fall,elapsedMs,reducedMotion=false){
   const progress=Math.min(1,elapsedMs/350);
