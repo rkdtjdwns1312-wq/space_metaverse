@@ -4,6 +4,7 @@ import { CONSTELLATIONS, CONSTELLATION_LIMIT, constellationOf } from '../shared/
 import { ensure } from './rooms.js';
 import { isNear } from './world.js';
 import { evolveAvatar, gainExperience } from './progression.js';
+import {recordSerenaLevel} from './serena-progress.js';
 
 const evolutionStar = VALLEY.objects.find(object => object.id === 'evolution-star');
 const growthStar = VALLEY.objects.find(object => object.id === 'growth-star');
@@ -65,6 +66,7 @@ export function selectTeacherEvolution(room,player,{level,constellationId}={}){
   ensure(level===1||(selected&&!selected.legacy),'현재 선택할 수 있는 별자리를 골라주세요.');
   player.avatar={...player.avatar,level,xp:0,form:level===1?'asteroid':level===PROGRESSION.transcendentLevel?'transcendent':'constellation',
     constellationId:level===1?null:selected.id,teacherPreview:true};
+  recordSerenaLevel(player);
   return baseInfo(room,player);
 }
 
@@ -85,6 +87,7 @@ export function changeConstellation(room, player, { constellationId } = {}) {
     constellationId: selected.id
   };
   player.starShards-=cost;
+  recordSerenaLevel(player);
   return baseInfo(room, player);
 }
 
@@ -109,6 +112,7 @@ export function evolveConstellation(room, player, { constellationId } = {}) {
 
   const next = evolveAvatar({ ...player.avatar, constellationId: selectedId });
   player.avatar = next;
+  recordSerenaLevel(player);
   return baseInfo(room, player);
 }
 

@@ -7,7 +7,8 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {SHOP,STREET,STREET_ID,createAvatar,itemOf} from '../shared/config.js';
 import {recipeItemId} from '../shared/recipe-items.js';
-import {validateLearnedRecipeIds,useRecipeItem} from '../server/learned-recipes.js';
+import {PUBLIC_CRAFTING_RECIPES} from '../shared/crafting.js';
+import {validateLearnedRecipeIds,learnedRecipesView,useRecipeItem} from '../server/learned-recipes.js';
 import {attemptCraft} from '../server/crafting.js';
 import {addRecipeDrop,collectEnergyDrop,energyDropViews} from '../server/energy-drops.js';
 import {damageMonster} from '../server/monsters.js';
@@ -69,6 +70,15 @@ test('recipe wrapper metadata contains output only and valid learned IDs round-t
   const ids=['android-card'];assert.deepEqual(validateLearnedRecipeIds(ids),ids);assert.notEqual(validateLearnedRecipeIds(ids),ids);
   for(const invalid of [null,{},['missing'],['space-food-card'],['android-card','android-card'],[RID],[2]])
     assert.throws(()=>validateLearnedRecipeIds(invalid));
+});
+
+test('public Lv5 learned recipes retain their shard and energy costs in the student view',()=>{
+  const player={learnedRecipeIds:PUBLIC_CRAFTING_RECIPES.map(recipe=>recipe.output.id)};
+  const view=learnedRecipesView(player,PUBLIC_CRAFTING_RECIPES);
+  assert.deepEqual(view.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+  ]);
+  assert.deepEqual(validateLearnedRecipeIds(player.learnedRecipeIds),player.learnedRecipeIds);
 });
 
 test('only successful crafting learns a recipe; mismatch, cap, fee, and forged learned payload do not',()=>{
@@ -149,6 +159,15 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   assert.equal((await call(f.student,'crafting:recipes',{level:3,role:'teacher'})).ok,false);
   f.atMachine([...f.room.players.values()].find(p=>p.role==='teacher'));
   assert.deepEqual(ok(await call(f.teacher,'crafting:recipes',{level:3})).recipes,recipes.slice(1));
+  const teacherLv5=ok(await call(f.teacher,'crafting:recipes',{level:5})).recipes;
+  assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+  ]);
+  f.mutate(p=>{p.learnedRecipeIds=PUBLIC_CRAFTING_RECIPES.map(recipe=>recipe.output.id);});
+  const learnedLv5=ok(await call(f.student,'recipes:learned')).recipes;
+  assert.deepEqual(learnedLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+  ]);
   const publicState=f.game.store.snapshot(f.room,f.q);
   assert.equal(JSON.stringify(publicState).includes('ingredients'),false);assert.equal(JSON.stringify(publicState).includes('learnedRecipeIds'),false);
   assert.equal((await fetch(f.url+'/data/crafting-recipes.json')).status,404);
@@ -208,4 +227,23 @@ test('sixty-kind inventory does not expand teacher single-grant batch beyond for
   assert.throws(()=>adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids},'give'),/40/);assert.deepEqual(student.inventory,[]);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(0,40)},'give');assert.equal(student.inventory.length,40);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(40)},'give');assert.equal(student.inventory.length,41);
+});
+
+test('primordial gem crafting rolls back material and energy together and survives cold restart',async t=>{
+  const f=await fixture(t),ingredients=[{id:'radiant-star-origin',quantity:1}];
+  f.mutate(p=>Object.assign(p,{inventory:structuredClone(ingredients),starShards:0,cosmicEnergy:10000}));f.atMachine();
+  const save=f.game.store.files.save.bind(f.game.store.files);
+  f.game.store.files.save=()=>{throw Error('gem disk failure');};
+  try{assert.equal((await call(f.student,'crafting:combine',{ingredients})).ok,false);}
+  finally{f.game.store.files.save=save;}
+  assert.deepEqual(f.p.inventory,ingredients);assert.equal(f.p.cosmicEnergy,10000);assert.equal(f.p.starShards,0);
+  assert.equal((f.p.learnedRecipeIds||[]).includes('primordial-star-gem'),false);
+  f.atMachine();ok(await call(f.student,'crafting:combine',{ingredients}));
+  assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.inventory.find(i=>i.id==='primordial-star-gem')?.quantity,1);
+  await f.restart();
+  assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.starShards,0);
+  assert.equal(f.p.inventory.find(i=>i.id==='primordial-star-gem')?.quantity,1);
+  assert.equal(f.p.inventory.some(i=>i.id==='radiant-star-origin'),false);
+  const recipe=ok(await call(f.student,'recipes:learned')).recipes.find(r=>r.output.id==='primordial-star-gem');
+  assert.equal(recipe.cosmicEnergy,10000);assert.equal(recipe.starShards,0);
 });

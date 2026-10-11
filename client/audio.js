@@ -14,7 +14,9 @@ const FILE_BGM = Object.freeze({
   'star-origin-1':'/assets/audio/star-origin-mochanova.mp3',
   'star-origin-2':'/assets/audio/star-origin-mochanova.mp3',
   'star-origin-3':'/assets/audio/star-origin-mochanova.mp3',
-  'star-origin-4':'/assets/audio/star-origin-mochanova.mp3',
+  'star-origin-4':'/assets/audio/serena-dormant-miss-you.mp3',
+  'serena-dormant':'/assets/audio/serena-dormant-miss-you.mp3',
+  'serena-battle':'/assets/audio/serena-battle-theory-of-relativity.mp3',
   'moon-paradise-3':'/assets/audio/moon-paradise-3-ancient-kingdom.mp3',
   'planet:':'/assets/audio/planet-interior-waddle.mp3'
 });
@@ -53,11 +55,12 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
   let context = null, master = null, timer = null, theme = MAP_THEMES.default, step = 0, currentMap='';
   const fileMedia=new Map();
+  const sourceMap=id=>id==='serena-battle'?FILE_BGM['serena-battle']:id==='serena-dormant'?FILE_BGM['serena-dormant']:bgmUrlFor(id);
   let lobbySyncAttached=false;
   let started = false;
 
   function ensureFileMedia(id) {
-    const url=bgmUrlFor(id);
+    const url=sourceMap(id);
     if(fileMedia.has(url))return fileMedia.get(url);
     try {
       const media=mediaFactory?mediaFactory(id,url):typeof globalThis.Audio==='function'?new globalThis.Audio(url):null;
@@ -131,7 +134,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   }
   async function playBgm(mapId = 'default') {
     const id = String(mapId || 'default').toLowerCase();
-    const url=bgmUrlFor(id);
+    const url=sourceMap(id);
     if(currentMap!==id){
       pauseFileMedia(id==='lobby'?[url,FILE_BGM['lobby-violin']]:url?[url]:[]);
       currentMap=id;step=0;

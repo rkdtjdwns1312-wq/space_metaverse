@@ -1,4 +1,5 @@
 import {lv2MonsterPose} from './lv2-monster-art.js';
+import {preloadSerenaArt,serenaBounds,drawSerena} from './serena-art.js';
 
 const ART=Object.freeze({
   noksera:{src:'/assets/monsters/noksera-v2.png',walkSrc:'/assets/monsters/noksera-walk.png',color:'#c9d6ff',face:-1,width:2.05,aspect:1221/1289,walkAspect:1},
@@ -13,7 +14,7 @@ function sprite(shape,walking=false){
   }
   return images.get(key);
 }
-export async function preloadBossArt(shape){await Promise.all((shape?[shape]:Object.keys(ART)).flatMap(id=>{
+export async function preloadBossArt(shape){if(shape==='serena')return preloadSerenaArt();await Promise.all((shape?[shape]:Object.keys(ART)).flatMap(id=>{
   const art=ART[id],files=[sprite(id)?.decode(),art.walkSrc&&sprite(id,true)?.decode()];
   if(art.attackSrc&&typeof Image!=='undefined'){
     const key=`${id}:attack`;
@@ -23,11 +24,13 @@ export async function preloadBossArt(shape){await Promise.all((shape?[shape]:Obj
   return files.filter(Boolean);
 }));}
 export function bossMonsterBounds(m,walking=false){
+  if(m.shape==='serena')return serenaBounds(m);
   const art=ART[m.shape],r=m.radius,w=r*art.width,h=w*(walking?art.walkAspect:art.aspect);
   const top=m.y+r*.9-h,bottom=m.y+r*.9;
   return {top,bottom,width:w,height:h};
 }
 export function drawBossMonster(ctx,m,time=0,attack){
+  if(m?.shape==='serena')return drawSerena(ctx,m,time,attack);
   const art=ART[m?.shape];if(!art)return false;if(!ctx)return true;
   const r=m.radius,pose=lv2MonsterPose(time,attack),active=pose.active;
   const walking=!!art.walkSrc&&m.moving&&!active;

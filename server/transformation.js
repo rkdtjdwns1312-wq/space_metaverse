@@ -1,5 +1,5 @@
 import {ensureVitals} from './vitals.js';
-import {TRANSFORMATION} from '../shared/transformation.js';
+import {TRANSFORMATION,transformationCooldownMs} from '../shared/transformation.js';
 import {vitalsOf} from '../shared/vitals.js';
 import {ensure} from './rooms.js';
 
@@ -11,7 +11,7 @@ export function startTransformation(player,now,config=TRANSFORMATION){
   ensure(ensureVitals(player)?.hp>0,'체력을 회복하는 중이에요.');
   ensure(!player.transformation?.active,'이미 변신 중이에요.');
   ensure(now>=(player.transformation?.cooldownUntil||0),'변신을 다시 사용하려면 조금 기다려주세요.');
-  player.transformation={active:true,endsAt:now+config.durationMs,cooldownUntil:now+config.cooldownMs,constellationId:player.avatar.constellationId};
+  player.transformation={active:true,endsAt:now+config.durationMs,cooldownUntil:now+transformationCooldownMs(player,config.cooldownMs),constellationId:player.avatar.constellationId};
   const vitals=ensureVitals(player),limits=vitalsOf(player.avatar.level,player);vitals.hp=limits.hp.max;vitals.mp=limits.mp.max;
   return {...player.transformation};
 }

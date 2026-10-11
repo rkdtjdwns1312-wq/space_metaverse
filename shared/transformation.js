@@ -15,21 +15,23 @@ const NONE=profile(0,0,0,0);
 export const transformationProfile=player=>TRANSFORMATION_TYPES[constellationOf(player?.avatar?.constellationId)?.type]||NONE;
 export const transformationBonus=player=>player?.role!=='teacher'&&player?.avatar?.level===5&&player?.transformation?.active?transformationProfile(player):NONE;
 
-// Q/변신 자체의 재사용 시간·마나·횟수·사거리는 변경하지 않습니다.
+export const transformationCooldownMs=(player,base=TRANSFORMATION.cooldownMs)=>Math.round(base*(1-Math.min(1,Math.max(0,equipmentBonus(player).allCooldownReduction))));
+// Q 일반 공격·마나·횟수·사거리는 변경하지 않습니다.
 // 앞으로 회복/효과 스킬도 이 공통 함수에 수치를 넘기면 같은 보정을 받습니다.
 export function transformedSkill(player,spec){
   if(!spec)return spec;
   const bonus=transformationBonus(player),result={...spec};
   if(Number.isFinite(result.cooldownMs)){
     // 일반 E(공용 정의는 slot 생략, 사수 E는 0)만 장비 재사용 감소를 받습니다.
-    // Q·초월·이전 사수의 별도 슬롯은 제외하며 서버는 시전 때 종료 시각을 저장합니다.
+    // 보석의 모든 스킬 감소는 별도 슬롯에도 적용, 서버는 시전 때 종료 시각을 저장합니다.
     const ordinaryE=result.slot===undefined||result.slot===0;
-    const equipmentFactor=ordinaryE?1-Math.min(1,Math.max(0,equipmentBonus(player).cooldownReduction||0)):1;
+    const gear=equipmentBonus(player);
+    const equipmentFactor=1-Math.min(1,Math.max(0,gear.allCooldownReduction+(ordinaryE?gear.cooldownReduction:0)));
     result.cooldownMs=Math.round(result.cooldownMs*bonus.skillCooldownFactor*equipmentFactor);
   }
   for(const key of ['multiplier','healingAmount','effectAmount'])if(Number.isFinite(result[key]))result[key]*=bonus.skillAmountFactor;
   return result;
 }
 export function transformationDescription(player){
-  return '30초동안 별자리 근원의 초월적인 모습으로 돌아갑니다. 능력치가 크게 상승하게 되고 특수한 효과를 부여받습니다.\n쿨타임: 120초';
+  return '30초동안 별자리 근원의 초월적인 모습으로 돌아갑니다. 능력치가 크게 상승하게 되고 특수한 효과를 부여받습니다.\n쿨타임: '+transformationCooldownMs(player)/1000+'초';
 }

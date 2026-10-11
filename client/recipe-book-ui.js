@@ -18,7 +18,7 @@ export function createRecipeBookUI({request,toast}){
         const li=document.createElement('li');li.dataset.recipeId=recipe.output.id;
         const name=document.createElement('strong');name.textContent=item.name+' · Lv'+item.level;
         if(item.art){const image=document.createElement('img');image.src=item.art;image.alt='';li.append(image);}
-        const ingredients=document.createElement('p');ingredients.textContent=recipe.ingredients.map(part=>(itemOf(part.id)?.name||part.id)+' × '+part.quantity).join(' + ');
+        const ingredients=document.createElement('p');ingredients.textContent=recipe.ingredients.map(part=>(itemOf(part.id)?.name||part.id)+' × '+part.quantity).join(' + ')+(recipe.cosmicEnergy?' · 별 파편 '+(recipe.starShards||0)+'개 · 우주에너지 '+recipe.cosmicEnergy.toLocaleString()+'개':'');
         li.append(name,ingredients);list.append(li);
       }
     }catch(error){if(ticket===revision){note.textContent='조합법을 불러오지 못했어요.';toast(error.message);}}

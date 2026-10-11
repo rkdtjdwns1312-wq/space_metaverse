@@ -19,7 +19,8 @@ export const MONSTER_BODY_GEOMETRY=Object.freeze({
   'star-phoenix':pose(61,551,350,3*.55),
   noksera:body(1289,77,1258,1289/2,2.05,-1),
   leoon:body(1374,104,1314,1374/2,2),
-  'spirit-king':body(384,13,372,192,2.2)
+  'spirit-king':body(384,13,372,192,2.2),
+  serena:body(256,14,242,128,1.35)
 });
 // 포즈 변화로 통로 폭이 흔들리지 않게 대기 몸체 기준. 발 깊이는 기존보다 40% 넓힙니다.
 export function monsterFootprint(monster){

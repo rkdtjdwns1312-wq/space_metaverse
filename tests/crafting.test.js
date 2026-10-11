@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CRAFTING } from '../shared/crafting.js';
+import { CRAFTING,PRIMORDIAL_STAR_GEM_RECIPE } from '../shared/crafting.js';
 import { attemptCraft } from '../server/crafting.js';
 import { SHOP } from '../shared/config.js';
 
@@ -70,4 +70,24 @@ test('성령왕 망토 조합은 별 파편·우주에너지 부족이나 꽉 �
     const before=structuredClone(p),result=attemptCraft(p,[{id:'spirit-king-soul',quantity:1}]);
     assert.equal(result.error,error);assert.deepEqual(p,before);
   }
+});
+
+test('찬란한 별의 근원은 별 파편 없이 우주에너지 10,000으로 시초의 별의 보석을 만든다',()=>{
+  const output={id:'primordial-star-gem',level:5,craftOnly:true};
+  const p={inventory:[{id:'radiant-star-origin',quantity:1}],starShards:0,cosmicEnergy:10000};
+  const result=attemptCraft(p,PRIMORDIAL_STAR_GEM_RECIPE.ingredients,{catalog:[output]});
+  assert.equal(result.success,true);assert.equal(result.item.id,output.id);
+  assert.deepEqual(p.inventory,[{id:output.id,quantity:1}]);
+  assert.equal(p.starShards,0);assert.equal(p.cosmicEnergy,0);
+  assert.deepEqual(p.learnedRecipeIds,[output.id]);
+});
+
+test('시초의 별의 보석 조합은 에너지 부족·재료 부족·가방 만료를 검증 후 원자적으로 거절한다',()=>{
+  const output={id:'primordial-star-gem',level:5,craftOnly:true};
+  const cases=[
+    {player:{inventory:[{id:'radiant-star-origin',quantity:1}],starShards:0,cosmicEnergy:9999},error:'insufficient-energy'},
+    {player:{inventory:[],starShards:0,cosmicEnergy:10000},error:'insufficient-ingredients'},
+    {player:{inventory:[{id:'radiant-star-origin',quantity:2},...Array.from({length:SHOP.maxKinds-1},(_,i)=>({id:'other-'+i,quantity:1}))],starShards:0,cosmicEnergy:10000},error:'inventory-full'}
+  ];
+  for(const {player:p,error} of cases){const before=structuredClone(p),result=attemptCraft(p,PRIMORDIAL_STAR_GEM_RECIPE.ingredients,{catalog:[output]});assert.equal(result.error,error);assert.deepEqual(p,before);}
 });

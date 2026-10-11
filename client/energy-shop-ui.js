@@ -37,7 +37,8 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
     bonus.mpRegen&&'10초마다 마나 회복 +'+bonus.mpRegen,
     bonus.durationMs&&'지속형 스킬 지속시간 +'+bonus.durationMs/1000+'초',
     bonus.skillDamage&&'스킬 피해량 +'+Math.round(bonus.skillDamage*100)+'%',
-    bonus.cooldownReduction&&'일반 스킬 쿨타임 -'+Math.round(bonus.cooldownReduction*100)+'%'
+    bonus.cooldownReduction&&'일반 스킬 쿨타임 -'+Math.round(bonus.cooldownReduction*100)+'%',
+    bonus.allCooldownReduction&&'모든 스킬 쿨타임 -'+Math.round(bonus.allCooldownReduction*100)+'%'
   ].filter(Boolean).join(' · ');
   function render(){
     const player=getPlayer();if(!player)return;

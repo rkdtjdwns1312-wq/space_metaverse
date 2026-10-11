@@ -4,8 +4,12 @@ import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
-import {addEnergyDrop,addRecipeDrop,addBossDrops} from './energy-drops.js';
+import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
+import {onOriginFloor} from '../shared/origin-floor.js';
+import {SERENA} from '../shared/serena.js';
+import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
+import {bossVictoryCredits} from './serena-progress.js';
 
 
 export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
@@ -14,30 +18,38 @@ const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
 const largeSpawns=[[430.56,256.94],[597.22,256.94],[763.89,256.94],[291.67,312.5],[902.78,312.5]];
 const sunSpawns=[[-330,-110],[0,-170],[330,-110],[-240,140],[240,140]];
 export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
-// 산책·체력은 교실별 실행 상태입니다. 처치 10초 뒤 같은 자리에서 다시 나타납니다.
+// 일반 몬스터는 단계별 10/15/20초, 보스는 영구 저장한 24시간 뒤 복원합니다.
 export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
-  if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map((spawn,i)=>{
+  const create=(spawn,i)=>{
     const type=monsterType(spawn.typeId);
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
-    const x=type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
+    const statue=type.id===SERENA.typeId?map.objects.find(o=>o.id===SERENA.statueId):null;
+    const x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
     const multiplier={1:1,2:2,3:4,4:5}[type.level]||1;
     const radius=type.radius??MONSTER_RULES.radius*(type.boss?8:multiplier);
     const patrolPhaseOffset=randomPatrolOffset(phaseRandom),patrolStartedAt=now+patrolPhaseOffset;
+    const respawnAt=room.bossRespawns?.[spawn.id]>now?room.bossRespawns[spawn.id]:null;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
-      hp:type.hp??MONSTER_HP[type.mapId],maxHp:type.hp??MONSTER_HP[type.mapId],respawnAt:null,spawnX:x,spawnY:y,
+      hp:respawnAt?0:type.hp??MONSTER_HP[type.mapId],maxHp:type.hp??MONSTER_HP[type.mapId],respawnAt,spawnX:x,spawnY:y,
       targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
-  }));
+  };
+  if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map(create));
+  // 수동 소환 상태만 복구합니다. 휴면/24시간 회복 중에는 자동 생성하지 않습니다.
+  if(room.serena?.state==='active'&&!room.monsters.has(SERENA.monsterId)){
+    const [id,m]=create({id:SERENA.monsterId,typeId:SERENA.typeId},0);
+    m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
+  }
   return room.monsters;
 }
 export function monsterViews(room,now=Date.now()){
-  return [...monstersOf(room).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
+  return [...monstersOf(room,now).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
     facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,
-    ...(m.pendingAttack&&m.hp>0?{warning:{x:m.pendingAttack.x,y:m.pendingAttack.y,radius:m.pendingAttack.radius,endsAt:m.pendingAttack.endsAt}}:{}),
+    ...(m.pendingAttack&&m.hp>0?{warning:{x:m.pendingAttack.x,y:m.pendingAttack.y,radius:m.pendingAttack.radius,startsAt:m.pendingAttack.startsAt,endsAt:m.pendingAttack.endsAt}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
@@ -69,10 +81,16 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
   if(room.damageNumbers.length>200)room.damageNumbers.shift();
   if(target.hp===0){
-    addRecipeDrop(room,target,target.contributors,now,recipeRoll);
-    addEnergyDrop(room,target,target.contributors,now,energyRoll);
-    if(type?.boss)addBossDrops(room,target,target.contributors,now,bossRoll);
-    target.respawnAt=now+MONSTER_RULES.respawnMs;target.targetId=null;target.pendingAttack=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
+    if(type?.boss){
+      if(room.persistBossDefeats){
+        room.pendingBossDeaths??=new Map();
+        room.pendingBossDeaths.set(target.id,{at:now,contributors:[...target.contributors],credits:bossVictoryCredits(room,target,target.contributors)});
+      }else finishBossDefeat(room,target,target.contributors,now,{energyRoll,recipeRoll,bossRoll});
+    }else{
+      addRecipeDrop(room,target,target.contributors,now,recipeRoll);
+      addEnergyDrop(room,target,target.contributors,now,energyRoll);
+    }
+    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
   }
   else{
     if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
@@ -111,6 +129,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
+      if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
@@ -127,8 +146,10 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
         const warning=m.pendingAttack;m.pendingAttack=null;
         const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,sourceMonsterId:m.id},rule.power,now);
         m.nextAttackAt=now+rule.attackMs;
-        if(!results.length)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:800,attackOnly:true});
-        for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:800,...result});
+        const visual={monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:800,
+          warningX:warning.x,warningY:warning.y,warningRadius:warning.radius};
+        if(!results.length)hits.push({...visual,attackOnly:true});
+        for(const result of results)hits.push({...visual,...result});
         if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
       }
       continue;
@@ -152,7 +173,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const x=m.x+m.dx*travel,y=m.y+m.dy*travel;
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
-    const blocked=!onParadiseFloor(map,x,y,m.radius)||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
+    const blocked=!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
@@ -163,7 +184,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
         if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
         const attackReach=Math.min(reach,distance);
         if(rule.warningMs){
-          m.pendingAttack={x:target.x,y:target.y,radius:rule.warningRadius,dx:m.dx,dy:m.dy,reach:attackReach,endsAt:now+rule.warningMs};
+          m.pendingAttack={x:target.x,y:target.y,radius:rule.warningRadius,dx:m.dx,dy:m.dy,reach:attackReach,startsAt:now,endsAt:now+rule.warningMs};
           m.moving=false;continue;
         }
         const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,sourceMonsterId:m.id},rule.power,now);

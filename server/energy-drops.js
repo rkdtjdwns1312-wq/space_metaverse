@@ -33,7 +33,7 @@ export function rewardRecipients(room,monster,contributions){
   return members.length?members:[leaderId];
 }
 export function addEnergyDrop(room,monster,contributions,now=Date.now(),roll=randomInt){
-  const type=monsterType(monster.typeId),bounds=ENERGY_DROPS.rewards[type?.boss?type.id:type?.level];
+  const type=monsterType(monster.typeId),bounds=ENERGY_DROPS.rewards[type?.boss?(type.id==='serena'?'spirit-king':type.id):type?.level];
   if(!bounds)return null;
   const ids=rewardRecipients(room,monster,contributions);
   if(!ids.length)return null;
@@ -50,12 +50,12 @@ export function addEnergyDrop(room,monster,contributions,now=Date.now(),roll=ran
 }
 const bossMaterial=Object.freeze({noksera:'noksera-horn',leoon:'leoon-claw'});
 export function addBossDrops(room,monster,contributions,now=Date.now(),roll=randomInt){
-  if(monster.typeId==='spirit-king'){
+  if(monster.typeId==='spirit-king'||monster.typeId==='serena'){
     const ids=rewardRecipients(room,monster,contributions);if(!ids.length)return [];
     pruneEnergyDrops(room,now);room.energyDrops??=new Map();
     const drops=[];
     const count=roll(1,3);
-    for(const itemId of ['spirit-king-soul','gold-big-bang-card',...Array.from({length:count},()=> 'exploration-ticket')]){
+    for(const itemId of [monster.typeId==='serena'?'radiant-star-origin':'spirit-king-soul','gold-big-bang-card',...Array.from({length:count},()=> 'exploration-ticket')]){
       const drop={id:randomUUID(),kind:'item',itemId,mapId:monster.mapId,
         x:monster.x+(drops.length-1)*30,y:monster.y,total:1,
         shares:new Map(ids.map(playerId=>[playerId,1])),partyRollEligible:ids.length>1?[...ids]:null,

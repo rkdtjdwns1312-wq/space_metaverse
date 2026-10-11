@@ -1,0 +1,4 @@
+#serena-dialog{width:min(410px,calc(100vw - 28px));box-sizing:border-box;border:2px solid #d8c7ef;border-radius:22px;background:linear-gradient(155deg,#fffdf7,#f2edff);color:#514371}
+#serena-dialog #serena-message{min-height:1.5em;line-height:1.6}
+#serena-dialog .dialog-actions{justify-content:center}
+#serena-dialog button{min-width:90px;min-height:44px}

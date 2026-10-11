@@ -77,9 +77,9 @@ test('LV1 장비 6종은 새 가격과 장착 능력치를 가지며 합계에�
     assert.equal(item.price,price);assert.deepEqual(item.bonus,bonus);
   }
   const p=player();
-  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:0,mpRegen:0,durationMs:0,skillDamage:0,cooldownReduction:0});
+  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:0,mpRegen:0,durationMs:0,skillDamage:0,cooldownReduction:0,allCooldownReduction:0});
   p.equipmentSlots=['dawn-ribbon','stardew-ring','asteroid-badge'];
-  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:1,mpRegen:1,durationMs:1000,skillDamage:0,cooldownReduction:0});
+  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:1,mpRegen:1,durationMs:1000,skillDamage:0,cooldownReduction:0,allCooldownReduction:0});
 });
 
 test('LV2 장비 6종은 요청한 가격과 장착 bonus만 가진다',()=>{
@@ -93,7 +93,7 @@ test('LV2 장비 6종은 요청한 가격과 장착 bonus만 가진다',()=>{
     assert.equal(item.price,price);assert.deepEqual(item.bonus,bonus);
   }
   const p=player();p.equipmentSlots=['healing-crystal','star-pattern-gloves',null];
-  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:1,mpRegen:1,durationMs:0,skillDamage:.20,cooldownReduction:0});
+  assert.deepEqual(equipmentBonus(p),{attack:0,defense:0,hp:0,mp:0,speed:0,regen:0,hpRegen:1,mpRegen:1,durationMs:0,skillDamage:.20,cooldownReduction:0,allCooldownReduction:0});
 });
 
 test('LV3 장비 5종은 ID와 레벨을 유지하며 지정 가격·bonus만 가진다',()=>{
@@ -107,5 +107,5 @@ test('LV3 장비 5종은 ID와 레벨을 유지하며 지정 가격·bonus만 �
     assert.equal(item.level,3);assert.equal(item.price,price);assert.deepEqual(item.bonus,bonus);
   }
   const p=player();p.equipmentSlots=['meteor-boots','galaxy-compass','star-heart'];
-  assert.deepEqual(equipmentBonus(p),{attack:1,defense:0,hp:10,mp:0,speed:.20,regen:0,hpRegen:2,mpRegen:0,durationMs:0,skillDamage:.20,cooldownReduction:.10});
+  assert.deepEqual(equipmentBonus(p),{attack:1,defense:0,hp:10,mp:0,speed:.20,regen:0,hpRegen:2,mpRegen:0,durationMs:0,skillDamage:.20,cooldownReduction:.10,allCooldownReduction:0});
 });

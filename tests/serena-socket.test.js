@@ -1,0 +1,120 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {damageMonster} from '../server/monsters.js';
+import {ensureVitals} from '../server/vitals.js';
+import {summonSerena} from '../server/serena.js';
+import {SERENA} from '../shared/serena.js';
+import {mapOf} from '../shared/config.js';
+const key='serena-test-only-key',call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data);
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function until(check){for(let i=0;i<100;i++){if(check())return;await pause(20);}assert.ok(check(),'서버 상태 전파 제한 시간');}
+const statue=mapOf(SERENA.mapId).objects.find(o=>o.id===SERENA.statueId);
+async function fixture(t){
+  const dir=mkdtempSync(join(tmpdir(),'serena-socket-')),sockets=[];let now=Date.now();
+  const game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,unattended:false,teacherManagedAccounts:false,clock:()=>now});
+  t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();rmSync(dir,{recursive:true,force:true});});
+  const address=await game.listen();
+  async function connect(){const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false,forceNew:true});sockets.push(s);
+    await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});return s;}
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'세레나 검사',allowedNames:['1','2']});
+  assert.equal(created.ok,true,created.error);const code=created.room.code;
+  const a=await connect(),ja=await call(a,'room:join',{code,nickname:'1',pin:'1234'});
+  const b=await connect(),jb=await call(b,'room:join',{code,nickname:'2',pin:'2345'});
+  assert.ok(ja.ok,ja.error);assert.ok(jb.ok,jb.error);
+  return {game,a,b,teacher,ja,jb,code,connect,get now(){return now;},set now(value){now=value;},
+    get room(){return game.store.rooms.get(code);},get pa(){return game.store.rooms.get(code).players.get(ja.selfId);},
+    get pb(){return game.store.rooms.get(code).players.get(jb.selfId);},disk:()=>JSON.parse(readFileSync(join(dir,code+'.json'),'utf8'))};
+}
+function qualify(f,p){f.game.store.transact(()=>{
+  Object.assign(p.avatar,{level:5,form:'transcendent',constellationId:'taurus'});
+  p.serenaProgress={highestLevel:5,bossKills:['leoon','noksera']};
+});Object.assign(p,{mapId:SERENA.mapId,x:statue.x,y:statue.y+90});}
+
+test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요청 중 하나만 소환한다',async t=>{
+  const f=await fixture(t);
+  assert.deepEqual(await call(f.a,'serena:summon',{serenaEligible:true,serenaProgress:{highestLevel:5,bossKills:['leoon','noksera']}}),{ok:false,error:'자격이 충분하지 않습니다'});
+  assert.equal((await call(f.teacher,'serena:summon')).error,'자격이 충분하지 않습니다');
+  qualify(f,f.pa);qualify(f,f.pb);
+  let snapshot,tick;f.a.on('room:state',r=>snapshot=r);f.a.on('world:positions',r=>tick=r);
+  const results=await Promise.all([call(f.a,'serena:summon'),call(f.b,'serena:summon')]);
+  assert.equal(results.filter(r=>r.ok).length,1);assert.equal(results.filter(r=>!r.ok).length,1);
+  assert.deepEqual(results.find(r=>r.ok).serena,{state:'active',monsterId:SERENA.monsterId,respawnAt:null});
+  await until(()=>snapshot?.serena.state==='active'&&tick?.serena.state==='active');
+  const me=snapshot.players.find(p=>p.id===f.pa.id),other=snapshot.players.find(p=>p.id===f.pb.id);
+  assert.equal(me.serenaEligible,true);assert.deepEqual(me.serenaEligibility,{reachedLv5:true,defeatedLeoon:true,defeatedNoksera:true});
+  assert.equal(Object.hasOwn(other,'serenaEligible'),false);
+  assert.equal(tick.monsters.filter(m=>m.typeId==='serena').length,1);assert.equal(f.disk().serena.state,'active');
+});
+
+test('소켓 소환 저장 실패는 성공 응답과 active 알림을 보내지 않는다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);const states=[];f.a.on('room:state',r=>states.push(r.serena.state));
+  const save=f.game.store.files.save.bind(f.game.store.files);f.game.store.files.save=()=>{throw Error('simulated save failure');};
+  let result;try{result=await call(f.a,'serena:summon');}finally{f.game.store.files.save=save;}
+  assert.equal(result.ok,false);assert.match(result.error,/저장/);await pause(100);
+  assert.ok(!states.includes('active'));assert.equal(f.disk().serena.state,'dormant');
+  assert.equal(f.room.monsters.has(SERENA.monsterId),false);
+  assert.equal((await call(f.a,'serena:summon')).ok,true);
+});
+
+test('실제 서버 틱은 처치 저장 실패를 재시도하고 24시간 경계에서 석상만 복원한다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  const drops=[],states=[];f.a.on('energy:drops',r=>drops.push(r));f.a.on('world:positions',r=>states.push(r.serena));
+  const save=f.game.store.files.save.bind(f.game.store.files);f.game.store.files.save=()=>{throw Error('simulated death save failure');};
+  try{
+    damageMonster(f.room,f.room.monsters.get(SERENA.monsterId),f.pa,10000,f.now);
+    await until(()=>f.room.bossSaveRetryAt>f.now);
+    assert.equal(f.disk().serena.state,'active');assert.equal(f.room.energyDrops?.size||0,0);
+    assert.ok(drops.every(r=>r.drops.length===0));
+  }finally{f.game.store.files.save=save;}
+  // 60초 넘게 지연된 재시도에서도 보상은 새 정산 시각부터 온전히 유지됩니다.
+  const deathAt=f.now;f.now+=65001;
+  await until(()=>f.room.serena.state==='recovering');
+  await until(()=>drops.some(r=>r.drops.some(d=>d.itemId==='radiant-star-origin')));
+  const untilAt=deathAt+86400000;assert.equal(f.disk().serena.respawnAt,untilAt);
+  assert.equal([...f.room.energyDrops.values()].filter(d=>d.itemId==='radiant-star-origin').length,1);
+  assert.ok([...f.room.energyDrops.values()].every(d=>d.publicAt===f.now+30000&&d.expiresAt===f.now+60000));
+  f.now=untilAt-1;await pause(120);assert.equal(f.room.serena.state,'recovering');
+  f.now=untilAt;await until(()=>f.room.serena.state==='dormant');
+  await until(()=>states.some(s=>s.state==='dormant'));
+  assert.equal(f.disk().serena.state,'dormant');assert.equal(f.room.monsters.has(SERENA.monsterId),false);
+});
+
+test('보스 저장 재시도 대기 중에도 위치 전파·자연 회복·만료 드랍 정리를 계속한다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  damageMonster(f.room,f.room.monsters.get(SERENA.monsterId),f.pa,10000,f.now);
+  f.room.bossSaveRetryAt=f.now+1000;
+  const vitals=ensureVitals(f.pa);vitals.hp=1;vitals.mp=0;vitals.nextPassiveRecoveryAt=f.now;
+  f.room.energyDrops=new Map([['expired',{id:'expired',expiresAt:Date.now()-1}]]);
+  let ticks=0;f.a.on('world:positions',()=>ticks++);
+  await until(()=>ticks>=2&&ensureVitals(f.pa).hp>1&&!f.room.energyDrops.has('expired'));
+  assert.equal(f.room.pendingBossDeaths.size,1);assert.equal(f.room.serena.state,'active');
+  assert.equal(ensureVitals(f.pa).mp,2);assert.equal(f.disk().serena.state,'active');
+});
+
+test('첫 교실 보스 저장 롤백 뒤 다음 교실은 교체된 Map의 참조로 다음 틱에 정산한다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  const teacher2=await f.connect(),created=await call(teacher2,'room:create',{teacherKey:key,title:'두번째 교실',allowedNames:['1']});
+  assert.ok(created.ok,created.error);const code2=created.room.code,peer2=await f.connect();
+  const joined=await call(peer2,'room:join',{code:code2,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
+  const original2=f.game.store.rooms.get(code2),player2=original2.players.get(joined.selfId);qualify(f,player2);
+  f.game.store.transact(()=>summonSerena(original2,player2,f.now));
+  damageMonster(f.room,f.room.monsters.get(SERENA.monsterId),f.pa,10000,f.now);
+  damageMonster(original2,original2.monsters.get(SERENA.monsterId),player2,10000,f.now);
+  const save=f.game.store.files.save.bind(f.game.store.files);let failed=false;
+  f.game.store.files.save=record=>{if(record.code===f.code&&!failed){failed=true;throw Error('first room rollback');}return save(record);};
+  try{
+    await until(()=>failed&&f.game.store.rooms.get(code2).serena.state==='recovering');
+    assert.notEqual(f.game.store.rooms.get(code2),original2);
+    assert.equal(original2.serena.state,'active','이전 Map에 있던 두 번째 교실은 더 이상 정산하지 않는다');
+    assert.equal(original2.pendingBossDeaths.size,1);
+    const current=f.game.store.rooms.get(code2);
+    assert.equal(current.pendingBossDeaths.size,0);
+    assert.equal([...current.energyDrops.values()].filter(d=>d.itemId==='radiant-star-origin').length,1);
+    assert.equal(f.game.store.records.get(code2).serena.state,'recovering');
+  }finally{f.game.store.files.save=save;}
+});

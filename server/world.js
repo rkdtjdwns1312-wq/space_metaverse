@@ -5,8 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionReach } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
 import {equipmentBonus} from '../shared/equipment.js';
+import {serenaMap} from '../shared/serena.js';
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
-  const map = mapOf(mapId, room.planets.values());
+  const map = serenaMap(mapOf(mapId, room.planets.values()),room.serena);
   if(!avatarPositionIsClear(map,x,y,boundaryPlayer,monstersOf(room).values(),avoidPlayers?null:boundaryPlayer))return false;
   if (!avoidPlayers) return true;
   const foot=avatarFootprint(boundaryPlayer,x,y);

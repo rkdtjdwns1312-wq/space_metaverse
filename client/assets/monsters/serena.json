@@ -1,0 +1,13 @@
+{
+  "image": "serena.png",
+  "source": "serena-source.png",
+  "columns": 4,
+  "rows": 3,
+  "frameWidth": 256,
+  "frameHeight": 512,
+  "anchor": { "x": 128, "y": 496 },
+  "walk": { "frames": [0, 1, 2, 3], "durationMs": 1200, "loop": true },
+  "prayer": { "frames": [4, 5, 6, 7, 8, 9], "riseMs": 1350, "holdUntilMs": 2000 },
+  "return": { "frames": [9, 10, 11], "durationMs": 800 },
+  "alignment": "Per-cell alpha>32 body bounds, uniform aspect-preserving fit to 236x480, horizontally centered and foot baseline496."
+}

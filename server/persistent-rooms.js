@@ -29,6 +29,8 @@ import {validateHoldingState} from '../shared/holding-abilities.js';
 import {validateLearnedRecipeIds} from './learned-recipes.js';
 import {validateExploration,validateExplorationChances} from './exploration.js';
 import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
+import {validateSerenaProgress} from './serena-progress.js';
+import {validateSerenaState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 function offline(p) {
@@ -38,6 +40,7 @@ function offline(p) {
 }
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
+    serena:validateSerenaState(room.serena),bossRespawns:validateBossRespawns(room.bossRespawns),
     ...(room.adminCreated?{adminCreated:true}:{}),
     ...(room.teacherAccess?{teacherAccess:structuredClone(room.teacherAccess)}:{}),
     temple:structuredClone(room.temple),exploration:validateExploration(room.exploration),
@@ -53,6 +56,7 @@ export function toRecord(room) {
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
+      serenaProgress:validateSerenaProgress(p.serenaProgress,p.avatar,p.role),
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
@@ -75,6 +79,7 @@ export function fromRecord(r) {
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),
+    serena:validateSerenaState(r.serena),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
     teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
     temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
     starCards:validateStarCards(r.starCards),
@@ -125,6 +130,7 @@ export function fromRecord(r) {
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
     room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
+      serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
   }
@@ -142,7 +148,13 @@ export function fromRecord(r) {
 export class PersistentRoomStore extends RoomStore {
   constructor(directory,{unattended=false,teacherManagedAccounts=false,maxActiveRooms=RULES.maxRooms}={}) {
     super({maxActiveRooms});this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
-    try {for(const r of this.files.loadAll()){fromRecord(r);this.records.set(r.code,r);}}
+    try {for(const r of this.files.loadAll()){
+      const restored=fromRecord(r);
+      // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
+      // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
+      this.records.set(r.code,{...r,serena:restored.serena,bossRespawns:restored.bossRespawns,
+        students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress}))});
+    }}
     catch(error){this.files.close();throw error;}
   }
   newCode(){let code;do{code=super.newCode();}while(this.records.has(code));return code;}
@@ -161,6 +173,7 @@ export class PersistentRoomStore extends RoomStore {
     }
     const s=super.create(accounts?{...data,allowedNames:accounts.map(account=>account.nickname)}:data,socketId,options);
     s.room.createdAt=Date.now();s.room.unattended=this.unattended;
+    s.room.persistBossDefeats=true;
     if(this.teacherManagedAccounts)s.credentials=(accounts||[...s.room.allowedNames].map(name=>({nickname:name,pin:String(randomInt(10000)).padStart(4,'0')}))).map(account=>{
       this.createStudent(s.room,account);return account;
     });
@@ -187,7 +200,7 @@ export class PersistentRoomStore extends RoomStore {
     return {room,player:this.add(room,'선생님','teacher',socketId)};
   }
   list(){return [...this.records.values()].map(r=>({code:r.code,title:r.title,open:this.rooms.has(r.code)}));}
-  snapshot(room,viewer){return {...super.snapshot(room,viewer),persistent:true,unattended:!!room.unattended,managedAccounts:this.teacherManagedAccounts};}
+  snapshot(room,viewer,now){return {...super.snapshot(room,viewer,now),persistent:true,unattended:!!room.unattended,managedAccounts:this.teacherManagedAccounts};}
   join(data,socketId){
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
     let room=this.rooms.get(code);
@@ -217,7 +230,9 @@ export class PersistentRoomStore extends RoomStore {
     this.sessions.delete(p.token);
     if(p.role==='student')offline(p);else room.players.delete(p.id);
   }
-  destroy(room){
+  destroy(room,now=Date.now()){
+    // 처치 직후 다음 전투 틱 전에 수업을 끝내도 자격과 24시간 시각을 보존합니다.
+    settleBossDeaths(room,now);
     this.records.set(room.code,structuredClone(toRecord(room)));
     super.destroy(room);
   }

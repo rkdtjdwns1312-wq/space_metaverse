@@ -12,3 +12,15 @@ export const SPIRIT_CLOAK_RECIPE = Object.freeze({
   starShards:10,
   cosmicEnergy:10000
 });
+
+export const PRIMORDIAL_STAR_GEM_RECIPE = Object.freeze({
+  ingredients: Object.freeze([{id:'radiant-star-origin',quantity:1}]),
+  output: Object.freeze({id:'primordial-star-gem',quantity:1}),
+  starShards:0,
+  cosmicEnergy:10000
+});
+
+export const PUBLIC_CRAFTING_RECIPES = Object.freeze([
+  SPIRIT_CLOAK_RECIPE,
+  PRIMORDIAL_STAR_GEM_RECIPE
+]);

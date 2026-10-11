@@ -33,6 +33,7 @@ import {createPartyUI} from './party-ui.js';
 import { createAccountsUI } from './accounts-ui.js';
 import { createUniverseUI } from './universe-ui.js';
 import {createObjectUpdates} from './object-updates.js';
+import {createSerenaUI} from './serena-ui.js';
 import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
@@ -349,8 +350,17 @@ async function request(event,data){
   if(!reply.ok)throw new Error(reply.error);
   return reply;
 }
+let serenaWorldState=null;
+const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
+function updateBgm(mapId,serenaOverride){
+  const serena=serenaOverride||serenaWorldState||room?.serena;
+  const statueMap=mapId==='star-origin-4';
+  const state=serena?.state||serenaWorldState?.state;
+  audio.playBgm(statueMap&&state==='active'?'serena-battle':statueMap?'serena-dormant':mapId);
+}
 function updateRoom(value){
   room=value;world.setRoom(room,selfId);starCardUI.update();
+  if(room.serena)serenaWorldState=room.serena;
   world.setObjectUpdates(objectUpdates.update(room,selfId));
   universe.update();
   $('room-title').textContent=room.title;$('room-code').textContent=room.code;
@@ -362,7 +372,7 @@ function updateRoom(value){
   $('open-missions').textContent=isTeacher?'미션 만들기':'미션 확인하기';
   tutorialButton.hidden=me?.role!=='student';
   const myMapId=me?.mapId||PLAZA_ID,inPlanet=Boolean(planetIdOfMap(myMapId)),inStreet=myMapId===STREET_ID;
-  if(me)audio.playBgm(myMapId);
+  if(me)updateBgm(myMapId,room.serena);
   $('players').replaceChildren(...room.players.filter(p=>p.connected).map(p=>{
     const li=document.createElement('li');li.classList.toggle('mine',p.id===selfId);li.dataset.name=p.nickname;li.dataset.connectedAt=String(p.connectedAt||0);
     const name=document.createElement('span');name.textContent=p.nickname+(p.id===selfId?' · 나':'');
@@ -506,7 +516,7 @@ function itemVisual(item){
   const image=document.createElement('img');image.className='item-art';image.src=item.art;image.alt='';image.loading='lazy';return image;
 }
 function itemUseText(item){
-  if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'최대 체력',mp:'최대 마나',speed:'이동속도',regen:'10초 회복 비율',hpRegen:'10초마다 체력 회복',mpRegen:'10초마다 마나 회복',durationMs:'지속형 스킬 지속시간',skillDamage:'스킬 피해량',cooldownReduction:'일반 스킬 쿨타임'}[key]+(key==='cooldownReduction'?' -':' +')+(key==='speed'||key==='regen'||key==='skillDamage'||key==='cooldownReduction'?Math.round(value*100)+'%':key==='durationMs'?value/1000+'초':value))).join(' · ');
+  if(item.mode==='equipment')return '장착하면 '+Object.entries(item.bonus).map(([key,value])=>({attack:'공격력',defense:'방어력',hp:'최대 체력',mp:'최대 마나',speed:'이동속도',regen:'10초 회복 비율',hpRegen:'10초마다 체력 회복',mpRegen:'10초마다 마나 회복',durationMs:'지속형 스킬 지속시간',skillDamage:'스킬 피해량',cooldownReduction:'일반 스킬 쿨타임',allCooldownReduction:'모든 스킬 쿨타임'}[key]+(['cooldownReduction','allCooldownReduction'].includes(key)?' -':' +')+(key==='speed'||key==='regen'||key==='skillDamage'||key==='cooldownReduction'||key==='allCooldownReduction'?Math.round(value*100)+'%':key==='durationMs'?value/1000+'초':value))).join(' · ');
   if(item.mode==='material')return '별빛 조합기에 넣는 재료예요.';
   if(item.passiveOnly)return item.description;
   if(item.mode==='manual')return '게임에서는 사용 사실을 기록해요. 선생님이 현실 교실에서 처리합니다.';
@@ -943,7 +953,7 @@ function doInteract(){
   else if(n.kind==='gate')travelTo(n.target);
   else if(n.kind==='black-hole')travelTo(n.target);
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
-  else if(n.kind==='goddess-statue')toast('별의 여신 석상은 아직 잠들어 있어요. 깨어날 준비 중이에요.');
+  else if(n.kind==='goddess-statue'){stop();serenaUI.open();}
   else if(n.kind==='shop')openShopDialog();
   else if(n.kind==='energy-shop')energyShopUI.open();
   else if(n.kind==='crafting')craftingUI.open();
@@ -1335,7 +1345,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

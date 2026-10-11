@@ -80,15 +80,21 @@ test('친구 호출은 레벨 제한 없이 이동하며 맵·소속·검은별 
  assert.equal((await call(b,'social:respond',{requestId:pending.invitation.id,accept:true})).ok,true);assert.equal(guest.mapId,STAR_PARADISE.id);
 });
 
-test('위쪽 세 맵은 가까운 연결 문으로만 왕복하고 건너뛰기 요청을 거절한다',async t=>{
+test('위쪽 네 맵은 가까운 연결 문으로만 왕복하고 건너뛰기 요청을 거절한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
  const j=await call(s,'room:join',{code:r.room.code,nickname:'1'});assert.ok(j.ok);
  const p=game.store.rooms.get(r.room.code).players.get(j.selfId);
  assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[2].id})).ok,false);
  assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[0].id})).ok,false);
- for(const to of [...ORIGIN_MAPS.map(m=>m.id),ORIGIN_MAPS[1].id,ORIGIN_MAPS[0].id,PLAZA_ID]){
+ const originIds=ORIGIN_MAPS.map(m=>m.id);
+ assert.deepEqual(originIds,['star-origin-1','star-origin-2','star-origin-3','star-origin-4']);
+ for(const to of [...originIds,...originIds.slice(0,-1).reverse(),PLAZA_ID]){
    const gate=mapOf(p.mapId).objects.find(o=>o.target===to);assert.ok(gate);
    p.x=gate.x;p.y=gate.y;
+   if(p.mapId==='star-origin-4'){
+     assert.equal((await call(s,'map:travel',{to:'star-origin-2'})).ok,false,'4→2 건너뛰기는 반환 문 앞에서도 거절');
+     assert.equal(p.mapId,'star-origin-4');
+   }
    assert.equal((await call(s,'map:travel',{to})).ok,true);assert.equal(p.mapId,to);
    const map=mapOf(to);assert.ok(p.x>0&&p.x<map.width&&p.y>0&&p.y<map.height);
  }

@@ -1,5 +1,6 @@
 import {SHOP, ITEM_USE, itemOf} from '../shared/config.js';
 import {recipeItemId} from '../shared/recipe-items.js';
+import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import {ensure} from './rooms.js';
 import {collectSunTax, hasLv2ItemBlock} from './lv2-item-effects.js';
 import {hasCardStatus} from './item-cards.js';
@@ -9,16 +10,17 @@ import {requireStarCardItemAccess} from './star-cards.js';
 // Recipe identities are their output IDs. The catalogue contains no ingredient data.
 export function validateLearnedRecipeIds(value) {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.length > SHOP.items.length || new Set(value).size !== value.length ||
+  if (!Array.isArray(value) || value.length > SHOP.items.length+EQUIPMENT_ITEMS.length || new Set(value).size !== value.length ||
       value.some(id => typeof id !== 'string' || !itemOf(recipeItemId(id))))
     throw new Error('배운 조합법 저장 데이터가 올바르지 않습니다.');
   return [...value];
 }
 export function learnedRecipesView(player, recipes) {
   const learned = new Set(player.learnedRecipeIds || []);
-  return recipes.filter(recipe => learned.has(recipe.output.id)).map(recipe => ({
+  return recipes.filter(recipe => learned.has(recipe.output.id)&&itemOf(recipeItemId(recipe.output.id))).map(recipe => ({
     output: {id: recipe.output.id, quantity: 1},
-    ingredients: recipe.ingredients.map(part => ({id: part.id, quantity: part.quantity}))
+    ingredients: recipe.ingredients.map(part => ({id: part.id, quantity: part.quantity})),
+    ...(recipe.cosmicEnergy?{starShards:recipe.starShards||0,cosmicEnergy:recipe.cosmicEnergy}:{})
   }));
 }
 export function useRecipeItem(room, player, data, recipes, now = Date.now()) {

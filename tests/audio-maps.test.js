@@ -81,14 +81,31 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     const origin=players.get('star-origin-1');
     assert.equal(origin.src,'/assets/audio/star-origin-mochanova.mp3');assert.equal(origin.loop,true);
     origin.currentTime=47;
-    for(const id of ['star-origin-2','star-origin-3','star-origin-4','star-origin-2','star-origin-1']){
+    for(const id of ['star-origin-2','star-origin-3','star-origin-2','star-origin-1']){
       assert.equal(await audio.playBgm(id),true);
       assert.equal(origin.currentTime,47);assert.equal(origin.playCount,1);assert.equal(origin.paused,false);
     }
     assert.equal(players.has('star-origin-2'),false);assert.equal(players.has('star-origin-3'),false);
+    assert.equal(await audio.playBgm('star-origin-4'),true);
+    const originFour=players.get('star-origin-4');
+    assert.equal(originFour.src,'/assets/audio/serena-dormant-miss-you.mp3');
+    assert.equal(originFour.loop,true);assert.equal(originFour.paused,false);
+    assert.equal(origin.paused,true);
+    assert.equal(await audio.playBgm('serena-dormant'),true);
+    const serenaDormant=players.get('star-origin-4');
+    assert.equal(origin.paused,true);assert.equal(serenaDormant.src,'/assets/audio/serena-dormant-miss-you.mp3');
+    assert.equal(serenaDormant.loop,true);assert.equal(serenaDormant.paused,false);
+    assert.equal(await audio.playBgm('serena-battle'),true);
+    const serenaBattle=players.get('serena-battle');
+    assert.equal(serenaDormant.paused,true);assert.equal(serenaBattle.src,'/assets/audio/serena-battle-theory-of-relativity.mp3');
+    assert.equal(serenaBattle.loop,true);assert.equal(serenaBattle.paused,false);
+    await audio.playBgm('serena-dormant');
+    assert.equal(serenaBattle.paused,true);assert.equal(serenaDormant.paused,false);
     audio.setVolume(.42);audio.setMuted(true);
     assert.equal(battle.volume,.42);assert.equal(moon.volume,.42);assert.equal(interior.volume,.42);
     assert.equal(battle.muted,true);assert.equal(moon.muted,true);assert.equal(interior.muted,true);
+    assert.equal(serenaDormant.volume,.42);assert.equal(serenaBattle.volume,.42);
+    assert.equal(serenaDormant.muted,true);assert.equal(serenaBattle.muted,true);
     assert.equal(origin.volume,.42);assert.equal(origin.muted,true);
     assert.equal(await audio.playBgm('lobby'),true);
     assert.equal(lobby.paused,false);assert.equal(violin.paused,false);assert.equal(violin.currentTime,lobby.currentTime);

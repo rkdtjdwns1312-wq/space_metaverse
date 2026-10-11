@@ -42,11 +42,11 @@ import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
 import {issueTeacherCode,matchesTeacherCode} from './teacher-access.js';
 import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
-import { CRAFTING,SPIRIT_CLOAK_RECIPE } from '../shared/crafting.js';
+import { CRAFTING } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
 import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
-import { loadCraftingRecipes } from './crafting-recipes.js';
+import { availableCraftingRecipes,loadCraftingRecipes } from './crafting-recipes.js';
 import {sellQuote} from '../shared/item-pricing.js';
 import {awardDrawReward} from './draw-rewards.js';
 import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue,expireStarCards,
@@ -64,6 +64,8 @@ import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
+import {summonSerena} from './serena.js';
+import {serenaView,settleBossDeaths,restoreSerenaStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -212,7 +214,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     for(const p of room.players.values()){
       if(!p.connected) continue;
       const sock=io.sockets.sockets.get(p.socketId);
-      if(sock) deliver(()=>sock.emit('room:state',store.snapshot(room,p)));
+      if(sock) deliver(()=>sock.emit('room:state',store.snapshot(room,p,clock())));
     }
   };
   const announce=(room,text)=>{
@@ -276,7 +278,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         deliver(()=>{s.emit('room:closed',{message:persistent?'수업을 마쳤어요. 다음에도 같은 코드와 비밀번호로 만나요.':'교실이 종료되었어요. 새 교실 코드로 입장해주세요.'});s.leave(room.code);});
       }
     }
-    store.destroy(room);
+    store.destroy(room,clock());
   };
   const detach=(socket,immediate)=>{
     const s=socket.data.session;if(!s)return;
@@ -326,6 +328,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     });
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
+    action('serena:summon',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const result=summonSerena(session.room,session.player,clock());
+      roster(session.room);return result;
+    });
     action('life-star:recover',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       return startLifeRecovery(session.player,clock());
@@ -634,7 +641,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player}=session;
       // 방 공개 기록과 이 사람에게만 왔던 개인 안내(notes)를 시간순으로 합쳐 돌려줍니다.
       const messages=visibleHistory(room,player);
-      return {token:player.token,selfId:player.id,room:store.snapshot(room,player),chat:{messages},...(credentials?{credentials}:{})};
+      return {token:player.token,selfId:player.id,room:store.snapshot(room,player,clock()),chat:{messages},...(credentials?{credentials}:{})};
     };
     const notJoined=()=>ensure(!socket.data.session,'먼저 현재 교실에서 나가주세요.');
     const authBucket=()=>{
@@ -1452,7 +1459,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;
       ensure(s?.player.role==='student'&&s.player.connected&&!s.player.away,'학생 본인만 배운 조합법을 볼 수 있어요.');
       ensure((data.playerId===undefined||data.playerId===s.player.id)&&(data.targetId===undefined||data.targetId===s.player.id),'다른 학생의 조합법은 볼 수 없어요.');
-      return {recipes:learnedRecipesView(s.player,[...craftingRecipes,SPIRIT_CLOAK_RECIPE])};
+      return {recipes:learnedRecipesView(s.player,availableCraftingRecipes(craftingRecipes))};
     },false);
     action('crafting:recipes',data=>{
       const s=socket.data.session;
@@ -1460,7 +1467,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       requireCrafting();
       ensure([2,3,4,5].includes(data.level),'LV2~LV5 중 하나를 골라주세요.');
       // 비공개 파일의 필요한 필드만 인증된 교사에게 응답합니다. 방 방송/공개 스냅샷에는 넣지 않습니다.
-      const recipes=[...craftingRecipes,SPIRIT_CLOAK_RECIPE].filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
+      const recipes=availableCraftingRecipes(craftingRecipes).filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
         output:{id:r.output.id,quantity:1},ingredients:r.ingredients.map(p=>({id:p.id,quantity:p.quantity})),
         ...(r.cosmicEnergy?{starShards:r.starShards,cosmicEnergy:r.cosmicEnergy}:{})
       }));
@@ -2082,6 +2089,17 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
+      const bossNow=clock();
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt)){
+        try{transaction(()=>{
+          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);roster(room);
+          deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
+        });}catch(error){
+          const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;
+          // 롤백은 전체 room Map을 교체합니다. 다음 교실도 다음 틱의 새 참조로 처리합니다.
+          console.error('보스 처치/복원 저장 실패:',error.message);break;
+        }
+      }
       const damageNumbers=room.damageNumbers?.splice(0)||[];
       for(const player of room.players.values())damageNumbers.push(...(player.damageNumbers?.splice(0)||[]));
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
@@ -2194,7 +2212,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }

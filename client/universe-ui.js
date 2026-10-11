@@ -1,4 +1,5 @@
 import {drawParadiseFloor} from './paradise-floor.js';
+import {serenaMap} from '/shared/serena.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
 import {drawPlazaGround} from './plaza-art.js';
 import {drawValleyGround} from './valley-art.js';
@@ -26,7 +27,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
-  const map=id=>mapOf(id,planets());
+  const map=id=>serenaMap(mapOf(id,planets()),getRoom()?.serena);
   const pictures=new Map();
   const picture=src=>{
     if(!src)return null;
@@ -171,7 +172,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const p=me();if(!p)return;
     $('minimap-title').textContent=map(p.mapId).name;draw($('minimap'),p.mapId);
     if(!selected||!([...Object.keys(STATIC_MAPS),...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
-    const next=JSON.stringify([p.mapId,selected,planets().map(p=>[p.id,p.name,p.color])]);
+    const next=JSON.stringify([p.mapId,selected,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
       $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
