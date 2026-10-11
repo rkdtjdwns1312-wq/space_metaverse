@@ -10,32 +10,31 @@ import {createClassroomServer} from '../server/app.js';
 const dir=await mkdtemp(join(tmpdir(),'battle-visuals-'));
 const game=createClassroomServer({teacherKey:randomBytes(24).toString('hex'),studentHours:false,dataDir:dir});
 const {port}=await game.listen();
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
 try{
   await mkdir('.local',{recursive:true});
   const page=await browser.newPage({viewport:{width:1400,height:1050}}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(`http://127.0.0.1:${port}/`);
   const result=await page.evaluate(async()=>{
-    const [{drawCoronaAura},{drawLeoRoar},{drawOphiuchusSkill},{drawHerculesShield},
+    const [{drawCoronaAura},{drawLeoRoar},{drawOphiuchusZone},{drawHerculesShield},
       {drawWaterProjectile,drawWaterAura}]=await Promise.all([
       import('/corona-effects.js'),import('/leo-effects.js'),import('/ophiuchus-effects.js'),
       import('/hercules-effects.js'),import('/water-effects.js')]);
     for(const src of ['/assets/skills/corona-borealis/skill-lv4.png','/assets/skills/leo/skill-lv4.png',
-      '/assets/skills/ophiuchus/skill-lv4.png','/assets/skills/hercules/skill-lv4.png',
+      '/assets/skills/ophiuchus/poison-lv4.png','/assets/skills/hercules/skill-lv4.png',
       '/assets/skills/cetus/skill-lv4.png','/assets/skills/cetus/attack.png']){
       const image=new Image();image.src=src;await image.decode();
     }
     const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1000;
     Object.assign(canvas.style,{position:'fixed',left:'0',top:'0',zIndex:'9999',width:'1400px',height:'1000px'});
     document.body.append(canvas);const ctx=canvas.getContext('2d');
-    const panels=[['왕관 유지',50,40],['사자 포효',720,40],['뱀 독기',50,365],['방패 유지',720,365],
+    const panels=[['왕관 유지',50,40],['사자 포효',720,40],['독구름 지대',50,365],['방패 유지',720,365],
       ['고래 오라',50,690],['고래 일반공격',720,690]];
     for(const [label,x,y] of panels){ctx.fillStyle='#151e43';ctx.fillRect(x,y,630,290);ctx.fillStyle='white';ctx.font='24px sans-serif';ctx.fillText(label,x+20,y+35);}
     ctx.save();ctx.translate(365,220);drawCoronaAura(ctx,{stage:4,size:105,durationMs:12000},4000);ctx.restore();
     drawLeoRoar(ctx,{x:1040,y:220,stage:4,size:95,rx:190,ry:95,durationMs:3000},1560);
-    drawOphiuchusSkill(ctx,{kind:'ophiuchus-skill',vfxId:'skill-lv4',x:110,y:545,dx:1,dy:0,
-      size:100,snakeScale:3,range:400,originOffset:60},1650);
+    drawOphiuchusZone(ctx,{kind:'ophiuchus-zone',stage:4,x:365,y:545,size:100,rx:240,ry:105,durationMs:14000},4000);
     ctx.save();ctx.translate(1030,550);drawHerculesShield(ctx,{stage:4,size:105,durationMs:5000},2500);ctx.restore();
     drawWaterAura(ctx,{kind:'cetus',stage:4,elapsedMs:2700,durationMs:10000},365,870,105);
     drawWaterProjectile(ctx,{kind:'cetus-attack',vfxId:'attack',x:1030,y:865,dx:1,dy:0,
@@ -46,20 +45,19 @@ try{
   // Images are cached by the effect modules after the first draw; the second draw is the visual check.
   await page.evaluate(()=>{const c=document.querySelector('canvas[style*="z-index: 9999"]');c.remove();});
   const drawn=await page.evaluate(async()=>{
-    const [{drawCoronaAura},{drawLeoRoar},{drawOphiuchusSkill},{drawHerculesShield},
+    const [{drawCoronaAura},{drawLeoRoar},{drawOphiuchusZone},{drawHerculesShield},
       {drawWaterProjectile,drawWaterAura}]=await Promise.all([
       import('/corona-effects.js'),import('/leo-effects.js'),import('/ophiuchus-effects.js'),
       import('/hercules-effects.js'),import('/water-effects.js')]);
     const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1000;
     Object.assign(canvas.style,{position:'fixed',left:'0',top:'0',zIndex:'9999',width:'1400px',height:'1000px'});
     document.body.append(canvas);const ctx=canvas.getContext('2d');
-    const panels=[['왕관 유지',50,40],['사자 포효',720,40],['뱀 독기',50,365],['방패 유지',720,365],
+    const panels=[['왕관 유지',50,40],['사자 포효',720,40],['독구름 지대',50,365],['방패 유지',720,365],
       ['고래 오라',50,690],['고래 일반공격',720,690]];
     for(const [label,x,y] of panels){ctx.fillStyle='#151e43';ctx.fillRect(x,y,630,290);ctx.fillStyle='white';ctx.font='24px sans-serif';ctx.fillText(label,x+20,y+35);}
     ctx.save();ctx.translate(365,220);drawCoronaAura(ctx,{stage:4,size:105,durationMs:12000},4000);ctx.restore();
     drawLeoRoar(ctx,{x:1040,y:220,stage:4,size:95,rx:190,ry:95,durationMs:3000},1560);
-    drawOphiuchusSkill(ctx,{kind:'ophiuchus-skill',vfxId:'skill-lv4',x:110,y:545,dx:1,dy:0,
-      size:100,snakeScale:3,range:400,originOffset:60},1650);
+    drawOphiuchusZone(ctx,{kind:'ophiuchus-zone',stage:4,x:365,y:545,size:100,rx:240,ry:105,durationMs:14000},4000);
     ctx.save();ctx.translate(1030,550);drawHerculesShield(ctx,{stage:4,size:105,durationMs:5000},2500);ctx.restore();
     drawWaterAura(ctx,{kind:'cetus',stage:4,elapsedMs:2700,durationMs:10000},365,870,105);
     drawWaterProjectile(ctx,{kind:'cetus-attack',vfxId:'attack',x:1030,y:865,dx:1,dy:0,

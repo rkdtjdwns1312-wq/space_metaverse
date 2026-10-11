@@ -1,0 +1,64 @@
+{
+  "source": "source/poison-atlas.png",
+  "sourceTool": "built-in image_gen",
+  "buildScript": "scripts/build-ophiuchus-poison.mjs",
+  "columns": 6,
+  "rows": 4,
+  "frameSize": 256,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.5
+  },
+  "timings": {
+    "growMs": 2000,
+    "holdMs": 10000,
+    "fadeMs": 2000
+  },
+  "sampleTimesMs": [
+    0,
+    400,
+    800,
+    1200,
+    1600,
+    2000,
+    2400,
+    3200,
+    4000,
+    4800,
+    5600,
+    6400,
+    7200,
+    8000,
+    8800,
+    9600,
+    10400,
+    11200,
+    12000,
+    12400,
+    12800,
+    13200,
+    13600,
+    14000
+  ],
+  "runtime": "continuous shared-area rendering",
+  "stages": [
+    {
+      "stage": 2,
+      "frames": 24,
+      "distinct": 23,
+      "emptyEnds": true
+    },
+    {
+      "stage": 3,
+      "frames": 24,
+      "distinct": 23,
+      "emptyEnds": true
+    },
+    {
+      "stage": 4,
+      "frames": 24,
+      "distinct": 23,
+      "emptyEnds": true
+    }
+  ]
+}

@@ -8,7 +8,7 @@ import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aq
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {castWater,advanceWaterAuras,waterAuraViews,waterCooldowns,resolveWaterHit} from './water-skills.js';
 import {castSwan,advanceSwanAuras,swanAuraViews,swanCooldowns} from './swan-skills.js';
-import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusCooldowns} from './ophiuchus-skills.js';
+import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusCooldowns,ophiuchusViews} from './ophiuchus-skills.js';
 import {castGemini,geminiCooldowns} from './gemini-skills.js';
 import {castAries,advanceAriesClouds,ariesCloudViews,ariesCooldowns} from './aries-skills.js';
 import {castTaurus,advanceTaurusDashes,taurusDashViews,taurusCooldowns} from './taurus-skills.js';
@@ -532,8 +532,6 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         roster(room);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
           io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
-          io.to(viewer.socketId).emit('combat:hit',result.hit);
-          for(const target of result.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:player.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
         }
         return result;
       }
@@ -2063,12 +2061,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       if(room.waterAuraChanged){room.waterAuraChanged=false;roster(room);}
       if(advanceSwanAuras(room,clock()))roster(room);
-      for(const hit of advanceOphiuchusVenoms(room,clock())){
+      const poisonTime=clock();
+      for(const hit of advanceOphiuchusVenoms(room,poisonTime)){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
         if(hit.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,clock())});
       }
-      const poison=advanceOphiuchusPoison(room,clock());
+      const poison=advanceOphiuchusPoison(room,poisonTime);
       for(const hit of poison.events){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
@@ -2216,7 +2215,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }

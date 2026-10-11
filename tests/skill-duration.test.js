@@ -22,7 +22,7 @@ import {castLibra,advanceLibraAuras,libraAuraViews} from '../server/libra-skills
 import {castCorona,advanceCorona,coronaAuraViews} from '../server/corona-skills.js';
 import {castCapricorn,advanceCapricorn,capricornBlessingViews} from '../server/capricorn-skills.js';
 import {castLeo,advanceLeoRoars,advanceLeoCourage} from '../server/leo-skills.js';
-import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison} from '../server/ophiuchus-skills.js';
+import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusViews} from '../server/ophiuchus-skills.js';
 import {startTransformation} from '../server/transformation.js';
 import {monstersOf} from '../server/monsters.js';
 import {playerEffectsView} from '../server/rooms.js';
@@ -46,7 +46,7 @@ test('지속형 11종 LV2~5·초월: 지속만 +1초, 쿨다운/마나/주기/�
     const {player}=setup(id,level,false);player.transformation={active};
     const base=specOf(player),oldLines=characterAbilities(player)[1].description.split('\n');
     player.equipmentSlots=[...badge];const equipped=specOf(player);
-    const keys=id==='aquarius'?['durationMs','holdMs']:id==='ophiuchus'?['poisonMs']:['durationMs'];
+    const keys=['aquarius','ophiuchus'].includes(id)?['durationMs','holdMs']:['durationMs'];
     const expected={...base};for(const key of keys)expected[key]+=1000;
     assert.deepEqual(equipped,expected,`${id} LV${level} transformed=${active}`);
     const lines=characterAbilities(player)[1].description.split('\n');assert.equal(lines.length,4);
@@ -170,23 +170,24 @@ test('사자: 3초 포효 연출 유지, 시전 때 정한 11초 용기를 시�
   }
 });
 
-test('뱀: 최초 중독만 +1초·초당 피해 유지, 재중독은 장비와 무관하게 기존 +3초',()=>{
+test('독지대: 장비는 지대 유지/종료만 +1초, 시전 후 장비 변경 무관·중독3/5/8초 고정',()=>{
   for(const level of [2,3,4])for(const equipped of [false,true]){
     const {room,player,monster}=setup('ophiuchus',level,equipped),now=Date.now();
-    const result=castOphiuchus(room,player,now);assert.equal(result.hit.durationMs,4000);
+    monster.x=player.x;monster.y=player.y+avatarSizeOf(player)*.25;
+    const result=castOphiuchus(room,player,now);assert.equal(result.hit,undefined);
+    const durationMs=equipped?15000:14000;
+    assert.equal(ophiuchusViews(room,player.mapId,now)[0].durationMs,durationMs);
     player.equipmentSlots=equipped?[]:[...badge];advanceOphiuchusVenoms(room,now+1000);
-    const end=now+1000+level*2000+(equipped?1000:0);assert.equal(monster.combatPoison.expiresAt,end);
+    const poisonMs=({2:3000,3:5000,4:8000})[level],end=now+1000+poisonMs;
+    assert.equal(monster.combatPoison.expiresAt,end);
     advanceOphiuchusPoison(room,end-1);assert.ok(monster.combatPoison);
     const before=monster.hp;advanceOphiuchusPoison(room,end);assert.equal(monster.combatPoison,null);assert.ok(monster.hp<before);
+    advanceOphiuchusVenoms(room,now+durationMs-1);
+    assert.equal(monster.combatPoison.expiresAt,now+durationMs-1+poisonMs);
+    assert.equal(ophiuchusViews(room,player.mapId,now+durationMs-1)[0].durationMs,durationMs);
+    advanceOphiuchusVenoms(room,now+durationMs);
+    assert.deepEqual(ophiuchusViews(room,player.mapId,now+durationMs),[]);
     assert.equal(player.ophiuchusCooldownUntil,now+5000);
-  }
-  const {room,player,monster}=setup('ophiuchus'),now=Date.now();
-  castOphiuchus(room,player,now);advanceOphiuchusVenoms(room,now+1000);const end=monster.combatPoison.expiresAt;
-  for(const [index,equipped] of [false,true].entries()){
-    const other={...player,id:`other-${index}`,equipmentSlots:equipped?[...badge]:[],ophiuchusCooldownUntil:0,battleVitals:undefined};
-    room.players.set(other.id,other);castOphiuchus(room,other,now+2000+index*1000);
-    advanceOphiuchusVenoms(room,now+3000+index*1000);
-    assert.equal(monster.combatPoison.expiresAt,end+(index+1)*3000);
   }
 });
 

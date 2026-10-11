@@ -22,6 +22,7 @@ try{
   const page=await browser.newPage({viewport:{width:1440,height:900}});
   page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(10000);
   await page.goto(url+'/?class='+made.room.code);
+  if(await page.locator('#student-tab').isVisible())await page.locator('#student-tab').click();
   await page.locator('#nickname').fill('뱀검사');await page.locator('#student-pin').fill('1234');
   await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
   await page.locator('#password-offer-no').click();
@@ -40,10 +41,10 @@ try{
   assert.ok(sheets.every(([,w,h])=>w===1536&&h===1024));
   checks.push('24F 시트 4종 브라우저 로드');
   await page.waitForTimeout(200);await page.locator('#world').focus();await page.keyboard.press('e');
-  await page.waitForFunction(()=>Number(document.getElementById('world').dataset.attackCount)>0);
+  await page.waitForFunction(()=>Number(document.getElementById('world').dataset.ophiuchusZones)>0);
   assert.equal(ensureVitals(player).mp,35);
   await page.waitForTimeout(340);await page.screenshot({path:'.local/341-ophiuchus-skill.png'});
-  checks.push('E키: 마나5 차감·LV4 소환 연출');
+  checks.push('E키: 마나5 차감·LV4 독구름 지대 연출');
   await page.keyboard.press('q');
   await page.waitForFunction(()=>Number(document.getElementById('world').dataset.projectileCount)>0);
   await page.waitForTimeout(150);await page.screenshot({path:'.local/341-ophiuchus-attack.png'});
