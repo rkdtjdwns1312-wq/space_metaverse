@@ -6,6 +6,7 @@ export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetri
 const autoObjectives=new Set(AUTO_OBJECTIVES);
 const difficulties=new Set(['low','medium','high']);
 const uniqueIds=value=>Array.isArray(value)&&value.every(id=>typeof id==='string'&&id.length>0)&&new Set(value).size===value.length;
+export const validMissionTimestamp=value=>Number.isSafeInteger(value)&&value>=0&&value<=8640000000000000;
 
 export function validateMissions(value){
   if(value===undefined)return [];
@@ -28,6 +29,8 @@ export function validateMissions(value){
         (['tutorial-complete','life-star-complete'].includes(mission.objective)&&mission.goal!==1)||
         !mission.progress||typeof mission.progress!=='object'||Array.isArray(mission.progress)||
         Object.entries(mission.progress).some(([id,count])=>!mission.acceptedIds.includes(id)||!Number.isSafeInteger(count)||count<0||count>mission.goal))))throw new Error('Invalid missions');
+    if(mission.claimedAt!==undefined&&(!mission.claimedAt||typeof mission.claimedAt!=='object'||Array.isArray(mission.claimedAt)||
+      Object.entries(mission.claimedAt).some(([id,at])=>!mission.claimedIds.includes(id)||!validMissionTimestamp(at))))throw new Error('Invalid mission claim dates');
     ids.add(mission.id);return structuredClone(mission);
   });
 }
@@ -99,24 +102,32 @@ export function advanceMissions(room,player,objective,detail){
   return changed;
 }
 
-export function claimMission(room,player,missionId){
+export function claimMission(room,player,missionId,now=Date.now()){
   const mission=room.missions?.find(m=>m.id===missionId);
   ensure(mission&&mission.acceptedIds.includes(player.id),'받은 미션이 아니에요.');
   ensure(mission.completedIds.includes(player.id),'아직 완료 조건이 확인되지 않았어요.');
   ensure(!mission.claimedIds.includes(player.id),'이미 보상을 받은 미션이에요.');
-  mission.claimedIds.push(player.id);return mission;
+  ensure(validMissionTimestamp(now),'완료 시각을 기록할 수 없어요.');
+  mission.claimedIds.push(player.id);
+  mission.claimedAt={...mission.claimedAt,[player.id]:now};return mission;
 }
 
 export function missionViews(room,viewer){
   if(!viewer)return [];
-  return (room.missions||[]).filter(m=>viewer.role==='teacher'||m.acceptedIds.includes(viewer.id)).map(m=>({
+  const missions=(room.missions||[]).filter(m=>viewer.role==='teacher'||m.acceptedIds.includes(viewer.id)).map(m=>({
     id:m.id,title:m.title,description:m.description,rewardShards:m.rewardShards,distribution:m.distribution,at:m.at,
     ...(m.objective?{objective:m.objective,goal:m.goal,progress:m.progress[viewer.id]||0,
       ...(m.grade?{grade:m.grade}:{}),...(m.itemLevel?{itemLevel:m.itemLevel}:{}),
       ...(m.difficulty?{difficulty:m.difficulty}:{}),...(m.stage?{stage:m.stage}:{})}:{}),
     status:viewer.role==='teacher'?'teacher':m.claimedIds.includes(viewer.id)?'claimed':m.completedIds.includes(viewer.id)?'ready':'active',
+    ...(viewer.role==='student'?{claimedAt:m.claimedIds.includes(viewer.id)&&Object.hasOwn(m.claimedAt||{},viewer.id)?m.claimedAt[viewer.id]:null}:{}),
     ...(viewer.role==='teacher'?{acceptedCount:m.acceptedIds.length,completedCount:m.completedIds.length,claimedCount:m.claimedIds.length}:{})
   }));
+  if(viewer.role==='student')missions.push({id:'first-journey',kind:'tutorial',title:'첫 여행 안내 · 5단계',
+    description:'첫 여행 안내 5단계를 모두 살펴보기',rewardShards:1,
+    status:viewer.tutorialRewardClaimed?'claimed':viewer.tutorialCompleted?'ready':'active',
+    claimedAt:viewer.tutorialRewardClaimed?(viewer.tutorialRewardClaimedAt??null):null});
+  return missions;
 }
 
 export function missionBoardViews(room,viewer){

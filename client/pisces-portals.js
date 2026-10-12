@@ -1,6 +1,11 @@
 import {piscesPortalGeometry} from '/shared/pisces-portals.js';
-let fish;
+let fish,swim;
 function loadFish(){if(!fish){fish=new Image();fish.src='/assets/skills/pisces/portal-fish.png';}return fish;}
+export function preloadPiscesSwim(){
+  if(!swim){swim=new Image();swim.src='/assets/skills/pisces/swim/swim-48f.png';}
+  return [loadFish(),swim];
+}
+export function piscesSwimFrameAt(elapsedMs,index=0){return Math.floor(((elapsedMs/1000+index*.21)%1+1)%1*48);}
 const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
 function portal(ctx,x,r,time,opacity,front=false){
   ctx.save();ctx.translate(x,0);ctx.globalAlpha*=opacity;
@@ -23,7 +28,7 @@ export function drawPiscesPortalPair(ctx,cast,elapsedMs,reducedMotion=false,fron
   ctx.restore();
 }
 export function drawPiscesPortalFish(ctx,cast,elapsedMs,reducedMotion=false){
-  const image=loadFish(),g=piscesPortalGeometry(cast,elapsedMs/cast.durationMs);
+  const [image,swimming]=preloadPiscesSwim(),g=piscesPortalGeometry(cast,elapsedMs/cast.durationMs);
   const angle=Math.atan2(cast.dy??0,cast.dx??1);
   ctx.save();ctx.translate(cast.sourceX??cast.x,cast.sourceY??cast.y);ctx.rotate(angle);
   ctx.save();ctx.beginPath();ctx.rect(g.start,-g.height,g.end-g.start,g.height*2);ctx.clip();
@@ -31,7 +36,11 @@ export function drawPiscesPortalFish(ctx,cast,elapsedMs,reducedMotion=false){
     ctx.save();ctx.translate(g.center,0);
     // 왼쪽에서도 등/배가 뒤집히지 않게 물고기만 세로반전으로 회전 보정합니다.
     if((cast.dx??1)<0)ctx.scale(1,-1);
-    ctx.drawImage(image,-g.length/2,-g.height/2,g.length,g.height);ctx.restore();
+    if(!reducedMotion&&swimming.complete&&swimming.naturalWidth){
+      const frame=piscesSwimFrameAt(elapsedMs,cast.fishIndex||0);
+      ctx.drawImage(swimming,frame%8*384,Math.floor(frame/8)*192,384,192,-g.length/2,-g.height/2,g.length,g.height);
+    }else ctx.drawImage(image,-g.length/2,-g.height/2,g.length,g.height);
+    ctx.restore();
   }
   ctx.restore();
   ctx.restore();return true;

@@ -77,7 +77,7 @@ export function characterAbilities(player){
     Object.assign(attack,{name:OPHIUCHUS_NAMES.attack,iconUrl:OPHIUCHUS_VFX.attack.iconUrl,
       description:'검은 수정 파편을 날려 멀리 있는 대상에게 피해를 줍니다.'});
     Object.assign(skill,{name:OPHIUCHUS_NAMES[level],iconUrl:OPHIUCHUS_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 지대에 처음 닿은 몬스터에게 ${spec.directMultiplier*spec.effectAmount*100}% 피해\n특수효과: 독구름이 2초간 퍼져 ${spec.holdMs/1000}초 유지 후 2초간 사라짐 · 중독 ${spec.stage-1}단계 ${spec.poisonMs/1000}초, 초당 공격력 ${spec.effectAmount*100}% 피해 · 지대 안에서는 중독 시간 갱신(중첩 없음)\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 지대에 처음 닿은 몬스터에게 ${spec.directMultiplier*spec.effectAmount*100}% 피해\n특수효과: 중독 ${spec.stage-1}단계 상태 부여 · 초당 공격력 ${spec.effectAmount*100}% 피해\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='gemini'){
     const spec=geminiSkillOf(player);

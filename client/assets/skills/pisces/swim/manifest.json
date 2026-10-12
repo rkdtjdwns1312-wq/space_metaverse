@@ -1,0 +1,17 @@
+{
+  "frames": 48,
+  "columns": 8,
+  "rows": 6,
+  "frameWidth": 384,
+  "frameHeight": 192,
+  "cycleMs": 1000,
+  "source": "../portal-fish.png",
+  "buildScript": "scripts/build-pisces-swim.mjs",
+  "headFixedFromX": 0.8,
+  "geometryUnchanged": true,
+  "checks": {
+    "faceChanges": 0,
+    "borderAlpha": 0,
+    "distinct": 48
+  }
+}

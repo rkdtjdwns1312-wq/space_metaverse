@@ -19,7 +19,7 @@ export function createTutorialUI({request,stop,toast}){
     if(busy)return;
     if(index<STEPS.length-1){index++;render();return;}
     busy=true;$('next').disabled=true;
-    try{await request('tutorial:complete',{});dialog.close();toast('첫 여행 안내를 마쳤어요. 소통 → 미션 보기에서 완료를 눌러 보상을 받아요.');}
+    try{await request('tutorial:complete',{});dialog.close();toast('첫 여행 안내를 마쳤어요. 소통 → 미션 확인하기 → 진행중인 미션보기에서 완료를 눌러 보상을 받아요.');}
     catch(error){$('error').textContent=error.message;}
     finally{busy=false;$('next').disabled=false;}
   };

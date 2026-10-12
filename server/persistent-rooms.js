@@ -6,7 +6,7 @@ import {validateTemple} from './temple.js';
 import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
-import {validateMissions} from './missions.js';
+import {validateMissions,validMissionTimestamp} from './missions.js';
 import {validateSignalRanking} from './signal-game.js';
 import {validateTetrisRanking} from './tetris-game.js';
 import {validateInteriorDecor} from './interior-decor.js';
@@ -58,6 +58,7 @@ export function toRecord(room) {
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
       serenaProgress:validateSerenaProgress(p.serenaProgress,p.avatar,p.role),
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
+      tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
@@ -116,6 +117,9 @@ export function fromRecord(r) {
     if(avatar.level>=PROGRESSION.transcendentLevel){avatar.level=PROGRESSION.transcendentLevel;avatar.form='transcendent';avatar.xp=0;}
     if(p.tutorialCompleted!==undefined&&typeof p.tutorialCompleted!=='boolean')bad();
     if(p.tutorialRewardClaimed!==undefined&&typeof p.tutorialRewardClaimed!=='boolean')bad();
+    for(const [field,done] of [['tutorialCompletedAt',p.tutorialCompleted],['tutorialRewardClaimedAt',p.tutorialRewardClaimed??p.tutorialCompleted]]){
+      if(p[field]!=null&&(!done||!validMissionTimestamp(p[field])))bad();
+    }
     if([p.starBestMs,p.dodgeBestMs].some(value=>value!==undefined&&value!==null&&(!Number.isSafeInteger(value)||value<1)))bad();
     const tasks=validateTasks(p.tasks);
     if(tasks.some(task=>!room.temple.assignments.some(assignment=>assignment.id===task.assignmentId)))bad();
@@ -130,6 +134,7 @@ export function fromRecord(r) {
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
     room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
+      tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));

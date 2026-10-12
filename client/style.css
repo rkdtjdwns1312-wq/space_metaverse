@@ -235,6 +235,9 @@ body.joined:not(.placing) .map-caption{display:none}
 #tutorial-mission{padding:14px;border:1px solid #ded0ef;border-radius:14px;background:#faf7ff}#tutorial-mission h3{margin:0 0 6px}#tutorial-mission p{margin:0 0 8px}#tutorial-mission ol{margin:8px 0 12px;padding-left:24px;line-height:1.7}#tutorial-mission li{padding-left:2px}
 .tutorial-mission-actions{display:flex;gap:8px;flex-wrap:wrap}.tutorial-mission-actions>button{min-height:44px}
 .mission-list{display:grid;gap:10px;max-height:45vh;overflow-y:auto}.mission-card{padding:13px;border:1px solid #d9c9ec;border-radius:14px;background:#fbf8ff;overflow-wrap:anywhere}.mission-card h4{margin:0 0 6px;font-size:18px;color:#5e4884}.mission-card p{margin:5px 0;line-height:1.5}.mission-card .mission-reward{font-weight:800;color:#95632e}.mission-card .mission-status{color:#6d6082}.mission-card>button{margin-top:8px;min-height:42px}.mission-students{display:grid;gap:7px;margin-top:10px}.mission-students>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.mission-students button{min-height:34px}
+#mission-categories,.mission-title-list{display:grid;gap:12px}#mission-categories[hidden],.mission-title-list[hidden]{display:none}
+.mission-title-list{max-height:50vh;overflow-y:auto}.mission-title-row{display:block;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mission-detail-fields dt{font-weight:800;margin-top:18px}.mission-detail-fields dd{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}#student-missions-title{overflow-wrap:anywhere}
 #mission-board-dialog{width:min(570px,calc(100vw - 24px))}#mission-create,#mission-auto-create{display:grid;gap:7px;margin:12px 0 20px;padding:14px;border:1px solid #d9c9ec;border-radius:14px;background:#faf7ff}#mission-create[hidden],#mission-auto-create[hidden]{display:none}#mission-create label,#mission-auto-create label{font-weight:700}#mission-create input,#mission-create textarea,#mission-create select,#mission-auto-create input,#mission-auto-create select{width:100%;font-size:16px;padding:9px;border:2px solid #cfbce9;border-radius:10px;background:white;color:#473967}#mission-create-button,#mission-auto-create-button{margin-top:7px;min-height:44px}#mission-board-list{max-height:40vh}#mission-board-error{color:#a33e5b}
 #assignment-dialog{width:min(620px,calc(100vw - 24px));box-sizing:border-box}
 .assignment-weeks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.assignment-weeks button.selected{background:#fff3c5;color:#62498d;border-color:#b99ce8}
@@ -610,3 +613,7 @@ body:has(.lobby:not([hidden])) #world{width:100%;height:100%;max-height:none;min
   .map-wrap:has(.lobby:not([hidden])) #owner-entry{left:52%;right:auto;top:15%;width:28%;height:14%}
   .map-wrap .lobby-credit{right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:8px 11px;font-size:13px}
 }
+
+#menu-dialog #tutorial-open,#menu-dialog #my-password{box-sizing:border-box;width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;text-align:center;margin:0 0 12px;padding:12px 18px}#menu-dialog #tutorial-open[hidden],#menu-dialog #my-password[hidden]{display:none}
+.party-hud-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:7px}#party-hud .party-hud-header h3{margin:0;white-space:nowrap}.party-hud-actions{display:flex;gap:4px}.party-hud-actions button.small{min-height:30px;padding:5px 7px;font-size:12px;line-height:1.3;white-space:nowrap}
+@media(max-width:520px){#party-hud{width:min(240px,calc(100vw - 26px))}}

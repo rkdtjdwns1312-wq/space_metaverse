@@ -341,7 +341,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
       const player=session.player;
       if(player.tutorialCompleted){if(advanceMissions(session.room,player,'tutorial-complete'))roster(session.room);return {completed:true};}
-      player.tutorialCompleted=true;advanceMissions(session.room,player,'tutorial-complete');roster(session.room);
+      player.tutorialCompleted=true;player.tutorialCompletedAt=clock();advanceMissions(session.room,player,'tutorial-complete');roster(session.room);
       return {completed:true};
     });
     const missionBoardAccess=()=>{
@@ -385,10 +385,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         ensure(!mission.claimedIds.includes(player.id),'이미 받은 미션 보상이에요.');}
       const reward=tutorial?1:session.room.missions.find(m=>m.id===data.missionId).rewardShards;
       ensure(player.starShards<=SHARDS.max-reward,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 받아 주세요.');
-      if(tutorial)player.tutorialRewardClaimed=true;else claimMission(session.room,player,data.missionId);
+      const claimedAt=clock();
+      if(tutorial){player.tutorialRewardClaimed=true;player.tutorialRewardClaimedAt=claimedAt;}else claimMission(session.room,player,data.missionId,claimedAt);
       player.starShards+=reward;
-      recordReward(session.room,player.id,reward,clock());roster(session.room);
-      return {missionId:data.missionId,rewardShards:reward,starShards:player.starShards};
+      recordReward(session.room,player.id,reward,claimedAt);roster(session.room);
+      return {missionId:data.missionId,rewardShards:reward,starShards:player.starShards,claimedAt};
     });
     const englishStationAccess=()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');

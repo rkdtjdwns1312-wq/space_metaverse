@@ -8,9 +8,14 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
   const inviteButton=document.createElement('button');inviteButton.id='friend-party';inviteButton.className='secondary';
   inviteButton.type='button';inviteButton.textContent='파티 초대';
   document.getElementById('friend-summon').after(inviteButton);
-  const leaveButton=document.createElement('button');leaveButton.id='party-leave';leaveButton.className='secondary';
-  leaveButton.type='button';leaveButton.textContent='파티 나가기';
-  document.getElementById('social-dialog').querySelector('.dialog-actions').prepend(leaveButton);
+  const header=document.createElement('div');header.className='party-hud-header';
+  const heading=document.createElement('h3'),headerActions=document.createElement('div');headerActions.className='party-hud-actions';
+  const friendsButton=document.createElement('button');friendsButton.id='party-friends';friendsButton.className='small secondary';
+  friendsButton.type='button';friendsButton.textContent='초대하기';friendsButton.onclick=()=>document.getElementById('crew-button').click();
+  const leaveButton=document.createElement('button');leaveButton.id='party-leave';leaveButton.className='small secondary';
+  leaveButton.type='button';leaveButton.textContent='탈퇴하기';
+  headerActions.append(friendsButton,leaveButton);header.append(heading,headerActions);
+  const content=document.createElement('div');hud.append(header,content);
   const invitation=document.createElement('dialog');invitation.id='party-invitation';
   const title=document.createElement('h2');title.textContent='파티 초대';
   const message=document.createElement('p');
@@ -31,7 +36,7 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
     if(result&&document.getElementById('friend-dialog').open)document.getElementById('friend-dialog').close();
     inviteButton.disabled=false;
   };
-  leaveButton.onclick=()=>act('party:leave',{},'파티에서 나왔어요.');
+  leaveButton.onclick=async()=>{stop();leaveButton.disabled=true;try{await act('party:leave',{},'파티에서 나왔어요.');}finally{leaveButton.disabled=false;}};
   async function respond(agree){
     if(!inviteId)return;
     accept.disabled=reject.disabled=true;
@@ -63,7 +68,7 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
     if(pending){inviteId=pending.id;message.textContent=safeText(pending.fromNickname)+' 친구가 파티로 초대했어요. 함께할까요?';if(!invitation.open){stop();invitation.showModal();}}
     else{inviteId=null;if(invitation.open)invitation.close();}
     hud.hidden=!party;if(!party)return;
-    const heading=document.createElement('h3');heading.textContent='✦ 우리 파티 · '+party.memberIds.length+'/4';
+    heading.textContent='우리 파티 '+party.memberIds.length+'/4';
     const list=document.createElement('ul');
     for(const id of party.memberIds){
       const player=room.players.find(p=>p.id===id);if(!player)continue;
@@ -81,7 +86,7 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
       }
       row.append(first,second);list.append(row);
     }
-    hud.replaceChildren(heading,list);
+    content.replaceChildren(list);
     const roll=room.lootRolls?.find(r=>r.tiedIds?.includes(getSelfId())||r.rolls?.some(v=>v.playerId===getSelfId()));
     if(roll){
       const status=document.createElement('p');status.className='party-roll-message';
@@ -90,10 +95,10 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
         (roll.awarded===false?'당첨된 친구의 가방이 가득 차 아이템이 바닥에 남았어요.':
           roll.winnerId===getSelfId()?'내가 아이템을 받았어요!':(room.players.find(p=>p.id===roll.winnerId)?.nickname||'친구')+' 친구가 아이템을 받았어요.'):
         '최고 눈이 같아요. 다시 굴려요!');
-      hud.append(status);
+      content.append(status);
       if(roll.tiedIds?.includes(getSelfId())){
         const button=document.createElement('button');button.type='button';button.className='small secondary';
-        button.textContent='다시 굴리기 R';button.onclick=()=>reroll(roll.dropId);hud.append(button);
+        button.textContent='다시 굴리기 R';button.onclick=()=>reroll(roll.dropId);content.append(button);
       }
     }
   }

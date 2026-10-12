@@ -406,7 +406,7 @@ export function createWorld(canvas) {
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
     ctx.fillStyle='#7f719a29';ctx.beginPath();ctx.ellipse(x,y+19,19,6,0,0,Math.PI*2);ctx.fill();
-    if(!dash&&p.id===selfId&&(p.role==='teacher'||p.avatar?.level<2)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
+    if(!dash&&p.id===selfId&&p.role==='teacher'&&(p.avatar?.level>=2||!p.avatar?.teacherPreview)&&constellation?.assetLevel!==2){ctx.strokeStyle='#8061b0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+18,23,8,0,0,Math.PI*2);ctx.stroke();}
     ctx.translate(x,y);
     if(libra){ctx.save();ctx.translate(0,-size*.28);drawLibraAura(ctx,libra,time-libra.startsAt,reducedMotion.matches);ctx.restore();}
     if(corona)drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);

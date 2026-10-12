@@ -53,6 +53,7 @@ test('지속형 11종 LV2~5·초월: 지속만 +1초, 쿨다운/마나/주기/�
     assert.deepEqual(lines.slice(2),oldLines.slice(2));
     const seconds=equipped[id==='aquarius'?'holdMs':id==='ophiuchus'?'poisonMs':'durationMs']/1000;
     if(id==='aquarius')assert.equal(lines[1],`특수효과: 범위 안 아군 체력 5초간 ${equipped.effectAmount*100}% 회복(최대 ${equipped.healingAmount}, 1초마다 적용)`);
+    else if(id==='ophiuchus')assert.equal(lines[1],`특수효과: 중독 ${equipped.stage-1}단계 상태 부여 · 초당 공격력 ${equipped.effectAmount*100}% 피해`);
     else assert.ok(lines[1].includes(`${seconds}초`),`${id} ${lines[1]}`);
   }
 });

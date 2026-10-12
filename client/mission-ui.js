@@ -1,11 +1,23 @@
 // 별 미션 게시판: 선생님이 조건을 확인한 뒤 학생이 직접 보상을 받습니다.
-export function createMissionUI({request,stop,toast,getRoom,getSelfId}){
+export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial}){
   const $=id=>document.getElementById(id);
   const dialog=document.createElement('dialog');dialog.id='mission-board-dialog';
   dialog.innerHTML='<h2>별 미션 게시판</h2><p id="mission-board-intro" class="muted">미션을 받고 조건을 달성해 보세요. 자동미션은 게임 안에서 달성되며, 일반 미션은 선생님이 확인해요.</p><section id="mission-create" hidden><h3>새 미션 만들기</h3><label for="mission-title">미션 이름</label><input id="mission-title" maxlength="40" placeholder="예: 오늘의 별빛 약속"><label for="mission-description">완료 조건</label><textarea id="mission-description" maxlength="240" rows="3" placeholder="어떤 일을 하면 완료되는지 적어 주세요."></textarea><label for="mission-reward">보상 · 별 파편</label><input id="mission-reward" type="number" min="1" max="10" value="1"><label for="mission-distribution">나누는 방법</label><select id="mission-distribution"><option value="all">교실 친구 모두에게 나누기</option><option value="board">친구들이 게시판에서 직접 받기</option></select><button id="mission-create-button" class="primary" type="button">미션 만들기</button></section><section id="mission-auto-create" hidden><h3>자동미션 만들기</h3><label for="mission-auto-title">미션 이름</label><input id="mission-auto-title" maxlength="40" placeholder="예: 별빛 여행자"><label for="mission-auto-objective">게임 안의 완료 조건</label><select id="mission-auto-objective"><option value="map-travel">다른 맵으로 이동하기</option><option value="energy-collect">우주에너지 줍기</option><option value="stars-win">반짝별 찾기 성공하기</option><option value="memory-win">별그림 짝맞추기 성공하기</option><option value="english-success">별 영어 발전소 성공하기</option></select><p id="mission-auto-guide" class="muted">맵의 문을 지나 다른 맵으로 이동할 때 1회로 셉니다.</p><label for="mission-auto-goal">목표 횟수</label><input id="mission-auto-goal" type="number" min="1" max="10" value="1"><label for="mission-auto-reward">보상 · 별 파편</label><input id="mission-auto-reward" type="number" min="1" max="10" value="1"><label for="mission-auto-distribution">나누는 방법</label><select id="mission-auto-distribution"><option value="all">교실 친구 모두에게 나누기</option><option value="board">친구들이 게시판에서 직접 받기</option></select><button id="mission-auto-create-button" class="primary" type="button">자동미션 만들기</button></section><h3 id="mission-board-list-title">받을 수 있는 미션</h3><div id="mission-board-list" class="mission-list"></div><p id="mission-board-error" role="alert"></p><div class="dialog-actions"><button id="mission-board-close" class="secondary" type="button">닫기</button></div>';
   document.body.append(dialog);
   $('mission-auto-guide').insertAdjacentHTML('afterend','<div id="mission-auto-grade-row" hidden><label for="mission-auto-grade">수학 단계</label><select id="mission-auto-grade"><option value="1">기초 1학년</option><option value="2">기초 2학년</option><option value="3">중급 3학년</option><option value="4">중급 4학년</option><option value="5">고급 5학년</option><option value="6">고급 6학년</option></select></div><div id="mission-auto-item-level-row" hidden><label for="mission-auto-item-level">완성 아이템 레벨</label><select id="mission-auto-item-level"><option value="2">LV2</option><option value="3">LV3</option><option value="4">LV4</option><option value="5">LV5</option></select></div>');
-  const mine=$('my-missions'),mineEmpty=$('my-missions-empty');
+  const mineDialog=$('student-missions-dialog'),mine=$('my-missions'),mineEmpty=$('my-missions-empty');
+  let category=null,selectedId=null,lastView='';
+  const pending=new Set();
+  const dateFormat=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  function openMine(){
+    if(getRoom()?.players.find(p=>p.id===getSelfId())?.role!=='student')return;
+    stop();category=null;selectedId=null;lastView='';
+    if(!mineDialog.open)mineDialog.showModal();update();
+  }
+  for(const [id,value] of [['missions-completed','claimed'],['missions-active','active']])$(id).onclick=()=>{category=value;selectedId=null;update();};
+  $('missions-back').onclick=()=>{if(selectedId)selectedId=null;else category=null;update();};
+  $('missions-close').onclick=()=>mineDialog.close();
+  mineDialog.addEventListener('close',()=>{$('world').focus();});
   function card(mission){
     const node=document.createElement('section');node.className='mission-card';
     const title=document.createElement('h4');title.textContent=mission.title;
@@ -14,18 +26,51 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId}){
     node.append(title,condition,reward);return node;
   }
   function update(){
+    if(!mineDialog.open)return;
     const me=getRoom()?.players.find(p=>p.id===getSelfId());
-    const missions=me?.role==='student'?(getRoom()?.missions||[]):[];
-    $('class-missions').hidden=me?.role!=='student';
-    mine.replaceChildren();mineEmpty.hidden=missions.length>0;
-    for(const mission of missions){
-      const node=card(mission),status=document.createElement('p'),button=document.createElement('button');
-      status.className='mission-status';
-      status.textContent=mission.status==='claimed'?'보상 받음':mission.status==='ready'?'조건 달성 · 보상을 받으세요.':mission.objective?`진행 중 · ${mission.progress} / ${mission.goal}회`:'진행 중 · 선생님 확인을 기다려요.';
-      button.type='button';button.className='primary';button.textContent=mission.status==='claimed'?'보상 받음':'완료';
-      button.disabled=mission.status!=='ready';
-      button.onclick=async()=>{button.disabled=true;try{const result=await request('mission:claim',{missionId:mission.id});toast(`미션 완료! 별 파편 ${result.rewardShards}개를 받았어요.`);}catch(error){toast(error.message);button.disabled=false;}};
-      node.append(status,button);mine.append(node);
+    if(me?.role!=='student'){mineDialog.close();return;}
+    const missions=getRoom()?.missions||[],selected=missions.find(m=>m.id===selectedId);
+    if(selectedId&&!selected)selectedId=null;
+    if(selected)category=selected.status==='claimed'?'claimed':'active';
+    const signature=JSON.stringify([missions,category,selectedId,[...pending]]);
+    if(signature===lastView)return;lastView=signature;
+    const completed=category==='claimed';
+    $('student-missions-title').textContent=selected?selected.title:category?(completed?'완료한 미션보기':'진행중인 미션보기'):'미션 확인하기';
+    $('mission-categories').hidden=category!==null;
+    $('missions-back').hidden=category===null;
+    $('missions-back').textContent=selected?'목록으로':'이전';
+    mine.hidden=category===null||!!selected;mine.replaceChildren();
+    const detail=$('mission-detail');detail.hidden=!selected;detail.replaceChildren();
+    mineEmpty.hidden=true;
+    if(selected){
+      const fields=document.createElement('dl');fields.className='mission-detail-fields';
+      const field=(label,value)=>{const term=document.createElement('dt'),text=document.createElement('dd');term.textContent=label;text.textContent=value;fields.append(term,text);};
+      field(completed?'완료내용':'달성조건',selected.description);
+      if(completed)field('완료한날짜',Number.isSafeInteger(selected.claimedAt)?dateFormat.format(new Date(selected.claimedAt)):'기록 없음');
+      field('보상',`별 파편 ${selected.rewardShards}개`);detail.append(fields);
+      if(!completed){
+        const status=document.createElement('p');status.className='muted';
+        status.textContent=selected.status==='ready'?'조건 달성 · 완료를 눌러 보상을 받으세요.':selected.objective?`진행 중 · ${selected.progress} / ${selected.goal}회`:selected.kind==='tutorial'?'안내 5단계를 마치면 조건이 달성돼요.':'선생님의 달성 확인을 기다려요.';detail.append(status);
+        if(selected.kind==='tutorial'&&selected.status==='active'){
+          const start=document.createElement('button');start.type='button';start.className='secondary';start.textContent='첫 여행 안내 시작하기';start.onclick=()=>{mineDialog.close();onTutorial();};detail.append(start);
+        }
+        if(selected.status==='ready'){
+          const button=document.createElement('button');button.id='mission-claim';button.type='button';button.className='primary';button.textContent='완료';button.disabled=pending.has(selected.id);
+          button.onclick=async()=>{
+            if(pending.has(selected.id))return;pending.add(selected.id);update();
+            try{const result=await request('mission:claim',{missionId:selected.id});toast(`미션 완료! 별 파편 ${result.rewardShards}개를 받았어요.`);}
+            catch(error){toast(error.message);}
+            finally{pending.delete(selected.id);update();}
+          };detail.append(button);
+        }
+      }
+    }else if(category){
+      const visible=missions.filter(m=>completed?m.status==='claimed':['active','ready'].includes(m.status));
+      mineEmpty.hidden=visible.length>0;mineEmpty.textContent=completed?'아직 완료한 미션이 없어요.':'진행 중인 미션이 없어요.';
+      for(const mission of visible){
+        const button=document.createElement('button');button.type='button';button.className='secondary mission-title-row';button.textContent=mission.title;button.title=mission.title;button.dataset.missionId=mission.id;
+        button.onclick=()=>{selectedId=mission.id;update();};mine.append(button);
+      }
     }
   }
   async function refreshBoard(){
@@ -50,7 +95,7 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId}){
         if(mission.students.length)node.append(students);
       }else{
         const button=document.createElement('button');button.type='button';button.className='primary';button.textContent='미션 받기';
-        button.onclick=async()=>{button.disabled=true;try{await request('mission:accept',{missionId:mission.id});await refreshBoard();toast('미션을 받았어요. 소통 → 미션 보기에서 확인할 수 있어요.');}catch(error){toast(error.message);button.disabled=false;}};
+        button.onclick=async()=>{button.disabled=true;try{await request('mission:accept',{missionId:mission.id});await refreshBoard();toast('미션을 받았어요. 소통 → 미션 확인하기 → 진행중인 미션보기에서 확인할 수 있어요.');}catch(error){toast(error.message);button.disabled=false;}};
         node.append(button);
       }
       list.append(node);
@@ -106,5 +151,5 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId}){
     if(mode==='manual')$('mission-create').hidden=false;
     if(mode==='auto')$('mission-auto-create').hidden=false;
     dialog.showModal();}catch(error){toast(error.message);}}
-  return {update,openBoard,openCreate:openBoard};
+  return {update,openMine,openBoard,openCreate:openBoard};
 }

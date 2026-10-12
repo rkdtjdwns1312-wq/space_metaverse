@@ -15,6 +15,8 @@
     3,
     4
   ],
-  "runtime": "continuous Canvas clipping at display refresh rate; no fish scale animation",
-  "source": "../portal-fish.png"
+  "runtime": "continuous portal clipping with fixed-size fish and independent 48-frame swimming cycles",
+  "source": "../portal-fish.png",
+  "swimAtlas": "../swim/swim-48f.png",
+  "buildScript": "scripts/build-pisces-portal-export.mjs"
 }

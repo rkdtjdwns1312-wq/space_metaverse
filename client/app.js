@@ -117,7 +117,7 @@ const characterSkills=createCharacterSkillsUI();
 const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
-const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat,onMissionCreate:mode=>missionUI.openCreate(mode)});
+const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat,onMissionCreate:mode=>missionUI.openCreate(mode),onMissionOpen:()=>missionUI.openMine()});
 const partyUI=createPartyUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 $('avatar-card').append($('experience-panel'));
 document.querySelector('.top-right').append($('connection'));
@@ -154,7 +154,7 @@ const growthUI=createGrowthUI({request,stop,toast,isJoined:()=>!!selfId});
 const mailboxUI=createMailboxUI({request,stop,toast});
 const warningUI=createWarningUI({request,stop,toast,getSelfId:()=>selfId});
 const assignmentUI=createAssignmentUI({request,stop,toast});
-const missionUI=createMissionUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
+const missionUI=createMissionUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,onTutorial:()=>tutorial.open()});
 socket.on('department:changed',event=>departmentWork.changed(event));
 const departmentButton=document.createElement('button');departmentButton.id='planet-work';departmentButton.className='small primary';departmentButton.textContent='부서실적 · 분배하기 · 분배결과';
 $('planet-rename').after(departmentButton);
@@ -441,7 +441,7 @@ function updateRoom(value){
     :(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 F로 광장':'행성 가까이에서 F · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
   renderBag(me?.inventory);
   renderMyTasks(me?.tasks||[]);
-  renderTutorialMission(me);
+
   missionUI.update();
   $('dock-tasks').hidden=isTeacher;
   renderSelfEffects(me);
@@ -495,22 +495,6 @@ function renderMyTasks(tasks){
     li.append(text,status);list.append(li);
   }
 }
-$('tutorial-mission-steps').replaceChildren(...tutorial.steps.map(title=>{const li=document.createElement('li');li.textContent=title;return li;}));
-function renderTutorialMission(me){
-  $('tutorial-mission').hidden=me?.role!=='student';
-  if(me?.role!=='student')return;
-  const completed=!!me.tutorialCompleted,claimed=!!me.tutorialRewardClaimed;
-  $('tutorial-mission-status').textContent=claimed?'보상을 받았어요.':completed?'조건 달성! 완료를 눌러 보상을 받아요.':'안내 5단계를 마치면 보상을 받을 수 있어요.';
-  $('tutorial-mission-open').textContent=completed?'첫 여행 안내 다시 보기':'첫 여행 안내 시작하기';
-  $('tutorial-mission-claim').disabled=!completed||claimed;
-  $('tutorial-mission-claim').textContent=claimed?'보상 받음':'완료';
-}
-$('tutorial-mission-open').onclick=()=>{$('tasks-dialog').close();tutorial.open();};
-$('tutorial-mission-claim').onclick=async()=>{
-  const button=$('tutorial-mission-claim');button.disabled=true;
-  try{await request('mission:claim',{missionId:'first-journey'});toast('첫 여행 미션 완료! 별 파편 1개를 받았어요.');}
-  catch(error){toast(error.message);renderTutorialMission(room?.players.find(p=>p.id===selfId));}
-};
 $('tasks-close').onclick=()=>$('tasks-dialog').close();
 $('tasks-dialog').addEventListener('close',()=>$('world').focus());
 // 레트로 인벤토리 격자: BAG.columns×BAG.rows칸(한 종류당 한 칸). 채워진 칸만 li.slot(검증 스크립트가 세는 '가진 물건 수'), 빈 칸은 div.slot.empty입니다.
