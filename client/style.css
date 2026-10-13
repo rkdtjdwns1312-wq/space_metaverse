@@ -54,10 +54,37 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 .constellation-ability[hidden]{display:none}
 .constellation-ability img{width:64px;height:74px;object-fit:cover;border-radius:9px;flex-shrink:0}
 .constellation-ability p{margin:4px 0 8px;font-size:.85rem;line-height:1.35}
-.ability-dice{display:grid;justify-items:center;gap:12px;margin:16px auto 8px;perspective:500px;min-height:125px}
-.ability-cube{position:relative;width:74px;height:74px;transform-style:preserve-3d;transition:transform 1.15s cubic-bezier(.16,.8,.22,1)}
-.die-face{position:absolute;inset:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:2px;padding:7px;border:2px solid #c5b9e8;border-radius:14px;background:#f9f5ff;color:#e2a638;box-shadow:inset 0 0 12px #d6c8fc,0 4px 10px #211b4970;font-size:16px;line-height:17px;backface-visibility:hidden}
-.die-face span{display:inline-block;width:17px;text-align:center}
+.constellation-ability-actions{display:grid;grid-template-columns:1.35fr 1fr;gap:8px}
+#avatar-dialog .constellation-ability-actions button{font-size:15px;padding:10px 6px;min-width:0;line-height:1.4;border:1px solid #d8cef6}
+#self-ability-status{font-size:13px;line-height:1.5;margin:8px 0 0}
+.constellation-ability-actions button:disabled{cursor:default}
+#ability-dialog{width:min(460px,calc(100vw - 24px));background:linear-gradient(145deg,#fffefa,#f6f0ff);border:2px solid #c9b7e3}
+#ability-description{white-space:pre-line;line-height:1.8;color:#4a3d68;font-size:17px}
+#ability-status{white-space:pre-line;font-size:14px;line-height:1.7}
+#ability-outcome:not(:empty){padding:15px;border-radius:14px;background:#eee5ff;color:#5c3c85;text-align:center;font-weight:700}
+.ability-dice{position:relative;isolation:isolate;display:grid;justify-items:center;gap:26px;margin:20px auto 8px;padding:28px 8px 14px;perspective:600px;min-height:190px;border-radius:24px;background:radial-gradient(ellipse at 50% 38%,#d9ecff,#eee6fa 50%,#fffbf3 90%);overflow:visible}
+.die-halo{position:absolute;top:10px;width:152px;height:130px;border:1px solid #cfa85688;border-radius:50%;transform:rotateX(65deg);background:radial-gradient(ellipse,#ffe39d55,transparent 70%);box-shadow:0 0 20px #dec48244;pointer-events:none}
+.die-halo::before,.die-halo::after{content:'✧';position:absolute;font-size:22px;color:#b78b36;top:30px;left:-7px;text-shadow:0 0 7px #fff}
+.die-halo::after{left:auto;right:-7px;top:70px}
+.ability-cube{position:relative;width:74px;height:74px;transform-style:preserve-3d}
+.die-face{position:absolute;inset:0;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:2px;padding:9px;border:2px solid #aa82bd;border-radius:13px;background:linear-gradient(135deg,#fffdf3 0%,#efe3fc 48%,#baa5de 100%);color:#785196;box-shadow:inset 0 0 0 2px #fff3d5,inset 0 0 13px #ffffffcc,0 5px 10px #43316638;backface-visibility:hidden}
+.die-face::after{content:'';position:absolute;inset:5px;border:1px solid #d1a24d88;border-radius:7px;pointer-events:none}
+.die-face .die-pip{display:grid;place-items:center;line-height:1;font-size:18px;color:#72439b;text-shadow:0 1px 0 #fff0bc,0 -1px 1px #46276566}
+#ability-dice-result{margin:0;text-align:center;font-size:17px;font-weight:700;color:#543d75;line-height:1.6;min-height:54px}
+#ability-item-choices h3{font-size:16px;color:#5d4795}
+.ability-item-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:330px;overflow:auto;padding:4px}
+.ability-item-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:14px;padding:10px;min-width:0;border:1px solid #d8cef6}
+.ability-item-choice img{width:70px;height:70px;object-fit:contain}
+.ability-item-choice small{font-size:12px;color:#655579}
+#ability-item-choices>.muted{font-size:13px;line-height:1.6}
+#ability-unused-reminder{position:absolute;z-index:2;width:28px;height:28px;min-height:28px;padding:0;border:2px solid #fff4ca;border-radius:50%;background:#8c5baf;color:#fff9db;font-size:21px;line-height:24px;box-shadow:0 2px 5px #3a245b44;cursor:pointer}
+body:not(.joined) #ability-unused-reminder,body.placing #ability-unused-reminder{display:none}
+#ability-reminder-message{position:fixed;z-index:120;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 20px);padding:18px 12px;white-space:pre;border:2px solid #b6a0d5;border-radius:20px;background:#fffcf8f7;color:#503b76;text-align:center;line-height:1.8;font-size:clamp(10px,3.5vw,17px);box-shadow:0 6px 30px #40306440;pointer-events:none}
+#student-missions-dialog{top:20px;bottom:auto;margin:0 auto;max-height:max(120px,calc(var(--vitals-top,calc(100dvh - 180px)) - 36px));overflow-y:auto}
+#warning-ability-result{padding:12px 14px;background:#f0e8fc;color:#59407e;border:1px solid #ccb7e5;border-radius:12px;white-space:pre-line;line-height:1.6;font-weight:700}
+.ability-dice.rolling .die-halo{animation:die-glimmer .45s ease-in-out infinite alternate}
+@keyframes die-glimmer{to{opacity:.6;box-shadow:0 0 30px #f6d46c99}}
+@media(prefers-reduced-motion:reduce){.ability-dice.rolling .die-halo{animation:none}}
 .die-face[data-face="1"]{transform:translateZ(37px)}.die-face[data-face="2"]{transform:rotateY(90deg) translateZ(37px)}.die-face[data-face="3"]{transform:rotateX(-90deg) translateZ(37px)}
 .die-face[data-face="4"]{transform:rotateX(90deg) translateZ(37px)}.die-face[data-face="5"]{transform:rotateY(-90deg) translateZ(37px)}.die-face[data-face="6"]{transform:rotateY(180deg) translateZ(37px)}
 #avatar-portrait{display:block;width:100%;height:auto;aspect-ratio:240/150;max-height:none;min-height:0;max-width:240px;object-fit:contain;outline:none;border-radius:8px}

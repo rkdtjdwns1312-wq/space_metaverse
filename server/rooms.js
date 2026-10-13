@@ -11,6 +11,7 @@ import {serenaView} from './boss-lifecycle.js';
 import {serenaEligible,serenaEligibility} from './serena-progress.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
+import {freshConstellationAbilityState,constellationAbilityStatus} from './constellation-weekly-abilities.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
@@ -121,7 +122,7 @@ export class RoomStore {
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], equipmentSlots:[null,null,null], starShards:0, cosmicEnergy:0, connected:true, socketId,
       connectedAt:Date.now(),expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,tutorialCompletedAt:null,tutorialRewardClaimedAt:null,starBestMs:null,dodgeBestMs:null };
+      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),constellationAbilityState:freshConstellationAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,tutorialCompletedAt:null,tutorialRewardClaimedAt:null,starBestMs:null,dodgeBestMs:null };
     room.players.set(p.id,p);
     if(role==='student')for(const mission of room.missions||[])if(mission.repeat!=='daily'&&mission.distribution==='all'&&!missionExpired(mission,this.clock()))mission.acceptedIds.push(p.id);
     this.sessions.set(token,{room,player:p});
@@ -168,7 +169,7 @@ export class RoomStore {
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
-          out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
+          out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility=constellationAbilityStatus(p,now);}
         return out;
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),

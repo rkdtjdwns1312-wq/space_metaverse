@@ -9,10 +9,10 @@ import {STREET} from '../../shared/config.js';
 export const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
 export const ok=result=>{assert.equal(result.ok,true,result.error);return result;};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-export async function readingFixture(t){
+export async function readingFixture(t,options={}){
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'reading-rewards-')),sockets=[],key='reading-rewards-test';
  let game,url,teacher,student,other,code,id,otherId,token,closed=true,now=Date.parse('2026-10-13T14:59:59Z');
- async function start(){game=createClassroomServer({teacherKey:key,dataDir:directory,teacherManagedAccounts:false,studentHours:false,clock:()=>now});url=`http://127.0.0.1:${(await game.listen()).port}`;closed=false;}
+ async function start(){game=createClassroomServer({teacherKey:key,dataDir:directory,teacherManagedAccounts:false,studentHours:false,...options,clock:()=>now});url=`http://127.0.0.1:${(await game.listen()).port}`;closed=false;}
  async function connect(){const socket=io(url,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(socket);await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;}
  async function join(){student=await connect();const r=ok(await call(student,'room:join',{code,nickname:'하나',pin:'1234'}));id=r.selfId;token=r.token;other=await connect();otherId=ok(await call(other,'room:join',{code,nickname:'둘',pin:'1234'})).selfId;}
  t.after(async()=>{sockets.forEach(s=>s.disconnect());if(!closed)await game.close();assert(path.resolve(directory).startsWith(path.resolve(os.tmpdir())+path.sep)&&path.basename(directory).startsWith('reading-rewards-'));fs.rmSync(directory,{recursive:true,force:true});});

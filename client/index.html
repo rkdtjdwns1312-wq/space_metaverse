@@ -129,6 +129,7 @@
         <p id="self-proposal" class="muted" hidden></p>
       </div>
       <section id="self-skill-panel" class="card-skills" aria-labelledby="self-skill-title"><h3 id="self-skill-title">별자리 스킬</h3><div id="self-skill-slots" role="list" aria-label="준비 중인 별자리 스킬 4칸"><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 1"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 2"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 3"></div><div class="skill-placeholder" role="listitem" aria-label="빈 스킬 칸 4"></div></div></section>
+      <section id="self-ability-panel" class="card-skills" aria-labelledby="self-ability-title" hidden><h3 id="self-ability-title">별자리 능력</h3><div class="constellation-ability-actions"><button id="self-ability-effect" class="secondary" type="button">별자리 능력효과</button><button id="self-ability-use" class="secondary" type="button" disabled>능력 사용</button></div><p id="self-ability-status" class="muted" aria-live="polite"></p></section>
       <section class="card-status" aria-labelledby="self-status-title"><h3 id="self-status-title">상태</h3><ul id="self-statuses" class="status-grid" aria-label="현재 내 상태" aria-live="polite"></ul><p id="self-status-empty" class="muted">지금은 특별한 상태가 없어요.</p></section>
       <div class="card-effects"><h3>효과</h3><ul id="self-effects" aria-label="지금 내 효과"><li class="muted">지금은 특별한 효과가 없어요.</li></ul></div>
       <p class="card-foot" id="card-foot"></p>
@@ -136,11 +137,8 @@
     </section><div class="dialog-actions"><button class="secondary" type="button" data-close="avatar-dialog">닫기</button></div></dialog>
     <dialog id="equipment-dialog" aria-labelledby="equipment-title"><h2 id="equipment-title">장착한 장비</h2><img id="equipment-picture" alt="" width="110" height="110"><p id="equipment-description"></p><div class="dialog-actions"><button id="equipment-remove" class="primary" type="button">장착해제</button><button id="equipment-close" class="secondary" type="button">닫기</button></div></dialog>
     <dialog id="ability-dialog" aria-labelledby="ability-title"><h2 id="ability-title">별자리 능력</h2><p id="ability-description"></p><p id="ability-status" class="muted"></p>
-      <div id="ability-target-row" hidden><label for="ability-target">함께할 친구</label><select id="ability-target"></select></div>
-      <div id="ability-planet-row" hidden><label for="ability-planet">경고를 지울 부서</label><select id="ability-planet"></select></div>
-      <div id="ability-item-row" hidden><label for="ability-item">만들 아이템</label><select id="ability-item"></select><button id="ability-choose-item" type="button" class="primary">아이템 만들기</button></div>
-      <div id="ability-dice" class="ability-dice" hidden aria-live="polite"><div id="ability-cube" class="ability-cube"></div><p id="ability-dice-result"></p></div>
-      <div class="dialog-actions"><button id="ability-use" type="button" class="primary">이번 주 능력 사용하기</button><button id="ability-close" type="button" class="secondary">닫기</button></div></dialog>
+      <div id="ability-dice" class="ability-dice" hidden><div class="die-halo" aria-hidden="true"></div><div id="ability-cube" class="ability-cube" role="img" aria-label="별 주사위"></div><p id="ability-dice-result" role="status"></p></div><p id="ability-outcome" role="status"></p>
+      <div class="dialog-actions"><button id="ability-close" type="button" class="secondary">닫기</button></div></dialog>
     <dialog id="inventory-dialog" aria-labelledby="inventory-title"><section class="panel actions"><h2 id="inventory-title">가방</h2>
       <div id="bag-panel" role="tabpanel">
         <ul id="bag-list" class="bag-grid" aria-label="내 가방" role="grid"></ul>

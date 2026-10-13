@@ -4,12 +4,13 @@ import {createServer} from 'node:http';
 import {Server} from 'socket.io';
 import {io as connect} from 'socket.io-client';
 import {createDuelArcade,registerDuelArcade} from '../server/duel-arcade.js';
+import {duelMachine} from '../shared/duel-arcade.js';
 
 test('real mini-server socket actions: private invites, race, room isolation, 3-3 and reconnect',async t=>{
   let now=1000;
   const http=createServer(),io=new Server(http),rooms=new Map();
   for(const code of ['one','two'])rooms.set(code,{code,players:new Map(['a','b','c','t'].map(id=>[id,{id,nickname:id,
-    role:id==='t'?'teacher':'student',connected:false,mapId:'star-street',x:420,y:1890}]))});
+    role:id==='t'?'teacher':'student',connected:false,mapId:'star-street',x:duelMachine('duel-memory').x,y:duelMachine('duel-memory').y}]))});
   const emissions=[],clients=[];
   const duel=createDuelArcade({getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,
     emitPrivate:(code,id,event,payload)=>{
@@ -54,7 +55,7 @@ test('real mini-server socket actions: private invites, race, room isolation, 3-
   now+=29999;duel.onTick();assert.equal(latest('a').game.paused,true);
   const b2=await client('b');duel.onTick();g=(await open(b2)).state.game;assert.equal(g.paused,false);assert.equal(g.cards.filter(card=>card.value!==null).length,1);
   assert.equal((await ask(b2,'resign',{sessionId:g.id,revision:g.revision})).ok,true);
-  for(const p of rooms.get('one').players.values())p.x=1380;
+  for(const p of rooms.get('one').players.values()){p.x=duelMachine('duel-omok').x;p.y=duelMachine('duel-omok').y;}
   const invitation2=await ask(a,'invite',{objectId:'duel-omok',targetId:'b'});assert(invitation2.ok);
   assert((await ask(b2,'respond',{inviteId:invitation2.state.game.id,accept:true})).ok);
   async function move(socket,index){const game=latest('a').game;return ask(socket,'move',{sessionId:game.id,revision:game.revision,index});}

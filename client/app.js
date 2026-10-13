@@ -21,6 +21,7 @@ import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
 import {createCharacterSkillsUI} from './character-skills-ui.js';
+import {createConstellationAbilityUI} from './constellation-ability-ui.js';
 import {createStatusUI} from './status-ui.js';
 import {createStatusDockUI} from './status-dock.js';
 import {createVitalsUI} from './vitals-ui.js';
@@ -118,6 +119,7 @@ const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
 const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
 const characterSkills=createCharacterSkillsUI();
+const constellationAbility=createConstellationAbilityUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),stop,toast});
 const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
@@ -199,70 +201,6 @@ const saveToken=(token,role)=>{
 const accounts=createAccountsUI({getRoom:()=>room,getSelfId:()=>selfId,request,toast,saveToken});
 // 예전 버전에서 브라우저에 남겨 둔 공용 키를 지웁니다. 접속 코드는 브라우저에 저장하지 않습니다.
 try{sessionStorage.removeItem('space-teacher-key');}catch{}
-const cube=$('ability-cube');
-for(let face=1;face<=6;face++){
-  const side=document.createElement('div');side.className='die-face';side.dataset.face=String(face);
-  for(let star=0;star<face;star++){const dot=document.createElement('span');dot.textContent='★';side.append(dot);}
-  cube.append(side);
-}
-const faceRotation={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateX(90deg)',4:'rotateX(-90deg)',5:'rotateY(90deg)',6:'rotateY(180deg)'};
-let dieTurn=0;
-function showStarDie(roll,rolls=[roll]){
-  $('ability-dice').hidden=false;$('ability-dice-result').textContent='별 주사위가 굴러가요…';
-  dieTurn+=2;cube.style.transition='none';cube.style.transform='rotateX(0deg) rotateY(0deg)';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    cube.style.transition='transform 1.15s cubic-bezier(.16,.8,.22,1)';
-    cube.style.transform=`rotateX(${dieTurn*360}deg) rotateY(${dieTurn*360}deg) ${faceRotation[roll]}`;
-  }));
-  setTimeout(()=>$('ability-dice-result').textContent='결과: '+rolls.join(' · ')+' ★',1200);
-}
-async function refreshAbilityStatus(){
-  const me=room?.players.find(player=>player.id===selfId),level=me?.avatar?.level||1,constellation=constellationOf(me?.avatar?.constellationId,level);
-  if(!constellation?.ability)return;
-  const status=await request('ability:status',{}),ability=constellation.ability;
-  $('ability-title').textContent='Lv'+level+' '+constellation.name+' 능력';
-  $('ability-description').textContent=(status.description||ability.description+(ability.note?' '+ability.note:''))+(ability.mode==='manual'?' · 선생님 확인 후 적용하는 능력이에요.':'');
-  $('ability-status').textContent='생활 능력 · 이번 주 '+(status.usedCount??(status.used?1:0))+'/'+(status.weeklyLimit||1)+'회 사용 · 남은 '+(status.remaining??(status.used?0:1))+'회';
-  if(status.activeSupernova)$('ability-status').textContent+=' · 최근 획득한 초신성 '+(status.activeSupernova==='supernova-alpha-card'?'α 활성 (확정 수치 2배)':'β 활성 (주 2회)');
-  if(status.used)$('ability-status').textContent+=' · 다음 월요일에 갱신돼요.';
-  if(status.awaitingCompletion)$('ability-status').textContent+=' · 진행 중인 효과를 완료한 뒤 다음 회차를 사용할 수 있어요.';
-  if(status.pending?.mode==='shop-copy')$('ability-status').textContent+=' 다음 '+(status.pending.maxPrice?'별 '+status.pending.maxPrice+'개 이하':'Lv2 이하')+' 아이템을 살 때 '+(status.pending.quantity||1)+'개가 더 생겨요.';
-  if(status.pending?.mode==='dice-item')$('ability-status').textContent+=' 주사위 '+status.pending.roll+' · Lv'+status.pending.maxLevel+' 이하 아이템 '+(status.pending.quantity||1)+'개를 골라주세요.';
-  if(status.pending?.mode==='value-item')$('ability-status').textContent+=' 남은 가치 '+status.pending.budget+'별 · Lv'+status.pending.maxLevel+' 이하 · 최대 '+status.pending.picks+'종';
-  const retry=status.pending?.mode==='dice-retry'&&constellation.id==='libra';
-  $('ability-use').dataset.event=retry?'ability:retry':'ability:use';
-  $('ability-use').textContent=retry?'별 2개로 다시 던지기':ability.mode==='manual'?'이번 주 능력 확인 요청':'이번 주 능력 사용하기';
-  $('ability-use').disabled=!(status.canUse??!status.used)&&!retry;
-  const requiresTarget=['ban-two-days','sleep'].includes(ability.mode)||ability.target||
-    (me.avatar.level===2&&['cetus','cancer','pisces'].includes(constellation.id));
-  $('ability-target-row').hidden=!requiresTarget;
-  $('ability-target').replaceChildren(...(room?.players||[]).filter(player=>player.role==='student'&&player.connected&&player.id!==selfId)
-    .filter(player=>player.avatar.level<=(ability.targetMaxLevel||(me.avatar.level===2&&constellation.id==='cetus'?2:6)))
-    .map(player=>new Option(player.nickname,player.id)));
-  $('ability-planet-row').hidden=ability.mode!=='warning-one';
-  $('ability-planet').replaceChildren(...status.planets.map(planet=>new Option(planet.name+' · 경고 '+planet.count+'회',planet.id)));
-  $('ability-item-row').hidden=!['dice-item','value-item'].includes(status.pending?.mode);
-  $('ability-item').replaceChildren(...SHOP.items.filter(item=>Number.isSafeInteger(item.price)&&item.price>=0&&item.level<=status.pending?.maxLevel&&
-    (status.pending?.mode!=='value-item'||item.price<=status.pending.budget&&!status.pending.selected.includes(item.id)))
-    .map(item=>new Option('Lv'+item.level+' '+item.name+' · '+item.price+'별',item.id)));
-  $('ability-choose-item').disabled=!$('ability-item').options.length;
-}
-$('ability-close').onclick=()=>$('ability-dialog').close();
-$('ability-use').onclick=async()=>{
-  const button=$('ability-use');button.disabled=true;
-  try{
-    const result=await request(button.dataset.event||'ability:use',{targetId:$('ability-target-row').hidden?null:$('ability-target').value,
-      planetId:$('ability-planet-row').hidden?null:$('ability-planet').value});
-    if(result.roll)showStarDie(result.roll,result.rolls||[result.roll]);
-    toast(result.note||'별자리 능력을 사용했어요.');
-    await refreshAbilityStatus();
-  }catch(error){toast(error.message);button.disabled=false;}
-};
-$('ability-choose-item').onclick=async()=>{
-  const button=$('ability-choose-item');button.disabled=true;
-  try{const result=await request('ability:choose-item',{itemId:$('ability-item').value});toast(result.itemName+' '+(result.quantity||1)+'개를 만들었어요.');await refreshAbilityStatus();}
-  catch(error){toast(error.message);}finally{button.disabled=false;}
-};
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
 function showLobbyChoice(focusChoice=true){
   $('lobby').dataset.step='choose';$('lobby-choice').hidden=false;$('lobby-details').hidden=true;
@@ -475,7 +413,7 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
-  marketUI.update();auxiliarySkills.update();characterSkills.update(me);
+  marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
@@ -1248,7 +1186,7 @@ function reset(message){
   bossDialogueUI.reset();
   recipeBook.reset();
   holdings.reset();
-  characterSkills.reset();
+  characterSkills.reset();constellationAbility.reset();
   craftingUI.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();

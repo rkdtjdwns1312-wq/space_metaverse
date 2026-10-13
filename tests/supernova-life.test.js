@@ -41,7 +41,7 @@ async function fixture(t,{persistent=false}={}) {
   const f={get game(){return game;},get room(){return game.store.rooms.get(code);},get p(){return f.room.players.get(a.selfId);},get other(){return f.room.players.get(b.selfId);},
     get teacher(){return teacher;},get student(){return student;},get friend(){return friend;},get now(){return now;},dir,
     mutate(fn){return persistent?game.store.transact(()=>fn(f.p,f.other)):fn(f.p,f.other);},
-    as(id='aquarius',level=3){f.mutate(p=>{Object.assign(p.avatar,{constellationId:id,level,form:'constellation',xp:0});p.abilityState=freshAbilityState();});},
+    as(id='aquarius',level=3){f.mutate(p=>{Object.assign(p.avatar,{constellationId:id,level,form:'constellation',xp:0});p.abilityState=freshAbilityState();delete p.constellationAbilityState;});},
     rolls(...values){dice=values;},setNow(value){now=value;},
     async give(id,playerId=a.selfId){return ok(await call(teacher,'teacher:inventory:give',{playerId,itemIds:[id]}));},
     async remove(id){return ok(await call(teacher,'teacher:inventory:remove',{playerId:a.selfId,itemId:id}));},
@@ -90,98 +90,63 @@ test('each supernova consumes one card for one star card, with bag/stack/level r
   f.mutate(p=>{p.avatar.level=2;});assert.equal((await call(f.student,'item:use',{itemId:ALPHA})).ok,false);
 });
 
-test('α grants real Aquarius rewards at Lv2/3/4, rejects cap atomically, ignores spoofed multiplier and teacher use',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);assert.equal((await f.status()).multiplier,1);await f.activate();
-  for(const [level,reward] of [[2,2],[3,4],[4,8]]){f.as('aquarius',level);f.mutate(p=>{p.starShards=0;});
-    const status=await f.status();assert.equal(status.multiplier,2);assert.match(status.description,new RegExp('별 파편 '+reward+'개 지급'));
-    const result=ok(await call(f.student,'ability:use',{multiplier:99,reward:999}));assert.equal(result.reward,reward);assert.equal(f.p.starShards,reward);
-    assert.equal((await call(f.student,'ability:use')).ok,false);}
-  f.as('aquarius',4);f.mutate(p=>{p.starShards=SHARDS.max-7;});const before=structuredClone(f.p.abilityState);
-  assert.equal((await call(f.student,'ability:use')).ok,false);assert.deepEqual(f.p.abilityState,before);assert.equal(f.p.starShards,SHARDS.max-7);
-  assert.equal((await call(f.teacher,'ability:use')).ok,false);
+test('α keeps item benefits but cannot multiply new Aquarius rewards or override the cap',async t=>{
+ const f=await fixture(t);await f.give(ALPHA);await f.activate();
+ for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){f.as('aquarius',level);f.mutate(p=>p.starShards=0);const r=ok(await call(f.student,'ability:use',{multiplier:99,reward:999}));assert.equal(r.reward,reward);assert.equal(f.p.starShards,reward);assert.equal((await call(f.student,'ability:use')).ok,false);}
+ f.as('aquarius',4);f.mutate(p=>p.starShards=SHARDS.max-3);assert.equal((await call(f.student,'ability:use')).ok,false);assert.equal(f.p.constellationAbilityState,undefined);assert.equal((await call(f.teacher,'ability:use')).ok,false);
 });
 
-test('β permits exactly two uses, never refunds on holding transitions or constellation changes, Monday resets',async t=>{
-  const f=await fixture(t);await f.give(BETA);await f.activate();ok(await call(f.student,'ability:use'));assert.equal((await f.status()).remaining,1);
-  await f.give(ALPHA);assert.equal((await f.status()).remaining,0);assert.equal((await call(f.student,'ability:use')).ok,false);
-  await f.give(BETA);assert.equal((await f.status()).remaining,1);
-  const results=await Promise.all([call(f.student,'ability:use'),call(f.student,'ability:use')]);assert.equal(results.filter(r=>r.ok).length,1);
-  assert.equal(f.p.abilityState.usedCount,2);
-  await f.remove(BETA);assert.equal((await f.status()).remaining,0);await f.give(BETA);assert.equal((await f.status()).remaining,0);
-  f.mutate(p=>{p.avatar.constellationId='capricorn';p.avatar.level=4;});assert.equal((await call(f.student,'ability:use')).ok,false);
-  f.setNow(Date.parse('2026-09-27T14:59:59Z'));assert.equal((await f.status()).remaining,0);
-  f.setNow(Date.parse('2026-09-27T15:00:00Z'));assert.equal((await f.status()).remaining,1);await f.activate();assert.equal((await f.status()).remaining,2);
+test('β no longer adds weekly constellation uses; holding changes do not refund and Sunday resets',async t=>{
+ const f=await fixture(t);await f.give(BETA);await f.activate();ok(await call(f.student,'ability:use'));
+ for(const id of [ALPHA,BETA]){await f.give(id);assert.equal((await f.status()).canUse,false);assert.equal((await call(f.student,'ability:use')).ok,false);}
+ f.mutate(p=>Object.assign(p.avatar,{constellationId:'capricorn',level:4}));assert.equal((await call(f.student,'ability:use')).ok,false);
+ f.setNow(Date.parse('2026-09-26T14:59:59Z'));assert.equal((await f.status()).canUse,false);f.setNow(Date.parse('2026-09-26T15:00:00Z'));f.rolls(1);
+ const r=await Promise.all([call(f.student,'ability:use'),call(f.student,'constellation-ability:use')]);assert.equal(r.filter(v=>v.ok).length,1);
 });
 
-test('β does not overwrite a pending craft and unlocks second use only after completion',async t=>{
-  const f=await fixture(t);f.as('corvus',3);await f.give(BETA);await f.activate();f.rolls(6,5);
-  ok(await call(f.student,'ability:use'));const pending=structuredClone(f.p.abilityState.pending);
-  assert.equal((await f.status()).canUse,false);assert.equal((await call(f.student,'ability:use')).ok,false);assert.deepEqual(f.p.abilityState.pending,pending);
-  assert.equal((await call(f.student,'ability:choose-item',{itemId:ALPHA})).ok,false);assert.deepEqual(f.p.abilityState.pending,pending);
-  ok(await call(f.student,'ability:choose-item',{itemId:'space-food-card'}));assert.equal((await f.status()).canUse,true);
-  ok(await call(f.student,'ability:use'));assert.equal(f.p.abilityState.pending.roll,5);assert.equal(f.p.abilityState.usedCount,2);
+test('saved legacy craft completes once; current Corvus use has an independent fixed Sunday budget',async t=>{
+ const f=await fixture(t);f.as('corvus',3);f.mutate(p=>p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'value-item',week:weekStart(NOW),budget:6,maxLevel:2,picks:1,roll:6,selected:[]}});
+ const before=structuredClone(f.p.abilityState.pending);assert.equal((await call(f.student,'ability:choose-item',{itemId:ALPHA})).ok,false);assert.deepEqual(f.p.abilityState.pending,before);
+ ok(await call(f.student,'ability:choose-item',{itemId:'space-food-card'}));assert.equal(f.p.abilityState.pending,null);assert.equal((await call(f.student,'ability:choose-item',{itemId:'space-food-card'})).ok,false);
 });
 
-test('α craft budgets double, Lv/die limits stay; pending quantity and budget survive later changes',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);await f.activate();f.as('corvus',3);f.rolls(6);
-  ok(await call(f.student,'ability:use'));assert.equal(f.p.abilityState.pending.budget,12);assert.equal(f.p.abilityState.pending.maxLevel,2);
-  await f.give(BETA);ok(await call(f.student,'ability:choose-item',{itemId:'moon-card'}));assert.equal(f.p.abilityState.pending,null);
-  // A Lv2 craft doubles units, not the die-derived level threshold.
-  await f.give(ALPHA);f.as('corvus',2);f.rolls(4);ok(await call(f.student,'ability:use'));
-  assert.equal(f.p.abilityState.pending.maxLevel,2);assert.equal(f.p.abilityState.pending.quantity,2);
-  f.mutate(p=>p.inventory.push({id:'galaxy-card',quantity:1}));const pending=structuredClone(f.p.abilityState.pending);
-  assert.equal((await call(f.student,'ability:choose-item',{itemId:'galaxy-card'})).ok,false);assert.deepEqual(f.p.abilityState.pending,pending);
-  const result=ok(await call(f.student,'ability:choose-item',{itemId:'space-food-card'}));assert.equal(result.quantity,2);
-  f.as('corvus',4);f.rolls(6);ok(await call(f.student,'ability:use'));assert.equal(f.p.abilityState.pending.budget,24);assert.equal(f.p.abilityState.pending.picks,2);
-  assert.deepEqual(validateAbilityState(f.p.abilityState),f.p.abilityState);
-  assert.equal((await call(f.student,'ability:choose-item',{itemId:'alien-creature-card'})).ok,false);
+test('saved α craft quantity/budget remain fixed after inventory and level changes',async t=>{
+ const f=await fixture(t);f.as('corvus',2);f.mutate(p=>p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'dice-item',week:weekStart(NOW),maxLevel:2,roll:4,quantity:2,multiplier:2}});
+ await f.give(BETA);f.mutate(p=>p.inventory.push({id:'galaxy-card',quantity:1}));assert.equal((await call(f.student,'ability:choose-item',{itemId:'galaxy-card'})).ok,false);const r=ok(await call(f.student,'ability:choose-item',{itemId:'space-food-card'}));assert.equal(r.quantity,2);
+ f.as('corvus',4);f.mutate(p=>p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'value-item',week:weekStart(NOW),budget:24,maxLevel:5,picks:2,roll:6,selected:[],multiplier:2}});
+ assert.deepEqual(validateAbilityState(f.p.abilityState),f.p.abilityState);assert.equal((await call(f.student,'ability:choose-item',{itemId:'alien-creature-card'})).ok,false);
 });
 
 test('α shop copy adds two without spending pending/discount/balance on stack or bag rejection',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);await f.activate();f.as('gemini',3);ok(await call(f.student,'ability:use'));f.atShop();
+  const f=await fixture(t);await f.give(ALPHA);await f.activate();f.as('gemini',3);f.mutate(p=>p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'shop-copy',week:weekStart(NOW),maxPrice:4,quantity:2,multiplier:2}});f.atShop();
   f.mutate(p=>p.inventory.push({id:'meteor-fragment-card',quantity:97}));
   const before=structuredClone({bag:f.p.inventory,state:f.p.abilityState,shards:f.p.starShards,lv3:f.p.lv3State});
   assert.equal((await call(f.student,'shop:buy',{itemId:'meteor-fragment-card',quantity:1})).ok,false);
   assert.deepEqual({bag:f.p.inventory,state:f.p.abilityState,shards:f.p.starShards,lv3:f.p.lv3State},before);
   await f.give(BETA);const result=ok(await call(f.student,'shop:buy',{itemId:'space-food-card',quantity:1}));
   assert.equal(result.copiedQuantity,2);assert.equal(f.p.inventory.find(e=>e.id==='space-food-card').quantity,3);assert.equal(f.p.abilityState.pending,null);
-  assert.equal((await f.status()).remaining,1);
+  assert.equal(f.p.abilityState.pending,null);
 });
 
-test('α dice rewards/penalties and retry payout scale while dice conditions and retry cost stay',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);await f.activate();
-  for(const [id,level,roll,reward] of [['capricorn',3,5,8],['capricorn',4,6,20],['taurus',3,2,-4],['taurus',4,3,18]]){
-    f.as(id,level);f.mutate(p=>{p.starShards=100;});f.rolls(roll);const r=ok(await call(f.student,'ability:use'));assert.equal(r.roll,roll);assert.equal(r.reward,reward);assert.equal(f.p.starShards,100+reward);}
-  f.as('libra',3);f.mutate(p=>{p.starShards=20;});f.rolls(3,3,1,6);ok(await call(f.student,'ability:use'));
-  await f.give(BETA);const retried=ok(await call(f.student,'ability:retry'));assert.equal(retried.reward,10);assert.equal(f.p.starShards,28);
-  assert.equal((await f.status()).remaining,1);assert.equal((await call(f.student,'ability:retry')).ok,false);
+test('α cannot scale new Capricorn/Taurus dice; saved Libra retry retains its recorded multiplier',async t=>{
+ const f=await fixture(t);await f.give(ALPHA);await f.activate();
+ for(const [id,level,roll,reward] of [['capricorn',3,5,4],['capricorn',4,6,6],['taurus',3,2,-2],['taurus',4,3,9]]){f.as(id,level);f.mutate(p=>p.starShards=100);f.rolls(roll);const r=ok(await call(f.student,'ability:use'));assert.equal(r.reward,reward);assert.equal(f.p.starShards,100+reward);}
+ f.as('libra',3);f.mutate(p=>{p.starShards=20;p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'dice-retry',week:weekStart(NOW),multiplier:2}};});f.rolls(1,6);await f.give(BETA);
+ assert.equal(ok(await call(f.student,'ability:retry')).reward,10);assert.equal(f.p.starShards,28);assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
 });
 
-test('α warning deletion and delayed release reward scale; cap defers release reward without duplicate settlement',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);await f.activate();f.as('sagittarius',2);
-  const planet={id:'supernova-warning-test',name:'검증 부서',rules:[],warnings:{threshold:9,entries:[1,2,3].map(n=>({id:'warning-'+n,targetId:f.p.id,active:true}))}};
-  f.room.planets.set(planet.id,planet);
-  ok(await call(f.student,'ability:use',{planetId:planet.id}));assert.equal(planet.warnings.entries.filter(e=>e.active).length,1);
-  f.as('ophiuchus',2);ok(await call(f.student,'ability:use',{targetId:f.other.id}));const block=f.other.abilityState.blocks.at(-1);
-  assert.equal(block.reward,2);assert.equal(block.until,NOW+2*86400000);
-  f.other.starShards=SHARDS.max-1;assert.equal(settleItemBlocks(f.other,block.until),false);
-  f.other.starShards=SHARDS.max-2;assert.equal(settleItemBlocks(f.other,block.until),true);assert.equal(f.other.starShards,SHARDS.max);
-  assert.equal(settleItemBlocks(f.other,block.until),false);
+test('retired warning abilities cannot start; saved delayed rewards retain cap and exactly-once settlement',async t=>{
+ const f=await fixture(t);await f.give(ALPHA);await f.activate();
+ for(const id of ['sagittarius','ophiuchus']){f.as(id,2);assert.equal((await call(f.student,'ability:use',{targetId:f.other.id})).ok,false);}
+ f.other.abilityState.blocks=[{id:'saved-block',sourceId:'ophiuchus',until:NOW+86400000,fromId:f.p.id,fromNickname:f.p.nickname,reward:2}];const until=NOW+86400000;
+ f.other.starShards=SHARDS.max-1;assert.equal(settleItemBlocks(f.other,until),false);f.other.starShards=SHARDS.max-2;assert.equal(settleItemBlocks(f.other,until),true);assert.equal(f.other.starShards,SHARDS.max);assert.equal(settleItemBlocks(f.other,until),false);
 });
 
-test('manual α preserves original conditions; teacher XP uses 0/2/4 saved at activation; β waits for completion',async t=>{
-  const f=await fixture(t);await f.give(ALPHA);await f.activate();f.as('libra',2);ok(await call(f.student,'ability:use'));const marker=f.p.abilityState.markers[0];
-  assert(marker.sourceDescription.includes(abilityForLevel('libra',2).description));assert.match(marker.sourceDescription,/초신성 α/);
-  await f.give(BETA);const pillar=f.atPillar();const board=ok(await call(f.teacher,'temple:read',{objectId:pillar.id}));
-  assert.equal(board.rows.find(r=>r.abilityMarkerId===marker.id).abilityMultiplier,2);
-  const input={objectId:pillar.id,targetId:f.p.id,abilityMarkerId:marker.id};
-  assert.equal((await call(f.student,'ability:complete',{...input,xpAmount:4})).ok,false);
-  assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:1})).ok,false);
-  assert.equal((await call(f.student,'ability:use')).ok,false);
-  ok(await call(f.teacher,'ability:complete',{...input,xpAmount:4,multiplier:99}));assert.equal(f.p.avatar.xp,4);
-  assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:4})).ok,false);
-  assert.equal((await f.status()).remaining,1);ok(await call(f.student,'ability:use'));assert.equal(f.p.abilityState.usedCount,2);
-  const raw=abilityForLevel('ophiuchus',4);assert(lifeAbilityDescription(raw,2).includes(raw.description));assert(lifeAbilityDescription(raw,2).includes(raw.note));
+test('saved manual α XP confirmation preserves multiplier while new manual activation is blocked',async t=>{
+ const f=await fixture(t);f.as('libra',2);const marker={id:'saved-xp',constellationId:'libra',level:2,at:NOW,note:'기존 경험치 확인',targetName:'',week:weekStart(NOW),multiplier:2,sourceDescription:lifeAbilityDescription(abilityForLevel('libra',2),2)};
+ f.mutate(p=>p.abilityState.markers.push(marker));const pillar=f.atPillar(),input={objectId:pillar.id,targetId:f.p.id,abilityMarkerId:marker.id};
+ assert.equal((await call(f.student,'ability:complete',{...input,xpAmount:4})).ok,false);assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:1})).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
+ ok(await call(f.teacher,'ability:complete',{...input,xpAmount:4,multiplier:99}));assert.equal(f.p.avatar.xp,4);assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:4})).ok,false);
 });
 
 test('latest-only discount is one per week across switching, reacquisition and duplicate stacks',async t=>{
@@ -195,8 +160,8 @@ test('latest-only discount is one per week across switching, reacquisition and d
 test('teacher grants, trade and crafting update acquisition order; order and weekly activation persist across restart',async t=>{
   const f=await fixture(t,{persistent:true});f.atShop();
   await f.give(ALPHA);await f.give(BETA);
-  assert.equal(activeSupernova(f.p),BETA);await f.activate();ok(await call(f.student,'ability:use'));assert.equal((await f.status()).remaining,1);
-  await f.give(ALPHA);assert.equal(activeSupernova(f.p),ALPHA);assert.equal((await f.status()).remaining,0);
+  assert.equal(activeSupernova(f.p),BETA);await f.activate();ok(await call(f.student,'ability:use'));assert.equal((await f.status()).used,true);
+  await f.give(ALPHA);assert.equal(activeSupernova(f.p),ALPHA);assert.equal((await f.status()).canUse,false);
   await f.give(BETA);assert.equal(activeSupernova(f.p),BETA);
   await f.give(ALPHA,f.other.id);
   f.mutate((p,q)=>{for(const x of [p,q])Object.assign(x,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});});
@@ -208,8 +173,8 @@ test('teacher grants, trade and crafting update acquisition order; order and wee
   f.mutate(p=>Object.assign(p,{mapId:STREET_ID,x:station.x,y:station.y}));
   const crafted=ok(await call(f.student,'crafting:combine',{ingredients:[{id:'moon-card',quantity:1}]}));assert(crafted.success);assert.equal(activeSupernova(f.p),BETA);
   const order=[...f.p.lv3State.supernovaOrder];await f.restart();
-  assert.deepEqual(f.p.lv3State.supernovaOrder,order);assert.equal(activeSupernova(f.p),BETA);assert.equal((await f.status()).remaining,1);
-  ok(await call(f.student,'ability:use'));await f.restart();assert.equal((await f.status()).usedCount,2);assert.equal((await f.status()).remaining,0);
+  assert.deepEqual(f.p.lv3State.supernovaOrder,order);assert.equal(activeSupernova(f.p),BETA);assert.equal((await f.status()).used,true);
+  assert.equal((await call(f.student,'ability:use')).ok,false);await f.restart();assert.equal((await f.status()).used,true);assert.equal((await f.status()).canUse,false);
 });
 
 test('disk failures roll back α reward, consumption, pending state and acquisition tracking together',async t=>{
@@ -219,5 +184,5 @@ test('disk failures roll back α reward, consumption, pending state and acquisit
     assert.equal((await call(f.teacher,'teacher:inventory:give',{playerId:f.p.id,itemIds:[BETA]})).ok,false);
   }finally{f.game.store.files.save=save;}
   assert.deepEqual({inventory:f.p.inventory,lv3:f.p.lv3State,ability:f.p.abilityState,shards:f.p.starShards},before);
-  ok(await call(f.student,'ability:use'));assert.equal(f.p.starShards,before.shards+4);
+  ok(await call(f.student,'ability:use'));assert.equal(f.p.starShards,before.shards+2);
 });

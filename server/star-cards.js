@@ -3,6 +3,7 @@ import {ITEM_USE, MAP, SHOP, SHARDS, PROGRESSION} from '../shared/config.js';
 import {CONSTELLATIONS} from '../shared/constellations.js';
 import {STAR_CARD_AUTOMATION, discountedPurchase} from '../shared/star-card-automation.js';
 import {gainExperience} from './progression.js';
+import {markConstellationChange} from './constellation-weekly-abilities.js';
 import {STAR_CARD_CATALOG, GOLD_CARD_ITEMS, STAR_CARD_LAYOUT, STAR_CARD_ART, MAX_STAR_CARDS, starCardOf, goldItemIdOf} from '../shared/star-cards.js';
 import {displayStarCard} from './star-card-text.js';
 import {ensure} from './rooms.js';
@@ -308,6 +309,7 @@ export function chooseStarCard(room, player, {id, choice, constellationId} = {},
     ensure(actor.avatar.constellationId !== selected.id, '지금과 다른 별자리를 골라주세요.');
     actor.avatar = {...actor.avatar, constellationId: selected.id,
       form: actor.avatar.level >= PROGRESSION.transcendentLevel ? 'transcendent' : 'constellation'};
+    markConstellationChange(actor,now);
     record.data.automation.constellationId = selected.id;
   } else {
     ensure(constellationId === undefined, '경험치 받기는 별자리 변경과 함께 선택할 수 없어요.');

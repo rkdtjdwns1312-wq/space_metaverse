@@ -4,6 +4,7 @@ export function createWarningUI({request,stop,toast,getSelfId}){
   let planetId=null,canIssue=false,pendingWarning=null,issuing=false;
   const dialog=$('warning-dialog'),teacherDialog=$('black-star-dialog');
   const confirmation=$('warning-confirm-dialog');
+  const abilityResult=document.createElement('p');abilityResult.id='warning-ability-result';abilityResult.setAttribute('role','status');abilityResult.hidden=true;$('warning-error').before(abilityResult);
   const releaseConfirmation=$('black-star-confirm-dialog');
   const deleteConfirmation=$('teacher-warning-delete-dialog');
   let releaseTarget=null,releasing=false,deleteTarget=null,deleting=false,teacherMode=null,historyNextOffset=null,historyLoading=false;
@@ -29,7 +30,7 @@ export function createWarningUI({request,stop,toast,getSelfId}){
     if(!data.entries.length){const li=document.createElement('li');li.textContent='아직 경고 기록이 없어요.';$('warning-entries').append(li);}
   };
   async function open(id,allowed){
-    planetId=id;canIssue=allowed;$('warning-error').textContent='';
+    planetId=id;canIssue=allowed;$('warning-error').textContent='';abilityResult.hidden=true;abilityResult.textContent='';
     try{const data=await request('warning:get',{planetId:id});render(data);stop();dialog.showModal();}
     catch(error){toast(error.message);}
   }
@@ -58,11 +59,12 @@ export function createWarningUI({request,stop,toast,getSelfId}){
     if(!pendingWarning||issuing)return;
     const warning=pendingWarning;pendingWarning=null;issuing=true;
     $('warning-confirm-yes').disabled=true;$('warning-issue').disabled=true;
-    $('warning-error').textContent='';confirmation.close();
+    $('warning-error').textContent='';abilityResult.hidden=true;abilityResult.textContent='';confirmation.close();
     try{
       const data=await request('warning:issue',warning);
-      if(planetId===warning.planetId&&dialog.open){render(data);$('warning-reason').value='';}
-      toast(data.blackStar?'경고 기준에 도달해 검은별이 되었어요.':'경고가 추가되었어요.');
+      if(planetId===warning.planetId&&dialog.open){render(data);$('warning-reason').value='';
+        abilityResult.textContent=[data.ability?.message,data.blackAbility?.message].filter(Boolean).join('\n');abilityResult.hidden=!abilityResult.textContent;}
+      toast(data.ability?.negated?data.ability.message:data.blackStar?'경고 기준에 도달해 검은별이 되었어요.':'경고가 추가되었어요.');
     }catch(error){if(planetId===warning.planetId)$('warning-error').textContent=error.message;}
     finally{issuing=false;$('warning-issue').disabled=!canIssue||!$('warning-target').options.length;}
   };

@@ -5,6 +5,7 @@ import {createClassroomServer} from '../server/app.js';
 import {MAP,STREET,STREET_ID} from '../shared/config.js';
 import {CONSTELLATIONS} from '../shared/constellations.js';
 import {weekStart} from '../server/temple.js';
+import {addItemBlock} from '../server/constellation-abilities.js';
 
 const key='constellation-ability-test-private-key';
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
@@ -31,43 +32,37 @@ test('16종 PPT 별자리 모두 그림·작은 아바타·능력 설명과 사�
   }
 });
 
-test('별자리 능력은 한 주 한 번이며 한국 시간 다음 월요일에만 다시 열린다',async t=>{
+test('별자리 능력은 한 주 한 번이며 한국 시간 다음 일요일에만 다시 열린다',async t=>{
   const {first,student,setNow}=await fixture(t);student.avatar.constellationId='aquarius';
   const used=await call(first,'ability:use');assert.ok(used.ok,used.error);assert.equal(used.reward,1);assert.equal(student.starShards,1);
-  assert.match((await call(first,'ability:use')).error,/다음 월요일/);
-  setNow(Date.parse('2026-09-20T14:59:59Z'));assert.equal((await call(first,'ability:status')).used,true);
-  setNow(Date.parse('2026-09-20T15:00:00Z'));assert.equal(weekStart(Date.parse('2026-09-20T15:00:00Z')),'2026-09-21');
+  assert.match((await call(first,'ability:use')).error,/다음 일요일/);
+  setNow(Date.parse('2026-09-19T14:59:59Z'));assert.equal((await call(first,'ability:status')).used,true);
+  setNow(Date.parse('2026-09-19T15:00:00Z'));assert.equal(used.nextResetAt,Date.parse('2026-09-19T15:00:00Z'));
   assert.equal((await call(first,'ability:status')).used,false);
   assert.ok((await call(first,'ability:use')).ok);assert.equal(student.starShards,2);
 });
 
-test('까마귀자리 별 주사위는 1~6이고 만들 수 있는 아이템 레벨을 서버가 검증한다',async t=>{
-  const {first,student}=await fixture(t);student.avatar.constellationId='corvus';
-  const result=await call(first,'ability:use');assert.ok(result.ok,result.error);assert.ok(result.roll>=1&&result.roll<=6);
-  if(result.roll===1){assert.equal(result.pending,null);return;}
-  const level=Math.floor(result.roll/2);assert.equal(result.pending.maxLevel,level);
-  assert.equal((await call(first,'ability:choose-item',{itemId:'starlight-cape'})).ok,level>=3);
-  if(level>=3)return;
-  const created=await call(first,'ability:choose-item',{itemId:'space-food-card'});assert.ok(created.ok,created.error);
-  assert.equal(student.inventory.find(item=>item.id==='space-food-card')?.quantity,1);
-  assert.equal((await call(first,'ability:choose-item',{itemId:'space-food-card'})).ok,false);
+test('까마귀 구 endpoint도 새 가치 예산과 공통 주간 사용으로 연결된다',async t=>{
+ const {first,student}=await fixture(t);student.avatar.constellationId='corvus';
+ const r=await call(first,'ability:use');assert.ok(r.ok,r.error);assert.ok(r.roll>=1&&r.roll<=6);assert.equal(r.lastResult.budget,Math.floor(r.roll/2));
+ assert.equal((await call(first,'constellation-ability:use')).ok,false);
+ if(!r.pending)return;
+ const item=r.choices.find(i=>i.available);assert(item);assert.equal((await call(first,'ability:choose-item',{itemId:'star-card'})).ok,false);
+ assert.ok((await call(first,'ability:choose-item',{itemId:item.id})).ok);assert.equal(student.inventory.find(i=>i.id===item.id).quantity,1);
+ assert.equal((await call(first,'ability:choose-item',{itemId:item.id})).ok,false);
 });
 
-test('쌍둥이자리 복사는 Lv2 이하 상점 구매 한 번에만 1개가 추가된다',async t=>{
-  const {first,student}=await fixture(t);student.avatar.constellationId='gemini';student.starShards=30;
-  assert.ok((await call(first,'ability:use')).ok);
-  const shop=STREET.objects.find(object=>object.kind==='shop');student.mapId=STREET_ID;student.x=shop.x;student.y=shop.y;
-  const copied=await call(first,'shop:buy',{itemId:'meteor-fragment-card',quantity:1});assert.ok(copied.ok,copied.error);assert.equal(copied.copiedItem,'운석 파편');
-  assert.equal(student.inventory.find(item=>item.id==='meteor-fragment-card').quantity,2);
-  const next=await call(first,'shop:buy',{itemId:'space-food-card',quantity:1});assert.ok(next.ok,next.error);
-  assert.equal(next.copiedItem,null);
-  assert.equal(student.inventory.find(item=>item.id==='space-food-card').quantity,1);
+test('쌍둥이 구 endpoint는 상점 자동복사 대신 보유 아이템 하나를 선택한다',async t=>{
+ const {first,student}=await fixture(t);student.avatar.constellationId='gemini';student.inventory=[{id:'little-sun-card',quantity:1}];
+ const r=await call(first,'ability:use');assert.ok(r.ok,r.error);assert.equal(r.pending.mode,'copy');assert.equal(student.abilityState.pending,null);
+ assert.ok((await call(first,'ability:choose-item',{itemId:'little-sun-card'})).ok);assert.equal(student.inventory[0].quantity,2);
 });
 
-test('뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 시 보상 1개를 준다',async t=>{
+test('이미 저장된 뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 시 보상 1개를 준다',async t=>{
   const {first,second,student,friend,setNow}=await fixture(t);student.avatar.constellationId='ophiuchus';friend.inventory=[{id:'star-sticker',quantity:1}];
   const start=Date.parse('2026-09-18T04:00:00Z');
-  assert.ok((await call(first,'ability:use',{targetId:friend.id})).ok);
+  assert.equal((await call(first,'ability:use',{targetId:friend.id})).ok,false);
+  addItemBlock(friend,'ophiuchus',student,start+2*86400000,1);
   assert.match((await call(second,'item:use',{itemId:'star-sticker',targetId:friend.id})).error,/아이템/);
   setNow(start+2*86400000+1000);
   assert.equal((await call(second,'ability:status')).ok,true);
@@ -83,7 +78,7 @@ test('뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 �
 
 test('현실 교실에서 처리할 능력은 교사 기둥에 남고 학생은 완료할 수 없다',async t=>{
   const {room,first,teacher,student}=await fixture(t);student.avatar.constellationId='leo';
-  assert.ok((await call(first,'ability:use')).ok);assert.equal(student.abilityState.markers.length,1);
+  assert.equal((await call(first,'ability:use')).ok,false);student.abilityState.markers=[{id:'saved-leo',constellationId:'leo',level:2,at:0,note:'기존 발표 확인',targetName:''}];
   const pillar=MAP.objects.find(object=>object.id==='pillar-effects');
   for(const player of room.players.values()){player.x=pillar.x;player.y=pillar.y;}
   const board=await call(teacher,'temple:read',{objectId:pillar.id});assert.ok(board.ok,board.error);
@@ -95,7 +90,8 @@ test('현실 교실에서 처리할 능력은 교사 기둥에 남고 학생은 
 
 test('천칭자리 주차별 XP는 교사가 0~2를 확인해 한 번만 적용하고 현재 레벨 기준을 넘지 않는다',async t=>{
   const {room,first,teacher,student}=await fixture(t);student.avatar.constellationId='libra';student.avatar.xp=19;
-  assert.ok((await call(first,'ability:use')).ok);
+  assert.equal((await call(first,'ability:use')).ok,false);
+  student.abilityState.markers=[{id:'saved-libra',constellationId:'libra',level:2,at:0,note:'기존 주차 확인',targetName:''}];
   const pillar=MAP.objects.find(object=>object.id==='pillar-effects');
   const teacherPlayer=[...room.players.values()].find(player=>player.role==='teacher');teacherPlayer.x=pillar.x;teacherPlayer.y=pillar.y;
   const board=await call(teacher,'temple:read',{objectId:pillar.id});const row=board.rows.find(entry=>entry.constellationId==='libra');

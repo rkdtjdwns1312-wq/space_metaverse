@@ -79,7 +79,7 @@ import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
 import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
 import {createRabbitDraw,rabbitDrawView,validateRabbitDrawCounts} from './rabbit-draw.js';
-import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
+import {activeItemBlocks,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
 import {addTask,completeTask,setTaskStatus} from './tasks.js';
@@ -97,6 +97,7 @@ import {registerCultureLibrary,registerHistoryLibrary} from './culture-library.j
 import {registerScienceLibrary} from './science-library.js';
 import {awardLearningReward} from './learning-rewards.js';
 import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
+import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,constellationChangedThisWeek} from './constellation-weekly-abilities.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -1285,9 +1286,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(![...reason].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;}),'경고 이유에 줄바꿈이나 제어 문자를 쓸 수 없어요.');
       ensure(!filterChat(reason).flagged,'경고 이유에 쓸 수 없는 말이 있어요.');
       const result=issueWarning(room,planet,p,target,reason,clock());
-      whisper(room,target,planet.name+'에서 경고를 받았어요. ('+result.count+'/'+result.threshold+'회) 이유: '+reason+(result.blackStar?' 검은별이 되어 블랙홀로 이동했어요.':''));
+      whisper(room,target,result.ability?.negated?result.message:planet.name+'에서 경고를 받았어요. ('+result.count+'/'+result.threshold+'회) 이유: '+reason+(result.blackStar?' 검은별이 되어 블랙홀로 이동했어요.':'')+([result.ability?.message,result.blackAbility?.message].filter(Boolean).join(' ')));
       roster(room);
-      return {...warningView(room,planet),count:result.count,blackStar:result.blackStar};
+      return {...warningView(room,planet),count:result.count,blackStar:result.blackStar,message:result.message,ability:result.ability,blackAbility:result.blackAbility};
     });
     action('warning:teacher:list',()=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 검은별 명단을 볼 수 있어요.');
@@ -1467,7 +1468,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(advanceMissions(s.room,s.player,'sudoku-win',result.difficulty,clock()))roster(s.room);return result;});
     const avatarSession=()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return s;};
     action('evolution:info',()=>{const s=avatarSession(),result=evolutionInfo(s.room,s.player);if(journeyGoal(s.player,'evolution-star'))roster(s.room);return result;});
-    action('evolution:change',data=>{const s=avatarSession(),result=changeConstellation(s.room,s.player,data);roster(s.room);return result;});
+    action('evolution:change',data=>{const s=avatarSession(),result=changeConstellation(s.room,s.player,data,clock());roster(s.room);return result;});
     action('evolution:evolve',data=>{const s=avatarSession(),result=evolveConstellation(s.room,s.player,data);roster(s.room);return result;});
     action('evolution:teacher-select',data=>{const s=avatarSession(),result=selectTeacherEvolution(s.room,s.player,data);roster(s.room);return result;});
     action('growth:info',()=>{const s=avatarSession(),result=growthInfo(s.room,s.player);if(journeyGoal(s.player,'growth-star'))roster(s.room);return result;});
@@ -1600,7 +1601,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       // 교사 무료 구매는 학생/학급에 주어진 할인 기회도 소모하지 않습니다.
       const quote=hasUnlimitedShards(p)?{cost:0,discounted:0}:starCardPurchaseQuote(room,p,item,quantity,clock()),cost=quote.cost;
       ensure(p.starShards>=cost,'별 파편이 부족해요. (필요 '+cost+'개, 지금 '+p.starShards+'개)');
-      const copyPending=p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
+      const copyPending=!constellationChangedThisWeek(p,clock())&&p.avatar?.constellationId==='gemini'&&p.abilityState?.pending?.mode==='shop-copy'&&
         p.abilityState.pending.week===weekStart(clock())&&
         (p.abilityState.pending.maxPrice!==undefined?item.price<=p.abilityState.pending.maxPrice:item.level<=2);
       const copyQuantity=copyPending?(p.abilityState.pending.quantity||1):0;
@@ -1756,91 +1757,37 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('ability:status',()=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
-      const {room,player:p}=s,week=weekStart(clock()),state=p.abilityState||freshAbilityState();
+      const {room,player:p}=s;
+      const current=constellationAbilityStatus(p,clock());
+      if(current.configured)return current;
+      const week=weekStart(clock()),state=p.abilityState||freshAbilityState();
       if(state.pending?.week!==week)state.pending=null;
       const modifiers=lifeAbilityModifiers(p,clock()),ability=constellationOf(p.avatar.constellationId,p.avatar.level)?.ability;
-      return {week,...lifeAbilityUsage(state,week,modifiers),pending:state.pending,
+      return {week,...lifeAbilityUsage(state,week,modifiers),canUse:false,pending:state.pending,
         description:ability?lifeAbilityDescription(ability,modifiers.multiplier):'',
         planets:[...room.planets.values()].filter(planet=>planet.id!==p.avatar.departmentId&&warningCount(planet,p.id)>0)
           .map(planet=>({id:planet.id,name:planet.name,count:warningCount(planet,p.id)}))};
     });
-    action('ability:use',data=>{
-      const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
-      const {room,player:p}=s,now=clock(),week=weekStart(now),constellation=constellationOf(p.avatar.constellationId,p.avatar.level);
-      ensure(p.avatar.level>=2&&constellation&&!constellation.legacy,'LV2 별자리 아바타부터 능력을 사용할 수 있어요.');
-      const state=p.abilityState??=freshAbilityState(),ability=constellation.ability,mode=ability.mode;
-      const modifiers=lifeAbilityModifiers(p,clock()),multiplier=modifiers.multiplier,usage=lifeAbilityUsage(state,week,modifiers);
-      ensure(!usage.used,'이번 주 별자리 능력은 이미 사용했어요. 다음 월요일에 다시 쓸 수 있어요.');
-      ensure(!usage.awaitingCompletion,'진행 중인 별자리 능력을 완료한 뒤 다시 사용할 수 있어요.');
-      if(state.pending?.week!==week)state.pending=null;
-      let target=null,planet=null,roll=null,reward=0,note='';
-      if(['ban-two-days','sleep','manual'].includes(mode)&&typeof data.targetId==='string'&&data.targetId){
-        target=room.players.get(data.targetId);
-        ensure(target?.role==='student'&&target.connected&&target.id!==p.id,'지금 접속 중인 다른 학생 친구를 골라주세요.');
-      }
-      if(['ban-two-days','sleep'].includes(mode)||ability.target||
-        (p.avatar.level===2&&['cetus','cancer','pisces'].includes(constellation.id)))
-        ensure(target,'함께할 학생 친구를 골라주세요.');
-      const targetMax=ability.targetMaxLevel||(p.avatar.level===2&&constellation.id==='cetus'?2:null);
-      if(targetMax)ensure(target&&target.avatar.level<=targetMax,'Lv'+targetMax+' 이하 별자리 친구를 골라주세요.');
-      if(mode==='warning-one'){
-        planet=typeof data.planetId==='string'?room.planets.get(data.planetId):null;
-        ensure(planet&&planet.id!==p.avatar.departmentId&&warningCount(planet,p.id)>0,'경고를 받은 다른 부서행성을 골라주세요.');
-      }
-      if(['grant-one','dice-shards','dice-risk','sleep','dice-difference','dice-triple'].includes(mode)){
-        const maxReward=mode==='dice-risk'?(ability.win||3):mode==='dice-shards'?Math.max(...(ability.rewards||[0,1,1,1,1,2])):
-          mode==='dice-difference'?5:mode==='dice-triple'?2:(ability.reward||1);
-        ensure(p.starShards<=SHARDS.max-maxReward*multiplier,'별 파편을 더 담을 수 없어요.');
-        if(mode==='sleep')ensure(target.starShards<=SHARDS.max-multiplier,'친구가 별 파편을 더 담을 수 없어요.');
-        if(mode==='dice-risk')ensure(p.starShards>=(ability.loss||1)*multiplier,'별 파편 '+((ability.loss||1)*multiplier)+'개가 있어야 황소자리 주사위를 던질 수 있어요.');
-      }
-      if(mode==='ban-two-days')ensure((target.abilityState?.blocks||[]).length<20,'친구의 능력 상태 기록이 가득 찼어요.');
-      if(mode==='sleep')ensure((p.abilityState?.blocks||[]).length<20&&(target.abilityState?.blocks||[]).length<20,'능력 상태 기록이 가득 찼어요.');
-      if(['manual','dice-triple'].includes(mode))ensure(state.markers.length<30,'처리 대기 중인 능력 기록이 가득 찼어요.');
-      if(['dice-item','value-item','dice-shards','dice-risk','dice-difference','dice-triple'].includes(mode))roll=abilityDie();
-      const rolls=roll?[roll]:[];
-      if(mode==='grant-one')reward=ability.reward||1;
-      if(mode==='dice-shards')reward=(ability.rewards||[0,1,1,1,1,2])[roll-1];
-      if(mode==='dice-risk')reward=roll%2===1?(ability.win||3):-(ability.loss||1);
-      if(mode==='dice-difference'){
-        rolls.push(abilityDie());reward=Math.abs(rolls[0]-rolls[1]);
-        note='주사위 '+rolls.join(' · ')+' → 차이 보상 '+reward*multiplier+'개';
-        if(!reward)state.pending={mode:'dice-retry',week,multiplier};
-      }
-      if(mode==='dice-triple'){
-        rolls.push(abilityDie(),abilityDie());
-        const kinds=new Set(rolls).size;
-        if(kinds===2)reward=2;
-        note='주사위 '+rolls.join(' · ')+' → '+(kinds===1?'별 카드 '+multiplier+'장 · 선생님 확인':kinds===3?'뽑기 카드 '+multiplier+'장 · 선생님 확인':'별 '+2*multiplier+'개');
-        if(kinds!==2)state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note,targetName:'',week,multiplier,sourceDescription:lifeAbilityDescription(ability,multiplier)});
-      }
-      if(mode==='sleep')reward=1;
-      reward*=multiplier;
-      if(reward)p.starShards+=reward;
-      if(mode==='shop-copy'){state.pending={mode,week,quantity:multiplier,multiplier,...(ability.maxPrice?{maxPrice:ability.maxPrice}:{})};note='이번 주 '+(ability.maxPrice?'별 파편 '+ability.maxPrice+'개 이하':'Lv2 이하')+' 아이템 구매 시 '+multiplier+'개 복사 대기';}
-      if(mode==='value-item'){
-        state.pending={mode,week,budget:roll*ability.multiplier*multiplier,maxLevel:ability.maxItemLevel,picks:ability.picks,roll,selected:[],multiplier};
-        note='별 파편 '+state.pending.budget+'개 이하 가치 · 최대 '+ability.picks+'종 제작 대기';
-      }
-      if(mode==='dice-item'&&roll>=2){state.pending={mode,week,maxLevel:Math.floor(roll/2),roll,quantity:multiplier,multiplier};note='Lv'+state.pending.maxLevel+' 이하 아이템 '+multiplier+'개 선택 대기';}
-      if(mode==='dice-item'&&roll===1)note='주사위 1: 만들 수 있는 아이템이 없어요.';
-      if(mode==='warning-one'){let cleared=0,released=false;for(let i=0;i<multiplier;i++){const result=clearOneWarningFromPlanet(room,planet,p);cleared+=result.cleared;released||=result.released;}note=planet.name+' 경고 '+cleared+'개 해제'+(released?' · 검은별 해제':'');}
-      if(mode==='ban-two-days'){addItemBlock(target,'ophiuchus',p,now+2*86400000,multiplier);note=target.nickname+' 아이템 사용 2일 정지 · 해제일 별 '+multiplier+'개';}
-      if(mode==='sleep'){addItemBlock(p,'aries',p,nextKoreaMidnight(now));addItemBlock(target,'aries',p,nextKoreaMidnight(now));target.starShards+=multiplier;note=target.nickname+'와 각각 별 '+multiplier+'개 · 오늘 자정까지 수면';}
-      if(mode==='manual'){
-        note=(target?target.nickname+' 대상 · ':'')+constellation.ability.description;
-        state.markers.push({id:randomUUID(),constellationId:constellation.id,level:p.avatar.level,at:now,note:note.slice(0,120),targetName:target?.nickname||'',week,multiplier,sourceDescription:lifeAbilityDescription(ability,multiplier)});
-        note='선생님 확인 요청을 남겼어요. 효과·보상은 선생님 확인 후 적용해요.';
-      }
-      state.usedWeek=week;state.usedCount=usage.usedCount+1;
-      whisper(room,p,constellation.name+' 능력을 사용했어요.'+(roll?' 주사위 '+roll+'.':'')+(note?' '+note:''));
-      roster(room);
-      return {week,roll,rolls,reward,note,pending:state.pending,starShards:p.starShards,...lifeAbilityUsage(state,week,modifiers),
-        ...(target?{targetNickname:target.nickname}:{} )};
-    });
+    const weeklyAbilitySession=()=>{
+      const s=socket.data.session;
+      ensure(s&&s.room.players.get(s.player.id)===s.player&&s.player.connected&&s.player.socketId===socket.id,'먼저 교실에 입장해주세요.');
+      return s;
+    };
+    action('constellation-ability:status',()=>constellationAbilityStatus(weeklyAbilitySession().player,clock()),false);
+    const weeklyAbilityUse=()=>{
+      const s=weeklyAbilitySession(),result=useConstellationAbility(s.player,clock(),abilityDie,craftingRecipes);
+      roster(s.room);return result;
+    };
+    action('constellation-ability:use',weeklyAbilityUse);
+    // Old clients share the exact same Sunday stamp; unconfigured abilities cannot start.
+    action('ability:use',weeklyAbilityUse);
+    const weeklyAbilityChoose=data=>{const s=weeklyAbilitySession(),result=chooseConstellationItem(s.player,data.itemId,clock());roster(s.room);return result;};
+    action('constellation-ability:choose-item',weeklyAbilityChoose);
     action('ability:choose-item',data=>{
+      if(socket.data.session?.player.constellationAbilityState?.pending)return weeklyAbilityChoose(data);
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
       const {room,player:p}=s,state=p.abilityState,pending=state?.pending;
+      ensure(!constellationChangedThisWeek(p,clock()),'별자리를 바꾼 주에는 능력을 사용할 수 없어요.');
       ensure(p.avatar.constellationId==='corvus'&&['dice-item','value-item'].includes(pending?.mode)&&pending.week===weekStart(clock()),'진행 중인 까마귀자리 아이템 생성이 없어요.');
       const item=itemOf(data.itemId);
       ensure(item&&item.level<=pending.maxLevel,'주사위 눈으로 만들 수 있는 Lv 아이템을 골라주세요.');
@@ -1865,6 +1812,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('ability:retry',()=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
       const {room,player:p}=s,state=p.abilityState,week=weekStart(clock());
+      ensure(!constellationChangedThisWeek(p,clock()),'별자리를 바꾼 주에는 능력을 사용할 수 없어요.');
       ensure(p.avatar.constellationId==='libra'&&state?.pending?.mode==='dice-retry'&&state.pending.week===week&&state.usedWeek===week,'다시 던질 수 있는 천칭자리 능력이 없어요.');
       const multiplier=state.pending.multiplier||1;
       ensure(p.starShards>=2,'다시 도전하려면 별 파편 2개가 필요해요.');
@@ -1880,6 +1828,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const target=typeof data.targetId==='string'?room.players.get(data.targetId):null;
       const marker=target?.abilityState?.markers?.find(entry=>entry.id===data.abilityMarkerId);
       ensure(marker,'처리할 별자리 능력 기록을 찾지 못했어요.');
+      ensure(!constellationChangedThisWeek(target,clock()),'별자리를 바꾼 주에는 능력을 사용할 수 없어요.');
       if(marker.constellationId==='libra'&&(marker.level||2)===2){
         const multiplier=marker.multiplier||1;
         ensure([0,multiplier,2*multiplier].includes(data.xpAmount),'천칭자리 경험치는 '+[0,multiplier,2*multiplier].join('·')+' 중에서 선택해주세요.');

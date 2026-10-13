@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {CONSTELLATIONS} from '../shared/constellations.js';
+import {applyHerculesWeekly,markConstellationChange} from '../server/constellation-weekly-abilities.js';
+import {addPlanet} from '../server/world.js';
+import {departmentSlots} from '../shared/plaza-layout.js';
+import {INTERIOR,interiorIdOf} from '../shared/config.js';
+
+const key='weekly-ui-isolated-fixture',output='.local/weekly-ability-ui';
+let roll=1,browser,teacher,friend,now=Date.now();
+const game=createClassroomServer({teacherKey:key,studentHours:false,teacherManagedAccounts:false,abilityDie:()=>roll,clock:()=>now});
+const report={checks:[],errors:[]};
+try{
+  await mkdir(output,{recursive:true});
+  const url=`http://127.0.0.1:${(await game.listen()).port}`;
+  teacher=io(url,{transports:['websocket'],reconnection:false});
+  await new Promise((resolve,reject)=>{teacher.once('connect',resolve);teacher.once('connect_error',reject);});
+  const created=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey:key,title:'능력 화면 검사',allowedNames:['검사','보호']});
+  assert(created.ok,created.error);
+  const room=game.store.rooms.get(created.room.code);
+  browser=await chromium.launch({headless:true,channel:'msedge',args:['--no-proxy-server']});
+  const page=await browser.newPage({viewport:{width:1100,height:950}});
+  page.on('pageerror',e=>report.errors.push(e.message));
+  await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(room.code);
+  await page.locator('#nickname').fill('검사');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();
+  await page.locator('#lobby').waitFor({state:'hidden'});
+  if(await page.locator('#password-offer-dialog').isVisible())await page.locator('#password-offer-no').click();
+  await page.locator('#tutorial-dialog').waitFor();await page.locator('#tutorial-later').click();
+  const player=[...room.players.values()].find(p=>p.role==='student');
+  const publish=()=>game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player,now));
+  async function closeDialogs(){await page.evaluate(()=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();});}
+  async function as(id,level,{reset=true}={}){
+    await closeDialogs();
+    Object.assign(player.avatar,{form:'constellation',constellationId:id,level,teacherPreview:false});
+    if(reset){player.constellationAbilityState={usedWeek:null,lastResult:null};player.starShards=30;}
+    publish();await page.waitForFunction(({id,level})=>{const e=document.querySelector('#self-ability-panel');return e.dataset.constellation===id&&e.dataset.level===String(level);},{id,level});
+    await page.locator('#dock-avatar').click();
+    await page.waitForFunction(()=>document.querySelector('#self-ability-panel').getAttribute('aria-busy')==='false');
+  }
+  for(const {id} of CONSTELLATIONS){
+    await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
+    const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
+    assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
+    if(!['aquarius','capricorn','taurus','corvus','gemini'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+  }
+  report.checks.push('16종 한 줄 2버튼 / 미설정 능력 비활성');
+  for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){
+    await as('aquarius',level);await page.locator('#self-ability-use').click();
+    await page.locator('#ability-outcome').getByText(`별 파편 ${reward}개를 만들었어요!`,{exact:true}).waitFor();
+    assert.equal(player.starShards,30+reward);await page.locator('#ability-close').click();
+    assert.equal(await page.locator('#self-ability-use').innerText(),'사용 완료');assert(await page.locator('#self-ability-use').isDisabled());
+  }
+  report.checks.push('물병 Lv2~5 실제 지급 / 사용 완료');
+  await as('capricorn',2,{reset:false});assert(await page.locator('#self-ability-use').isDisabled());
+  report.checks.push('별자리 변경에도 사용 기록 유지');
+  for(roll=1;roll<=6;roll++){
+    await as('capricorn',3);await page.locator('#self-ability-use').click();
+    await page.waitForFunction(()=>document.querySelector('#ability-dice').classList.contains('rolling'));
+    if(roll===3)await page.screenshot({path:`${output}/dice-rolling.png`});
+    await page.waitForFunction(n=>document.querySelector('#ability-cube').getAttribute('aria-label')===`주사위 ${n}`,roll);
+    assert.equal(await page.locator(`.die-face[data-face="${roll}"] .die-pip`).count(),roll);
+    assert((await page.locator('#ability-dice-result').innerText()).startsWith(`주사위 ${roll} ·`));
+    await page.screenshot({path:`${output}/dice-${roll}.png`});
+  }
+  report.checks.push('주사위 1~6 굴림 / 별점 배치 / 0개 결과');
+  roll=2;await as('taurus',5);await page.locator('#self-ability-use').click();
+  await page.getByText('주사위 2 · 별 파편 3개를 반납했어요.',{exact:true}).waitFor();assert.equal(player.starShards,27);
+  report.checks.push('황소 짝수 반납 결과');
+  roll=6;await as('corvus',3);await page.locator('#self-ability-use').click();
+  await page.locator('#ability-item-choices').waitFor();assert(await page.locator('.ability-item-choice').count()>0);
+  const countBefore=player.inventory.reduce((sum,item)=>sum+item.quantity,0);
+  await page.screenshot({path:`${output}/corvus-choices.png`});
+  await page.locator('.ability-item-choice:not([disabled])').first().click();
+  await page.locator('#ability-item-choices').waitFor({state:'hidden'});
+  assert.equal(player.inventory.reduce((sum,item)=>sum+item.quantity,0),countBefore+1);
+  report.checks.push('까마귀 실제 후보 선택 / 1개 제작');
+  await as('gemini',5);player.inventory=[{id:'space-suit-card',quantity:1}];publish();
+  await closeDialogs();await page.locator('#dock-avatar').click();await page.locator('#self-ability-use').click();
+  await page.locator('#ability-item-choices').waitFor();await page.locator('.ability-item-choice').filter({hasText:'우주복'}).click();
+  await page.locator('#ability-item-choices').waitFor({state:'hidden'});assert.equal(player.inventory[0].quantity,2);
+  report.checks.push('쌍둥이 보유 원본 유지 / 1개 복사');
+  await page.emulateMedia({reducedMotion:'reduce'});roll=4;await as('capricorn',4);await page.locator('#self-ability-use').click();
+  await page.getByText('주사위 4 · 별 파편 4개를 만들었어요!',{exact:true}).waitFor();
+  assert(!(await page.locator('#ability-dice').getAttribute('class')).includes('rolling'));
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:`${output}/dice-mobile.png`});
+  assert(await page.locator('#ability-dialog').evaluate(e=>e.getBoundingClientRect().right<=innerWidth));
+  await page.locator('#ability-close').click();await page.locator('#self-ability-panel').scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${output}/panel-mobile.png`});
+  assert(await page.locator('.constellation-ability-actions').evaluate(e=>e.scrollWidth<=e.clientWidth));
+  report.checks.push('움직임 줄이기 / 390px 두 버튼·결과 넘침 없음');
+  await as('hercules',5);assert.equal(await page.locator('#self-ability-use').innerText(),'자동 적용');assert(await page.locator('#self-ability-use').isDisabled());
+  applyHerculesWeekly(player,'warning',now);publish();await page.locator('#self-ability-status').getByText('자동 패시브 · 부서 경고 1/2회 · 검은별 0/1회',{exact:true}).waitFor();
+  await page.screenshot({path:`${output}/hercules-passive.png`});
+  markConstellationChange(player,now);publish();await page.locator('#self-ability-status').filter({hasText:'별자리를 바꾼 주'}).waitFor();
+  await page.locator('#self-ability-effect').click();await page.locator('#ability-status').filter({hasText:'별자리를 바꾼 주'}).waitFor();
+  report.checks.push('헤라클레스 자동 패시브 주간 횟수 실시간 반영 / 변경 주 잠금 안내');
+  await closeDialogs();now=Date.parse('2026-10-16T03:00:00Z');await as('aquarius',3);await closeDialogs();
+  await page.locator('#ability-unused-reminder').waitFor();await page.locator('#ability-unused-reminder').click();
+  assert.equal(await page.locator('#ability-reminder-message').innerText(),'아직 별자리 캐릭터 능력을 사용하지 않았습니다\n별자리 능력은 1주일 마다 다시 사용할 수 있습니다.');
+  assert(!(await page.locator('#avatar-dialog').evaluate(e=>e.open)),'badge must not open profile');
+  assert(await page.locator('#ability-reminder-message').evaluate(e=>getComputedStyle(e).whiteSpace==='pre'&&e.scrollWidth<=e.clientWidth),'two unbroken lines fit mobile');
+  await page.screenshot({path:`${output}/friday-reminder.png`});
+  await page.locator('#dock-avatar').click();await page.locator('#self-ability-use').click();await page.locator('#ability-unused-reminder').waitFor({state:'hidden'});
+  report.checks.push('금요일 미사용 느낌표 / 가운데 두 줄 안내 / 사용 후 숨김');
+  for(const viewport of [{width:1100,height:950},{width:390,height:844},{width:844,height:390}]){
+    await closeDialogs();await page.setViewportSize(viewport);await page.locator('#dock-chat').click();await page.locator('#open-missions').click();
+    await page.locator('#missions-active').scrollIntoViewIfNeeded();
+    const button=await page.locator('#missions-active').boundingBox(),vitals=await page.locator('#vitals-hud').boundingBox();
+    assert(button.y+button.height<=vitals.y-10,`mission button clear of vitals ${viewport.width}x${viewport.height}`);
+    await page.locator('#missions-active').click();await page.screenshot({path:`${output}/missions-${viewport.width}.png`});
+  }
+  report.checks.push('미션 선택 클릭 영역은 데스크톱·모바일·가로 화면에서 HP/MP 위');
+  await closeDialogs();await page.setViewportSize({width:1100,height:950});
+  friend=io(url,{transports:['websocket'],reconnection:false});await new Promise((resolve,reject)=>{friend.once('connect',resolve);friend.once('connect_error',reject);});
+  const joined=await friend.timeout(5000).emitWithAck('room:join',{code:room.code,nickname:'보호',pin:'1234'});assert(joined.ok,joined.error);
+  const protectedPlayer=room.players.get(joined.selfId);Object.assign(protectedPlayer.avatar,{form:'constellation',constellationId:'hercules',level:2});
+  const planet=addPlanet(room,{name:'규칙행성',description:'',...departmentSlots()[0],color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
+  const rock=INTERIOR.objects.find(o=>o.kind==='warning-rock');player.avatar.departmentId=planet.id;Object.assign(player,{mapId:interiorIdOf(planet.id),x:rock.x,y:rock.y+70,input:{x:0,y:0,at:0}});publish();
+  await page.locator('#interact-object').filter({hasText:'경고 제어돌'}).waitFor();await page.locator('#touch-interact').click();
+  await page.locator('#warning-dialog').waitFor();await page.locator('#warning-target').selectOption(protectedPlayer.id);await page.locator('#warning-reason').fill('약속을 지켜 주세요');
+  await page.locator('#warning-issue').click();await page.locator('#warning-confirm-yes').click();
+  await page.locator('#warning-ability-result').getByText('별자리 능력으로 이번 경고 1회는 무효가 됩니다',{exact:true}).waitFor();
+  assert.equal(planet.warnings.entries.filter(e=>e.active).length,0);assert.equal(protectedPlayer.constellationAbilityState.warningCount,1);
+  await page.screenshot({path:`${output}/hercules-warning-negated.png`});report.checks.push('실제 부서 경고 UI에서 헤라클레스 방어 / 발급자 무효 문구 표시');
+  assert.deepEqual(report.errors,[]);
+  console.log(JSON.stringify(report));
+}catch(error){report.failure=error.stack;throw error;}
+finally{await writeFile(`${output}/report.json`,JSON.stringify(report,null,2));await browser?.close();teacher?.disconnect();friend?.disconnect();await game.close();}

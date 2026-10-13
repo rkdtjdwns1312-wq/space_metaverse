@@ -18,6 +18,7 @@ import {validateInteriorDecor,validateInteriorUnlocks} from './interior-decor.js
 import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {validateAbilityState} from './constellation-abilities.js';
+import {validateConstellationAbilityState} from './constellation-weekly-abilities.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import {pinHash,checkPin} from './pin-auth.js';
 export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
@@ -74,6 +75,7 @@ export function toRecord(room) {
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
+      constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),
       learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
@@ -156,7 +158,7 @@ export function fromRecord(r) {
       dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
+      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),role:'student'}));
   }
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();

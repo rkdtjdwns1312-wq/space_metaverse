@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {WARNING_RULES,BLACK_HOLE_ID,PLAZA_ID} from '../shared/config.js';
 import {ensure} from './rooms.js';
 import {spawnInside,arrivePosition} from './world.js';
+import {applyHerculesWeekly} from './constellation-weekly-abilities.js';
 
 export function validateWarnings(value){
   if(value===undefined)return {threshold:WARNING_RULES.defaultThreshold,entries:[]};
@@ -58,13 +59,17 @@ export function issueWarning(room,planet,actor,target,reason,now=Date.now()){
   planet.warnings??=validateWarnings();
   ensure(planet.warnings.entries.length<WARNING_RULES.maxEntries,'경고 기록이 가득 찼어요. 선생님께 알려주세요.');
   const entry={id:randomUUID(),targetId:target.id,actorId:actor.id,reason:reason.trim(),at:now,active:true};
+  const ability=applyHerculesWeekly(target,'warning',now);
+  if(ability?.negated)entry.active=false;
   planet.warnings.entries.push(entry);
-  const count=warningCount(planet,target.id),blackStar=count>=planet.warnings.threshold;
+  const count=warningCount(planet,target.id),blackStar=!ability?.negated&&count>=planet.warnings.threshold;
+  let blackAbility=null;
   if(blackStar){
     target.avatar.blackStar={planetId:planet.id,at:now};
+    blackAbility=applyHerculesWeekly(target,'black',now);
     Object.assign(target,spawnInside(room,BLACK_HOLE_ID,target),{mapId:BLACK_HOLE_ID,input:{x:0,y:0,at:0}});
   }
-  return {entry,count,threshold:planet.warnings.threshold,blackStar};
+  return {entry,count,threshold:planet.warnings.threshold,blackStar,ability,blackAbility,message:ability?.message||blackAbility?.message||null};
 }
 export function clearBlackStar(room,target){
   ensure(target&&target.role==='student'&&target.avatar.blackStar,'검은별 상태인 학생을 골라주세요.');
