@@ -37,12 +37,12 @@ test('오색별빛 쉼터의 출입 다리와 중앙 놀이터 다리에는 큰 
   const player={role:'student',avatar:{level:5}};
   const entrance={x:(STREET_LAYOUT.westGate.x+STREET.spawn.x)/2,y:STREET_LAYOUT.westGate.y};
   assert.ok(avatarFitsFloor(STREET,entrance.x,entrance.y,player),'서쪽 출입 다리 중앙');
-  assert.ok(avatarFitsFloor(STREET,STREET_LAYOUT.upper.x,1695,player),'중앙 놀이터 다리');
+  assert.ok(avatarFitsFloor(STREET,STREET_LAYOUT.upper.x,STREET_LAYOUT.upper.y+5,player),'중앙 놀이터 다리');
   assert.ok(avatarFitsFloor(STREET,STREET_LAYOUT.upper.x,710,player),'북쪽 발전소 다리');
 });
 
 test('반지름 16으로는 안전한 원형 바닥 가장자리라도 LV5 몸이 나가면 거부한다',()=>{
-  const x=STREET_LAYOUT.lower.x,y=2375;
+  const x=STREET_LAYOUT.lower.x,y=STREET_LAYOUT.lower.y+305;
   assert.equal(isFree(roomWith(student(1)),x,y,null,STREET_ID,false),true,'기존 충돌 반경 기준으로는 안전');
   assert.equal(avatarFitsFloor(STREET,x,y,student(1)),true,'LV1 몸은 바닥 안');
   assert.equal(avatarFitsFloor(STREET,x,y,student(5)),false,'LV5 몸은 하단 바닥 밖');
@@ -50,7 +50,7 @@ test('반지름 16으로는 안전한 원형 바닥 가장자리라도 LV5 몸�
 });
 
 test('경계 입력은 멈추고 진화 직후 커진 몸과 잘못된 현재 위치는 서버 틱에서 복구한다',()=>{
-  const p=student(1),room=roomWith(p),x=STREET_LAYOUT.lower.x,y=2375;
+  const p=student(1),room=roomWith(p),x=STREET_LAYOUT.lower.x,y=STREET_LAYOUT.lower.y+305;
   Object.assign(p,{x,y,input:{x:0,y:1,at:100}});
   for(const now of [100,150,200]){
     p.input={x:0,y:1,at:now};advance(room,now);
@@ -68,7 +68,7 @@ test('경계 입력은 멈추고 진화 직후 커진 몸과 잘못된 현재 �
 });
 
 test('안전하지 않은 출입 도착점은 플레이어 크기에 맞는 가까운 자리로 보정한다',()=>{
-  const p=student(5),room=roomWith(p),point={x:STREET_LAYOUT.lower.x,y:2410};
+  const p=student(5),room=roomWith(p),point={x:STREET_LAYOUT.lower.x,y:STREET_LAYOUT.lower.y+340};
   assert.equal(avatarFitsFloor(STREET,point.x,point.y,p),false);
   const arrival=arrivePosition(room,STREET_ID,point,p);
   assert.notDeepEqual(arrival,point);

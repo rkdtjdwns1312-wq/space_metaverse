@@ -7,9 +7,14 @@ import {validateWork} from './department-work.js';
 import {validateWarnings,validateBlackStar} from './warnings.js';
 import {validateTasks} from './tasks.js';
 import {validateMissions,validMissionTimestamp} from './missions.js';
+import {validateDailyMissions,validateDailyMissionHistory} from './daily-missions.js';
+import {validateJourney} from './tutorial-journey.js';
+import {validateCultureReading,validateHistoryReading} from './culture-library.js';
+import {validateScienceReading} from './science-library.js';
+import {validateLearningRewards} from './learning-rewards.js';
 import {validateSignalRanking} from './signal-game.js';
 import {validateTetrisRanking} from './tetris-game.js';
-import {validateInteriorDecor} from './interior-decor.js';
+import {validateInteriorDecor,validateInteriorUnlocks} from './interior-decor.js';
 import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {validateAbilityState} from './constellation-abilities.js';
@@ -40,6 +45,7 @@ function offline(p) {
 }
 export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
+    dailyMissions:validateDailyMissions(room.dailyMissions),
     serena:validateSerenaState(room.serena),bossRespawns:validateBossRespawns(room.bossRespawns),
     ...(room.adminCreated?{adminCreated:true}:{}),
     ...(room.teacherAccess?{teacherAccess:structuredClone(room.teacherAccess)}:{}),
@@ -59,6 +65,12 @@ export function toRecord(room) {
       serenaProgress:validateSerenaProgress(p.serenaProgress,p.avatar,p.role),
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
+      journey:validateJourney(p.journey),
+      cultureReading:validateCultureReading(p.cultureReading),
+      historyReading:validateHistoryReading(p.historyReading),
+      scienceReading:validateScienceReading(p.scienceReading),
+      learningRewards:validateLearningRewards(p.learningRewards),
+      dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
@@ -80,6 +92,7 @@ export function fromRecord(r) {
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),
+    dailyMissions:validateDailyMissions(r.dailyMissions),
     serena:validateSerenaState(r.serena),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
     teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
     temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
@@ -95,7 +108,7 @@ export function fromRecord(r) {
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,joinRequests:validateJoinRequests(pl.joinRequests),work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,joinRequests:validateJoinRequests(pl.joinRequests),work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),interiorUnlocks:validateInteriorUnlocks(pl.interiorUnlocks),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){
@@ -104,7 +117,7 @@ export function fromRecord(r) {
     if(typeof p.id!=='string'||room.players.has(p.id)||!allowedNames.has(p.nickname)||names.has(p.nickname)||
       !Number.isSafeInteger(cosmicEnergy)||cosmicEnergy<0||
       !Number.isSafeInteger(p.starShards)||p.starShards<0||!Array.isArray(p.inventory)||
-      p.inventory.some(i=>!itemOf(i.id)||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
+      p.inventory.some(i=>!itemOf(i.id)||itemOf(i.id).mode==='journey-practice'||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
       !Array.isArray(p.notes)||typeof p.muted!=='boolean'||!p.avatar||
       !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>6||
       !Number.isSafeInteger(p.avatar.xp)||p.avatar.xp<0||
@@ -135,6 +148,12 @@ export function fromRecord(r) {
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
     room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
+      journey:validateJourney(p.journey),
+      cultureReading:validateCultureReading(p.cultureReading),
+      historyReading:validateHistoryReading(p.historyReading),
+      scienceReading:validateScienceReading(p.scienceReading),
+      learningRewards:validateLearningRewards(p.learningRewards),
+      dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),role:'student'}));
@@ -151,8 +170,8 @@ export function fromRecord(r) {
 }
 
 export class PersistentRoomStore extends RoomStore {
-  constructor(directory,{unattended=false,teacherManagedAccounts=false,maxActiveRooms=RULES.maxRooms}={}) {
-    super({maxActiveRooms});this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
+  constructor(directory,{unattended=false,teacherManagedAccounts=false,maxActiveRooms=RULES.maxRooms,clock=Date.now}={}) {
+    super({maxActiveRooms,clock});this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
     try {for(const r of this.files.loadAll()){
       const restored=fromRecord(r);
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의

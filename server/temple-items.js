@@ -1,6 +1,7 @@
 import {playerEffectsView} from './rooms.js';
 import {itemOf} from '../shared/config.js';
 import {constellationOf} from '../shared/constellations.js';
+import {practiceEffectRows} from './tutorial-journey.js';
 
 const nameOrder = new Intl.Collator('ko', {numeric: true});
 
@@ -9,6 +10,7 @@ const nameOrder = new Intl.Collator('ko', {numeric: true});
 export function templeItemRows(room,viewer,now=Date.now()) {
   const teacher=viewer.role==='teacher';
   return [...room.players.values()].flatMap(p=>[
+    ...practiceEffectRows(p,viewer,now),
     ...playerEffectsView(p,true,now).filter(e=>(e.until===null||e.until>now)&&e.remainingUses!==0).map(e=>{
       const row={targetId:p.id,nickname:p.nickname,...e};
       if(!teacher){

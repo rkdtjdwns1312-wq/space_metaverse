@@ -10,6 +10,7 @@ import {MAP,STREET,SHARDS} from '../shared/config.js';
 import {advanceMissions} from '../server/missions.js';
 import {ENGLISH_WORDS} from '../shared/learning-questions.js';
 import {ensureVitals} from '../server/vitals.js';
+import {JOURNEY_STEPS} from '../shared/tutorial-journey.js';
 
 test('게시판 미션은 학생 수락·교사 달성 확인·본인 완료 보상 순서로 한 번만 처리된다',async t=>{
   const key='mission-test-key',game=createClassroomServer({teacherKey:key,studentHours:false});
@@ -159,10 +160,13 @@ test('첫 여행 안내와 생명의별 자동미션은 서버의 실제 완료 
   const life=await make('life-star-complete','별 회복');assert.equal(life.ok,true,life.error);
   const invalid=await call(teacher,'mission:auto:create',{title:'잘못된 횟수',description:'두 번',rewardShards:1,distribution:'all',objective:'tutorial-complete',goal:2});
   assert.equal(invalid.ok,false);
-  assert.equal((await call(studentSocket,'tutorial:complete')).ok,true);
+  assert.equal((await call(studentSocket,'tutorial:complete')).ok,false);
+  // The auto-mission integration fires only when the fifth new journey reward is claimed.
+  student.journey={version:2,stage:5,goals:JOURNEY_STEPS[4].goals.map(g=>g.id),claimedAt:Array(4).fill(Date.now()),practiceUntil:0};
+  assert.equal((await call(studentSocket,'mission:claim',{missionId:'first-journey-5'})).ok,true);
   assert.equal(room.missions[0].progress[student.id],1);
   assert.deepEqual(room.missions[1].progress,{});
-  assert.equal((await call(studentSocket,'tutorial:complete')).ok,true);
+  assert.equal((await call(studentSocket,'tutorial:complete')).ok,false);
   assert.equal(room.missions[0].progress[student.id],1);
   const lateTutorial=await make('tutorial-complete','뒤늦은 첫 안내');
   assert.equal(lateTutorial.ok,true,lateTutorial.error);

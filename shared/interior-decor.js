@@ -16,6 +16,13 @@ const SHAPES=Object.freeze({
   'warning-rock':[{id:'default',name:'거친 돌'},{id:'crystal',name:'수정 결정'},{id:'meteor',name:'작은 운석'}],
   door:[{id:'default',name:'아치 문'},{id:'portal',name:'둥근 포털'},{id:'star',name:'별빛 문'}]
 });
+export const INTERIOR_UPGRADES=Object.freeze([
+  {id:'tier1',name:'반짝이는 별빛',price:5},
+  {id:'tier2',name:'찬란한 은하',price:10},
+  {id:'tier3',name:'천상의 궁전',price:15}
+]);
+export const interiorUpgrade=id=>INTERIOR_UPGRADES.find(item=>item.id===id)||null;
+export const interiorUpgradeUnlocked=(planet,objectId,shapeId)=>!interiorUpgrade(shapeId)||planet?.interiorUnlocks?.[objectId]?.includes(shapeId)===true;
 export const INTERIOR_DECOR_TARGETS=Object.freeze(['room','mailbox','board','report-board','warning-rock']);
 // door는 기존 저장값 검증과 표시 복구에만 허용합니다.
 export const INTERIOR_DECOR_OBJECTS=Object.freeze([
@@ -26,7 +33,7 @@ export const INTERIOR_DECOR_OBJECTS=Object.freeze([
   {id:'warning-rock',name:'경고제어돌',shapes:SHAPES['warning-rock']},
   {id:'door',name:'광장으로 나가는 문',shapes:SHAPES.door}
 ]);
-export const interiorDecorObject=id=>INTERIOR_DECOR_OBJECTS.find(object=>object.id===id)||null;
+export const interiorDecorObject=id=>{const object=INTERIOR_DECOR_OBJECTS.find(object=>object.id===id);return object?{...object,shapes:id==='door'?object.shapes:[...object.shapes,...INTERIOR_UPGRADES]}:null;};
 export const interiorDecorTarget=id=>INTERIOR_DECOR_TARGETS.includes(id)?interiorDecorObject(id):null;
 export const interiorDecorColor=id=>INTERIOR_DECOR_COLORS.find(color=>color.id===id)||null;
 export function interiorDecorStyle(styles,id){

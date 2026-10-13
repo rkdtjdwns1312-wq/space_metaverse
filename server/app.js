@@ -46,6 +46,7 @@ import { CRAFTING } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
 import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
+import {observeJourney,journeyPillar,journeyGoal,journeyTickGoals,journeyView,journeyMissions,claimJourney,usePractice,equipPractice} from './tutorial-journey.js';
 import { availableCraftingRecipes,loadCraftingRecipes } from './crafting-recipes.js';
 import {sellQuote} from '../shared/item-pricing.js';
 import {awardDrawReward} from './draw-rewards.js';
@@ -82,14 +83,20 @@ import {activeItemBlocks,addItemBlock,settleItemBlocks,rollStarDie,freshAbilityS
 import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
 import {addTask,completeTask,setTaskStatus} from './tasks.js';
-import {createMission,acceptMission,completeMission,claimMission,advanceMissions,missionBoardViews} from './missions.js';
+import {createMission,acceptMission,completeMission,claimMission,advanceMissions,missionBoardViews,findMission} from './missions.js';
+import {ensureDailyMissions,dailyMissionDay} from './daily-missions.js';
 import {createEnglishStation} from './english-station.js';
 import {createMathStation} from './math-station.js';
 import {createBaseballRuns} from './baseball-game.js';
 import {createSignalRuns,signalRanking} from './signal-game.js';
 import {createTetrisRuns,tetrisRanking} from './tetris-game.js';
 import {createSudokuRuns} from './sudoku-runs.js';
-import {interiorDecorTarget,interiorDecorColor} from '../shared/interior-decor.js';
+import {interiorDecorTarget,interiorDecorColor,interiorUpgrade,interiorUpgradeUnlocked} from '../shared/interior-decor.js';
+import {createDuelArcade,registerDuelArcade} from './duel-arcade.js';
+import {registerCultureLibrary,registerHistoryLibrary} from './culture-library.js';
+import {registerScienceLibrary} from './science-library.js';
+import {awardLearningReward} from './learning-rewards.js';
+import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -153,7 +160,7 @@ const planetInput=(room,data) => {
 export function createClassroomServer({teacherKey, adminPassword=randomBytes(24).toString('base64url'), publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, maxActiveRooms=RULES.maxRooms, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
   configuredAdminPassword(adminPassword);
-  const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts,maxActiveRooms}):new RoomStore({maxActiveRooms});
+  const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts,maxActiveRooms,clock}):new RoomStore({maxActiveRooms,clock});
   const persistent=!!dataDir;
   const studentOpen=()=>!studentHours||studentAccessOpen(clock());
   // 브라우저의 미리 연결(preconnect)은 HTTP 요청 없이도 남을 수 있습니다.
@@ -178,6 +185,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
   let pending=null;
   const deliver=fn=>pending?pending.push(fn):fn();
+  const duelArcade=createDuelArcade({getRoom:code=>store.rooms.get(code),clock,emitPrivate(code,id,event,payload){deliver(()=>{
+    const player=store.rooms.get(code)?.players.get(id),sock=player&&io.sockets.sockets.get(player.socketId);
+    if(sock?.data.session?.room.code===code&&sock.data.session.player.id===id)sock.emit(event,payload);
+  });}});
   const transaction=work=>{
     if(!persistent)return work();
     const connections=[...io.sockets.sockets.values()].map(s=>[s,s.data.session?.player.token]);
@@ -279,6 +290,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     }
     store.destroy(room,clock());
+    deliver(()=>duelArcade.closeRoom(room.code));
   };
   const detach=(socket,immediate)=>{
     const s=socket.data.session;if(!s)return;
@@ -319,8 +331,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
             ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
           // 인벤토리가 바뀌기 전에 보유 기간을 정산해, 마지막 카드를 팔 때 지난 주의 스택을 잃지 않습니다.
-          if(save&&session)settleLv4Items(session.room,clock());
-          return handler(data);
+          if(save&&session){settleLv4Items(session.room,clock());if(ensureDailyMissions(session.room,clock()))roster(session.room);}
+          const result=handler(data);
+          const current=socket.data.session;
+          if(save&&current&&store.rooms.get(current.room.code)===current.room&&ensureDailyMissions(current.room,clock()))roster(current.room);
+          return result;
         })});
       }catch(error){
         if(!(error instanceof GameError)) console.error('Action failed:',name,error.message);
@@ -328,6 +343,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     });
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
+    registerDuelArcade({socket,action,duel:duelArcade});
+    registerCultureLibrary({socket,action,store,roster,clock});
+    registerHistoryLibrary({socket,action,store,roster,clock});
+    registerScienceLibrary({socket,action,store,roster,clock});
     action('serena:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonSerena(session.room,session.player,clock());
@@ -337,12 +356,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       return startLifeRecovery(session.player,clock());
     },false);
-    action('tutorial:complete',()=>{
-      const session=socket.data.session;ensure(session?.player.role==='student','학생만 첫 여행 안내를 완료할 수 있어요.');
-      const player=session.player;
-      if(player.tutorialCompleted){if(advanceMissions(session.room,player,'tutorial-complete'))roster(session.room);return {completed:true};}
-      player.tutorialCompleted=true;player.tutorialCompletedAt=clock();advanceMissions(session.room,player,'tutorial-complete');roster(session.room);
-      return {completed:true};
+    action('tutorial:complete',()=>{ensure(false,'새 첫 여행 미션의 행동 목표를 완료해 주세요.');},false);
+    action('tutorial:observe',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      if(observeJourney(s.player,data.goalId))roster(s.room);
+      return {journey:journeyView(s.player)};
+    });
+    action('tutorial:practice-use',()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=usePractice(s.player,clock());roster(s.room);return {...result,journey:journeyView(s.player)};
+    });
+    action('tutorial:practice-equip',()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=equipPractice(s.player);roster(s.room);return {...result,journey:journeyView(s.player)};
     });
     const missionBoardAccess=()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
@@ -351,8 +377,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return session;
     };
     action('mission:board:read',()=>{
-      const session=missionBoardAccess();return {missions:missionBoardViews(session.room,session.player)};
-    },false);
+      const session=missionBoardAccess();return {missions:missionBoardViews(session.room,session.player,clock())};
+    });
     action('mission:create',data=>{
       const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 미션을 만들 수 있어요.');
       ensure(data?.objective===undefined,'자동미션 제작하기에서 조건을 골라 주세요.');
@@ -365,38 +391,60 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       roster(session.room);return {missionId:mission.id};
     });
     action('mission:accept',data=>{
-      const session=missionBoardAccess();const mission=acceptMission(session.room,session.player,data?.missionId);
+      const session=missionBoardAccess();const mission=acceptMission(session.room,session.player,data?.missionId,clock());
       roster(session.room);return {missionId:mission.id};
+    });
+    action('mission:repeat:stop',data=>{
+      const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 반복 미션을 중지할 수 있어요.');
+      const index=session.room.missions.findIndex(m=>m.repeat==='daily'&&m.id===data.templateId);
+      ensure(index>=0,'중지할 반복 미션을 찾을 수 없어요.');
+      session.room.missions.splice(index,1);roster(session.room);
+      return {templateId:data.templateId,stopped:true};
     });
     action('mission:confirm',data=>{
       const session=missionBoardAccess();ensure(session.player.role==='teacher','선생님만 달성을 확인할 수 있어요.');
       const student=session.room.players.get(data?.studentId);
       ensure(student?.role==='student','학생을 골라 주세요.');
-      const mission=completeMission(session.room,student.id,data?.missionId);
+      const mission=completeMission(session.room,student.id,data?.missionId,clock());
       roster(session.room);return {missionId:mission.id,studentId:student.id};
     });
     action('mission:claim',data=>{
       const session=socket.data.session;ensure(session?.player.role==='student','학생만 미션 보상을 받을 수 있어요.');
       const player=session.player;
-      const tutorial=data?.missionId==='first-journey';
-      if(tutorial){ensure(player.tutorialCompleted,'첫 여행 안내 5단계를 마쳐 주세요.');ensure(!player.tutorialRewardClaimed,'이미 받은 미션 보상이에요.');}
-      else{const mission=session.room.missions?.find(m=>m.id===data?.missionId);ensure(mission,'알 수 없는 미션이에요.');
+      const tutorial=/^first-journey-[1-5]$/.test(data?.missionId);
+      const mission=tutorial?null:findMission(session.room,data?.missionId,clock());
+      if(tutorial){ensure(journeyMissions(player).find(m=>m.id===data.missionId)?.status==='ready','아직 열리지 않았거나 목표를 마치지 않은 미션 또는 이미 보상받은 미션이에요.');}
+      else{ensure(mission,'알 수 없는 미션이에요.');
         ensure(mission.acceptedIds.includes(player.id)&&mission.completedIds.includes(player.id),'아직 완료 조건이 확인되지 않았어요.');
         ensure(!mission.claimedIds.includes(player.id),'이미 받은 미션 보상이에요.');}
-      const reward=tutorial?1:session.room.missions.find(m=>m.id===data.missionId).rewardShards;
+      const reward=tutorial?1:mission.rewardShards,rewardItem=mission?.repeat==='daily'?'star-crumb':null,rewardQuantity=rewardItem?mission.rewardQuantity:reward;
+      const entry=rewardItem?player.inventory.find(item=>item.id===rewardItem):null;
+      if(rewardItem){
+        ensure(itemOf(rewardItem),'보상 아이템을 찾을 수 없어요.');
+        ensure((entry?.quantity||0)+rewardQuantity<=SHOP.maxStack,'별 부스러기 가방이 가득 찼어요. 조합한 뒤 받아 주세요.');
+        ensure(entry||player.inventory.length<SHOP.maxKinds,'가방 종류가 가득 찼어요. 정리한 뒤 받아 주세요.');
+      }
       ensure(player.starShards<=SHARDS.max-reward,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 받아 주세요.');
       const claimedAt=clock();
-      if(tutorial){player.tutorialRewardClaimed=true;player.tutorialRewardClaimedAt=claimedAt;}else claimMission(session.room,player,data.missionId,claimedAt);
+      if(tutorial){const result=claimJourney(player,data.missionId,claimedAt);
+        if(result.completed){if(!player.tutorialCompleted){player.tutorialCompleted=true;player.tutorialCompletedAt=claimedAt;}
+          advanceMissions(session.room,player,'tutorial-complete',undefined,clock());}
+      }else claimMission(session.room,player,data.missionId,claimedAt);
       player.starShards+=reward;
-      recordReward(session.room,player.id,reward,claimedAt);roster(session.room);
-      return {missionId:data.missionId,rewardShards:reward,starShards:player.starShards,claimedAt};
+      if(rewardItem){if(entry)entry.quantity+=rewardQuantity;else player.inventory.push({id:rewardItem,quantity:rewardQuantity});}
+      if(reward)recordReward(session.room,player.id,reward,claimedAt);roster(session.room);
+      return {missionId:data.missionId,rewardItem,rewardQuantity,rewardShards:reward,starShards:player.starShards,claimedAt};
     });
-    const englishStationAccess=()=>{
+    const learningStationAccess=(kind,label)=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const station=STREET.objects.find(object=>object.kind==='english-station');
-      ensure(session.player.mapId===STREET_ID&&isNear(session.player,station),'별 영어 발전소 가까이에서 풀어 주세요.');
+      const {player,room}=session;
+      ensure(socket.connected&&player.connected&&!player.away&&player.socketId===socket.id&&
+        ['student','teacher'].includes(player.role)&&store.rooms.get(room.code)===room&&room.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');
+      const station=STREET.objects.find(object=>object.kind===kind+'-station');
+      ensure(player.mapId===STREET_ID&&isNear(player,station),`별 ${label} 발전소 가까이에서 풀어 주세요.`);
       return session;
     };
+    const englishStationAccess=()=>learningStationAccess('english','영어');
     action('learning:english:start',data=>{
       const session=englishStationAccess();return englishStation.start(session.player,data?.level);
     },false);
@@ -405,15 +453,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('learning:english:answer',data=>{
       const session=englishStationAccess(),result=englishStation.answer(session.player,data);
-      if(result.success&&advanceMissions(session.room,session.player,'english-success'))roster(session.room);
+      const progressed=result.success&&advanceMissions(session.room,session.player,'english-success',undefined,clock());
+      if(result.done)result.learningReward=awardLearningReward(session.player,'english',result,clock());
+      if(progressed||result.learningReward?.awarded)roster(session.room);
       return result;
     });
-    const mathStationAccess=()=>{
-      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const station=STREET.objects.find(object=>object.kind==='math-station');
-      ensure(session.player.mapId===STREET_ID&&isNear(session.player,station),'별 수학 발전소 가까이에서 풀어 주세요.');
-      return session;
-    };
+    const mathStationAccess=()=>learningStationAccess('math','수학');
     action('learning:math:start',data=>{
       const session=mathStationAccess();return mathStation.start(session.player,data?.grade);
     },false);
@@ -422,7 +467,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('learning:math:answer',data=>{
       const session=mathStationAccess(),result=mathStation.answer(session.player,data);
-      if(result.right&&advanceMissions(session.room,session.player,'math-correct',result.grade))roster(session.room);
+      const progressed=result.right&&advanceMissions(session.room,session.player,'math-correct',result.grade,clock());
+      if(result.done)result.learningReward=awardLearningReward(session.player,'math',result,clock());
+      if(progressed||result.learningReward?.awarded)roster(session.room);
       return result;
     });
     action('exploration:read',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return readExploration(s.room,s.player,clock());},false);
@@ -484,7 +531,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('energy:collect',data=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=collectEnergyDrop(session.room,session.player,data.dropId,clock());
-      if(result.amount>0)advanceMissions(session.room,session.player,'energy-collect');
+      if(result.amount>0)advanceMissions(session.room,session.player,'energy-collect',undefined,clock());
       roster(session.room);return result;
     });
     action('party:roll',data=>{
@@ -506,6 +553,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(player.role==='teacher'||player.avatar.level>=2,'특수 스킬은 LV2부터 사용할 수 있어요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure((data.slot??0)===0,'기존 보조 스킬은 더 이상 사용하지 않아요.');
+      if(usesTeacherSkill(player)){
+        const result=castTeacherSkill(room,player,now);
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
+          for(const target of result.playerTargets)io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});
+        if(result.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+        return result;
+      }
       if(player.avatar.constellationId==='aquarius'){
         const result=castAquarius(room,player,now);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
@@ -636,7 +690,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('monster:info',()=>{ensure(false,'몬스터는 Q 공격키로 직접 공격해주세요.');},false);
     const enter=session=>{
       const credentials=session.credentials;delete session.credentials;
-      socket.data.session=session;joinChannel(session);roster(session.room);
+      socket.data.session=session;joinChannel(session);ensureDailyMissions(session.room,clock());roster(session.room);
       const {room,player}=session;
       // 방 공개 기록과 이 사람에게만 왔던 개인 안내(notes)를 시간순으로 합쳐 돌려줍니다.
       const messages=visibleHistory(room,player);
@@ -1161,9 +1215,28 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
       ensure(isNear(p,gate),'문에 더 가까이 가주세요.');
       Object.assign(p,arrivePosition(room,data.to,gate.arrival,p),{mapId:data.to,input:{x:0,y:0,at:0}});
-      advanceMissions(room,p,'map-travel');
+      advanceMissions(room,p,'map-travel',undefined,clock());
       roster(room);
       return {};
+    });
+    const interiorAccess=data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s,planet=requirePlanet(room,data),object=interiorDecorTarget(data.objectId);
+      ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'우리 부서의 오브젝트만 꾸밀 수 있어요.');
+      ensure(p.mapId===interiorIdOf(planet.id),'부서행성 안에서만 꾸밀 수 있어요.');
+      ensure(object,'꾸밀 오브젝트를 골라주세요.');
+      const control=mapOf(p.mapId).objects.find(o=>o.id===data.controlId&&o.kind==='interior-decor-machine');
+      ensure(control&&isNear(p,control),'제어장치 가까이에서 꾸며주세요.');
+      return {room,p,planet,object};
+    };
+    action('planet:interior-decor:unlock',data=>{
+      const {room,p,planet,object}=interiorAccess(data),tier=interiorUpgrade(data.shapeId);
+      ensure(p.role==='student','해금은 소속 학생이 자신의 별 파편으로 할 수 있어요.');
+      ensure(tier,'해금할 모습을 골라주세요.');
+      if(interiorUpgradeUnlocked(planet,object.id,tier.id))return {alreadyUnlocked:true};
+      ensure(p.starShards>=tier.price,`별 파편 ${tier.price}개가 필요해요.`);
+      p.starShards-=tier.price;planet.interiorUnlocks??={};planet.interiorUnlocks[object.id]??=[];planet.interiorUnlocks[object.id].push(tier.id);
+      roster(room);return {objectId:object.id,shapeId:tier.id,price:tier.price};
     });
     action('planet:interior-decor:set',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1176,6 +1249,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         ?mapOf(p.mapId).objects.find(item=>item.id===controlId&&item.kind==='interior-decor-machine'):null;
       ensure(control&&isNear(p,control),'제어장치 가까이에서 꾸며주세요.');
       ensure(interiorDecorColor(data.colorId)&&object.shapes.some(shape=>shape.id===data.shapeId),'준비된 색과 모양 중에서 골라주세요.');
+      ensure(interiorUpgradeUnlocked(planet,object.id,data.shapeId),'먼저 이 모습을 해금해 주세요.');
       const style={colorId:data.colorId,shapeId:data.shapeId};
       planet.interiorDecor??={};planet.interiorDecor[object.id]=style;
       roster(room);
@@ -1248,9 +1322,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     };
     action('temple:read',data=>{
       const {room,player,pillar}=templeAccess(data),kind=pillar.service;
+      if(journeyPillar(player,pillar.id,clock()))roster(room);
       if(kind==='weekly')return {kind,...weeklyRewards(room,clock()),canReset:player.role==='teacher'};
       if(kind==='effects')return {kind,canComplete:player.role==='teacher',rows:templeItemRows(room,player,clock())};
-      if(kind==='timetable')return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
+      if(kind==='timetable'){
+        if(advanceMissions(room,player,'timetable-read',undefined,clock()))roster(room);
+        return {kind,...readTimetable(room),canEdit:player.role==='teacher'};
+      }
       return {kind,...readDaily(room,kind,clock()),canEdit:player.role==='teacher'};
     });
     action('temple:weekly:reset',data=>{
@@ -1354,7 +1432,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('baseball:submit',data=>{
       const session=baseballAccess(),result=baseballRuns.submit(session.player,data);
-      if(result.won&&advanceMissions(session.room,session.player,'baseball-win',result.difficulty))roster(session.room);
+      if(result.won&&advanceMissions(session.room,session.player,'baseball-win',result.difficulty,clock()))roster(session.room);
       return result;
     });
     const signalAccess=()=>{
@@ -1373,7 +1451,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('signal:choose',data=>{
       const session=signalAccess(),result=signalRuns.choose(session.room,session.player,data,clock());
       if(result.stageCleared){
-        advanceMissions(session.room,session.player,'signal-stage',result.stageCleared);
+        advanceMissions(session.room,session.player,'signal-stage',result.stageCleared,clock());
         deliver(()=>io.to(session.room.code).emit('signal:ranking',{ranking:result.ranking}));roster(session.room);
       }
       return result;
@@ -1386,13 +1464,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('sudoku:start',data=>{const s=sudokuAccess();return sudokuRuns.start(s.player,data.difficulty);},false);
     action('sudoku:check',data=>{const s=sudokuAccess();return sudokuRuns.check(s.player,data);},false);
     action('sudoku:complete',data=>{const s=sudokuAccess(),result=sudokuRuns.complete(s.player,data);
-      if(advanceMissions(s.room,s.player,'sudoku-win',result.difficulty))roster(s.room);return result;});
+      if(advanceMissions(s.room,s.player,'sudoku-win',result.difficulty,clock()))roster(s.room);return result;});
     const avatarSession=()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return s;};
-    action('evolution:info',()=>{const s=avatarSession();return evolutionInfo(s.room,s.player);});
+    action('evolution:info',()=>{const s=avatarSession(),result=evolutionInfo(s.room,s.player);if(journeyGoal(s.player,'evolution-star'))roster(s.room);return result;});
     action('evolution:change',data=>{const s=avatarSession(),result=changeConstellation(s.room,s.player,data);roster(s.room);return result;});
     action('evolution:evolve',data=>{const s=avatarSession(),result=evolveConstellation(s.room,s.player,data);roster(s.room);return result;});
     action('evolution:teacher-select',data=>{const s=avatarSession(),result=selectTeacherEvolution(s.room,s.player,data);roster(s.room);return result;});
-    action('growth:info',()=>{const s=avatarSession();return growthInfo(s.room,s.player);});
+    action('growth:info',()=>{const s=avatarSession(),result=growthInfo(s.room,s.player);if(journeyGoal(s.player,'growth-star'))roster(s.room);return result;});
     action('growth:buy',data=>{const s=avatarSession(),result=buyExperience(s.room,s.player,data);roster(s.room);return result;});
     const tetrisAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1406,7 +1484,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('tetris:state',data=>{const s=tetrisAccess();return tetrisRuns.state(s.player,data);},false);
     action('tetris:move',data=>{const s=tetrisAccess();return tetrisRuns.move(s.player,data);},false);
     action('tetris:finish',data=>{const s=tetrisAccess(),result=tetrisRuns.finish(s.room,s.player,data);
-      if(result.lines)advanceMissions(s.room,s.player,'tetris-lines',result.lines);
+      if(result.lines)advanceMissions(s.room,s.player,'tetris-lines',result.lines,clock());
       deliver(()=>io.to(s.room.code).emit('tetris:ranking',{ranking:result.ranking}));roster(s.room);return result;});
     const dodgeAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1423,7 +1501,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('memory:start',data=>{const s=memoryAccess();return startMemoryRun(s.room,s.player,data);});
     action('memory:flip',data=>{
       const s=memoryAccess(),result=flipMemoryCard(s.room,s.player,data);
-      if(result.won){advanceMissions(s.room,s.player,'memory-win');deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));roster(s.room);}
+      if(result.won){advanceMissions(s.room,s.player,'memory-win',undefined,clock());deliver(()=>io.to(s.room.code).emit('memory:ranking',{ranking:result.ranking}));roster(s.room);}
       return result;
     });
     action('memory:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelMemoryRun(s.room,s.player,data.runId);return {};});
@@ -1477,7 +1555,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=attemptCraft(player,data.ingredients,{recipes:craftingRecipes});
       const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','insufficient-energy':'우주에너지가 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
       ensure(!result.error||result.error==='recipe-mismatch',messages[result.error]||'조합할 수 없어요.');
-      if(result.success)advanceMissions(room,player,'craft-level',result.item?.level);
+      if(result.success)advanceMissions(room,player,'craft-level',result.item?.level,clock());
       roster(room);return {...result,itemId:result.item?.id??null};
     });
     const requireShop=p=>{
@@ -1499,6 +1577,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('equipment:equip',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      ensure(itemOf(data.itemId)?.mode!=='journey-practice','연습 장비는 실제 장착할 수 없어요.');
       const result=equip(s.player,data.itemId,data.slot);roster(s.room);return result;
     });
     action('equipment:unequip',data=>{
@@ -1847,6 +1926,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       requireStarCardItemAccess(room,p,clock());
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
+      ensure(item.mode!=='journey-practice','연습 아이템은 첫 여행 연습 버튼으로 사용해 주세요.');
       ensure(item.usable!==false,'이 아이템의 사용 효과는 준비 중이에요.');
       if(item.mode==='recipe'){
         const result=useRecipeItem(room,p,data,craftingRecipes,clock());
@@ -1965,6 +2045,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
+      if((!room.dailyMissions?.day||room.dailyMissions.day<dailyMissionDay(clock()))&&now>=(room.dailyRetryAt||0)){
+        try{transaction(()=>{if(ensureDailyMissions(room,clock()))roster(room);});}
+        catch(error){const restored=store.rooms.get(room.code);if(restored)restored.dailyRetryAt=now+1000;console.error('일일 미션 저장 실패:',error.message);continue;}
+      }
       // 21시에 토큰도 회수합니다. 열린 브라우저나 재접속으로 시간을 우회할 수 없습니다.
       if(!studentOpen()&&[...room.players.values()].some(p=>p.role==='student'&&(p.connected||p.token))&&now>=(room.cleanupRetryAt||0)){
         try {transaction(()=>{
@@ -2000,7 +2084,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         dash:!!p.taurusDash,shield:!!p.herculesShield,crown:!!p.coronaAura}));
       for(const hit of advanceTaurusDashes(room,now))if(hit.defeated)
         io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-      advance(room,now);
+      const movedIds=advance(room,now)||[];
+      for(const id of movedIds){const p=room.players.get(id);if(p?.role==='student'&&(p.journey?.stage??1)===1&&!p.journey?.goals.includes('moved'))p.journeyMoved=true;}
+      // Save only newly acquired goals, never every movement tick. Retry failed writes without leaking a roster.
+      if(studentOpen()&&(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected))&&now>=(room.journeyRetryAt||0)){
+        const goals=[...room.players.values()].flatMap(p=>journeyTickGoals(p).map(id=>({playerId:p.id,id})));
+        if(goals.length)try{transaction(()=>{for(const goal of goals)journeyGoal(room.players.get(goal.playerId),goal.id);roster(room);});}
+        catch(error){const restored=store.rooms.get(room.code);if(restored)restored.journeyRetryAt=now+1000;console.error('첫 여행 진행 저장 실패:',error.message);continue;}
+      }
       if(advanceLibraAuras(room,now))roster(room);
       if(pruneMarketTrades(room,clock(),whisper))roster(room);
       for(const p of recoverDefeated(room,clock())){
@@ -2116,7 +2207,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         if(update.complete){
           try{transaction(()=>{
             finishLifeRecovery(player);
-            if(advanceMissions(room,player,'life-star-complete'))roster(room);
+            if(advanceMissions(room,player,'life-star-complete',undefined,clock()))roster(room);
             deliver(()=>{for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
               io.to(viewer.socketId).emit('combat:vitals',update);});
             deliver(()=>io.to(player.socketId).emit('life-star:complete'));
@@ -2138,7 +2229,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           if(now<(room.dodgeSaveRetryAt||0))continue;
           try{transaction(()=>{
             const result=completeDodgeRun(room,player,update.state.runId);
-            if(result.personalBest)advanceMissions(room,player,'dodge-record');
+            if(result.personalBest)advanceMissions(room,player,'dodge-record',undefined,clock());
             deliver(()=>io.to(player.socketId).emit('dodge:state',{...update,result}));
             deliver(()=>io.to(room.code).emit('dodge:ranking',{ranking:result.ranking}));
             roster(room);
@@ -2222,6 +2313,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     }
     for(const code of previous.keys())if(!store.rooms.has(code))previous.delete(code);
+    duelArcade.onTick();
     for(const [ip,b] of authAttempts)if(now-b.at>60_000)authAttempts.delete(ip);
     step++;
   },RULES.tickMs);
@@ -2232,6 +2324,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     }),
     close:async()=>{
       clearInterval(timer);
+      duelArcade.dispose();
       let saveError;
       try {if(persistent)for(const room of [...store.rooms.values()])transaction(()=>roomClosed(room));}
       catch(error){saveError=error;}

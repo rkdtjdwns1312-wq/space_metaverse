@@ -2,6 +2,7 @@ import {itemOf} from '/shared/config.js';
 import {hasUnlimitedShards,shardCost} from '/shared/economy.js';
 import {renderWallet} from './wallet-ui.js';
 import {PUBLIC_CRAFTING_RECIPES} from '/shared/crafting.js';
+import {SHARDS} from '/shared/config.js';
 
 // 선택한 재료는 화면에서만 예약합니다. 닫기/실패/연결 종료 때 아이템을 잃지 않습니다.
 export function createCraftingUI({getPlayer,request,stop,toast}) {
@@ -81,8 +82,8 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     const publicRecipe=PUBLIC_CRAFTING_RECIPES.find(recipe=>recipe.ingredients.length===selected.size&&recipe.ingredients.every(part=>selected.get(part.id)===part.quantity));
     const cost=publicRecipe?(publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
-    $('crafting-submit').textContent=publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+publicRecipe.cosmicEnergy.toLocaleString():teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
-    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(publicRecipe&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy);
+    $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+publicRecipe.cosmicEnergy.toLocaleString():teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
+    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(publicRecipe&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&(player.starShards||0)>=SHARDS.max);
     $('crafting-clear').disabled=busy||!selected.size;
   }
   $('crafting-close').onclick=()=>dialog.close();$('crafting-clear').onclick=()=>{selected.clear();render();};

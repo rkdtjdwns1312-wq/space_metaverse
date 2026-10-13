@@ -1,4 +1,16 @@
-import {interiorDecorObject,interiorDecorColor} from '../shared/interior-decor.js';
+import {interiorDecorObject,interiorDecorColor,interiorDecorTarget,interiorUpgrade} from '../shared/interior-decor.js';
+
+export function validateInteriorUnlocks(raw){
+  if(raw===undefined)return {};
+  const bad=()=>{throw new Error('부서행성 해금 저장 데이터가 올바르지 않습니다.');};
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))bad();
+  const result={};
+  for(const [id,tiers] of Object.entries(raw)){
+    if(!interiorDecorTarget(id)||!Array.isArray(tiers)||tiers.some(t=>!interiorUpgrade(t))||new Set(tiers).size!==tiers.length)bad();
+    result[id]=[...tiers];
+  }
+  return result;
+}
 
 // 오래된 교실은 꾸미기 필드가 없습니다. 있는 값이 손상되면 복원을 중단합니다.
 export function validateInteriorDecor(raw){

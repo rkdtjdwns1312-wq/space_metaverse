@@ -4,8 +4,8 @@ import {drawFloatingIslands} from './floating-island.js';
 
 export const STREET_BACKDROP_SRC='/assets/maps/starlight-street.png';
 export const STREET_ROUTE_LABELS=Object.freeze([
-  {text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:750},
-  {text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1580}
+  {text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry+STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry)/2)},
+  {text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.upper.y+STREET_LAYOUT.upper.ry+STREET_LAYOUT.lower.y-STREET_LAYOUT.lower.ry)/2)}
 ]);
 const images={};let revision=0;
 const listeners=new Set(),tiles=new Map();

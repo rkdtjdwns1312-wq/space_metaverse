@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CRAFTING,PRIMORDIAL_STAR_GEM_RECIPE } from '../shared/crafting.js';
+import { CRAFTING,PRIMORDIAL_STAR_GEM_RECIPE,STAR_CRUMB_RECIPE } from '../shared/crafting.js';
 import { attemptCraft } from '../server/crafting.js';
-import { SHOP } from '../shared/config.js';
+import { SHOP,itemOf } from '../shared/config.js';
 
 const catalog = [
   { id: 'a', level: 1, name: 'A' }, { id: 'b', level: 1, name: 'B' },
@@ -80,6 +80,23 @@ test('찬란한 별의 근원은 별 파편 없이 우주에너지 10,000으로 
   assert.deepEqual(p.inventory,[{id:output.id,quantity:1}]);
   assert.equal(p.starShards,0);assert.equal(p.cosmicEnergy,0);
   assert.deepEqual(p.learnedRecipeIds,[output.id]);
+});
+
+test('별 부스러기 5개는 별빛 조합기에서 별 파편 1개로 바뀐다',()=>{
+  const p={inventory:[{id:'star-crumb',quantity:7}],starShards:12};
+  const result=attemptCraft(p,STAR_CRUMB_RECIPE.ingredients);
+  assert.equal(result.success,true);assert.equal(result.item.id,'star-shard');
+  assert.equal(p.starShards,13);assert.deepEqual(p.inventory,[{id:'star-crumb',quantity:2}]);
+  assert.equal(itemOf('star-crumb').description,'5개를 모아 조합하면 별 파편으로 바꾸어줍니다');
+  assert.equal(itemOf('star-shard').name,'별 파편');
+});
+
+test('별 부스러기 수량 부족 또는 별 파편 상한이면 재료와 잔액을 보존한다',()=>{
+  for(const p of [{inventory:[{id:'star-crumb',quantity:4}],starShards:12},{inventory:[{id:'star-crumb',quantity:5}],starShards:9999}]){
+    const before=structuredClone(p),result=attemptCraft(p,STAR_CRUMB_RECIPE.ingredients);
+    assert.equal(result.success,false);assert.equal(result.error,p.starShards===9999?'shard-cap':'insufficient-ingredients');
+    assert.deepEqual(p,before);
+  }
 });
 
 test('시초의 별의 보석 조합은 에너지 부족·재료 부족·가방 만료를 검증 후 원자적으로 거절한다',()=>{

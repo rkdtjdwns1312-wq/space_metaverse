@@ -16,7 +16,8 @@ import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 import {EXPLORATION_GOAL} from '../shared/exploration.js';
 import {objectSignals} from './object-signals.js';
-import {missionViews} from './missions.js';
+import {missionViews,missionExpired} from './missions.js';
+import {journeyView,practiceItems} from './tutorial-journey.js';
 import {partyView,leaveParty} from './party.js';
 import {GameError,pinHash,checkPin} from './pin-auth.js';
 export {GameError} from './pin-auth.js';
@@ -67,9 +68,10 @@ export function nickname(value) {
 export class RoomStore {
   rooms = new Map();
   sessions = new Map();
-  constructor({maxActiveRooms=RULES.maxRooms}={}) {
+  constructor({maxActiveRooms=RULES.maxRooms,clock=Date.now}={}) {
     if(!Number.isSafeInteger(maxActiveRooms)||maxActiveRooms<1||maxActiveRooms>40)throw new Error('MAX_ACTIVE_ROOMS must be an integer from 1 to 40.');
     this.maxActiveRooms=maxActiveRooms;
+    this.clock=clock;
   }
   newCode() {
     let code;
@@ -121,7 +123,7 @@ export class RoomStore {
       connectedAt:Date.now(),expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
       effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,tutorialCompletedAt:null,tutorialRewardClaimedAt:null,starBestMs:null,dodgeBestMs:null };
     room.players.set(p.id,p);
-    if(role==='student')for(const mission of room.missions||[])if(mission.distribution==='all')mission.acceptedIds.push(p.id);
+    if(role==='student')for(const mission of room.missions||[])if(mission.repeat!=='daily'&&mission.distribution==='all'&&!missionExpired(mission,this.clock()))mission.acceptedIds.push(p.id);
     this.sessions.set(token,{room,player:p});
     p.token=token; // private: snapshot() 아래 허용 필드에 포함하지 않습니다.
     return p;
@@ -147,7 +149,7 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),
-      missions:missionViews(room,viewer),
+      missions:missionViews(room,viewer,now),
       starCards:activeStarCards(room),exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},
       shopDiscounts:starCardShopDiscounts(room,viewer),
@@ -155,7 +157,7 @@ export class RoomStore {
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
         joinPending:!!viewer&&(pl.joinRequests||[]).some(r=>r.playerId===viewer.id),
         mailboxCount:viewer&&(isTeacher||viewer.avatar.departmentId===pl.id)?(pl.joinRequests||[]).length:0,
-        warningStatus:warningSummary(room,pl),templateId:pl.templateId,interiorDecor:structuredClone(pl.interiorDecor||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
+        warningStatus:warningSummary(room,pl),templateId:pl.templateId,interiorDecor:structuredClone(pl.interiorDecor||{}),interiorUnlocks:structuredClone(pl.interiorUnlocks||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
@@ -164,6 +166,7 @@ export class RoomStore {
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
+          if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);}
         return out;

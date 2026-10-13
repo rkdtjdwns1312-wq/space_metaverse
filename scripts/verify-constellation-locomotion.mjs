@@ -20,8 +20,8 @@ try{
     window.motionSets=[];const results=[];
     for(const [id,levels] of Object.entries(LOCOMOTION_PROFILES)){
       const sheet=document.createElement('canvas');sheet.id='sheet-'+id;sheet.width=1080;sheet.height=870;document.body.append(sheet);const ctx=sheet.getContext('2d');
-      for(const level of [2,3,4]){
-        const im=new Image();im.src=`/assets/avatars/${level===2?'':`lv${level}/`}${id}.png`;await im.decode();
+      for(const level of Object.keys(levels).map(Number)){
+        const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':`/assets/avatars/${level===2?'':`lv${level}/`}${id}.png`;await im.decode();
         const started=performance.now(),fallback=make(im,id,level,4),coldCallMs=performance.now()-started;
         const fallbackIsOriginal=fallback===make(im,id,level,0);await prepare(im,id,level);
         const frames=Array.from({length:16},(_,i)=>make(im,id,level,i));
@@ -38,7 +38,7 @@ try{
           }
           hashes.push(hash);maxStep=Math.max(maxStep,step);if(f===15)seam=step;
         }
-        const row=level-2;ctx.fillStyle='white';ctx.font='17px sans-serif';ctx.fillText(`${id} Lv${level}   neutral / step A / step B / left`,12,row*290+22);
+        const row=Math.max(0,level-2);ctx.fillStyle='white';ctx.font='17px sans-serif';ctx.fillText(`${id} Lv${level}   neutral / step A / step B / left`,12,row*290+22);
         for(const [col,f] of [0,4,12,4].entries()){ctx.save();ctx.translate(col*270,row*290+30);if(col===3){ctx.translate(256,0);ctx.scale(-1,1);}ctx.drawImage(frames[f],0,0);ctx.restore();}
         window.motionSets.push({id,level,frames,ms:levels[level].ms||110});
         results.push({id,level,distinct:new Set(hashes).size,faceChanged,changed,edgeAdded,maxStep,seam,elapsedMs:Math.round(elapsed),coldCallMs,fallbackIsOriginal,cached:make(im,id,level,4)===frames[4],unsupported:make(im,id,5,4)===null});
@@ -68,7 +68,7 @@ try{
   const room=[...game.store.rooms.values()][0],p=[...room.players.values()].find(p=>p.role==='teacher');
   const publish=()=>{for(const who of room.players.values())game.io.to(who.socketId).emit('room:state',game.store.snapshot(room,who));};
   const integration=[];
-  for(const id of new Set(result.map(r=>r.id)))for(const level of [2,3,4]){
+  for(const id of new Set(result.filter(r=>r.id!=='teacher').map(r=>r.id)))for(const level of [2,3,4]){
     Object.assign(p,{mapId:PLAZA_ID,x:650,y:900,facingX:1});Object.assign(p.avatar,{level,constellationId:id,form:'constellation',teacherPreview:true});publish();
     await gamePage.waitForFunction(({id,level})=>{const d=document.querySelector('#world').dataset;return d.locomotionId===id&&d.locomotionLevel===String(level);},{id,level});
     for(let n=0;n<8;n++){p.x+=5;publish();await gamePage.waitForTimeout(90);}

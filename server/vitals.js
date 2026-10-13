@@ -18,14 +18,14 @@ export function playerVitals(player){
   return {hp:{current:value.hp,max:limits.hp.max},mp:{current:value.mp,max:limits.mp.max},defeated:value.hp===0};
 }
 export const isDefeated=player=>ensureVitals(player)?.hp===0;
-export function damagePlayer(player,power,now,{skipLibra=false}={}){
+export function damagePlayer(player,power,now,{skipLibra=false,fixedDamage=null,silent=false}={}){
   const value=ensureVitals(player);if(!value||value.hp<=0)return null;
-  if((player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
-  const damage=damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
-  if(!skipLibra&&player.libraAura?.endsAt>now&&player.libraAura.mapId===player.mapId)
+  if(fixedDamage===null&&(player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
+  const damage=fixedDamage??damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
+  if(fixedDamage===null&&!skipLibra&&player.libraAura?.endsAt>now&&player.libraAura.mapId===player.mapId)
     return {damage:0,reflectedDamage:skillDamage(damage,player.libraAura.skillDamageFactor),vitals:playerVitals(player),defeated:false};
   let remaining=damage;
-  if(player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
+  if(fixedDamage===null&&player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
     const absorbed=Math.min(remaining,player.herculesShield.hp);
     player.herculesShield.hp-=absorbed;player.herculesShield.absorbed+=absorbed;remaining-=absorbed;
     if(player.herculesShield.hp===0)player.herculesShield.endsAt=now;
@@ -38,7 +38,7 @@ export function damagePlayer(player,power,now,{skipLibra=false}={}){
     value.mp=Math.max(1,Math.round(limits.mp.max*.3));
     player.capricornBlessing=null;revived=true;
   }
-  if(remaining>0){player.damageNumbers??=[];player.damageNumbers.push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage:remaining});}
+  if(remaining>0&&!silent){player.damageNumbers??=[];player.damageNumbers.push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage:remaining});}
   if(player.damageNumbers?.length>40)player.damageNumbers.shift();
   if(value.hp===0){value.defeatedAt=now;player.input={x:0,y:0,at:0};}
   return {damage:remaining,absorbed:damage-remaining,vitals:playerVitals(player),defeated:value.hp===0,revived};

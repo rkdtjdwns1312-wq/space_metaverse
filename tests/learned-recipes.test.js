@@ -7,7 +7,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {SHOP,STREET,STREET_ID,createAvatar,itemOf} from '../shared/config.js';
 import {recipeItemId} from '../shared/recipe-items.js';
-import {PUBLIC_CRAFTING_RECIPES} from '../shared/crafting.js';
+import {PUBLIC_CRAFTING_RECIPES,STAR_CRUMB_RECIPE} from '../shared/crafting.js';
 import {validateLearnedRecipeIds,learnedRecipesView,useRecipeItem} from '../server/learned-recipes.js';
 import {attemptCraft} from '../server/crafting.js';
 import {addRecipeDrop,collectEnergyDrop,energyDropViews} from '../server/energy-drops.js';
@@ -20,6 +20,8 @@ const recipes=[
   {output:{id:'supernova-alpha-card',quantity:1},ingredients:[{id:'android-card',quantity:1}]},
   {output:{id:'supernova-beta-card',quantity:1},ingredients:[{id:'moon-card',quantity:1}]}
 ];
+// Currency conversion is public but has no learnable inventory recipe item.
+const publicItemRecipes=PUBLIC_CRAFTING_RECIPES.filter(recipe=>!recipe.currency);
 const RID=recipeItemId('android-card'),NOW=Date.now(),KEY='learned-recipes-private-test';
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
 const ok=result=>{assert.ok(result.ok,result.error);return result;};
@@ -73,7 +75,7 @@ test('recipe wrapper metadata contains output only and valid learned IDs round-t
 });
 
 test('public Lv5 learned recipes retain their shard and energy costs in the student view',()=>{
-  const player={learnedRecipeIds:PUBLIC_CRAFTING_RECIPES.map(recipe=>recipe.output.id)};
+  const player={learnedRecipeIds:publicItemRecipes.map(recipe=>recipe.output.id)};
   const view=learnedRecipesView(player,PUBLIC_CRAFTING_RECIPES);
   assert.deepEqual(view.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
@@ -163,7 +165,7 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
   ]);
-  f.mutate(p=>{p.learnedRecipeIds=PUBLIC_CRAFTING_RECIPES.map(recipe=>recipe.output.id);});
+  f.mutate(p=>{p.learnedRecipeIds=publicItemRecipes.map(recipe=>recipe.output.id);});
   const learnedLv5=ok(await call(f.student,'recipes:learned')).recipes;
   assert.deepEqual(learnedLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
@@ -183,6 +185,19 @@ test('successful socket crafting learns and persists across restart; no legacy m
   for(const invalid of [['missing'],['android-card','android-card'],{}]){
     const bad=structuredClone(legacy);bad.students[0].learnedRecipeIds=invalid;assert.throws(()=>fromRecord(bad));
   }
+});
+
+test('public crumb conversion preserves learned item recipes without persisting a currency recipe across restart',async t=>{
+  const f=await fixture(t);
+  f.mutate(p=>{p.inventory=structuredClone(STAR_CRUMB_RECIPE.ingredients);p.learnedRecipeIds=['android-card'];p.starShards=0;});
+  f.atMachine();
+  ok(await call(f.student,'crafting:combine',{ingredients:STAR_CRUMB_RECIPE.ingredients}));
+  assert.equal(f.p.starShards,1);assert.deepEqual(f.p.inventory,[]);
+  assert.deepEqual(f.p.learnedRecipeIds,['android-card']);
+  assert.throws(()=>validateLearnedRecipeIds([STAR_CRUMB_RECIPE.output.id]),'currency must not be accepted as a persisted item recipe');
+  await f.restart();assert.equal(f.p.starShards,1);
+  assert.deepEqual(f.p.learnedRecipeIds,['android-card']);
+  assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[recipes[0]]);
 });
 
 test('F pickup is once-only, item use learns only consumer, and both inventory and knowledge survive restart',async t=>{

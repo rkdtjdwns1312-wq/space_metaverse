@@ -20,7 +20,14 @@ export const PRIMORDIAL_STAR_GEM_RECIPE = Object.freeze({
   cosmicEnergy:10000
 });
 
+export const STAR_CRUMB_RECIPE = Object.freeze({
+  ingredients: Object.freeze([{id:'star-crumb',quantity:5}]),
+  output: Object.freeze({id:'star-shard',quantity:1}),
+  currency: 'starShards',
+});
+
 export const PUBLIC_CRAFTING_RECIPES = Object.freeze([
   SPIRIT_CLOAK_RECIPE,
-  PRIMORDIAL_STAR_GEM_RECIPE
+  PRIMORDIAL_STAR_GEM_RECIPE,
+  STAR_CRUMB_RECIPE
 ]);

@@ -15,6 +15,7 @@ import {CORONA_VFX,CORONA_NAMES,coronaSkillOf} from './corona-skills.js';
 import {CAPRICORN_VFX,CAPRICORN_NAMES,capricornSkillOf} from './capricorn-skills.js';
 import {LEO_VFX,LEO_NAMES,leoSkillOf} from './leo-skills.js';
 import {skillDamageFactor} from './skill-damage.js';
+import {SKILL_COOLDOWN_MS} from './combat.js';
 
 // 레벨(입장/아이템 권한)과 현재 외형을 분리합니다. LV5는 평소 LV4 모습입니다.
 export function appearanceLevelOf(player){
@@ -142,6 +143,8 @@ export function characterAbilities(player){
   }
   const transform={slot:'transform',key:'1',level:5,name:'별자리초월',ready:TRANSFORMATION.ready,
     iconUrl:constellationOf(id,5)?.sprite||'',description:transformationDescription(player)};
+  if(player?.role==='teacher'&&!player.avatar?.teacherPreview)Object.assign(skill,{name:'교사용 확인 공격',ready:true,iconUrl:'',
+    description:`공격력: 피해 1\n특수효과: 없음\n쿨타임: ${SKILL_COOLDOWN_MS/1000}초\n마나소모: 0`});
   return [attack,skill,transform];
 }
 

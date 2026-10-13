@@ -52,11 +52,9 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   }
   const p={...avatar,mapId:MAP.id},room={players:new Map([[p.id,p]]),planets:new Map()};
   assert.equal(isFree(room,3100,P.center.y+P.bridgeWidth/2+10,p.id,MAP.id,false),false,'광장 동쪽 다리 바깥');
-  assert.equal(avatarFitsFloor(STREET,S.upper.x+S.bridgeWidth/2+10,1695,p),false,'놀이터 다리 바깥');
+  assert.equal(avatarFitsFloor(STREET,150,(S.upper.y+S.lower.y)/2,p),false,'중앙·남쪽 다리 바깥');
   const {offsetY}=avatarCollisionShape(p),sideX=S.upper.x+S.bridgeWidth/2+10;
-  // y는 이제 허리 좌표입니다. 이전 y=710은 발 중심이 아래쪽 마당으로
-  // 들어간 정상 위치이므로, 다리 위 발 중심 710을 유지해서 벽을 검사합니다.
-  assert.equal(avatarFitsFloor(STREET,sideX,710,p),true,'하반신이 넓은 상점 마당에 들어간 위치');
-  assert.equal(avatarFitsFloor(STREET,S.upper.x,710-offsetY,p),true,'발전소 다리 안쪽');
-  assert.equal(avatarFitsFloor(STREET,sideX,710-offsetY,p),false,'발전소 다리 바깥');
+  assert.equal(avatarFitsFloor(STREET,sideX,710,p),true,'하반신이 북쪽 섬 안쪽에 있는 위치');
+  assert.equal(avatarFitsFloor(STREET,S.upper.x,S.north.y+S.north.ry+20-offsetY,p),true,'북쪽 발전소 다리 안쪽');
+  assert.equal(avatarFitsFloor(STREET,STREET.width-150,710-offsetY,p),false,'확장된 바닥의 동쪽 끝 바깥 좌표');
 });

@@ -10,6 +10,9 @@ const cloth=(x,y,rx=.19,ry=.18,sign=1)=>part(x,y,rx,ry,sign*2.0,.7,.5,y-ry);
 const wing=(root,outline,angle)=>({root,outline,angle});
 // 얼굴 타원은 눈·코·입뿐 아니라 턱/볼을 포함합니다. 두 얼굴/동행 동물도 별도로 보호합니다.
 export const LOCOMOTION_PROFILES=Object.freeze({
+  teacher:{
+    1:{faces:[[.50,.36,.17,.13]],ms:115,parts:[hair(.34,.34,.10,.18),hair(.65,.31,.09,.15),cloth(.23,.70,.18,.19),cloth(.79,.71,.16,.18,-1),cloth(.43,.78,.14,.13),foot(.47,.89,.07,.075),foot(.55,.87,.065,.075,-1),part(.21,.54,.11,.16,1.1,-1.2,.3,.42)]}
+  },
   aries:{
     2:{faces:[[.44,.40,.25,.20]],ms:90,parts:[foot(.36,.86,.09,.08,1),foot(.54,.91,.10,.08,-1),cloth(.79,.69,.20,.19)]},
     3:{faces:[[.48,.34,.17,.14],[.56,.51,.14,.14]],parts:[hair(.24,.53),hair(.78,.55),cloth(.29,.75),cloth(.70,.77,.15,.16,-1),foot(.49,.85),foot(.60,.90,.065,.07,-1)]},
@@ -90,8 +93,9 @@ function* makeRig(original,profile){
       let weight=(1-smooth(.30,1,radius(u,v,p.ellipse)))*protect;
       if(p.anchorY)weight*=smooth(p.anchorY,p.ellipse[1],v);
       // sin(t+phase)-sin(phase) = sin(t)*cos(phase)+(cos(t)-1)*sin(phase).
-      fields[index]+=p.dx*weight*Math.cos(p.phase);fields[index+1]+=p.dx*weight*Math.sin(p.phase);
-      fields[index+2]+=p.dy*weight*Math.cos(p.phase);fields[index+3]+=p.dy*weight*Math.sin(p.phase);
+      const energy=1.16;
+      fields[index]+=p.dx*weight*Math.cos(p.phase)*energy;fields[index+1]+=p.dx*weight*Math.sin(p.phase)*energy;
+      fields[index+2]+=p.dy*weight*Math.cos(p.phase)*energy;fields[index+3]+=p.dy*weight*Math.sin(p.phase)*energy;
     }
     // 날개 마스크만 어깨 관절을 축으로 움직입니다. 접합부를 부드럽게 연결해 절단선/빈틈을 막습니다.
     for(const w of wings)if(w.mask[index+3]){

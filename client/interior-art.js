@@ -4,12 +4,17 @@ import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 export const INTERIOR_ART={board:'/assets/interior/board.png',mailbox:'/assets/interior/mailbox.png',
   'report-board':'/assets/interior/report.png','warning-rock':'/assets/interior/warning.png',
   'interior-decor-machine':'/assets/interior/control.png'};
+// 상위 해금 외형 미리보기와 방 내부 렌더링에서 공유합니다.
+export const INTERIOR_UPGRADE_ART=Object.freeze(Object.fromEntries(Object.entries({
+  mailbox:'mailbox',board:'board','report-board':'report','warning-rock':'warning'
+}).map(([kind,file])=>[kind,Object.freeze(Object.fromEntries(['tier1','tier2','tier3'].map(tier=>[tier,`/assets/interior/upgrades/${file}-${tier}.png`])))])));
 const images=new Map(),floors=new Map(),tints=new Map();
 function asset(src){if(!images.has(src)){const image=new Image();image.onload=()=>floors.clear();image.src=src;images.set(src,image);}return images.get(src);}
 const ready=image=>image.complete&&image.naturalWidth>0;
-export async function preloadInteriorArt(){await Promise.all([...Object.values(INTERIOR_ART),'/assets/maps/plaza-paving.png'].map(src=>asset(src).decode()));}
+export async function preloadInteriorArt(){await Promise.all([...Object.values(INTERIOR_ART),...Object.values(INTERIOR_UPGRADE_ART).flatMap(Object.values),'/assets/maps/plaza-paving.png'].map(src=>asset(src).decode()));}
 export function drawInteriorFloor(ctx,map,planet){
   const style=interiorDecorStyle(planet?.interiorDecor,'room'),color=interiorDecorColor(style.colorId)?.hex;
+  const tier=['tier1','tier2','tier3'].includes(style.shapeId)?Number(style.shapeId.at(-1)):0;
   const key=map.width+'x'+map.height+':'+style.colorId+':'+style.shapeId;let floor=floors.get(key);const tile=asset('/assets/maps/plaza-paving.png');
   if(!floor){floor=document.createElement('canvas');floor.width=map.width;floor.height=map.height;const c=floor.getContext('2d');
     c.fillStyle='#edf0f5';c.fillRect(0,0,map.width,map.height);
@@ -24,6 +29,19 @@ export function drawInteriorFloor(ctx,map,planet){
       c.save();c.strokeStyle='#acb6c980';c.lineWidth=2;c.beginPath();
       for(let x=40;x<map.width;x+=80){c.moveTo(x,24);c.lineTo(x,map.height-24);}for(let y=40;y<map.height;y+=80){c.moveTo(24,y);c.lineTo(map.width-24,y);}c.stroke();c.restore();
     }
+    if(tier){
+      c.save();c.lineJoin='round';const spacing=tier===1?96:tier===2?128:160;
+      if(tier===1){c.globalAlpha=.58;for(let y=55;y<map.height-40;y+=spacing)for(let x=55;x<map.width-40;x+=spacing){
+        const r=10+(Math.floor(x/spacing+y/spacing)%3)*2;starPath(c,x,y,r);c.fillStyle='#f8e9a8';c.fill();c.strokeStyle='#bca66c';c.lineWidth=1.5;c.stroke();
+      }}else if(tier===2){c.globalAlpha=.42;c.strokeStyle='#b69bd8';c.lineWidth=2;
+        for(let y=80;y<map.height-60;y+=spacing)for(let x=80;x<map.width-60;x+=spacing){c.beginPath();c.arc(x,y,24,0,Math.PI*2);c.stroke();c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#f9e6a2';c.fill();
+          for(let i=0;i<6;i++){const a=i*Math.PI/3;c.beginPath();c.arc(x+Math.cos(a)*24,y+Math.sin(a)*24,2.5,0,Math.PI*2);c.fill();}}
+      }else{c.globalAlpha=.5;c.strokeStyle='#d5b76e';c.lineWidth=3;
+        for(let y=75;y<map.height-50;y+=spacing)for(let x=75;x<map.width-50;x+=spacing){c.beginPath();c.arc(x,y,34,0,Math.PI*2);c.stroke();c.beginPath();c.arc(x,y,22,0,Math.PI*2);c.stroke();
+          for(let i=0;i<8;i++){const a=i*Math.PI/4;c.beginPath();c.moveTo(x+Math.cos(a)*35,y+Math.sin(a)*35);c.lineTo(x+Math.cos(a)*45,y+Math.sin(a)*45);c.stroke();}
+          starPath(c,x,y,10);c.fillStyle='#f8edc6';c.fill();c.stroke();}}
+      c.restore();
+    }
     c.strokeStyle='#9ea9bf';c.lineWidth=16;c.strokeRect(16,16,map.width-32,map.height-32);
     c.strokeStyle='#fafcff';c.lineWidth=4;c.strokeRect(21,21,map.width-42,map.height-42);
     if(floors.size>=8)floors.delete(floors.keys().next().value);floors.set(key,floor);
@@ -33,7 +51,7 @@ function label(ctx,text,x,y,size=18){ctx.font=`${size}px "Jua","Malgun Gothic",s
 function starPath(ctx,x,y,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,s=i%2?r*.46:r;i?ctx.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s):ctx.moveTo(x+Math.cos(a)*s,y+Math.sin(a)*s);}ctx.closePath();}
 export function drawInteriorDecoration(ctx,o,style){
   // 과거 꾸미기 값은 보존하되 원화 위의 불필요한 육각형 표시는 숨깁니다.
-  if(!style||['default','hex','crystal','tablet'].includes(style.shapeId))return;
+  if(!style||['default','hex','crystal','tablet','tier1','tier2','tier3'].includes(style.shapeId))return;
   const x=o.x,y=o.y+(o.kind==='board'?155:30),r=22;ctx.save();ctx.fillStyle=interiorDecorColor(style.colorId)?.hex||'#e2d7f2';ctx.strokeStyle='#a696bc';ctx.lineWidth=2;
   if(style.shapeId==='star'){starPath(ctx,x,y,r);ctx.fill();ctx.stroke();}
   else if(style.shapeId==='moon'){ctx.beginPath();ctx.arc(x,y,r,.7,Math.PI*2-.7);ctx.arc(x+r*.62,y,r*.7,-Math.PI*.6,Math.PI*.6,true);ctx.closePath();ctx.fill();ctx.stroke();}
@@ -42,8 +60,9 @@ export function drawInteriorDecoration(ctx,o,style){
   ctx.restore();
 }
 export function drawInteriorProp(ctx,o,planet){
-  const src=INTERIOR_ART[o.kind];if(!src)return false;
-  const img=asset(src),style=interiorDecorStyle(planet?.interiorDecor,o.id),color=interiorDecorColor(style.colorId)?.hex;
+  const style=interiorDecorStyle(planet?.interiorDecor,o.id),tierArt=INTERIOR_UPGRADE_ART[o.kind]?.[style.shapeId];
+  const src=tierArt||INTERIOR_ART[o.kind];if(!src)return false;
+  const img=asset(src),color=interiorDecorColor(style.colorId)?.hex;
   const sizes={board:[640,330,180],mailbox:[120,160,67],'report-board':[135,175,65],'warning-rock':[130,160,60],'interior-decor-machine':[170,190,68]};
   const [w,h,foot]=sizes[o.kind],left=o.x-w/2,top=o.y+foot-h;
   ctx.save();

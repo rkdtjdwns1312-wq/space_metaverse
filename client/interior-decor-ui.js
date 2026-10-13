@@ -1,4 +1,4 @@
-import {INTERIOR_DECOR_COLORS,INTERIOR_DECOR_TARGETS,interiorDecorObject,interiorDecorStyle} from '/shared/interior-decor.js';
+import {INTERIOR_DECOR_COLORS,INTERIOR_DECOR_TARGETS,INTERIOR_UPGRADES,interiorDecorObject,interiorDecorStyle,interiorUpgradeUnlocked} from '/shared/interior-decor.js';
 
 export function createInteriorDecorUI({request,stop,toast,getRoom,getPlayer}){
   const dialog=document.createElement('dialog');dialog.id='interior-decor-dialog';dialog.setAttribute('aria-labelledby','interior-decor-title');
@@ -21,8 +21,23 @@ export function createInteriorDecorUI({request,stop,toast,getRoom,getPlayer}){
     if(!selected)return;
     const planet=getRoom()?.planets.find(item=>item.id===selected.planetId),object=interiorDecorObject(selected.objectId);if(!planet||!object)return;
     const style=interiorDecorStyle(planet.interiorDecor,selected.objectId);
-    choices($('colors'),'color',INTERIOR_DECOR_COLORS,style.colorId);choices($('shapes'),'shape',object.shapes,style.shapeId);
-    $('description').textContent=planet.name+'에서 꾸밀 곳을 골라주세요.';
+    choices($('colors'),'color',INTERIOR_DECOR_COLORS,style.colorId);
+    const basic=object.shapes.find(s=>s.id===style.shapeId&&!s.price)||object.shapes[0];
+    choices($('shapes'),'shape',[{...basic,name:'현재 기본 모습'},...INTERIOR_UPGRADES],style.shapeId);
+    for(const label of $('shapes').children){
+      const input=label.querySelector('input'),tier=INTERIOR_UPGRADES.find(t=>t.id===input.value);if(!tier)continue;
+      if(object.id!=='room'){
+        const name={'report-board':'report','warning-rock':'warning'}[object.id]||object.id,img=document.createElement('img');
+        img.src=`/assets/interior/upgrades/${name}-${tier.id}.png`;img.alt='';img.width=88;img.height=88;img.style.objectFit='contain';label.prepend(img);
+      }
+      const locked=!interiorUpgradeUnlocked(planet,object.id,tier.id);input.disabled=locked;
+      const note=document.createElement('span');note.textContent=locked?`잠김 · 별 파편 ${tier.price}개`:'해금 완료';label.append(note);
+      if(locked){const unlock=document.createElement('button');unlock.type='button';unlock.className='secondary small';unlock.textContent='해금하기';unlock.disabled=getPlayer()?.role!=='student';
+        unlock.onclick=async event=>{event.preventDefault();if(busy)return;busy=true;unlock.disabled=true;$('error').textContent='';
+          try{await request('planet:interior-decor:unlock',{planetId:selected.planetId,objectId:object.id,shapeId:tier.id,controlId:'department-control-machine'});toast('해금했어요. 부서 친구들도 이 모습을 사용할 수 있어요.');renderChoices();}
+          catch(error){$('error').textContent=error.message;unlock.disabled=false;}finally{busy=false;}};label.append(unlock);}
+    }
+    $('description').textContent=planet.name+' · 해금하는 학생의 별 파편을 사용하며, 해금한 모습은 부서 친구들과 함께 써요.';
     $('selected').textContent=object.name+' 꾸미기';
     $('panel').setAttribute('aria-labelledby','interior-decor-tab-'+object.id);
     for(const button of $('targets').children){const active=button.dataset.target===object.id;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}

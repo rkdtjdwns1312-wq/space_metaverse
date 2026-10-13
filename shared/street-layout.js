@@ -1,11 +1,11 @@
-// 오색별빛 쉼터: 북쪽 발전소·중앙 상점·남쪽 놀이 마당을 짧은 다리로 잇습니다.
+// 오색별빛 쉼터: 북쪽 발전소와 아래로 넓힌 중앙·남쪽 섬을 분리된 다리로 잇습니다.
 import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const STREET_LAYOUT=Object.freeze({
-  id:'star-street',width:1800,height:2700,wallWidth:10,bridgeWidth:180*BRIDGE_WIDTH_SCALE,
-  north:Object.freeze({x:900,y:380,rx:720,ry:300}),
-  upper:Object.freeze({x:900,y:1170,rx:760,ry:490}),
-  lower:Object.freeze({x:900,y:2070,rx:800,ry:355}),
-  westGate:Object.freeze({x:80,y:1170}),spawn:Object.freeze({x:260,y:1170})
+  id:'star-street',width:1800,height:3300,wallWidth:10,bridgeWidth:180*BRIDGE_WIDTH_SCALE,
+  north:Object.freeze({x:900,y:480,rx:840,ry:440}),
+  upper:Object.freeze({x:900,y:1690,rx:760,ry:570}),
+  lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
+  westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})
 });
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;
 function ellipse(z,steps=160){return Array.from({length:steps},(_,i)=>{const a=i*Math.PI*2/steps;return {x:z.x+z.rx*Math.cos(a),y:z.y+z.ry*Math.sin(a)};});}
@@ -13,9 +13,9 @@ const half=STREET_LAYOUT.bridgeWidth/2;
 const rect=(left,top,right,bottom)=>[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}];
 export const STREET_POLYGONS=Object.freeze([
   ellipse(STREET_LAYOUT.north),
-  rect(STREET_LAYOUT.north.x-half,625,STREET_LAYOUT.north.x+half,755),
+  rect(STREET_LAYOUT.north.x-half,STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry-35,STREET_LAYOUT.north.x+half,STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry+35),
   ellipse(STREET_LAYOUT.upper),
-  rect(STREET_LAYOUT.upper.x-half,1620,STREET_LAYOUT.upper.x+half,1770),
+  rect(STREET_LAYOUT.upper.x-half,STREET_LAYOUT.upper.y+STREET_LAYOUT.upper.ry-45,STREET_LAYOUT.upper.x+half,STREET_LAYOUT.lower.y-STREET_LAYOUT.lower.ry+45),
   ellipse(STREET_LAYOUT.lower),
   rect(40,STREET_LAYOUT.westGate.y-half,180,STREET_LAYOUT.westGate.y+half)
 ]);

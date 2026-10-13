@@ -66,20 +66,20 @@ export function strikeMonsters(room,player,power,now=Date.now()){
   return monstersInAttackArea(room,player,now).map(target=>damageMonster(room,target,player,power,now));
 }
 // Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
-export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false}={}){
+export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false,fixedDamage=null,silent=false,retaliateTeacher=false}={}){
   if(target.hp<=0||power<0||!Number.isFinite(power))return null;
   const raw=(target.sleepUntil||0)>now&&!ignoreSleep?power*2:power;
   const type=monsterType(target.typeId),level=type?.level??target.level;
   const defense=type?.defense??MONSTER_LEVEL_STATS[level]?.defense??MONSTER_COMBAT[target.mapId]?.defense??0;
-  const dealt=Math.max(1,Math.round(raw)-defense);
+  const dealt=fixedDamage??Math.max(1,Math.round(raw)-defense);
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
   // 남은 HP를 넘는 과잉 피해로 마지막 공격자가 소유권을 빼앗지 않도록 실제 감소량만 합산합니다.
   target.contributors??=new Map();
   target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(dealt,target.hp));
   target.hp=Math.max(0,target.hp-dealt);
-  room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
-  if(room.damageNumbers.length>200)room.damageNumbers.shift();
+  if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
+    if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
     if(type?.boss){
       if(room.persistBossDefeats){
@@ -90,11 +90,14 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
       addRecipeDrop(room,target,target.contributors,now,recipeRoll);
       addEnergyDrop(room,target,target.contributors,now,energyRoll);
     }
-    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.attackers.clear();target.contributors.clear();target.mapExitCount=0;
+    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.mapExitCount=0;
   }
   else{
     if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
-    target.attackers.set(player.id,++target.attackOrder);selectMonsterTarget(room,target);
+    // Only the regular teacher's E opts this particular monster into retaliation.
+    if(retaliateTeacher&&player.role==='teacher'&&!player.avatar?.teacherPreview)(target.teacherRetaliation??=new Set()).add(player.id);
+    if(player.role!=='teacher'||target.teacherRetaliation?.has(player.id))target.attackers.set(player.id,++target.attackOrder);
+    selectMonsterTarget(room,target);
   }
   return {monsterId:target.id,damage:dealt,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
 }
@@ -108,10 +111,10 @@ export function selectMonsterTarget(room,monster){
     // 현재 공격자 목록에서 맵을 실제로 떠난 사람만 한 번 집계합니다.
     // 목록에서 제거하므로 다음 틱에 중복 집계하거나 단순 재입장을 집계하지 않습니다.
     if(player&&player.mapId!==monster.mapId)monster.mapExitCount=(monster.mapExitCount||0)+1;
-    if(!player||!player.connected||player.away||player.role==='teacher'||player.avatar?.blackStar||player.mapId!==monster.mapId||!(ensureVitals(player)?.hp>0)){
-      monster.attackers.delete(id);continue;
+    if(!player||!player.connected||player.away||(player.role==='teacher'&&(player.avatar?.teacherPreview||!monster.teacherRetaliation?.has(id)))||player.avatar?.blackStar||player.mapId!==monster.mapId||!(ensureVitals(player)?.hp>0)){
+      monster.attackers.delete(id);monster.teacherRetaliation?.delete(id);continue;
     }
-    const type=constellationOf(player.avatar.constellationId,player.avatar.level)?.type;
+    const type=player.role==='teacher'?null:constellationOf(player.avatar.constellationId,player.avatar.level)?.type;
     candidates.push({player,order,priority:type==='수호계'?0:type==='특수계'?1:2});
   }
   candidates.sort((a,b)=>a.priority-b.priority||b.order-a.order);
@@ -133,7 +136,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
-      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
+      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const type=monsterType(m.typeId),rule=type.combat??MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
@@ -144,7 +147,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       m.moving=false;
       if(now>=m.pendingAttack.endsAt){
         const warning=m.pendingAttack;m.pendingAttack=null;
-        const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,sourceMonsterId:m.id},rule.power,now);
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},rule.power,now);
         m.nextAttackAt=now+rule.attackMs;
         const visual={monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:800,
           warningX:warning.x,warningY:warning.y,warningRadius:warning.radius};
@@ -187,7 +190,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
           m.pendingAttack={x:target.x,y:target.y,radius:rule.warningRadius,dx:m.dx,dy:m.dy,reach:attackReach,startsAt:now,endsAt:now+rule.warningMs};
           m.moving=false;continue;
         }
-        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,sourceMonsterId:m.id},rule.power,now);
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},rule.power,now);
         if(results.length){m.nextAttackAt=now+(rule.attackMs??MONSTER_RULES.attackMs/factor);
           for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:attackReach,durationMs:ATTACK_VISUAL.durationMs,...result});
           if(results.some(result=>result.defeated))selectMonsterTarget(room,m);

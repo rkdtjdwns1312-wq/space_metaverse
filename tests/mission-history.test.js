@@ -48,41 +48,28 @@ test('mission claim uses the server clock, isolates student dates, rejects dupli
   f.advance();assert.equal((await call(f.student,'mission:claim',{missionId:id})).ok,false);assert.equal(f.room.missions[0].claimedAt[f.p.id],now);
 });
 
-test('mission and tutorial dates/rewards roll back together without publishing failed snapshots',async t=>{
+test('mission dates/rewards roll back together without publishing failed snapshots',async t=>{
   const f=await fixture(t),id=await f.create();ok(await call(f.teacher,'mission:confirm',{missionId:id,studentId:f.p.id}));
   const published=[];f.student.on('room:state',state=>published.push(state));
   await f.fail(async()=>assert.equal((await call(f.student,'mission:claim',{missionId:id})).ok,false));
   assert.equal(f.p.starShards,0);assert.equal(f.view().missions.find(m=>m.id===id).status,'ready');assert.equal(f.room.missions[0].claimedAt,undefined);
   assert.equal(published.some(s=>s.missions.find(m=>m.id===id)?.status==='claimed'),false);
-  await f.fail(async()=>assert.equal((await call(f.student,'tutorial:complete',{completedAt:1})).ok,false));
-  assert.equal(f.p.tutorialCompleted,false);assert.equal(f.p.tutorialCompletedAt,null);
-  f.advance();ok(await call(f.student,'tutorial:complete',{completedAt:1}));const completedAt=f.now;
-  assert.equal(f.p.tutorialCompletedAt,completedAt);f.advance();ok(await call(f.student,'tutorial:complete'));assert.equal(f.p.tutorialCompletedAt,completedAt);
-  await f.fail(async()=>assert.equal((await call(f.student,'mission:claim',{missionId:'first-journey'})).ok,false));
-  assert.equal(f.p.tutorialRewardClaimed,false);assert.equal(f.p.tutorialRewardClaimedAt,null);assert.equal(f.p.starShards,0);
-  assert.equal(published.some(s=>s.missions.find(m=>m.id==='first-journey')?.status==='claimed'),false);
-  const claimedAt=f.now;ok(await call(f.student,'mission:claim',{missionId:'first-journey',claimedAt:1}));
-  assert.equal(f.p.tutorialRewardClaimedAt,claimedAt);assert.notEqual(claimedAt,completedAt);
-  assert.equal(f.view().missions.find(m=>m.id==='first-journey').claimedAt,claimedAt);
-  assert.equal(f.game.store.snapshot(f.room,f.q).players.find(p=>p.id===f.p.id).tutorialRewardClaimedAt,undefined);
-  f.advance();assert.equal((await call(f.student,'mission:claim',{missionId:'first-journey'})).ok,false);assert.equal(f.p.tutorialRewardClaimedAt,claimedAt);
-  await f.restart();assert.equal(f.p.tutorialCompletedAt,completedAt);assert.equal(f.p.tutorialRewardClaimedAt,claimedAt);assert.equal(f.p.starShards,1);
-  ok(await call(f.student,'mission:claim',{missionId:id}));assert.equal(f.p.starShards,3);
+  ok(await call(f.student,'mission:claim',{missionId:id}));assert.equal(f.p.starShards,2);
 });
 
-test('full shard bag leaves both mission types ready with no claim date',async t=>{
-  const f=await fixture(t),id=await f.create();ok(await call(f.teacher,'mission:confirm',{missionId:id,studentId:f.p.id}));ok(await call(f.student,'tutorial:complete'));
+test('full shard bag leaves the mission ready with no claim date',async t=>{
+  const f=await fixture(t),id=await f.create();ok(await call(f.teacher,'mission:confirm',{missionId:id,studentId:f.p.id}));
   f.mutate((room,p)=>{p.starShards=SHARDS.max;});
-  for(const missionId of [id,'first-journey']){assert.equal((await call(f.student,'mission:claim',{missionId})).ok,false);const view=f.view().missions.find(m=>m.id===missionId);assert.equal(view.status,'ready');assert.equal(view.claimedAt,null);}
+  for(const missionId of [id]){assert.equal((await call(f.student,'mission:claim',{missionId})).ok,false);const view=f.view().missions.find(m=>m.id===missionId);assert.equal(view.status,'ready');assert.equal(view.claimedAt,null);}
   assert.equal(f.p.starShards,SHARDS.max);
 });
 
 test('legacy completion has no invented date and invalid saved dates are rejected',async t=>{
-  const f=await fixture(t),id=await f.create();ok(await call(f.teacher,'mission:confirm',{missionId:id,studentId:f.p.id}));ok(await call(f.student,'mission:claim',{missionId:id}));ok(await call(f.student,'tutorial:complete'));ok(await call(f.student,'mission:claim',{missionId:'first-journey'}));
+  const f=await fixture(t),id=await f.create();ok(await call(f.teacher,'mission:confirm',{missionId:id,studentId:f.p.id}));ok(await call(f.student,'mission:claim',{missionId:id}));
   const saved=toRecord(f.room);delete saved.missions[0].claimedAt;
   const p=saved.students.find(p=>p.id===f.p.id);delete p.tutorialRewardClaimed;delete p.tutorialCompletedAt;delete p.tutorialRewardClaimedAt;
   const restored=fromRecord(saved),player=restored.players.get(p.id),views=missionViews(restored,player);
-  for(const missionId of [id,'first-journey']){const m=views.find(m=>m.id===missionId);assert.equal(m.status,'claimed');assert.equal(m.claimedAt,null);}
+  for(const missionId of [id]){const m=views.find(m=>m.id===missionId);assert.equal(m.status,'claimed');assert.equal(m.claimedAt,null);}
   assert.equal(player.tutorialCompletedAt,null);assert.equal(player.tutorialRewardClaimedAt,null);
   for(const invalid of [-1,1.5,'2026-10-13',8640000000000001]){
     const bad=structuredClone(saved);bad.missions[0].claimedAt={[p.id]:invalid};assert.throws(()=>fromRecord(bad));
@@ -90,5 +77,5 @@ test('legacy completion has no invented date and invalid saved dates are rejecte
   }
   for(const value of [null,[],{[f.q.id]:123}]){const bad=structuredClone(saved.missions);bad[0].claimedAt=value;assert.throws(()=>validateMissions(bad));}
   f.mutate((room,p)=>{p.tutorialCompleted=true;p.tutorialRewardClaimed=true;p.tutorialCompletedAt=null;p.tutorialRewardClaimedAt=null;delete room.missions[0].claimedAt;});
-  ok(await call(f.student,'tutorial:complete'));assert.equal(f.p.tutorialCompletedAt,null);assert.equal(f.p.tutorialRewardClaimedAt,null);
+  assert.equal((await call(f.student,'tutorial:complete')).ok,false);assert.equal(f.p.tutorialCompletedAt,null);assert.equal(f.p.tutorialRewardClaimedAt,null);
 });

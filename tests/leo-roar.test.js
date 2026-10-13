@@ -26,3 +26,14 @@ test('사자 포효는 3초 연출 중 가장 큰 프레임에서 한 번만 타
   assert.equal(ally.leoCourage.bonus,4);assert.equal(ally.leoCourage.endsAt,now+11600);
   const hp=target.hp;assert.equal(advanceLeoRoars(room,now+3000).hits.length,0);assert.equal(target.hp,hp);
 });
+
+test('이동 중 포효의 타격·용기 중심은 시전 위치가 아닌 현재 사자자리 위치를 따른다',()=>{
+  const now=100000,caster={id:'moving-lion',role:'student',connected:true,away:false,mapId:'star-origin-1',x:500,y:450,
+    facing:{x:1,y:0},avatar:{level:4,constellationId:'leo'}};
+  const room={players:new Map([[caster.id,caster]]),planets:new Map()},original=[...monstersOf(room).values()][0];
+  const old={...original,id:'old',mapId:caster.mapId,x:500,y:450,hp:1000,maxHp:1000,radius:20,attackers:new Map(),contributors:new Map()};
+  const moved={...old,id:'new',x:1100,attackers:new Map(),contributors:new Map()};room.monsters=new Map([[old.id,old],[moved.id,moved]]);
+  castLeo(room,caster,now);caster.x=1100;
+  const result=advanceLeoRoars(room,now+1600);assert.equal(old.hp,1000);assert(moved.hp<1000);assert.equal(result.hits.length,1);assert.equal(caster.leoCourage.bonus,4);
+  const hp=moved.hp;advanceLeoRoars(room,now+2000);assert.equal(moved.hp,hp);
+});

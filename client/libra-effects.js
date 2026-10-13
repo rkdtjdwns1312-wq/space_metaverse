@@ -15,6 +15,17 @@ export function drawLibraProjectile(ctx,cast,elapsedMs,reducedMotion=false){
 export function drawLibraAura(ctx,aura,elapsedMs,reducedMotion=false){
   const opening=elapsedMs<500,closing=elapsedMs>aura.durationMs-500;
   const size=aura.size*4.3;
+  if(aura.stage===2||aura.stage===3){
+    const key=`clean-lv${aura.stage}`;let core=images.get(key);
+    if(!core){core=new Image();core.src=`/assets/skills/libra/source/scale-lv${aura.stage}-clean.png`;images.set(key,core);}
+    if(core.complete&&core.naturalWidth){
+      const fade=Math.max(0,Math.min(1,elapsedMs/500,(aura.durationMs-elapsedMs)/500));
+      const side=size*(aura.stage===3?.78:.73),ratio=core.naturalWidth/core.naturalHeight;
+      const width=ratio>=1?side:side*ratio,height=ratio>=1?side/ratio:side;
+      ctx.save();ctx.globalAlpha*=fade*fade*(3-2*fade);ctx.drawImage(core,-width/2,-height/2,width,height);ctx.restore();
+    }
+    return;
+  }
   if(!opening&&!closing){
     if(aura.stage===4){
       const key='lv4-core';let core=images.get(key);

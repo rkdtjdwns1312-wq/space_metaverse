@@ -155,15 +155,24 @@ for (const [role,level,size,radius] of [
     assert.ok(Math.abs(hit.y+hit.dy*hit.originOffset-(500+.8*originOffset))<1e-10);
     assert.notEqual(hit.originOffset,hit.reach);
   };
-  const skillEvent=nextHit();
+  const skillEvent=role==='teacher'?null:nextHit();
   const skill=await call(actor,'combat:skill',spoof);
-  assert.equal(skill.ok,true,skill.error);assert.equal(skill.ready,false);
+  assert.equal(skill.ok,true,skill.error);
+  if(role==='teacher'){
+    assert.equal(skill.ready,true);
+    assert.deepEqual(skill.playerTargets.map(p=>p.targetId),[targets[0].id]);
+    assert.deepEqual(skill.targets.map(m=>m.monsterId),[monsters[0].id]);
+    assert.deepEqual(targets.map(p=>ensureVitals(p).hp),[before[0]-1,before[1]]);
+    assert.deepEqual(monsters.map(m=>m.hp),[19,20]);
+  }else{
+  assert.equal(skill.ready,false);
   const [skillHit]=await skillEvent;
   checkGeometry(skillHit);assert.equal(skillHit.kind,'skill');
   assert.deepEqual(skillHit.playerTargetIds,[targets[0].id]);
   assert.deepEqual(skillHit.monsterTargetIds,[monsters[0].id]);
   assert.deepEqual(targets.map(p=>ensureVitals(p).hp),before);
   assert.deepEqual(monsters.map(m=>m.hp),[20,20]);
+  }
   assert.equal(ensureVitals(attacker).mp,mp);
   assert.equal((await call(actor,'combat:skill',spoof)).ok,false);
 

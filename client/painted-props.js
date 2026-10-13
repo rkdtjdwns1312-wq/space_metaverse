@@ -6,6 +6,9 @@ export const PAINTED_PROPS=Object.freeze({
   arcade:{file:'arcade-front.png',width:110,height:155,foot:42},
   'math-station':{file:'math-station-front.png',width:330,height:330,foot:80,signY:.45,signWidth:.44},
   'english-station':{file:'english-station-front.png',width:330,height:330,foot:80,signY:.505,signWidth:.44},
+  'history-station':{file:'history-station-front.png',width:330,height:330,foot:80,signY:.465,signWidth:.44},
+  'science-station':{file:'science-station-front.png',width:330,height:330,foot:80,signY:.489,signWidth:.44},
+  'culture-station':{file:'culture-station-front.png',width:330,height:330,foot:80,signY:.515,signWidth:.44},
 });
 const images=new Map();
 for(const [key,entry] of Object.entries(PAINTED_PROPS))if(typeof Image!=='undefined'){

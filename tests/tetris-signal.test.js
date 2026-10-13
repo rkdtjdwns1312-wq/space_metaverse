@@ -87,12 +87,13 @@ test('저장 실패로 교실이 복구되어도 우주 신호 진행·재시도
   const current=()=>game.store.rooms.get(created.room.code);
   Object.assign(current().players.get(joined.selfId),{mapId:STREET_ID,x:signal.x,y:signal.y});
   const originalPlayer=current().players.get(joined.selfId);
+  originalPlayer.journey={version:2,stage:5,goals:[],claimedAt:Array(4).fill(Date.now()),practiceUntil:0};
   const started=await call(student,'signal:start');assert.equal(started.ok,true);
   assert.equal(JSON.stringify(game.store.snapshot(current(),originalPlayer)).includes('signalRun'),false);
   assert.equal(JSON.stringify(game.store.records.get(created.room.code)).includes('signalRun'),false);
   const originalSave=game.store.files.save.bind(game.store.files);
   game.store.files.save=()=>{throw new Error('simulated signal save failure');};
-  try{assert.equal((await call(student,'tutorial:complete')).ok,false);}
+  try{assert.equal((await call(student,'tutorial:observe',{goalId:'chat-open'})).ok,false);}
   finally{game.store.files.save=originalSave;}
   assert.equal(current().players.get(joined.selfId),originalPlayer);
   const first=await call(student,'signal:choose',{runId:started.runId,signal:started.sequence[0]});

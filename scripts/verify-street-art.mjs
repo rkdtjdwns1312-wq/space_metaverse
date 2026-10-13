@@ -20,22 +20,28 @@ try{
   Object.assign(player,{mapId:STREET_ID,x:STREET.spawn.x,y:STREET.spawn.y});publish();
   await page.waitForFunction(id=>document.getElementById('minimap')?.dataset.mapId===id,STREET_ID);
   const loaded=await page.evaluate(async()=>{
-    const [config,street,props,gates]=await Promise.all([import('/shared/config.js'),import('/street-art.js'),import('/painted-props.js'),import('/gate-art.js')]);
+    const [config,street,props,gates,duelArt]=await Promise.all([import('/shared/config.js'),import('/street-art.js'),import('/painted-props.js'),import('/gate-art.js'),import('/duel-arcade-art.js')]);
     await Promise.all([street.preloadStreetArt(),props.preloadPaintedProps(),gates.preloadGateArt()]);
     const imageFiles=await Promise.all(Object.values(props.PAINTED_PROPS).map(async spec=>{const image=new Image();image.src='/assets/maps/'+spec.file;await image.decode();return {file:spec.file,width:image.naturalWidth,height:image.naturalHeight};}));
-    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1350;const ctx=canvas.getContext('2d');ctx.scale(.5,.5);street.drawStreetGround(ctx,config.STREET);
+    await Promise.all(['duel-memory.png','duel-omok.png'].map(async file=>{const image=new Image();image.src='/assets/arcade/'+file;await image.decode();}));
+    const canvas=document.createElement('canvas');canvas.width=Math.ceil(config.STREET.width/2);canvas.height=Math.ceil(config.STREET.height/2);const ctx=canvas.getContext('2d');ctx.scale(.5,.5);street.drawStreetGround(ctx,config.STREET);
     const painted=[];
-    for(const o of config.STREET.objects){if(['shop','energy-shop','crafting','arcade','math-station','english-station'].includes(o.kind))painted.push({id:o.id,kind:o.kind,file:props.PAINTED_PROPS[o.kind].file,drawn:props.drawPaintedProp(ctx,o)});else if(o.kind==='gate')gates.drawPaintedGate(ctx,o);}
+    const duelMachines=[];
+    for(const o of config.STREET.objects){if(['shop','energy-shop','crafting','arcade','math-station','english-station','history-station','science-station','culture-station'].includes(o.kind))painted.push({id:o.id,kind:o.kind,file:props.PAINTED_PROPS[o.kind].file,drawn:props.drawPaintedProp(ctx,o)});else if(o.kind==='duel-arcade'){duelArt.drawDuelArcade(ctx,o);duelMachines.push({id:o.id,name:o.name,x:o.x,y:o.y});}else if(o.kind==='gate')gates.drawPaintedGate(ctx,o);}
     const closeup=document.createElement('canvas');closeup.width=2040;closeup.height=1170;
     closeup.getContext('2d').drawImage(canvas,140,20,680,390,0,0,2040,1170);
     const signAssetRequested=performance.getEntriesByType('resource').some(entry=>entry.name.includes('/assets/maps/plaza-sign.png'));
-    return {imageFiles,painted,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabels:street.STREET_ROUTE_LABELS,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
+    return {imageFiles,painted,duelMachines,backdrop:street.STREET_BACKDROP_SRC,gate:gates.GATE_ART_SRC,routeLabels:street.STREET_ROUTE_LABELS,signAssetRequested,overview:canvas.toDataURL('image/png'),closeup:closeup.toDataURL('image/png')};
   });
-  assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png','math-station-front.png','english-station-front.png'].sort());
-  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,12);assert.ok(loaded.painted.every(x=>x.drawn));
+  assert.deepEqual(loaded.imageFiles.map(x=>x.file).sort(),['arcade-front.png','crafting-front.png','energy-shop-front.png','star-shop-front.png','math-station-front.png','english-station-front.png','history-station-front.png','science-station-front.png','culture-station-front.png'].sort());
+  assert.ok(loaded.imageFiles.every(x=>x.width>0&&x.height>0));assert.equal(loaded.painted.length,15);assert.ok(loaded.painted.every(x=>x.drawn));
   assert.equal(loaded.painted.filter(x=>x.kind==='arcade').length,7);
+  assert.deepEqual(loaded.duelMachines,[{id:'duel-memory',name:'별 그림 짝 맞추기 경쟁 게임',x:500,y:STREET_LAYOUT.lower.y-195},{id:'duel-omok',name:'별 오목 경쟁 게임',x:1300,y:STREET_LAYOUT.lower.y-195}]);
   assert.equal(await page.locator('#minimap').getAttribute('data-map-id'),STREET_ID);
-  const routeLabels=loaded.routeLabels;assert.deepEqual(routeLabels,[{text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:750},{text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:1580}]);
+  const routeLabels=loaded.routeLabels;assert.deepEqual(routeLabels,[
+    {text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry+STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry)/2)},
+    {text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.upper.y+STREET_LAYOUT.upper.ry+STREET_LAYOUT.lower.y-STREET_LAYOUT.lower.ry)/2)}
+  ]);
   assert.ok(routeLabels.every(label=>onStreetFloor(STREET,label.x,label.y)),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');
   assert.equal(loaded.signAssetRequested,false,'푯말 그림 PNG를 내려받지 않습니다.');
   await page.screenshot({path:'.local/request279-street-game.png'});

@@ -40,6 +40,8 @@ export function advanceLeoRoars(room,now){
     if(now<roar.hitAt){keep.push(roar);continue;}
     const caster=room.players.get(roar.playerId);
     if(caster?.connected&&!caster.away&&caster.mapId===roar.mapId&&ensureVitals(caster).hp>0){
+      // 소환된 사자가 시전자 뒤를 따라가므로 타격도 현재 시전자 위치를 중심으로 판정합니다.
+      roar.x=caster.x;roar.y=caster.y;
       const inside=(x,y,r=0)=>((x-roar.x)/(roar.rx+r))**2+((y-roar.y)/(roar.ry+r))**2<=1;
       const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===roar.mapId&&inside(m.x,m.y,m.radius))
         .map(m=>damageMonster(room,m,caster,roar.power,now)).filter(Boolean);

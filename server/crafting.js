@@ -1,5 +1,5 @@
-import { CRAFTING,PUBLIC_CRAFTING_RECIPES } from '../shared/crafting.js';
-import { SHOP } from '../shared/config.js';
+import { CRAFTING,PUBLIC_CRAFTING_RECIPES,STAR_CRUMB_RECIPE } from '../shared/crafting.js';
+import { SHOP,SHARDS } from '../shared/config.js';
 import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import {shardCost} from '../shared/economy.js';
 
@@ -51,6 +51,14 @@ function validRecipe(recipe, catalog, maxQuantity) {
 }
 
 function craftPublicRecipe(player, recipe, catalog) {
+  if(recipe===STAR_CRUMB_RECIPE){
+    const part=recipe.ingredients[0],owned=player.inventory.find(entry=>entry.id===part.id);
+    if(!owned||owned.quantity<part.quantity)return fail(player,'insufficient-ingredients');
+    if(player.starShards>=SHARDS.max)return fail(player,'shard-cap');
+    owned.quantity-=part.quantity;if(!owned.quantity)player.inventory.splice(player.inventory.indexOf(owned),1);
+    player.starShards++;
+    return {success:true,item:{id:recipe.output.id,name:'별 파편'},error:null,balance:player.starShards,inventory:player.inventory};
+  }
   const output=catalog.find(item=>item.id===recipe.output.id);
   if(!output)return fail(player,'invalid-recipe');
   const ownedEntries=recipe.ingredients.map(part=>({part,entry:player.inventory.find(item=>item.id===part.id)}));

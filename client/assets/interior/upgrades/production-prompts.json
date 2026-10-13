@@ -1,0 +1,87 @@
+{
+  "model": "gpt-6-luna",
+  "generator": "built-in image_gen",
+  "generationCalls": 16,
+  "transparentBackground": true,
+  "sharedStyle": "프로젝트 기존 원화와 같은 아이보리·라벤더·은색·금색의 파스텔 우주 판타지 클래식 2D MMORPG 손그림, 정면 구도, 바닥 그림자 없는 실제 투명 PNG.",
+  "interiorAssets": {
+    "mailbox": {
+      "tier1": {
+        "file": "mailbox-tier1.png",
+        "reference": "client/assets/interior/mailbox.png",
+        "prompt": "같은 정면 우체통 형태와 슬롯·봉투 기능을 선명하게 유지. 첫 해금: 절제된 금테, 작은 보석, 섬세한 별·초승달 장식. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier2": {
+        "file": "mailbox-tier2.png",
+        "reference": "client/assets/interior/mailbox.png",
+        "prompt": "같은 정면 우체통 형태와 슬롯·봉투 기능을 선명하게 유지. 두 번째 해금: tier1보다 풍성한 층 장식, 보석 한 쌍, 우아한 천체 곡선. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier3": {
+        "file": "mailbox-tier3.png",
+        "reference": "client/assets/interior/mailbox.png",
+        "prompt": "같은 정면 우체통 형태와 슬롯·봉투 기능을 선명하게 유지. 마지막 해금: 가장 화려한 금테와 보석 군집, 날개 같은 곡선, 별·달 세공. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      }
+    },
+    "board": {
+      "tier1": {
+        "file": "board-tier1.png",
+        "reference": "client/assets/interior/board.png",
+        "prompt": "같은 넓은 가로 게시판 형태. HTML 오버레이를 위해 큰 안쪽 직사각형은 완전히 비우고 장식은 바깥 프레임에만 둠. 첫 해금: 절제된 금테, 작은 보석, 섬세한 별·초승달 장식. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier2": {
+        "file": "board-tier2.png",
+        "reference": "client/assets/interior/board.png",
+        "prompt": "같은 넓은 가로 게시판 형태. HTML 오버레이를 위해 큰 안쪽 직사각형은 완전히 비우고 장식은 바깥 프레임에만 둠. 두 번째 해금: tier1보다 풍성한 층 장식, 보석 한 쌍, 우아한 천체 곡선. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier3": {
+        "file": "board-tier3.png",
+        "reference": "client/assets/interior/board.png",
+        "prompt": "같은 넓은 가로 게시판 형태. HTML 오버레이를 위해 큰 안쪽 직사각형은 완전히 비우고 장식은 바깥 프레임에만 둠. 마지막 해금: 가장 화려한 금테와 보석 군집, 날개 같은 곡선, 별·달 세공. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      }
+    },
+    "report": {
+      "tier1": {
+        "file": "report-tier1.png",
+        "reference": "client/assets/interior/report.png",
+        "prompt": "세로형 스탠드 위 펼친 책. 두 페이지는 완전히 빈 크림색으로 유지하고 글자·기호를 넣지 않음. 첫 해금: 절제된 금테, 작은 보석, 섬세한 별·초승달 장식. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier2": {
+        "file": "report-tier2.png",
+        "reference": "client/assets/interior/report.png",
+        "prompt": "세로형 스탠드 위 펼친 책. 두 페이지는 완전히 빈 크림색으로 유지하고 글자·기호를 넣지 않음. 두 번째 해금: tier1보다 풍성한 층 장식, 보석 한 쌍, 우아한 천체 곡선. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier3": {
+        "file": "report-tier3.png",
+        "reference": "client/assets/interior/report.png",
+        "prompt": "세로형 스탠드 위 펼친 책. 두 페이지는 완전히 빈 크림색으로 유지하고 글자·기호를 넣지 않음. 마지막 해금: 가장 화려한 금테와 보석 군집, 날개 같은 곡선, 별·달 세공. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      }
+    },
+    "warning": {
+      "tier1": {
+        "file": "warning-tier1.png",
+        "reference": "client/assets/interior/warning.png",
+        "prompt": "둥근 경고 제어 장치에 금색 삼각형과 느낌표를 뚜렷하게 유지. 첫 해금: 절제된 금테, 작은 보석, 섬세한 별·초승달 장식. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier2": {
+        "file": "warning-tier2.png",
+        "reference": "client/assets/interior/warning.png",
+        "prompt": "둥근 경고 제어 장치에 금색 삼각형과 느낌표를 뚜렷하게 유지. 두 번째 해금: tier1보다 풍성한 층 장식, 보석 한 쌍, 우아한 천체 곡선. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      },
+      "tier3": {
+        "file": "warning-tier3.png",
+        "reference": "client/assets/interior/warning.png",
+        "prompt": "둥근 경고 제어 장치에 금색 삼각형과 느낌표를 뚜렷하게 유지. 마지막 해금: 가장 화려한 금테와 보석 군집, 날개 같은 곡선, 별·달 세공. 기존 기능을 즉시 알아볼 수 있게 유지. 배경·글자 없음, 투명 PNG."
+      }
+    }
+  },
+  "arcadeAssets": {
+    "duel-memory.png": {
+      "reference": "client/assets/maps/arcade-front.png",
+      "prompt": "별·달·행성 그림이 있는 밝은 파스텔 카드 짝맞추기 화면과 양쪽 두 명 플레이어 조작부를 갖춘 투명 캐비닛. 오목판·흑백돌·숫자·고정 4x4 배열은 넣지 않으며 카드 배열은 가변형으로 표현."
+    },
+    "duel-omok.png": {
+      "reference": "client/assets/maps/arcade-front.png",
+      "prompt": "선명한 나무 오목 격자와 교차점의 흑돌·백돌, 서로 마주 보는 양쪽 플레이어 조작부를 갖춘 투명 캐비닛. 기존 별 장식 아이보리·라벤더·금장 아케이드 손그림풍."
+    }
+  }
+}

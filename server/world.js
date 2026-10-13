@@ -80,6 +80,7 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
   return planet;
 }
 export function advance(room, now) {
+  const movedIds=[];
   // 실제 경과 시간이나 클라이언트 좌표 대신 고정 서버 tick으로 속도를 제한합니다.
   if (!room.unattended && ![...room.players.values()].some(p => p.role==='teacher' && p.connected)) return;
   for (const p of room.players.values()) {
@@ -102,6 +103,8 @@ export function advance(room, now) {
     // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
     const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
     if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};
+    if(moved>0)movedIds.push(p.id);
     if(Math.abs(movedX)>1e-6)p.facingX=movedX<0?-1:1;
   }
+  return movedIds;
 }
