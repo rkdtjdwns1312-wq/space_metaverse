@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm,readFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {decryptTeacherCode} from '../server/teacher-access.js';
+test('legacy teacher code becomes admin-readable only after verified login; failed save rolls migration back',async t=>{
+ const dir=await mkdtemp(join(tmpdir(),'teacher-code-migration-')),master='migration-master-isolated',password='migration-admin-isolated';
+ let game=createClassroomServer({teacherKey:master,adminPassword:password,dataDir:dir,studentHours:false}),url=`http://127.0.0.1:${(await game.listen()).port}`;const sockets=[];
+ t.after(async()=>{for(const s of sockets)s.disconnect();await game.close();await rm(dir,{recursive:true,force:true});});
+ const connect=async()=>{const s=io(url,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise(r=>s.once('connect',r));return s;},call=(s,e,d={})=>s.timeout(5000).emitWithAck(e,d);
+ let admin=await connect();assert((await call(admin,'admin:login',{key:password})).ok);
+ const issued=await call(admin,'admin:create',{title:'이전교실',teacherName:'테스트'});assert(issued.ok);
+ const record=game.store.records.get(issued.code);delete record.teacherAccess.encryptedCode;game.store.files.save(record);const digest=record.teacherAccess.digest;
+ await game.close();game=createClassroomServer({teacherKey:master,adminPassword:password,dataDir:dir,studentHours:false});url=`http://127.0.0.1:${(await game.listen()).port}`;
+ admin=await connect();await call(admin,'admin:login',{key:password});const teacher=await connect();
+ assert.equal((await call(teacher,'room:open',{code:issued.code,teacherKey:'invalid'})).ok,false);assert.equal(game.store.records.get(issued.code).teacherAccess.encryptedCode,undefined);
+ const save=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw new Error('migration storage failure');};
+ assert.equal((await call(teacher,'room:open',{code:issued.code,teacherKey:issued.teacherCode})).ok,false);
+ assert.equal(game.store.records.get(issued.code).teacherAccess.encryptedCode,undefined);assert.equal(game.store.rooms.has(issued.code),false);
+ game.store.files.save=save;const opened=await call(teacher,'room:open',{code:issued.code,teacherKey:issued.teacherCode});assert(opened.ok,opened.error);
+ const access=game.store.records.get(issued.code).teacherAccess;assert.equal(access.digest,digest);assert.equal(decryptTeacherCode(master,access.encryptedCode),issued.teacherCode);
+ assert.equal((await call(admin,'admin:list')).classes[0].teacherCode,issued.teacherCode);assert.equal(JSON.stringify(opened).includes(issued.teacherCode),false);
+ assert.equal((await readFile(join(dir,issued.code+'.json'),'utf8')).includes(issued.teacherCode),false);assert.equal((await call(teacher,'admin:list')).ok,false);
+});

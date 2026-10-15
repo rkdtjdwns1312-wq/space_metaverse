@@ -101,8 +101,11 @@ test('actual culture and science dialogs refresh at KST midnight without repeati
     '/client/science-library.js':'client/science-library.js',
     '/client/reading-refresh.js':'client/reading-refresh.js',
     '/shared/culture-stories.js':'shared/culture-stories.js',
+    '/shared/culture-stories-extra.js':'shared/culture-stories-extra.js',
+    '/shared/history-keywords.js':'shared/history-keywords.js',
     '/shared/station-rewards.js':'shared/station-rewards.js',
-    '/shared/science-facts.js':'shared/science-facts.js'
+    '/shared/science-facts.js':'shared/science-facts.js',
+    '/shared/science-facts-extra.js':'shared/science-facts-extra.js'
   };
   const server=createServer(async(req,res)=>{
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -154,7 +157,9 @@ test('actual culture and science dialogs refresh at KST midnight without repeati
   await scienceDialog.locator('.science-done').click();
   await scienceDialog.locator('.science-next').waitFor({state:'visible'});
   await page.clock.fastForward(24*60*60*1000);
-  await scienceDialog.locator('.culture-progress').getByText('오늘 0 / 2개 · 아직 만나지 않은 이야기 49개').waitFor();
+  const scienceProgress=scienceDialog.locator('.culture-progress');
+  await scienceProgress.waitFor({state:'visible'});
+  assert.match(await scienceProgress.textContent(),/^오늘 0 \/ 2개 · 이번 차례 남은 이야기 49 \/ \d+개$/);
   assert.equal(await scienceDialog.locator('.science-done').isDisabled(),true,'자정 뒤에도 이미 읽은 이야기는 다시 보상할 수 없어야 해요.');
   assert.equal(events.filter(e=>e==='science:claim').length,1);
   await scienceDialog.locator('.science-next').click();

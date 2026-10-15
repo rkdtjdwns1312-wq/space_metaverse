@@ -9,11 +9,11 @@ const open=async f=>ok(await call(f.student,'science:open'));
 const claim=async(f,factId)=>ok(await call(f.student,'science:claim',{factId}));
 const status=async f=>ok(await call(f.student,'science:status'));
 
-test('science schema preserves legacy absence and rejects inconsistent lifetime/daily/active records',()=>{
- assert.equal(ids.length,50);assert.equal(new Set(ids).size,50);
- const empty={day:null,seenIds:[],openedIds:[],claimedIds:[],activeId:null};assert.deepEqual(validateScienceReading(undefined),empty);
+test('science schema preserves legacy absence and rejects inconsistent cycle/daily/active records',()=>{
+ assert.equal(ids.length,100);assert.equal(new Set(ids).size,100);
+ const empty={day:null,seenIds:[],openedIds:[],claimedIds:[],activeId:null,cyclesCompleted:0};assert.deepEqual(validateScienceReading(undefined),empty);
  const valid={day:'2026-10-13',seenIds:ids.slice(0,2),openedIds:ids.slice(0,2),claimedIds:[ids[0]],activeId:ids[1]};
- assert.deepEqual(validateScienceReading(valid),valid);
+ assert.deepEqual(validateScienceReading(valid),{...valid,cyclesCompleted:0});
  for(const raw of [null,{}, {...valid,day:'2026-02-30'},{...valid,day:null},{...valid,seenIds:[ids[0],ids[0]]},
   {...valid,openedIds:ids.slice(0,3)},{...valid,claimedIds:ids.slice(0,2)},{...valid,activeId:ids[0]},
   {...valid,activeId:null},{...valid,seenIds:['unknown']},{...valid,claimedIds:[ids[2]]}])assert.throws(()=>validateScienceReading(raw));
@@ -22,7 +22,7 @@ test('science schema preserves legacy absence and rejects inconsistent lifetime/
 test('science open is server-selected and atomic: repeated opens resume, only two new facts/day, duplicate claims pay once',async t=>{
  const f=await readingFixture(t);f.at('science');f.mutate(p=>{p.avatar.level=3;});
  const first=await Promise.all(Array.from({length:6},()=>call(f.student,'science:open',{factId:'forged'})));first.forEach(ok);
- assert.equal(new Set(first.map(r=>r.factId)).size,1);assert.equal(first[0].count,1);assert.equal(first[0].remaining,49);
+ assert.equal(new Set(first.map(r=>r.factId)).size,1);assert.equal(first[0].count,1);assert.equal(first[0].remaining,99);
  const factId=first[0].factId;assert(ids.includes(factId));
  const paid=await Promise.all(Array.from({length:6},()=>call(f.student,'science:claim',{factId,amount:999})));
  paid.forEach(ok);assert.equal(paid.filter(r=>r.awarded).length,1);assert.equal(f.p.cosmicEnergy,5);assert.equal(paid[0].activeId,null);
@@ -30,7 +30,7 @@ test('science open is server-selected and atomic: repeated opens resume, only tw
  assert.equal((await open(f)).factId,second.factId);assert.equal((await status(f)).count,2);
  f.mutate(p=>{p.avatar.level=5;});const last=await claim(f,second.factId);assert.equal(last.amount,100);assert.equal(last.canOpen,false);assert.equal(last.activeId,null);
  assert.equal((await call(f.student,'science:open')).ok,false);assert.equal(f.p.cosmicEnergy,105);
- assert.deepEqual((await status(f)).remaining,48);
+ assert.deepEqual((await status(f)).remaining,98);
 });
 
 test('science rejects guest, far/wrong-station, away, stale connection, other player and unselected claims; teacher completion advances without reward',async t=>{
@@ -56,7 +56,7 @@ test('unclaimed science fact survives restart and crossing midnight consumes exa
  f.advance(1000);const carried=await claim(f,pending.factId);assert.equal(carried.day,'2026-10-14');assert.equal(carried.count,1);assert.equal(carried.amount,1);assert.equal(carried.activeId,null);
  const second=await open(f);assert(![first.factId,pending.factId].includes(second.factId));assert.equal(second.count,2);await claim(f,second.factId);
  assert.equal((await call(f.student,'science:open')).ok,false);await f.restart();f.at('science');assert.equal((await status(f)).count,2);assert.equal(f.p.cosmicEnergy,3);
- f.advance();const active=await open(f);f.advance();const resumed=await open(f);assert.equal(resumed.factId,active.factId);assert.equal(resumed.count,1);assert.equal(resumed.remaining,46);
+ f.advance();const active=await open(f);f.advance();const resumed=await open(f);assert.equal(resumed.factId,active.factId);assert.equal(resumed.count,1);assert.equal(resumed.remaining,96);
  await claim(f,active.factId);assert.equal((await status(f)).count,1);
  const record=toRecord(f.room),saved=record.students.find(p=>p.id===f.p.id);delete saved.scienceReading;
  assert.deepEqual(fromRecord(record).players.get(f.p.id).scienceReading,validateScienceReading(undefined));
@@ -69,17 +69,36 @@ test('science write failures roll back first draw, midnight carry, energy and co
  await f.fail(async()=>assert.equal((await call(f.student,'science:open')).ok,false));assert.deepEqual(f.p.scienceReading,saved);
  await f.fail(async()=>assert.equal((await call(f.student,'science:claim',{factId:book.factId})).ok,false));assert.deepEqual(f.p.scienceReading,saved);assert.equal(f.p.cosmicEnergy,0);
  const result=await claim(f,book.factId);assert.equal(result.count,1);assert.equal(result.amount,1);
- await f.restart();f.at('science');assert.equal(f.p.cosmicEnergy,1);assert.equal((await status(f)).activeId,null);assert.equal((await status(f)).remaining,49);
+ await f.restart();f.at('science');assert.equal(f.p.cosmicEnergy,1);assert.equal((await status(f)).activeId,null);assert.equal((await status(f)).remaining,99);
  for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).scienceReading,undefined);
 });
 
-test('all 50 science facts are drawn once for life and never automatically recycled',async t=>{
- const f=await readingFixture(t);f.at('science');const seen=new Set();
- for(let i=0;i<50;i++){
+
+test('all 100 facts are unique per cycle; completion resets history without resetting daily quota or duplicating rewards',async t=>{
+ const f=await readingFixture(t);f.at('science');const seen=new Set();let lastId;
+ for(let i=0;i<ids.length;i++){
   if(i&&i%2===0)f.advance();const book=await open(f);assert(!seen.has(book.factId));seen.add(book.factId);
-  assert.equal(book.remaining,49-i);assert.equal(book.canOpen,true);const done=await claim(f,book.factId);assert.equal(done.amount,1);
-  if(i===49){assert.equal(done.exhausted,true);assert.equal(done.canOpen,false);}await wait(35);
+  assert.equal(book.remaining,ids.length-1-i);assert.equal(book.canOpen,true);const done=await claim(f,book.factId);assert.equal(done.amount,1);lastId=book.factId;
+  if(i===ids.length-1){assert.equal(done.exhausted,false);assert.equal(done.remaining,100);assert.equal(done.cyclesCompleted,1);assert.equal(done.canOpen,false);assert.match(done.message,/초기화/);}
+  await wait(35);
  }
- assert.equal(seen.size,50);f.advance();const exhausted=await status(f);assert.equal(exhausted.remaining,0);assert.equal(exhausted.count,0);assert.equal(exhausted.canOpen,false);assert.match(exhausted.message,/50편/);
- assert.equal((await call(f.student,'science:open')).ok,false);await f.restart();f.at('science');assert.equal((await status(f)).exhausted,true);assert.equal(f.p.cosmicEnergy,50);
+ assert.equal(seen.size,100);assert.equal((await claim(f,lastId)).awarded,false);assert.equal(f.p.cosmicEnergy,100);
+ assert.equal((await call(f.student,'science:open')).ok,false);await f.restart();f.at('science');assert.equal((await status(f)).count,2);assert.equal((await status(f)).cyclesCompleted,1);
+ f.advance();const next=await open(f);assert(seen.has(next.factId));assert.equal(next.remaining,99);assert.equal(next.count,1);
+ await claim(f,next.factId);assert.equal(f.p.cosmicEnergy,101);
+});
+
+test('cycle renewal is transactional and old 50-story records continue with the additional 50',async t=>{
+ const f=await readingFixture(t);f.at('science');const day=(await status(f)).day;
+ f.mutate(p=>{p.scienceReading={day,seenIds:ids.slice(0,50),openedIds:[],claimedIds:[],activeId:null};});
+ const added=await open(f);assert(ids.slice(50).includes(added.factId));await claim(f,added.factId);
+ f.advance();const nextDay=(await status(f)).day;
+ f.mutate(p=>{p.scienceReading={day:nextDay,seenIds:ids.slice(0,-1),openedIds:[],claimedIds:[],activeId:null};});
+ const last=await open(f);assert.equal(last.factId,ids.at(-1));const before=structuredClone(f.p.scienceReading),energy=f.p.cosmicEnergy;
+ await f.fail(async()=>assert.equal((await call(f.student,'science:claim',{factId:last.factId})).ok,false));
+ assert.deepEqual(f.p.scienceReading,before);assert.equal(f.p.cosmicEnergy,energy);
+ const done=await claim(f,last.factId);assert.equal(done.remaining,100);assert.equal(done.count,1);assert.equal(done.canOpen,true);
+ assert.equal((await claim(f,last.factId)).awarded,false);const second=await open(f);assert.notEqual(second.factId,last.factId);
+ await claim(f,second.factId);assert.equal((await status(f)).count,2);assert.equal((await call(f.student,'science:open')).ok,false);
+ await f.restart();f.at('science');assert.equal((await status(f)).cyclesCompleted,1);assert.equal((await status(f)).remaining,99);
 });

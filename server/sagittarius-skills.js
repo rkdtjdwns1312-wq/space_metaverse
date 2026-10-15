@@ -22,7 +22,7 @@ function damage(room,player,list,power,now){
   const targets=[],playerTargets=[];
   for(const target of list){
     if(target.kind==='monster'){const hit=damageMonster(room,target.entity,player,power,now);if(hit)targets.push(hit);}
-    else{const hit=damagePlayer(target.entity,power,now);if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
+    else{const hit=damagePlayer(target.entity,power,now,{room});if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
   }
   return {targets,playerTargets};
 }

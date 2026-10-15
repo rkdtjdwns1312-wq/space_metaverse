@@ -4,7 +4,7 @@ import {journeyComplete,journeyMissions} from './tutorial-journey.js';
 import {dailyInstances,ensureDailyMissions,dailyHistoryViews} from './daily-missions.js';
 
 export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10,recipients:30,hours:8760});
-export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read']);
+export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read','culture-read','history-read','science-read','one-stroke-win']);
 const autoObjectives=new Set(AUTO_OBJECTIVES);
 const difficulties=new Set(['low','medium','high']);
 const uniqueIds=value=>Array.isArray(value)&&value.every(id=>typeof id==='string'&&id.length>0)&&new Set(value).size===value.length;
@@ -31,7 +31,7 @@ export function validateMissions(value,{limit=MISSION_LIMITS.count,instances=fal
       (mission.objective!==undefined&&(!autoObjectives.has(mission.objective)||!Number.isSafeInteger(mission.goal)||mission.goal<1||mission.goal>100||
         (mission.objective==='math-correct'&&(!Number.isSafeInteger(mission.grade)||mission.grade<1||mission.grade>6))||
         (mission.objective==='craft-level'&&(!Number.isSafeInteger(mission.itemLevel)||mission.itemLevel<2||mission.itemLevel>5))||
-        (['baseball-win','sudoku-win'].includes(mission.objective)&&!difficulties.has(mission.difficulty))||
+        (['baseball-win','sudoku-win','one-stroke-win'].includes(mission.objective)&&!difficulties.has(mission.difficulty))||
         (mission.objective==='signal-stage'&&(!Number.isSafeInteger(mission.stage)||mission.stage<1||mission.stage>6||mission.goal!==1))||
         (['tutorial-complete','life-star-complete','timetable-read'].includes(mission.objective)&&mission.goal!==1)||
         !mission.progress||typeof mission.progress!=='object'||Array.isArray(mission.progress)||
@@ -68,7 +68,7 @@ export function createMission(room,data,now=Date.now()){
     ensure(Number.isSafeInteger(data.goal)&&data.goal>=1&&data.goal<=100,'목표 횟수는 1~100회로 정해 주세요.');
     if(data.objective==='math-correct')ensure(Number.isSafeInteger(data.grade)&&data.grade>=1&&data.grade<=6,'수학 발전소 학년을 골라 주세요.');
     if(data.objective==='craft-level')ensure(Number.isSafeInteger(data.itemLevel)&&data.itemLevel>=2&&data.itemLevel<=5,'조합할 아이템 레벨을 골라 주세요.');
-    if(['baseball-win','sudoku-win'].includes(data.objective))ensure(difficulties.has(data.difficulty),'게임 난이도를 골라 주세요.');
+    if(['baseball-win','sudoku-win','one-stroke-win'].includes(data.objective))ensure(difficulties.has(data.difficulty),'게임 난이도를 골라 주세요.');
     if(data.objective==='signal-stage')ensure(Number.isSafeInteger(data.stage)&&data.stage>=1&&data.stage<=6&&data.goal===1,'우주 신호 단계를 골라 주세요.');
     if(['tutorial-complete','life-star-complete','timetable-read'].includes(data.objective))ensure(data.goal===1,'이 조건은 한 번 완료하면 달성돼요.');
   }
@@ -80,7 +80,7 @@ export function createMission(room,data,now=Date.now()){
     acceptedIds:!daily&&data.distribution==='all'?[...room.players.values()].filter(p=>p.role==='student').map(p=>p.id):[],completedIds:[],claimedIds:[],
     ...(data.objective?{objective:data.objective,goal:data.goal,progress:{},
       ...(data.objective==='math-correct'?{grade:data.grade}:{}),...(data.objective==='craft-level'?{itemLevel:data.itemLevel}:{}),
-      ...(['baseball-win','sudoku-win'].includes(data.objective)?{difficulty:data.difficulty}:{}),
+      ...(['baseball-win','sudoku-win','one-stroke-win'].includes(data.objective)?{difficulty:data.difficulty}:{}),
       ...(data.objective==='signal-stage'?{stage:data.stage}:{})}:{})};
   // 첫 여행 안내는 한 번만 끝낼 수 있으므로, 미션 제작 전에 완료한 친구도 즉시 달성 상태로 둡니다.
   if(mission.objective==='tutorial-complete')for(const id of mission.acceptedIds){
@@ -124,7 +124,7 @@ export function advanceMissions(room,player,objective,detail,now=Date.now()){
   for(const mission of activeMissionRecords(room,now)){
     if(missionExpired(mission,now)||mission.objective!==objective||!mission.acceptedIds.includes(player.id)||mission.completedIds.includes(player.id)||
       objective==='math-correct'&&mission.grade!==detail||objective==='craft-level'&&mission.itemLevel!==detail||
-      ['baseball-win','sudoku-win'].includes(objective)&&mission.difficulty!==detail||
+      ['baseball-win','sudoku-win','one-stroke-win'].includes(objective)&&mission.difficulty!==detail||
       objective==='signal-stage'&&detail<mission.stage)continue;
     const gain=objective==='tetris-lines'?detail:1;
     if(!Number.isSafeInteger(gain)||gain<1)continue;

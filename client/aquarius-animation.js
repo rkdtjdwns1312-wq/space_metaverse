@@ -1,5 +1,6 @@
+import {gaitRig,gaitPhase,queueMotionFrames,finishMotionFrame} from './locomotion-gait.js';
 // 원화의 얼굴·손·물병은 고정하고 머리 끝, 옷자락, 쏟아지는 물만 움직입니다.
-const cache=new WeakMap(),SIDE=256,COUNT=16,TAU=Math.PI*2;
+const cache=new WeakMap(),SIDE=256,COUNT=32,TAU=Math.PI*2;
 const clamp=n=>Math.max(0,Math.min(1,n));
 const smooth=(a,b,n)=>{const t=clamp((n-a)/(b-a));return t*t*(3-2*t);};
 export function aquariusWalkFrames(sprite,level){
@@ -7,10 +8,12 @@ export function aquariusWalkFrames(sprite,level){
   let levels=cache.get(sprite);if(!levels){levels=new Map();cache.set(sprite,levels);}if(levels.has(level))return levels.get(level);
   const original=document.createElement('canvas');original.width=original.height=SIDE;
   const ctx=original.getContext('2d',{willReadFrequently:true});ctx.drawImage(sprite,0,0,SIDE,SIDE);
-  const source=ctx.getImageData(0,0,SIDE,SIDE).data,frames=[original];
-  for(let frame=1;frame<COUNT;frame++){
+  const source=ctx.getImageData(0,0,SIDE,SIDE).data,frames=Array(COUNT).fill(original);
+  const gait=gaitRig('aquarius',level);
+  queueMotionFrames(frames,frame=>{
     const phase=TAU*frame/COUNT,canvas=document.createElement('canvas');canvas.width=canvas.height=SIDE;
     const target=canvas.getContext('2d'),out=target.createImageData(SIDE,SIDE);
+    const gp=gaitPhase(phase);
     for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
       const u=x/SIDE,v=y/SIDE;
       const hair=(1-smooth(.30,.40,u))*smooth(.23,.37,v)*(1-smooth(.57,.67,v));
@@ -22,13 +25,14 @@ export function aquariusWalkFrames(sprite,level){
       const face=smooth(.28,.33,u)*(1-smooth(.65,.70,u))*smooth(.10,.14,v)*(1-smooth(.38,.43,v));
       const dx=(hair*1.8*Math.sin(phase)+cloth*(1-legs)*1.5*(Math.sin(phase+.3)-Math.sin(.3))+flow*1.4)*(1-face);
       const dy=(hair*.6*Math.sin(phase)+cloth*(1-legs)*.7*Math.sin(phase)+water*.8*Math.sin(phase))*(1-face);
-      const sx=x-dx,sy=y-dy;if(sx<0||sy<0||sx>=SIDE-1||sy>=SIDE-1)continue;
+      const gi=(y*SIDE+x)*3,gx=gait?gait[gi]*gp[0]:0,gy=gait?-(gait[gi+1]*gp[1]+gait[gi+2]*gp[2]):0;
+      const sx=x-dx-gx,sy=y-dy-gy;if(sx<0||sy<0||sx>=SIDE-1||sy>=SIDE-1)continue;
       const ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy,index=(y*SIDE+x)*4;
       const a=(iy*SIDE+ix)*4,b=a+4,c=a+SIDE*4,d=c+4;
       for(let channel=0;channel<4;channel++)out.data[index+channel]=
         (source[a+channel]*(1-fx)+source[b+channel]*fx)*(1-fy)+(source[c+channel]*(1-fx)+source[d+channel]*fx)*fy;
     }
-    target.putImageData(out,0,0);frames.push(canvas);
-  }
+    target.putImageData(out,0,0);return finishMotionFrame(canvas,original,'aquarius',level);
+  });
   levels.set(level,frames);return frames;
 }

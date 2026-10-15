@@ -57,7 +57,9 @@ export function resolveWaterHit(room,player,selected,power,now,cast){
       const hit=damageMonster(room,target.entity,player,power,now);if(hit)targets.push(hit);
     }else{
       const friend=target.entity,value=ensureVitals(friend),before=value.hp;
-      value.hp=Math.min(playerVitals(friend).hp.max,value.hp+power);
+      const maximum=playerVitals(friend).hp.max;
+      const healing=Math.round(Math.max(0,maximum-value.hp)*.1);
+      value.hp=Math.min(maximum,value.hp+healing);
       if(value.hp>before)healed.push({targetId:friend.id,amount:value.hp-before,vitals:playerVitals(friend)});
     }
   }

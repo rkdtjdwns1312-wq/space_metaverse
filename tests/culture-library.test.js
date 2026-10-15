@@ -8,6 +8,7 @@ import {createClassroomServer} from '../server/app.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {cultureDay,validateCultureReading} from '../server/culture-library.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
+import {CULTURE_STORIES_EXTRA} from '../shared/culture-stories-extra.js';
 import {STREET,PLAZA_ID} from '../shared/config.js';
 
 const ids=CULTURE_STORIES.map(story=>story.id),station=STREET.objects.find(o=>o.kind==='culture-station');
@@ -61,6 +62,26 @@ async function fixture(t){
 
 test('culture save schema accepts legacy absence and rejects malformed dates, unknown/duplicate IDs and excessive claims',()=>{
   assert(ids.length>=11&&new Set(ids).size===ids.length);
+  const extra=CULTURE_STORIES_EXTRA.map(story=>story.id);
+  assert.equal(extra.length,24,'the extra culture-story set contains 24 distinct stories');
+  assert(extra.every(id=>ids.includes(id)),'all extra stories are connected to the existing catalog');
+  const added=CULTURE_STORIES_EXTRA;
+  assert(added.every(story=>story.paragraphs.length>=3&&story.lesson&&story.adaptation));
+  assert(added.every(story=>/^https:\/\//.test(story.source.url)&&story.source.title&&story.source.checked));
+  const osung=added.find(story=>story.id==='korea-osung-haneum-01');
+  assert.match(osung.paragraphs.join(' '),/전해/);assert.match(osung.source.type,/설화/);
+  assert.doesNotMatch(osung.paragraphs.join(' '),/시체|뺨을 때렸/);
+  for(const title of ['해와 달이 된 오누이','견우와 직녀','백설공주','눈의 여왕'])assert(added.some(story=>story.title.includes(title)));
+  const bangyi=added.find(story=>story.id==='korea-bangyi-01');
+  assert.match(bangyi.title,/방이 설화/);assert.match(bangyi.paragraphs.join(' '),/새.*곡식|곡식.*새/);assert.match(bangyi.paragraphs.join(' '),/방망이/);
+  assert.equal(bangyi.paragraphs.length,3);assert.match(bangyi.source.type,/각색/);assert.match(bangyi.adaptation,/아우.*순화/);
+  assert.equal(bangyi.source.url,'https://encykorea.aks.ac.kr/Article/E0021772');
+  const goldenFish=added.find(story=>story.id==='world-fisherman-golden-fish-01');
+  assert.match(goldenFish.paragraphs.join(' '),/황금 물고기/);assert.match(goldenFish.paragraphs.join(' '),/부서진 낡은 빵통/);
+  assert.equal(goldenFish.paragraphs.length,3);assert.match(goldenFish.source.type,/새롭게 재서술/);assert.match(goldenFish.adaptation,/아서 랜섬/);
+  assert.equal(goldenFish.source.url,'https://www.gutenberg.org/files/16981/16981-h/16981-h.htm');
+  assert.match(goldenFish.source.title,/The Golden Fish/);assert.match(goldenFish.adaptation,/새 문장|재서술/);
+  assert(added.filter(story=>story.source.type.includes('새롭게 각색')).every(story=>/각색/.test(story.adaptation)));
   assert.equal(cultureDay(Date.parse('2026-10-13T14:59:59.999Z')),'2026-10-13');
   assert.equal(cultureDay(Date.parse('2026-10-13T15:00:00.000Z')),'2026-10-14');
   assert.deepEqual(validateCultureReading(undefined),{day:null,claimedIds:[]});

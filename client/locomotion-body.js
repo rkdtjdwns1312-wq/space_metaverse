@@ -11,7 +11,7 @@ export function createBodyMotion(){
    s.weight=reduced?0:Math.max(0,Math.min(1,s.weight+(active?dt/220:-dt/280)));
    if(s.weight)s.phase+=dt*(Math.PI*2/(floating?2100:1500));else s.phase=0;
    Object.assign(s,{x,y,time});
-   return {y:-s.weight*(floating?1.1:1.7)*(1-Math.cos(s.phase*2))/2,angle:s.weight*Math.sin(s.phase)*(floating?.008:.012),weight:s.weight};
+   return {y:-s.weight*(floating?2.4:1.7)*(1-Math.cos(s.phase*(floating?1:2)))/2,angle:s.weight*Math.sin(s.phase)*(floating?.014:.012),weight:s.weight};
   },
   clear(){actors.clear();},retain(ids){const keep=new Set(ids);for(const id of actors.keys())if(!keep.has(id))actors.delete(id);}
  };

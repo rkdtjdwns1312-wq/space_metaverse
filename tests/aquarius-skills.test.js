@@ -22,7 +22,7 @@ for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 5초 
   castAquarius(room,p,1000);assert.equal(ensureVitals(p).mp,mp-10);
   const [view]=aquariusViews(room,p.mapId,1000);
   assert.equal(view.x,p.x);assert.equal(view.y,p.y+avatarSizeOf(p)*.25);assert.equal(view.rx/view.ry,2);assert.equal(view.durationMs,14000);
-  assert.ok(Math.abs(view.rx-avatarSizeOf(p)*(stage+1)/2*.8)<1e-9);assert.deepEqual(aquariusViews(room,'other',1000),[]);
+  assert.ok(Math.abs(view.rx-avatarSizeOf(p)*(stage+1)*.8)<1e-9);assert.deepEqual(aquariusViews(room,'other',1000),[]);
   assert.equal('power'in view,false);assert.equal(monster.hp,1000);
   assert.deepEqual(advanceAquarius(room,1999),[]);
   for(let second=1;second<=5;second++)advanceAquarius(room,1000+second*1000);

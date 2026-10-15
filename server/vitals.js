@@ -18,12 +18,26 @@ export function playerVitals(player){
   return {hp:{current:value.hp,max:limits.hp.max},mp:{current:value.mp,max:limits.mp.max},defeated:value.hp===0};
 }
 export const isDefeated=player=>ensureVitals(player)?.hp===0;
-export function damagePlayer(player,power,now,{skipLibra=false,fixedDamage=null,silent=false}={}){
+// 기존 지원 스킬처럼 파티와 무관하게 같은 방/맵의 활동 중인 동료를 보호합니다.
+// 매 타격 시 위치와 상태를 확인해 틱 사이 이동/만료에도 보호가 남지 않습니다.
+export function libraProtectors(room,player,now){
+  const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
+  if(!valid(player))return [];
+  return [...(room?.players.values()||[player])].filter(c=>{
+    const aura=c.libraAura;
+    return aura?.endsAt>now&&valid(c)&&c.mapId===player.mapId&&aura.mapId===c.mapId&&
+      (c===player||Math.hypot(c.x-player.x,c.y+aura.size*.22-player.y)<=aura.radius);
+  });
+}
+export function damagePlayer(player,power,now,{room=null,skipLibra=false,fixedDamage=null,silent=false}={}){
   const value=ensureVitals(player);if(!value||value.hp<=0)return null;
   if(fixedDamage===null&&(player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const damage=fixedDamage??damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
-  if(fixedDamage===null&&!skipLibra&&player.libraAura?.endsAt>now&&player.libraAura.mapId===player.mapId)
-    return {damage:0,reflectedDamage:skillDamage(damage,player.libraAura.skillDamageFactor),vitals:playerVitals(player),defeated:false};
+  if(fixedDamage===null&&!skipLibra){
+    const protectors=libraProtectors(room,player,now);
+    // 겹친 영역은 합산하지 않고 시전 당시 저장된 가장 높은 배율로 한 번만 반사합니다.
+    if(protectors.length)return {damage:0,reflectedDamage:skillDamage(damage,Math.max(...protectors.map(c=>c.libraAura.skillDamageFactor??1))),vitals:playerVitals(player),defeated:false};
+  }
   let remaining=damage;
   if(fixedDamage===null&&player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
     const absorbed=Math.min(remaining,player.herculesShield.hp);

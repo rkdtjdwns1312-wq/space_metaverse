@@ -1,6 +1,8 @@
+import {onFloatingCliffReady} from './floating-island.js';
 const images={};
 let cacheEpoch=0;
 const listeners=new Set();
+onFloatingCliffReady(()=>{cacheEpoch++;for(const fn of listeners)fn();});
 const ready=image=>image?.complete&&image.naturalWidth>0;
 for(const [key,file] of Object.entries({sun:'paradise-sun.png',moon:'paradise-moon.png',sky:'plaza-sanctuary.png'})){
   const image=new Image();image.onload=()=>{cacheEpoch++;for(const listener of listeners)listener();};image.src='/assets/maps/'+file;images[key]=image;

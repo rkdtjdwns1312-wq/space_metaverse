@@ -1,6 +1,7 @@
+import {visualFloor,visualFloorPath} from './visual-floor.js';
 import {STREET_LAYOUT,STREET_POLYGONS,STREET_EDGES} from '/shared/street-layout.js';
 import {drawStoneRim} from './stone-rim.js';
-import {drawFloatingIslands} from './floating-island.js';
+import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 
 export const STREET_BACKDROP_SRC='/assets/maps/starlight-street.png';
 export const STREET_ROUTE_LABELS=Object.freeze([
@@ -9,6 +10,7 @@ export const STREET_ROUTE_LABELS=Object.freeze([
 ]);
 const images={};let revision=0;
 const listeners=new Set(),tiles=new Map();
+onFloatingCliffReady(()=>{revision++;tiles.clear();for(const fn of listeners)fn();});
 for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png'})){
   const image=new Image();image.onload=()=>{revision++;tiles.clear();for(const fn of listeners)fn();};image.src=src;images[key]=image;
 }
@@ -17,9 +19,9 @@ export const streetArtCacheKey=()=>revision;
 export function onStreetArtReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
 export async function preloadStreetArt(){await Promise.all(Object.values(images).map(image=>image.decode()));}
 
-function floorPath(){const path=new Path2D();for(const poly of STREET_POLYGONS){path.moveTo(poly[0].x,poly[0].y);for(const point of poly.slice(1))path.lineTo(point.x,point.y);path.closePath();}return path;}
-const shape=floorPath();
-const edgePath=new Path2D();for(const [a,b] of STREET_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
+const visual=visualFloor(STREET_POLYGONS,STREET_EDGES,STREET_LAYOUT,[STREET_LAYOUT.westGate]);
+const shape=visualFloorPath(visual.polygons);
+const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function backdrop(ctx,map){
   if(ready('backdrop'))ctx.drawImage(images.backdrop,0,0,map.width,map.height);
   else{
@@ -37,13 +39,14 @@ function routeLabel(ctx){
 }
 function paint(ctx,map){
   backdrop(ctx,map);
+  drawRockSupports(ctx,visual.edges,'shelter',map.height);
   drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
   ctx.save();ctx.clip(shape);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,map.width,map.height);
   if(ready('paving')){const pattern=ctx.createPattern(images.paving,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.globalAlpha=.88;ctx.fillStyle=pattern;ctx.fillRect(0,0,map.width,map.height);ctx.globalAlpha=1;}}
   const wash=ctx.createLinearGradient(STREET_LAYOUT.upper.x-STREET_LAYOUT.upper.rx,0,STREET_LAYOUT.upper.x+STREET_LAYOUT.upper.rx,map.height);
   wash.addColorStop(0,'#ffd8eb30');wash.addColorStop(.5,'#fff6dc18');wash.addColorStop(1,'#bde6ff3d');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
-  drawStoneRim(ctx,STREET_EDGES);
+  drawStoneRim(ctx,visual.edges);
   routeLabel(ctx);
 }
 export function drawStreetGround(ctx,map){
@@ -54,7 +57,7 @@ export function drawStreetGround(ctx,map){
   ctx.drawImage(canvas,0,0);
 }
 export function drawStreetMiniFloor(ctx,map){
-  backdrop(ctx,map);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);
+  backdrop(ctx,map);drawRockSupports(ctx,visual.edges,'shelter',map.height);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);
   ctx.fillStyle='#d7ddff55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.north.x,STREET_LAYOUT.north.y,STREET_LAYOUT.north.rx-35,STREET_LAYOUT.north.ry-30,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#ffe0ed55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.upper.x,STREET_LAYOUT.upper.y,STREET_LAYOUT.upper.rx-42,STREET_LAYOUT.upper.ry-34,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#c9eddf66';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.lower.x,STREET_LAYOUT.lower.y,STREET_LAYOUT.lower.rx-38,STREET_LAYOUT.lower.ry-30,0,0,Math.PI*2);ctx.fill();

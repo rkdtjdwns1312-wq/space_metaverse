@@ -10,7 +10,7 @@ export function ophiuchusSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   const {growMs,holdMs,fadeMs,durationMs}=AQUARIUS_TIMING;
   return sustainedSkill(player,{level:2,stage,mana:5,cooldownMs:5000,growMs,holdMs,fadeMs,durationMs,
-    centerOffset:.25,radiusWidths:(stage+1)/2*.8,verticalRatio:.5,
+    centerOffset:.25,radiusWidths:(stage+1)/2*1.2,verticalRatio:.5,
     directMultiplier:stage-1,poisonMs:({2:3000,3:5000,4:8000})[stage],effectAmount:1},['durationMs','holdMs']);
 }
 export const ophiuchusAreaAt=aquariusAreaAt;

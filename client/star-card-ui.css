@@ -8,6 +8,15 @@
   border-radius: .65rem;
   color: #211b0e;
 }
+.star-card-dialog[data-student-view="true"] .star-card-used-by,
+.star-card-dialog[data-student-view="true"] .star-card-expiry,
+.star-card-dialog[data-student-view="true"] .star-card-messages,
+.star-card-dialog[data-student-view="true"] .star-card-manual-note { display: none !important; }
+.star-card-dialog[data-student-view="true"] .star-card-face {
+  min-height: 0;
+  align-content: start;
+  padding-bottom: 1rem;
+}
 .star-card-choice[hidden],
 .star-card-choice-confirm[hidden],
 .star-card-constellation-options[hidden],

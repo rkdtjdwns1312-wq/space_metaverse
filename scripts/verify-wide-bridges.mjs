@@ -8,6 +8,7 @@ import {STATIC_MAPS} from '../shared/config.js';
 import {PLAZA_LAYOUT as P} from '../shared/plaza-layout.js';
 import {VALLEY_LAYOUT as V} from '../shared/valley-layout.js';
 import {avatarFitsFloor} from '../shared/avatar-boundary.js';
+import {JOURNEY_VERSION} from '../shared/tutorial-journey.js';
 
 const key=randomBytes(24).toString('hex'),game=createClassroomServer({teacherKey:key,studentHours:false});
 const url='http://127.0.0.1:'+(await game.listen()).port;
@@ -18,9 +19,11 @@ const interpolate=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 try{
   await new Promise((r,j)=>{teacher.once('connect',r);teacher.once('connect_error',j);teacher.connect();});
   const made=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey:key,allowedNames:['길목검사']});assert.equal(made.ok,true);
-  await page.goto(url);await page.locator('#join-code').fill(made.room.code);await page.locator('#nickname').fill('길목검사');
+  await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(made.room.code);await page.locator('#nickname').fill('길목검사');
   await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
   const room=game.store.rooms.get(made.room.code),p=[...room.players.values()].find(p=>p.role==='student');
+  if(await page.locator('#tutorial-dialog').evaluate(d=>d.open))await page.locator('#tutorial-later').click();
+  p.journey={version:JOURNEY_VERSION,stage:6,goals:[],claimedAt:Array(5).fill(Date.now()),practiceUntil:0};p.tutorialCompleted=true;
   Object.assign(p.avatar,{level:5,constellationId:'sagittarius'});
   const routes=[...P.islands.map(z=>({id:'space-plaza',a:P.center,b:z,start:.35,end:.83,name:z.id})),
     {id:'milky-valley',a:V.center,b:V.temples[1],start:.15,end:.78,name:'growth'},

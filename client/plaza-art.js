@@ -1,19 +1,22 @@
+import {visualFloor,visualFloorPath} from './visual-floor.js';
 import {PLAZA_LAYOUT as L,PLAZA_POLYGONS,PLAZA_EDGES,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawStoneRim} from './stone-rim.js';
-import {drawFloatingIslands} from './floating-island.js';
+import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 // 원화는 로드 후 재사용합니다. 3720px 전체 배경 캔버스를 만들지 않고 화면에 보이는
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
 const images={},tiles=new Map(),SIZE=768,LIMIT=16;
 let overview=null;
+onFloatingCliffReady(()=>{tiles.clear();overview=null;});
 for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png',temple:'plaza-temple.png',flask:'plaza-exploration-flask.png'})){
   const image=new Image();image.onload=()=>{tiles.clear();overview=null;};image.src='/assets/maps/'+path;images[id]=image;
 }
 const ready=img=>img.complete&&img.naturalWidth>0;
-const floorPath=new Path2D();
-for(const poly of PLAZA_POLYGONS){floorPath.moveTo(poly[0].x,poly[0].y);for(const p of poly.slice(1))floorPath.lineTo(p.x,p.y);floorPath.closePath();}
-const edgePath=new Path2D();for(const [a,b] of PLAZA_EDGES){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
+const visual=visualFloor(PLAZA_POLYGONS,PLAZA_EDGES,L,Object.values(L.gates));
+const floorPath=visualFloorPath(visual.polygons);
+const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function ground(ctx){
+  drawRockSupports(ctx,visual.edges,'plaza',L.height);
   drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
@@ -23,7 +26,7 @@ function ground(ctx){
   ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
   // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
   const c=L.center;if(ready(images.temple))ctx.drawImage(images.temple,c.x-360,c.y-250,720,480);
-  ctx.restore();drawStoneRim(ctx,PLAZA_EDGES);
+  ctx.restore();drawStoneRim(ctx,visual.edges);
 }
 function tile(tx,ty){const key=tx+':'+ty;let canvas=tiles.get(key);if(canvas){tiles.delete(key);tiles.set(key,canvas);return canvas;}
   canvas=document.createElement('canvas');canvas.width=SIZE+4;canvas.height=SIZE+4;const c=canvas.getContext('2d');c.translate(-tx*SIZE+2,-ty*SIZE+2);ground(c);tiles.set(key,canvas);
@@ -56,4 +59,4 @@ export function drawExplorationFlask(ctx,o,time=0){
   ctx.restore();
 }
 export function drawDepartmentGuide(ctx){const z=DEPARTMENT_ZONE;ctx.save();const glow=ctx.createRadialGradient(z.x,z.y,Math.min(z.rx,z.ry)*.28,z.x,z.y,Math.max(z.rx,z.ry)*.9);glow.addColorStop(0,'#c9f5d019');glow.addColorStop(.7,'#b5efca33');glow.addColorStop(1,'#b5efca00');ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-95,z.ry-95,0,0,Math.PI*2);ctx.fill();ctx.font='38px "Jua",sans-serif';ctx.fillStyle='#4c765e';ctx.textAlign='center';ctx.fillText('부서행성은 이 공간에 만들어요',z.x,z.y-z.ry+95);ctx.restore();}
-export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c455';ctx.lineWidth=7;ctx.stroke(edgePath);}
+export function drawPlazaMiniFloor(ctx){ctx.fillStyle='#555883';ctx.fillRect(0,0,L.width,L.height);drawRockSupports(ctx,visual.edges,'plaza',L.height);drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);ctx.fillStyle='#f4eaf4';ctx.fill(floorPath);for(const z of L.islands){ctx.fillStyle=z.color;ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-10,z.ry-10,0,0,Math.PI*2);ctx.fill();}ctx.strokeStyle='#b8a0c455';ctx.lineWidth=7;ctx.stroke(edgePath);}

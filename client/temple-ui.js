@@ -1,4 +1,5 @@
 import {itemOf} from '/shared/config.js';
+import {exemptionName} from '/shared/item-exemptions.js';
 import {createResetConfirmation} from './reset-confirm.js';
 
 function formatRemaining(until, remainingUses, now=Date.now(), startsAt=null){
@@ -60,7 +61,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       const detail=document.createElement('small');detail.textContent=(r.note?r.note+' · ':'')+(item?.description||r.description||r.label)+
         (item?.special?' · '+item.special:'');
       body.append(title);const user=document.createElement('span');user.textContent=r.fromNickname??'비공개';
-      const target=document.createElement('span');target.textContent=r.nickname||'비공개';
+      const target=document.createElement('span');target.textContent=(r.nickname||'비공개')+(r.itemId==='alien-card'&&exemptionName(r.exemption)?'('+exemptionName(r.exemption)+')':'');
       const remaining=document.createElement('span');remaining.className='effects-remaining';remaining.dataset.until=r.until??'';remaining.dataset.remainingUses=Number.isInteger(r.remainingUses)?String(r.remainingUses):'';remaining.dataset.startsAt=r.startsAt??'';remaining.textContent=formatRemaining(r.until,r.remainingUses,Date.now(),r.startsAt);
       li.append(body,user,target,remaining);li.dataset.effectRow='true';
       const description=document.createElement('small');description.className='effects-detail';description.textContent=detail.textContent;li.append(description);
@@ -145,7 +146,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     reset.hidden=result.kind!=='weekly'||!result.canReset;
     $('error').textContent='';const daily=['notice','timetable'].includes(result.kind);
     $('save').hidden=!result.canEdit;$('content').hidden=result.kind==='notice'&&result.canEdit;$('notice-rows').hidden=result.kind!=='notice'||!result.canEdit;$('add-line').hidden=result.kind!=='notice'||!result.canEdit;$('refresh').hidden=daily;
-    if(result.kind==='timetable'){$('description').textContent='월요일부터 금요일까지 · 선생님이 채우는 우주 시간표';renderTimetable();}
+    if(result.kind==='timetable'){$('description').textContent='';renderTimetable();}
     else if(daily){$('description').textContent=result.date+' · 오늘';if(result.canEdit)renderNoticeRows();else renderNotice();}
     else if(result.kind==='weekly'){
       $('description').textContent=result.week+' 월요일부터 이번 주에 받은 별 파편 · 잔액과 달라요';const ul=document.createElement('ul');

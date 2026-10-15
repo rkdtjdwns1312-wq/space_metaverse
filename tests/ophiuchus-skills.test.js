@@ -52,7 +52,7 @@ test('단계별 14초 고정 지대·물병 공용 타원·공개 필드·새 �
     assert.deepEqual(Object.keys(view).sort(),['id','playerId','mapId','kind','stage','vfxId','x','y','rx','ry','size','durationMs','elapsedMs'].sort());
     assert.equal(view.kind,'ophiuchus-zone');assert.equal(view.stage,level);
     assert.equal(view.durationMs,14000);assert.equal(view.y,player.y+size*.25);
-    assert.ok(Math.abs(view.rx-size*({2:1.2,3:1.6,4:2})[level])<1e-9);assert.equal(view.ry,view.rx*.5);
+    assert.ok(Math.abs(view.rx-size*({2:1.8,3:2.4,4:3})[level])<1e-9);assert.equal(view.ry,view.rx*.5);
     assert.deepEqual(ophiuchusTimingOf(view),{growMs:2000,holdMs:10000,fadeMs:2000,durationMs:14000});
     for(const [elapsed,scale] of [[-1,0],[0,0],[1000,.5],[2000,1],[12000,1],[13000,.5],[14000,0]])
       assert.equal(ophiuchusAreaAt(view,elapsed).scale,scale);

@@ -1,15 +1,17 @@
+import {visualGateFloor} from './visual-floor.js';
 import {paradiseFloor,PARADISE_FLOOR} from '/shared/paradise-floor.js';
 import {drawParadiseArt} from './paradise-art.js';
 import {drawStoneRim,rimEdges} from './stone-rim.js';
-import {drawFloatingIslands} from './floating-island.js';
+import {drawFloatingIslands,drawRockSupports} from './floating-island.js';
 
 function outline(ctx,points){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();}
 
 // 이동 가능한 외곽선은 공용 지형 정의를 따르며, 석재 장식은 바닥 캐시에 그립니다.
 export function drawParadiseFloor(ctx,map,mini=false){
-  const f=paradiseFloor(map);if(!f)return;
+  const f=visualGateFloor(paradiseFloor(map),map);if(!f)return;
   const moon=map.theme==='moon-paradise',sun=map.theme==='sun-paradise';
   const rim=moon?'#8a8caf':sun?'#b39480':'#9989a8';
+  drawRockSupports(ctx,rimEdges(f.points),moon?'moon':sun?'sun':map.theme==='star-paradise'?'starland':'crossroads',map.height);
   drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],moon?'moon':sun?'sun':map.theme==='star-paradise'?'starland':'crossroads',map.height);
   ctx.save();ctx.translate(0,12);outline(ctx,f.points);ctx.fillStyle=rim;
   if(!mini){ctx.shadowColor='#30283c66';ctx.shadowBlur=20;ctx.shadowOffsetY=12;}

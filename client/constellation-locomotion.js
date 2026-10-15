@@ -1,10 +1,12 @@
 // 기존 원화의 얼굴/몸통을 보존하는 부위별 이동 모션. 좌우 반전은 world에서 한 번만 적용합니다.
-const SIDE=256,COUNT=16,TAU=Math.PI*2,cache=new WeakMap();
+import {gaitRig,gaitPhase} from './locomotion-gait.js';
+import {walkPoseRegistration,prepareWalkPoseSheet,composeWalkPose} from './walk-pose-sheet.js';
+const SIDE=256,COUNT=32,TAU=Math.PI*2,cache=new WeakMap();
 const clamp=n=>Math.max(0,Math.min(1,n));
 const smooth=(a,b,n)=>{const t=clamp((n-a)/(b-a));return t*t*(3-2*t);};
 // 부위 중심·반경, 최대 이동(px), 흔들림의 위상. 발/옷자락의 윗부분은 고정합니다.
 const part=(cx,cy,rx,ry,dx,dy,phase=0,anchorY=0)=>({ellipse:[cx,cy,rx,ry],dx,dy,phase,anchorY});
-const foot=(x,y,rx=.08,ry=.11,sign=1)=>part(x,y,rx,ry,sign*3.2,-sign*3.0,0,y-ry);
+const foot=(x,y,rx=.08,ry=.11,sign=1)=>({...part(x,y,rx,ry,sign*3.2,-sign*3.0,0,y-ry),kind:'foot'});
 const hair=(x,y,rx=.13,ry=.23)=>part(x,y,rx,ry,1.3,.45,.35,y-ry);
 const cloth=(x,y,rx=.19,ry=.18,sign=1)=>part(x,y,rx,ry,sign*2.0,.7,.5,y-ry);
 const wing=(root,outline,angle)=>({root,outline,angle});
@@ -93,7 +95,7 @@ function* makeRig(original,profile){
       let weight=(1-smooth(.30,1,radius(u,v,p.ellipse)))*protect;
       if(p.anchorY)weight*=smooth(p.anchorY,p.ellipse[1],v);
       // sin(t+phase)-sin(phase) = sin(t)*cos(phase)+(cos(t)-1)*sin(phase).
-      const energy=1.16;
+      const energy=1.32;
       fields[index]+=p.dx*weight*Math.cos(p.phase)*energy;fields[index+1]+=p.dx*weight*Math.sin(p.phase)*energy;
       fields[index+2]+=p.dy*weight*Math.cos(p.phase)*energy;fields[index+3]+=p.dy*weight*Math.sin(p.phase)*energy;
     }
@@ -110,10 +112,12 @@ function* makeRig(original,profile){
 }
 function* render(rig,index){
   const frame=canvas(),ctx=frame.getContext('2d'),out=ctx.createImageData(SIDE,SIDE);
-  const {source,fields}=rig,phase=index/COUNT*TAU,sin=Math.sin(phase),cos=Math.cos(phase)-1;
+  const {source,fields,gait}=rig,phase=index/COUNT*TAU,sin=Math.sin(phase),cos=Math.cos(phase)-1,gp=gaitPhase(phase);
   for(let y=0;y<SIDE;y++){
     for(let x=0;x<SIDE;x++){
-    const i=(y*SIDE+x)*4,sx=x-fields[i]*sin-fields[i+1]*cos,sy=y-fields[i+2]*sin-fields[i+3]*cos;
+    const i=(y*SIDE+x)*4,gi=(y*SIDE+x)*3;
+    const sx=x-fields[i]*sin-fields[i+1]*cos-(gait?gait[gi]*gp[0]:0);
+    const sy=y-fields[i+2]*sin-fields[i+3]*cos+(gait?gait[gi+1]*gp[1]+gait[gi+2]*gp[2]:0);
     if(sx===x&&sy===y){out.data.set(source.subarray(i,i+4),i);continue;}
     if(sx<0||sy<0||sx>SIDE-1||sy>SIDE-1)continue;
     const ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy;
@@ -151,11 +155,21 @@ function entryFor(sprite,id,level){
   if(!entry){
     const original=canvas();original.getContext('2d',{willReadFrequently:true}).drawImage(sprite,0,0,SIDE,SIDE);
     entry={original,frames:new Map([[0,original]])};sets.set(key,entry);
-    function* build(){
-      const rig=yield* makeRig(original,profile);
-      for(let index=1;index<COUNT;index++)entry.frames.set(index,yield* render(rig,index));
+    const useSheet=walkPoseRegistration(id,level)?.enabled===true;
+    function* build(sheet=null){
+      const rig=yield* makeRig(original,sheet?{...profile,parts:profile.parts.filter(p=>p.kind!=='foot')}:profile);
+      const rawGait=sheet?null:gaitRig(id,level);rig.gait=rawGait?new Float32Array(rawGait):null;
+      if(rig.gait)for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
+        const protect=Math.min(...profile.faces.map(e=>smooth(1,1.3,radius((x+.5)/SIDE,(y+.5)/SIDE,e))));
+        const i=(y*SIDE+x)*3;for(let ch=0;ch<3;ch++)rig.gait[i+ch]*=protect;
+      }
+      for(let index=sheet?0:1;index<COUNT;index++){
+        const base=index?yield* render(rig,index):original;
+        entry.frames.set(index,sheet?composeWalkPose(base,sheet,Math.floor(index/4),original):base);
+      }
     }
-    entry.ready=new Promise((resolve,reject)=>jobs.push({steps:build(),resolve,reject}));
+    const enqueue=sheet=>new Promise((resolve,reject)=>{jobs.push({steps:build(sheet),resolve,reject});schedule();});
+    entry.ready=useSheet?prepareWalkPoseSheet(id,level).then(enqueue):enqueue(null);
     // 준비 실패 시에도 원화 표시를 유지하며 호출자는 ready 결과로 실패를 확인할 수 있습니다.
     entry.ready.catch(()=>{});schedule();
   }
@@ -166,7 +180,7 @@ export function prepareConstellationWalk(sprite,id,level){return entryFor(sprite
 export function constellationWalkFrame(sprite,id,level,index=0){
   const entry=entryFor(sprite,id,level);if(!entry)return null;
   index=((Math.floor(index)%COUNT)+COUNT)%COUNT;
-  return entry.frames.get(index)||entry.original;
+  return entry.frames.size===COUNT?entry.frames.get(index):entry.original;
 }
 
 // 이동 거리/이동속도와 독립적인 느린 재생 주기. 순간이동과 맵 전환은 걷기로 보지 않습니다.

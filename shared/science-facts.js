@@ -1,4 +1,6 @@
-export const SCIENCE_FACTS = Object.freeze([
+import { SCIENCE_FACTS_EXTRA } from './science-facts-extra.js';
+
+const SCIENCE_FACTS_BASE = Object.freeze([
   {
     id: 'science-01',
     title: '우주에서도 중력은 작용해요',
@@ -500,3 +502,5 @@ export const SCIENCE_FACTS = Object.freeze([
     adaptation: '어린이 눈높이로 정리한 과학 이야기'
   }
 ]);
+
+export const SCIENCE_FACTS = Object.freeze([...SCIENCE_FACTS_BASE, ...SCIENCE_FACTS_EXTRA]);

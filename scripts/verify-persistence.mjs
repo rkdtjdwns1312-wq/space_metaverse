@@ -53,7 +53,9 @@ export async function verifyPersistence(browser){
     await teacher.locator('#planet-rules-list li').filter({hasText:'책을 소중하게 읽어요'}).waitFor({state:'attached'});await teacher.locator('#planet-close').click();
     // 이동 자체는 기존 82개 시나리오에서 검증합니다. 이 검사는 상점 앞을 시작 위치로 고정합니다.
     const shop=STREET.objects.find(o=>o.kind==='shop');Object.assign(p,{mapId:STREET_ID,x:shop.x,y:shop.y+shop.radius+30});
-    await openMenu(teacher);await teacher.locator('#teacher-tools').click();await teacher.locator('#shards-target').selectOption(id);
+    await openMenu(teacher);await teacher.locator('#teacher-tools').click();
+    await teacher.getByRole('button',{name:'별 파편 지급',exact:true}).click();
+    await teacher.locator('#shards-target').selectOption(id);
     await teacher.locator('#shards-amount').fill('40');await teacher.locator('#shards-give').click();
     await student.locator('#self-shards').filter({hasText:'40'}).waitFor({state:'attached'});await teacher.locator('#teacher-close').click();
     await student.locator('#interact-prompt').filter({hasText:'별상점'}).click();
@@ -87,7 +89,9 @@ export async function verifyPersistence(browser){
     await clickPlanet(nextStudent,planet);await nextStudent.locator('#planet-rules-toggle').click();
     await nextStudent.locator('#planet-rules-list li').filter({hasText:'책을 소중하게 읽어요'}).waitFor({state:'attached'});await nextStudent.locator('#planet-close').click();
     checks.push('잘못된 PIN 거부 후 학생 id·소속·규칙·잔액·가방·개인 안내 복원, 다른 맵 대화는 저장하되 비공개');
-    await nextTeacher.locator('#teacher-tools').click();await nextTeacher.locator('#pin-target').selectOption(id);
+    await nextTeacher.locator('#teacher-tools').click();
+    await nextTeacher.getByRole('button',{name:'학생 비밀번호 바꾸기',exact:true}).click();
+    await nextTeacher.locator('#pin-target').selectOption(id);
     await nextTeacher.locator('#reset-pin').fill('8642');await nextTeacher.locator('#pin-save').click();
     await nextStudent.locator('#lobby').waitFor({state:'visible'});assert.equal(await nextTeacher.locator('#reset-pin').inputValue(),'');
     await studentJoin(nextStudent,code,'2468');await nextStudent.locator('#form-message').filter({hasText:'비밀번호가 맞지'}).waitFor({state:'attached'});

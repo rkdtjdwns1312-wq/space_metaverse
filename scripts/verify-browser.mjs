@@ -18,6 +18,10 @@ const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],..
 const errors=[],checks=[];
 const check=(...items)=>{checks.push(...items);writeFileSync('.local/browser-progress.json',JSON.stringify({checks,errors},null,2));console.log('Browser check '+checks.length+': '+items[items.length-1]);};
 const dismissTutorial=async page=>{if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();};
+async function expandTeacherSection(page,label){
+ const button=page.locator('#teacher-dialog').getByRole('button',{name:label,exact:true});
+ if(await button.getAttribute('aria-expanded')!=='true')await button.click();
+}
 async function rejoinStudentAfterReload(page,code){
  await page.reload();
  await page.locator('#lobby-choice').waitFor({state:'visible'});
@@ -321,6 +325,7 @@ try{
  await student.locator('#planet-create-dialog').waitFor({state:'hidden'});
 
  // Item 3: teacher approves; the proposer becomes the first member.
+ await expandTeacherSection(teacher,'행성 신청');
  await teacher.locator('#proposals li').filter({hasText:'급식행성'}).locator('button.approve').click();
  // #self-department now prefixes the planet's template icon (client/app.js myPlanetIcon), so the
  // membership text is '소속: 🍱 급식행성' (meal template icon), not the bare name.
@@ -501,6 +506,7 @@ try{
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
  assert.equal((await teacher.locator('#shards-feedback').innerText()).trim(),'');
+ await expandTeacherSection(teacher,'별 파편 지급');
  await teacher.locator('#shards-target').selectOption({value:id});
  await teacher.locator('#shards-amount').fill('20');
  await teacher.locator('#shards-give').click();
@@ -586,7 +592,7 @@ try{
  const foodRow=student.locator('#shop-buy-list li[data-item-id="space-food-card"]');
  await foodRow.locator('input.qty').fill('2');
  await foodRow.locator('button.buy').click();
- await student.locator('#toast').filter({hasText:'우주 식량 2개를 샀어요'}).waitFor({state:'attached'});
+ await student.locator('#toast').filter({hasText:'우주 식량 2개를 구매했습니다'}).waitFor({state:'attached'});
  await student.locator('#shop-shards').filter({hasText:'21'}).waitFor({state:'attached'});
  await student.locator('#self-shards').filter({hasText:'21'}).waitFor({state:'attached'});
  check('Buying 2 space food cards costs 4 shards, leaving 21 in both the shop dialog and the passport');
@@ -821,6 +827,8 @@ try{
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
  await teacher.locator('#item-log li').filter({hasText:'반짝 별 스티커'}).waitFor({state:'attached'});
+ await expandTeacherSection(teacher,'아이템 사용 기록');
+ await teacher.locator('#item-log li').filter({hasText:'반짝 별 스티커'}).waitFor({state:'visible'});
  await teacher.locator('#teacher-close').click();
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  check('Student 1 uses the star sticker on themself: the effect appears in their passport and avatar canvas, a public chat line announces it, and the teacher item log records it');

@@ -11,7 +11,7 @@ export function playersInArea(room,{mapId,x,y,radius,sourceId=null,excludeTeache
 }
 export function damagePlayersInArea(room,area,power,now){
   return playersInArea(room,area).map(p=>{
-    const hit=damagePlayer(p,power,now);
+    const hit=damagePlayer(p,power,now,{room});
     if(hit?.reflectedDamage)reflectLibraDamage(room,p,area,hit.reflectedDamage,now);
     return {targetId:p.id,...hit};
   });

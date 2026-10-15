@@ -13,6 +13,7 @@ import {libraWalkFrames} from './libra-animation.js';
 import {herculesWalkFrames} from './hercules-animation.js';
 import {corvusWalkFrames} from './corvus-animation.js';
 import {constellationWalkFrame,prepareConstellationWalk,locomotionProfile,createLocomotionClock} from './constellation-locomotion.js';
+import {locomotionMode} from './locomotion-gait.js';
 import {createBodyMotion} from './locomotion-body.js';
 import {drawDuelArcade} from './duel-arcade-art.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
@@ -154,12 +155,13 @@ export function createWorld(canvas) {
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
   function currentMap(){return serenaMap(mapOf(myMapId,planets.map(p=>({...p,kind:'planet'}))),serena);}
+  let placementPlanetId=null;
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
     if(!departmentSite(pt.x,pt.y,r))return false;
     if(pt.x<r||pt.y<r||pt.x>MAP.width-r||pt.y>MAP.height-r)return false;
     if((PLANET.reserved||[]).some(z=>{const cx=Math.max(z.x,Math.min(pt.x,z.x+z.width)),cy=Math.max(z.y,Math.min(pt.y,z.y+z.height));return Math.hypot(pt.x-cx,pt.y-cy)<PLANET.radius;}))return false;
-    const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets,...proposals];
+    const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets.filter(p=>p.id!==placementPlanetId),...proposals];
     return !bodies.some(o=>Math.hypot(pt.x-o.x,pt.y-o.y)<PLANET.radius+(o.radius||PLANET.radius)+PLANET.minGap);
   }
   // 행성 종류(templateOf(o.templateId).look)에 따라 겉모습을 다르게 꾸며 줍니다. 종류를 모르면 장식 없이 기본 모양만 그립니다.
@@ -299,7 +301,7 @@ export function createWorld(canvas) {
       ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle=color;ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(placement.x,placement.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
       ctx.font='600 13px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
-      ctx.fillText(ok?'여기에 만들기':'여기는 안 돼요 · 다른 자리를 골라요',placement.x,placement.y+PLANET.radius+20);
+      ctx.fillText(ok?(placementPlanetId?'여기로 이동하기':'여기에 만들기'):'여기는 안 돼요 · 다른 자리를 골라요',placement.x,placement.y+PLANET.radius+20);
     }
   }
   function drawBlackHole(o,time){
@@ -396,7 +398,7 @@ export function createWorld(canvas) {
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
-    const floating=!constellation||['cetus','pisces','cygnus'].includes(constellation.id)||constellation.celestial;
+    const floating=p.role==='teacher'&&!p.avatar?.teacherPreview?false:!constellation||constellation.celestial||locomotionMode(constellation.id,constellation.assetLevel)==='floating';
     const bodyPose=bodyMotion.sample(p.id,`${myMapId}:${constellation?.sprite||p.role}`,x,y,time,reducedMotion.matches||!!dash||!!p.avatar?.blackStar,floating);
     const whaleSprite=constellation?.id==='cetus'?loadedAvatarSprite(constellation.sprite):null;
     if(aura?.kind==='cetus'){
@@ -422,7 +424,7 @@ export function createWorld(canvas) {
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
       if(sprite){
         if(!reducedMotion.matches)prepareConstellationWalk(sprite,'teacher',1);
-        const pose=extraLocomotion.sample(p.id,`${myMapId}:teacher`,x,y,time,115,reducedMotion.matches);
+        const pose=extraLocomotion.sample(p.id,`${myMapId}:teacher`,x,y,time,115/2,reducedMotion.matches);
         const visible=pose.moving?constellationWalkFrame(sprite,'teacher',1,pose.index)||sprite:sprite;
         ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);drawEquipmentAura(ctx,visible,p,96,time,reducedMotion.matches);ctx.drawImage(visible,-48,-48,96,96);ctx.restore();
       }
@@ -445,7 +447,7 @@ export function createWorld(canvas) {
           cetusLastPoint.set(p.id,{x,y});
           if(!reducedMotion.matches&&cetusMovingUntil.get(p.id)>time){
             const frames=cetusWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor(time/185)%8;
+            const index=Math.floor(time/(185/3))%24;
             if(frames)visible=frames[index];
             canvas.dataset.cetusWalkFrame=String(index);
           }
@@ -459,7 +461,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&geminiMovingUntil.get(p.id)>time){
             const frames=geminiWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/110)%(frames?.length||16);
+            const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/(110/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.geminiWalkFrame=String(index);
           }
@@ -473,7 +475,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&aquariusMovingUntil.get(p.id)>time){
             const frames=aquariusWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(aquariusMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            const index=Math.floor((time-(aquariusMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.aquariusWalkFrame=String(index);
           }
@@ -487,7 +489,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&capricornMovingUntil.get(p.id)>time){
             const frames=capricornWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(capricornMovingSince.get(p.id)||time))/125)%(frames?.length||16);
+            const index=Math.floor((time-(capricornMovingSince.get(p.id)||time))/(125/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.capricornWalkFrame=String(index);
           }
@@ -501,7 +503,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&taurusMovingUntil.get(p.id)>time){
             const frames=taurusWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(taurusMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            const index=Math.floor((time-(taurusMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.taurusWalkFrame=String(index);
           }
@@ -515,7 +517,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&libraMovingUntil.get(p.id)>time){
             const frames=libraWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(libraMovingSince.get(p.id)||time))/135)%(frames?.length||16);
+            const index=Math.floor((time-(libraMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.libraWalkFrame=String(index);
           }
@@ -529,7 +531,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&herculesMovingUntil.get(p.id)>time){
             const frames=herculesWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(herculesMovingSince.get(p.id)||time))/130)%(frames?.length||16);
+            const index=Math.floor((time-(herculesMovingSince.get(p.id)||time))/(130/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.herculesWalkFrame=String(index);
           }
@@ -543,7 +545,7 @@ export function createWorld(canvas) {
           }
           if(!reducedMotion.matches&&corvusMovingUntil.get(p.id)>time){
             const frames=corvusWalkFrames(sprite,constellation.assetLevel);
-            const index=Math.floor((time-(corvusMovingSince.get(p.id)||time))/130)%(frames?.length||16);
+            const index=Math.floor((time-(corvusMovingSince.get(p.id)||time))/(130/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.corvusWalkFrame=String(index);
           }
@@ -551,7 +553,7 @@ export function createWorld(canvas) {
         const walkProfile=locomotionProfile(constellation.id,constellation.assetLevel);
         if(walkProfile){
           if(!reducedMotion.matches)prepareConstellationWalk(sprite,constellation.id,constellation.assetLevel);
-          const pose=extraLocomotion.sample(p.id,`${myMapId}:${constellation.sprite}`,x,y,time,walkProfile.ms||110,reducedMotion.matches);
+          const pose=extraLocomotion.sample(p.id,`${myMapId}:${constellation.sprite}`,x,y,time,(walkProfile.ms||110)/2,reducedMotion.matches);
           if(pose.moving)visible=constellationWalkFrame(sprite,constellation.id,constellation.assetLevel,pose.index)||sprite;
           if(p.id===selfId){canvas.dataset.locomotionId=constellation.id;canvas.dataset.locomotionLevel=String(constellation.assetLevel);canvas.dataset.locomotionFrame=String(pose.index);canvas.dataset.locomotionMoving=String(pose.moving);}
         }else if(p.id===selfId){delete canvas.dataset.locomotionId;delete canvas.dataset.locomotionLevel;delete canvas.dataset.locomotionFrame;delete canvas.dataset.locomotionMoving;}
@@ -962,7 +964,7 @@ export function createWorld(canvas) {
     // Canvas에서 쓰는 카메라·배율과 동일하게 변환해야 물체 옆 안내가 이동 중에도 붙어 있습니다.
     screenPoint(point){const rect=canvas.getBoundingClientRect(),pos=point.kind==='monster'?(monsterPoints.get(point.id)||point):point.kind==='player'?(points.get(point.id)||point):point;return {x:rect.left+(pos.x-view.x)*view.scale,y:rect.top+(pos.y-view.y)*view.scale,scale:view.scale};},
     setOverview(value){overview=!!value;},
-    setPlacement(point){placement=point;},
+    setPlacement(point,planetId=null){placement=point;placementPlanetId=planetId;},
     setPlacing(value){placing=Boolean(value);},
     placementOk,
     planetAt(point){

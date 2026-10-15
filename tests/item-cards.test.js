@@ -40,7 +40,7 @@ test('PPT의 서로 다른 Lv1 카드 8종이 지정 가격과 그림·설명을
 test('현실 교실 카드는 대상 이름과 함께 기둥에 남고 선생님만 처리 완료한다',async t=>{
   const {room,teacher,first,a}=await fixture(t),student=room.players.get(a.selfId);
   student.inventory=[{id:'alien-card',quantity:1}];
-  const used=await call(first,'item:use',{itemId:'alien-card',targetId:a.selfId});assert.ok(used.ok,used.error);
+  const used=await call(first,'item:use',{itemId:'alien-card',exemption:'diary',targetId:a.selfId});assert.ok(used.ok,used.error);
   assert.equal(student.cardMarkers.length,1);assert.equal(student.cardMarkers[0].until,null);
   const pillar=MAP.objects.find(object=>object.id==='pillar-effects');
   const teacherPlayer=[...room.players.values()].find(player=>player.role==='teacher');teacherPlayer.x=pillar.x;teacherPlayer.y=pillar.y;
@@ -135,7 +135,7 @@ test('자외선과 현실 교실 처리 대기 카드는 교실 재시작 뒤에
   const b=await call(second,'room:join',{code:created.room.code,nickname:'달이',pin:'5678'});
   const room=game.store.rooms.get(created.room.code),sender=room.players.get(a.selfId),target=room.players.get(b.selfId);
   sender.inventory=[{id:'little-sun-card',quantity:1}];target.inventory=[{id:'alien-card',quantity:1}];
-  assert.ok((await call(second,'item:use',{itemId:'alien-card',targetId:b.selfId})).ok);
+  assert.ok((await call(second,'item:use',{itemId:'alien-card',exemption:'diary',targetId:b.selfId})).ok);
   assert.ok((await call(first,'item:use',{itemId:'little-sun-card',targetId:b.selfId})).ok);
   sender.inventory=[{id:'moon-rabbit-card',quantity:2}];sender.lastItemUseAt=0;
   const pending=await call(first,'draw:start');assert.ok(pending.ok,pending.error);

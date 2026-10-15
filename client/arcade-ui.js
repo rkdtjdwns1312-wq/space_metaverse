@@ -47,7 +47,7 @@ export function createArcadeUI({
     tetris:()=>createTetrisGame({board,setScore,request,subscribeRanking:subscribeTetrisRanking,toast,footer:rankingActions}),
     sudoku:()=>createSudokuGame({board,request,toast}),
     dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions}),
-    path:()=>createStarPathGame({board,setScore}),
+    path:()=>createStarPathGame({board,setScore,request,toast}),
     signal:()=>createSpaceSignalGame({board,setScore,request,footer:rankingActions,subscribeRanking:subscribeSignalRanking,toast,onCue:index=>onSound('signal','cue',index)})
   };
   board.addEventListener('click',event=>{if(event.target.closest('button,[role="button"],.cell,.card'))onSound(current,'move');});

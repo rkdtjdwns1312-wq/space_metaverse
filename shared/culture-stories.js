@@ -1,5 +1,6 @@
 // 요청607: 공개 원전의 줄거리를 참고해 3~6학년 독자를 위해 새로 풀어쓴 이야기.
 // 원문 번역을 복사하지 않았으며, 출처와 확인일을 각 항목에 기록한다.
+import { CULTURE_STORIES_EXTRA } from './culture-stories-extra.js';
 const aesopSource = (title) => ({
   title: `이솝 우화 「${title}」 — 조지 타운센드 편 Project Gutenberg 공개 원문`,
   url: 'https://www.gutenberg.org/files/21/21-h/21-h.htm',
@@ -12,7 +13,7 @@ const story = (id, title, category, paragraphs, lesson, source, sourceType = '�
   adaptation: '어린이 눈높이로 새롭게 풀어쓴 이야기',
 });
 
-export const CULTURE_STORIES = Object.freeze([
+const ORIGINAL_CULTURE_STORIES = Object.freeze([
   story('aesop-01','여우와 포도','이솝 우화',[
     '햇볕이 뜨거운 날, 여우 한 마리가 길을 걷다가 높은 덩굴에 열린 포도를 보았어요. 포도알은 햇빛을 받아 반짝였고, 여우는 입안에 침이 고였지요.',
     '여우는 뒤로 물러나 힘껏 뛰었어요. 앞발이 포도송이에 닿을 듯했지만 조금 모자랐어요. 몇 번이나 다시 뛰어도 포도는 높은 곳에 그대로 매달려 있었어요.',
@@ -207,3 +208,5 @@ export const CULTURE_STORIES = Object.freeze([
     '이 탈무드 이야기는 배움이 글과 설명, 질문과 신뢰 속에서 이어진다는 점을 보여 줘요. 힐렐은 서두르지 않고 작은 글자부터 가르치며 그 점을 알려 주었어요.',
   ],'배움에는 글뿐 아니라 설명과 질문, 서로의 신뢰도 필요해요.',talmudSource('샤밧 31a — 글자와 구전 가르침','https://www.sefaria.org/Shabbat.31a?lang=en'),'탈무드 원문'),
 ]);
+
+export const CULTURE_STORIES = Object.freeze([...ORIGINAL_CULTURE_STORIES, ...CULTURE_STORIES_EXTRA]);

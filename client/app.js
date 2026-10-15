@@ -399,6 +399,9 @@ function updateRoom(value){
   // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
   if(placing&&myMapId!==PLAZA_ID)stopPlacement();
+  if(movingPlanetId&&(myMapId!==PLAZA_ID||me?.role!=='student'||me?.departmentId!==movingPlanetId||!planetById(movingPlanetId)||me?.avatar?.blackStar||me?.away)){
+    $('planet-move-dialog').close();stopPlacement();
+  }
   $('teacher-tools').hidden=!isTeacher;$('lv4-teacher-tools').hidden=!isTeacher;
   teacherInventory.update();
   teacherCardCatalog.update();
@@ -529,7 +532,8 @@ function renderBagDetail(rows){
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
   use.textContent=item.mode==='equipment'?'장착하기':item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
   if(item.mode==='journey-practice'&&item.practiceKind==='equipment')use.textContent='장착하기';
-  if(item.usable===false&&item.mode!=='equipment'){use.disabled=true;use.textContent='사용 효과 준비 중';}
+  if(item.id==='star-crumb')use.hidden=true;
+  else if(item.usable===false&&item.mode!=='equipment'){use.disabled=true;use.textContent='사용 효과 준비 중';}
   const equipChoices=document.createElement('div');equipChoices.className='equip-choices';equipChoices.hidden=true;
   if(item.mode==='equipment')for(let slot=1;slot<=3;slot++){
     const choice=document.createElement('button');choice.type='button';choice.className='small secondary';choice.textContent=slot+'번 칸';
@@ -608,6 +612,7 @@ async function openUseDialog(item){
     if(!meteorOptions.length){toast('다른 부서에서 받은 활성 경고가 없어요.');return;}
   }
   useItem=item;
+  $('use-exemption-row').hidden=item.id!=='alien-card';$('use-exemption').value='';
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
   const eclipsed=me?.eclipseFeeDue===true;
@@ -653,7 +658,8 @@ $('use-confirm').onclick=async()=>{
     const reply=await request('item:use',{itemId:useItem.id,targetId,
       ...(['pair','three','self-and-two'].includes(useItem.targets)?{secondTargetId:$('use-second-target').value}:{}),
       ...(useItem.targets==='three'?{targetIds:[targetId,$('use-second-target').value,$('use-third-target').value]}:{}),
-      ...(useItem.mode==='meteor'?{planetId:$('use-planet').value}:{})});
+      ...(useItem.mode==='meteor'?{planetId:$('use-planet').value}:{}),
+      ...(useItem.id==='alien-card'?{exemption:$('use-exemption').value}:{})});
     const me=room?.players.find(p=>p.id===selfId);
     // reply.effects는 '대상'의 효과 목록입니다. 친구에게 썼을 때 이것을 내 효과로 넣으면
     // 다음 스냅샷이 올 때까지 친구의 효과가 내 카드에 잘못 보이므로, 나에게 쓴 경우에만 반영합니다.
@@ -830,6 +836,7 @@ function renderPlanetRename(planet,me,isTeacher){
   }
   $('planet-rename-teacher-row').hidden=!isTeacher;
   $('planet-remove').hidden=!isTeacher;
+  $('planet-move').hidden=!(isMember&&me?.mapId===PLAZA_ID&&!me?.avatar?.blackStar&&!me?.away);
 }
 function openPlanetDialog(planetId){
   if(!planetById(planetId))return;
@@ -872,7 +879,7 @@ $('planet-warnings-toggle').onclick=()=>{
   $('planet-warnings-toggle').setAttribute('aria-expanded',String(show));
 };
 $('planet-close').onclick=()=>$('planet-dialog').close();
-$('planet-dialog').addEventListener('close',()=>{planetDialogId=null;$('world').focus();});
+$('planet-dialog').addEventListener('close',()=>{if($('planet-dialog').open)return;planetDialogId=null;$('world').focus();});
 $('black-hole-info-close').onclick=()=>$('black-hole-info-dialog').close();
 $('black-hole-info-dialog').addEventListener('close',()=>$('world').focus());
 $('planet-join').onclick=async()=>{try{const reply=await request('planet:join',{planetId:planetDialogId});toast(reply.message);}catch(e){toast(e.message);}};
@@ -956,17 +963,37 @@ window.addEventListener('keydown',e=>{
   if(e.code!=='KeyF'||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)||e.target.isContentEditable)return;
   e.preventDefault();doInteract();
 });
-function startPlacement(){world.setPlacing(true);
+let movingPlanetId=null,movePoint=null;
+function startPlacement(planetId=null){
+  movingPlanetId=planetId;movePoint=null;world.setPlacement(null,planetId);world.setPlacing(true);stop();
   placing=true;document.body.classList.add('placing');
-  $('map-caption').textContent='✦ 오른쪽 아래 부서행성 광장에 자리를 골라주세요 (Esc 취소)';
+  $('map-caption').textContent=planetId?'✦ 행성을 옮길 자리를 골라주세요 (무료 · Esc 취소)':'✦ 오른쪽 아래 부서행성 광장에 자리를 골라주세요 (Esc 취소)';
   $('planet-new').textContent='취소';
 }
 function stopPlacement(){
+  movingPlanetId=null;movePoint=null;
   placing=false;document.body.classList.remove('placing');
   $('planet-new').textContent='행성 만들기';world.setPlacement(null);world.setPlacing(false);
   if(room&&!$('planet-create-dialog').open)$('map-caption').textContent=mapCaption(room.players.find(p=>p.id===selfId)?.mapId||PLAZA_ID);
 }
 $('planet-new').onclick=()=>{placing?stopPlacement():startPlacement();$('world').focus();};
+// 생성과 동일한 광장 선택 화면을 쓰되, 이동은 종류/이름을 다시 입력하지 않습니다.
+$('planet-move').onclick=()=>{
+  const id=planetDialogId;const me=room?.players.find(p=>p.id===selfId);
+  if(!id||me?.role!=='student'||me.departmentId!==id||me.mapId!==PLAZA_ID)return;
+  $('planet-dialog').close();startPlacement(id);$('world').focus();
+};
+$('planet-move-cancel').onclick=()=>$('planet-move-dialog').close();
+$('planet-move-dialog').addEventListener('close',()=>{stopPlacement();$('world').focus();});
+$('planet-move-submit').onclick=async()=>{
+  if(!movingPlanetId||!movePoint||$('planet-move-submit').disabled)return;
+  $('planet-move-submit').disabled=true;$('planet-move-error').textContent='';
+  try{
+    const result=await request('planet:move',{planetId:movingPlanetId,...movePoint});
+    $('planet-move-dialog').close();toast(result.moved?'행성 위치를 옮겼어요.':'현재 위치를 그대로 유지했어요.');
+  }catch(e){$('planet-move-error').textContent=e.message;}
+  finally{$('planet-move-submit').disabled=false;}
+};
 window.addEventListener('keydown',e=>{if(e.code==='Escape'&&placing)stopPlacement();});
 function openPlanetCreateDialog(point){
   const isTeacher=room?.players.find(p=>p.id===selfId)?.role==='teacher';
@@ -997,6 +1024,25 @@ $('planet-create-submit').onclick=async()=>{
 $('crew-button').onclick=()=>{stop();$('crew-dialog').showModal();};
 $('crew-close').onclick=()=>$('crew-dialog').close();
 $('crew-dialog').addEventListener('close',()=>$('world').focus());
+// 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
+for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section')].entries()){
+  const heading=section.querySelector(':scope > h3');
+  if(!heading)continue;
+  const button=document.createElement('button');
+  button.type='button';button.className='teacher-tool-toggle';
+  button.setAttribute('aria-expanded','false');
+  const label=heading.textContent.trim().replace(/^[\u2460-\u2473]\s*/u,'');
+  button.setAttribute('aria-label',label);
+  const title=document.createElement('span');title.textContent=label;
+  const indicator=document.createElement('span');indicator.className='teacher-tool-indicator';indicator.setAttribute('aria-hidden','true');indicator.textContent='⌄';
+  button.append(title,indicator);
+  const panel=document.createElement('div');panel.id=`teacher-tool-content-${index+1}`;panel.hidden=true;
+  button.setAttribute('aria-controls',panel.id);
+  const headingRow=document.createElement('h3');headingRow.className='teacher-tool-heading';headingRow.append(button);
+  heading.replaceWith(headingRow);headingRow.after(panel);
+  for(const child of [...section.children])if(child!==headingRow&&child!==panel)panel.append(child);
+  button.onclick=()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));panel.hidden=expanded;};
+}
 $('teacher-tools').onclick=()=>{updateShardsTargetOptions();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
 $('teacher-close').onclick=()=>$('teacher-dialog').close();
 $('teacher-leave').onclick=()=>{$('teacher-dialog').close();$('leave').click();};
@@ -1103,7 +1149,7 @@ function renderShopBuyList(){
       const quantity=shopQty(qty);
       try{
         const reply=await request('shop:buy',{itemId:item.id,quantity});
-        toast(item.name+' '+quantity+'개를 샀어요.'+(reply.discounted?' 반값 할인 '+reply.discounted+'개 적용!':'')+' 남은 별 파편 ★ '+formatShards({...room?.players.find(p=>p.id===selfId),starShards:reply.starShards}));
+        toast(item.name+(quantity>1?' '+quantity+'개':'')+'를 구매했습니다');
         audio.playSfx('shop-buy');applyShopAck(reply);
       }catch(e){toast(e.message);}
     };
@@ -1178,7 +1224,8 @@ function enter(result){
   social.seed(result.chat?.messages);
   document.body.classList.add('joined');updateControlAlignment();$('world').focus();$('form-message').textContent='';
   $('interact-prompt').hidden=true;$('interior-decorate').hidden=true;if($('planet-dialog').open)$('planet-dialog').close();
-  if($('planet-create-dialog').open)$('planet-create-dialog').close();if(placing)stopPlacement();
+  if($('planet-create-dialog').open)$('planet-create-dialog').close();
+  if($('planet-move-dialog').open)$('planet-move-dialog').close();if(placing||movingPlanetId)stopPlacement();
   marketUI.reset();auxiliarySkills.reset();selectedSlotId=null;
   if($('use-dialog').open)$('use-dialog').close();
 }
@@ -1237,6 +1284,7 @@ function reset(message){
   evolutionUI.reset();growthUI.reset();
   if($('leave-dialog').open)$('leave-dialog').close();
   if($('planet-dialog').open)$('planet-dialog').close();
+  if($('planet-move-dialog').open)$('planet-move-dialog').close();
   if($('planet-create-dialog').open)$('planet-create-dialog').close();
   if($('crew-dialog').open)$('crew-dialog').close();
   if($('teacher-dialog').open)$('teacher-dialog').close();
@@ -1381,6 +1429,17 @@ $('world').addEventListener('click',e=>{
     return;
   }
   const point=world.canvasPoint(e);
+  if(movingPlanetId){
+    const planet=planetById(movingPlanetId);
+    if(!planet){stopPlacement();return;}
+    const selected={x:Math.round(point.x),y:Math.round(point.y)};
+    // 축소된 광장에서 중심을 클릭할 때 화면 픽셀 반올림으로 미세 이동하지 않게 합니다.
+    if(Math.hypot(selected.x-planet.x,selected.y-planet.y)<=6){stopPlacement();toast('현재 위치를 그대로 유지했어요.');return;}
+    if(!world.placementOk(selected)){toast('다른 행성과 떨어진 부서행성 광장의 빈자리를 골라주세요.');return;}
+    movePoint=selected;world.setPlacement(selected,movingPlanetId);world.setPlacing(false);placing=false;document.body.classList.remove('placing');$('planet-new').textContent='행성 만들기';
+    $('planet-move-name').textContent=planet.name+' 행성을 선택한 위치로 옮길까요? 비용은 들지 않아요.';
+    $('planet-move-error').textContent='';stop();$('planet-move-dialog').showModal();return;
+  }
   world.setPlacement(point);world.setPlacing(false);placing=false;document.body.classList.remove('placing');$('planet-new').textContent='행성 만들기';
   openPlanetCreateDialog(point);
 });

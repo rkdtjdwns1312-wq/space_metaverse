@@ -1,5 +1,6 @@
+import {gaitRig,gaitPhase,queueMotionFrames,finishMotionFrame} from './locomotion-gait.js';
 // 얼굴과 별자리 저울은 고정하고 머리카락 바깥결과 옷자락만 가볍게 흔듭니다.
-const cache=new WeakMap(),SIDE=256,FRAME_COUNT=16,TAU=Math.PI*2;
+const cache=new WeakMap(),SIDE=256,FRAME_COUNT=32,TAU=Math.PI*2;
 const clamp=value=>Math.max(0,Math.min(1,value));
 const smooth=(a,b,value)=>{const t=clamp((value-a)/(b-a));return t*t*(3-2*t);};
 function canvas(){const element=document.createElement('canvas');element.width=element.height=SIDE;return element;}
@@ -24,11 +25,13 @@ export function libraWalkFrames(sprite,level){
   if(byLevel.has(level))return byLevel.get(level);
   const original=canvas(),originalContext=original.getContext('2d',{willReadFrequently:true});
   originalContext.drawImage(sprite,0,0,SIDE,SIDE);
-  const source=originalContext.getImageData(0,0,SIDE,SIDE).data,frames=[original];
+  const source=originalContext.getImageData(0,0,SIDE,SIDE).data,frames=Array(FRAME_COUNT).fill(original);
   const [faceX,faceY,faceRx,faceRy]=faceBounds(level);
-  for(let frame=1;frame<FRAME_COUNT;frame++){
+  const gait=gaitRig('libra',level);
+  queueMotionFrames(frames,frame=>{
     const phase=TAU*frame/FRAME_COUNT,sway=Math.sin(phase),follow=Math.sin(phase+.55)-Math.sin(.55);
     const picture=canvas(),context=picture.getContext('2d'),pixels=context.createImageData(SIDE,SIDE);
+    const gp=gaitPhase(phase);
     for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
       const u=(x+.5)/SIDE,v=(y+.5)/SIDE,face=ellipse(u,v,faceX,faceY,faceRx,faceRy);
       const protectedFace=face<=1;
@@ -48,13 +51,14 @@ export function libraWalkFrames(sprite,level){
       if(protectedFace){const index=(y*SIDE+x)*4;for(let c=0;c<4;c++)pixels.data[index+c]=source[index+c];continue;}
       const dx=(hair*1.35+cloth*1.15)*Math.sin(phase)*(u<.5?1:-1);
       const dy=hair*.55*follow+cloth*.45*follow,index=(y*SIDE+x)*4;
-      sample(source,x-dx*edge,y-dy*edge,pixels.data,index);
+      const gi=(y*SIDE+x)*3,gx=gait?gait[gi]*gp[0]:0,gy=gait?-(gait[gi+1]*gp[1]+gait[gi+2]*gp[2]):0;
+      sample(source,x-dx*edge-gx,y-dy*edge-gy,pixels.data,index);
     }
     context.putImageData(pixels,0,0);
     // Partial-alpha pixels can round by one channel through putImageData; copy the exact source ROI back.
     context.save();context.beginPath();context.ellipse(faceX*SIDE,faceY*SIDE,faceRx*SIDE,faceRy*SIDE,0,0,TAU);context.clip();
     context.globalCompositeOperation='copy';context.drawImage(original,0,0);context.restore();
-    frames.push(picture);
-  }
+    return finishMotionFrame(picture,original,'libra',level);
+  });
   byLevel.set(level,frames);return frames;
 }

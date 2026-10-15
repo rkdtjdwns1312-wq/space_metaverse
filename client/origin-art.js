@@ -1,10 +1,12 @@
+import {visualGateFloor} from './visual-floor.js';
 import {originFloor} from '/shared/origin-floor.js';
 import {drawStoneRim,rimEdges} from './stone-rim.js';
-import {drawFloatingIslands} from './floating-island.js';
+import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 
 const image=typeof Image==='undefined'?null:new Image();
 let revision=0;
 const listeners=new Set();
+onFloatingCliffReady(()=>{revision++;for(const fn of listeners)fn();});
 if(image){image.onload=()=>{revision++;for(const fn of listeners)fn();};image.src='/assets/maps/origin-starlight.png';}
 const ready=()=>!!image?.complete&&image.naturalWidth>0;
 const templeImage=typeof Image==='undefined'?null:new Image();
@@ -19,7 +21,7 @@ export function onOriginArtReady(fn){listeners.add(fn);return()=>listeners.delet
 
 function pathFor(floor){const path=new Path2D();path.moveTo(floor.points[0].x,floor.points[0].y);for(const p of floor.points.slice(1))path.lineTo(p.x,p.y);path.closePath();return path;}
 export function drawOriginArt(ctx,map){
-  const f=originFloor(map);if(!f)return;
+  const f=visualGateFloor(originFloor(map),map);if(!f)return;
   if(ready())ctx.drawImage(image,0,0,map.width,map.height);
   else{
     ctx.fillStyle='#10172d';ctx.fillRect(0,0,map.width,map.height);
@@ -29,6 +31,7 @@ export function drawOriginArt(ctx,map){
     }
   }
   const path=pathFor(f);
+  drawRockSupports(ctx,rimEdges(f.points),'origin',map.height);
   drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],'origin',map.height);
   ctx.save();ctx.translate(0,Math.max(3,map.height*.008));ctx.fillStyle='#10172c99';ctx.shadowColor='#03061199';ctx.shadowBlur=24;ctx.fill(path);ctx.restore();
   ctx.save();ctx.clip(path);ctx.fillStyle='#c9c7de';ctx.fillRect(0,0,map.width,map.height);
@@ -54,7 +57,8 @@ const pavingImage=typeof Image==='undefined'?null:new Image();
 if(pavingImage){pavingImage.onload=()=>{revision++;for(const fn of listeners)fn();};pavingImage.src='/assets/maps/plaza-paving.png';}
 
 export function drawOriginMiniFloor(ctx,map){
-  const f=originFloor(map);if(!f)return;
+  const f=visualGateFloor(originFloor(map),map);if(!f)return;
+  drawRockSupports(ctx,rimEdges(f.points),'origin',map.height);
   drawFloatingIslands(ctx,[{x:f.cx,y:f.cy,rx:f.rx,ry:f.ry}],'origin',map.height);
   const path=pathFor(f);ctx.fillStyle='#484968';ctx.fill(path);ctx.fillStyle='#d2cfe4';ctx.save();ctx.clip(path);ctx.fillRect(0,0,map.width,map.height);ctx.restore();
   ctx.strokeStyle='#8883a655';ctx.lineWidth=7;ctx.lineJoin='round';ctx.stroke(path);

@@ -170,11 +170,18 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
   $('mission-auto-objective').insertAdjacentHTML('beforeend','<option value="timetable-read">오늘의 시간표 확인하기</option>');
   objectiveText['timetable-read']='시간표 기둥에서 오늘의 시간표 확인하기';
   objectiveGuide['timetable-read']='광장의 오늘의 시간표 기둥과 상호작용하면 달성합니다.';
+  for(const [id,label,guide] of [
+    ['culture-read','별 교양 발전소 책 읽기','책을 읽고 다 읽음을 눌러 보상을 받을 때 1회입니다. 같은 책은 하루 한 번, 하루 10권까지 셉니다.'],
+    ['history-read','별 역사 발전소 역사 글 읽기','역사 글을 읽고 다 읽음을 눌러 보상을 받을 때 1회입니다. 같은 글은 하루 한 번, 하루 10편까지 셉니다.'],
+    ['science-read','별 과학 발전소 상식 읽기','과학 상식을 읽고 읽음을 눌러 보상을 받을 때 1회입니다. 하루 2편까지 셉니다.'],
+    ['one-stroke-win','별 길 한번에 그리기 성공','선택한 난이도에서 모든 선을 한 번씩 이어 완성하면 1회입니다.']]){
+    $('mission-auto-objective').append(new Option(label,id));objectiveText[id]=label;objectiveGuide[id]=guide;
+  }
   $('mission-auto-objective').onchange=()=>{const objective=$('mission-auto-objective').value;
     $('mission-auto-guide').textContent=objectiveGuide[objective];
     $('mission-auto-grade-row').hidden=objective!=='math-correct';
     $('mission-auto-item-level-row').hidden=objective!=='craft-level';
-    $('mission-auto-difficulty-row').hidden=!['baseball-win','sudoku-win'].includes(objective);
+    $('mission-auto-difficulty-row').hidden=!['baseball-win','sudoku-win','one-stroke-win'].includes(objective);
     $('mission-auto-stage-row').hidden=objective!=='signal-stage';
     const oneTime=['signal-stage','tutorial-complete','life-star-complete','timetable-read'].includes(objective);
     $('mission-auto-goal').disabled=oneTime;if(oneTime)$('mission-auto-goal').value='1';
@@ -188,11 +195,11 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
         :objective==='math-correct'?`별 수학 발전소 ${grade}학년 단계 정답 ${goal}회 맞히기`
         :objective==='craft-level'?`LV${itemLevel} 아이템 조합 ${goal}회 성공하기`
         :objective==='signal-stage'?`우주 신호 따라하기 ${stage}단계 성공하기`
-        :['baseball-win','sudoku-win'].includes(objective)?`${objective==='baseball-win'?'숫자야구':'별빛 스도쿠'} ${difficulty==='high'?'상':difficulty==='medium'?'중':'하'} ${goal}회 성공하기`
+        :['baseball-win','sudoku-win','one-stroke-win'].includes(objective)?`${objective==='baseball-win'?'숫자야구':objective==='one-stroke-win'?'별 길 한번에 그리기':'별빛 스도쿠'} ${difficulty==='high'?'상':difficulty==='medium'?'중':'하'} ${goal}회 성공하기`
         :`${objectiveText[objective]} ${objective==='tetris-lines'?goal+'줄':goal+'회'}`;
       await request('mission:auto:create',{title:$('mission-auto-title').value,description,objective,goal,
         ...(objective==='math-correct'?{grade}:{}),...(objective==='craft-level'?{itemLevel}:{}),
-        ...(['baseball-win','sudoku-win'].includes(objective)?{difficulty}:{}),...(objective==='signal-stage'?{stage}:{}),
+        ...(['baseball-win','sudoku-win','one-stroke-win'].includes(objective)?{difficulty}:{}),...(objective==='signal-stage'?{stage}:{}),
         rewardShards:Number($('mission-auto-reward').value),distribution:$('mission-auto-distribution').value,...limitsData('mission-auto'),
         ...($('mission-auto-repeat').value==='daily'?{repeat:'daily',rewardQuantity:Number($('mission-auto-reward').value)}:{})});
       $('mission-auto-title').value='';await refreshBoard();$('mission-auto-create').hidden=false;toast('자동미션을 만들었어요.');}

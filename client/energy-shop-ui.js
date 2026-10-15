@@ -70,7 +70,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const price=document.createElement('span');price.textContent=player.role==='teacher'?'교사 무료':'우주에너지 '+item.price;
       const buy=document.createElement('button');buy.type='button';buy.className='primary small';buy.textContent=level<item.level?'LV'+item.level+'부터':'사기';
       buy.disabled=level<item.level||(player.role!=='teacher'&&(player.cosmicEnergy||0)<item.price);
-      buy.onclick=async()=>{buy.disabled=true;try{await request('shop:energy:buy',{itemId:item.id});toast(item.name+'을 샀어요. 가방에서 장착해 보세요.');render();}catch(error){toast(error.message);buy.disabled=false;}};
+      buy.onclick=async()=>{buy.disabled=true;try{await request('shop:energy:buy',{itemId:item.id});toast(item.name+'를 구매했습니다');render();}catch(error){toast(error.message);buy.disabled=false;}};
       actions.append(price,buy);row.append(picture,details,actions);return row;
     }));
   }

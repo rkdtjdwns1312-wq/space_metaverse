@@ -208,7 +208,7 @@ body:not(.joined) #ability-unused-reminder,body.placing #ability-unused-reminder
 .chat{min-height:180px}#chat-teacher-controls{display:flex;gap:8px;margin:6px 0 10px}#chat-log{list-style:none;margin:10px 0;padding:0;max-height:220px;overflow-y:auto;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:8px}#chat-log li{background:#f7f6fd;border-radius:12px;padding:7px 10px;font-size:13px;line-height:1.5;display:flex;flex-wrap:wrap;column-gap:8px;align-items:baseline}#chat-log li.mine{background:#efe9fc}#chat-log li.system{background:transparent;color:#8a879c;font-style:italic;padding-left:2px}#chat-log li.private{background:#f1edfc}#chat-log .who{font-weight:700;color:#5d4795;font-size:12px}#chat-log li.system .who{color:#8a879c;font-weight:600}#chat-log .text{flex:1 1 100%;color:#37334d}#chat-log li.system .text{color:#8a879c}#chat-log .time{font-size:10px;color:#a29cb8}#chat-log .badge{font-size:10px;background:#fde8d2;color:#a06b21;border-radius:8px;padding:1px 6px}#chat-log .private-badge{background:#e5ddf7;color:#5d4795}#chat-empty{margin:10px 0;font-size:13px}#chat-form{display:flex;gap:8px;margin-top:6px}#chat-input{flex:1;min-width:0;height:40px}#chat-input:disabled{background:#f1f0f7;color:#a29cb8}#chat-send{flex-shrink:0}
 dialog{border:1px solid var(--line);border-radius:22px;padding:28px;max-width:min(450px,90vw);color:#333452}dialog::backdrop{background:#29243f66}.dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:24px}
 .learning-reward-info{padding:12px 14px;background:#f5efff;border:1px solid #d8c8e8;border-radius:12px;color:#5b437c;font-size:16px;line-height:1.6;word-break:keep-all;white-space:pre-line}
-#crew-dialog{max-width:min(480px,92vw)}#teacher-dialog{max-width:min(520px,92vw)}#shop-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 26px));max-width:min(760px,calc(100vw - 26px));max-height:86vh;background:linear-gradient(160deg,#f5fbff,#f4efff);border:2px solid #a9cbe2}#use-dialog{max-width:min(420px,92vw)}#trade-dialog{max-width:min(520px,92vw)}
+#crew-dialog{max-width:min(480px,92vw)}#teacher-dialog{box-sizing:border-box;width:min(420px,calc(100vw - 26px));min-width:min(380px,calc(100vw - 26px));max-width:min(520px,calc(100vw - 26px));max-height:86vh}#shop-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 26px));max-width:min(760px,calc(100vw - 26px));max-height:86vh;background:linear-gradient(160deg,#f5fbff,#f4efff);border:2px solid #a9cbe2}#use-dialog{max-width:min(420px,92vw)}#trade-dialog{max-width:min(520px,92vw)}
 .shop-level-tabs{display:flex;gap:6px;margin:0 0 12px;overflow-x:auto}.shop-level-tabs button{border:1px solid var(--line);border-radius:10px;background:#f7f4fc;color:#67588a;padding:7px 12px;font-weight:700;white-space:nowrap}.shop-level-tabs button.selected,.shop-level-tabs button[aria-selected="true"]{background:#e3d9fa;color:#4e3c7c;border-color:#957bbd;box-shadow:inset 0 -2px #957bbd}.shop-level-tabs button:focus-visible{outline:3px solid #f0b35b;outline-offset:2px}.shop-level-badge{display:inline-block;margin-left:6px;font-size:10px;line-height:1.4;border-radius:6px;padding:1px 5px;background:#eee8fa;color:#6f55a5;vertical-align:middle}
 .teacher-footer{flex-wrap:nowrap}.teacher-footer button{flex:1 1 0;min-width:0}
 #credentials-panel textarea{width:100%;box-sizing:border-box;margin-bottom:8px}
@@ -371,8 +371,7 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 .location-badge{display:inline-block;padding:2px 6px;border-radius:99px;background:#fff1c9;color:#936d24;font-size:11px;font-weight:700}
 #universe-preview{display:block;width:100%;height:auto;min-height:0;max-height:none;aspect-ratio:960/640;border:1px solid #d8e5e3;border-radius:16px;background:#eff9f6;object-fit:contain}
 #universe-dialog h3{margin:18px 0 8px;color:#5d4795}
-#universe-planets{display:flex;flex-wrap:wrap;gap:8px;max-height:48px;overflow:auto}
-#universe-planets{max-height:180px}
+#universe-planets{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:12px;max-height:440px;overflow:auto;padding:4px}
 #universe-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(6,auto)}
 #universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
 #universe-links .universe-node{min-width:0;padding:9px 5px}
@@ -380,7 +379,10 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 .universe-thumbnail{display:block;width:100%;height:auto;aspect-ratio:12/7;border-radius:10px;object-fit:contain;background:#d9d0e9;pointer-events:none}
 body.joined #universe-links canvas.universe-thumbnail,body.joined #universe-planets canvas.universe-thumbnail{height:auto;min-height:0;max-height:none;aspect-ratio:12/7;object-fit:contain}
 .universe-node span:not(.location-badge){font-family:"Jua","Malgun Gothic",sans-serif;text-align:center;line-height:1.2}
-#universe-planets .universe-node{min-width:110px;max-width:150px}
+#universe-planets .universe-node{width:100%;min-width:0;max-width:none;box-sizing:border-box;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:10px;gap:8px;white-space:normal}
+#universe-planets .universe-node span:not(.location-badge){display:block;width:100%;min-width:0;writing-mode:horizontal-tb;overflow-wrap:anywhere;line-height:1.4;font-size:16px}
+body.joined #universe-planets canvas.universe-thumbnail{aspect-ratio:16/11;width:100%;flex:none}
+#universe-planets .location-badge{align-self:center}
 #universe-links .universe-node span{word-break:normal;overflow-wrap:anywhere}
 #universe-links .universe-node::after{display:none}
 #universe-planets .universe-node::after{display:none}
@@ -515,9 +517,14 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 /* 교실 메뉴: 운영 버튼은 한 줄에 하나씩, 교실 코드 영역은 별도 묶음. */
 body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#menu-dialog .topline-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}#menu-dialog .topline-actions>button{width:100%;justify-content:center}#menu-dialog #room-badge{flex-wrap:wrap;justify-content:center;max-width:100%;margin-bottom:8px}#menu-dialog #my-password{width:100%;margin-bottom:12px}
 
-/* 운영 도구의 번호 제목은 상단 제목과 동일한 크기를 사용합니다. */
+/* 선생님 도구 항목은 펼침 버튼으로 표시합니다. */
 #teacher-dialog{--teacher-heading-size:24px}
-#teacher-dialog>h2,#teacher-dialog>section>h3{font-size:var(--teacher-heading-size);line-height:1.4;overflow-wrap:anywhere}
+#teacher-dialog>h2{font-size:var(--teacher-heading-size);line-height:1.4;overflow-wrap:anywhere}
+#teacher-dialog>section>.teacher-tool-heading{font-size:var(--teacher-heading-size);line-height:1.4;margin:0 0 8px}
+#teacher-dialog .teacher-tool-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;font-family:inherit;font-size:inherit;font-weight:700;line-height:inherit;color:#5d4795;background:linear-gradient(145deg,#fff9f0,#eee8fa);border:1px solid #c9b6db;border-radius:14px;padding:12px 16px;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16;cursor:pointer}
+#teacher-dialog .teacher-tool-toggle:focus-visible{outline:3px solid #f0b35b;outline-offset:3px;border-radius:14px}
+#teacher-dialog .teacher-tool-toggle[aria-expanded="true"] .teacher-tool-indicator{transform:rotate(180deg)}
+#teacher-dialog .teacher-tool-toggle .teacher-tool-indicator{transition:transform .15s ease}
 
 /* 원형 조작 슬롯: 기존 버튼 크기·고정 위치는 위의 반응형 규칙을 그대로 사용합니다. */
 .combat-buttons>button{position:relative;overflow:visible;--key-size:23px}

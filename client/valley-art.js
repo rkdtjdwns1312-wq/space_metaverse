@@ -1,11 +1,16 @@
-import { VALLEY_LAYOUT, VALLEY_EDGES, traceValleyFloor, onValleyFloor } from '/shared/valley-layout.js';
+import {visualFloor,visualFloorPath} from './visual-floor.js';
+import { VALLEY_LAYOUT, VALLEY_EDGES, VALLEY_POLYGONS, onValleyFloor } from '/shared/valley-layout.js';
 import {drawStoneRim} from './stone-rim.js';
-import {drawFloatingIslands} from './floating-island.js';
+import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 
+const visual=visualFloor(VALLEY_POLYGONS,VALLEY_EDGES,VALLEY_LAYOUT,[VALLEY_LAYOUT.gate]);
+const shape=visualFloorPath(visual.polygons),edgePath=new Path2D();
+for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
 const images = new Map();
 let background = null;
 const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
 const invalidate = () => { background = null; };
+onFloatingCliffReady(invalidate);
 for (const [id, file] of Object.entries({
   sky: 'milky-valley-sky.png', paving: 'plaza-paving.png',
   evolution: 'evolution-altar.png', growth: 'growth-altar.png',
@@ -39,8 +44,8 @@ function drawFloor(ctx) {
   // 외곽선은 원·다리별 선이 아니라 공유 union 경로만 사용합니다.
   ctx.save();ctx.translate(0, 12);
   ctx.shadowColor = '#111a4290';ctx.shadowBlur = 24;ctx.shadowOffsetY = 14;
-  traceValleyFloor(ctx);ctx.fillStyle = '#777c9e';ctx.fill();ctx.restore();
-  ctx.save();traceValleyFloor(ctx);ctx.clip();
+  ctx.fillStyle = '#777c9e';ctx.fill(shape);ctx.restore();
+  ctx.save();ctx.clip(shape);
   ctx.fillStyle = '#eeeaf4';ctx.fillRect(0, 0, width, height);
   const paving = images.get('paving');
   if (ready(paving)) {
@@ -50,8 +55,8 @@ function drawFloor(ctx) {
   }
   ctx.fillStyle = floorTint(ctx);ctx.fillRect(0, 0, width, height);
   ctx.restore();
-  drawStoneRim(ctx,VALLEY_EDGES.filter(([a,b])=>(a.x+b.x)/2<=VALLEY_LAYOUT.center.x),'moon');
-  drawStoneRim(ctx,VALLEY_EDGES.filter(([a,b])=>(a.x+b.x)/2>VALLEY_LAYOUT.center.x),'sun');
+  drawStoneRim(ctx,visual.edges.filter(([a,b])=>(a.x+b.x)/2<=VALLEY_LAYOUT.center.x),'moon');
+  drawStoneRim(ctx,visual.edges.filter(([a,b])=>(a.x+b.x)/2>VALLEY_LAYOUT.center.x),'sun');
 }
 
 function templeLabels(ctx) {
@@ -75,6 +80,7 @@ function paintBackground(ctx, width, height) {
     const w = sky.naturalWidth * scale, h = sky.naturalHeight * scale;
     ctx.drawImage(sky, (width - w) / 2, (height - h) / 2, w, h);
   }
+  drawRockSupports(ctx,visual.edges,'valley',height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.center],'valley',height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[0]],'evolution',height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[1]],'growth',height);
@@ -103,11 +109,12 @@ export function drawValleyGround(ctx, map, time = 0) {
 // 실제 공유 바닥 경로를 그대로 축소하며 장식 원이나 개별 다리 선을 덧그리지 않습니다.
 export function drawValleyMiniFloor(ctx) {
   ctx.save();ctx.fillStyle = '#3e436c';ctx.fillRect(0, 0, VALLEY_LAYOUT.width, VALLEY_LAYOUT.height);
+  drawRockSupports(ctx,visual.edges,'valley',VALLEY_LAYOUT.height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.center],'valley',VALLEY_LAYOUT.height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[0]],'evolution',VALLEY_LAYOUT.height);
   drawFloatingIslands(ctx,[VALLEY_LAYOUT.temples[1]],'growth',VALLEY_LAYOUT.height);
-  traceValleyFloor(ctx);ctx.fillStyle = floorTint(ctx, true);ctx.fill();
-  ctx.strokeStyle = '#aaa5c455';ctx.lineWidth = 7;ctx.lineJoin = 'round';ctx.stroke();ctx.restore();
+  ctx.fillStyle = floorTint(ctx, true);ctx.fill(shape);
+  ctx.strokeStyle = '#aaa5c455';ctx.lineWidth = 7;ctx.lineJoin = 'round';ctx.stroke(edgePath);ctx.restore();
 }
 
 export function drawValleyAltar(ctx, object, time = 0) {

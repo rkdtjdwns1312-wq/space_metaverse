@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {STREET,MAP} from '../shared/config.js';
+import {JOURNEY_VERSION} from '../shared/tutorial-journey.js';
+const game=createClassroomServer({teacherKey:'ui-isolated-shop',studentHours:false,teacherManagedAccounts:false});let browser,teacher;
+const errors=[],checks=[];
+try{
+ await mkdir('.local/657-659-ui',{recursive:true});const url=`http://127.0.0.1:${(await game.listen()).port}`;
+ teacher=io(url,{transports:['websocket'],reconnection:false});await new Promise(r=>teacher.once('connect',r));const ack=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey:'ui-isolated-shop',allowedNames:['기능연습']});assert(ack.ok);const room=game.store.rooms.get(ack.room.code);
+ browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{}),args:['--no-proxy-server']});const page=await browser.newPage({viewport:{width:1100,height:920}});page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill('기능연습');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ if(await page.locator('#password-offer-dialog').isVisible())await page.locator('#password-offer-no').click();await page.locator('#tutorial-later').click();const p=[...room.players.values()].find(p=>p.role==='student');
+ p.journey={version:JOURNEY_VERSION,stage:6,goals:[],claimedAt:Array(5).fill(Date.now()),practiceUntil:0};p.starShards=1000;p.cosmicEnergy=1000;p.inventory=[{id:'alien-card',quantity:2}];Object.assign(p.avatar,{level:2,constellationId:'aquarius',form:'constellation'});
+ const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ const at=async(map,o)=>{Object.assign(p,{mapId:map.id,x:o.x,y:o.y+50});publish();await page.locator('#interact-prompt[data-object-id='+o.id+']').waitFor();await page.locator('#interact-prompt').click();};
+ await at(STREET,STREET.objects.find(o=>o.kind==='shop'));const row=page.locator('#shop-buy-list .item').filter({has:page.locator('.buy:not(:disabled)')}).first(),name=await row.locator('strong').innerText();await row.locator('.buy').click();await page.locator('#toast').filter({hasText:name+'를 구매했습니다'}).waitFor();checks.push('별상점 구매 확인');await page.locator('#shop-close').click();
+ await at(STREET,STREET.objects.find(o=>o.kind==='energy-shop'));const energy=page.locator('#energy-shop-list article').first(),equipment=(await energy.locator('strong').innerText()).split(' · ')[0];await energy.getByRole('button',{name:'사기',exact:true}).click();await page.locator('#toast').filter({hasText:equipment+'를 구매했습니다'}).waitFor();checks.push('우주에너지 상점 구매 확인');await page.locator('#energy-shop-close').click();
+ await page.locator('#dock-inventory').click();await page.locator('#bag-list [data-item-id="alien-card"] button').click();await page.locator('#bag-detail .use').click();assert.deepEqual(await page.locator('#use-exemption option').allTextContents(),['선택해 주세요','일기','독서록']);await page.locator('#use-exemption').selectOption('reading');await page.locator('#use-target').selectOption(p.id);await page.locator('#use-dialog').screenshot({path:'.local/657-659-ui/alien-choice.png'});await page.locator('#use-confirm').click();await page.locator('#use-dialog').waitFor({state:'hidden'});assert.equal(p.cardMarkers.at(-1).exemption,'reading');await page.locator('[data-close="inventory-dialog"]').click();
+ await at(MAP,MAP.objects.find(o=>o.id==='pillar-effects'));await page.locator('.active-item-row').filter({hasText:'기능연습(독서록)'}).waitFor();await page.locator('#temple-dialog').screenshot({path:'.local/657-659-ui/alien-record.png'});checks.push('외계인 일기/독서록 선택과 사용대상 표시');await page.locator('#temple-close').click();
+ await at(STREET,STREET.objects.find(o=>o.gameId==='path'));await page.locator('.star-path-node').first().waitFor();const run=p.oneStrokeRun;assert(run);const used=new Set(),route=[];function visit(a){for(let n=0;n<run.edges.length;n++){const [x,y]=run.edges[n];if(!used.has(n)&&(x===a||y===a)){used.add(n);visit(x===a?y:x);}}route.push(a);}visit(Math.max(0,run.points.findIndex((_,i)=>run.edges.filter(e=>e.includes(i)).length%2)));for(const i of route.reverse())await page.locator('.star-path-node').nth(i).click();await page.locator('#arcade-score').filter({hasText:'성공!'}).waitFor();assert.equal(p.oneStrokeRun,undefined);await page.locator('#arcade-dialog').screenshot({path:'.local/657-659-ui/one-stroke.png'});checks.push('한붓그리기 실제 점 클릭 완주·서버 검증');
+ assert.deepEqual(errors,[]);await writeFile('.local/657-659-ui/report.json',JSON.stringify({checks,errors}));console.log(JSON.stringify({checks,errors}));
+}finally{teacher?.disconnect();await browser?.close();await game.close();}

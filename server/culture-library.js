@@ -4,6 +4,7 @@ import {stationReward} from '../shared/station-rewards.js';
 import {STREET,STREET_ID} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
+import {advanceMissions} from './missions.js';
 
 export const CULTURE_DAILY_LIMIT=10;
 const culture={namespace:'culture',field:'cultureReading',ids:new Set(CULTURE_STORIES.map(story=>story.id)),
@@ -21,6 +22,25 @@ export function validateCultureReading(raw){
   return validateReading(raw,culture);
 }
 export function validateHistoryReading(raw){return validateReading(raw,history);}
+export function validateCultureRecommendationVotes(raw){
+  if(raw===undefined)return [];
+  if(!Array.isArray(raw)||raw.length>CULTURE_STORIES.length||new Set(raw).size!==raw.length||raw.some(id=>!culture.ids.has(id)))
+    throw new Error('Invalid culture recommendation votes');
+  return [...raw];
+}
+function recommendationTotals(votes){const totals={};for(const ids of votes)for(const id of ids)totals[id]=(totals[id]||0)+1;return totals;}
+export function validateCultureRecommendations(raw,votes=[]){
+  const expected=recommendationTotals(votes);
+  if(raw===undefined)return expected;
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Invalid culture recommendations');
+  const totals={};
+  for(const [id,count] of Object.entries(raw)){
+    if(!culture.ids.has(id)||!Number.isSafeInteger(count)||count<1)throw new Error('Invalid culture recommendations');
+    totals[id]=count;
+  }
+  if(JSON.stringify(Object.entries(totals).sort())!==JSON.stringify(Object.entries(expected).sort()))throw new Error('Inconsistent culture recommendations');
+  return totals;
+}
 function validateReading(raw,library){
   if(raw===undefined)return {day:null,claimedIds:[]};
   if(!raw||typeof raw!=='object'||Array.isArray(raw)||
@@ -60,18 +80,42 @@ export function registerReadingLibrary({socket,action,store,roster,clock=Date.no
     return {room,player};
   }
   function story(id){requireThat(typeof id==='string'&&library.ids.has(id),'읽을 이야기를 골라주세요.');}
-  action(`${namespace}:status`,()=>{const {player}=access();return readingStatus(player,clock(),library);},false);
+  function voteStatus(room,player){
+    if(library!==culture)return {};
+    const votes=[...room.players.values()].filter(p=>p.role==='student').map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
+    // A non-persistent room may drop a departing student outright. Derive the
+    // live view from current roster votes so their removed vote cannot leave a
+    // stale aggregate that blocks everyone else from opening the library.
+    const recommendationCounts=validateCultureRecommendations(undefined,votes);
+    room.cultureRecommendations=recommendationCounts;
+    return {recommendationCounts,recommendedIds:validateCultureRecommendationVotes(player.cultureRecommendationVotes)};
+  }
+  function currentStatus(room,player,now){return {...readingStatus(player,now,library),...voteStatus(room,player)};}
+  action(`${namespace}:status`,()=>{const {room,player}=access();return currentStatus(room,player,clock());},false);
   action(`${namespace}:open`,data=>{
     const {room,player}=access();story(data.storyId);
-    const status=readingStatus(player,clock(),library);
+    const status=currentStatus(room,player,clock());
     selected={roomCode:room.code,playerId:player.id,token:player.token,storyId:data.storyId};
     return status;
   },false);
+  if(library===culture)action('culture:recommend',data=>{
+    const {room,player}=access();story(data.storyId);
+    requireThat(player.role==='student','학생만 추천할 수 있어요.');
+    requireThat(selected?.roomCode===room.code&&selected.playerId===player.id&&selected.token===player.token&&selected.storyId===data.storyId,'먼저 이 책을 열어주세요.');
+    const votes=[...room.players.values()].filter(p=>p.role==='student').map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
+    const totals=validateCultureRecommendations(undefined,votes),mine=validateCultureRecommendationVotes(player.cultureRecommendationVotes);
+    if(mine.includes(data.storyId)){
+      player.cultureRecommendationVotes=mine.filter(id=>id!==data.storyId);
+      if(totals[data.storyId]===1)delete totals[data.storyId];else totals[data.storyId]--;
+    }else{player.cultureRecommendationVotes=[...mine,data.storyId];totals[data.storyId]=(totals[data.storyId]||0)+1;}
+    room.cultureRecommendations=totals;roster(room);
+    return currentStatus(room,player,clock());
+  });
   action(`${namespace}:claim`,data=>{
     const {room,player}=access();story(data.storyId);
     requireThat(selected?.roomCode===room.code&&selected.playerId===player.id&&selected.token===player.token&&selected.storyId===data.storyId,
       '먼저 이 이야기를 선택해 읽어주세요.');
-    const status=readingStatus(player,clock(),library);
+    const status=currentStatus(room,player,clock());
     if(player.role==='teacher')return {...status,awarded:false,amount:0};
     if(status.claimedIds.includes(data.storyId))return {...status,awarded:false,amount:0,message:'오늘 이 이야기의 보상을 이미 받았어요.'};
     if(status.count>=CULTURE_DAILY_LIMIT)return {...status,awarded:false,amount:0,message:`오늘은 10${unit}의 보상을 모두 받았어요. 내일 다시 읽어주세요.`};
@@ -79,8 +123,9 @@ export function registerReadingLibrary({socket,action,store,roster,clock=Date.no
     requireThat(Number.isSafeInteger(before)&&before>=0&&Number.isSafeInteger(before+amount),'우주에너지를 더 담을 수 없어요.');
     player.cosmicEnergy=before+amount;
     player[field]={day:status.day,claimedIds:[...status.claimedIds,data.storyId]};
+    advanceMissions(room,player,namespace+'-read',undefined,clock());
     roster(room);
-    return {...status,claimedIds:[...player[field].claimedIds],count:status.count+1,awarded:true,amount,
+    return {...currentStatus(room,player,clock()),claimedIds:[...player[field].claimedIds],count:status.count+1,awarded:true,amount,
       message:`이야기를 다 읽었어요! 우주에너지 ${amount}을 받았어요.`};
   });
 }

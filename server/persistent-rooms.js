@@ -9,7 +9,7 @@ import {validateTasks} from './tasks.js';
 import {validateMissions,validMissionTimestamp} from './missions.js';
 import {validateDailyMissions,validateDailyMissionHistory} from './daily-missions.js';
 import {validateJourney} from './tutorial-journey.js';
-import {validateCultureReading,validateHistoryReading} from './culture-library.js';
+import {validateCultureReading,validateHistoryReading,validateCultureRecommendations,validateCultureRecommendationVotes} from './culture-library.js';
 import {validateScienceReading} from './science-library.js';
 import {validateLearningRewards} from './learning-rewards.js';
 import {validateSignalRanking} from './signal-game.js';
@@ -23,6 +23,7 @@ import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import {pinHash,checkPin} from './pin-auth.js';
 export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
 import { ClassFileStore } from './store.js';
+import {isEncryptedTeacherCode} from './teacher-access.js';
 import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
@@ -45,7 +46,9 @@ function offline(p) {
   return p;
 }
 export function toRecord(room) {
+  const cultureVotes=[...room.players.values()].filter(p=>p.role==='student').map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
+    cultureRecommendations:validateCultureRecommendations(room.cultureRecommendations,cultureVotes),
     dailyMissions:validateDailyMissions(room.dailyMissions),
     serena:validateSerenaState(room.serena),bossRespawns:validateBossRespawns(room.bossRespawns),
     ...(room.adminCreated?{adminCreated:true}:{}),
@@ -68,6 +71,7 @@ export function toRecord(room) {
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       cultureReading:validateCultureReading(p.cultureReading),
+      cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
       scienceReading:validateScienceReading(p.scienceReading),
       learningRewards:validateLearningRewards(p.learningRewards),
@@ -90,10 +94,15 @@ export function fromRecord(r) {
   if(r.teacherAccess && (typeof r.teacherAccess!=='object'||
     typeof r.teacherAccess.label!=='string'||!r.teacherAccess.label.trim()||r.teacherAccess.label.length>40||
     typeof r.teacherAccess.digest!=='string'||!/^[0-9a-f]{64}$/.test(r.teacherAccess.digest)||
-    !Number.isFinite(r.teacherAccess.createdAt)))bad();
+    !Number.isFinite(r.teacherAccess.createdAt)||
+    (r.teacherAccess.encryptedCode!==undefined&&!isEncryptedTeacherCode(r.teacherAccess.encryptedCode))))bad();
   const allowedNames=new Set(r.allowedNames.map(nickname));
   if(allowedNames.size!==r.allowedNames.length||allowedNames.has('선생님'))bad();
+  const savedCultureVotes=r.students.map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
+  let cultureRecommendations;
+  try{cultureRecommendations=validateCultureRecommendations(r.cultureRecommendations,savedCultureVotes);}catch{bad();}
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),
+    cultureRecommendations,
     dailyMissions:validateDailyMissions(r.dailyMissions),
     serena:validateSerenaState(r.serena),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
     teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
@@ -152,6 +161,7 @@ export function fromRecord(r) {
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       cultureReading:validateCultureReading(p.cultureReading),
+      cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
       scienceReading:validateScienceReading(p.scienceReading),
       learningRewards:validateLearningRewards(p.learningRewards),

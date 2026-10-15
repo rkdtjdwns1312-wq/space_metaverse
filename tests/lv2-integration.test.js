@@ -258,7 +258,7 @@ test('expired unpaid rabbit reward survives a successful LV1 manual-card use', a
       at: Date.now() - WEEK - 1, fromLevel: 2, fromId: f.friend.id, fromNickname: f.friend.nickname,
       pendingGrant: true, note: ''}];
   });
-  const result = await call(f.first, 'item:use', {itemId: 'alien-card', targetId: f.actor.id});
+  const result = await call(f.first, 'item:use', {itemId: 'alien-card', exemption: 'diary', targetId: f.actor.id});
   assert.ok(result.ok, result.error);
   assert.ok(f.actor.cardMarkers.some(m => m.id === 'unpaid-rabbit'), 'LV1 use discarded the queued star-card reward');
   assert.ok(f.record().students.find(p => p.id === f.actor.id).cardMarkers.some(m => m.id === 'unpaid-rabbit'));
@@ -294,7 +294,7 @@ test('LV1 adds unlimited records without dropping unpaid rabbit rewards', async 
         itemId: 'sun-rabbit-card', until: Date.now() - 1, at: Date.now() - WEEK - 1,
         fromId: f.friend.id, fromNickname: f.friend.nickname, fromLevel: 2, note: ''}));
     });
-    const result = await call(f.first, 'item:use', {itemId: 'alien-card', targetId: f.actor.id});
+    const result = await call(f.first, 'item:use', {itemId: 'alien-card', exemption: 'diary', targetId: f.actor.id});
     assert.ok(result.ok,result.error);
     assert.equal(quantity(f.actor, 'alien-card'),0);
     assert.equal(f.actor.cardMarkers.filter(m => m.itemId === 'sun-rabbit-card').length, debts);
@@ -311,7 +311,7 @@ test('sun tax applies once to LV1, LV2 and draw start; rejected use leaves disk/
       fromId: f.friend.id, fromNickname: f.friend.nickname, fromLevel: 2, note: ''}];
   });
   for (const id of ['alien-card', 'spaceman-card']) {
-    const result = await call(f.first, 'item:use', {itemId: id, targetId: f.actor.id});
+    const result = await call(f.first, 'item:use', {itemId: id, targetId: f.actor.id, ...(id==='alien-card'?{exemption:'diary'}:{})});
     assert.ok(result.ok, result.error); f.setNow(f.now + 2000);
   }
   const started = await call(f.first, 'draw:start'); assert.ok(started.ok, started.error);
@@ -325,7 +325,7 @@ test('sun tax applies once to LV1, LV2 and draw start; rejected use leaves disk/
   f.seed((_a, b) => {b.starShards = SHARDS.max;});
   f.setNow(f.now + 2000);
   const before = f.record(), actorBefore = assets(f.actor);
-  const denied = await call(f.first, 'item:use', {itemId: 'alien-card', targetId: f.actor.id});
+  const denied = await call(f.first, 'item:use', {itemId: 'alien-card', exemption: 'diary', targetId: f.actor.id});
   assert.equal(denied.ok, false); assert.match(denied.error, /더 보낼 수/);
   assert.deepEqual(assets(f.actor), actorBefore);
   assert.deepEqual(f.record(), before);

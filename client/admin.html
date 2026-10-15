@@ -23,7 +23,7 @@
         <p class="hint">학생 계정은 담당 선생님이 교실에 입장한 뒤 만들 수 있어요.</p>
       </section>
       <section id="issued-panel" class="panel issued" hidden aria-live="polite"><h2>새 선생님 코드</h2><p id="issued-class"></p><div class="code-row"><code id="issued-code"></code><button id="copy-code" type="button">코드 복사</button></div><p>이 화면을 닫으면 코드는 다시 볼 수 없어요. 담당 선생님에게 비공개로 전달해 주세요.</p><button id="hide-issued" type="button" class="secondary">확인했어요</button></section>
-      <section class="panel" aria-labelledby="classes-title"><h2 id="classes-title">내가 만든 교실</h2><p class="hint">코드를 다시 발급하면 이전 선생님 코드는 바로 사용할 수 없어요.</p><div id="class-list"></div><button id="refresh-list" type="button" class="secondary">목록 새로고침</button></section>
+      <section class="panel" aria-labelledby="classes-title"><h2 id="classes-title">내가 만든 교실</h2><p class="hint">선생님 코드를 확인하고 복사해 전달할 수 있어요.</p><div class="class-search"><label for="class-search-input">교실 제목 검색</label><div class="class-search-controls"><input id="class-search-input" type="search" autocomplete="off" placeholder="교실 이름 입력"><button id="clear-class-search" type="button" class="secondary" hidden>검색어 지우기</button></div></div><p id="class-list-count" class="hint" aria-live="polite"></p><div id="class-list"></div><button id="refresh-list" type="button" class="secondary">목록 새로고침</button></section>
       <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-warning">
         <form id="delete-class">
           <h2 id="delete-title">교실 삭제</h2>

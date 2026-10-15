@@ -39,8 +39,8 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { RoomStore, ensure, GameError, playerEffectsView, nickname } from './rooms.js';
 import { PersistentRoomStore, pinHash, checkPin } from './persistent-rooms.js';
-import {issueTeacherCode,matchesTeacherCode} from './teacher-access.js';
-import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from './world.js';
+import {decryptTeacherCode,encryptTeacherCode,issueTeacherCode,matchesTeacherCode} from './teacher-access.js';
+import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, movePlanet, arrivePosition } from './world.js';
 import { filterChat } from './chat-filter.js';
 import { CRAFTING } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
@@ -78,6 +78,8 @@ import {evolutionInfo,changeConstellation,evolveConstellation,selectTeacherEvolu
 import {gainExperience} from './progression.js';
 import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
 import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
+import {exemptionName} from '../shared/item-exemptions.js';
+import {startOneStroke,completeOneStroke} from './one-stroke-game.js';
 import {createRabbitDraw,rabbitDrawView,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {activeItemBlocks,settleItemBlocks,rollStarDie,freshAbilityState} from './constellation-abilities.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -713,7 +715,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       bucket.count++;throw new GameError('선생님 접속 코드와 교실 코드를 확인해주세요.');
     };
     const ownerOnly=()=>ensure(socket.data.owner===true,'홈페이지 관리자만 할 수 있어요.');
-    const adminClasses=()=>[...store.records.values()].map(r=>({code:r.code,title:r.title,open:[...(store.rooms.get(r.code)?.players.values()||[])].some(p=>p.role==='teacher'&&p.connected),teacherName:r.teacherAccess?.label||'',assigned:!!r.teacherAccess}));
+    const adminClasses=()=>[...store.records.values()].map(r=>({code:r.code,title:r.title,open:[...(store.rooms.get(r.code)?.players.values()||[])].some(p=>p.role==='teacher'&&p.connected),teacherName:r.teacherAccess?.label||'',assigned:!!r.teacherAccess,teacherCode:r.teacherAccess?.encryptedCode?(()=>{try{return decryptTeacherCode(teacherKey,r.teacherAccess.encryptedCode);}catch{return null;}})():null}));
     const adminRoom=code=>{
       ensure(typeof code==='string'&&/^[A-Z2-9]{6}$/.test(code),'교실 코드를 확인해주세요.');
       const record=store.records.get(code);ensure(record,'교실을 찾지 못했어요.');
@@ -727,7 +729,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const changeTeacherAccess=(code,label)=>{
       const {record,room}=adminRoom(code),previous=room?.teacherAccess?.digest||record.teacherAccess?.digest;
       const issued=label?issueTeacherCode(teacherKey):null;
-      const access=issued?{digest:issued.digest,label,createdAt:clock()}:null;
+      const access=issued?{digest:issued.digest,encryptedCode:issued.encryptedCode,label,createdAt:clock()}:null;
       if(room)room.teacherAccess=access;
       store.records.set(code,{...record,...(access?{teacherAccess:access}:{teacherAccess:null})});
       if(previous){
@@ -752,7 +754,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=store.create({title:data.title,allowedNames:[],allowEmpty:true},socket.id,{archivedCreation:true});
       const room=session.room;room.adminCreated=true;store.remove(room,session.player);
       const issued=issueTeacherCode(teacherKey);
-      room.teacherAccess={digest:issued.digest,label,createdAt:clock()};
+      room.teacherAccess={digest:issued.digest,encryptedCode:issued.encryptedCode,label,createdAt:clock()};
       store.destroy(room);
       return {code:room.code,teacherCode:issued.code,classes:adminClasses()};
     });
@@ -788,7 +790,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('room:open',data=>{notJoined();ensure(persistent,'저장 기능이 켜져 있지 않아요.');
       const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';
       const digest=authorizeTeacher(data,code),session=store.open(data,socket.id);
-      if(digest){session.teacherAccessDigest=digest;store.sessions.set(session.player.token,session);}
+      if(digest){
+        // 기존 검증값 전용 교실은 정상 접속에 사용한 코드만 암호화 보관합니다.
+        // 발급된 코드를 바꾸지 않으며 실패 시 접속/저장이 함께 롤백됩니다.
+        if(!session.room.teacherAccess.encryptedCode)
+          session.room.teacherAccess.encryptedCode=encryptTeacherCode(teacherKey,data.teacherKey);
+        session.teacherAccessDigest=digest;store.sessions.set(session.player.token,session);
+      }
       return enter(session);
     });
     action('student:pin:set',data=>{
@@ -1009,6 +1017,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       roster(room);
       announce(room,p.nickname+' 친구가 "'+proposal.name+'" 행성 신청을 취소했어요.');
       return {};
+    });
+    action('planet:move',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s,planet=requirePlanet(room,data);
+      ensure(p.role==='student'&&p.avatar.departmentId===planet.id,'소속 부원만 행성 위치를 옮길 수 있어요.');
+      ensure(p.connected&&!p.away&&!p.avatar.blackStar&&!isDefeated(p),'지금은 행성 위치를 옮길 수 없어요.');
+      ensure(p.mapId===PLAZA_ID,'광장에서 행성 위치를 골라주세요.');
+      ensure(Number.isFinite(data.x)&&Number.isFinite(data.y),'행성 위치를 확인해주세요.');
+      const x=Math.round(data.x),y=Math.round(data.y);
+      if(x===planet.x&&y===planet.y)return {planetId:planet.id,x,y,moved:false};
+      ensure(placementFree(room,x,y,planet.id),'오른쪽 아래 부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
+      movePlanet(room,planet,x,y);
+      roster(room);announce(room,'"'+planet.name+'" 행성의 위치를 옮겼어요.');
+      return {planetId:planet.id,x,y,moved:true};
     });
     action('planet:remove',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
@@ -1422,6 +1444,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(machine&&s.player.mapId===STREET_ID&&isNear(s.player,machine),'오락기에 더 가까이 가주세요.');
       return {gameId:machine.gameId};
     });
+    const oneStrokeAccess=()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const machine=STREET.objects.find(o=>o.gameId==='path');
+      ensure(s.player.connected&&!s.player.away&&s.player.socketId===socket.id&&s.player.mapId===STREET_ID&&isNear(s.player,machine),'별 길 한번에 그리기 오락기 가까이에서 이용해 주세요.');return s;
+    };
+    action('one-stroke:start',data=>{const s=oneStrokeAccess();return startOneStroke(s.player,data.difficulty);},false);
+    action('one-stroke:complete',data=>{const s=oneStrokeAccess(),result=completeOneStroke(s.player,data);if(advanceMissions(s.room,s.player,'one-stroke-win',result.difficulty,clock()))roster(s.room);return result;});
     const baseballAccess=()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const machine=STREET.objects.find(object=>object.gameId==='baseball');
@@ -1923,6 +1952,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       if(item.mode==='moon')ensure(!p.avatar.blackStar,'검은별 상태에서는 꼬마 달을 사용할 수 없어요.');
       if(item.mode==='uv')ensure(target.role==='student','학생 친구에게만 자외선을 적용할 수 있어요.');
+      if(item.id==='alien-card')ensure(exemptionName(data.exemption),'면제할 목록에서 일기 또는 독서록을 골라주세요.');
       let meteorPlanet=null;
       if(item.mode==='meteor'){
         ensure(p.role==='student'&&target.id===p.id,'운석 파편은 본인이 받은 경고에만 쓸 수 있어요.');
@@ -1944,8 +1974,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         for(const recipient of targets){
           recipient.cardMarkers=(recipient.cardMarkers||[]).filter(marker=>(marker.until===null||marker.until>now||marker.itemId==='sun-rabbit-card')&&!(item.mode==='moon'&&marker.itemId==='little-sun-card')&&
             !(['moon','uv'].includes(item.mode)&&marker.itemId===item.id));
-          addCardMarker(recipient,item,p,['moon','uv'].includes(item.mode)?nextKoreaMidnight(now):null,
+          const marker=addCardMarker(recipient,item,p,['moon','uv'].includes(item.mode)?nextKoreaMidnight(now):null,
             second?'자리 맞교환: '+(recipient.id===target.id?second.nickname:target.nickname):'');
+          if(item.id==='alien-card'){marker.exemption=data.exemption;marker.note=exemptionName(data.exemption)+' 1편 면제';}
         }
       }else{
         // 기존 상점 아이템은 정해진 시간 동안 외형 효과를 표시합니다.

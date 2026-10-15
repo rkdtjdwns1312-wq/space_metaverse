@@ -9,7 +9,7 @@ export const AQUARIUS_TIMING=Object.freeze({growMs:2000,holdMs:10000,fadeMs:2000
 export function aquariusSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return sustainedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,...AQUARIUS_TIMING,
-    centerOffset:.25,radiusWidths:(stage+1)/2*.8,verticalRatio:.5,
+    centerOffset:.25,radiusWidths:(stage+1)*.8,verticalRatio:.5,
     multiplier:(stage-1)*2,healingAmount:(stage-1)*10,effectAmount:.5},['durationMs','holdMs']);
 }
 // 그림과 서버 판정이 같은 시간별 타원을 사용합니다. rx/ry는 최대 반경입니다.

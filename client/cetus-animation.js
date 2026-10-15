@@ -1,4 +1,5 @@
-// 원화를 유지한 채 8장의 걷기·오라 프레임을 첫 표시 때 한 번만 만듭니다.
+// 원화를 유지한 채 이동24F와 오라8F를 구분합니다.
+import {queueMotionFrames} from './locomotion-gait.js';
 // 이동 애니메이션의 박자는 이동속도와 독립적이라 빠르게 달려도 꼬리가 파닥거리지 않습니다.
 const walkCache=new WeakMap(),auraCache=new WeakMap();
 const SIDE=256,TAU=Math.PI*2;
@@ -13,9 +14,10 @@ function sourcePixels(sprite){
 export function cetusWalkFrames(sprite,level=2){
   if(!sprite?.complete||!sprite.naturalWidth)return null;
   if(walkCache.has(sprite))return walkCache.get(sprite);
-  const source=sourcePixels(sprite),frames=[];
-  for(let frame=0;frame<8;frame++){
-    const phase=TAU*frame/8,tailSwing=Math.sin(phase),nearSwing=Math.sin(phase+.55)-Math.sin(.55),farSwing=Math.sin(phase-.45)-Math.sin(-.45);
+  const source=sourcePixels(sprite),original=canvas();original.getContext('2d').putImageData(source,0,0);
+  const frames=Array(24).fill(original);
+  queueMotionFrames(frames,frame=>{
+    const phase=TAU*frame/24,tailSwing=Math.sin(phase),nearSwing=Math.sin(phase+.55)-Math.sin(.55),farSwing=Math.sin(phase-.45)-Math.sin(-.45);
     const c=canvas(),ctx=c.getContext('2d'),out=ctx.createImageData(SIDE,SIDE);
     for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
       const u=x/SIDE,v=y/SIDE;
@@ -35,8 +37,8 @@ export function cetusWalkFrames(sprite,level=2){
         (source.data[a+channel]*(1-fx)+source.data[b+channel]*fx)*(1-fy)+
         (source.data[c+channel]*(1-fx)+source.data[d+channel]*fx)*fy;
     }
-    ctx.putImageData(out,0,0);frames.push(c);
-  }
+    ctx.putImageData(out,0,0);return c;
+  });
   walkCache.set(sprite,frames);return frames;
 }
 function auraFrames(sprite,stage){

@@ -56,7 +56,7 @@ export function isNear(player, object) {
   return interactionDistance(player,object) <= interactionReach(object);
 }
 // 광장 경계 안이고 별·행성·대기 신청 어느 것과도 겹치지 않는 자리인지 검사합니다.
-export function placementFree(room, x, y) {
+export function placementFree(room, x, y, ignorePlanetId=null) {
   const r = PLANET.radius + RULES.radius;
   if (!departmentSite(x,y,r)) return false;
   if (x < r || y < r || x > MAP.width-r || y > MAP.height-r) return false;
@@ -65,7 +65,7 @@ export function placementFree(room, x, y) {
     const cx = Math.max(z.x, Math.min(x, z.x+z.width)), cy = Math.max(z.y, Math.min(y, z.y+z.height));
     return Math.hypot(x-cx, y-cy) < PLANET.radius;
   })) return false;
-  const bodies = [...MAP.objects, ...room.planets.values(), ...room.proposals.values()];
+  const bodies = [...MAP.objects, ...[...room.planets.values()].filter(p=>p.id!==ignorePlanetId), ...room.proposals.values()];
   return !bodies.some(o => Math.hypot(x-o.x, y-o.y) < PLANET.radius+o.radius+PLANET.minGap);
 }
 // 행성을 만들고 room.planets에 등록합니다. 방금 생긴 행성 자리에 서 있던 광장의 플레이어는 갇히지 않도록 밖으로 내보냅니다.
@@ -78,6 +78,18 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
     if (p.mapId === PLAZA_ID && avatarTouchesObject(p,p.x,p.y,planet))
       Object.assign(p, exitPosition(room, planet, p));
   return planet;
+}
+// 행성 ID/내부 맵/소속은 유지합니다. 출구는 exitPosition이 이 좌표를 즉시 참조합니다.
+export function movePlanet(room,planet,x,y){
+  const before={x:planet.x,y:planet.y},moved=[];
+  Object.assign(planet,{x,y});
+  try{
+    for(const p of room.players.values())if(p.mapId===PLAZA_ID&&avatarTouchesObject(p,p.x,p.y,planet)){
+      moved.push({player:p,x:p.x,y:p.y});Object.assign(p,exitPosition(room,planet,p));
+    }
+  }catch(error){
+    Object.assign(planet,before);for(const p of moved)Object.assign(p.player,{x:p.x,y:p.y});throw error;
+  }
 }
 export function advance(room, now) {
   const movedIds=[];

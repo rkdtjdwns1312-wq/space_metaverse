@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {itemOf} from '../shared/config.js';
+import {exemptionName} from '../shared/item-exemptions.js';
 
 const KST_MS=9*60*60*1000;
 const DAY_MS=24*60*60*1000;
@@ -36,6 +37,7 @@ export function cardMarkerViews(player,viewerIsTeacher,now=Date.now()){
   return activeCardMarkers(player,now).map(marker=>{
     const item=itemOf(marker.itemId);
     const view={itemId:item.id,icon:item.icon,label:item.effect.label,style:item.effect.style,until:marker.until,...(item.mode==='uv'?{statusId:'uv'}:item.mode==='moon'?{statusId:'moon'}:{})};
+    if(item.id==='alien-card'&&exemptionName(marker.exemption)){view.exemption=marker.exemption;view.label=exemptionName(marker.exemption)+' 1편 면제';}
     if(Number.isSafeInteger(marker.remainingUses)&&marker.remainingUses>=0)view.remainingUses=marker.remainingUses;
     if(Number.isSafeInteger(marker.startsAt))view.startsAt=marker.startsAt;
     if(viewerIsTeacher){view.markerId=marker.id;view.fromId=marker.fromId;view.fromNickname=marker.fromNickname;view.note=marker.note||'';}
@@ -55,6 +57,7 @@ export function validateCardMarkers(value){
       (marker.holdingAbility!==undefined&&marker.holdingAbility!==true)||
       typeof marker.fromId!=='string'||typeof marker.fromNickname!=='string'||marker.fromNickname.length>12||
       (marker.note!==undefined&&(typeof marker.note!=='string'||marker.note.length>80))||
+      (marker.exemption!==undefined&&(marker.itemId!=='alien-card'||!exemptionName(marker.exemption)))||
       (marker.remainingUses!==undefined&&(!Number.isSafeInteger(marker.remainingUses)||marker.remainingUses<0||marker.remainingUses>99))||
       (marker.at!==undefined&&(!Number.isSafeInteger(marker.at)||marker.at<0))||
       (marker.startsAt!==undefined&&(marker.itemId!=='alien-creature-card'||marker.holdingAbility||!Number.isSafeInteger(marker.startsAt)||marker.startsAt<0||marker.until===null||marker.startsAt>=marker.until))||

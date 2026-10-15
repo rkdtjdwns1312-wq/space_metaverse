@@ -1,3 +1,4 @@
+import {onFloatingCliffReady} from './floating-island.js';
 import {drawParadiseFloor} from './paradise-floor.js';
 import {serenaMap} from '/shared/serena.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
@@ -43,6 +44,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     for(const canvas of $('universe-links').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
     for(const canvas of $('universe-planets').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
   }
+  onFloatingCliffReady(refreshArt);
   onParadiseArtReady(refreshArt);onOriginArtReady(refreshArt);onStreetArtReady(refreshArt);
   function close(){dialog.close();}
   $('universe-close').onclick=close;
@@ -56,7 +58,10 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   function node(id,icon){
     const button=document.createElement('button');button.type='button';button.className='universe-node';button.dataset.mapId=id;
     const thumbnail=document.createElement('canvas');thumbnail.width=144;thumbnail.height=84;thumbnail.className='universe-thumbnail';thumbnail.setAttribute('aria-hidden','true');
-    const name=document.createElement('span');name.textContent=map(id).name;button.append(thumbnail,name);draw(thumbnail,id);
+    const name=document.createElement('span');name.textContent=map(id).name;
+    if(map(id).planetId){button.classList.add('universe-department');thumbnail.width=320;thumbnail.height=220;button.append(name,thumbnail);}
+    else button.append(thumbnail,name);
+    draw(thumbnail,id);
     if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
     button.onclick=()=>{selected=id;signature='';render();};return button;
@@ -113,7 +118,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   }
   // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 좌표가 어긋나지 않습니다.
   function draw(canvas,mapId,detailed=false){
-    const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:12;
+    const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:info.planetId?4:12;
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
     ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
     mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
@@ -172,7 +177,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     const p=me();if(!p)return;
     $('minimap-title').textContent=map(p.mapId).name;draw($('minimap'),p.mapId);
     if(!selected||!([...Object.keys(STATIC_MAPS),...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
-    const next=JSON.stringify([p.mapId,selected,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color])]);
+    const next=JSON.stringify([p.mapId,selected,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
       $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));

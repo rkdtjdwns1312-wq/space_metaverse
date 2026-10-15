@@ -1,6 +1,7 @@
+import {gaitRig,gaitPhase,queueMotionFrames,finishMotionFrame,hasWalkPose} from './locomotion-gait.js';
 // 기존 쌍둥이자리 원화의 일부만 부드럽게 변형합니다. 이동속도와 프레임 박자는 별개입니다.
 const cache=new WeakMap();
-const SIDE=256,FRAME_COUNT=16,TAU=Math.PI*2;
+const SIDE=256,FRAME_COUNT=32,TAU=Math.PI*2;
 const clamp=(value)=>Math.max(0,Math.min(1,value));
 const smooth=(a,b,value)=>{const t=clamp((value-a)/(b-a));return t*t*(3-2*t);};
 function canvas(){const element=document.createElement('canvas');element.width=element.height=SIDE;return element;}
@@ -20,10 +21,12 @@ export function geminiWalkFrames(sprite,level){
   const original=canvas(),originalCtx=original.getContext('2d',{willReadFrequently:true});
   originalCtx.drawImage(sprite,0,0,SIDE,SIDE);
   const originalPixels=originalCtx.getImageData(0,0,SIDE,SIDE);
-  const source=originalPixels.data,frames=[original];
-  for(let frame=1;frame<FRAME_COUNT;frame++){
+  const source=originalPixels.data,frames=Array(FRAME_COUNT).fill(original);
+  const gait=gaitRig('gemini',level),poseSheet=hasWalkPose('gemini',level);
+  queueMotionFrames(frames,frame=>{
     const phase=TAU*frame/FRAME_COUNT,swing=Math.sin(phase),follow=Math.sin(phase+.4)-Math.sin(.4);
     const picture=canvas(),context=picture.getContext('2d',{willReadFrequently:true}),pixels=context.createImageData(SIDE,SIDE);
+    const gp=gaitPhase(phase);
     for(let y=0;y<SIDE;y++)for(let x=0;x<SIDE;x++){
       const u=x/SIDE,v=y/SIDE;
       // 넓은 얼굴 보호 구역은 변위가 정확히 0입니다. 눈·볼·입은 한 픽셀도 따로 움직이지 않습니다.
@@ -33,7 +36,7 @@ export function geminiWalkFrames(sprite,level){
       const cloth=smooth(.57,.76,v)*(1-smooth(.91,.98,v));
       const motionBoost=level===2?1.25:1.4;
       let dx=(hair*2.15+cloth*1.65)*motionBoost*swing*(u<.5?1:-1),dy=(hair*.95+cloth*.9)*motionBoost*follow;
-      if(level===2){
+      if(level===2&&!poseSheet){
         // 치맛단 아래의 두 다리를 서로 반대 위상으로 움직여 가볍게 걷습니다.
         const legs=smooth(.65,.78,v)*smooth(.22,.32,u)*(1-smooth(.70,.82,u));
         const side=u<.5?1:-1;
@@ -46,7 +49,8 @@ export function geminiWalkFrames(sprite,level){
         dy=dy*(1-wing)+wing*(level===4?7:5)*swing;
       }
       dx*=1-face;dy*=1-face;
-      sample(source,x-dx,y-dy,pixels.data,(y*SIDE+x)*4);
+      const gi=(y*SIDE+x)*3,gx=gait?gait[gi]*gp[0]:0,gy=gait?-(gait[gi+1]*gp[1]+gait[gi+2]*gp[2]):0;
+      sample(source,x-dx-gx,y-dy-gy,pixels.data,(y*SIDE+x)*4);
     }
     const result=pixels,face=result.data,base=originalPixels.data;
     // Restore the protected face core from original ImageData as exact RGBA bytes last.
@@ -55,7 +59,7 @@ export function geminiWalkFrames(sprite,level){
       const start=(y*SIDE+left)*4,end=(y*SIDE+right)*4;
       face.set(base.subarray(start,end),start);
     }
-    context.putImageData(result,0,0);frames.push(picture);
-  }
+    context.putImageData(result,0,0);return finishMotionFrame(picture,original,'gemini',level);
+  },{id:'gemini',level});
   byLevel.set(level,frames);return frames;
 }

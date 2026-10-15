@@ -79,7 +79,9 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
   const close = document.createElement('button');
   close.type = 'button'; close.className = 'secondary'; close.textContent = '닫기';
   actions.append(remove, close);
-  face.append(name, usedBy, expiry, description, effect, messages, manualNote, choicePanel);
+  // 학생에게는 카드의 이름·설명·효과만 보여 주고, 효과 선택은 효과 아래에 둡니다.
+  effect.append(choicePanel);
+  face.append(name, description, effect, usedBy, expiry, messages, manualNote);
   dialog.append(title, face, error, removeConfirm, actions);
   document.body.append(dialog);
 
@@ -119,13 +121,18 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
     renderCardText(definition,card);
     const nickname = card.nickname ?? card.usedByNickname ?? card.userNickname ?? card.ownerNickname;
     const self = getRoom?.()?.players?.find(player => player.id === getSelfId?.());
+    const studentView = self?.role === 'student';
+    dialog.dataset.studentView = String(studentView);
+    usedBy.hidden = studentView;
+    expiry.hidden = studentView;
+    messages.hidden = studentView;
     usedBy.textContent = nickname ? `${nickname}이 사용` : (self?.nickname ? `${self.nickname}이 사용` : '사용자 확인 중');
     const seconds = remaining(card);
     expiry.textContent = remainingLabel(seconds);
     messages.replaceChildren();
     paragraphList(card.data?.messages ?? card.messages).forEach(value => { const p = document.createElement('p'); p.textContent = value; messages.append(p); });
     manualNote.textContent = text(card.manualNote ?? card.data?.manualNote);
-    manualNote.hidden = !manualNote.textContent;
+    manualNote.hidden = studentView || !manualNote.textContent;
     renderChoice(result);
     error.textContent = '';
     remove.hidden = result?.canRemove !== true;
@@ -138,6 +145,7 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
     paragraphList(definition.description ?? card.description).forEach(value=>{const p=document.createElement('p');p.textContent=value;description.append(p);});
     effect.replaceChildren();
     paragraphList(definition.effect ?? card.effect).forEach(value=>{const p=document.createElement('p');p.textContent=value;effect.append(p);});
+    effect.append(choicePanel);
   }
 
   function renderChoice(result) {
