@@ -603,7 +603,7 @@ async function openUseDialog(item){
   }
   if(item.mode==='lv4'){await lv4UI.open(item);return;}
   if(item.mode==='draw'){
-    stop();$('draw-dialog').showModal();await loadRabbitDraw();return;
+    rabbitDrawItem=item.id;stop();$('draw-dialog').showModal();await loadRabbitDraw();return;
   }
   if(item.mode==='moon'&&me?.avatar?.blackStar){toast('검은별 상태에서는 꼬마 달을 사용할 수 없어요.');return;}
   let meteorOptions=[];
@@ -673,10 +673,10 @@ $('use-confirm').onclick=async()=>{
 };
 $('use-cancel').onclick=()=>$('use-dialog').close();
 $('use-dialog').addEventListener('close',()=>{useItem=null;$('world').focus();});
-let rabbitDraw=null,rabbitPicked=false,rabbitDrawing=false;
+let rabbitDraw=null,rabbitPicked=false,rabbitDrawing=false,rabbitDrawItem='moon-rabbit-card';
 function renderRabbitDraw(){
   $('draw-message').textContent=rabbitDraw?'카드 더미를 눌러 한 장을 뽑아보세요. 진행 중인 뽑기를 이어갈 수 있어요.':
-    '카드 더미를 누르면 달토끼 1장을 사용하고 무작위로 한 장을 뽑아요. 초과 경험치는 별 파편으로 받아요.';
+    `카드 더미를 누르면 ${rabbitDrawItem==='silver-draw-card'?'뽑기 카드':'달토끼'} 1장을 사용하고 무작위로 한 장을 뽑아요. 초과 경험치는 별 파편으로 받아요.`;
   const button=document.createElement('button');button.type='button';button.className='draw-card draw-deck';
   button.setAttribute('aria-label','카드 더미에서 한 장 뽑기');button.disabled=rabbitDrawing;
   const star=document.createElement('span');star.className='draw-deck-star';star.textContent='✦';
@@ -686,7 +686,7 @@ function renderRabbitDraw(){
     rabbitDrawing=true;button.disabled=true;button.classList.add('drawing');$('draw-message').textContent='별빛 카드를 뽑고 있어요…';
     try{
       if(!rabbitDraw){
-        const started=await request('draw:start',{});rabbitDraw=started.draw;
+        const started=await request('draw:start',{itemId:rabbitDrawItem});rabbitDraw=started.draw;
         const me=room?.players.find(p=>p.id===selfId);if(me)me.inventory=started.inventory;renderBag(started.inventory);
       }
       const result=await request('draw:pick',{drawId:rabbitDraw.id});
@@ -707,7 +707,7 @@ async function loadRabbitDraw(){
   try{rabbitDraw=(await request('draw:status',{})).draw;rabbitPicked=false;renderRabbitDraw();}
   catch(error){toast(error.message);$('draw-dialog').close();}
 }
-$('draw-resume').onclick=async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();};
+$('draw-resume').onclick=async()=>{rabbitDrawItem='moon-rabbit-card';stop();$('draw-dialog').showModal();await loadRabbitDraw();};
 $('draw-close').onclick=()=>$('draw-dialog').close();
 $('draw-dialog').addEventListener('close',()=>$('world').focus());
 function updateTeacherPanels(isTeacher){

@@ -128,11 +128,13 @@ test('α shop copy adds two without spending pending/discount/balance on stack o
   assert.equal(f.p.abilityState.pending,null);
 });
 
-test('α cannot scale new Capricorn/Taurus dice; saved Libra retry retains its recorded multiplier',async t=>{
+test('α cannot scale new Capricorn/Taurus/Libra dice and old Libra retry grants nothing',async t=>{
  const f=await fixture(t);await f.give(ALPHA);await f.activate();
  for(const [id,level,roll,reward] of [['capricorn',3,5,4],['capricorn',4,6,6],['taurus',3,2,-2],['taurus',4,3,9]]){f.as(id,level);f.mutate(p=>p.starShards=100);f.rolls(roll);const r=ok(await call(f.student,'ability:use'));assert.equal(r.reward,reward);assert.equal(f.p.starShards,100+reward);}
  f.as('libra',3);f.mutate(p=>{p.starShards=20;p.abilityState={...freshAbilityState(),usedWeek:weekStart(NOW),usedCount:1,pending:{mode:'dice-retry',week:weekStart(NOW),multiplier:2}};});f.rolls(1,6);await f.give(BETA);
- assert.equal(ok(await call(f.student,'ability:retry')).reward,10);assert.equal(f.p.starShards,28);assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
+ assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal(f.p.starShards,20);
+ const libra=ok(await call(f.student,'ability:use'));assert.equal(libra.reward,5);assert.equal(f.p.starShards,25);
+ assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
 });
 
 test('retired warning abilities cannot start; saved delayed rewards retain cap and exactly-once settlement',async t=>{
@@ -142,10 +144,11 @@ test('retired warning abilities cannot start; saved delayed rewards retain cap a
  f.other.starShards=SHARDS.max-1;assert.equal(settleItemBlocks(f.other,until),false);f.other.starShards=SHARDS.max-2;assert.equal(settleItemBlocks(f.other,until),true);assert.equal(f.other.starShards,SHARDS.max);assert.equal(settleItemBlocks(f.other,until),false);
 });
 
-test('saved manual α XP confirmation preserves multiplier while new manual activation is blocked',async t=>{
+test('saved manual α XP confirmation preserves multiplier and new Lv2 activation enters teacher queue',async t=>{
  const f=await fixture(t);f.as('libra',2);const marker={id:'saved-xp',constellationId:'libra',level:2,at:NOW,note:'기존 경험치 확인',targetName:'',week:weekStart(NOW),multiplier:2,sourceDescription:lifeAbilityDescription(abilityForLevel('libra',2),2)};
  f.mutate(p=>p.abilityState.markers.push(marker));const pillar=f.atPillar(),input={objectId:pillar.id,targetId:f.p.id,abilityMarkerId:marker.id};
- assert.equal((await call(f.student,'ability:complete',{...input,xpAmount:4})).ok,false);assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:1})).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
+ assert.equal((await call(f.student,'ability:complete',{...input,xpAmount:4})).ok,false);assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:1})).ok,false);
+ assert.equal((await call(f.student,'ability:use')).ok,true);assert.equal(f.p.abilityState.markers.length,2);
  ok(await call(f.teacher,'ability:complete',{...input,xpAmount:4,multiplier:99}));assert.equal(f.p.avatar.xp,4);assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:4})).ok,false);
 });
 

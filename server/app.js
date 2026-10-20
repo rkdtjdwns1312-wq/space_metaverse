@@ -1686,23 +1686,23 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
       return {draw:rabbitDrawView(s.player.rabbitDraw)};
     });
-    action('draw:start',()=>{
+    action('draw:start',data=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 달토끼 뽑기를 할 수 있어요.');
-      const {room,player:p}=s,now=clock(),item=itemOf('moon-rabbit-card');
+      const {room,player:p}=s,now=clock(),item=itemOf(data?.itemId==='silver-draw-card'?'silver-draw-card':'moon-rabbit-card');
       if(p.rabbitDraw)return {draw:rabbitDrawView(p.rabbitDraw),inventory:[...p.inventory]};
       requireStarCardItemAccess(room,p,now);
       const owned=p.inventory.find(entry=>entry.id===item.id&&entry.quantity>0);
-      ensure(owned,'가방에 달토끼 카드가 없어요.');
+      ensure(owned,`가방에 ${item.name}가 없어요.`);
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
       ensure(!hasCardStatus(p,'little-sun-card',now),'자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요.');
       ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
-      ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
+      if(item.id==='moon-rabbit-card')ensure(p.rabbitUsedDay!==koreaDay(now),'달토끼는 하루에 한 번만 사용할 수 있어요.');
       ensure(p.starShards<=SHARDS.max-10,'별 파편을 더 담을 수 없어요. 뽑기 전에 별 파편을 조금 사용해주세요.');
       ensure(now-p.lastItemUseAt>=ITEM_USE.cooldownMs,'조금 천천히 써요.');
       collectSunTax(room,p,now);
       owned.quantity--;if(!owned.quantity)p.inventory=p.inventory.filter(entry=>entry.id!==item.id);
-      p.lastItemUseAt=now;p.rabbitUsedDay=koreaDay(now);
+      p.lastItemUseAt=now;if(item.id==='moon-rabbit-card')p.rabbitUsedDay=koreaDay(now);
       // 즉시 뽑기는 지속 효과가 아닙니다. 미완료 뽑기는 별도 상태로만 저장합니다.
       const draw=createRabbitDraw(now,room.rabbitDrawCounts);p.rabbitDraw=draw;
       room.itemLog.push({id:randomUUID(),at:now,userId:p.id,userNickname:p.nickname,targetId:p.id,
@@ -1838,19 +1838,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       whisper(room,p,item.name+' '+quantity+'개를 만들었어요.');roster(room);
       return {itemName:item.name,quantity,inventory:[...p.inventory]};
     });
-    action('ability:retry',()=>{
-      const s=socket.data.session;ensure(s?.player.role==='student','학생만 별자리 능력을 사용할 수 있어요.');
-      const {room,player:p}=s,state=p.abilityState,week=weekStart(clock());
-      ensure(!constellationChangedThisWeek(p,clock()),'별자리를 바꾼 주에는 능력을 사용할 수 없어요.');
-      ensure(p.avatar.constellationId==='libra'&&state?.pending?.mode==='dice-retry'&&state.pending.week===week&&state.usedWeek===week,'다시 던질 수 있는 천칭자리 능력이 없어요.');
-      const multiplier=state.pending.multiplier||1;
-      ensure(p.starShards>=2,'다시 도전하려면 별 파편 2개가 필요해요.');
-      ensure(p.starShards-2+5*multiplier<=SHARDS.max,'별 파편을 더 담을 수 없어요.');
-      const rolls=[abilityDie(),abilityDie()],reward=Math.abs(rolls[0]-rolls[1])*multiplier;
-      p.starShards+=reward-2;if(reward)state.pending=null;
-      const note='별 2개 사용 · 주사위 '+rolls.join(' · ')+' → 차이 '+reward+'개';
-      whisper(room,p,note);roster(room);return {roll:rolls[0],rolls,reward,note,pending:state.pending,starShards:p.starShards};
-    });
+    action('ability:retry',()=>{throw new GameError('천칭자리의 주사위 다시 던지기는 종료되었어요.');});
     action('ability:complete',data=>{
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 별자리 능력 처리를 완료할 수 있어요.');

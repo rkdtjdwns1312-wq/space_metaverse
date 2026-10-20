@@ -7,6 +7,7 @@ const FACE={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateX(90deg
 export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
   const $=id=>document.getElementById(id),panel=$('self-ability-panel'),use=$('self-ability-use');
   const dialog=$('ability-dialog'),cube=$('ability-cube'),dice=$('ability-dice'),resultText=$('ability-dice-result');
+  const rollFaces=document.createElement('div');rollFaces.className='ability-roll-faces';rollFaces.hidden=true;cube.after(rollFaces);
   let status=null,signature='',snapshotSignature='',revision=0,busy=false,animation=null,finishTimer=null,resetTimer=null,reminderTimer=null,messageTimer=null;
   const choices=document.createElement('section');choices.id='ability-item-choices';choices.hidden=true;dice.after(choices);
   const reminder=document.createElement('button');reminder.id='ability-unused-reminder';reminder.type='button';reminder.textContent='!';reminder.hidden=true;reminder.setAttribute('aria-label','아직 사용하지 않은 별자리 능력 안내');$('bottom-dock').append(reminder);
@@ -36,6 +37,8 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
   function stopAnimation(){animation?.cancel();animation=null;clearTimeout(finishTimer);finishTimer=null;dice.classList.remove('rolling');}
   function rewardLabel(reward){return reward>0?`별 파편 ${reward}개를 만들었어요!`:reward<0?`별 파편 ${-reward}개를 반납했어요.`:'이번에는 별 파편이 나오지 않았어요. 이번 주 능력은 사용 완료예요.';}
   function outcome(value){
+    if(status?.constellationId==='libra'&&status.level===2)return '선생님이 주차를 확인하면 경험치를 받아요.';
+    if(status?.constellationId==='libra'&&status.level===4&&value.itemId)return `${itemOf(value.itemId)?.name||'카드'} 1장을 받았어요!`;
     if(value.itemId)return `${itemOf(value.itemId)?.name||'아이템'} 1개를 ${value.mode==='copy'?'복사했어요':'만들었어요'}!`;
     if(Number.isFinite(value.budget))return value.budget>0?`별 파편 ${value.budget}개 가치 이하의 아이템 1개를 고를 수 있어요.`:'이번에는 만들 수 있는 아이템이 없어요. 이번 주 능력은 사용 완료예요.';
     return rewardLabel(value.reward);
@@ -67,6 +70,8 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
   }
   function showResult(value,animate=false){
     stopAnimation();dice.hidden=!value?.roll;
+    dice.classList.toggle('multi-roll',!!(value?.rolls?.length>1));
+    rollFaces.hidden=true;rollFaces.replaceChildren();
     if(!value)return;
     if(!value.roll){resultText.textContent='';$('ability-outcome').textContent=outcome(value);return;}
     $('ability-outcome').textContent='';
@@ -74,7 +79,15 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
     const finish=()=>{
       dice.classList.remove('rolling');animation=null;finishTimer=null;
       cube.setAttribute('aria-label',`주사위 ${value.roll}`);
-      resultText.textContent=`주사위 ${value.roll} · ${outcome(value)}`;renderChoices();
+      if(value.rolls?.length>1){
+        rollFaces.hidden=false;
+        for(const roll of value.rolls){
+          const face=document.createElement('span');face.className='ability-roll-face';face.setAttribute('role','img');face.setAttribute('aria-label',`주사위 ${roll}`);
+          for(const cell of PIPS[roll]){const pip=document.createElement('span');pip.className='die-pip';pip.textContent='✦';pip.style.gridArea=`${Math.ceil(cell/3)} / ${(cell-1)%3+1}`;face.append(pip);}
+          rollFaces.append(face);
+        }
+      }
+      resultText.textContent=`주사위 ${(value.rolls||[value.roll]).join(' · ')} · ${outcome(value)}`;renderChoices();
     };
     if(!animate||matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return;}
     cube.setAttribute('aria-label','주사위 굴리는 중');resultText.textContent='별 주사위가 굴러가요…';dice.classList.add('rolling');

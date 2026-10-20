@@ -98,9 +98,10 @@ test('Lv3/4 까마귀 제작은 가격·Lv·종류 수·중복 제작 제한과 
   assert.equal((await call(f.student,'ability:choose-item',{itemId:'little-sun-card'})).ok,false);
 });
 
-test('기존 천칭 차이0 대기는 재시도 비용2와 일회 지급을 유지하고 신규 사용은 차단한다',async t=>{
+test('기존 천칭 차이0 대기는 추가 보상을 주지 않고 새 주간 능력으로 교체된다',async t=>{
  const f=await fixture(t);f.as('libra',3);f.p.starShards=10;f.rolls(6,1);savedPending(f,{mode:'dice-retry'});
- const retry=await call(f.student,'ability:retry');assert.ok(retry.ok,retry.error);assert.equal(f.p.starShards,13);assert.equal(f.p.abilityState.pending,null);
+ assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal(f.p.starShards,10);
+ const used=await call(f.student,'ability:use');assert.ok(used.ok,used.error);assert.equal(used.reward,5);assert.equal(f.p.starShards,15);
  assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
 });
 
@@ -109,7 +110,7 @@ test('수동 능력은 사용 당시 Lv로 교사 기둥에 남으며 Lv4 천칭
   const marker=f.p.abilityState.markers[0];f.p.avatar.level=5;f.p.avatar.constellationId='leo';
   const pillar=MAP.objects.find(o=>o.id==='pillar-effects');const teacher=[...f.room.players.values()].find(p=>p.role==='teacher');Object.assign(teacher,{x:pillar.x,y:pillar.y});
   const board=await call(f.teacher,'temple:read',{objectId:pillar.id}),row=board.rows.find(r=>r.abilityMarkerId===marker.id);
-  assert.equal(row.abilityLevel,4);assert.match(row.description,/3번/);
+  assert.equal(row.abilityLevel,4);assert.match(row.description,/4번/);
   const input={objectId:pillar.id,targetId:f.p.id,abilityMarkerId:marker.id};
   assert.equal((await call(f.student,'ability:complete',input)).ok,false);
   assert.equal((await call(f.teacher,'ability:complete',{...input,xpAmount:2})).ok,false);

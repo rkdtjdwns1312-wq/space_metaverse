@@ -20,5 +20,6 @@ export const CONSTELLATION_ABILITIES=Object.freeze({
 });
 
 export function abilityForLevel(id, level = 2) {
+  if(id==='libra'&&level===5)return {mode:'dice-triple',description:'주사위를 3번 굴려 같은 눈이 하나라도 나오면 뽑기 카드 1장을 받아요. 모두 다른 눈이면 별 카드 1장을 받아요.'};
   return STAGE_ABILITIES[Math.min(4, level)]?.[id] || CONSTELLATION_ABILITIES[id] || null;
 }

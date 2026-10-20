@@ -10,8 +10,8 @@ import {departmentSlots} from '../shared/plaza-layout.js';
 import {INTERIOR,interiorIdOf} from '../shared/config.js';
 
 const key='weekly-ui-isolated-fixture',output='.local/weekly-ability-ui';
-let roll=1,browser,teacher,friend,now=Date.now();
-const game=createClassroomServer({teacherKey:key,studentHours:false,teacherManagedAccounts:false,abilityDie:()=>roll,clock:()=>now});
+let roll=1,rollSequence=[],browser,teacher,friend,now=Date.now();
+const game=createClassroomServer({teacherKey:key,studentHours:false,teacherManagedAccounts:false,abilityDie:()=>rollSequence.length?rollSequence.shift():roll,clock:()=>now});
 const report={checks:[],errors:[]};
 try{
   await mkdir(output,{recursive:true});
@@ -44,9 +44,25 @@ try{
     await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
     const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
     assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
-    if(!['aquarius','capricorn','taurus','corvus','gemini'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+    if(!['aquarius','capricorn','taurus','corvus','gemini','libra'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
   }
-  report.checks.push('16종 한 줄 2버튼 / 미설정 능력 비활성');
+  report.checks.push('16종 한 줄 2버튼 / 천칭 활성 / 미설정 능력 비활성');
+  await as('libra',2);await page.locator('#self-ability-use').click();
+  await page.locator('#ability-outcome').getByText('선생님이 주차를 확인하면 경험치를 받아요.',{exact:true}).waitFor();
+  assert.equal(player.abilityState.markers.length,1);await page.screenshot({path:`${output}/libra-lv2.png`});
+  rollSequence=[6,2];await as('libra',3);await page.locator('#self-ability-use').click();
+  await page.locator('.ability-roll-face').first().waitFor();assert.equal(await page.locator('.ability-roll-face').count(),2);
+  assert.match(await page.locator('#ability-dice-result').innerText(),/주사위 6 · 2 · 별 파편 4개/);
+  await page.screenshot({path:`${output}/libra-lv3.png`});
+  rollSequence=[1,2,1,4];await as('libra',4);await page.locator('#self-ability-use').click();
+  await page.locator('.ability-roll-face').first().waitFor();assert.equal(await page.locator('.ability-roll-face').count(),4);
+  assert.equal(player.inventory.find(i=>i.id==='silver-draw-card')?.quantity,1);
+  await page.screenshot({path:`${output}/libra-lv4.png`});
+  rollSequence=[1,2,3];await as('libra',5);await page.locator('#self-ability-use').click();
+  await page.locator('.ability-roll-face').first().waitFor();assert.equal(await page.locator('.ability-roll-face').count(),3);
+  assert.equal(player.inventory.find(i=>i.id==='star-card')?.quantity,1);
+  await page.screenshot({path:`${output}/libra-lv5.png`});
+  report.checks.push('천칭 Lv2 교사 확인, Lv3 2개·Lv4 4개·Lv5 3개 주사위와 카드 실제 표시');
   for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){
     await as('aquarius',level);await page.locator('#self-ability-use').click();
     await page.locator('#ability-outcome').getByText(`별 파편 ${reward}개를 만들었어요!`,{exact:true}).waitFor();

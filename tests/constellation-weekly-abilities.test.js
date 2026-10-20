@@ -65,7 +65,7 @@ test('warning API negates only newest warning; reward/black transitions save tog
 
 test('Sunday KST epoch, all 16 frames, exact 3 currency tables and forged dice ignored',()=>{
  assert.equal(constellationWeekStart(NOW),Date.parse('2026-10-10T15:00:00Z'));assert.equal(constellationWeekStart(SUNDAY),SUNDAY);
- for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules'].includes(c.id));
+ for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules','libra'].includes(c.id));
  for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){const p=make('aquarius',level);assert.equal(useConstellationAbility(p,NOW,()=>{throw Error('no die');}).reward,reward);}
  for(const [id,table] of [['capricorn',[[0,1,1,1,1,2],[0,0,2,2,4,4],[2,2,4,4,6,6],[3,3,6,6,9,9]]],['taurus',[[3,-1,3,-1,3,-1],[6,-2,6,-2,6,-2],[9,-3,9,-3,9,-3],[12,-3,12,-3,12,-3]]]]){
   for(let level=2;level<=5;level++)for(let roll=1;roll<=6;roll++){const p=make(id,level),r=useConstellationAbility(p,NOW,()=>roll);assert.equal(r.roll,roll);assert.equal(r.reward,table[level-2][roll-1]);assert.equal(p.starShards,100+r.reward);assert(r.used);assert.throws(()=>useConstellationAbility(p,NOW,()=>6));assert.deepEqual(validateConstellationAbilityState(p.constellationAbilityState),p.constellationAbilityState);}
@@ -119,6 +119,48 @@ test('Gemini requires owned affordable item both at use and selection; no dice o
  }
 });
 
+test('Libra Lv2 teacher marker, Lv3 difference, and Lv4/Lv5 card outcomes',()=>{
+ const p=make('libra',2);p.abilityState={usedWeek:null,usedCount:0,pending:null,markers:[],blocks:[]};
+ const xp=useConstellationAbility(p,NOW,()=>{throw Error('no die');});
+ assert.equal(xp.reward,0);assert.equal(p.abilityState.markers.length,1);assert.equal(p.abilityState.markers[0].constellationId,'libra');
+ assert.deepEqual(validateConstellationAbilityState(p.constellationAbilityState),p.constellationAbilityState);
+ for(const [dice,reward] of [[[6,1],5],[[3,3],0]]){
+  const q=make('libra',3),seq=[...dice],result=useConstellationAbility(q,NOW,()=>seq.shift());
+  assert.equal(result.reward,reward);assert.deepEqual(result.lastResult.rolls,dice);assert.equal(q.starShards,100+reward);
+  assert.deepEqual(validateConstellationAbilityState(q.constellationAbilityState),q.constellationAbilityState);
+ }
+ for(const [level,dice,itemId] of [[4,[1,2,1,4],'silver-draw-card'],[4,[1,2,3,4],'star-card'],[5,[1,2,1],'silver-draw-card'],[5,[1,2,3],'star-card']]){
+  const q=make('libra',level),seq=[...dice],result=useConstellationAbility(q,NOW,()=>seq.shift());
+  assert.equal(result.lastResult.itemId,itemId);assert.deepEqual(result.lastResult.rolls,dice);
+  assert.deepEqual(q.inventory,[{id:itemId,quantity:1}]);assert.equal(q.starShards,100);
+  assert.deepEqual(validateConstellationAbilityState(q.constellationAbilityState),q.constellationAbilityState);
+  assert.throws(()=>useConstellationAbility(q,NOW));
+ }
+ assert.equal(weeklyAbilityFor('libra',5).rollCount,3);
+});
+
+test('Libra Lv4 silver draw card survives save and opens the existing draw deck',async t=>{
+ const dice=[1,2,1,4],f=await readingFixture(t,{abilityDie:()=>dice.shift()});await as(f,'libra',4);
+ const used=ok(await call(f.student,'constellation-ability:use'));assert.deepEqual(used.lastResult.rolls,[1,2,1,4]);
+ assert.equal(used.lastResult.itemId,'silver-draw-card');assert.equal(f.p.inventory.find(i=>i.id==='silver-draw-card')?.quantity,1);
+ await f.restart();const saved=ok(await call(f.student,'constellation-ability:status'));
+ assert.equal(saved.lastResult.itemId,'silver-draw-card');
+ const draw=ok(await call(f.student,'draw:start',{itemId:'silver-draw-card'}));assert(draw.draw?.id);
+ assert.equal(f.p.inventory.some(i=>i.id==='silver-draw-card'),false);
+ const result=ok(await call(f.student,'draw:pick',{drawId:draw.draw.id}));assert(result.reward);assert.equal(f.p.rabbitDraw,null);
+});
+
+test('Libra card bag capacity and failed save never consume the weekly use',async t=>{
+ const full=make('libra',4);full.inventory=Array.from({length:SHOP.maxKinds-1},(_,i)=>({id:`fixture-${i}`,quantity:1}));full.inventory.push({id:'star-card',quantity:1});
+ let rolled=0;assert.throws(()=>useConstellationAbility(full,NOW,()=>{rolled++;return 1;}));
+ assert.equal(rolled,0);assert.equal(full.constellationAbilityState.usedWeek,null);
+ const dice=[1,1,2,3],f=await readingFixture(t,{abilityDie:()=>dice.shift()??1});await as(f,'libra',4);
+ const before=structuredClone({ability:f.p.constellationAbilityState,inventory:f.p.inventory});
+ await f.fail(async()=>assert.equal((await call(f.student,'constellation-ability:use')).ok,false));
+ assert.deepEqual({ability:f.p.constellationAbilityState,inventory:f.p.inventory},before);
+ assert.equal(ok(await call(f.student,'constellation-ability:use')).lastResult.itemId,'silver-draw-card');
+});
+
 test('persistent API auth, old/new concurrent use, forged roll and private status; restart and new Sunday',async t=>{
  const f=await readingFixture(t,{abilityDie:()=>1,craftingRecipes:recipes});await as(f,'capricorn');
  const stranger=await f.connect();assert.equal((await call(stranger,'constellation-ability:status')).ok,false);assert.equal((await call(stranger,'constellation-ability:use')).ok,false);
@@ -126,7 +168,7 @@ test('persistent API auth, old/new concurrent use, forged roll and private statu
  const results=await Promise.all([call(f.student,'ability:use',{roll:6,reward:999,level:5}),call(f.student,'constellation-ability:use',{roll:6})]);
  assert.equal(results.filter(r=>r.ok).length,1);assert.equal(results.find(r=>r.ok).roll,1);assert.equal(results.find(r=>r.ok).reward,0);
  assert.equal(f.game.store.snapshot(f.room,f.q).players.find(p=>p.id===f.p.id).constellationAbility,undefined);
- assert.equal(f.game.store.snapshot(f.room,f.p).players.find(p=>p.id===f.p.id).constellationAbility.used,true);
+ assert.equal(f.game.store.snapshot(f.room,f.p).players.find(p=>p.id===f.p.id).constellationAbility.configured,true);
  await f.reconnect();assert.equal(ok(await call(f.student,'constellation-ability:status')).used,true);await f.restart();assert.equal(ok(await call(f.student,'constellation-ability:status')).lastResult.roll,1);
  await as(f,'aquarius',5);assert.equal((await call(f.student,'ability:use')).ok,false);f.advance(WEEK);assert.equal(ok(await call(f.student,'constellation-ability:use')).reward,6);f.advance(-WEEK);assert.equal((await call(f.student,'constellation-ability:use')).ok,false);
 });

@@ -76,7 +76,7 @@ export function createReadingLibrary({request,stop,getSelf,stories,chapters=null
   catch(error){if(current===generation)notice.textContent=error.message;}
   finally{if(current===generation){busy=false;renderStatus();}}
  };
- dialog.addEventListener('close',()=>{dailyRefresh.stop();generation++;busy=false;document.getElementById('world')?.focus();});
+ dialog.addEventListener('close',()=>{if(dialog.open)return;dailyRefresh.stop();generation++;busy=false;document.getElementById('world')?.focus();});
  return {async open(){stop();const current=++generation;busy=true;selected=null;letter=chapters?.[0].id??'전체';recommendedSort=false;status=null;catalog.hidden=false;reader.hidden=true;notice.textContent='책장을 준비하고 있어요…';list.replaceChildren();tabs.replaceChildren();renderStatus();if(!dialog.open)dialog.showModal();
   dailyRefresh.start();
   try{const result=await request(`${namespace}:status`,{});if(current!==generation)return;status=result;notice.textContent=`같은 ${item}은 하루 한 번, 매일 자정에 보상 횟수가 새로 시작돼요.`;renderList();renderStatus();}

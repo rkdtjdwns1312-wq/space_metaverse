@@ -90,8 +90,8 @@ test('현실 교실에서 처리할 능력은 교사 기둥에 남고 학생은 
 
 test('천칭자리 주차별 XP는 교사가 0~2를 확인해 한 번만 적용하고 현재 레벨 기준을 넘지 않는다',async t=>{
   const {room,first,teacher,student}=await fixture(t);student.avatar.constellationId='libra';student.avatar.xp=19;
-  assert.equal((await call(first,'ability:use')).ok,false);
-  student.abilityState.markers=[{id:'saved-libra',constellationId:'libra',level:2,at:0,note:'기존 주차 확인',targetName:''}];
+  assert.equal((await call(first,'ability:use')).ok,true);
+  assert.equal(student.abilityState.markers.length,1);
   const pillar=MAP.objects.find(object=>object.id==='pillar-effects');
   const teacherPlayer=[...room.players.values()].find(player=>player.role==='teacher');teacherPlayer.x=pillar.x;teacherPlayer.y=pillar.y;
   const board=await call(teacher,'temple:read',{objectId:pillar.id});const row=board.rows.find(entry=>entry.constellationId==='libra');
