@@ -14,14 +14,13 @@ const ready=img=>img.complete&&img.naturalWidth>0;
 const visual=visualFloor(PLAZA_POLYGONS,PLAZA_EDGES,L,Object.values(L.gates));
 const floorPath=visualFloorPath(visual.polygons);
 const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
-function ring(ctx,z,inset,color,width){ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx-inset,z.ry-inset*.7,0,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();}
 function ground(ctx){
   drawRockSupports(ctx,visual.edges,'plaza',L.height);
   drawFloatingIslands(ctx,[L.center,...L.islands],'plaza',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
   if(ready(images.floor)){const pattern=ctx.createPattern(images.floor,'repeat');pattern.setTransform(new DOMMatrix().scale(.30));ctx.fillStyle=pattern;ctx.fillRect(0,0,L.width,L.height);}
-  for(const z of L.islands){ctx.fillStyle=z.color+'55';ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx,z.ry,0,0,Math.PI*2);ctx.fill();ring(ctx,z,58,'#bca6c780',3);}
+  for(const z of L.islands){ctx.fillStyle=z.color+'55';ctx.beginPath();ctx.ellipse(z.x,z.y,z.rx,z.ry,0,0,Math.PI*2);ctx.fill();}
   ctx.font='28px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#728878';
   ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
   // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
