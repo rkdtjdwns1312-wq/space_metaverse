@@ -51,6 +51,9 @@ import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-ar
 import {drawBossMonster,bossMonsterBounds,preloadBossArt} from './boss-monster-art.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
+import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
+import {drawNokseraMoon} from './noksera-moon.js';
+import {NOKSERA_HORN_BURST} from '/shared/boss-skills.js';
 import {drawEquipmentAura} from './equipment-aura.js';
 import {drawBabyStar} from './baby-star-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
@@ -649,6 +652,7 @@ export function createWorld(canvas) {
       const visualRadius=m.radius*monsterVisualScale(m.mapId,m.typeId);
       const body={...type,...m,...pos,radius:visualRadius},activeAttack=monsterAttacks.get(m.id);
       if(!drawBossMonster(ctx,body,t,activeAttack)&&!drawBabyStar(ctx,body,t,activeAttack)&&!drawCelestialMonster(ctx,body,t,activeAttack)&&!drawSunMonster(ctx,body,t,activeAttack)&&!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
+      drawNokseraMoon(ctx,body);
       const isWater=['star-crab','water-star'].includes(type.shape);
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
@@ -659,13 +663,20 @@ export function createWorld(canvas) {
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,barHeight,4);ctx.fill();
       ctx.fillStyle=type.boss?'#ffcf75':'#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),barHeight-2);
       ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY-4);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY-4);ctx.restore();
+      if(type.boss&&m.maxMp>0){
+        const manaY=barY+barHeight+3;
+        ctx.save();ctx.fillStyle='#252d4a';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,manaY,barWidth,12,4);ctx.fill();
+        ctx.fillStyle='#82c9ff';ctx.fillRect(pos.x-barWidth/2+1,manaY+1,(barWidth-2)*Math.max(0,Math.min(1,m.mp/m.maxMp)),10);
+        ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#263a67';ctx.lineWidth=3;ctx.fillStyle='#fff';
+        const label=`MP ${Math.floor(m.mp)} / ${m.maxMp}`;ctx.strokeText(label,pos.x,manaY+10);ctx.fillText(label,pos.x,manaY+10);ctx.restore();
+      }
       const monsterStatuses=[m.poisoned&&'poison',m.sleeping&&'sleep',m.stunned&&'stun',m.cursed&&'curse'].filter(Boolean);
       monsterStatuses.forEach((id,index)=>{
         const icon=loadedAvatarSprite('/assets/status/'+id+'.svg');
         if(icon){ctx.save();ctx.shadowColor='#f7efff';ctx.shadowBlur=7;
           ctx.drawImage(icon,pos.x-(monsterStatuses.length*22)/2+index*22,type.boss?bossBounds.top-75:barY-43,20,20);ctx.restore();}
       });
-      if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);}
+      if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);canvas.dataset.monsterMp=String(m.mp??'');canvas.dataset.monsterMaxMp=String(m.maxMp??'');}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
       // 보스 이름은 머리 위 월드 좌표에 고정합니다. 화면 위 경계에서 따로 내려오지 않습니다.
       const nameY=type.boss?bossBounds.top-12:pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
@@ -702,6 +713,7 @@ export function createWorld(canvas) {
     const warnings=visibleMonsters.filter(m=>m.warning&&m.warning.endsAt>Date.now());
     canvas.dataset.monsterWarningCount=String(warnings.length);
     for(const m of warnings){
+      if(m.warning.kind===NOKSERA_HORN_BURST.kind){drawNokseraWarning(ctx,m.warning);continue;}
       const mark=m.warning,remaining=Math.max(0,(mark.endsAt-Date.now())/1000);
       ctx.save();ctx.translate(mark.x,mark.y);
       ctx.fillStyle='#a495ff30';ctx.strokeStyle='#ffebad';ctx.shadowColor='#bfa9ff';ctx.shadowBlur=15;ctx.lineWidth=4;
@@ -785,6 +797,7 @@ export function createWorld(canvas) {
     canvas.dataset.attackCount=String(hits.length);
     for(const hit of hits){
       if(hit.kind==='damage')continue;
+      if(hit.kind==='monster'&&hit.skillKind===NOKSERA_HORN_BURST.kind){drawNokseraBurst(ctx,hit,1-(hit.until-t)/NOKSERA_HORN_BURST.durationMs,reducedMotion.matches);continue;}
       if(hit.kind==='monster'&&hit.shape==='serena'){drawSerenaExplosion(ctx,hit,1-(hit.until-t)/800);continue;}
       if(hit.kind==='monster'&&['star-crab','water-star'].includes(monsterType(monsters.find(m=>m.id===hit.monsterId)?.typeId)?.shape))continue;
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
@@ -843,7 +856,7 @@ export function createWorld(canvas) {
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
-      for(const id of ['spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
+      for(const id of ['noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
       const now=performance.now();for(const p of players)recordPosition(p,now);
@@ -885,9 +898,11 @@ export function createWorld(canvas) {
       // 범위 공격이 여러 명에게 맞아도 같은 물보라 모션은 한 번만 시작합니다.
       const previous=monsterAttacks.get(data.monsterId),startedAt=performance.now();
       const shape=monsterType(monsters.find(m=>m.id===data.monsterId)?.typeId)?.shape;
-      if(!previous||startedAt-previous.startedAt>80)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs:['spirit-king','serena'].includes(shape)?800:600});
+      const special=data.skillKind===NOKSERA_HORN_BURST.kind,durationMs=special?NOKSERA_HORN_BURST.durationMs:['spirit-king','serena'].includes(shape)?800:600;
+      const newMotion=!previous||startedAt-previous.startedAt>80;
+      if(newMotion)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs});
       canvas.dataset.lastMonsterEffect=shape||'';
-      if(shape!=='serena'||!previous||startedAt-previous.startedAt>80)hits.push({...data,kind:'monster',shape,until:startedAt+(shape==='serena'?800:ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if((!special&&shape!=='serena')||newMotion)hits.push({...data,kind:'monster',shape,until:startedAt+(special?durationMs:shape==='serena'?800:ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
       canvas.dataset.lastMonsterDamage=String(data.damage);
       canvas.dataset.lastMonsterTarget=String(data.targetId);
     },

@@ -1,0 +1,18 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "client/assets/monsters/noksera-v2.png",
+  "created": "2026-10-16",
+  "assets": [
+    {
+      "path": "client/assets/monsters/noksera-horn-burst.png",
+      "layout": "4 columns × 2 rows / 8 frames",
+      "prompt": "Use case: identity-preserve sprite animation. Reference image is the existing Noksera moon deer game boss. Create ONE transparent RGBA PNG sprite sheet, exactly 4 columns by 2 rows (8 equal square cells), no labels, no borders, no background. Each cell contains this exact complete moon deer facing LEFT, same size, same camera, same hooves anchor and body position, full antlers and scarf entirely inside each cell with padding. Preserve its cute classic Korean 2D fantasy MMORPG painted sprite look, white fur, purple eyes, elaborate ivory golden branching antlers with blue crescent ornaments, gold hooves and blue celestial scarf. Animation chronological row-major: frame1 upright reference pose; frame2 head slightly bowed; frame3 head further downward; frame4 head low; frame5 head fully lowered ready to release magic; frame6 same low head with antlers brighter ivory; frame7 same low head with antlers luminous pale gold; frame8 same low head and radiant white gold antlers. Natural neck articulation, unchanged face proportions, stationary body/feet. Only head/neck/antlers articulate, subtle scarf motion. No locomotion, no duplicate limbs, no ghosts, no ground circle, no energy blast. Keep body silhouette and body size identical in all8 cells, minimum8% transparent margin around each complete deer. Flat orthographic sprite view. Sheet aspect2:1."
+    },
+    {
+      "path": "client/assets/monsters/noksera-moon-summon.png",
+      "layout": "4 columns × 2 rows / 8 frames",
+      "prompt": "Create animation asset referencing the exact white moon deer Noksera in image1. Transparent RGBA background. ONE precisely aligned 4-column 2-row sheet of8 equally-sized square frames, no borders no letters. All8 full-body deer face LEFT. Exactly same body size/position/hooves on same line, keep torso and legs stationary, keep detailed ornate ivorygold antlers, bluegem crescents, blue celestial scarf, purple eyes and original classic Korean2D MMORPG painted cute sprite aesthetic. Frame1 exact standing original pose. Frames2,3,4,5 slowly raise the head to look upward to sky naturally with neck articulation. Frames6,7,8 hold head tilted skyward and eyes open upward. Only head neck and antlers move, no walking, no body squash, no motion smears. Antlers remain their original ivory/gold colors. Do not include any moon or effect above them; that will be composited in game. Most important: 12% transparent padding on EVERY side of each cell, every hoof and scarf and antler entirely INSIDE its own cell, NO bits touching or crossing a cell edge; cells exactly regular 4x2. Whole sheet aspect2:1."
+    }
+  ],
+  "runtime": "client/noksera-pose-cells.js splits at equal cell boundaries, removes only detached narrow edge fragments, and aligns opaque feet. No warping or cross-fade between character poses. Lunar texture reused from client/assets/maps/paradise-moon.png."
+}

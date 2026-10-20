@@ -1,7 +1,7 @@
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
-import {ensureVitals} from './vitals.js';
+import {ensureVitals,damagePlayer} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
 import {damagePlayersInArea} from './area-combat.js';
 import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
@@ -10,6 +10,7 @@ import {onOriginFloor} from '../shared/origin-floor.js';
 import {SERENA} from '../shared/serena.js';
 import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
 import {bossVictoryCredits} from './serena-progress.js';
+import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokseraMoonTimeline,nokseraFullMoon} from '../shared/boss-skills.js';
 
 
 export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
@@ -35,6 +36,8 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const respawnAt=room.bossRespawns?.[spawn.id]>now?room.bossRespawns[spawn.id]:null;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
       hp:respawnAt?0:type.hp??MONSTER_HP[type.mapId],maxHp:type.hp??MONSTER_HP[type.mapId],respawnAt,spawnX:x,spawnY:y,
+      mp:type.boss?BOSS_MANA.max:0,maxMp:type.boss?BOSS_MANA.max:0,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,
+      moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,
       targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   };
@@ -48,8 +51,10 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
 }
 export function monsterViews(room,now=Date.now()){
   return [...monstersOf(room,now).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
-    facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,alive:m.hp>0,busy:false,targetId:m.targetId,
-    ...(m.pendingAttack&&m.hp>0?{warning:{x:m.pendingAttack.x,y:m.pendingAttack.y,radius:m.pendingAttack.radius,startsAt:m.pendingAttack.startsAt,endsAt:m.pendingAttack.endsAt}}:{}),
+    facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,mp:m.mp??0,maxMp:m.maxMp??0,alive:m.hp>0,busy:false,targetId:m.targetId,
+    ...(m.pendingAttack&&m.hp>0?{warning:{...(m.pendingAttack.kind?{kind:m.pendingAttack.kind}:{}),x:m.pendingAttack.x,y:m.pendingAttack.y,radius:m.pendingAttack.radius,startsAt:m.pendingAttack.startsAt,endsAt:m.pendingAttack.endsAt}}:{}),
+    ...(m.hp>0&&m.moonCast?.mapId===m.mapId&&m.moonCast.endsAt>now?{moonCast:{...m.moonCast}}:{}),
+    ...(m.hp>0&&m.moonAura?.mapId===m.mapId&&m.moonAura.endsAt>now?{moonAura:{...m.moonAura}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
@@ -66,7 +71,7 @@ export function strikeMonsters(room,player,power,now=Date.now()){
   return monstersInAttackArea(room,player,now).map(target=>damageMonster(room,target,player,power,now));
 }
 // Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
-export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false,fixedDamage=null,silent=false,retaliateTeacher=false}={}){
+export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false,fixedDamage=null,silent=false,retaliateTeacher=false,reflected=false}={}){
   if(target.hp<=0||power<0||!Number.isFinite(power))return null;
   const raw=(target.sleepUntil||0)>now&&!ignoreSleep?power*2:power;
   const type=monsterType(target.typeId),level=type?.level??target.level;
@@ -74,6 +79,17 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   const dealt=fixedDamage??Math.max(1,Math.round(raw)-defense);
   // 지난 공격자가 떠난 전투를 먼저 정리한 뒤 새 공격 피해를 적용합니다.
   selectMonsterTarget(room,target);
+  if(nokseraFullMoon(target,now)){
+    // 보름은 피해를 대체합니다. 기여도/HP/드랍에는 피해를 기록하지 않습니다.
+    registerMonsterAttacker(room,target,player,now,retaliateTeacher);
+    const amount=Math.max(0,dealt);
+    const eligible=!reflected&&amount>0&&player.connected&&!player.away&&player.mapId===target.mapId;
+    // 노크 방어 후 예정 피해 전체를 반환합니다. 공격자 방어는 재계산하지 않고
+    // 면역·방패·부활은 유지하며, 천칭만 건너뛰어 반사 연쇄를 차단합니다.
+    const hit=eligible?damagePlayer(player,amount,now,{skipDefense:true,skipLibra:true}):null;
+    if(hit)(room.reflectedVitals??=[]).push({playerId:player.id,vitals:hit.vitals});
+    return {monsterId:target.id,damage:0,reflectedDamage:hit?.damage??0,hp:target.hp,maxHp:target.maxHp,defeated:false};
+  }
   // 남은 HP를 넘는 과잉 피해로 마지막 공격자가 소유권을 빼앗지 않도록 실제 감소량만 합산합니다.
   target.contributors??=new Map();
   target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(dealt,target.hp));
@@ -90,16 +106,19 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
       addRecipeDrop(room,target,target.contributors,now,recipeRoll);
       addEnergyDrop(room,target,target.contributors,now,energyRoll);
     }
-    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.mapExitCount=0;
+    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.mapExitCount=0;
   }
   else{
-    if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
-    // Only the regular teacher's E opts this particular monster into retaliation.
-    if(retaliateTeacher&&player.role==='teacher'&&!player.avatar?.teacherPreview)(target.teacherRetaliation??=new Set()).add(player.id);
-    if(player.role!=='teacher'||target.teacherRetaliation?.has(player.id))target.attackers.set(player.id,++target.attackOrder);
-    selectMonsterTarget(room,target);
+    registerMonsterAttacker(room,target,player,now,retaliateTeacher);
   }
   return {monsterId:target.id,damage:dealt,hp:target.hp,maxHp:target.maxHp,defeated:target.hp===0};
+}
+function registerMonsterAttacker(room,target,player,now,retaliateTeacher){
+  if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
+  // Only the regular teacher's E opts this particular monster into retaliation.
+  if(retaliateTeacher&&player.role==='teacher'&&!player.avatar?.teacherPreview)(target.teacherRetaliation??=new Set()).add(player.id);
+  if(player.role!=='teacher'||target.teacherRetaliation?.has(player.id))target.attackers.set(player.id,++target.attackOrder);
+  selectMonsterTarget(room,target);
 }
 // 이전 서버 테스트/연동의 단수 응답 호환. 실제 적용은 항상 모든 대상입니다.
 export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
@@ -127,35 +146,81 @@ export function selectMonsterTarget(room,monster){
   monster.targetId=selected?.id||null;return selected;
 }
 export function moveMonsters(room,now=Date.now(),random=Math.random){
+  if(!Number.isFinite(now))return [];
   const monsters=monstersOf(room,now);
   const hits=[];
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
+      m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.moving=false;
       if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
       Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
+      if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
-    const type=monsterType(m.typeId),rule=type.combat??MONSTER_COMBAT[m.mapId],factor=rule.speedFactor;
+    const type=monsterType(m.typeId),rule=type?.combat??MONSTER_COMBAT[m.mapId];
+    if(!type||!rule||mapOf(m.mapId,room.planets?.values?.()||[]).id!==m.mapId){m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.moving=false;continue;}
+    if(m.moonAura&&(now>=m.moonAura.endsAt||m.moonAura.mapId!==m.mapId))m.moonAura=null;
+    const factor=rule.speedFactor;
+    if(type.boss)regenerateBossMana(m,now);
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
-    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.pendingAttack=null;m.moving=false;continue;}
+    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.moving=false;continue;}
+    if(m.moonCast){
+      const cast=m.moonCast;m.moving=false;
+      if(!target||cast.mapId!==m.mapId||(m.sleepUntil||0)>cast.startsAt||(m.stunUntil||0)>cast.startsAt){m.moonCast=null;m.moonAura=null;continue;}
+      if(now<cast.endsAt)continue;
+      const aura={...nokseraMoonTimeline(cast.startsAt),mapId:cast.mapId};
+      m.moonCast=null;m.moonAura=now<aura.endsAt?aura:null;
+      // 준비 종료 후 이 틱부터 기존 이동/일반공격을 재개합니다.
+    }
+    const horn=m.pendingAttack?.kind===NOKSERA_HORN_BURST.kind;
+    if(horn&&(!target||m.mapId!==m.pendingAttack.mapId||mapOf(m.mapId,room.planets?.values?.()||[]).id!==m.mapId||
+      (m.sleepUntil||0)>m.pendingAttack.startsAt||(m.stunUntil||0)>m.pendingAttack.startsAt)){
+      m.pendingAttack=null;m.moving=false;continue;
+    }
     if(m.pendingAttack){
       m.moving=false;
       if(now>=m.pendingAttack.endsAt){
         const warning=m.pendingAttack;m.pendingAttack=null;
-        const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},rule.power,now);
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},horn?warning.power:rule.power,now);
         m.nextAttackAt=now+rule.attackMs;
-        const visual={monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:800,
+        const visual={monsterId:m.id,mapId:m.mapId,x:horn?warning.x:m.x,y:horn?warning.y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:horn?NOKSERA_HORN_BURST.durationMs:800,
+          ...(horn?{skillKind:warning.kind}:{}),
           warningX:warning.x,warningY:warning.y,warningRadius:warning.radius};
         if(!results.length)hits.push({...visual,attackOnly:true});
         for(const result of results)hits.push({...visual,...result});
         if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
       }
       continue;
+    }
+    if(type.id==='noksera'&&target&&now>=(m.hornReadyAt||0)&&now>=(m.hornDecisionAt??now)&&m.mp>=NOKSERA_HORN_BURST.mana&&
+      Math.hypot(target.x-m.x,target.y-m.y)<=nokseraHornRadius(m)){
+      // 판정 실패는 평타/추적을 막지 않습니다. 틱 수나 시간 점프만큼 난수를 반복하지 않습니다.
+      m.hornDecisionAt=now+NOKSERA_HORN_BURST.decisionMs;
+      const roll=random();
+      if(Number.isFinite(roll)&&roll>=0&&roll<NOKSERA_HORN_BURST.chance){
+      const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
+      if(distance>0){m.dx=dx/distance;m.dy=dy/distance;if(Math.abs(m.dx)>.05)m.facingX=m.dx<0?-1:1;}
+      m.mp-=NOKSERA_HORN_BURST.mana;m.hornReadyAt=now+NOKSERA_HORN_BURST.cooldownMs;
+      m.pendingAttack={kind:NOKSERA_HORN_BURST.kind,mapId:m.mapId,x:m.x,y:m.y,radius:nokseraHornRadius(m),
+        startsAt:now,endsAt:now+NOKSERA_HORN_BURST.warningMs,dx:m.dx,dy:m.dy,reach:0,power:(type.power??rule.power)*NOKSERA_HORN_BURST.damageMultiplier};
+      m.moving=false;continue;
+      }
+    }
+    if(type.id==='noksera'&&target&&!m.moonAura&&now>=(m.moonReadyAt||0)&&now>=(m.moonDecisionAt??now)&&m.mp>=NOKSERA_MOON_PHASE.mana&&
+      Math.hypot(target.x-m.x,target.y-m.y)<=nokseraHornRadius(m)){
+      m.moonDecisionAt=now+NOKSERA_MOON_PHASE.decisionMs;
+      const roll=random();
+      if(Number.isFinite(roll)&&roll>=0&&roll<NOKSERA_MOON_PHASE.chance){
+        m.mp-=NOKSERA_MOON_PHASE.mana;m.moonReadyAt=now+NOKSERA_MOON_PHASE.cooldownMs;
+        m.moonCast={kind:NOKSERA_MOON_PHASE.kind,mapId:m.mapId,startsAt:now,endsAt:now+NOKSERA_MOON_PHASE.castMs};
+        m.moonAura={...nokseraMoonTimeline(now),mapId:m.mapId};
+        m.moving=false;continue;
+      }
     }
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
@@ -199,4 +264,16 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     }
   }
   return hits;
+}
+
+function regenerateBossMana(monster,now){
+  monster.maxMp=BOSS_MANA.max;
+  monster.mp=Math.max(0,Math.min(BOSS_MANA.max,Number.isFinite(monster.mp)?monster.mp:BOSS_MANA.max));
+  if(!Number.isFinite(monster.nextManaRegenAt))monster.nextManaRegenAt=now+BOSS_MANA.regenMs;
+  if(now<monster.nextManaRegenAt)return;
+  const amount=BOSS_MANA.max*BOSS_MANA.regenFraction,elapsed=now-monster.nextManaRegenAt;
+  // 긴 시간 점프도 반복 루프 없이 계산하며 최대치까지만 회복합니다. 역행한 시각은 무시합니다.
+  const periods=Math.min(Math.ceil(BOSS_MANA.max/amount),Math.floor(elapsed/BOSS_MANA.regenMs)+1);
+  monster.mp=Math.min(BOSS_MANA.max,monster.mp+periods*amount);
+  monster.nextManaRegenAt=now+BOSS_MANA.regenMs-elapsed%BOSS_MANA.regenMs;
 }

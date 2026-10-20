@@ -62,6 +62,7 @@ test('보스 방어력 5, 우주에너지 400~600, 전용재료 100%, LV4 완제
 
 test('보스 공격 간격은 2초이며 일반 LV3 몬스터보다 느리다',()=>{
   const {room,player,boss}=roomFor('noksera');
+  boss.mp=0; // 마나가 없을 때 기존 일반 공격 간격을 유지합니다.
   player.x=boss.x+boss.radius+25;player.y=boss.y;
   boss.attackers.set(player.id,1);boss.targetId=player.id;boss.nextAttackAt=1000;
   const hits=moveMonsters(room,1000,()=>0);

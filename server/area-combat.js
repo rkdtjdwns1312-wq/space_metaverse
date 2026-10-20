@@ -21,7 +21,7 @@ export function reflectLibraDamage(room,libra,source,amount,now){
     const monster=monstersOf(room,now).get(source.sourceMonsterId);
     if(monster?.hp>0&&monster.mapId===libra.mapId){
       const type=monsterType(monster.typeId),defense=type?.defense??MONSTER_LEVEL_STATS[type?.level]?.defense??0;
-      const hit=damageMonster(room,monster,libra,amount+defense,now,{ignoreSleep:true});
+      const hit=damageMonster(room,monster,libra,amount+defense,now,{ignoreSleep:true,reflected:true});
       if(hit?.defeated)room.reflectedDrops=true;
     }
   }else if(source.sourceId){

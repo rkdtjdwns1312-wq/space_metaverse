@@ -29,10 +29,11 @@ export function libraProtectors(room,player,now){
       (c===player||Math.hypot(c.x-player.x,c.y+aura.size*.22-player.y)<=aura.radius);
   });
 }
-export function damagePlayer(player,power,now,{room=null,skipLibra=false,fixedDamage=null,silent=false}={}){
+export function damagePlayer(player,power,now,{room=null,skipLibra=false,skipDefense=false,fixedDamage=null,silent=false}={}){
   const value=ensureVitals(player);if(!value||value.hp<=0)return null;
   if(fixedDamage===null&&(player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
-  const damage=fixedDamage??damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player));
+  // 이미 방어 계산을 마친 반환 피해도 면역·방패·부활은 일반 피해 규칙을 따릅니다.
+  const damage=fixedDamage??(skipDefense?power:damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player)));
   if(fixedDamage===null&&!skipLibra){
     const protectors=libraProtectors(room,player,now);
     // 겹친 영역은 합산하지 않고 시전 당시 저장된 가장 높은 배율로 한 번만 반사합니다.
