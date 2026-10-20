@@ -42,8 +42,17 @@ export function validateConstellationAbilityState(value){
   if(ability.rollCount){
     if(!Array.isArray(lastResult.rolls)||lastResult.rolls.length!==ability.rollCount||lastResult.rolls.some(n=>!Number.isInteger(n)||n<1||n>6)||roll!==lastResult.rolls[0]||
       reward!==(ability.card?0:Math.abs(lastResult.rolls[0]-lastResult.rolls[1])))bad();
-  }else if(ability.dice?(!Number.isInteger(roll)||roll<1||roll>6||reward!==(ability.craft?0:ability.rewards[roll-1])):(roll!==null||reward!==(ability.copy||ability.manualXp?0:ability.reward)))bad();
+  }else if(ability.pair?(roll!==null||reward!==0||typeof lastResult.targetId!=='string'||!lastResult.targetId):
+    ability.warningHunter?(roll!==null||reward!==0||!Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>ability.uses||
+      !['warning','black-star','department'].includes(lastResult.mode)||
+      (level<=3&&lastResult.mode!=='warning')||(level===4&&lastResult.mode!=='black-star')||
+      (level===5&&lastResult.mode==='warning')||(lastResult.mode==='department'&&lastResult.uses!==ability.uses)||
+      (lastResult.mode==='warning'&&(typeof lastResult.warningId!=='string'||!lastResult.warningId))||
+      (lastResult.mode==='department'&&(typeof lastResult.planetId!=='string'||!lastResult.planetId))):
+    (ability.dice?(!Number.isInteger(roll)||roll<1||roll>6||reward!==(ability.craft?0:ability.rewards[roll-1])):(roll!==null||reward!==(ability.copy||ability.manualXp?0:ability.reward))))bad();
   const result={constellationId,level,roll,reward};
+  if(ability.pair)result.targetId=lastResult.targetId;
+  if(ability.warningHunter){result.mode=lastResult.mode;result.uses=lastResult.uses;if(lastResult.warningId)result.warningId=lastResult.warningId;if(lastResult.planetId)result.planetId=lastResult.planetId;}
   if(ability.rollCount)result.rolls=[...lastResult.rolls];
   if(ability.card){
     const itemId=new Set(lastResult.rolls).size<ability.rollCount?'silver-draw-card':'star-card';
@@ -77,9 +86,9 @@ function denial(player,ability,state,week){
   if(!player.connected||player.away)return '먼저 교실에 입장해주세요.';
   if(constellationChangedThisWeek(player,week))return '별자리를 바꾼 주에는 능력을 사용할 수 없어요. 다음 일요일에 다시 사용할 수 있어요.';
   if(ability.passive)return '경고를 받을 때 자동으로 적용되는 능력이에요.';
-  if(player.avatar?.blackStar)return '검은별 상태에서는 능력을 사용할 수 없어요.';
+  if(player.avatar?.blackStar&&!ability.warningHunter)return '검은별 상태에서는 능력을 사용할 수 없어요.';
   if(!ability.configured)return '이 별자리의 능력은 준비 중이에요.';
-  if(state.usedWeek!==null&&state.usedWeek>=week)return '이번 주 별자리 능력은 이미 사용했어요. 다음 일요일에 다시 쓸 수 있어요.';
+  if(state.usedWeek!==null&&state.usedWeek>=week&&!(ability.warningHunter&&state.usedWeek===week&&state.lastResult?.constellationId==='sagittarius'&&state.lastResult.level===player.avatar?.level&&state.lastResult.uses<ability.uses&&state.lastResult.mode!=='department'))return '이번 주 별자리 능력은 이미 사용했어요. 다음 일요일에 다시 쓸 수 있어요.';
   if(!Number.isSafeInteger(player.starShards)||player.starShards<0||player.starShards>SHARDS.max)return '별 파편 잔액을 확인해주세요.';
   if(player.starShards<ability.minBalance)return `주사위를 굴리려면 별 파편 ${ability.minBalance}개가 있어야 해요.`;
   if(player.starShards>SHARDS.max-ability.maxReward)return '별 파편을 더 담을 수 없어요.';
@@ -90,13 +99,20 @@ export function constellationAbilityStatus(player,now=Date.now()){
   const ability=weeklyAbilityFor(constellationId,level),state=validateConstellationAbilityState(player.constellationAbilityState),week=constellationWeekStart(now);
   const message=denial(player,ability,state,week);
   const warningUsed=state.warningWeek!==null&&state.warningWeek>=week?state.warningCount:0,blackUsed=state.blackWeek!==null&&state.blackWeek>=week?1:0;
-  const used=ability.passive?warningUsed>=ability.warningLimit&&blackUsed>=ability.blackLimit:state.usedWeek!==null&&state.usedWeek>=week;
+  const sameWeek=state.usedWeek!==null&&state.usedWeek>=week;
+  const used=ability.passive?warningUsed>=ability.warningLimit&&blackUsed>=ability.blackLimit:
+    ability.warningHunter&&sameWeek&&state.lastResult?.constellationId==='sagittarius'&&state.lastResult.level===level?
+      state.lastResult.uses>=ability.uses||state.lastResult.mode==='department':sameWeek;
   const blockedByChange=constellationChangedThisWeek(player,now),day=new Date(now+9*3600000).getUTCDay();
   const pending=state.pending?.week===week?state.pending:null;
-  const lastResult=!ability.passive&&state.usedWeek!==null&&state.usedWeek>=week&&state.lastResult?(({roll,rolls,reward,budget,itemId,constellationId})=>({roll,reward,...(rolls?{rolls}:{}),...(budget!==undefined?{budget,mode:constellationId==='gemini'?'copy':'craft'}:{}),...(itemId?{itemId}:{})}))(state.lastResult):null;
+  const lastResult=!ability.passive&&sameWeek&&state.lastResult?(()=>{
+    const {roll,rolls,reward,budget,itemId,targetId,constellationId,mode,uses,planetId,warningId}=state.lastResult;
+    return {roll,reward,...(rolls?{rolls}:{}),...(budget!==undefined?{budget,mode:constellationId==='gemini'?'copy':'craft'}:{}),...(itemId?{itemId}:{}),...(targetId?{targetId}:{}),...(constellationId==='sagittarius'?{mode,uses,planetId,warningId}:{})};
+  })():null;
   return {configured:ability.configured,used,canUse:!message,passive:!!ability.passive,blockedByChange,
+    uses:ability.warningHunter&&sameWeek&&state.lastResult?.constellationId==='sagittarius'?state.lastResult.uses:0,useLimit:ability.warningHunter?ability.uses:0,
     warningUsed,warningLimit:ability.warningLimit??0,blackUsed,blackLimit:ability.blackLimit??0,
-    remindUnused:ability.configured&&!ability.passive&&!used&&!blockedByChange&&player.role==='student'&&!player.avatar?.teacherPreview&&!player.avatar?.blackStar&&player.connected&&!player.away&&(day===5||day===6),
+    remindUnused:ability.configured&&!ability.passive&&!used&&!blockedByChange&&player.role==='student'&&!player.avatar?.teacherPreview&&(!player.avatar?.blackStar||!!ability.warningHunter)&&player.connected&&!player.away&&(day===5||day===6),
     description:ability.description,level,constellationId,nextResetAt:Math.max(week,state.usedWeek??week,state.changedWeek??week,state.warningWeek??week,state.blackWeek??week)+CONSTELLATION_WEEK_MS,
     lastResult,pending:pending?{budget:pending.budget,roll:pending.roll,mode:pending.mode,expiresAt:pending.week+CONSTELLATION_WEEK_MS}:null,
     choices:pending?pending.choices.map(({id,value})=>{const item=SHOP.items.find(i=>i.id===id),owned=player.inventory?.find(i=>i.id===id);
@@ -108,6 +124,8 @@ export function useConstellationAbility(player,now=Date.now(),die=()=>randomInt(
   const status=constellationAbilityStatus(player,now);
   if(!status.canUse)throw new GameError(status.message);
   const ability=weeklyAbilityFor(status.constellationId,status.level);
+  if(ability.pair)throw new GameError('짝이 될 친구를 골라 신청해 주세요.');
+  if(ability.warningHunter)throw new GameError('삭제할 내 경고 또는 검은별을 골라주세요.');
   if(ability.card){
     if(!Array.isArray(player.inventory)||['silver-draw-card','star-card'].some(id=>{
       const item=SHOP.items.find(i=>i.id===id),owned=player.inventory.find(i=>i.id===id);
@@ -138,6 +156,31 @@ export function useConstellationAbility(player,now=Date.now(),die=()=>randomInt(
   return {...constellationAbilityStatus(player,now),reward,roll,starShards:player.starShards,
     message:ability.manualXp?'선생님 확인 목록에 등록했어요. 선생님이 주차를 확인하면 경험치를 받아요.':itemId?`${SHOP.items.find(i=>i.id===itemId).name} 1장을 받았어요.`:ability.copy?'보유 아이템 1개를 골라 복사해 주세요.':ability.craft?(choices.length?'아이템 1개를 골라 제작을 마쳐 주세요.':`제작 가치는 ${budget}개예요. 만들 수 있는 아이템이 없어 이번 주 사용을 마쳤어요.`):reward<0?`별 파편 ${-reward}개를 잃었어요.`:reward===0?'이번 주 능력을 사용했어요. 이번 보상은 별 파편 0개예요.':`별 파편 ${reward}개를 받았어요.`};
 }
+export function completePiscesPair(player,targetId,now=Date.now()){
+  const status=constellationAbilityStatus(player,now);
+  if(!status.canUse||status.constellationId!=='pisces')throw new GameError(status.message||'물고기자리 능력을 사용할 수 없어요.');
+  if(typeof targetId!=='string'||!targetId||targetId===player.id)throw new GameError('짝이 될 다른 친구를 골라주세요.');
+  const week=constellationWeekStart(now);
+  player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),usedWeek:week,lastResult:{constellationId:'pisces',level:status.level,roll:null,reward:0,targetId},pending:null};
+  return constellationAbilityStatus(player,now);
+}
+export function validateSagittariusUse(player,mode,now=Date.now()){
+  const status=constellationAbilityStatus(player,now),ability=weeklyAbilityFor(status.constellationId,status.level);
+  if(!status.canUse||!ability.warningHunter)throw new GameError(status.message||'사수자리 능력을 사용할 수 없어요.');
+  if(status.lastResult?.mode&&status.lastResult.mode!==mode)throw new GameError('이번 주에는 처음 고른 방식을 계속 사용해 주세요.');
+  const previous=status.lastResult?.mode==='department'?ability.uses:status.lastResult?.uses??0;
+  const uses=mode==='department'?ability.uses:previous+1;
+  if(uses>ability.uses||levelModeInvalid(status.level,mode))throw new GameError('현재 단계에서 선택할 수 없는 능력이에요.');
+  return {status,uses};
+}
+export function completeSagittariusUse(player,mode,{warningId=null,planetId=null}={},now=Date.now()){
+  const {status,uses}=validateSagittariusUse(player,mode,now);
+  if(mode==='warning'&&(typeof warningId!=='string'||!warningId)||mode==='department'&&(typeof planetId!=='string'||!planetId))throw new GameError('삭제할 내 경고나 부서를 골라주세요.');
+  const week=constellationWeekStart(now);
+  player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),usedWeek:week,lastResult:{constellationId:'sagittarius',level:status.level,roll:null,reward:0,mode,uses,...(warningId?{warningId}:{}),...(planetId?{planetId}:{})},pending:null};
+  return constellationAbilityStatus(player,now);
+}
+const levelModeInvalid=(level,mode)=>level<=3?mode!=='warning':level===4?mode!=='black-star':!['black-star','department'].includes(mode);
 export function chooseConstellationItem(player,itemId,now=Date.now()){
   const state=validateConstellationAbilityState(player.constellationAbilityState),pending=state.pending;
   const fail=message=>{throw new GameError(message);};

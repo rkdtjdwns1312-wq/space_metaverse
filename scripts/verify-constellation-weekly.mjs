@@ -6,6 +6,7 @@ import {createClassroomServer} from '../server/app.js';
 import {CONSTELLATIONS} from '../shared/constellations.js';
 import {applyHerculesWeekly,markConstellationChange} from '../server/constellation-weekly-abilities.js';
 import {addPlanet} from '../server/world.js';
+import {issueWarning,warningCount} from '../server/warnings.js';
 import {departmentSlots} from '../shared/plaza-layout.js';
 import {INTERIOR,interiorIdOf} from '../shared/config.js';
 
@@ -44,7 +45,7 @@ try{
     await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
     const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
     assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
-    if(!['aquarius','capricorn','taurus','corvus','gemini','libra'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
   }
   report.checks.push('16종 한 줄 2버튼 / 천칭 활성 / 미설정 능력 비활성');
   await as('libra',2);await page.locator('#self-ability-use').click();
@@ -141,6 +142,35 @@ try{
   await page.locator('#warning-ability-result').getByText('별자리 능력으로 이번 경고 1회는 무효가 됩니다',{exact:true}).waitFor();
   assert.equal(planet.warnings.entries.filter(e=>e.active).length,0);assert.equal(protectedPlayer.constellationAbilityState.warningCount,1);
   await page.screenshot({path:`${output}/hercules-warning-negated.png`});report.checks.push('실제 부서 경고 UI에서 헤라클레스 방어 / 발급자 무효 문구 표시');
+  now=Date.now();await as('pisces',3);await page.locator('#self-ability-use').click();
+  await page.locator('#ability-pair-choices select').selectOption(protectedPlayer.id);
+  await page.locator('#ability-pair-choices button').click();
+  await page.waitForFunction(()=>[...document.querySelectorAll('#ability-pair-choices p')].some(p=>p.textContent.includes('답을 기다리고')));
+  assert.equal(player.constellationAbilityState.usedWeek,null);
+  const declined=[...room.piscesInvites.values()].find(i=>i.fromId===player.id);
+  assert(declined);assert((await friend.timeout(5000).emitWithAck('constellation-ability:pair-respond',{requestId:declined.id,accept:false})).ok);
+  await page.locator('#ability-pair-choices button').waitFor({state:'visible'});
+  assert.equal(player.constellationAbilityState.usedWeek,null);
+  now+=5*60000+1;await page.locator('#ability-pair-choices button').click();
+  const invitation=[...room.piscesInvites.values()].find(i=>i.fromId===player.id);
+  assert(invitation);assert((await friend.timeout(5000).emitWithAck('constellation-ability:pair-respond',{requestId:invitation.id,accept:true})).ok);
+  await page.locator('#party-hud').waitFor({state:'visible'});
+  assert.match(await page.locator('#party-hud h3').innerText(),/물고기자리 짝/);
+  assert.equal(await page.locator('#party-leave').isDisabled(),true);
+  await page.screenshot({path:`${output}/pisces-pair.png`});
+  report.checks.push('물고기자리 친구 선택→신청 대기→수락→짝 HUD·탈퇴 잠금');
+  await as('sagittarius',3);
+  const ownWarning=issueWarning(room,planet,[...room.players.values()].find(p=>p.role==='teacher'),player,'검사 경고',now).entry;
+  publish();await page.locator('#self-ability-use').click();
+  await page.locator('#ability-hunt-choices select').selectOption(ownWarning.id);
+  await page.locator('#ability-hunt-choices button').click();
+  await page.waitForFunction(()=>document.querySelector('#self-ability-status')?.textContent.includes('1/2회'));
+  assert.equal(warningCount(planet,player.id),0);
+  await page.screenshot({path:`${output}/sagittarius-warning.png`});
+  report.checks.push('사수자리 내 경고 선택→삭제→주간 1/2회 표시');
+  await page.setViewportSize({width:390,height:844});
+  assert(await page.locator('#ability-dialog').evaluate(e=>e.getBoundingClientRect().right<=innerWidth&&e.scrollWidth<=e.clientWidth));
+  report.checks.push('390px 물고기자리·사수자리 선택창 가로 넘침 없음');
   assert.deepEqual(report.errors,[]);
   console.log(JSON.stringify(report));
 }catch(error){report.failure=error.stack;throw error;}

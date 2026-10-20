@@ -4,12 +4,15 @@ import {itemOf} from '/shared/config.js';
 const PIPS={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
 const FACE={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateX(90deg)',4:'rotateX(-90deg)',5:'rotateY(90deg)',6:'rotateY(180deg)'};
 
-export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
+export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toast}){
   const $=id=>document.getElementById(id),panel=$('self-ability-panel'),use=$('self-ability-use');
   const dialog=$('ability-dialog'),cube=$('ability-cube'),dice=$('ability-dice'),resultText=$('ability-dice-result');
   const rollFaces=document.createElement('div');rollFaces.className='ability-roll-faces';rollFaces.hidden=true;cube.after(rollFaces);
-  let status=null,signature='',snapshotSignature='',revision=0,busy=false,animation=null,finishTimer=null,resetTimer=null,reminderTimer=null,messageTimer=null;
+  let status=null,signature='',snapshotSignature='',pairSignature='',revision=0,busy=false,animation=null,finishTimer=null,resetTimer=null,pairTimer=null,reminderTimer=null,messageTimer=null;
   const choices=document.createElement('section');choices.id='ability-item-choices';choices.hidden=true;dice.after(choices);
+  const pairChoices=document.createElement('section');pairChoices.id='ability-pair-choices';pairChoices.hidden=true;choices.after(pairChoices);
+  const huntChoices=document.createElement('section');huntChoices.id='ability-hunt-choices';huntChoices.hidden=true;pairChoices.after(huntChoices);
+  let huntOptions=null;
   const reminder=document.createElement('button');reminder.id='ability-unused-reminder';reminder.type='button';reminder.textContent='!';reminder.hidden=true;reminder.setAttribute('aria-label','아직 사용하지 않은 별자리 능력 안내');$('bottom-dock').append(reminder);
   const reminderMessage=document.createElement('div');reminderMessage.id='ability-reminder-message';reminderMessage.setAttribute('role','status');reminderMessage.hidden=true;
   reminderMessage.textContent='아직 별자리 캐릭터 능력을 사용하지 않았습니다\n별자리 능력은 1주일 마다 다시 사용할 수 있습니다.';document.body.append(reminderMessage);
@@ -38,7 +41,9 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
   function rewardLabel(reward){return reward>0?`별 파편 ${reward}개를 만들었어요!`:reward<0?`별 파편 ${-reward}개를 반납했어요.`:'이번에는 별 파편이 나오지 않았어요. 이번 주 능력은 사용 완료예요.';}
   function outcome(value){
     if(status?.constellationId==='libra'&&status.level===2)return '선생님이 주차를 확인하면 경험치를 받아요.';
-    if(status?.constellationId==='libra'&&status.level===4&&value.itemId)return `${itemOf(value.itemId)?.name||'카드'} 1장을 받았어요!`;
+    if(status?.constellationId==='libra'&&status.level>=4&&value.itemId)return `${itemOf(value.itemId)?.name||'카드'} 1장을 받았어요!`;
+    if(status?.constellationId==='pisces'&&value.targetId)return `${getRoom()?.players.find(p=>p.id===value.targetId)?.nickname||'친구'}와 짝 상태가 되었어요!`;
+    if(status?.constellationId==='sagittarius')return value.mode==='warning'?'내 경고 1개를 삭제했어요.':value.mode==='black-star'?'내 검은별 상태를 해제했어요.':'고른 부서의 내 경고를 모두 삭제했어요.';
     if(value.itemId)return `${itemOf(value.itemId)?.name||'아이템'} 1개를 ${value.mode==='copy'?'복사했어요':'만들었어요'}!`;
     if(Number.isFinite(value.budget))return value.budget>0?`별 파편 ${value.budget}개 가치 이하의 아이템 1개를 고를 수 있어요.`:'이번에는 만들 수 있는 아이템이 없어요. 이번 주 능력은 사용 완료예요.';
     return rewardLabel(value.reward);
@@ -57,6 +62,60 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
       button.append(label,value);button.onclick=()=>void chooseItem(choice.id);grid.append(button);
     }
     const note=document.createElement('p');note.className='muted';note.textContent=copy?'가방에 있는 원래 아이템은 그대로 두고 같은 아이템 1개를 복사해요. 다음 일요일 0시 전까지 선택해 주세요.':'고른 아이템 1개만 만들어요. 남는 가치는 돌려받지 않아요. 다음 일요일 0시 전까지 선택해 주세요.';choices.append(note);
+  }
+  function renderPairChoices(){
+    clearTimeout(pairTimer);
+    const p=getPlayer(),room=getRoom?.(),pending=room?.piscesInvites?.find(i=>i.fromId===p?.id&&i.expiresAt>Date.now());
+    pairChoices.hidden=status?.constellationId!=='pisces'||!status?.canUse;
+    pairChoices.replaceChildren();if(pairChoices.hidden)return;
+    const heading=document.createElement('h3');heading.textContent='짝이 될 친구 선택';pairChoices.append(heading);
+    if(pending){const wait=document.createElement('p');wait.textContent=`${room.players.find(friend=>friend.id===pending.toId)?.nickname||'친구'}의 답을 기다리고 있어요. 거절하면 이번 주 능력은 남아요.`;pairChoices.append(wait);
+      if(dialog.open)pairTimer=setTimeout(renderPairChoices,Math.max(100,pending.expiresAt-Date.now()+100));return;}
+    const friends=(room?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==p?.id&&friend.connected&&!friend.away);
+    const select=document.createElement('select');select.setAttribute('aria-label','짝이 될 친구');
+    for(const friend of friends){const option=document.createElement('option');option.value=friend.id;option.textContent=friend.nickname;select.append(option);}
+    const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='짝 신청하기';button.disabled=!friends.length||busy;
+    button.onclick=async()=>{
+      if(busy||!select.value)return;
+      busy=true;button.disabled=true;
+      try{const response=await request('constellation-ability:use',{targetId:select.value});status=response;render();toast(response.message);}
+      catch(error){toast(error.message);void refresh();}
+      finally{busy=false;render();}
+    };
+    const note=document.createElement('p');note.className='muted';note.textContent='친구가 수락하면 기간 동안 둘만의 파티가 됩니다. 지금 파티에 있다면 먼저 탈퇴해 주세요.';
+    pairChoices.append(select,button,note);
+  }
+  function renderHunterChoices(){
+    huntChoices.hidden=status?.constellationId!=='sagittarius'||!status?.canUse;
+    huntChoices.replaceChildren();if(huntChoices.hidden)return;
+    const heading=document.createElement('h3');heading.textContent='내 경고·검은별 선택';huntChoices.append(heading);
+    if(!huntOptions){const wait=document.createElement('p');wait.className='muted';wait.textContent='내 경고를 확인하고 있어요.';huntChoices.append(wait);return;}
+    const button=(label,mode,payload={})=>{const element=document.createElement('button');element.type='button';element.className='secondary';element.textContent=label;element.disabled=busy;
+      element.onclick=()=>void useHunter(mode,payload);return element;};
+    if(status.level<=3&&huntOptions.warnings.length){
+      const select=document.createElement('select');select.setAttribute('aria-label','삭제할 내 경고');
+      for(const warning of huntOptions.warnings){const option=document.createElement('option');option.value=warning.id;option.textContent=`${warning.planetName} · ${warning.reason}`;select.append(option);}
+      huntChoices.append(select,button('고른 경고 1개 삭제','warning',{get warningId(){return select.value;}}));
+    }
+    if(status.level>=4&&huntOptions.blackStarAt!==null)huntChoices.append(button('내 검은별 해제','black-star',{blackStarAt:huntOptions.blackStarAt}));
+    if(status.level===5&&!status.lastResult?.mode&&huntOptions.departments.length){
+      const select=document.createElement('select');select.setAttribute('aria-label','내 경고를 모두 삭제할 부서');
+      for(const department of huntOptions.departments){const option=document.createElement('option');option.value=department.id;option.textContent=`${department.name} · 내 경고 ${department.count}개`;select.append(option);}
+      huntChoices.append(select,button('이 부서의 내 경고 모두 삭제','department',{get planetId(){return select.value;}}));
+    }
+    if(!huntChoices.querySelector('button')){const empty=document.createElement('p');empty.className='muted';empty.textContent='지금 삭제할 내 경고나 검은별 상태가 없어요. 이번 주 능력은 남아 있어요.';huntChoices.append(empty);}
+  }
+  async function loadHunterChoices(){
+    if(status?.constellationId!=='sagittarius')return;
+    const key=identity();huntOptions=null;renderHunterChoices();
+    try{const options=await request('constellation-ability:sagittarius-options',{});if(key!==identity())return;huntOptions=options;renderHunterChoices();}
+    catch(error){toast(error.message);}
+  }
+  async function useHunter(mode,payload){
+    if(busy)return;busy=true;renderHunterChoices();
+    try{const response=await request('constellation-ability:use',{mode,...payload});status=response;huntOptions=null;render();toast(response.message);if(status.canUse)void loadHunterChoices();}
+    catch(error){toast(error.message);void loadHunterChoices();}
+    finally{busy=false;render();}
   }
   async function chooseItem(itemId){
     if(busy)return;busy=true;const token=++revision,key=identity();renderChoices();
@@ -105,13 +164,13 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
     const p=getPlayer(),name=constellationOf(p?.avatar?.constellationId,p?.avatar?.level)?.name||'별자리';
     $('ability-title').textContent=`${name} Lv${p?.avatar?.level||1} · 별자리 능력`;
     $('ability-description').textContent=status?.description||'능력 정보를 불러오는 중이에요.';
-    const note=!status?'능력 정보를 확인하고 있어요.':status.pending?`능력효과를 눌러 ${status.pending.mode==='copy'?'복사할':'만들'} 아이템을 골라 주세요.`:!status.configured?'이 별자리의 능력은 준비 중이에요.':p?.role==='teacher'?'선생님은 효과를 확인할 수 있어요. 능력 사용은 학생 전용이에요.':status.used?'이번 주 능력을 사용했어요.':status.message||'이번 주 능력을 사용할 수 있어요.';
+    const note=!status?'능력 정보를 확인하고 있어요.':status.pending?`능력효과를 눌러 ${status.pending.mode==='copy'?'복사할':'만들'} 아이템을 골라 주세요.`:!status.configured?'이 별자리의 능력은 준비 중이에요.':p?.role==='teacher'?'선생님은 효과를 확인할 수 있어요. 능력 사용은 학생 전용이에요.':status.used?'이번 주 능력을 사용했어요.':status.constellationId==='sagittarius'&&status.uses?`이번 주 ${status.uses}/${status.useLimit}회 사용했어요.`:status.message||'이번 주 능력을 사용할 수 있어요.';
     const passiveNote=status?.blockedByChange?status.message:status?.passive?`자동 패시브 · 부서 경고 ${status.warningUsed||0}/${status.warningLimit||1}회${status.blackLimit?` · 검은별 ${status.blackUsed||0}/${status.blackLimit}회`:''}`:note;
     $('self-ability-status').textContent=passiveNote;
     $('ability-status').textContent=passiveNote+'\n매주 일요일 오전 0시(한국 시간)에 다시 사용할 수 있어요.\n별자리를 바꾸거나 진화해도 사용 기록은 유지돼요.';
     if(status?.used&&status.lastResult&&!animation)showResult(status.lastResult);
     if(!status?.used){dice.hidden=true;$('ability-outcome').textContent='';}
-    renderChoices();updateReminder();
+    renderChoices();renderPairChoices();renderHunterChoices();updateReminder();
   }
   function scheduleReset(){
     clearTimeout(resetTimer);
@@ -135,11 +194,13 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
     }finally{if(token===revision)panel.setAttribute('aria-busy','false');}
   }
   function open(){stop();window.dispatchEvent(new Event('game-ui-focus'));if(!dialog.open)dialog.showModal();}
-  $('self-ability-effect').onclick=()=>{open();void refresh();};
+  $('self-ability-effect').onclick=()=>{open();void refresh().then(()=>{if(status?.constellationId==='sagittarius')void loadHunterChoices();});};
   $('ability-close').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{stopAnimation();scheduleReset();});
+  dialog.addEventListener('close',()=>{stopAnimation();clearTimeout(pairTimer);scheduleReset();});
   use.onclick=async()=>{
     if(busy||!status?.canUse)return;
+    if(status.constellationId==='pisces'){open();renderPairChoices();return;}
+    if(status.constellationId==='sagittarius'){open();void loadHunterChoices();return;}
     const token=++revision,key=identity();busy=true;render();let failed=false;
     try{
       const response=await request('constellation-ability:use',{});
@@ -156,11 +217,13 @@ export function createConstellationAbilityUI({request,getPlayer,stop,toast}){
       const p=getPlayer(),next=identity();
       panel.dataset.constellation=p?.avatar?.constellationId||'';panel.dataset.level=String(p?.avatar?.level||1);
       panel.hidden=!(p?.avatar?.level>=2&&constellationOf(p.avatar.constellationId)?.type);
-      if(next!==signature){signature=next;++revision;busy=false;status=null;stopAnimation();clearTimeout(resetTimer);dice.hidden=true;$('ability-outcome').textContent='';render();
+      if(next!==signature){signature=next;++revision;busy=false;status=null;huntOptions=null;stopAnimation();clearTimeout(resetTimer);dice.hidden=true;$('ability-outcome').textContent='';render();
         if(panel.hidden&&dialog.open)dialog.close();else if(visible())void refresh();}
       const incoming=p?.constellationAbility,nextSnapshot=JSON.stringify(incoming||null);
       if(incoming&&!busy&&!animation&&nextSnapshot!==snapshotSignature){snapshotSignature=nextSnapshot;++revision;status=incoming;panel.setAttribute('aria-busy','false');render();scheduleReset();}
+      const pairState=getRoom?.(),nextPair=JSON.stringify({invites:pairState?.piscesInvites||[],friends:(pairState?.players||[]).map(friend=>[friend.id,friend.connected,friend.away])});
+      if(nextPair!==pairSignature){pairSignature=nextPair;if(status?.constellationId==='pisces')renderPairChoices();}
     },
-    reset(){++revision;signature='';snapshotSignature='';busy=false;status=null;stopAnimation();clearTimeout(resetTimer);clearTimeout(reminderTimer);clearTimeout(messageTimer);reminder.hidden=true;reminderMessage.hidden=true;panel.hidden=true;if(dialog.open)dialog.close();}
+    reset(){++revision;signature='';snapshotSignature='';pairSignature='';busy=false;status=null;huntOptions=null;stopAnimation();clearTimeout(resetTimer);clearTimeout(pairTimer);clearTimeout(reminderTimer);clearTimeout(messageTimer);reminder.hidden=true;reminderMessage.hidden=true;panel.hidden=true;if(dialog.open)dialog.close();}
   };
 }

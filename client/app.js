@@ -119,7 +119,7 @@ const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
 const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!placing&&!document.querySelector('dialog:modal'),toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
 const characterSkills=createCharacterSkillsUI();
-const constellationAbility=createConstellationAbilityUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),stop,toast});
+const constellationAbility=createConstellationAbilityUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
@@ -419,6 +419,7 @@ function updateRoom(value){
   marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
+  if(isTeacher&&$('teacher-dialog').open)renderTeacherPiscesPairs();
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
   // 다른 친구의 입퇴장·구매마다 스냅샷이 오므로, 내 잔액·가방이 실제로 바뀐 경우에만 상점 목록을 다시 그립니다(입력 중인 수량 보호).
   if($('shop-dialog').open){const sig=shopSignature();if(sig!==shopSig){shopSig=sig;updateShopShards();renderShopBuyList();renderShopSellList();}}
@@ -1024,6 +1025,25 @@ $('planet-create-submit').onclick=async()=>{
 $('crew-button').onclick=()=>{stop();$('crew-dialog').showModal();};
 $('crew-close').onclick=()=>$('crew-dialog').close();
 $('crew-dialog').addEventListener('close',()=>$('world').focus());
+// 현실 교실의 책상·급식 자리를 선생님이 바로 확인할 수 있게 활성 짝을 표시합니다.
+const piscesTeacherSection=document.createElement('section');
+piscesTeacherSection.id='teacher-pisces-pairs';
+piscesTeacherSection.innerHTML='<h3>물고기자리 짝 자리 확인</h3><ul id="teacher-pisces-pair-list"></ul><p id="teacher-pisces-pair-empty" class="muted">현재 짝 상태인 친구가 없어요.</p>';
+$('teacher-dialog').querySelector('.teacher-footer').before(piscesTeacherSection);
+function renderTeacherPiscesPairs(){
+  const list=$('teacher-pisces-pair-list');list.replaceChildren();
+  const players=room?.players||[];
+  for(const player of players){
+    const pair=player.piscesPair;
+    if(!pair||player.id>pair.partnerId||pair.endsAt<=Date.now())continue;
+    const partner=players.find(other=>other.id===pair.partnerId);
+    if(!partner)continue;
+    const row=document.createElement('li');
+    row.textContent=`${player.nickname} · ${partner.nickname} — 책상·급식 함께 (${new Date(pair.endsAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}까지)`;
+    list.append(row);
+  }
+  $('teacher-pisces-pair-empty').hidden=!!list.children.length;
+}
 // 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
 for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section')].entries()){
   const heading=section.querySelector(':scope > h3');
@@ -1043,7 +1063,7 @@ for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > 
   for(const child of [...section.children])if(child!==headingRow&&child!==panel)panel.append(child);
   button.onclick=()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));panel.hidden=expanded;};
 }
-$('teacher-tools').onclick=()=>{updateShardsTargetOptions();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
+$('teacher-tools').onclick=()=>{updateShardsTargetOptions();renderTeacherPiscesPairs();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
 $('teacher-close').onclick=()=>$('teacher-dialog').close();
 $('teacher-leave').onclick=()=>{$('teacher-dialog').close();$('leave').click();};
 $('teacher-dialog').addEventListener('close',()=>$('world').focus());

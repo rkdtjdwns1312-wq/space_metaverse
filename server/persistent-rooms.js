@@ -19,6 +19,7 @@ import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
 import {validateAbilityState} from './constellation-abilities.js';
 import {validateConstellationAbilityState} from './constellation-weekly-abilities.js';
+import {validatePiscesPair,restorePiscesParties} from './party.js';
 import { RoomStore, ensure, GameError, nickname } from './rooms.js';
 import {pinHash,checkPin} from './pin-auth.js';
 export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
@@ -80,12 +81,13 @@ export function toRecord(room) {
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
       holdingState:validateHoldingState(p.holdingState),
       constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),
+      piscesPair:validatePiscesPair(p.piscesPair),
       learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
-export function fromRecord(r) {
+export function fromRecord(r,now=Date.now()) {
   const bad=()=>{throw new Error('교실 저장 데이터가 올바르지 않습니다: '+r.code);};
   if(!Array.isArray(r.allowedNames)||r.allowedNames.length<(r.adminCreated?0:1)||r.allowedNames.length>29 ||
     !Array.isArray(r.students)||r.students.length>29||!Array.isArray(r.planets)||!Array.isArray(r.proposals)||
@@ -168,8 +170,9 @@ export function fromRecord(r) {
       dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
-      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),role:'student'}));
+      lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),piscesPair:validatePiscesPair(p.piscesPair),role:'student'}));
   }
+  restorePiscesParties(room,now);
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
     room.proposals.set(pr.id,structuredClone(pr));
@@ -185,7 +188,7 @@ export class PersistentRoomStore extends RoomStore {
   constructor(directory,{unattended=false,teacherManagedAccounts=false,maxActiveRooms=RULES.maxRooms,clock=Date.now}={}) {
     super({maxActiveRooms,clock});this.unattended=unattended;this.teacherManagedAccounts=teacherManagedAccounts;this.files=new ClassFileStore(directory);this.records=new Map();
     try {for(const r of this.files.loadAll()){
-      const restored=fromRecord(r);
+      const restored=fromRecord(r,this.clock());
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
       this.records.set(r.code,{...r,serena:restored.serena,bossRespawns:restored.bossRespawns,
@@ -232,7 +235,7 @@ export class PersistentRoomStore extends RoomStore {
     }
     ensure(this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요.');
     const record=this.records.get(code);ensure(record,'저장된 교실 코드를 확인해주세요.');
-    const room=fromRecord(record);room.unattended=this.unattended;this.rooms.set(code,room);
+    const room=fromRecord(record,this.clock());room.unattended=this.unattended;this.rooms.set(code,room);
     return {room,player:this.add(room,'선생님','teacher',socketId)};
   }
   list(){return [...this.records.values()].map(r=>({code:r.code,title:r.title,open:this.rooms.has(r.code)}));}
@@ -242,7 +245,7 @@ export class PersistentRoomStore extends RoomStore {
     let room=this.rooms.get(code);
     if(!room&&this.unattended&&this.records.has(code)){
       ensure(this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요.');
-      room=fromRecord(this.records.get(code));room.unattended=true;this.rooms.set(code,room);
+      room=fromRecord(this.records.get(code),this.clock());room.unattended=true;this.rooms.set(code,room);
     }
     ensure(room,'선생님이 교실을 열었는지와 교실 코드를 확인해주세요.');
     ensure(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');

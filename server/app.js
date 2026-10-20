@@ -60,7 +60,7 @@ import {EQUIPMENT_ITEMS,equipmentOf} from '../shared/equipment.js';
 import {buyEquipment,equip,unequip} from './equipment.js';
 import { checkChatRate } from './chat-rate.js';
 import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } from './social.js';
-import {inviteParty,respondParty,leaveParty} from './party.js';
+import {inviteParty,respondParty,leaveParty,invitePiscesPair,respondPiscesPair,settlePiscesPairs,activePiscesPair} from './party.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
@@ -76,7 +76,7 @@ import {currentWeekRecords,resetWeeklyRanking} from './weekly-ranking.js';
 import {memoryRanking,startMemoryRun,cancelMemoryRun,flipMemoryCard} from './memory-game.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,selectTeacherEvolution,growthInfo,buyExperience} from './evolution.js';
 import {gainExperience} from './progression.js';
-import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
+import {warningView,issueWarning,clearBlackStar,clearWarningsFromPlanet,clearOneWarningFromPlanet,clearOwnWarning,clearOwnDepartmentWarnings,clearOwnBlackStar,warningCount,blackStarList,teacherWarningHistory,deleteTeacherWarning} from './warnings.js';
 import {hasMoonProtectionFrom,hasItemImmunity,activeCardMarkers,hasCardStatus,addCardMarker,nextKoreaMidnight} from './item-cards.js';
 import {exemptionName} from '../shared/item-exemptions.js';
 import {startOneStroke,completeOneStroke} from './one-stroke-game.js';
@@ -99,7 +99,7 @@ import {registerCultureLibrary,registerHistoryLibrary} from './culture-library.j
 import {registerScienceLibrary} from './science-library.js';
 import {awardLearningReward} from './learning-rewards.js';
 import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
-import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,constellationChangedThisWeek} from './constellation-weekly-abilities.js';
+import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek} from './constellation-weekly-abilities.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -906,9 +906,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('party:leave',()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      ensure(leaveParty(s.room,s.player.id),'현재 참여 중인 파티가 없어요.');
+      ensure(leaveParty(s.room,s.player.id,clock()),'현재 참여 중인 파티가 없어요.');
       roster(s.room);return {};
     },false);
+    action('constellation-ability:pair-respond',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 짝 신청에 답할 수 있어요.');
+      const result=respondPiscesPair(s.room,s.player,data.requestId,data.accept,clock());
+      if(result.accepted){
+        announce(s.room,`${result.invite.fromNickname} 친구와 ${s.player.nickname} 친구가 ${result.invite.days}일 동안 물고기자리 짝이 되었어요. 책상과 급식 자리를 함께해 주세요.`);
+      }else{
+        const source=s.room.players.get(result.invite.fromId);if(source)whisper(s.room,source,s.player.nickname+' 친구가 짝 신청을 거절했어요. 주간 능력은 사용되지 않았어요.');
+      }
+      roster(s.room);return result;
+    });
     action('chat:setEnabled',data=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');
       ensure(typeof data.enabled==='boolean','입력 내용을 확인해주세요.');
@@ -1309,6 +1319,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(!filterChat(reason).flagged,'경고 이유에 쓸 수 없는 말이 있어요.');
       const result=issueWarning(room,planet,p,target,reason,clock());
       whisper(room,target,result.ability?.negated?result.message:planet.name+'에서 경고를 받았어요. ('+result.count+'/'+result.threshold+'회) 이유: '+reason+(result.blackStar?' 검은별이 되어 블랙홀로 이동했어요.':'')+([result.ability?.message,result.blackAbility?.message].filter(Boolean).join(' ')));
+      if(result.mirrored?.active){const mate=room.players.get(result.mirrored.targetId);if(mate)whisper(room,mate,`물고기자리 짝 친구가 받은 경고를 함께 받았어요. (${result.mirrored.count}/${result.threshold}회) 이유: ${reason}`+(result.mirrored.blackStar?' 검은별이 되어 블랙홀로 이동했어요.':''));}
       roster(room);
       return {...warningView(room,planet),count:result.count,blackStar:result.blackStar,message:result.message,ability:result.ability,blackAbility:result.blackAbility};
     });
@@ -1803,8 +1814,40 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return s;
     };
     action('constellation-ability:status',()=>constellationAbilityStatus(weeklyAbilitySession().player,clock()),false);
-    const weeklyAbilityUse=()=>{
-      const s=weeklyAbilitySession(),result=useConstellationAbility(s.player,clock(),abilityDie,craftingRecipes);
+    const sagittariusOptions=()=>{
+      const s=weeklyAbilitySession();ensure(s.player.avatar?.constellationId==='sagittarius','사수자리 능력에서만 볼 수 있어요.');
+      const warnings=[...s.room.planets.values()].flatMap(planet=>(planet.warnings?.entries||[])
+        .filter(entry=>entry.active&&entry.targetId===s.player.id)
+        .map(entry=>({id:entry.id,planetId:planet.id,planetName:planet.name,reason:entry.reason,at:entry.at})));
+      const departments=[...s.room.planets.values()].map(planet=>({id:planet.id,name:planet.name,count:warnings.filter(entry=>entry.planetId===planet.id).length})).filter(planet=>planet.count>0);
+      return {warnings,departments,blackStarAt:s.player.avatar.blackStar?.at??null,status:constellationAbilityStatus(s.player,clock())};
+    };
+    action('constellation-ability:sagittarius-options',sagittariusOptions,false);
+    const weeklyAbilityUse=data=>{
+      const s=weeklyAbilitySession();
+      if(s.player.avatar?.constellationId==='pisces'){
+        const invitation=invitePiscesPair(s.room,s.player,data.targetId,clock());roster(s.room);
+        return {invitation,...constellationAbilityStatus(s.player,clock()),message:'짝 신청을 보냈어요. 친구가 수락하면 능력이 사용돼요.'};
+      }
+      if(s.player.avatar?.constellationId==='sagittarius'){
+        const p=s.player,room=s.room,status=constellationAbilityStatus(p,clock());
+        ensure(status.canUse,status.message||'이번 주 사수자리 능력을 사용할 수 없어요.');
+        const mode=data?.mode;let detail={};let message;
+        validateSagittariusUse(p,mode,clock());
+        if(mode==='warning'&&status.level<=3){
+          const {planet}=clearOwnWarning(room,p,data.warningId);
+          detail={warningId:data.warningId,planetId:planet.id};message='내 경고 1개를 삭제했어요.';
+        }else if(mode==='black-star'&&status.level>=4){
+          const {planetId}=clearOwnBlackStar(room,p,data.blackStarAt);
+          detail={planetId};message='내 검은별 상태와 그 부서의 내 경고를 해제했어요.';
+        }else if(mode==='department'&&status.level===5){
+          const {planet,cleared:removed}=clearOwnDepartmentWarnings(room,p,data.planetId);
+          detail={planetId:planet.id};message=`${planet.name}에서 내 경고 ${removed}개를 모두 삭제했어요.`;
+        }else throw new GameError('현재 단계에서 선택할 수 없는 능력이에요.');
+        const result=completeSagittariusUse(p,mode,detail,clock());roster(room);
+        return {...result,message};
+      }
+      const result=useConstellationAbility(s.player,clock(),abilityDie,craftingRecipes);
       roster(s.room);return result;
     };
     action('constellation-ability:use',weeklyAbilityUse);
@@ -2013,6 +2056,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
+      if([...room.players.values()].some(p=>p.piscesPair?.endsAt<=clock())){
+        try{transaction(()=>{if(settlePiscesPairs(room,clock()))roster(room);});}
+        catch(error){console.error('물고기자리 짝 만료 저장 실패:',error.message);continue;}
+      }
       if((!room.dailyMissions?.day||room.dailyMissions.day<dailyMissionDay(clock()))&&now>=(room.dailyRetryAt||0)){
         try{transaction(()=>{if(ensureDailyMissions(room,clock()))roster(room);});}
         catch(error){const restored=store.rooms.get(room.code);if(restored)restored.dailyRetryAt=now+1000;console.error('일일 미션 저장 실패:',error.message);continue;}
@@ -2033,7 +2080,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const expired=now>=(room.cleanupRetryAt||0)&&[...room.players.values()].some(p=>!p.connected && p.expiresAt!==null && p.expiresAt<=now);
       try { if(expired)transaction(()=>{for(const p of room.players.values()){
         if(!p.connected && p.expiresAt!==null && p.expiresAt<=now){
-          leaveParty(room,p.id);
+          if(!persistent||!activePiscesPair(p,clock()))leaveParty(room,p.id,clock(),!persistent);
           if(p.role==='teacher'&&!room.unattended){roomClosed(room);break;}
           const planetId=p.avatar.departmentId;
           store.remove(room,p);changed=true;

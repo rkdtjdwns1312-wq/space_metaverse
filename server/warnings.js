@@ -4,6 +4,7 @@ import {WARNING_RULES,BLACK_HOLE_ID,PLAZA_ID} from '../shared/config.js';
 import {ensure} from './rooms.js';
 import {spawnInside,arrivePosition} from './world.js';
 import {applyHerculesWeekly} from './constellation-weekly-abilities.js';
+import {activePiscesPair} from './party.js';
 
 export function validateWarnings(value){
   if(value===undefined)return {threshold:WARNING_RULES.defaultThreshold,entries:[]};
@@ -11,7 +12,7 @@ export function validateWarnings(value){
     !Array.isArray(value.entries)||value.entries.length>WARNING_RULES.maxEntries||value.entries.some(e=>
       !e||typeof e.id!=='string'||typeof e.targetId!=='string'||typeof e.actorId!=='string'||
       typeof e.reason!=='string'||!e.reason.trim()||e.reason.length>WARNING_RULES.maxReasonLength||
-      !Number.isSafeInteger(e.at)||e.at<0||typeof e.active!=='boolean'))
+      !Number.isSafeInteger(e.at)||e.at<0||typeof e.active!=='boolean'||(e.sourceWarningId!==undefined&&(typeof e.sourceWarningId!=='string'||!e.sourceWarningId))))
     throw new Error('교실 경고 저장 데이터가 올바르지 않습니다.');
   return structuredClone(value);
 }
@@ -24,25 +25,28 @@ export function validateBlackStar(value,planetIds){
 export function warningCount(planet,targetId){
   return (planet.warnings?.entries||[]).filter(e=>e.active&&e.targetId===targetId).length;
 }
+function releaseIfBelow(room,planet,target){
+  if(!target||target.avatar.blackStar?.planetId!==planet.id||warningCount(planet,target.id)>=planet.warnings.threshold)return false;
+  target.avatar.blackStar=null;
+  if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  return true;
+}
+function clearLinked(room,planet,entry){
+  if(!entry.id)return;
+  for(const linked of planet.warnings.entries)if(linked.active&&linked.sourceWarningId===entry.id){linked.active=false;releaseIfBelow(room,planet,room.players.get(linked.targetId));}
+}
 export function clearWarningsFromPlanet(room,planet,target){
   let cleared=0;
-  for(const entry of planet.warnings?.entries||[])if(entry.active&&entry.targetId===target.id){entry.active=false;cleared++;}
-  let released=false;
-  if(cleared&&target.avatar.blackStar?.planetId===planet.id){
-    target.avatar.blackStar=null;released=true;
-    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
-  }
+  for(const entry of planet.warnings?.entries||[])if(entry.active&&entry.targetId===target.id){entry.active=false;cleared++;clearLinked(room,planet,entry);}
+  const released=cleared?releaseIfBelow(room,planet,target):false;
   return {cleared,released};
 }
 export function clearOneWarningFromPlanet(room,planet,target){
   const entry=[...(planet.warnings?.entries||[])].reverse().find(value=>value.active&&value.targetId===target.id);
   if(!entry)return {cleared:0,released:false};
   entry.active=false;
-  let released=false;
-  if(target.avatar.blackStar?.planetId===planet.id&&warningCount(planet,target.id)<planet.warnings.threshold){
-    target.avatar.blackStar=null;released=true;
-    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
-  }
+  clearLinked(room,planet,entry);
+  const released=releaseIfBelow(room,planet,target);
   return {cleared:1,released};
 }
 export function warningView(room,planet){
@@ -57,7 +61,9 @@ export function issueWarning(room,planet,actor,target,reason,now=Date.now()){
   ensure(!target.avatar.blackStar,'이미 검은별 상태인 친구예요.');
   ensure(typeof reason==='string'&&reason.trim().length>0&&reason.trim().length<=WARNING_RULES.maxReasonLength,'경고 이유를 1~120자로 적어주세요.');
   planet.warnings??=validateWarnings();
-  ensure(planet.warnings.entries.length<WARNING_RULES.maxEntries,'경고 기록이 가득 찼어요. 선생님께 알려주세요.');
+  const pair=activePiscesPair(target,now),mirrorTarget=pair&&(pair.level===3||pair.level===4)&&pair.sourceId===pair.partnerId?room.players.get(pair.partnerId):null;
+  const canMirror=mirrorTarget?.role==='student'&&!mirrorTarget.avatar.blackStar;
+  ensure(planet.warnings.entries.length+(canMirror?2:1)<=WARNING_RULES.maxEntries,'경고 기록이 가득 찼어요. 선생님께 알려주세요.');
   const entry={id:randomUUID(),targetId:target.id,actorId:actor.id,reason:reason.trim(),at:now,active:true};
   const ability=applyHerculesWeekly(target,'warning',now);
   if(ability?.negated)entry.active=false;
@@ -69,11 +75,21 @@ export function issueWarning(room,planet,actor,target,reason,now=Date.now()){
     blackAbility=applyHerculesWeekly(target,'black',now);
     Object.assign(target,spawnInside(room,BLACK_HOLE_ID,target),{mapId:BLACK_HOLE_ID,input:{x:0,y:0,at:0}});
   }
-  return {entry,count,threshold:planet.warnings.threshold,blackStar,ability,blackAbility,message:ability?.message||blackAbility?.message||null};
+  let mirrored=null;
+  if(entry.active&&canMirror){
+    const linked={id:randomUUID(),targetId:mirrorTarget.id,actorId:actor.id,reason:reason.trim(),at:now,active:true,sourceWarningId:entry.id};
+    const linkedAbility=applyHerculesWeekly(mirrorTarget,'warning',now);
+    if(linkedAbility?.negated)linked.active=false;
+    planet.warnings.entries.push(linked);
+    const linkedCount=warningCount(planet,mirrorTarget.id),linkedBlack=!linkedAbility?.negated&&linkedCount>=planet.warnings.threshold;
+    if(linkedBlack){mirrorTarget.avatar.blackStar={planetId:planet.id,at:now};applyHerculesWeekly(mirrorTarget,'black',now);Object.assign(mirrorTarget,spawnInside(room,BLACK_HOLE_ID,mirrorTarget),{mapId:BLACK_HOLE_ID,input:{x:0,y:0,at:0}});}
+    mirrored={targetId:mirrorTarget.id,count:linkedCount,blackStar:linkedBlack,active:linked.active};
+  }
+  return {entry,count,threshold:planet.warnings.threshold,blackStar,ability,blackAbility,mirrored,message:ability?.message||blackAbility?.message||null};
 }
 export function clearBlackStar(room,target){
   ensure(target&&target.role==='student'&&target.avatar.blackStar,'검은별 상태인 학생을 골라주세요.');
-  for(const planet of room.planets.values())for(const entry of planet.warnings?.entries||[])if(entry.targetId===target.id)entry.active=false;
+  for(const planet of room.planets.values())for(const entry of planet.warnings?.entries||[])if(entry.active&&entry.targetId===target.id){entry.active=false;clearLinked(room,planet,entry);}
   target.avatar.blackStar=null;
   if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
 }
@@ -96,13 +112,38 @@ export function deleteTeacherWarning(room,warningId){
   const entry=planet?.warnings.entries.find(value=>value.id===warningId);
   ensure(entry?.active,'삭제할 수 있는 경고를 찾지 못했어요.');
   entry.active=false;
+  clearLinked(room,planet,entry);
   const target=room.players.get(entry.targetId);
-  let released=false;
-  if(target?.avatar.blackStar?.planetId===planet.id&&warningCount(planet,target.id)<planet.warnings.threshold){
-    target.avatar.blackStar=null;released=true;
-    if(target.mapId===BLACK_HOLE_ID)Object.assign(target,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},target),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
-  }
+  const released=releaseIfBelow(room,planet,target);
   return {target,released,remaining:target?warningCount(planet,target.id):0};
+}
+
+// 사수자리의 자기 경고 사냥은 물고기자리 짝에게 복사된 경고까지 지우지 않습니다.
+export function clearOwnWarning(room,player,warningId){
+  const planet=[...room.planets.values()].find(value=>value.warnings?.entries.some(entry=>entry.id===warningId&&entry.active&&entry.targetId===player.id));
+  ensure(planet,'삭제할 수 있는 내 경고를 골라주세요.');
+  const entry=planet.warnings.entries.find(value=>value.id===warningId);
+  entry.active=false;
+  releaseIfBelow(room,planet,player);
+  return {planet,entry};
+}
+export function clearOwnDepartmentWarnings(room,player,planetId){
+  const planet=room.planets.get(planetId);
+  ensure(planet&&warningCount(planet,player.id)>0,'내 활성 경고가 있는 부서를 골라주세요.');
+  let cleared=0;
+  for(const entry of planet.warnings.entries)if(entry.active&&entry.targetId===player.id){entry.active=false;cleared++;}
+  releaseIfBelow(room,planet,player);
+  return {planet,cleared};
+}
+export function clearOwnBlackStar(room,player,at){
+  const black=player.avatar.blackStar;
+  ensure(black&&black.at===at,'내 검은별 상태가 바뀌었어요. 다시 확인해 주세요.');
+  const planet=room.planets.get(black.planetId);
+  let cleared=0;
+  for(const entry of planet?.warnings?.entries||[])if(entry.active&&entry.targetId===player.id){entry.active=false;cleared++;}
+  player.avatar.blackStar=null;
+  if(player.mapId===BLACK_HOLE_ID)Object.assign(player,arrivePosition(room,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228},player),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+  return {planetId:black.planetId,cleared};
 }
 
 // 외부 행성 정보에는 횟수와 이름만 공개하고 경고 사유·작성자는 보내지 않습니다.

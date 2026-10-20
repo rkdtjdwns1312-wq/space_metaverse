@@ -23,7 +23,7 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
   const reject=document.createElement('button');reject.type='button';reject.className='secondary';reject.textContent='거절';
   const accept=document.createElement('button');accept.type='button';accept.className='primary';accept.textContent='수락';
   actions.append(reject,accept);invitation.append(title,message,actions);document.body.append(invitation);
-  let friendId=null,inviteId=null,rolling=false;
+  let friendId=null,inviteId=null,inviteKind='party',rolling=false;
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const safeText=value=>String(value??'');
   async function act(event,data,success){
@@ -40,9 +40,9 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
   async function respond(agree){
     if(!inviteId)return;
     accept.disabled=reject.disabled=true;
-    await act('party:respond',{requestId:inviteId,accept:agree},agree?'파티에 참여했어요.':'초대를 거절했어요. 5분 동안 다시 초대받지 않아요.');
+    const result=await act(inviteKind==='pisces'?'constellation-ability:pair-respond':'party:respond',{requestId:inviteId,accept:agree},agree?(inviteKind==='pisces'?'짝 상태를 수락했어요.':'파티에 참여했어요.'):(inviteKind==='pisces'?'짝 신청을 거절했어요.':'초대를 거절했어요. 5분 동안 다시 초대받지 않아요.'));
     accept.disabled=reject.disabled=false;
-    if(invitation.open)invitation.close();
+    if(result&&invitation.open)invitation.close();
   }
   accept.onclick=()=>respond(true);reject.onclick=()=>respond(false);
   invitation.addEventListener('cancel',event=>{event.preventDefault();respond(false);});
@@ -59,16 +59,20 @@ export function createPartyUI({getRoom,getSelfId,request,toast,stop}){
   function update(){
     const room=getRoom(),self=me(),party=room?.party;
     leaveButton.hidden=!party;
+    const locked=!!party?.piscesPair&&party.endsAt>Date.now();leaveButton.disabled=locked;leaveButton.title=locked?'짝 상태가 끝날 때까지 탈퇴할 수 없어요.':'';
+    friendsButton.disabled=locked;friendsButton.title=locked?'짝 상태에는 다른 친구를 초대할 수 없어요.':'';
     const friend=room?.players.find(p=>p.id===friendId);
     const denied=room?.partyDeclines?.find(r=>r.targetId===friendId&&r.until>Date.now());
     inviteButton.hidden=!friend||friend.role==='teacher'||self?.role==='teacher';
-    inviteButton.disabled=!friend?.connected||!!denied||!!room?.party&&room.party.memberIds.length>=4||!!room?.party?.memberIds.includes(friendId);
+    inviteButton.disabled=!friend?.connected||!!denied||!!room?.party&&(room.party.memberIds.length>=4||room.party.piscesPair)||!!room?.party?.memberIds.includes(friendId);
     inviteButton.title=denied?'거절 뒤 5분이 지나야 다시 초대할 수 있어요.':'최대 네 명까지 함께할 수 있어요.';
-    const pending=room?.partyInvites?.find(r=>r.expiresAt>Date.now());
-    if(pending){inviteId=pending.id;message.textContent=safeText(pending.fromNickname)+' 친구가 파티로 초대했어요. 함께할까요?';if(!invitation.open){stop();invitation.showModal();}}
+    const pairInvite=room?.piscesInvites?.find(r=>r.toId===getSelfId()&&r.expiresAt>Date.now());
+    const pending=pairInvite||room?.partyInvites?.find(r=>r.expiresAt>Date.now());
+    if(pending){inviteId=pending.id;inviteKind=pairInvite?'pisces':'party';title.textContent=pairInvite?'물고기자리 짝 신청':'파티 초대';
+      message.textContent=pairInvite?`${safeText(pending.fromNickname)} 친구가 ${pending.days}일 동안 짝이 되자고 신청했어요. 수락하면 두 사람만의 파티가 되고 책상·급식 자리를 함께해요.${pending.level===3||pending.level===4?' 친구가 받은 새 경고를 신청한 친구도 받습니다.':''} 거절할 수 있어요.`:safeText(pending.fromNickname)+' 친구가 파티로 초대했어요. 함께할까요?';if(!invitation.open){stop();invitation.showModal();}}
     else{inviteId=null;if(invitation.open)invitation.close();}
     hud.hidden=!party;if(!party)return;
-    heading.textContent='우리 파티 '+party.memberIds.length+'/4';
+    heading.textContent=locked?'물고기자리 짝 · '+Math.max(1,Math.ceil((party.endsAt-Date.now())/86400000))+'일 남음':'우리 파티 '+party.memberIds.length+'/4';
     const list=document.createElement('ul');
     for(const id of party.memberIds){
       const player=room.players.find(p=>p.id===id);if(!player)continue;

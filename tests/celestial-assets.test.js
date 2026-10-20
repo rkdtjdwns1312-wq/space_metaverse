@@ -3,12 +3,18 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {CONSTELLATIONS,constellationOf} from '../shared/constellations.js';
-test('16 celestial originals are unique RGBA PNGs shared by the LV5 map and profile; Libra has its own LV5 ability',()=>{
+test('16 celestial originals are unique RGBA PNGs shared by the LV5 map and profile; Libra, Pisces, Sagittarius have LV5 abilities',()=>{
  const hashes=new Set();
  for(const c of CONSTELLATIONS){
    const stage=constellationOf(c.id,5);
    assert.equal(stage.art,stage.sprite);assert.equal(stage.celestial,true);
-   if(c.id==='libra'){
+   if(c.id==='sagittarius'){
+     assert.equal(stage.ability.mode,'black-star-two-or-department');
+     assert.match(stage.ability.description,/2회/);
+   }else if(c.id==='pisces'){
+     assert.equal(stage.ability.mode,'pair');
+     assert.match(stage.ability.description,/5일/);
+   }else if(c.id==='libra'){
      assert.equal(stage.ability.mode,'dice-triple');
      assert.match(stage.ability.description,/3번/);
    }else assert.equal(stage.ability,constellationOf(c.id,4).ability);

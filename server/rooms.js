@@ -57,6 +57,7 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
   if(player.waterAura?.kind==='cancer')add('crab-empowerment','게의 힘','♋',player.waterAura.endsAt);
   add('crown-aura','왕관의 힘','♛',player.coronaAura?.endsAt);
   add('swan-wings','백조의 날개','🪽',player.swanAura?.endsAt);
+  add('pair','물고기자리 짝','🤝',player.piscesPair?.endsAt);
   return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher),...poison,...combat];
 }
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -122,7 +123,7 @@ export class RoomStore {
     const p={ id:randomUUID(), nickname:name, role, ...spawnPosition(room), mapId:PLAZA_ID,
       avatar:role==='teacher'?{...createAvatar(),form:TEACHER_AVATAR.form,level:TEACHER_AVATAR.level,xp:0}:createAvatar(), inventory:[], equipmentSlots:[null,null,null], starShards:0, cosmicEnergy:0, connected:true, socketId,
       connectedAt:Date.now(),expiresAt:null, input:{x:0,y:0,at:0}, muted:false, lastChatAt:0,
-      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),constellationAbilityState:freshConstellationAbilityState(),lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,tutorialCompletedAt:null,tutorialRewardClaimedAt:null,starBestMs:null,dodgeBestMs:null };
+      effects:[], cardMarkers:[], rabbitDraw:null, rabbitUsedDay:null,abilityState:freshAbilityState(),constellationAbilityState:freshConstellationAbilityState(),piscesPair:null,lastItemUseAt:0, notes:[], tasks:[],explorationChances:0,tutorialCompleted:false,tutorialRewardClaimed:false,tutorialCompletedAt:null,tutorialRewardClaimedAt:null,starBestMs:null,dodgeBestMs:null };
     room.players.set(p.id,p);
     if(role==='student')for(const mission of room.missions||[])if(mission.repeat!=='daily'&&mission.distribution==='all'&&!missionExpired(mission,this.clock()))mission.acceptedIds.push(p.id);
     this.sessions.set(token,{room,player:p});
@@ -138,7 +139,7 @@ export class RoomStore {
     Object.assign(session.player,{ connected:true, connectedAt:now,socketId, expiresAt:null, input:{x:0,y:0,at:0} });
     return session;
   }
-  remove(room,p) { leaveParty(room,p.id);this.sessions.delete(p.token); room.players.delete(p.id); }
+  remove(room,p) { leaveParty(room,p.id,Date.now(),true);this.sessions.delete(p.token); room.players.delete(p.id); }
   destroy(room) {
     for (const p of room.players.values()) this.sessions.delete(p.token);
     this.rooms.delete(room.code);
@@ -164,7 +165,8 @@ export class RoomStore {
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
-          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
+          piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
+          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
@@ -179,7 +181,7 @@ export class RoomStore {
           give:t.give,want:t.want,status:t.status,at:t.at,revision:t.revision,confirmed:[...(t.confirmed||[])]})),
       summons:[...(room.summons?.values()||[])].filter(r=>r.expiresAt>Date.now()&&viewer&&(r.toId===viewer.id||r.fromId===viewer.id)),
       summonCooldowns:[...(room.summonCooldowns||[])].filter(([key,until])=>viewer&&key.startsWith(viewer.id+':')&&until>Date.now()).map(([key,until])=>({targetId:key.slice(viewer.id.length+1),until})),
-      ...partyView(room,viewer)
+      ...partyView(room,viewer,now)
     };
   }
   pushChat(room,{playerId,nickname,role,text,flagged,...scope}) {
