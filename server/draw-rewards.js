@@ -17,7 +17,7 @@ export function awardDrawReward(player,reward){
   ensure(Array.isArray(player.inventory)&&player.avatar,'플레이어 상태를 확인해주세요.');
   let shards=0,xp=0,itemId=null,name=reward.name||'';
   if(reward.kind==='shards'){ensure(reward.amount>0,'뽑기 보상을 확인해주세요.');shards=reward.amount;}
-  if(reward.kind==='item'){ensure(reward.amount===1&&typeof reward.itemId==='string'&&nameOf(reward.itemId)===reward.name,'뽑기 물품을 확인해주세요.');itemId=reward.itemId;name=nameOf(itemId);}
+  if(reward.kind==='item'){ensure(reward.amount===1&&typeof reward.itemId==='string'&&nameOf(reward.itemId)===reward.name&&!SHOP.items.find(item=>item.id===reward.itemId)?.temporaryCrown,'뽑기 물품을 확인해주세요.');itemId=reward.itemId;name=nameOf(itemId);}
   if(reward.kind==='xp'){ensure(reward.amount>0,'뽑기 보상을 확인해주세요.');xp=reward.amount;}
   const avatar=structuredClone(player.avatar);
   const gained=reward.kind==='xp'?gainExperience(avatar,xp):avatar;

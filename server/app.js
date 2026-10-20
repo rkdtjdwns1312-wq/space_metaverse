@@ -99,7 +99,9 @@ import {registerCultureLibrary,registerHistoryLibrary} from './culture-library.j
 import {registerScienceLibrary} from './science-library.js';
 import {awardLearningReward} from './learning-rewards.js';
 import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
-import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek} from './constellation-weekly-abilities.js';
+import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek,completeSwanCompliment,submitSwanCampaign,approveSwanCampaign} from './constellation-weekly-abilities.js';
+import {swanDailyDue,settleSwanDaily,swanCardOffer,buySwanStarCard} from './swan-weekly.js';
+import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekly.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -1618,11 +1620,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('equipment:equip',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      ensure(!s.player.constellationAbilityState?.coronaTrial,'왕관자리 Lv1 체험이 끝나면 장비를 바꿀 수 있어요.');
       ensure(itemOf(data.itemId)?.mode!=='journey-practice','연습 장비는 실제 장착할 수 없어요.');
       const result=equip(s.player,data.itemId,data.slot);roster(s.room);return result;
     });
     action('equipment:unequip',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
+      ensure(!s.player.constellationAbilityState?.coronaTrial,'왕관자리 Lv1 체험이 끝나면 장비를 바꿀 수 있어요.');
       const result=unequip(s.player,data.slot);roster(s.room);return result;
     });
     action('shop:buy',data=>{
@@ -1813,7 +1817,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(s&&s.room.players.get(s.player.id)===s.player&&s.player.connected&&s.player.socketId===socket.id,'먼저 교실에 입장해주세요.');
       return s;
     };
-    action('constellation-ability:status',()=>constellationAbilityStatus(weeklyAbilitySession().player,clock()),false);
+    action('constellation-ability:status',()=>{const {room,player}=weeklyAbilitySession();return {...constellationAbilityStatus(player,clock()),swanCardOffer:swanCardOffer(room,player,clock())};},false);
     const sagittariusOptions=()=>{
       const s=weeklyAbilitySession();ensure(s.player.avatar?.constellationId==='sagittarius','사수자리 능력에서만 볼 수 있어요.');
       const warnings=[...s.room.planets.values()].flatMap(planet=>(planet.warnings?.entries||[])
@@ -1825,6 +1829,35 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('constellation-ability:sagittarius-options',sagittariusOptions,false);
     const weeklyAbilityUse=data=>{
       const s=weeklyAbilitySession();
+      if(s.player.avatar?.constellationId==='corona-borealis'){
+        const result=useCoronaWeekly(s.player,data?.choice,clock());roster(s.room);
+        return {...result,...constellationAbilityStatus(s.player,clock())};
+      }
+      if(s.player.avatar?.constellationId==='cygnus'){
+        const p=s.player,room=s.room,now=clock(),level=p.avatar.level;
+        if(level===2){
+          const target=room.players.get(data?.targetId);
+          ensure(target?.role==='student'&&target.id!==p.id&&target.connected&&!target.away,'접속 중인 다른 친구를 골라주세요.');
+          ensure(room.chat.enabled&&(room.unattended||[...room.players.values()].some(t=>t.role==='teacher'&&t.connected))&&!p.muted,'지금은 칭찬 메시지를 보낼 수 없어요.');
+          const praises=['언제나 친절하게 도와줘서 고마워!','함께할 때 정말 즐거워!','열심히 도전하는 모습이 멋져!','친구를 배려하는 마음이 참 좋아!'];
+          ensure(Number.isInteger(data?.praiseIndex)&&data.praiseIndex>=0&&data.praiseIndex<praises.length,'칭찬 문구를 골라주세요.');
+          const content=praises[data.praiseIndex],recentChats=checkChatRate(p,content,now);
+          const result=completeSwanCompliment(p,target.id,now);
+          const msg=store.pushChat(room,{playerId:p.id,nickname:p.nickname,role:p.role,text:content,flagged:false,channel:'direct',targetId:target.id});
+          for(const recipient of [p,target]){const sock=io.sockets.sockets.get(recipient.socketId);if(sock)deliver(()=>sock.emit('chat:message',msg));}
+          p.lastChatAt=now;p.recentChats=recentChats;roster(room);
+          return {...result,message:'친구에게 칭찬을 보냈어요. 별 파편 1개를 받았어요.'};
+        }
+        if(level===3){
+          const raw=typeof data?.campaignText==='string'?data.campaignText.normalize('NFKC').replace(/\p{Cf}/gu,'').trim():'';
+          ensure([...raw].length>=1&&[...raw].length<=80&&!/[\x00-\x1f\x7f]/.test(raw),'캠페인 문구를 1~80자로 적어주세요.');
+          const {text:filtered,flagged}=filterChat(raw);
+          ensure(!flagged,'다른 사람을 배려하는 캠페인 문구로 고쳐 주세요.');
+          const result=submitSwanCampaign(p,filtered,now);roster(room);
+          return {...result,message:'캠페인 푯말을 신청했어요. 선생님이 승인하면 광장에 세워지고 별 파편 3개를 받아요.'};
+        }
+        throw new GameError('이 단계의 백조자리 능력은 오후 3시에 자동으로 판정해요.');
+      }
       if(s.player.avatar?.constellationId==='pisces'){
         const invitation=invitePiscesPair(s.room,s.player,data.targetId,clock());roster(s.room);
         return {invitation,...constellationAbilityStatus(s.player,clock()),message:'짝 신청을 보냈어요. 친구가 수락하면 능력이 사용돼요.'};
@@ -1851,6 +1884,17 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       roster(s.room);return result;
     };
     action('constellation-ability:use',weeklyAbilityUse);
+    action('constellation-ability:swan-card-buy',()=>{
+      const {room,player}=weeklyAbilitySession(),result=buySwanStarCard(room,player,clock());
+      roster(room);return {...result,...constellationAbilityStatus(player,clock()),swanCardOffer:false};
+    });
+    action('constellation-ability:swan-campaign-approve',data=>{
+      const {room,player}=weeklyAbilitySession();ensure(player.role==='teacher','선생님만 푯말을 승인할 수 있어요.');
+      const target=room.players.get(data?.playerId);ensure(target?.role==='student','신청한 학생을 골라주세요.');
+      const result=approveSwanCampaign(target,clock());roster(room);
+      whisper(room,target,'캠페인 푯말이 승인되어 광장에 세워졌어요. 별 파편 3개를 받았어요.');
+      return {message:'캠페인 푯말을 승인했어요.',...result};
+    });
     // Old clients share the exact same Sunday stamp; unconfigured abilities cannot start.
     action('ability:use',weeklyAbilityUse);
     const weeklyAbilityChoose=data=>{const s=weeklyAbilitySession(),result=chooseConstellationItem(s.player,data.itemId,clock());roster(s.room);return result;};
@@ -1965,6 +2009,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(owned,'가방에 그 물건이 없어요.');
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
       const now=clock();
+      if(CROWN_ITEMS.has(item.id))ensure(Number.isSafeInteger(owned.expiresAt)&&owned.expiresAt>now,'이 기간제 아이템은 유효기간이 끝났어요.');
       ensure(!hasCardStatus(p,'little-sun-card',now)||item.mode==='moon','자외선 상태라 오늘 자정까지 아이템을 사용할 수 없어요. 꼬마 달은 사용할 수 있어요.');
       ensure(!activeItemBlocks(p,now).length,'별자리 능력 때문에 지금은 아이템을 사용할 수 없어요.');
       ensure(!hasLv2ItemBlock(p,now),'해토끼 효과 때문에 지금은 아이템을 사용할 수 없어요.');
@@ -2056,6 +2101,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
+      if(step%20===0&&coronaDue(room,clock())){
+        try{transaction(()=>{if(settleCorona(room,clock()))roster(room);});}
+        catch(error){console.error('왕관자리 기간제 능력 저장 실패:',error.message);continue;}
+      }
+      if(step%20===0&&swanDailyDue(room,clock())){
+        try{transaction(()=>{const result=settleSwanDaily(room,clock());if(result.changed)roster(room);});}
+        catch(error){console.error('백조자리 일일 보상 저장 실패:',error.message);continue;}
+      }
       if([...room.players.values()].some(p=>p.piscesPair?.endsAt<=clock())){
         try{transaction(()=>{if(settlePiscesPairs(room,clock()))roster(room);});}
         catch(error){console.error('물고기자리 짝 만료 저장 실패:',error.message);continue;}

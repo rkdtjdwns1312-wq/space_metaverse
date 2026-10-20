@@ -86,6 +86,7 @@ export function attemptCraft(player, input, { recipes = [], catalog = [...SHOP.i
       !Array.isArray(recipes) || !Array.isArray(catalog)) return fail(player || {}, 'invalid-player');
   const ingredients = normalizeIngredients(input, CRAFTING.maxQuantity);
   if (!ingredients) return fail(player, 'invalid-input');
+  if(ingredients.some(part=>catalog.find(item=>item.id===part.id)?.temporaryCrown))return fail(player,'unknown-ingredient');
   const publicRecipe=PUBLIC_CRAFTING_RECIPES.find(recipe=>sameMultiset(ingredients,recipe.ingredients));
   if(publicRecipe)return craftPublicRecipe(player,publicRecipe,catalog);
   if (recipes.length === 0) return fail(player, 'invalid-recipe');

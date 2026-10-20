@@ -12,6 +12,8 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
   const choices=document.createElement('section');choices.id='ability-item-choices';choices.hidden=true;dice.after(choices);
   const pairChoices=document.createElement('section');pairChoices.id='ability-pair-choices';pairChoices.hidden=true;choices.after(pairChoices);
   const huntChoices=document.createElement('section');huntChoices.id='ability-hunt-choices';huntChoices.hidden=true;pairChoices.after(huntChoices);
+  const swanChoices=document.createElement('section');swanChoices.id='ability-swan-choices';swanChoices.hidden=true;huntChoices.after(swanChoices);
+  const coronaChoices=document.createElement('section');coronaChoices.id='ability-corona-choices';coronaChoices.hidden=true;swanChoices.after(coronaChoices);
   let huntOptions=null;
   const reminder=document.createElement('button');reminder.id='ability-unused-reminder';reminder.type='button';reminder.textContent='!';reminder.hidden=true;reminder.setAttribute('aria-label','아직 사용하지 않은 별자리 능력 안내');$('bottom-dock').append(reminder);
   const reminderMessage=document.createElement('div');reminderMessage.id='ability-reminder-message';reminderMessage.setAttribute('role','status');reminderMessage.hidden=true;
@@ -44,6 +46,9 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     if(status?.constellationId==='libra'&&status.level>=4&&value.itemId)return `${itemOf(value.itemId)?.name||'카드'} 1장을 받았어요!`;
     if(status?.constellationId==='pisces'&&value.targetId)return `${getRoom()?.players.find(p=>p.id===value.targetId)?.nickname||'친구'}와 짝 상태가 되었어요!`;
     if(status?.constellationId==='sagittarius')return value.mode==='warning'?'내 경고 1개를 삭제했어요.':value.mode==='black-star'?'내 검은별 상태를 해제했어요.':'고른 부서의 내 경고를 모두 삭제했어요.';
+    if(status?.constellationId==='cygnus'&&status.level===2)return `칭찬 메시지 ${value.uses||1}/2회 · 별 파편 1개를 받았어요.`;
+    if(status?.constellationId==='cygnus'&&status.level===3)return value.approved?'푯말이 광장에 세워졌어요. 별 파편 3개를 받았어요.':'선생님의 푯말 승인을 기다리고 있어요.';
+    if(status?.constellationId==='corona-borealis')return value.choice==='trial'?'Lv1 체험을 시작했어요. 다음 주 월요일에 돌아와요.':'왕관 전용 기간제 아이템을 받았어요.';
     if(value.itemId)return `${itemOf(value.itemId)?.name||'아이템'} 1개를 ${value.mode==='copy'?'복사했어요':'만들었어요'}!`;
     if(Number.isFinite(value.budget))return value.budget>0?`별 파편 ${value.budget}개 가치 이하의 아이템 1개를 고를 수 있어요.`:'이번에는 만들 수 있는 아이템이 없어요. 이번 주 능력은 사용 완료예요.';
     return rewardLabel(value.reward);
@@ -117,6 +122,54 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     catch(error){toast(error.message);void loadHunterChoices();}
     finally{busy=false;render();}
   }
+  function renderSwanChoices(){
+    swanChoices.replaceChildren();
+    swanChoices.hidden=status?.constellationId!=='cygnus';if(swanChoices.hidden)return;
+    const add=(tag,value)=>{const element=document.createElement(tag);element.textContent=value;swanChoices.append(element);return element;};
+    if(status.level===2&&status.canUse){
+      add('h3','칭찬할 친구');
+      const friends=(getRoom()?.players||[]).filter(p=>p.role==='student'&&p.id!==getPlayer()?.id&&p.connected&&!p.away);
+      const select=document.createElement('select');select.setAttribute('aria-label','칭찬할 친구');
+      for(const friend of friends){const option=document.createElement('option');option.value=friend.id;option.textContent=friend.nickname;select.append(option);}
+      swanChoices.append(select);
+      const phrases=['언제나 친절하게 도와줘서 고마워!','함께할 때 정말 즐거워!','열심히 도전하는 모습이 멋져!','친구를 배려하는 마음이 참 좋아!'];
+      const praise=document.createElement('select');praise.setAttribute('aria-label','칭찬 메시지');
+      phrases.forEach((phrase,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=phrase;praise.append(option);});swanChoices.append(praise);
+      const send=add('button','칭찬 보내기 · 별 파편 1개');send.type='button';send.className='secondary';send.disabled=!friends.length||busy;
+      send.onclick=async()=>{if(busy)return;busy=true;renderSwanChoices();try{const response=await request('constellation-ability:use',{targetId:select.value,praiseIndex:Number(praise.value)});status=response;render();toast(response.message);}catch(error){toast(error.message);void refresh();}finally{busy=false;render();}};
+    }else if(status.level===3){
+      if(status.canUse){
+        add('h3','우리 반을 위한 캠페인');
+        const input=document.createElement('textarea');input.rows=3;input.maxLength=80;input.placeholder='친구들과 함께 지키고 싶은 약속을 적어 주세요.';input.setAttribute('aria-label','캠페인 푯말 문구');swanChoices.append(input);
+        const send=add('button','선생님께 푯말 신청하기');send.type='button';send.className='secondary';send.disabled=busy;
+        send.onclick=async()=>{if(busy)return;busy=true;send.disabled=true;try{const response=await request('constellation-ability:use',{campaignText:input.value});status=response;render();toast(response.message);}catch(error){toast(error.message);send.disabled=false;}finally{busy=false;}};
+      }else if(status.lastResult?.campaignText)add('p',`신청한 문구: ${status.lastResult.campaignText}\n${status.lastResult.approved?'광장에 게시되었어요.':'선생님 승인을 기다리고 있어요.'}`);
+    }else if(status.level>=4){
+      const ledger=status.swanDaily;
+      add('p',`이번 주 오후 3시 보상: ${ledger?Array.from({length:status.level===4?5:4},(_,i)=>ledger.awardedMask&(1<<(i+1))?'★':'○').join(' '):'아직 판정 전'}`);
+      if(status.level===5){
+        add('p',status.swanCardOffer?'월~목 무경고! 이번 주 별 카드 1장을 별 파편 4개에 살 수 있어요.':ledger?.cardBought?'이번 주 별 카드 구매를 마쳤어요.':'금요일에 월~목 무경고 여부를 확인해요.');
+        if(status.swanCardOffer){const buy=add('button','별 카드 1장 사기 · 별 파편 4개');buy.type='button';buy.className='secondary';buy.disabled=busy;buy.onclick=async()=>{if(busy)return;busy=true;buy.disabled=true;try{const response=await request('constellation-ability:swan-card-buy',{});status=response;render();toast(response.message);}catch(error){toast(error.message);void refresh();}finally{busy=false;}};}
+      }
+    }
+  }
+  function renderCoronaChoices(){
+    coronaChoices.replaceChildren();coronaChoices.hidden=status?.constellationId!=='corona-borealis';
+    if(coronaChoices.hidden)return;
+    if(status.level===5){const note=document.createElement('p');note.textContent='선생님 도구에서 왕관자리 Lv5 우선권 대상자로 확인할 수 있어요.';coronaChoices.append(note);return;}
+    if(status.lastResult?.expiresAt){
+      const note=document.createElement('p');note.textContent=`이번 주 선택: ${status.lastResult.choice==='trial'?'Lv1 체험':'기간제 아이템'} · ${new Date(status.lastResult.expiresAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}까지`;coronaChoices.append(note);
+    }
+    if(status.level!==4||!status.canUse)return;
+    const heading=document.createElement('h3');heading.textContent='이번 주 능력 선택';coronaChoices.append(heading);
+    for(const [choice,label] of [['trial','① 이번 주 Lv1 체험 → 다음 주 월요일 별 파편 5개·경험치 5'],['both','② 우주 식량·우주복 각 2개 (5일 이내·일요일 0시 만료)']]){
+      const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=label;button.disabled=busy;
+      button.onclick=async()=>{if(busy)return;busy=true;button.disabled=true;
+        try{const response=await request('constellation-ability:use',{choice});toast(response.message);if(choice==='trial'){dialog.close();void refresh();}else{status=response;render();}}
+        catch(error){toast(error.message);button.disabled=false;void refresh();}finally{busy=false;}
+      };coronaChoices.append(button);
+    }
+  }
   async function chooseItem(itemId){
     if(busy)return;busy=true;const token=++revision,key=identity();renderChoices();
     let failed=false;
@@ -164,13 +217,13 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     const p=getPlayer(),name=constellationOf(p?.avatar?.constellationId,p?.avatar?.level)?.name||'별자리';
     $('ability-title').textContent=`${name} Lv${p?.avatar?.level||1} · 별자리 능력`;
     $('ability-description').textContent=status?.description||'능력 정보를 불러오는 중이에요.';
-    const note=!status?'능력 정보를 확인하고 있어요.':status.pending?`능력효과를 눌러 ${status.pending.mode==='copy'?'복사할':'만들'} 아이템을 골라 주세요.`:!status.configured?'이 별자리의 능력은 준비 중이에요.':p?.role==='teacher'?'선생님은 효과를 확인할 수 있어요. 능력 사용은 학생 전용이에요.':status.used?'이번 주 능력을 사용했어요.':status.constellationId==='sagittarius'&&status.uses?`이번 주 ${status.uses}/${status.useLimit}회 사용했어요.`:status.message||'이번 주 능력을 사용할 수 있어요.';
-    const passiveNote=status?.blockedByChange?status.message:status?.passive?`자동 패시브 · 부서 경고 ${status.warningUsed||0}/${status.warningLimit||1}회${status.blackLimit?` · 검은별 ${status.blackUsed||0}/${status.blackLimit}회`:''}`:note;
+    const note=!status?'능력 정보를 확인하고 있어요.':status.pending?`능력효과를 눌러 ${status.pending.mode==='copy'?'복사할':'만들'} 아이템을 골라 주세요.`:!status.configured?'이 별자리의 능력은 준비 중이에요.':p?.role==='teacher'?'선생님은 효과를 확인할 수 있어요. 능력 사용은 학생 전용이에요.':status.used?'이번 주 능력을 사용했어요.':['sagittarius','cygnus'].includes(status.constellationId)&&status.uses?`이번 주 ${status.uses}/${status.useLimit}회 사용했어요.`:status.message||'이번 주 능력을 사용할 수 있어요.';
+    const passiveNote=status?.blockedByChange?status.message:status?.constellationId==='corona-borealis'&&status?.level===5?'상시 우선권 · 선생님이 자리 바꾸기와 급식 자리 선택에서 확인해 주세요.':status?.constellationId==='cygnus'&&status?.level>=4?'매일 오후 3시 자동 판정 · 능력효과에서 이번 주 기록을 볼 수 있어요.':status?.passive?`자동 패시브 · 부서 경고 ${status.warningUsed||0}/${status.warningLimit||1}회${status.blackLimit?` · 검은별 ${status.blackUsed||0}/${status.blackLimit}회`:''}`:note;
     $('self-ability-status').textContent=passiveNote;
     $('ability-status').textContent=passiveNote+'\n매주 일요일 오전 0시(한국 시간)에 다시 사용할 수 있어요.\n별자리를 바꾸거나 진화해도 사용 기록은 유지돼요.';
     if(status?.used&&status.lastResult&&!animation)showResult(status.lastResult);
     if(!status?.used){dice.hidden=true;$('ability-outcome').textContent='';}
-    renderChoices();renderPairChoices();renderHunterChoices();updateReminder();
+    renderChoices();renderPairChoices();renderHunterChoices();renderSwanChoices();renderCoronaChoices();updateReminder();
   }
   function scheduleReset(){
     clearTimeout(resetTimer);
@@ -201,6 +254,8 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     if(busy||!status?.canUse)return;
     if(status.constellationId==='pisces'){open();renderPairChoices();return;}
     if(status.constellationId==='sagittarius'){open();void loadHunterChoices();return;}
+    if(status.constellationId==='cygnus'){open();renderSwanChoices();return;}
+    if(status.constellationId==='corona-borealis'&&status.level===4){open();renderCoronaChoices();return;}
     const token=++revision,key=identity();busy=true;render();let failed=false;
     try{
       const response=await request('constellation-ability:use',{});

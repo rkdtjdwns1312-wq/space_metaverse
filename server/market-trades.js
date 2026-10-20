@@ -16,21 +16,21 @@ function side(value){
   ensure(Array.isArray(value.items)&&value.items.length<=TRADE.maxItemKinds,message);
   const seen=new Set();
   const items=value.items.map(i=>{
-    ensure(i&&itemOf(i.id)&&!seen.has(i.id)&&Number.isInteger(i.quantity)&&i.quantity>0&&i.quantity<=SHOP.maxStack,message);
+    ensure(i&&itemOf(i.id)&&!itemOf(i.id).temporaryCrown&&!seen.has(i.id)&&Number.isInteger(i.quantity)&&i.quantity>0&&i.quantity<=SHOP.maxStack,message);
     seen.add(i.id);return {id:i.id,quantity:i.quantity};
   });
   return {shards:value.shards,energy:value.energy,items};
 }
 function exchangedBag(p,give,receive){
-  const bag=new Map(p.inventory.map(i=>[i.id,i.quantity]));
-  for(const i of give){const left=bag.get(i.id)-i.quantity;left?bag.set(i.id,left):bag.delete(i.id);}
+  const bag=new Map(p.inventory.map(i=>[i.id,{...i}]));
+  for(const i of give){const entry=bag.get(i.id),left=entry.quantity-i.quantity;left?bag.set(i.id,{...entry,quantity:left}):bag.delete(i.id);}
   for(const i of receive){
-    const quantity=(bag.get(i.id)||0)+i.quantity;
+    const current=bag.get(i.id),quantity=(current?.quantity||0)+i.quantity;
     ensure(quantity<=Math.min(SHOP.maxStack,itemOf(i.id)?.maxOwned||SHOP.maxStack),'가방이 가득 차서 거래할 수 없어요.');
-    bag.set(i.id,quantity);
+    bag.set(i.id,current?{...current,quantity}:{id:i.id,quantity});
   }
   ensure(bag.size<=SHOP.maxKinds,'가방이 가득 차서 거래할 수 없어요.');
-  return [...bag].map(([id,quantity])=>({id,quantity}));
+  return [...bag.values()];
 }
 function log(room,t,result,now){
   room.tradeLog.push({id:t.id,at:now,fromId:t.fromId,toId:t.toId,fromNickname:t.fromNickname,toNickname:t.toNickname,

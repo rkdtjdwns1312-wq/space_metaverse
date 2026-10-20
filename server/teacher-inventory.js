@@ -2,7 +2,7 @@ import {SHOP,itemOf} from '../shared/config.js';
 import {recipeItemOf,recipeItemId} from '../shared/recipe-items.js';
 import {ensure} from './rooms.js';
 
-const catalog=SHOP.items.filter(item=>item.level>=1&&item.level<=4);
+const catalog=SHOP.items.filter(item=>item.level>=1&&item.level<=4&&!item.temporaryCrown);
 function teacherCatalog(room){
   const recipes=(room.recipeDropOutputIds||[]).map(outputId=>recipeItemOf(recipeItemId(outputId),SHOP.items))
     .filter(item=>item&&item.level>=2&&item.level<=4);

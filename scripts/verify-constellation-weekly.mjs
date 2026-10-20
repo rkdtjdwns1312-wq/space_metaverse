@@ -45,9 +45,9 @@ try{
     await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
     const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
     assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
-    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius','cygnus','corona-borealis'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
   }
-  report.checks.push('16종 한 줄 2버튼 / 천칭 활성 / 미설정 능력 비활성');
+  report.checks.push('16종 한 줄 2버튼 / 백조·왕관 활성 / 미설정 능력 비활성');
   await as('libra',2);await page.locator('#self-ability-use').click();
   await page.locator('#ability-outcome').getByText('선생님이 주차를 확인하면 경험치를 받아요.',{exact:true}).waitFor();
   assert.equal(player.abilityState.markers.length,1);await page.screenshot({path:`${output}/libra-lv2.png`});
@@ -134,6 +134,20 @@ try{
   friend=io(url,{transports:['websocket'],reconnection:false});await new Promise((resolve,reject)=>{friend.once('connect',resolve);friend.once('connect_error',reject);});
   const joined=await friend.timeout(5000).emitWithAck('room:join',{code:room.code,nickname:'보호',pin:'1234'});assert(joined.ok,joined.error);
   const protectedPlayer=room.players.get(joined.selfId);Object.assign(protectedPlayer.avatar,{form:'constellation',constellationId:'hercules',level:2});
+  await as('cygnus',2);await page.locator('#self-ability-use').click();
+  await page.locator('#ability-swan-choices select').first().selectOption(protectedPlayer.id);
+  await page.locator('#ability-swan-choices button').click();
+  await page.waitForFunction(()=>document.querySelector('#self-ability-status')?.textContent.includes('1/2회'));
+  assert.equal(player.starShards,31);
+  await page.screenshot({path:`${output}/swan-praise.png`});
+  report.checks.push('백조 Lv2 친구 선택·칭찬·보상 실제 화면');
+  await as('corona-borealis',4);await page.locator('#self-ability-use').click();
+  await page.locator('#ability-corona-choices button').filter({hasText:'우주 식량'}).click();
+  await page.waitForFunction(()=>document.querySelector('#self-ability-use')?.textContent==='사용 완료');
+  assert.equal(player.inventory.find(item=>item.id==='crown-food-card')?.quantity,2);
+  await page.screenshot({path:`${output}/crown-lv4.png`});
+  report.checks.push('왕관 Lv4 기간제 아이템 선택·획득 실제 화면');
+  await closeDialogs();
   const planet=addPlanet(room,{name:'규칙행성',description:'',...departmentSlots()[0],color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
   const rock=INTERIOR.objects.find(o=>o.kind==='warning-rock');player.avatar.departmentId=planet.id;Object.assign(player,{mapId:interiorIdOf(planet.id),x:rock.x,y:rock.y+70,input:{x:0,y:0,at:0}});publish();
   await page.locator('#interact-object').filter({hasText:'경고 제어돌'}).waitFor();await page.locator('#touch-interact').click();

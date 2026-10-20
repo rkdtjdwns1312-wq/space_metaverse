@@ -12,6 +12,7 @@ import {serenaEligible,serenaEligibility} from './serena-progress.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
 import {freshConstellationAbilityState,constellationAbilityStatus} from './constellation-weekly-abilities.js';
+import {swanCampaignSigns,swanCampaignRequests,swanCardOffer} from './swan-weekly.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
@@ -152,7 +153,8 @@ export class RoomStore {
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),
       missions:missionViews(room,viewer,now),
-      starCards:activeStarCards(room),exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
+      starCards:activeStarCards(room),campaignSigns:swanCampaignSigns(room,now),...(isTeacher?{campaignRequests:swanCampaignRequests(room,now)}:{}),
+      exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},
       shopDiscounts:starCardShopDiscounts(room,viewer),
       planets:[...room.planets.values()].map(pl=>({id:pl.id,name:pl.name,description:pl.description,x:pl.x,y:pl.y,
@@ -171,7 +173,7 @@ export class RoomStore {
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
-          out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility=constellationAbilityStatus(p,now);}
+          out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}
         return out;
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),

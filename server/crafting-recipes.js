@@ -27,7 +27,7 @@ export function loadCraftingRecipes(path=process.env.CRAFTING_RECIPES_FILE||'dat
     }
     let maxLevel=0;
     for(const part of recipe.ingredients){const item=SHOP.items.find(i=>i.id===part?.id);
-      if(!item||seen.has(item.id)||!Number.isSafeInteger(part.quantity)||part.quantity<1||part.quantity>99||item.level>=output.level)throw new Error('비밀 조합법의 재료를 확인해주세요.');
+      if(!item||item.temporaryCrown||seen.has(item.id)||!Number.isSafeInteger(part.quantity)||part.quantity<1||part.quantity>99||item.level>=output.level)throw new Error('비밀 조합법의 재료를 확인해주세요.');
       seen.add(item.id);maxLevel=Math.max(maxLevel,item.level);
     }
     if(maxLevel+1!==output.level)throw new Error('조합은 바로 다음 레벨 아이템으로 진행합니다.');

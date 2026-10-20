@@ -130,7 +130,8 @@ export function fromRecord(r,now=Date.now()) {
     if(typeof p.id!=='string'||room.players.has(p.id)||!allowedNames.has(p.nickname)||names.has(p.nickname)||
       !Number.isSafeInteger(cosmicEnergy)||cosmicEnergy<0||
       !Number.isSafeInteger(p.starShards)||p.starShards<0||!Array.isArray(p.inventory)||
-      p.inventory.some(i=>!itemOf(i.id)||itemOf(i.id).mode==='journey-practice'||!Number.isSafeInteger(i.quantity)||i.quantity<1)||
+      p.inventory.some(i=>!itemOf(i.id)||itemOf(i.id).mode==='journey-practice'||!Number.isSafeInteger(i.quantity)||i.quantity<1||
+        (itemOf(i.id).temporaryCrown&&(!Number.isSafeInteger(i.expiresAt)||i.expiresAt<0)))||
       !Array.isArray(p.notes)||typeof p.muted!=='boolean'||!p.avatar||
       !Number.isInteger(p.avatar.level)||p.avatar.level<1||p.avatar.level>6||
       !Number.isSafeInteger(p.avatar.xp)||p.avatar.xp<0||
@@ -159,6 +160,9 @@ export function fromRecord(r,now=Date.now()) {
     if(rabbitDraw)rabbitDraw.markerId=null;
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
+    const crownTrial=validateConstellationAbilityState(p.constellationAbilityState).coronaTrial;
+    if(crownTrial&&(avatar.level!==1||avatar.constellationId!=='corona-borealis'||
+      crownTrial.savedEquipmentSlots.some(id=>id&&!equipmentOf(id))))bad();
     room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),

@@ -130,7 +130,7 @@ export function createWorld(canvas) {
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   const poisonZones=createOphiuchusEffects(canvas);
-  let hits=[],starCards=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena();
+  let hits=[],starCards=[],campaignSigns=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena();
   let waterAuras=[],waterPulses=[],swanAuras=[],ariesClouds=[],taurusDashes=[],herculesShields=[],herculesBursts=[],libraAuras=[],coronaAuras=[],coronaFalls=[],capricornBlessings=[],leoRoars=[];
   const lastSwanAura=new Map();
   function swanVisualFor(playerId,live,time){
@@ -235,6 +235,16 @@ export function createWorld(canvas) {
       }
     }
     for(const sign of PLAZA_SIGNS)drawPlazaSign(ctx,sign);
+    for(const sign of campaignSigns){
+      ctx.save();ctx.translate(sign.x,sign.y);
+      ctx.fillStyle='#64507c55';ctx.beginPath();ctx.ellipse(0,30,52,15,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#796493';ctx.fillRect(-4,0,8,35);
+      ctx.fillStyle='#d8c8e9';ctx.beginPath();ctx.roundRect(-56,-38,112,47,8);ctx.fill();
+      ctx.strokeStyle='#8265af';ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle='#fff9e8';ctx.beginPath();ctx.roundRect(-50,-32,100,35,5);ctx.fill();
+      ctx.textAlign='center';ctx.fillStyle='#75538f';ctx.font='600 15px "Jua","Malgun Gothic",sans-serif';ctx.fillText('✦ 우리 반 약속 ✦',0,-10);
+      ctx.font='12px "Jua","Malgun Gothic",sans-serif';ctx.fillText(sign.nickname,0,23);ctx.restore();
+    }
     const me=players.find(p=>p.id===selfId),myDept=me?.departmentId;
     for(const o of map.objects){
       const shadowY=o.kind==='exploration'?o.y+7:o.y+o.radius*.8;
@@ -852,7 +862,7 @@ export function createWorld(canvas) {
       if(players.some(p=>p.avatar?.constellationId==='sagittarius'))preloadSagittarius(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='sagittarius').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
       if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
-      starCards=room?.starCards||[];exploration=room?.exploration||null;
+      starCards=room?.starCards||[];campaignSigns=room?.campaignSigns||[];exploration=room?.exploration||null;
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
@@ -939,7 +949,7 @@ export function createWorld(canvas) {
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
+        const candidates=[...cards,...campaignSigns,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance?config.interactionDistance(me,o):Math.hypot(me.x-o.x,me.y-o.y);

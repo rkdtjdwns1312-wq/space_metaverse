@@ -13,9 +13,9 @@ export const STAGE_ABILITIES = Object.freeze({
     leo: {mode:'manual', description:'모둠 전체에 용기를 줘요. 용기를 받은 다른 친구가 발표하면 별 1개를 얻어요. 한 사람당 1번만 가능해요.'},
     ophiuchus: {mode:'manual', description:'랜덤한 번호의 친구를 중독시켜 아이템 사용을 1일 멈춰요. 중독은 1주일 동안 다음 번호로 옮겨간 뒤 사라져요.'},
     sagittarius: {mode:'warning-two', description:'내가 받은 활성 부서 경고를 1개씩 골라 삭제해요. 매주 2회 사용할 수 있어요.'},
-    'corona-borealis': {mode:'manual', description:'급식·자리 우선권을 각 1회 얻어요. 사용하지 않은 우선권만큼 별을 만들어요.'},
+    'corona-borealis': {mode:'temporary-pair', description:'유효기간 1일의 왕관 전용 우주 식량·우주복을 한꺼번에 만들어요.'},
     cancer: {mode:'manual', target:true, description:'친구와 별 2개를 걸고 홀짝 맞추기를 해요. 패배하면 별 2개를 만들어요.'},
-    cygnus: {mode:'manual', description:'캠페인 활동을 증명하면 별 3개를 만들어요. 증명하지 못하면 1개를 만들어요.'},
+    cygnus: {mode:'campaign', description:'우리 반을 위한 캠페인 푯말을 만들어요. 선생님이 확인하면 광장에 설치되고 별 파편 3개를 받아요.'},
     aries: {mode:'manual', description:'원하는 날만큼 수면 상태를 유지해요. 일어날 때 수면한 날만큼, 최대 4개의 별을 얻어요.'},
     pisces: {mode:'pair', target:true, description:'친구에게 2일 짝 상태를 신청해요. 수락하면 해제할 수 없는 파티가 되고 책상·급식 자리를 함께해요. 친구가 새로 받은 경고를 나도 받아요.'}
   },
@@ -31,9 +31,9 @@ export const STAGE_ABILITIES = Object.freeze({
     leo: {mode:'manual', target:true, targetMaxLevel:3, description:'Lv3 이하 별자리에 경험치 1을 기부해요. 제공한 수 6개마다 별 카드를 만들어요.'},
     ophiuchus: {mode:'manual', description:'특별한 효과를 지닌 뱀을 소환해요. 독뱀은 1일 영역·능력 봉인, 땅뱀은 주사위 대결·능력 빼앗기, 물뱀은 깊이 12에서 주사위로 올라오는 효과예요.', note:'원본에는 랜덤 1마리와 3마리 소환 문구가 함께 있어요. 세부 적용은 선생님 확인 방식이에요.'},
     sagittarius: {mode:'black-star-one', description:'내 검은별 상태와 관련 경고를 해제해요. 매주 1회 사용할 수 있어요.'},
-    'corona-borealis': {mode:'manual', description:'동등한 상황에서 항상 우선권을 지녀요. 왕위 계승 카드를 삭제하고 3주 뒤 다음 레벨로 진화해요.', note:'기간 진화는 자동 실행하지 않고 선생님이 확인해요.'},
+    'corona-borealis': {mode:'weekly-choice', description:'이번 주 Lv1 체험 후 다음 주 월요일에 Lv4·별 파편5·경험치5로 복귀하거나, 기간제 우주 식량·우주복을 2개씩 받아요.'},
     cancer: {mode:'manual', target:true, description:'주사위 큰 눈 내기를 해요. 승리하면 별 1개를 가져와요(일 1회). 패배하면 별 1개를 주고 1개를 만들며, 1일 카드 사용이 멈춰요.'},
-    cygnus: {mode:'manual', description:'아름다운 말로 칭찬하고 증명하면 별 1개를 만들어요. 최대 6개까지 만들어요.'},
+    cygnus: {mode:'daily-calm', description:'월~금 오후 3시까지 그날 경고가 없으면 별 파편 1개를 자동으로 받아요.'},
     aries: {mode:'manual', description:'최대 6명을 하루 동안 수면 상태로 만들어요. 즉시 깨어나려면 별 1개를 줘야 해요.'},
     pisces: {mode:'pair', target:true, description:'친구에게 3일 짝 상태를 신청해요. 수락하면 해제할 수 없는 파티가 되고 책상·급식 자리를 함께해요. 친구가 새로 받은 경고를 나도 받아요.'}
   }

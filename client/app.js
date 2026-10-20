@@ -419,7 +419,7 @@ function updateRoom(value){
   marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
-  if(isTeacher&&$('teacher-dialog').open)renderTeacherPiscesPairs();
+  if(isTeacher&&$('teacher-dialog').open){renderTeacherPiscesPairs();renderTeacherSwanCampaigns();renderTeacherCrownPriorities();}
   if($('planet-dialog').open&&planetDialogId)renderPlanetDialog(planetDialogId);
   // 다른 친구의 입퇴장·구매마다 스냅샷이 오므로, 내 잔액·가방이 실제로 바뀐 경우에만 상점 목록을 다시 그립니다(입력 중인 수량 보호).
   if($('shop-dialog').open){const sig=shopSignature();if(sig!==shopSig){shopSig=sig;updateShopShards();renderShopBuyList();renderShopSellList();}}
@@ -519,7 +519,7 @@ function renderBag(inventory){
 function renderBagDetail(rows){
   const row=rows.find(r=>r.item.id===selectedSlotId);
   if(!row){$('bag-detail').textContent='칸을 눌러 물건을 살펴봐요.';delete $('bag-detail').dataset.itemId;return;}
-  const {item}=row,canUse=item.level<=myLevel();
+  const {item,entry}=row,canUse=item.level<=myLevel();
   $('bag-detail').dataset.itemId=item.id;
   const wrap=document.createElement('div');wrap.className='bag-detail-inner';
   const icon=itemVisual(item);
@@ -529,6 +529,7 @@ function renderBagDetail(rows){
   const name=document.createElement('strong');name.textContent=item.name;
   const flavor=document.createElement('p');flavor.className='bag-flavor';flavor.textContent=itemFlavor(item);
   info.append(name,flavor);
+  if(item.temporaryCrown){const expiry=document.createElement('p');expiry.className='muted';expiry.textContent=`유효기간: ${new Date(entry.expiresAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}까지 · 조합 불가`;info.append(expiry);}
   const summary=document.createElement('div');summary.className='bag-item-summary';summary.append(picture,info);
   const use=document.createElement('button');use.type='button';use.className='small primary use';use.dataset.itemId=item.id;use.textContent='사용';
   use.textContent=item.mode==='equipment'?'장착하기':item.mode==='draw'?'뽑기 카드 보기':'아이템 사용하기';
@@ -722,7 +723,7 @@ function updateTeacherPanels(isTeacher){
 function updateTeacherBadge(isTeacher){
   const proposals=room?.proposals||[];
 
-  const total=proposals.length;
+  const total=proposals.length+(room?.campaignRequests?.length||0);
   $('teacher-badge').hidden=!isTeacher||total===0;$('teacher-badge').textContent=String(total);
 }
 function updateShardsTargetOptions(){
@@ -917,6 +918,7 @@ function doInteract(){
   else if(n.kind==='crafting')craftingUI.open();
   else if(n.kind==='pillar')temple.open(n);
   else if(n.kind==='star-card')starCardUI.open(n.id);
+  else if(n.kind==='campaign-sign'){stop();$('campaign-sign-author').textContent=n.nickname+'의 캠페인';$('campaign-sign-text').textContent=n.text;$('campaign-sign-dialog').showModal();}
   else if(n.kind==='board')rulesUI.open(n.id);
   else if(n.kind==='evolution')evolutionUI.open();
   else if(n.kind==='growth')growthUI.open();
@@ -1044,6 +1046,31 @@ function renderTeacherPiscesPairs(){
   }
   $('teacher-pisces-pair-empty').hidden=!!list.children.length;
 }
+const swanTeacherSection=document.createElement('section');
+swanTeacherSection.id='teacher-swan-campaigns';
+swanTeacherSection.innerHTML='<h3>백조자리 캠페인 푯말 승인</h3><ul id="teacher-swan-campaign-list"></ul><p id="teacher-swan-campaign-empty" class="muted">승인을 기다리는 푯말이 없어요.</p>';
+$('teacher-dialog').querySelector('.teacher-footer').before(swanTeacherSection);
+function renderTeacherSwanCampaigns(){
+  const list=$('teacher-swan-campaign-list');list.replaceChildren();
+  for(const entry of room?.campaignRequests||[]){
+    const row=document.createElement('li'),title=document.createElement('p'),button=document.createElement('button');
+    title.textContent=`${entry.nickname}: ${entry.text}`;button.type='button';button.className='small secondary';button.textContent='승인하고 광장에 세우기';
+    button.onclick=async()=>{button.disabled=true;try{const response=await request('constellation-ability:swan-campaign-approve',{playerId:entry.playerId});toast(response.message);}catch(error){toast(error.message);button.disabled=false;}};
+    row.append(title,button);list.append(row);
+  }
+  $('teacher-swan-campaign-empty').hidden=!!list.children.length;
+}
+const crownTeacherSection=document.createElement('section');
+crownTeacherSection.id='teacher-crown-priority';
+crownTeacherSection.innerHTML='<h3>왕관자리 Lv5 자리·급식 우선권</h3><ul id="teacher-crown-priority-list"></ul><p id="teacher-crown-priority-empty" class="muted">현재 우선권이 있는 학생이 없어요.</p>';
+$('teacher-dialog').querySelector('.teacher-footer').before(crownTeacherSection);
+function renderTeacherCrownPriorities(){
+  const list=$('teacher-crown-priority-list');list.replaceChildren();
+  for(const player of room?.players||[])if(player.role==='student'&&player.avatar?.constellationId==='corona-borealis'&&player.avatar?.level===5){
+    const row=document.createElement('li');row.textContent=player.nickname+' · 자리 바꾸기·급식 자리 선택 우선권';list.append(row);
+  }
+  $('teacher-crown-priority-empty').hidden=!!list.children.length;
+}
 // 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
 for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section')].entries()){
   const heading=section.querySelector(':scope > h3');
@@ -1063,7 +1090,8 @@ for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > 
   for(const child of [...section.children])if(child!==headingRow&&child!==panel)panel.append(child);
   button.onclick=()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));panel.hidden=expanded;};
 }
-$('teacher-tools').onclick=()=>{updateShardsTargetOptions();renderTeacherPiscesPairs();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
+$('teacher-tools').onclick=()=>{updateShardsTargetOptions();renderTeacherPiscesPairs();renderTeacherSwanCampaigns();renderTeacherCrownPriorities();$('shards-feedback').textContent='';stop();$('teacher-dialog').showModal();};
+$('campaign-sign-close').onclick=()=>$('campaign-sign-dialog').close();
 $('teacher-close').onclick=()=>$('teacher-dialog').close();
 $('teacher-leave').onclick=()=>{$('teacher-dialog').close();$('leave').click();};
 $('teacher-dialog').addEventListener('close',()=>$('world').focus());

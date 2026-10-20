@@ -10,6 +10,19 @@ const rewards=Object.freeze({
   taurus:Object.freeze({2:Object.freeze([3,-1,3,-1,3,-1]),3:Object.freeze([6,-2,6,-2,6,-2]),4:Object.freeze([9,-3,9,-3,9,-3]),5:Object.freeze([12,-3,12,-3,12,-3])})
 });
 export function weeklyAbilityFor(id,level){
+  if(id==='corona-borealis'&&Number.isInteger(level)&&level>=2&&level<=5)return {
+    configured:true,available:true,corona:true,passive:level===5,maxReward:0,minBalance:0,
+    description:level===2?'유효기간 1일의 왕관 전용 우주 식량 1개를 만들어요. 조합에는 쓸 수 없어요.':
+      level===3?'같은 날 유효기간이 끝나는 왕관 전용 우주 식량과 우주복을 각각 1개 만들어요.':
+      level===4?'두 효과 중 하나를 골라요. ① 다음 주 월요일까지 Lv1로 지내고 복귀할 때 별 파편 5개·경험치 5를 받아요. ② 기간제 우주 식량과 우주복 2개씩 받아요(5일 또는 이번 주 일요일 0시 중 먼저 오는 때 만료).':
+      '항상 자리 바꾸기와 급식 자리 선택의 우선권이 있어요. 선생님이 현실 교실에서 확인해 주세요.'
+  };
+  if(id==='cygnus'&&Number.isInteger(level)&&level>=2&&level<=5)return level===2?
+    {configured:true,available:true,compliment:true,uses:2,maxReward:1,minBalance:0,description:'친구 1명에게 칭찬하는 귓속말을 보내고 별 파편 1개를 받아요. 매주 2회 사용할 수 있어요.'}:
+    level===3?{configured:true,available:true,campaign:true,maxReward:3,minBalance:0,description:'우리 반을 위한 캠페인 푯말 문구를 작성해요. 선생님이 확인하면 광장에 설치되고 별 파편 3개를 받아요.'}:
+    {configured:true,available:true,swanDaily:true,maxReward:0,minBalance:0,description:level===4?
+      '월~금 오후 3시(한국 시간)까지 그날 경고를 받지 않았다면 별 파편 1개를 자동으로 받아요. 매일 한 번 판정해요.':
+      '월~목 오후 3시(한국 시간)까지 그날 경고를 받지 않았다면 별 파편 1개를 자동으로 받아요. 월~목 내내 경고가 없으면 금요일에 별 카드 1장을 별 파편 4개로 구매할 기회가 생겨요.'};
   if(id==='sagittarius'&&Number.isInteger(level)&&level>=2&&level<=5)return {
     configured:true,available:true,warningHunter:true,uses:level===3||level===5?2:1,maxReward:0,minBalance:0,
     description:level===2?'내가 받은 활성 부서 경고 1개를 골라 삭제해요. 매주 1회 사용할 수 있어요.':

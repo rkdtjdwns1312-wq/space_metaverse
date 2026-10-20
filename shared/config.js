@@ -203,7 +203,9 @@ export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxSt
   ...LV3_ITEMS,
   ...LV4_ITEMS,
   ...GOLD_CARD_ITEMS,
-  {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}}
+  {id:'star-card',name:'별 카드',description:'사용하면 금별 카드 30종 중 한 장을 무작위로 뽑아 신전에 공개해요.',art:'/assets/cards/star-card-back.webp',icon:'✦',type:'card',level:1,price:0,sellPrice:null,forSale:false,usable:true,mode:'star-card',targets:'self',secret:false,effect:{label:'별 카드 공개',icon:'✦',durationMs:0,style:'card'}},
+  {id:'crown-food-card',name:'왕관의 우주 식량',description:'왕관자리 능력으로 받은 기간제 우주 식량입니다. 1명의 급식 위치를 선정합니다.',special:'유효기간이 지나면 사라지며 조합·거래·판매에 사용할 수 없어요.',art:'/assets/items/space-food-pastel.webp',icon:'🍱',type:'tool',level:1,price:0,sellPrice:null,forSale:false,shopHidden:true,temporaryCrown:true,targets:'any',secret:false,mode:'manual',effect:{label:'급식 위치 선정',icon:'🍱',durationMs:0,style:'card'}},
+  {id:'crown-suit-card',name:'왕관의 우주복',description:'왕관자리 능력으로 받은 기간제 우주복입니다. 선택한 2명의 자리를 맞교환합니다.',special:'유효기간이 지나면 사라지며 조합·거래·판매에 사용할 수 없어요.',art:'/assets/items/space-suit-pastel.webp',icon:'🧑‍🚀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,shopHidden:true,temporaryCrown:true,targets:'pair',secret:false,mode:'manual',effect:{label:'자리 맞교환',icon:'🧑‍🚀',durationMs:0,style:'card'}}
 ] });
 // 아이템 사용 규칙: 연속 사용 간격, 선생님용 사용 기록 보관 수, 선생님의 취급 레벨.
 export const ITEM_USE = Object.freeze({ cooldownMs: 2000, logSize: 100, teacherLevel: 5, notesSize: 20 });

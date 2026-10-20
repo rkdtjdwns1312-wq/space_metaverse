@@ -95,6 +95,7 @@ export function changeConstellation(room, player, { constellationId } = {},now=D
 
 export function evolveConstellation(room, player, { constellationId } = {}) {
   requireStudentAt(player, evolutionStar, '진화의 별');
+  ensure(!player.constellationAbilityState?.coronaTrial,'왕관자리 Lv1 체험이 끝난 뒤 진화할 수 있어요.');
   ensure(player.avatar.level < PROGRESSION.transcendentLevel, '이미 최고 단계인 초월체예요.');
   const requiredXp = requirement(player.avatar);
   ensure(player.avatar.xp >= requiredXp, '진화하려면 경험치가 ' + (requiredXp - player.avatar.xp) + ' 더 필요해요.');

@@ -238,7 +238,7 @@ test('disk failure rolls back craft learning, pickup ownership, item consumption
 
 test('sixty-kind inventory does not expand teacher single-grant batch beyond forty',()=>{
   const student=makePlayer('a'),teacher={...makePlayer('t'),role:'teacher'},room=makeRoom([student,teacher]);
-  const ids=SHOP.items.filter(i=>i.level>=1&&i.level<=4).slice(0,41).map(i=>i.id);assert.equal(ids.length,41);
+  const ids=SHOP.items.filter(i=>i.level>=1&&i.level<=4&&!i.temporaryCrown).slice(0,41).map(i=>i.id);assert.equal(ids.length,41);
   assert.throws(()=>adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids},'give'),/40/);assert.deepEqual(student.inventory,[]);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(0,40)},'give');assert.equal(student.inventory.length,40);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(40)},'give');assert.equal(student.inventory.length,41);
