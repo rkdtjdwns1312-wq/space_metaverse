@@ -42,6 +42,10 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
   function stopAnimation(){animation?.cancel();animation=null;clearTimeout(finishTimer);finishTimer=null;dice.classList.remove('rolling');}
   function rewardLabel(reward){return reward>0?`별 파편 ${reward}개를 만들었어요!`:reward<0?`별 파편 ${-reward}개를 반납했어요.`:'이번에는 별 파편이 나오지 않았어요. 이번 주 능력은 사용 완료예요.';}
   function outcome(value){
+    if(status?.constellationId==='aries')return status.level===2?
+      '친구와 함께 잠들었어요. 다음 날 오전 8시에 각각 별 파편 1개를 받아요.':
+      status.level===3?`${value.days||1}일 동안 잠들어요. 깨어나면 별 파편 ${value.days||1}개를 받아요.`:
+      `다른 학생 ${value.targetIds?.length||0}명이 하루 동안 잠들었어요.`;
     if(status?.constellationId==='libra'&&status.level===2)return '선생님이 주차를 확인하면 경험치를 받아요.';
     if(status?.constellationId==='libra'&&status.level>=4&&value.itemId)return `${itemOf(value.itemId)?.name||'카드'} 1장을 받았어요!`;
     if(status?.constellationId==='pisces'&&value.targetId)return `${getRoom()?.players.find(p=>p.id===value.targetId)?.nickname||'친구'}와 짝 상태가 되었어요!`;
@@ -253,6 +257,7 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
   use.onclick=async()=>{
     if(busy||!status?.canUse)return;
     if(status.constellationId==='pisces'){open();renderPairChoices();return;}
+    if(status.constellationId==='cancer'){open();return;}
     if(status.constellationId==='sagittarius'){open();void loadHunterChoices();return;}
     if(status.constellationId==='cygnus'){open();renderSwanChoices();return;}
     if(status.constellationId==='corona-borealis'&&status.level===4){open();renderCoronaChoices();return;}

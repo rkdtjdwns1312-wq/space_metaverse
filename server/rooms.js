@@ -59,6 +59,7 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
   add('crown-aura','왕관의 힘','♛',player.coronaAura?.endsAt);
   add('swan-wings','백조의 날개','🪽',player.swanAura?.endsAt);
   add('pair','물고기자리 짝','🤝',player.piscesPair?.endsAt);
+  add('sleep','양자리 수면','💤',player.constellationAbilityState?.ariesSleep?.endsAt);
   return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher),...poison,...combat];
 }
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -89,7 +90,7 @@ export class RoomStore {
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
-    const room={ code:this.newCode(), title, allowedNames, players:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
+    const room={ code:this.newCode(), title, allowedNames, players:new Map(), ariesInvites:new Map(), cancerInvites:new Map(), mapId:PLAZA_ID, chat:{enabled:true,history:[]},
       planets:new Map(), proposals:new Map(), missions:[], signalRanking:[], tetrisRanking:[], itemLog:[], tradeLog:[], trades:new Map(), starCardText:{},exploration:{energy:0,results:[]} };
     this.rooms.set(room.code,room);
     // '예시 행성으로 시작'을 켠 경우에만 예시 4개를 미리 놓습니다. 기본은 행성 없음(아이들이 직접 만듭니다).
@@ -153,6 +154,11 @@ export class RoomStore {
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),
       missions:missionViews(room,viewer,now),
+      ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
+      cancerInvites:[...(room.cancerInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)).map(invite=>{
+        if(invite.fromId===viewer.id)return {...invite};
+        const {choice,...visible}=invite;return visible;
+      }),
       starCards:activeStarCards(room),campaignSigns:swanCampaignSigns(room,now),...(isTeacher?{campaignRequests:swanCampaignRequests(room,now)}:{}),
       exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},
@@ -168,6 +174,7 @@ export class RoomStore {
         const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
+          ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;

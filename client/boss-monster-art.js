@@ -2,6 +2,7 @@ import {lv2MonsterPose} from './lv2-monster-art.js';
 import {preloadSerenaArt,serenaBounds,drawSerena} from './serena-art.js';
 import {preloadNokseraSkill,drawNokseraSkill} from './noksera-skill.js';
 import {preloadNokseraMoon,drawNokseraMoonCast} from './noksera-moon.js';
+import {drawLeoonAura,leoonPoseFrame} from './leoon-skill.js';
 
 const ART=Object.freeze({
   noksera:{src:'/assets/monsters/noksera-v2.png',walkSrc:'/assets/monsters/noksera-walk.png',color:'#c9d6ff',face:-1,width:2.05,aspect:1221/1289,walkAspect:1},
@@ -37,30 +38,35 @@ export function drawBossMonster(ctx,m,time=0,attack){
   if(drawNokseraMoonCast(ctx,m))return true;
   if(drawNokseraSkill(ctx,m,time,attack))return true;
   const r=m.radius,pose=lv2MonsterPose(time,attack),active=pose.active;
-  const walking=!!art.walkSrc&&m.moving&&!active;
+  const walking=!!art.walkSrc&&(m.moving||m.leoonSkill?.stage==='stomp')&&!active;
   const key=art.frames&&active?'spirit-king:attack':null;
   if(key&&!images.has(key)&&typeof Image!=='undefined'){const attackImage=new Image();attackImage.src=art.attackSrc;images.set(key,attackImage);}
   const image=key?images.get(key):sprite(m.shape,walking);if(!image?.complete||!image.naturalWidth)return false;
   const direction=m.facingX<0?-1:1,flip=direction===art.face?1:-1;
   const progress=pose.progress,brace=active&&progress<.36?Math.sin(progress/.36*Math.PI):0;
   const strike=active&&progress>=.36&&progress<.8?Math.sin((progress-.36)/.44*Math.PI):0;
+  const leoonPose=m.shape==='leoon'?leoonPoseFrame(m.leoonSkill,Date.now()):null;
   const bob=m.moving&&!active?Math.sin(time*.012)*r*.025:0;
   const {width:w,height:h}=bossMonsterBounds(m,walking);
   ctx.save();
-  ctx.translate(m.x,m.y+r*.9+bob);
+  ctx.translate(m.x,m.y+r*.9+bob+(leoonPose?.bob||0)*r);
   ctx.scale(flip,1);
   ctx.translate(-direction*r*.12*brace+direction*r*.22*strike,-r*.05*brace);
   if(active)ctx.rotate(-flip*.035*brace);
-  ctx.shadowColor=art.color;ctx.shadowBlur=active?10+strike*24:8;
+  if(leoonPose?.lift)ctx.rotate(-flip*.045*leoonPose.lift);
+  ctx.shadowColor=art.color;ctx.shadowBlur=active?10+strike*24:leoonPose?8+leoonPose.glow*25:8;
   if(art.frames){
     const index=active?Math.min(7,Math.floor(progress*8)):walking?Math.floor(time/130)%8:0;
     const sw=image.naturalWidth/4,sh=image.naturalHeight/2;
     ctx.drawImage(image,(index%4)*sw,Math.floor(index/4)*sh,sw,sh,-w/2,-h,w,h);
   }else if(walking){
-    const index=Math.floor(time/180)%4,sw=image.naturalWidth/2,sh=image.naturalHeight/2;
+    const index=m.leoonSkill?.stage==='stomp'?
+      Math.floor(Math.max(0,Date.now()-m.leoonSkill.startsAt)/75)%4:Math.floor(time/180)%4;
+    const sw=image.naturalWidth/2,sh=image.naturalHeight/2;
     ctx.drawImage(image,(index%2)*sw,Math.floor(index/2)*sh,sw,sh,-w/2,-h,w,h);
   }else ctx.drawImage(image,-w/2,-h,w,h);
   ctx.restore();
+  if(m.shape==='leoon')drawLeoonAura(ctx,m,Date.now());
   if(strike>0){
     const dx=Number(attack?.dx)||direction,dy=Number(attack?.dy)||0;
     ctx.save();ctx.translate(m.x+dx*r*.85,m.y+dy*r*.85);

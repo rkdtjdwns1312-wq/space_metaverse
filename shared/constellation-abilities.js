@@ -14,13 +14,15 @@ export const CONSTELLATION_ABILITIES=Object.freeze({
   ophiuchus:{mode:'ban-two-days',description:'친구 1명의 아이템 사용을 2일 멈추게 하고, 해제일에 별 1개를 보상해요.'},
   sagittarius:{mode:'warning-one',description:'내가 받은 활성 부서 경고 1개를 골라 삭제해요.'},
   'corona-borealis':{mode:'temporary-food',description:weeklyAbilityFor('corona-borealis',2).description},
-  cancer:{mode:'manual',description:'친구와 별 1개를 걸고 가위바위보를 해요. 패배하면 별 1개를 보상받아요.'},
+  cancer:{mode:'duel',description:weeklyAbilityFor('cancer',2).description},
   cygnus:{mode:'compliment',description:weeklyAbilityFor('cygnus',2).description},
-  aries:{mode:'sleep',description:'나와 친구가 각각 별 1개를 얻고 하루 동안 수면 상태가 되어 아이템을 못 써요.'},
+  aries:{mode:'sleep',description:weeklyAbilityFor('aries',2).description},
   pisces:{mode:'pair',description:'친구에게 1일 짝 상태를 신청해요. 수락하면 해제할 수 없는 파티가 되고 책상·급식 자리를 함께해요.'}
 });
 
 export function abilityForLevel(id, level = 2) {
+  if(id==='cancer'&&Number.isInteger(level)&&level>=2&&level<=5)return {mode:'duel',description:weeklyAbilityFor(id,level).description};
+  if(id==='aries'&&Number.isInteger(level)&&level>=2&&level<=5)return {mode:'sleep',description:weeklyAbilityFor(id,level).description};
   if(id==='corona-borealis'&&Number.isInteger(level)&&level>=2&&level<=5)return {mode:level===2?'temporary-food':level===3?'temporary-pair':level===4?'weekly-choice':'priority',description:weeklyAbilityFor(id,level).description};
   if(id==='cygnus'&&Number.isInteger(level)&&level>=2&&level<=5)return {mode:level===2?'compliment':level===3?'campaign':'daily-calm',description:weeklyAbilityFor('cygnus',level).description};
   if(id==='sagittarius'&&Number.isInteger(level)&&level>=2&&level<=5)return {mode:level===2?'warning-one':level===3?'warning-two':level===4?'black-star-one':'black-star-two-or-department',description:weeklyAbilityFor('sagittarius',level).description};

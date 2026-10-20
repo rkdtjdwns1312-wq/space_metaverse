@@ -103,7 +103,7 @@ export function fromRecord(r,now=Date.now()) {
   const savedCultureVotes=r.students.map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
   let cultureRecommendations;
   try{cultureRecommendations=validateCultureRecommendations(r.cultureRecommendations,savedCultureVotes);}catch{bad();}
-  const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),
+  const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),ariesInvites:new Map(),cancerInvites:new Map(),
     cultureRecommendations,
     dailyMissions:validateDailyMissions(r.dailyMissions),
     serena:validateSerenaState(r.serena),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,

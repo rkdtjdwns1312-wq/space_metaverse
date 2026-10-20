@@ -6,7 +6,8 @@ import {ensureVitals} from '../server/vitals.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 
 test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/만료 후 피해 재개',async t=>{
-  let now=1000000;
+  // The room timer uses wall time for animation expiry, so keep this fixture on the same epoch.
+  let now=Date.now();
   const key='libra-isolated-test-key',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now,dataDir:null});
   const {port}=await game.listen(),sockets=[];
   t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});

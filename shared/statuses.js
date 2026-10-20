@@ -2,7 +2,7 @@
 // 새 능력/아이템은 서버 effects 뷰에 statusId와 until을 넣으면 이 창에 연결됩니다.
 export const STATUS_TYPES=Object.freeze({
   uv:{name:'자외선 상태',icon:'☀️',tone:'warm',description:'아이템을 사용할 수 없어요. 꼬마 달로 해제할 수 있어요.'},
-  sleep:{name:'수면 상태',icon:'💤',tone:'cool',description:'잠든 동안 아이템을 사용할 수 없어요.'},
+  sleep:{name:'수면 상태',icon:'💤',tone:'cool',description:'잠든 동안 이동하거나 행동할 수 없어요.'},
   poison:{name:'중독 상태',icon:'🧪',tone:'violet',description:'연결된 능력이나 아이템의 중독 효과가 적용 중이에요.'},
   pair:{name:'짝 상태',icon:'🤝',tone:'mint',description:'짝과 함께하는 능력이 적용 중이에요.'},
   moon:{name:'달빛 보호',icon:'🌙',tone:'cool',description:'꼬마 달의 보호를 받고 있어요.'},

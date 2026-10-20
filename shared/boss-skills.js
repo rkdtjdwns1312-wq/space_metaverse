@@ -16,3 +16,9 @@ export function nokseraMoonTimeline(begin){
 }
 export const nokseraFullMoon=(monster,now)=>monster.typeId==='noksera'&&monster.hp>0&&!monster.moonCast&&
   monster.moonAura?.mapId===monster.mapId&&now>=monster.moonAura.fullStartsAt&&now<monster.moonAura.fullEndsAt;
+
+export const LEOON_ROAR=Object.freeze({kind:'leoon-roar',mana:10,cooldownMs:15000,decisionMs:2000,chance:.4,
+  glowMs:1000,warningMs:2000,damageMultiplier:2,areas:5,areaRadiusFactor:.58,ringRadiusFactor:1.25,durationMs:800});
+export const LEOON_CHARGE=Object.freeze({kind:'leoon-charge',mana:20,cooldownMs:30000,decisionMs:2500,chance:.35,
+  stompMs:900,warningMs:2000,dashMs:700,repeats:3,stomps:3,damageMultiplier:2,
+  distanceFactor:3.4,halfWidthFactor:.48,durationMs:700});

@@ -678,3 +678,22 @@ body:has(.lobby:not([hidden])) #world{width:100%;height:100%;max-height:none;min
 #interior-decor-shapes{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#interior-decor-shapes .interior-decor-choice{flex-direction:column;justify-content:center;text-align:center;min-height:110px;font-size:15px}#interior-decor-shapes .interior-decor-choice span{font-size:13px}#interior-decor-description{line-height:1.6}#interior-decor-shapes button{min-height:40px;width:100%}
 #journey-planet-practice-dialog .dialog-actions{justify-content:flex-end}
 body.placing #new-mission-notice,body.placing #journey-hud,body.placing #journey-arrow{display:none!important}
+.aries-sleep-choices{display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid #d8cef6;border-radius:14px;background:#f8f4ff;color:#352b56}
+.aries-sleep-choices[hidden]{display:none}
+.aries-sleep-choices h3,.aries-sleep-choices p{margin:0;line-height:1.45}
+.aries-sleep-choices select{width:100%;padding:10px;border:1px solid #b8a8dc;border-radius:9px;background:#fff;color:#29213b;font:inherit}
+.aries-sleep-dialog{width:min(440px,calc(100vw - 32px));border:1px solid #cdbce9;border-radius:18px;padding:24px;background:#fffaff;color:#302744;box-shadow:0 18px 60px #1e173355}
+.aries-sleep-dialog::backdrop{background:#21193688}
+.aries-sleep-dialog h2{margin:0 0 12px}
+.aries-sleep-message{line-height:1.55}
+.aries-sleep-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
+.aries-sleep-reopen{position:fixed;left:50%;bottom:calc(112px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;min-height:44px;padding:8px 18px;border-radius:14px;box-shadow:0 4px 18px #2e215655}
+.aries-sleep-reopen[hidden]{display:none}
+.cancer-duel-choices{display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid #e8c4a5;border-radius:14px;background:#fff7ef;color:#493324}
+.cancer-duel-choices[hidden]{display:none}.cancer-duel-choices h3,.cancer-duel-choices p{margin:0;line-height:1.45}
+.cancer-duel-choices select{width:100%;min-height:44px;padding:10px;border:1px solid #d3ad8e;border-radius:9px;background:#fff;color:#30251e;font:inherit}
+.cancer-duel-hint{font-size:.92rem;color:#765b49}.cancer-duel-choice-set{display:flex;flex-wrap:wrap;gap:8px}.cancer-duel-choice-set button{flex:1;min-width:72px;min-height:44px}.cancer-duel-choice-set button.is-selected{outline:3px solid #d98a48;outline-offset:1px;background:#fff0df}
+.cancer-duel-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;border:1px solid #dfb48f;border-radius:18px;padding:22px;background:#fffaf5;color:#392b22;box-shadow:0 18px 60px #321e1538}
+.cancer-duel-dialog::backdrop{background:#21193688}.cancer-duel-dialog h2{margin:0 0 12px}.cancer-duel-message,.cancer-duel-result-text{line-height:1.6}.cancer-duel-actions{display:grid;gap:12px;margin-top:18px}.cancer-duel-actions>button{min-height:46px}.cancer-duel-result{text-align:center}.cancer-duel-result>button{min-height:46px;min-width:120px}.cancer-duel-result.is-playing h2{animation:cancer-duel-pop .55s ease-out}.cancer-duel-result.is-playing{animation:cancer-duel-glow .8s ease-out}
+@keyframes cancer-duel-pop{0%{transform:scale(.82);opacity:.35}65%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}@keyframes cancer-duel-glow{0%{box-shadow:0 0 0 0 #eaa86d88}100%{box-shadow:0 18px 60px #321e1538}}
+@media(prefers-reduced-motion:reduce){.cancer-duel-result.is-playing,.cancer-duel-result.is-playing h2{animation:none}}

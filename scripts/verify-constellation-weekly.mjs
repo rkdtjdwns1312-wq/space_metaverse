@@ -11,7 +11,7 @@ import {departmentSlots} from '../shared/plaza-layout.js';
 import {INTERIOR,interiorIdOf} from '../shared/config.js';
 
 const key='weekly-ui-isolated-fixture',output='.local/weekly-ability-ui';
-let roll=1,rollSequence=[],browser,teacher,friend,now=Date.now();
+let roll=1,rollSequence=[],browser,teacher,friend,friend2,now=Date.now();
 const game=createClassroomServer({teacherKey:key,studentHours:false,teacherManagedAccounts:false,abilityDie:()=>rollSequence.length?rollSequence.shift():roll,clock:()=>now});
 const report={checks:[],errors:[]};
 try{
@@ -19,7 +19,7 @@ try{
   const url=`http://127.0.0.1:${(await game.listen()).port}`;
   teacher=io(url,{transports:['websocket'],reconnection:false});
   await new Promise((resolve,reject)=>{teacher.once('connect',resolve);teacher.once('connect_error',reject);});
-  const created=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey:key,title:'능력 화면 검사',allowedNames:['검사','보호']});
+  const created=await teacher.timeout(5000).emitWithAck('room:create',{teacherKey:key,title:'능력 화면 검사',allowedNames:['검사','보호','선택']});
   assert(created.ok,created.error);
   const room=game.store.rooms.get(created.room.code);
   browser=await chromium.launch({headless:true,channel:'msedge',args:['--no-proxy-server']});
@@ -45,7 +45,7 @@ try{
     await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
     const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
     assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
-    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius','cygnus','corona-borealis'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius','cygnus','corona-borealis','aries','cancer'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
   }
   report.checks.push('16종 한 줄 2버튼 / 백조·왕관 활성 / 미설정 능력 비활성');
   await as('libra',2);await page.locator('#self-ability-use').click();
@@ -185,7 +185,57 @@ try{
   await page.setViewportSize({width:390,height:844});
   assert(await page.locator('#ability-dialog').evaluate(e=>e.getBoundingClientRect().right<=innerWidth&&e.scrollWidth<=e.clientWidth));
   report.checks.push('390px 물고기자리·사수자리 선택창 가로 넘침 없음');
+  await as('aries',2);await page.locator('#self-ability-use').click();
+  friend2=io(url,{transports:['websocket'],reconnection:false});await new Promise((resolve,reject)=>{friend2.once('connect',resolve);friend2.once('connect_error',reject);});
+  const secondJoin=await friend2.timeout(5000).emitWithAck('room:join',{code:room.code,nickname:'선택',pin:'1234'});assert(secondJoin.ok,secondJoin.error);
+  await page.locator('.aries-sleep-choices select').selectOption(secondJoin.selfId);
+  publish();await page.waitForTimeout(100);
+  assert.equal(await page.locator('.aries-sleep-choices select').inputValue(),secondJoin.selfId);
+  await page.locator('.aries-sleep-choices button').click();
+  await page.waitForFunction(()=>document.querySelector('.aries-sleep-choices')?.textContent.includes('답하기를 기다려요'));
+  const sleepInvite=[...room.ariesInvites.values()].find(i=>i.fromId===player.id);
+  assert(sleepInvite);assert.equal(sleepInvite.toId,secondJoin.selfId);assert.equal(player.constellationAbilityState.usedWeek,null);
+  assert((await friend2.timeout(5000).emitWithAck('aries-sleep:respond',{requestId:sleepInvite.id,accept:true})).ok);
+  assert(player.constellationAbilityState.ariesSleep);await page.waitForFunction(()=>document.querySelector('#self-ability-use')?.textContent==='사용 완료');
+  report.checks.push('양자리 Lv2 친구 선택→수락 후 두 사람 수면·능력 사용');
+  await as('aries',3);await page.locator('#self-ability-use').click();
+  await page.locator('.aries-sleep-choices select').selectOption('2');
+  await page.locator('.aries-sleep-choices button').click();
+  assert.equal(player.constellationAbilityState.ariesSleep.reward,2);
+  report.checks.push('양자리 Lv3 2일 선택→수면 시작');
+  await as('cancer',2);await page.locator('#self-ability-use').click();
+  await page.locator('.cancer-duel-choices select').selectOption(protectedPlayer.id);
+  await page.locator('.cancer-duel-choices [data-choice="rock"]').click();
+  await page.locator('.cancer-duel-choices button').filter({hasText:'대결 신청 보내기'}).click();
+  const cancerInvite=[...room.cancerInvites.values()].find(i=>i.fromId===player.id);
+  assert(cancerInvite);assert.equal(cancerInvite.toId,protectedPlayer.id);
+  assert((await friend.timeout(5000).emitWithAck('cancer-duel:respond',{requestId:cancerInvite.id,accept:true,choice:'paper'})).ok);
+  await page.locator('.cancer-duel-result').waitFor({state:'visible'});
+  assert.match(await page.locator('.cancer-duel-result-text').innerText(),/내 별 파편 \+1개/);
+  assert.equal(player.starShards,31);
+  await page.screenshot({path:`${output}/cancer-lv2.png`});
+  report.checks.push('게자리 Lv2 친구 선택→가위바위보 신청→상대 수락→위로 별 파편 결과창');
+  const nextInviteVisible=await page.evaluate(async()=>{
+    const {createCancerDuelUI}=await import('/cancer-duel-ui.js');
+    const me={id:'target',avatar:{constellationId:'taurus'},constellationAbility:{constellationId:'taurus',level:2}};
+    const first={id:'first',fromId:'a',toId:'target',fromNickname:'첫째',level:2,expiresAt:Date.now()+60000};
+    const second={id:'second',fromId:'b',toId:'target',fromNickname:'둘째',level:2,expiresAt:Date.now()+60000};
+    const state={cancerInvites:[first],players:[]};let done;
+    const ui=createCancerDuelUI({request:()=>new Promise(resolve=>{done=resolve;}),getPlayer:()=>me,getRoom:()=>state,stop:()=>{},toast:()=>{}});
+    const dialog=[...document.querySelectorAll('.cancer-duel-dialog')].at(-2);
+    ui.update();[...dialog.querySelectorAll('button')].find(button=>button.textContent==='거절하기').click();
+    state.cancerInvites=[second];ui.update();done({message:'거절했어요.'});
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const afterAck=dialog.open&&dialog.textContent.includes('둘째')&&
+      [...dialog.querySelectorAll('button')].filter(button=>button.dataset.action!=='accept').every(button=>!button.disabled);
+    ui.result({requestId:'first',fromId:'a',toId:'target',level:2,tie:true,initiatorChoice:'rock',targetChoice:'rock',rolls:[]});
+    const afterResult=dialog.open&&dialog.textContent.includes('둘째');
+    dialog.querySelector('[data-choice="paper"]').click();
+    const canAccept=!dialog.querySelector('[data-action="accept"]').disabled;
+    ui.reset();return afterAck&&afterResult&&canAccept;
+  });
+  assert.equal(nextInviteVisible,true);report.checks.push('게자리 다중 신청에서 이전 ACK·결과 알림이 다음 신청창을 닫지 않음');
   assert.deepEqual(report.errors,[]);
   console.log(JSON.stringify(report));
 }catch(error){report.failure=error.stack;throw error;}
-finally{await writeFile(`${output}/report.json`,JSON.stringify(report,null,2));await browser?.close();teacher?.disconnect();friend?.disconnect();await game.close();}
+finally{await writeFile(`${output}/report.json`,JSON.stringify(report,null,2));await browser?.close();teacher?.disconnect();friend?.disconnect();friend2?.disconnect();await game.close();}

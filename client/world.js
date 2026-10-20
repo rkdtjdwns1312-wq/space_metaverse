@@ -54,6 +54,8 @@ import {drawSerenaExplosion} from './serena-art.js';
 import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
 import {drawNokseraMoon} from './noksera-moon.js';
 import {NOKSERA_HORN_BURST} from '/shared/boss-skills.js';
+import {LEOON_ROAR,LEOON_CHARGE} from '/shared/boss-skills.js';
+import {drawLeoonWarning,drawLeoonImpact} from './leoon-skill.js';
 import {drawEquipmentAura} from './equipment-aura.js';
 import {drawBabyStar} from './baby-star-art.js';
 import {drawCraftingMachine} from './crafting-art.js';
@@ -667,7 +669,7 @@ export function createWorld(canvas) {
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
       const barScale=type.boss?1.75:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
-      const bossBounds=type.boss?bossMonsterBounds(body,m.moving&&!activeAttack):null;
+      const bossBounds=type.boss?bossMonsterBounds(body,(m.moving||m.leoonSkill?.stage==='stomp')&&!activeAttack):null;
       const barWidth=type.boss?200:64,barY=type.boss?bossBounds.bottom+3:pos.y-visualRadius*barScale-18;
       const barHeight=type.boss?14:9;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,barHeight,4);ctx.fill();
@@ -721,7 +723,9 @@ export function createWorld(canvas) {
       ctx.strokeText('우주에너지 '+amount,drop.x,drop.y+35);ctx.fillText('우주에너지 '+amount,drop.x,drop.y+35);ctx.restore();
     }
     const warnings=visibleMonsters.filter(m=>m.warning&&m.warning.endsAt>Date.now());
-    canvas.dataset.monsterWarningCount=String(warnings.length);
+    const leoonWarnings=visibleMonsters.filter(m=>m.leoonSkill?.stage==='warning');
+    canvas.dataset.monsterWarningCount=String(warnings.length+leoonWarnings.length);
+    for(const m of leoonWarnings)drawLeoonWarning(ctx,m,Date.now());
     for(const m of warnings){
       if(m.warning.kind===NOKSERA_HORN_BURST.kind){drawNokseraWarning(ctx,m.warning);continue;}
       const mark=m.warning,remaining=Math.max(0,(mark.endsAt-Date.now())/1000);
@@ -808,6 +812,7 @@ export function createWorld(canvas) {
     for(const hit of hits){
       if(hit.kind==='damage')continue;
       if(hit.kind==='monster'&&hit.skillKind===NOKSERA_HORN_BURST.kind){drawNokseraBurst(ctx,hit,1-(hit.until-t)/NOKSERA_HORN_BURST.durationMs,reducedMotion.matches);continue;}
+      if(hit.kind==='monster'&&[LEOON_ROAR.kind,LEOON_CHARGE.kind].includes(hit.skillKind)){drawLeoonImpact(ctx,hit,1-(hit.until-t)/hit.durationMs);continue;}
       if(hit.kind==='monster'&&hit.shape==='serena'){drawSerenaExplosion(ctx,hit,1-(hit.until-t)/800);continue;}
       if(hit.kind==='monster'&&['star-crab','water-star'].includes(monsterType(monsters.find(m=>m.id===hit.monsterId)?.typeId)?.shape))continue;
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
@@ -908,11 +913,12 @@ export function createWorld(canvas) {
       // 범위 공격이 여러 명에게 맞아도 같은 물보라 모션은 한 번만 시작합니다.
       const previous=monsterAttacks.get(data.monsterId),startedAt=performance.now();
       const shape=monsterType(monsters.find(m=>m.id===data.monsterId)?.typeId)?.shape;
-      const special=data.skillKind===NOKSERA_HORN_BURST.kind,durationMs=special?NOKSERA_HORN_BURST.durationMs:['spirit-king','serena'].includes(shape)?800:600;
-      const newMotion=!previous||startedAt-previous.startedAt>80;
-      if(newMotion)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs});
+      const special=data.skillKind===NOKSERA_HORN_BURST.kind,leoonSpecial=[LEOON_ROAR.kind,LEOON_CHARGE.kind].includes(data.skillKind),durationMs=special?NOKSERA_HORN_BURST.durationMs:leoonSpecial?data.durationMs:['spirit-king','serena'].includes(shape)?800:600;
+      const newMotion=leoonSpecial||!previous||startedAt-previous.startedAt>80;
+      if(newMotion&&!leoonSpecial)monsterAttacks.set(data.monsterId,{...data,startedAt,durationMs});
       canvas.dataset.lastMonsterEffect=shape||'';
-      if((!special&&shape!=='serena')||newMotion)hits.push({...data,kind:'monster',shape,until:startedAt+(special?durationMs:shape==='serena'?800:ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(!data.noEffect&&((!special&&!leoonSpecial&&shape!=='serena')||newMotion))hits.push({...data,kind:'monster',shape,until:startedAt+(special||leoonSpecial?durationMs:shape==='serena'?800:ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(leoonSpecial)canvas.dataset.leoonImpactCount=String(hits.filter(hit=>hit.kind==='monster'&&hit.skillKind===data.skillKind&&hit.until>startedAt).length);
       canvas.dataset.lastMonsterDamage=String(data.damage);
       canvas.dataset.lastMonsterTarget=String(data.targetId);
     },

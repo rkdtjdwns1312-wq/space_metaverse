@@ -102,6 +102,8 @@ import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
 import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek,completeSwanCompliment,submitSwanCampaign,approveSwanCampaign} from './constellation-weekly-abilities.js';
 import {swanDailyDue,settleSwanDaily,swanCardOffer,buySwanStarCard} from './swan-weekly.js';
 import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekly.js';
+import {activeAriesSleep,ariesSleepDue,settleAriesSleep,inviteAriesSleep,respondAriesSleep,useAriesSleep,wakeAriesSleep} from './aries-weekly.js';
+import {inviteCancerDuel,respondCancerDuel} from './cancer-weekly.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
@@ -330,6 +332,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
           if(session?.teacherAccessDigest)ensure(session.room.teacherAccess?.digest===session.teacherAccessDigest,'선생님 접속 코드가 바뀌었어요. 다시 입장해주세요.');
+          if(session?.player.role==='student'&&activeAriesSleep(session.player,clock())&&
+            !['room:leave','constellation-ability:status','aries-sleep:respond','aries-sleep:wake'].includes(name))
+            throw new GameError('수면 중에는 행동할 수 없어요. 깨어나는 시간을 기다려 주세요.');
           if(session&&name.startsWith('combat:')&&expireTransformation(session.player,clock()))roster(session.room);
           if(session&&['combat:attack','combat:skill','combat:transform','map:travel','evolution:evolve','evolution:change','evolution:teacher-select'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
@@ -1562,6 +1567,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     // 방향 입력에는 디스크 저장이 필요 없습니다. 점수와 충돌 판정은 서버가 계산합니다.
     socket.on('dodge:input',data=>{
       const s=socket.data.session;if(!s||!data||typeof data!=='object'||(s.player.role==='student'&&!studentOpen()))return;
+      if(activeAriesSleep(s.player,clock()))return;
       setDodgeInput(s.room,s.player,data);
     });
     const requireCrafting=()=>{
@@ -1829,6 +1835,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('constellation-ability:sagittarius-options',sagittariusOptions,false);
     const weeklyAbilityUse=data=>{
       const s=weeklyAbilitySession();
+      if(s.player.avatar?.constellationId==='cancer'){
+        const invitation=inviteCancerDuel(s.room,s.player,data?.targetId,data?.choice,clock());roster(s.room);
+        return {invitation,...constellationAbilityStatus(s.player,clock()),message:'대결 신청을 보냈어요. 친구가 수락하면 결과가 나와요.'};
+      }
+      if(s.player.avatar?.constellationId==='aries'){
+        const now=clock();
+        if(s.player.avatar.level===2){
+          const invitation=inviteAriesSleep(s.room,s.player,data?.targetId,now);roster(s.room);
+          return {invitation,...constellationAbilityStatus(s.player,now),message:'수면 신청을 보냈어요. 친구가 수락하면 함께 잠들어요.'};
+        }
+        const result=useAriesSleep(s.room,s.player,data,now);roster(s.room);
+        return {...result,...constellationAbilityStatus(s.player,now)};
+      }
       if(s.player.avatar?.constellationId==='corona-borealis'){
         const result=useCoronaWeekly(s.player,data?.choice,clock());roster(s.room);
         return {...result,...constellationAbilityStatus(s.player,clock())};
@@ -1884,6 +1903,24 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       roster(s.room);return result;
     };
     action('constellation-ability:use',weeklyAbilityUse);
+    action('cancer-duel:respond',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 대결 신청에 답할 수 있어요.');
+      const result=respondCancerDuel(s.room,s.player,data.requestId,data.accept,data.choice,clock(),abilityDie);
+      if(result.accepted){for(const id of [result.fromId,result.toId]){
+        const participant=s.room.players.get(id),sock=participant&&io.sockets.sockets.get(participant.socketId);
+        if(sock)deliver(()=>sock.emit('cancer-duel:result',result));
+      }}
+      roster(s.room);return result;
+    });
+    action('aries-sleep:respond',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 수면 신청에 답할 수 있어요.');
+      const result=respondAriesSleep(s.room,s.player,data.requestId,data.accept,clock());roster(s.room);
+      return {...result,message:result.accepted?'수면 신청을 수락했어요. 다음 날 오전 8시에 깨어나요.':'수면 신청을 거절했어요.'};
+    });
+    action('aries-sleep:wake',()=>{
+      const s=socket.data.session;ensure(s?.player.role==='student','학생만 깨어날 수 있어요.');
+      const result=wakeAriesSleep(s.player,clock());roster(s.room);return result;
+    });
     action('constellation-ability:swan-card-buy',()=>{
       const {room,player}=weeklyAbilitySession(),result=buySwanStarCard(room,player,clock());
       roster(room);return {...result,...constellationAbilityStatus(player,clock()),swanCardOffer:false};
@@ -2091,6 +2128,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const p=socket.data.session?.player;
       if(!p || !data || typeof data!=='object')return;
       if(p.role==='student'&&!studentOpen())return;
+      if(activeAriesSleep(p,clock())){p.input={x:0,y:0,at:0};return;}
       if(!Number.isFinite(data.x)||!Number.isFinite(data.y)||Math.abs(data.x)>1||Math.abs(data.y)>1)return;
       p.input={x:data.x,y:data.y,at:Date.now()};
     });
@@ -2101,6 +2139,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
+      if(step%20===0&&ariesSleepDue(room,clock())){
+        try{transaction(()=>{if(settleAriesSleep(room,clock()))roster(room);});}
+        catch(error){console.error('양자리 수면 정산 저장 실패:',error.message);continue;}
+      }
       if(step%20===0&&coronaDue(room,clock())){
         try{transaction(()=>{if(settleCorona(room,clock()))roster(room);});}
         catch(error){console.error('왕관자리 기간제 능력 저장 실패:',error.message);continue;}

@@ -23,6 +23,12 @@ test('16 celestial originals are unique RGBA PNGs shared by the LV5 map and prof
    }else if(c.id==='cygnus'){
      assert.equal(stage.ability.mode,'daily-calm');
      assert.match(stage.ability.description,/월~목/);
+   }else if(c.id==='aries'){
+     assert.equal(stage.ability.mode,'sleep');
+     assert.match(stage.ability.description,/10명/);
+   }else if(c.id==='cancer'){
+     assert.equal(stage.ability.mode,'duel');
+     assert.match(stage.ability.description,/홀짝/);
    }else assert.equal(stage.ability,constellationOf(c.id,4).ability);
    const bytes=readFileSync('client'+stage.art);assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes[25],6);
    hashes.add(createHash('sha256').update(bytes).digest('hex'));

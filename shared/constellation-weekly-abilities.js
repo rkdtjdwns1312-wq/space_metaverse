@@ -10,6 +10,20 @@ const rewards=Object.freeze({
   taurus:Object.freeze({2:Object.freeze([3,-1,3,-1,3,-1]),3:Object.freeze([6,-2,6,-2,6,-2]),4:Object.freeze([9,-3,9,-3,9,-3]),5:Object.freeze([12,-3,12,-3,12,-3])})
 });
 export function weeklyAbilityFor(id,level){
+  if(id==='cancer'&&Number.isInteger(level)&&level>=2&&level<=5){
+    const win={2:1,3:2,4:4,5:6}[level],loss={2:0,3:1,4:2,5:3}[level];
+    return {configured:true,available:true,cancerDuel:true,win,loss,maxReward:win,minBalance:0,
+      description:level===2?'접속 중인 친구와 가위바위보를 해요. 이기면 별 파편 1개를 받고, 내가 지면 위로 보상으로 1개를 받아요. 친구가 지면 별 파편은 변하지 않아요.':
+        level===3?'접속 중인 친구와 동전 앞뒤를 맞혀요. 이기면 별 파편 2개, 지면 1개를 잃어요. 내가 지면 위로 보상 1개를 따로 받아요.':
+        level===4?'접속 중인 친구와 주사위 눈이 큰 사람을 겨뤄요. 같은 눈이면 다시 굴려요. 이기면 별 파편 4개, 지면 2개를 잃어요. 내가 지면 위로 보상 2개를 따로 받아요.':
+        '접속 중인 친구와 홀짝을 맞혀요. 이기면 별 파편 6개, 지면 3개를 잃어요. 내가 지면 위로 보상 3개를 따로 받아요.'};
+  }
+  if(id==='aries'&&Number.isInteger(level)&&level>=2&&level<=5)return {
+    configured:true,available:true,sleep:true,maxReward:0,minBalance:0,
+    description:level===2?'친구 1명이 수락하면 함께 잠들어요. 다음 날 오전 8시에 깨어나 각각 별 파편 1개를 받아요. 잠든 동안에는 행동할 수 없어요.':
+      level===3?'1~3일 중 잠잘 기간을 골라요. 깨어나는 날 잠든 일수만큼 별 파편을 받아요. 잠든 동안에는 행동할 수 없어요.':
+      `같은 교실의 다른 학생 중 최대 ${level===4?6:10}명을 무작위로 하루 동안 재워요. 잠든 학생은 별 파편 1개를 내고 즉시 깨어날 수 있어요.`
+  };
   if(id==='corona-borealis'&&Number.isInteger(level)&&level>=2&&level<=5)return {
     configured:true,available:true,corona:true,passive:level===5,maxReward:0,minBalance:0,
     description:level===2?'유효기간 1일의 왕관 전용 우주 식량 1개를 만들어요. 조합에는 쓸 수 없어요.':

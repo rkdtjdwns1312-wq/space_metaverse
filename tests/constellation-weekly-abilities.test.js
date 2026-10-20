@@ -18,7 +18,7 @@ const as=(f,id,level=2)=>f.mutate(p=>Object.assign(p.avatar,{constellationId:id,
 test('Friday reminder includes unused debt/cap failures, excludes passive, changed, teacher and used; KST boundaries',()=>{
  const friday=Date.parse('2026-10-15T15:00:00Z'),p=make('taurus',5);
  for(const balance of [0,SHARDS.max]){p.starShards=balance;assert.equal(constellationAbilityStatus(p,friday-1).remindUnused,false);const s=constellationAbilityStatus(p,friday);assert.equal(s.canUse,false);assert.equal(s.remindUnused,true);assert.equal(constellationAbilityStatus(p,NOW).remindUnused,true);assert.equal(constellationAbilityStatus(p,SUNDAY).remindUnused,false);}
- for(const tweak of [q=>q.role='teacher',q=>q.avatar.teacherPreview=true,q=>q.avatar.blackStar={},q=>q.avatar.constellationId='hercules',q=>q.avatar.constellationId='aries',q=>markConstellationChange(q,friday),q=>useConstellationAbility(q,friday,()=>1)]){const q=make('taurus',5);tweak(q);assert.equal(constellationAbilityStatus(q,friday).remindUnused,false);}
+ for(const tweak of [q=>q.role='teacher',q=>q.avatar.teacherPreview=true,q=>q.avatar.blackStar={},q=>q.avatar.constellationId='hercules',q=>markConstellationChange(q,friday),q=>useConstellationAbility(q,friday,()=>1)]){const q=make('taurus',5);tweak(q);assert.equal(constellationAbilityStatus(q,friday).remindUnused,false);}
 });
 
 test('Hercules preserves quotas through levels, warning deletion and clock rollback, with independent black reward and cap',()=>{
@@ -65,7 +65,7 @@ test('warning API negates only newest warning; reward/black transitions save tog
 
 test('Sunday KST epoch, all 16 frames, exact 3 currency tables and forged dice ignored',()=>{
  assert.equal(constellationWeekStart(NOW),Date.parse('2026-10-10T15:00:00Z'));assert.equal(constellationWeekStart(SUNDAY),SUNDAY);
- for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules','libra','pisces','sagittarius','cygnus','corona-borealis'].includes(c.id));
+ for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules','libra','pisces','sagittarius','cygnus','corona-borealis','aries','cancer'].includes(c.id));
  for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){const p=make('aquarius',level);assert.equal(useConstellationAbility(p,NOW,()=>{throw Error('no die');}).reward,reward);}
  for(const [id,table] of [['capricorn',[[0,1,1,1,1,2],[0,0,2,2,4,4],[2,2,4,4,6,6],[3,3,6,6,9,9]]],['taurus',[[3,-1,3,-1,3,-1],[6,-2,6,-2,6,-2],[9,-3,9,-3,9,-3],[12,-3,12,-3,12,-3]]]]){
   for(let level=2;level<=5;level++)for(let roll=1;roll<=6;roll++){const p=make(id,level),r=useConstellationAbility(p,NOW,()=>roll);assert.equal(r.roll,roll);assert.equal(r.reward,table[level-2][roll-1]);assert.equal(p.starShards,100+r.reward);assert(r.used);assert.throws(()=>useConstellationAbility(p,NOW,()=>6));assert.deepEqual(validateConstellationAbilityState(p.constellationAbilityState),p.constellationAbilityState);}
