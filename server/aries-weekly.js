@@ -69,13 +69,13 @@ export function inviteAriesSleep(room,player,targetId,now=Date.now()){
   room.ariesInvites.set(invite.id,invite);
   return invite;
 }
-export function respondAriesSleep(room,player,requestId,accept,now=Date.now()){
+export function respondAriesSleep(room,player,requestId,accept,now=Date.now(),sourceOverride=null){
   if(typeof accept!=='boolean')throw new GameError('수락 또는 거절을 골라 주세요.');
   const invite=room.ariesInvites?.get(requestId);
   if(!invite||invite.toId!==player.id||invite.expiresAt<=now)
     throw new GameError('수면 신청이 끝났거나 나에게 온 신청이 아니에요.');
   if(!accept){room.ariesInvites.delete(requestId);return {accepted:false,invite};}
-  const source=room.players.get(invite.fromId);
+  const source=sourceOverride||room.players.get(invite.fromId);
   if(!source?.connected||source.away||!player.connected||player.away)
     throw new GameError('두 친구가 접속 중일 때 수락할 수 있어요.');
   requireAries(source,2,now);

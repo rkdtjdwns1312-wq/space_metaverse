@@ -26,8 +26,10 @@ test('달 준비2초와 공개 timeline 7/6/7초·마나25·쿨60초·준비 중
   assert.deepEqual(v.moonAura,{...nokseraMoonTimeline(START),mapId:boss.mapId});
   assert.deepEqual([v.moonAura.startsAt,v.moonAura.fullStartsAt,v.moonAura.fullEndsAt,v.moonAura.endsAt],[3000,10000,16000,23000]);
   assert.deepEqual(tick(f,START+1999),[]);assert.deepEqual([boss.x,boss.y],xy);assert.equal(ensureVitals(player).hp,hp);
-  const hits=tick(f,START+2000);assert.equal(boss.moonCast,null);assert.ok(hits.length);assert.equal(hits[0].skillKind,undefined);
-  player.x=boss.x+500;const x=boss.x;tick(f,START+2100);assert.ok(boss.x>x);
+  const hits=tick(f,START+2000);assert.equal(boss.moonCast,null);assert.deepEqual(hits,[]);
+  assert.deepEqual(tick(f,START+2999),[]);
+  assert.ok(tick(f,START+3000).length);
+  player.x=boss.x+500;const x=boss.x;tick(f,START+3100);assert.ok(boss.x>x);
   assert.equal(monsterViews(room,START+22000)[0].moonAura,undefined);tick(f,START+22000);assert.equal(boss.moonAura,null);
 });
 
@@ -118,7 +120,7 @@ test('달 활성 후 행동불능은 달을 지우지 않으며 사망/재소환
 
 test('2초 간격40% 확률·실패시 평타/추적·마나/쿨/반경 조건·시간점프 한 번 판단',()=>{
   const f=fixture();let rolls=0;const rng=()=>{rolls++;return .4;};
-  f.boss.nextAttackAt=0;assert.ok(tick(f,START,rng).length);assert.equal(rolls,1);
+  f.boss.nextAttackAt=0;assert.deepEqual(tick(f,START,rng),[]);assert.equal(rolls,1);
   for(let at=START+50;at<START+2000;at+=50)tick(f,at,rng);assert.equal(rolls,1);
   tick(f,START+2000,()=>{rolls++;return .39999;});assert.equal(rolls,2);assert.ok(f.boss.moonCast);
   for(const setup of [g=>g.boss.mp=24,g=>g.boss.moonReadyAt=START+60000,g=>g.player.x+=2000,g=>{g.boss.attackers.clear();g.boss.targetId=null;g.boss.patrolStartedAt=START+60000;}]){

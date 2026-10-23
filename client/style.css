@@ -87,6 +87,13 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:1200/760;max-height:cal
 #ability-pair-choices h3,#ability-hunt-choices h3{margin:0;font-size:16px;color:#5d4795}
 #ability-pair-choices select,#ability-hunt-choices select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 #ability-pair-choices button,#ability-hunt-choices button{justify-self:start}
+#ability-serpent-choices{display:grid;gap:10px;margin:16px 0 10px}
+#ability-serpent-choices[hidden],#my-paralysis-panel[hidden]{display:none}
+#ability-serpent-choices h3{margin:0;font-size:16px;color:#5d4795}
+.ability-serpent-row{display:grid;gap:8px;padding:10px;border:1px solid #bba8db;border-radius:12px;background:#f8f3ff}
+.ability-serpent-row select{width:100%;min-width:0}
+.ability-serpent-row button{justify-self:start}
+#my-paralysis-panel{margin-top:10px;padding:10px;border:1px solid #b89bd7;border-radius:12px;background:#f8f0ff}
 #ability-unused-reminder{position:absolute;z-index:2;width:28px;height:28px;min-height:28px;padding:0;border:2px solid #fff4ca;border-radius:50%;background:#8c5baf;color:#fff9db;font-size:21px;line-height:24px;box-shadow:0 2px 5px #3a245b44;cursor:pointer}
 body:not(.joined) #ability-unused-reminder,body.placing #ability-unused-reminder{display:none}
 #ability-reminder-message{position:fixed;z-index:120;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 20px);padding:18px 12px;white-space:pre;border:2px solid #b6a0d5;border-radius:20px;background:#fffcf8f7;color:#503b76;text-align:center;line-height:1.8;font-size:clamp(10px,3.5vw,17px);box-shadow:0 6px 30px #40306440;pointer-events:none}

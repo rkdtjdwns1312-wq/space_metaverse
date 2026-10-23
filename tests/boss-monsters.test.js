@@ -60,15 +60,45 @@ test('보스 방어력 5, 우주에너지 400~600, 전용재료 100%, LV4 완제
   }
 });
 
-test('보스 공격 간격은 2초이며 일반 LV3 몬스터보다 느리다',()=>{
-  const {room,player,boss}=roomFor('noksera');
+test('노크세라·레오온은 근접 범위에 1초 머문 뒤 공격하고 이후 간격은 2초다',()=>{
+ for(const id of ['noksera','leoon']){
+  const {room,player,boss}=roomFor(id);
   boss.mp=0; // 마나가 없을 때 기존 일반 공격 간격을 유지합니다.
   player.x=boss.x+boss.radius+25;player.y=boss.y;
   boss.attackers.set(player.id,1);boss.targetId=player.id;boss.nextAttackAt=1000;
-  const hits=moveMonsters(room,1000,()=>0);
-  assert.ok(hits.length>=1);
-  assert.equal(boss.nextAttackAt,3000);
-  assert.equal(moveMonsters(room,2000,()=>0).length,0);
+  assert.equal(moveMonsters(room,1000,()=>0).length,0);
+  assert.equal(moveMonsters(room,1999,()=>0).length,0);
+  const hits=moveMonsters(room,2000,()=>0);assert.ok(hits.length>=1);
+  assert.equal(boss.nextAttackAt,4000);
+  assert.equal(moveMonsters(room,3000,()=>0).length,0);
+  assert.ok(moveMonsters(room,4000,()=>0).length>=1);
+ }
+});
+
+test('보스 근접 범위를 벗어나면 1초 대기가 초기화되고 늦게 진입한 친구는 맞지 않는다',()=>{
+ for(const id of ['noksera','leoon']){
+  const {room,player,boss}=roomFor(id);boss.mp=0;boss.attackers.set(player.id,1);
+  player.x=boss.x+boss.radius+25;player.y=boss.y;
+  assert.deepEqual(moveMonsters(room,1000,()=>0),[]);
+  player.x=boss.x+1000;assert.deepEqual(moveMonsters(room,1500,()=>0),[]);
+  player.x=boss.x+boss.radius+25;assert.deepEqual(moveMonsters(room,1600,()=>0),[]);
+  const late={...player,id:'late',avatar:{...player.avatar},x:player.x,y:player.y,connected:true};room.players.set(late.id,late);
+  assert.deepEqual(moveMonsters(room,2200,()=>0),[]);
+  assert.deepEqual(moveMonsters(room,2599,()=>0),[]);
+  const hits=moveMonsters(room,2600,()=>0);assert.deepEqual(hits.map(hit=>hit.targetId),[player.id]);
+ }
+});
+
+test('보스가 기절해 근접 공격을 멈춘 동안에는 머문 시간이 누적되지 않는다',()=>{
+ for(const id of ['noksera','leoon']){
+  const {room,player,boss}=roomFor(id);boss.mp=0;boss.attackers.set(player.id,1);
+  player.x=boss.x+boss.radius+25;player.y=boss.y;
+  assert.deepEqual(moveMonsters(room,1000,()=>0),[]);
+  boss.stunUntil=2000;assert.deepEqual(moveMonsters(room,1500,()=>0),[]);
+  assert.deepEqual(moveMonsters(room,2000,()=>0),[]);
+  assert.deepEqual(moveMonsters(room,2999,()=>0),[]);
+  assert.equal(moveMonsters(room,3000,()=>0).length,1);
+ }
 });
 
 test('초월 보스는 독립 능력치와 확정 보상, 탐사권 1~2장을 가진다',()=>{

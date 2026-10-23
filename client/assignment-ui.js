@@ -49,7 +49,9 @@ export function createAssignmentUI({request,stop,toast}){
   async function setStatus(status){
     const assignment=currentAssignment();if(!assignment||busy)return;
     busy=true;$('working').disabled=true;$('submit').disabled=true;$('error').textContent='';
-    try{refreshSelection(await request('assignment:status:set',{assignmentId:assignment.id,status}),assignment.id);toast(status==='submitted'?'과제를 제출했어요. 선생님의 확인을 기다려요.':'작성중으로 바꿨어요.');}
+    try{const result=await request('assignment:status:set',{assignmentId:assignment.id,status});refreshSelection(result,assignment.id);
+      const rewards=result.challengeRewards||[],shards=rewards.filter(reward=>reward.level===3).length,xp=rewards.filter(reward=>reward.level>=4).length*4;
+      toast(status==='submitted'?`과제를 제출했어요. 선생님의 확인을 기다려요.${xp?` 도전 보상 경험치 ${xp}을 받았어요.`:''}${shards?` 별 파편 ${shards}개를 받았어요.`:''}`:'작성중으로 바꿨어요.');}
     catch(error){$('error').textContent=error.message;}finally{busy=false;const current=currentAssignment();if(current)selectAssignment(current);}
   }
   async function confirmAssignment(assignmentId,studentId){

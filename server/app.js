@@ -100,6 +100,9 @@ import {registerScienceLibrary} from './science-library.js';
 import {awardLearningReward} from './learning-rewards.js';
 import {usesTeacherSkill,castTeacherSkill} from './teacher-skill.js';
 import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek,completeSwanCompliment,submitSwanCampaign,approveSwanCampaign} from './constellation-weekly-abilities.js';
+import {weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
+import {activeOphiuchusParalysis,useOphiuchus,clearOphiuchusParalysis,ophiuchusTransferDue,settleOphiuchusTransfers,borrowedOphiuchusActor,promoteBorrowedOphiuchusCopy,chooseCopiedOphiuchusItem} from './ophiuchus-weekly.js';
+import {useLeoChallenge,rewardLeoSubmission,settleLeoUnclaimed} from './leo-weekly.js';
 import {swanDailyDue,settleSwanDaily,swanCardOffer,buySwanStarCard} from './swan-weekly.js';
 import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekly.js';
 import {activeAriesSleep,ariesSleepDue,settleAriesSleep,inviteAriesSleep,respondAriesSleep,useAriesSleep,wakeAriesSleep} from './aries-weekly.js';
@@ -331,6 +334,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         const execute=save?transaction:work=>work();
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
+          if(session?.player.role==='student'&&session.player.constellationAbilityState?.abilitySeal?.endsAt>clock()&&
+            ['constellation-ability:choose-item','ability:choose-item','constellation-ability:swan-card-buy'].includes(name))
+            throw new GameError('뱀주인자리의 고급 마비로 별자리 능력이 봉인됐어요.');
+          if(session?.player.role==='student'&&activeOphiuchusParalysis(session.player,clock())&&
+            ['star-card:choose','star-card:remove'].includes(name))
+            throw new GameError('마비상태에서는 아이템을 사용할 수 없어요.');
           if(session?.teacherAccessDigest)ensure(session.room.teacherAccess?.digest===session.teacherAccessDigest,'선생님 접속 코드가 바뀌었어요. 다시 입장해주세요.');
           if(session?.player.role==='student'&&activeAriesSleep(session.player,clock())&&
             !['room:leave','constellation-ability:status','aries-sleep:respond','aries-sleep:wake'].includes(name))
@@ -344,6 +353,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           if(save&&session){settleLv4Items(session.room,clock());if(ensureDailyMissions(session.room,clock()))roster(session.room);}
           const result=handler(data);
           const current=socket.data.session;
+          if(save&&current?.player.role==='student'&&settleLeoUnclaimed(current.player))roster(current.room);
           if(save&&current&&store.rooms.get(current.room.code)===current.room&&ensureDailyMissions(current.room,clock()))roster(current.room);
           return result;
         })});
@@ -918,7 +928,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     },false);
     action('constellation-ability:pair-respond',data=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 짝 신청에 답할 수 있어요.');
-      const result=respondPiscesPair(s.room,s.player,data.requestId,data.accept,clock());
+      const invite=s.room.piscesInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
+        borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const result=respondPiscesPair(s.room,s.player,data.requestId,data.accept,clock(),borrowed?.actor);
+      if(result.accepted&&borrowed){borrowed.copied.used=true;borrowed.save();}
       if(result.accepted){
         announce(s.room,`${result.invite.fromNickname} 친구와 ${s.player.nickname} 친구가 ${result.invite.days}일 동안 물고기자리 짝이 되었어요. 책상과 급식 자리를 함께해 주세요.`);
       }else{
@@ -1419,8 +1432,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const assignment=typeof data.assignmentId==='string'?assignmentById(s.room,data.assignmentId):null;
       ensure(assignment&&recentAssignments(s.room,clock()).weeks.some(week=>week.assignments.some(value=>value.id===assignment.id)),'최근 과제에서 골라주세요.');
       ensure(!assignment.completedIds.includes(s.player.id),'선생님이 확인한 과제는 바꿀 수 없어요.');
-      setTaskStatus(s.player,assignment,data.status,clock());roster(s.room);
-      return recentAssignments(s.room,clock(),s.player);
+      const wasSubmitted=s.player.tasks?.some(task=>task.assignmentId===assignment.id&&task.status==='submitted');
+      setTaskStatus(s.player,assignment,data.status,clock());
+      const challengeRewards=data.status==='submitted'&&!wasSubmitted?rewardLeoSubmission(s.room,s.player,clock()):[];
+      roster(s.room);
+      return {...recentAssignments(s.room,clock(),s.player),challengeRewards};
     });
     action('assignment:confirm',data=>{
       const s=assignmentAccess();ensure(s.player.role==='teacher','선생님만 과제를 확인할 수 있어요.');
@@ -1712,6 +1728,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player:p}=s,now=clock(),item=itemOf(data?.itemId==='silver-draw-card'?'silver-draw-card':'moon-rabbit-card');
       if(p.rabbitDraw)return {draw:rabbitDrawView(p.rabbitDraw),inventory:[...p.inventory]};
       requireStarCardItemAccess(room,p,now);
+      ensure(!activeOphiuchusParalysis(p,now),'마비상태에서는 아이템을 사용할 수 없어요. 내정보에서 별 파편으로 즉시 해제할 수 있어요.');
       const owned=p.inventory.find(entry=>entry.id===item.id&&entry.quantity>0);
       ensure(owned,`가방에 ${item.name}가 없어요.`);
       ensure(levelOf(p)>=item.level,'캐릭터의 lv보다 높은 아이템으로 사용할 수 없습니다');
@@ -1825,16 +1842,21 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     };
     action('constellation-ability:status',()=>{const {room,player}=weeklyAbilitySession();return {...constellationAbilityStatus(player,clock()),swanCardOffer:swanCardOffer(room,player,clock())};},false);
     const sagittariusOptions=()=>{
-      const s=weeklyAbilitySession();ensure(s.player.avatar?.constellationId==='sagittarius','사수자리 능력에서만 볼 수 있어요.');
+      const s=weeklyAbilitySession();
+      const copied=s.player.constellationAbilityState?.ophiuchus?.copied;
+      const borrowed=s.player.avatar?.constellationId==='ophiuchus'&&copied?.constellationId==='sagittarius'&&copied.endsAt>clock()?
+        borrowedOphiuchusActor(s.player,clock()):null;
+      const actor=borrowed?.actor||s.player;
+      ensure(actor.avatar?.constellationId==='sagittarius','사수자리 능력에서만 볼 수 있어요.');
       const warnings=[...s.room.planets.values()].flatMap(planet=>(planet.warnings?.entries||[])
-        .filter(entry=>entry.active&&entry.targetId===s.player.id)
+        .filter(entry=>entry.active&&entry.targetId===actor.id)
         .map(entry=>({id:entry.id,planetId:planet.id,planetName:planet.name,reason:entry.reason,at:entry.at})));
       const departments=[...s.room.planets.values()].map(planet=>({id:planet.id,name:planet.name,count:warnings.filter(entry=>entry.planetId===planet.id).length})).filter(planet=>planet.count>0);
-      return {warnings,departments,blackStarAt:s.player.avatar.blackStar?.at??null,status:constellationAbilityStatus(s.player,clock())};
+      return {warnings,departments,blackStarAt:actor.avatar.blackStar?.at??null,status:constellationAbilityStatus(actor,clock())};
     };
     action('constellation-ability:sagittarius-options',sagittariusOptions,false);
-    const weeklyAbilityUse=data=>{
-      const s=weeklyAbilitySession();
+    const weeklyAbilityUse=(data,borrowed=null)=>{
+      const session=weeklyAbilitySession(),s=borrowed?{...session,player:borrowed.actor}:session;
       if(s.player.avatar?.constellationId==='cancer'){
         const invitation=inviteCancerDuel(s.room,s.player,data?.targetId,data?.choice,clock());roster(s.room);
         return {invitation,...constellationAbilityStatus(s.player,clock()),message:'대결 신청을 보냈어요. 친구가 수락하면 결과가 나와요.'};
@@ -1881,6 +1903,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         const invitation=invitePiscesPair(s.room,s.player,data.targetId,clock());roster(s.room);
         return {invitation,...constellationAbilityStatus(s.player,clock()),message:'짝 신청을 보냈어요. 친구가 수락하면 능력이 사용돼요.'};
       }
+      if(s.player.avatar?.constellationId==='ophiuchus'){
+        const result=useOphiuchus(s.room,s.player,data,clock());roster(s.room);return result;
+      }
+      if(s.player.avatar?.constellationId==='leo'){
+        const result=useLeoChallenge(s.room,s.player,data,clock());roster(s.room);return result;
+      }
       if(s.player.avatar?.constellationId==='sagittarius'){
         const p=s.player,room=s.room,status=constellationAbilityStatus(p,clock());
         ensure(status.canUse,status.message||'이번 주 사수자리 능력을 사용할 수 없어요.');
@@ -1903,9 +1931,48 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       roster(s.room);return result;
     };
     action('constellation-ability:use',weeklyAbilityUse);
+    action('constellation-ability:paralysis-clear',()=>{
+      const s=weeklyAbilitySession();ensure(s.player.role==='student','학생만 마비를 해제할 수 있어요.');
+      const result=clearOphiuchusParalysis(s.player,clock());roster(s.room);return result;
+    });
+    action('constellation-ability:borrowed-use',data=>{
+      const {room,player}=weeklyAbilitySession(),borrowed=borrowedOphiuchusActor(player,clock()),ability=weeklyAbilityFor(borrowed.copied.constellationId,borrowed.copied.level);
+      ensure(!borrowed.copied.used,'복사한 별자리 능력은 이미 사용했어요.');
+      const borrowedSlot=ability.paralysis?(borrowed.copied.level===5?data?.level:borrowed.copied.level):null;
+      if(ability.paralysis)ensure(!borrowed.copied.usedLevels.includes(borrowedSlot),'이미 복사해 사용한 마비 단계예요.');
+      if(ability.paralysis&&borrowed.copied.level===5&&data?.level===4){
+        const used=borrowed.copied.usedLevels;
+        ensure(used.includes(2)&&used.includes(3),'복사한 뱀주인자리의 Lv2와 Lv3을 먼저 사용해주세요.');
+      }
+      if(ability.passive||ability.swanDaily){borrowed.copied.used=true;borrowed.save();roster(room);
+        return {...constellationAbilityStatus(player,clock()),message:'복사한 자동 능력을 활성화했어요.'};}
+      const result=weeklyAbilityUse(data,borrowed);
+      if(result.invitation)result.invitation.borrowedFromOphiuchus=true;
+      if(!promoteBorrowedOphiuchusCopy(borrowed)){
+        if(!result.invitation){
+          borrowed.copied.useCount++;
+          if(ability.paralysis)borrowed.copied.usedLevels.push(borrowedSlot);
+          borrowed.copied.used=ability.paralysis?borrowed.copied.usedLevels.length===(borrowed.copied.level===5?3:1):
+            borrowed.copied.useCount>=(ability.warningHunter||ability.compliment?ability.uses:1)||
+            !!(ability.warningHunter&&result.lastResult?.mode==='department');
+        }
+        borrowed.save();
+      }
+      roster(room);
+      return {...constellationAbilityStatus(player,clock()),message:result.message,
+        ...(result.reward!==undefined?{reward:result.reward}:{}),...(result.roll!==undefined?{roll:result.roll}:{}),
+        ...(result.invitation?{invitation:result.invitation}:{})};
+    });
+    action('constellation-ability:borrowed-choose-item',data=>{
+      const {room,player}=weeklyAbilitySession();
+      const result=chooseCopiedOphiuchusItem(player,data?.itemId,clock());roster(room);return result;
+    });
     action('cancer-duel:respond',data=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 대결 신청에 답할 수 있어요.');
-      const result=respondCancerDuel(s.room,s.player,data.requestId,data.accept,data.choice,clock(),abilityDie);
+      const invite=s.room.cancerInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
+        borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const result=respondCancerDuel(s.room,s.player,data.requestId,data.accept,data.choice,clock(),abilityDie,borrowed?.actor);
+      if(result.accepted&&!result.tie&&borrowed){borrowed.copied.used=true;borrowed.save();}
       if(result.accepted){for(const id of [result.fromId,result.toId]){
         const participant=s.room.players.get(id),sock=participant&&io.sockets.sockets.get(participant.socketId);
         if(sock)deliver(()=>sock.emit('cancer-duel:result',result));
@@ -1914,7 +1981,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('aries-sleep:respond',data=>{
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 수면 신청에 답할 수 있어요.');
-      const result=respondAriesSleep(s.room,s.player,data.requestId,data.accept,clock());roster(s.room);
+      const invite=s.room.ariesInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
+        borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const result=respondAriesSleep(s.room,s.player,data.requestId,data.accept,clock(),borrowed?.actor);
+      if(result.accepted&&borrowed){borrowed.copied.used=true;borrowed.save();}
+      roster(s.room);
       return {...result,message:result.accepted?'수면 신청을 수락했어요. 다음 날 오전 8시에 깨어나요.':'수면 신청을 거절했어요.'};
     });
     action('aries-sleep:wake',()=>{
@@ -1928,7 +1999,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('constellation-ability:swan-campaign-approve',data=>{
       const {room,player}=weeklyAbilitySession();ensure(player.role==='teacher','선생님만 푯말을 승인할 수 있어요.');
       const target=room.players.get(data?.playerId);ensure(target?.role==='student','신청한 학생을 골라주세요.');
-      const result=approveSwanCampaign(target,clock());roster(room);
+      const copied=target.constellationAbilityState?.ophiuchus?.copied;
+      const borrowed=copied?.used&&copied.constellationId==='cygnus'&&copied.level===3?
+        borrowedOphiuchusActor(target,clock()):null;
+      const result=approveSwanCampaign(borrowed?.actor||target,clock());if(borrowed)borrowed.save();roster(room);
       whisper(room,target,'캠페인 푯말이 승인되어 광장에 세워졌어요. 별 파편 3개를 받았어요.');
       return {message:'캠페인 푯말을 승인했어요.',...result};
     });
@@ -2014,6 +2088,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       requireStarCardItemAccess(room,p,clock());
+      ensure(!activeOphiuchusParalysis(p,clock()),'마비상태에서는 아이템을 사용할 수 없어요. 내정보에서 별 파편으로 즉시 해제할 수 있어요.');
       const item=itemOf(data.itemId);
       ensure(item,'그런 물건은 없어요.');
       ensure(item.mode!=='journey-practice','연습 아이템은 첫 여행 연습 버튼으로 사용해 주세요.');
@@ -2150,6 +2225,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(step%20===0&&swanDailyDue(room,clock())){
         try{transaction(()=>{const result=settleSwanDaily(room,clock());if(result.changed)roster(room);});}
         catch(error){console.error('백조자리 일일 보상 저장 실패:',error.message);continue;}
+      }
+      if(step%20===0&&ophiuchusTransferDue(room,clock())){
+        try{transaction(()=>{if(settleOphiuchusTransfers(room,clock()))roster(room);});}
+        catch(error){console.error('뱀주인자리 마비 전염 저장 실패:',error.message);continue;}
       }
       if([...room.players.values()].some(p=>p.piscesPair?.endsAt<=clock())){
         try{transaction(()=>{if(settlePiscesPairs(room,clock()))roster(room);});}

@@ -33,7 +33,7 @@ export function useCoronaWeekly(player,choice,now=Date.now()){
     }
   }else{
     player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),
-      coronaTrial:{week,endsAt:expiresAt,savedXp:player.avatar.xp,savedEquipmentSlots:[...player.equipmentSlots]}};
+      coronaTrial:{week,endsAt:expiresAt,savedXp:player.avatar.xp,savedLevel:player.nativeAvatarLevel??player.avatar.level,savedEquipmentSlots:[...player.equipmentSlots]}};
     player.equipmentSlots=[null,null,null];
     player.avatar={...player.avatar,level:1,xp:0,form:'asteroid'};
   }
@@ -60,7 +60,7 @@ export function settleCorona(room,now=Date.now()){
     if(state.coronaTrial?.endsAt<=now){
       const trial=state.coronaTrial;
       // Temporary Lv1 XP can be earned, but cannot push restored Lv4 beyond its normal XP requirement.
-      player.avatar={...player.avatar,level:4,form:'constellation',xp:Math.min(30,trial.savedXp+player.avatar.xp+5)};
+      player.avatar={...player.avatar,level:trial.savedLevel??4,form:'constellation',xp:Math.min(30,trial.savedXp+player.avatar.xp+5)};
       player.equipmentSlots=[...trial.savedEquipmentSlots];
       state.coronaTrial=null;
       state.coronaUnclaimed+=5;
@@ -77,7 +77,12 @@ export function settleCorona(room,now=Date.now()){
   }
   return changed;
 }
-export function crownPriorities(room){
-  return [...room.players.values()].filter(p=>p.role==='student'&&p.avatar?.constellationId==='corona-borealis'&&p.avatar?.level===5)
+export function crownPriorities(room,now=Date.now()){
+  return [...room.players.values()].filter(p=>p.role==='student'&&(
+    p.avatar?.constellationId==='corona-borealis'&&p.avatar?.level===5||
+    p.avatar?.constellationId==='ophiuchus'&&p.constellationAbilityState?.ophiuchus?.copied?.constellationId==='corona-borealis'&&
+    p.constellationAbilityState.ophiuchus.copied.level===5&&p.constellationAbilityState.ophiuchus.copied.used&&
+    p.constellationAbilityState.ophiuchus.copied.endsAt>now)&&
+    !(p.constellationAbilityState?.abilitySeal?.endsAt>now))
     .map(p=>({id:p.id,nickname:p.nickname}));
 }

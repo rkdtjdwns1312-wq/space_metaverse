@@ -137,9 +137,9 @@ test('α cannot scale new Capricorn/Taurus/Libra dice and old Libra retry grants
  assert.equal((await call(f.student,'ability:retry')).ok,false);assert.equal((await call(f.student,'ability:use')).ok,false);
 });
 
-test('retired warning abilities cannot start; saved delayed rewards retain cap and exactly-once settlement',async t=>{
+test('old Sagittarius warning ability cannot start; saved delayed rewards retain cap and exactly-once settlement',async t=>{
  const f=await fixture(t);await f.give(ALPHA);await f.activate();
- for(const id of ['sagittarius','ophiuchus']){f.as(id,2);assert.equal((await call(f.student,'ability:use',{targetId:f.other.id})).ok,false);}
+ f.as('sagittarius',2);assert.equal((await call(f.student,'ability:use',{targetId:f.other.id})).ok,false);
  f.other.abilityState.blocks=[{id:'saved-block',sourceId:'ophiuchus',until:NOW+86400000,fromId:f.p.id,fromNickname:f.p.nickname,reward:2}];const until=NOW+86400000;
  f.other.starShards=SHARDS.max-1;assert.equal(settleItemBlocks(f.other,until),false);f.other.starShards=SHARDS.max-2;assert.equal(settleItemBlocks(f.other,until),true);assert.equal(f.other.starShards,SHARDS.max);assert.equal(settleItemBlocks(f.other,until),false);
 });

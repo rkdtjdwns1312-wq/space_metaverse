@@ -1070,7 +1070,7 @@ crownTeacherSection.innerHTML='<h3>왕관자리 Lv5 자리·급식 우선권</h3
 $('teacher-dialog').querySelector('.teacher-footer').before(crownTeacherSection);
 function renderTeacherCrownPriorities(){
   const list=$('teacher-crown-priority-list');list.replaceChildren();
-  for(const player of room?.players||[])if(player.role==='student'&&player.avatar?.constellationId==='corona-borealis'&&player.avatar?.level===5){
+  for(const player of room?.crownPriorities||[]){
     const row=document.createElement('li');row.textContent=player.nickname+' · 자리 바꾸기·급식 자리 선택 우선권';list.append(row);
   }
   $('teacher-crown-priority-empty').hidden=!!list.children.length;

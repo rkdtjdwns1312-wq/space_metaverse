@@ -1,4 +1,5 @@
 import {lv2MonsterPose} from './lv2-monster-art.js';
+import {drawOriginWalkFrame} from './origin-monster-walk.js';
 
 // 첨부 원화에서 만든 4포즈. 좌표는 1280 기준이며 실제 이미지 크기에 맞춰 환산합니다.
 // 각 포즈의 발밑을 고정하여 공격 중 그림 크기/위치가 튀지 않게 합니다.
@@ -55,6 +56,7 @@ export function drawCelestialMonster(ctx,m,time=0,attack){
     const outline=[[40,0],[sw,0],[sw,sh],[0,sh],[0,460],[40,400]];
     ctx.beginPath();outline.forEach(([px,py],i)=>{const x=(px-ax)*scale,y=(py-ay)*scale;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.clip();
   }
-  ctx.drawImage(image,sx*image.naturalWidth/1280,sy*image.naturalHeight/1280,sw*image.naturalWidth/1280,sh*image.naturalHeight/1280,-ax*scale,-ay*scale,sw*scale,sh*scale);
+  if(!(m.moving&&!pose.active&&drawOriginWalkFrame(ctx,m.shape,time,-320*scale,-570*scale,640*scale)))
+    ctx.drawImage(image,sx*image.naturalWidth/1280,sy*image.naturalHeight/1280,sw*image.naturalWidth/1280,sh*image.naturalHeight/1280,-ax*scale,-ay*scale,sw*scale,sh*scale);
   ctx.restore();if(pose.active)effect(ctx,m,attack,pose,art,r,dx,dy);return true;
 }

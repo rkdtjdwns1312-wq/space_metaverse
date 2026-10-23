@@ -14,7 +14,9 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
   const huntChoices=document.createElement('section');huntChoices.id='ability-hunt-choices';huntChoices.hidden=true;pairChoices.after(huntChoices);
   const swanChoices=document.createElement('section');swanChoices.id='ability-swan-choices';swanChoices.hidden=true;huntChoices.after(swanChoices);
   const coronaChoices=document.createElement('section');coronaChoices.id='ability-corona-choices';coronaChoices.hidden=true;swanChoices.after(coronaChoices);
-  let huntOptions=null;
+  const serpentChoices=document.createElement('section');serpentChoices.id='ability-serpent-choices';serpentChoices.hidden=true;coronaChoices.after(serpentChoices);
+  const paralysisPanel=document.createElement('section');paralysisPanel.id='my-paralysis-panel';paralysisPanel.hidden=true;panel.after(paralysisPanel);
+  let huntOptions=null,borrowedOptions=null,borrowedOptionsKey='';
   const reminder=document.createElement('button');reminder.id='ability-unused-reminder';reminder.type='button';reminder.textContent='!';reminder.hidden=true;reminder.setAttribute('aria-label','아직 사용하지 않은 별자리 능력 안내');$('bottom-dock').append(reminder);
   const reminderMessage=document.createElement('div');reminderMessage.id='ability-reminder-message';reminderMessage.setAttribute('role','status');reminderMessage.hidden=true;
   reminderMessage.textContent='아직 별자리 캐릭터 능력을 사용하지 않았습니다\n별자리 능력은 1주일 마다 다시 사용할 수 있습니다.';document.body.append(reminderMessage);
@@ -227,7 +229,141 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     $('ability-status').textContent=passiveNote+'\n매주 일요일 오전 0시(한국 시간)에 다시 사용할 수 있어요.\n별자리를 바꾸거나 진화해도 사용 기록은 유지돼요.';
     if(status?.used&&status.lastResult&&!animation)showResult(status.lastResult);
     if(!status?.used){dice.hidden=true;$('ability-outcome').textContent='';}
-    renderChoices();renderPairChoices();renderHunterChoices();renderSwanChoices();renderCoronaChoices();updateReminder();
+    renderChoices();renderPairChoices();renderHunterChoices();renderSwanChoices();renderCoronaChoices();renderSerpentChoices();renderParalysis();updateReminder();
+  }
+  function renderSerpentChoices(){
+    serpentChoices.replaceChildren();serpentChoices.hidden=!['ophiuchus','leo'].includes(status?.constellationId);
+    if(serpentChoices.hidden)return;
+    if(status.constellationId==='leo'){
+      const heading=document.createElement('h3');heading.textContent='사자자리 도전 능력';serpentChoices.append(heading);
+      const level=status.level,eligible=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id&&friend.avatar?.level<=3);
+      const row=document.createElement('div');row.className='ability-serpent-row';
+      if(level>=4){
+        const count=level===4?1:2,selects=[];
+        for(let i=0;i<count;i++){
+          const select=document.createElement('select');select.setAttribute('aria-label',`고급 도전 대상 친구 ${i+1}`);
+          for(const friend of eligible){const option=document.createElement('option');option.value=friend.id;option.textContent=friend.nickname;select.append(option);}
+          select.selectedIndex=i;selects.push(select);row.append(select);
+        }
+        const button=document.createElement('button');button.type='button';button.className='primary';button.textContent='선택한 친구에게 도전 주기';
+        button.disabled=busy||!status.canUse||eligible.length<count;button.onclick=()=>void castLeo({targetIds:selects.map(select=>select.value)});row.append(button);
+      }else{
+        const button=document.createElement('button');button.type='button';button.className='primary';button.textContent='무작위 친구 2명에게 도전 주기';
+        button.disabled=busy||!status.canUse;button.onclick=()=>void castLeo({});row.append(button);
+      }
+      serpentChoices.append(row);return;
+    }
+    const heading=document.createElement('h3');heading.textContent='뱀주인자리 마비 능력';serpentChoices.append(heading);
+    const levels=status.level===5?[2,3,4]:[status.level];
+    for(const level of levels){
+      const row=document.createElement('div');row.className='ability-serpent-row';
+      const used=status.ophiuchus?.usedLevels?.includes(level);
+      const label=document.createElement('strong');label.textContent=`Lv${level} · ${level===2?'중급':level===3?'하급':'고급'} 마비 ${used?'✓ 사용 완료':''}`;row.append(label);
+      if(level===2){
+        const select=document.createElement('select');select.setAttribute('aria-label','중급 마비 대상 친구');
+        for(const friend of getRoom()?.players||[])if(friend.role==='student'&&friend.id!==getPlayer()?.id){
+          const option=document.createElement('option');option.value=friend.id;option.textContent=friend.nickname;select.append(option);
+        }
+        row.append(select);
+        const send=document.createElement('button');send.type='button';send.className='secondary';send.textContent='선택한 친구에게 사용';send.disabled=busy||used||!status.canUse||!select.options.length;
+        send.onclick=()=>void castSerpent(level,select.value);row.append(send);
+      }else{
+        const send=document.createElement('button');send.type='button';send.className='secondary';send.textContent=level===3?'무작위 친구에게 사용':'무작위 친구 능력 복사';send.disabled=busy||used||!status.canUse;
+        send.onclick=()=>void castSerpent(level);row.append(send);
+      }
+      serpentChoices.append(row);
+    }
+    const copied=status.ophiuchus?.copied;
+    if(copied){
+      const note=document.createElement('p');note.className='muted';note.textContent=`복사한 능력: ${constellationOf(copied.constellationId,copied.level)?.name||'별자리'} Lv${copied.level} · ${copied.used?'사용 완료':'사용 대기'}`;serpentChoices.append(note);
+      const description=document.createElement('p');description.textContent=copied.description;serpentChoices.append(description);
+      if(copied.pending){for(const choice of copied.pending.choices){
+        const select=document.createElement('button');select.type='button';select.className='secondary';select.textContent=`${choice.name} · 가치 ${choice.value}`;select.disabled=busy;
+        select.onclick=async()=>{if(busy)return;busy=true;select.disabled=true;try{const result=await request('constellation-ability:borrowed-choose-item',{itemId:choice.id});toast(result.message);void refresh();}catch(error){toast(error.message);}finally{busy=false;}};
+        serpentChoices.append(select);
+      }}else if(!copied.used)renderBorrowedForm(copied);
+    }
+  }
+  function renderBorrowedForm(copied){
+    const id=copied.constellationId,level=copied.level,form=document.createElement('div');form.className='ability-serpent-row';
+    const addSelect=(label,values)=>{const select=document.createElement('select');select.setAttribute('aria-label',label);
+      for(const [value,text] of values){const option=document.createElement('option');option.value=String(value);option.textContent=text;select.append(option);}
+      form.append(select);return select;};
+    const send=(label,payload,disabled=false)=>{const button=document.createElement('button');button.type='button';button.className='primary';button.textContent=label;button.disabled=busy||disabled;
+      button.onclick=()=>void useBorrowed(payload());form.append(button);};
+    const targets=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id&&friend.connected&&!friend.away)
+      .map(friend=>[friend.id,friend.nickname]);
+    const allTargets=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id)
+      .map(friend=>[friend.id,friend.nickname]);
+    if(id==='pisces'||id==='cancer'||id==='aries'&&level===2||id==='cygnus'&&level===2||id==='ophiuchus'&&level===2){
+      const target=addSelect('복사 능력을 사용할 친구',id==='ophiuchus'?allTargets:targets);
+      if(id==='cancer'&&level!==4){const choices=level===2?[['rock','바위'],['paper','보'],['scissors','가위']]:level===3?[['heads','앞'],['tails','뒤']]:[['odd','홀'],['even','짝']];
+        const choice=addSelect('대결 선택',choices);send('친구에게 대결 신청',()=>({targetId:target.value,choice:choice.value}),!targets.length);
+      }else if(id==='cygnus'){
+        const praise=addSelect('칭찬 문구',[['0','친절하게 도와줘서 고마워!'],['1','함께할 때 즐거워!'],['2','열심히 도전하는 모습이 멋져!'],['3','배려하는 마음이 참 좋아!']]);
+        send('칭찬 보내기',()=>({targetId:target.value,praiseIndex:Number(praise.value)}),!targets.length);
+      }else send(id==='pisces'?'짝 신청 보내기':id==='aries'?'수면 신청 보내기':'복사 능력 사용',()=>({targetId:target.value,...(id==='ophiuchus'?{level:2}:{})}),!(id==='ophiuchus'?allTargets:targets).length);
+    }else if(id==='aries'&&level===3){const days=addSelect('잠잘 기간',[[1,'1일'],[2,'2일'],[3,'3일']]);send('선택한 기간 잠들기',()=>({days:Number(days.value)}));}
+    else if(id==='corona-borealis'&&level===4){const choice=addSelect('왕관자리 효과',[['trial','Lv1 체험'],['both','기간제 카드 받기']]);send('복사 능력 사용',()=>({choice:choice.value}));}
+    else if(id==='cygnus'&&level===3){const text=document.createElement('input');text.maxLength=80;text.placeholder='캠페인 푯말 문구';text.setAttribute('aria-label','캠페인 푯말 문구');form.append(text);send('푯말 신청',()=>({campaignText:text.value}));}
+    else if(id==='sagittarius'){
+      if(!borrowedOptions){const note=document.createElement('p');note.textContent='삭제할 내 경고를 불러오는 중이에요.';form.append(note);void loadBorrowedSagittariusOptions();}
+      else{
+        const mode=level<=3?'warning':level===4?'black-star':'choose';
+        const warningValues=borrowedOptions.warnings.map(w=>[w.id,`${w.planetName} · ${w.reason}`]);
+        if(mode==='warning'&&warningValues.length){const warning=addSelect('삭제할 내 경고',warningValues);send('내 경고 삭제',()=>({mode:'warning',warningId:warning.value}));}
+        if(mode==='black-star'&&borrowedOptions.blackStarAt!==null)send('내 검은별 해제',()=>({mode:'black-star',blackStarAt:borrowedOptions.blackStarAt}));
+        if(mode==='choose'){
+          if(borrowedOptions.blackStarAt!==null)send('내 검은별 해제',()=>({mode:'black-star',blackStarAt:borrowedOptions.blackStarAt}));
+          if(borrowedOptions.departments.length){const dept=addSelect('경고를 지울 부서',borrowedOptions.departments.map(d=>[d.id,d.name]));send('부서 경고 모두 삭제',()=>({mode:'department',planetId:dept.value}));}
+        }
+        if(!form.querySelector('button')){const note=document.createElement('p');note.textContent='삭제할 수 있는 내 경고나 검은별이 없어요.';form.append(note);}
+      }
+    }else if(id==='ophiuchus'&&level===5){
+      const used=copied.usedLevels||[],levels=[[2,'Lv2 중급'],[3,'Lv3 하급'],[4,'Lv4 고급']]
+        .filter(([stage])=>!used.includes(stage)&&(stage!==4||used.includes(2)&&used.includes(3)));
+      const stage=addSelect('마비 단계',levels),target=addSelect('중급 마비 대상 친구',allTargets);
+      send('복사 능력 사용',()=>({level:Number(stage.value),...(Number(stage.value)===2?{targetId:target.value}:{})}),!levels.length||!allTargets.length);
+    }else if(id==='leo'&&level>=4){
+      const count=level===4?1:2,eligible=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id&&friend.avatar?.level<=3);
+      const selects=Array.from({length:count},(_,i)=>{const select=addSelect(`복사 도전 대상 ${i+1}`,eligible.map(friend=>[friend.id,friend.nickname]));select.selectedIndex=i;return select;});
+      send('복사한 고급 도전 사용',()=>({targetIds:selects.map(select=>select.value)}),eligible.length<count);
+    }else send('복사한 별자리 능력 사용',()=>({}));
+    serpentChoices.append(form);
+  }
+  async function loadBorrowedSagittariusOptions(){
+    const copied=status?.ophiuchus?.copied,key=copied?`${copied.fromId}:${copied.level}:${copied.endsAt}`:'';
+    if(!key||borrowedOptionsKey===key)return;borrowedOptionsKey=key;
+    try{const options=await request('constellation-ability:sagittarius-options',{});if(borrowedOptionsKey!==key)return;borrowedOptions=options;renderSerpentChoices();}
+    catch(error){borrowedOptionsKey='';toast(error.message);}
+  }
+  async function useBorrowed(payload){
+    if(busy)return;busy=true;render();
+    try{const result=await request('constellation-ability:borrowed-use',payload);toast(result.message);borrowedOptions=null;borrowedOptionsKey='';status=result;scheduleReset();}
+    catch(error){toast(error.message);}
+    finally{busy=false;render();}
+  }
+  async function castSerpent(level,targetId){
+    if(busy)return;busy=true;render();
+    try{const response=await request('constellation-ability:use',{level,...(targetId?{targetId}:{})});status=response;borrowedOptions=null;borrowedOptionsKey='';toast(response.message);render();scheduleReset();}
+    catch(error){toast(error.message);void refresh();}
+    finally{busy=false;render();}
+  }
+  async function castLeo(payload){
+    if(busy)return;busy=true;render();
+    try{const response=await request('constellation-ability:use',payload);status=response;toast(response.message);render();scheduleReset();}
+    catch(error){toast(error.message);void refresh();}
+    finally{busy=false;render();}
+  }
+  function renderParalysis(){
+    const p=getPlayer(),effect=p?.constellationAbility?.paralysis;
+    paralysisPanel.replaceChildren();paralysisPanel.hidden=!effect;
+    if(!effect)return;
+    const label=document.createElement('p');label.textContent=`🐍 ${effect.level===2?'중급':effect.level===3?'하급':'고급'} 마비상태 · 아이템 사용 불가 · ${new Date(effect.endsAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}까지`;
+    const release=document.createElement('button');release.type='button';release.className='secondary';release.textContent=`별 파편 ${effect.cost}개로 즉시 해제`;
+    release.disabled=busy||p.starShards<effect.cost;
+    release.onclick=async()=>{if(busy)return;busy=true;release.disabled=true;try{const result=await request('constellation-ability:paralysis-clear',{});toast(result.message);void refresh();}catch(error){toast(error.message);}finally{busy=false;}};
+    paralysisPanel.append(label,release);
   }
   function scheduleReset(){
     clearTimeout(resetTimer);
@@ -261,6 +397,8 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     if(status.constellationId==='sagittarius'){open();void loadHunterChoices();return;}
     if(status.constellationId==='cygnus'){open();renderSwanChoices();return;}
     if(status.constellationId==='corona-borealis'&&status.level===4){open();renderCoronaChoices();return;}
+    if(status.constellationId==='ophiuchus'){open();renderSerpentChoices();return;}
+    if(status.constellationId==='leo'){open();renderSerpentChoices();return;}
     const token=++revision,key=identity();busy=true;render();let failed=false;
     try{
       const response=await request('constellation-ability:use',{});
@@ -275,15 +413,16 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
   return {
     update(){
       const p=getPlayer(),next=identity();
+      renderParalysis();
       panel.dataset.constellation=p?.avatar?.constellationId||'';panel.dataset.level=String(p?.avatar?.level||1);
       panel.hidden=!(p?.avatar?.level>=2&&constellationOf(p.avatar.constellationId)?.type);
-      if(next!==signature){signature=next;++revision;busy=false;status=null;huntOptions=null;stopAnimation();clearTimeout(resetTimer);dice.hidden=true;$('ability-outcome').textContent='';render();
+      if(next!==signature){signature=next;++revision;busy=false;status=null;huntOptions=null;borrowedOptions=null;borrowedOptionsKey='';stopAnimation();clearTimeout(resetTimer);dice.hidden=true;$('ability-outcome').textContent='';render();
         if(panel.hidden&&dialog.open)dialog.close();else if(visible())void refresh();}
       const incoming=p?.constellationAbility,nextSnapshot=JSON.stringify(incoming||null);
       if(incoming&&!busy&&!animation&&nextSnapshot!==snapshotSignature){snapshotSignature=nextSnapshot;++revision;status=incoming;panel.setAttribute('aria-busy','false');render();scheduleReset();}
       const pairState=getRoom?.(),nextPair=JSON.stringify({invites:pairState?.piscesInvites||[],friends:(pairState?.players||[]).map(friend=>[friend.id,friend.connected,friend.away])});
       if(nextPair!==pairSignature){pairSignature=nextPair;if(status?.constellationId==='pisces')renderPairChoices();}
     },
-    reset(){++revision;signature='';snapshotSignature='';pairSignature='';busy=false;status=null;huntOptions=null;stopAnimation();clearTimeout(resetTimer);clearTimeout(pairTimer);clearTimeout(reminderTimer);clearTimeout(messageTimer);reminder.hidden=true;reminderMessage.hidden=true;panel.hidden=true;if(dialog.open)dialog.close();}
+    reset(){++revision;signature='';snapshotSignature='';pairSignature='';busy=false;status=null;huntOptions=null;borrowedOptions=null;borrowedOptionsKey='';stopAnimation();clearTimeout(resetTimer);clearTimeout(pairTimer);clearTimeout(reminderTimer);clearTimeout(messageTimer);reminder.hidden=true;reminderMessage.hidden=true;panel.hidden=true;if(dialog.open)dialog.close();}
   };
 }

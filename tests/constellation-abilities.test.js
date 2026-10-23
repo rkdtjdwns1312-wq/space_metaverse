@@ -58,10 +58,9 @@ test('쌍둥이 구 endpoint는 상점 자동복사 대신 보유 아이템 하�
  assert.ok((await call(first,'ability:choose-item',{itemId:'little-sun-card'})).ok);assert.equal(student.inventory[0].quantity,2);
 });
 
-test('이미 저장된 뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 시 보상 1개를 준다',async t=>{
+test('이전 버전에 저장된 뱀주인자리 정지는 상대 아이템 사용을 차단하고 만료 시 보상 1개를 준다',async t=>{
   const {first,second,student,friend,setNow}=await fixture(t);student.avatar.constellationId='ophiuchus';friend.inventory=[{id:'star-sticker',quantity:1}];
   const start=Date.parse('2026-09-18T04:00:00Z');
-  assert.equal((await call(first,'ability:use',{targetId:friend.id})).ok,false);
   addItemBlock(friend,'ophiuchus',student,start+2*86400000,1);
   assert.match((await call(second,'item:use',{itemId:'star-sticker',targetId:friend.id})).error,/아이템/);
   setNow(start+2*86400000+1000);

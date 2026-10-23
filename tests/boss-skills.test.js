@@ -86,8 +86,8 @@ test('원형 경계 바로 안쪽 포함, 바깥/다른맵/비접속/자리비�
 
 test('전투대상 없이 시전하지 않으며 마나부족·쿨타임에는 기존 일반공격',()=>{
  const idle=fixture();idle.boss.attackers.clear();tick(idle,START);assert.equal(idle.boss.pendingAttack,undefined);assert.equal(idle.boss.mp,50);
- for(const mana of [0,14]){const f=fixture();f.boss.mp=mana;const hits=tick(f,START);assert.ok(hits.length);assert.equal(hits[0].skillKind,undefined);assert.equal(f.boss.mp,mana);}
- const f=fixture();tick(f,START);tick(f,START+3000);const hits=tick(f,START+5000);assert.ok(hits.length);assert.equal(hits[0].skillKind,undefined);
+ for(const mana of [0,14]){const f=fixture();f.boss.mp=mana;assert.deepEqual(tick(f,START),[]);const hits=tick(f,START+1000);assert.ok(hits.length);assert.equal(hits[0].skillKind,undefined);assert.equal(f.boss.mp,mana);}
+ const f=fixture();tick(f,START);tick(f,START+3000);assert.deepEqual(tick(f,START+5000),[]);const hits=tick(f,START+6000);assert.ok(hits.length);assert.equal(hits[0].skillKind,undefined);
  ensureVitals(f.player).hp=100;f.boss.attackers.set(f.player.id,2);tick(f,START+20000);assert.equal(f.boss.pendingAttack?.kind,NOKSERA_HORN_BURST.kind);
 });
 
@@ -125,9 +125,10 @@ test('성령왕·세레나 경고2초/기존30공격/쿨3초는 유지되고 마
 test('2초 판단 간격·40% 경계, 실패 시 평타/추적 유지·매틱 난수 금지',()=>{
  const f=fixture();let rolls=0;const random=()=>{rolls++;return .4;};
  f.boss.hornDecisionAt=START+2000;
- assert.ok(moveMonsters(f.room,START,random).length);assert.equal(rolls,0);assert.equal(f.boss.mp,50);
- for(let now=START+50;now<START+2000;now+=50)moveMonsters(f.room,now,random);
- assert.equal(rolls,0);assert.ok(moveMonsters(f.room,START+2000,random).length);assert.equal(rolls,1);assert.equal(f.boss.pendingAttack,undefined);
+ assert.deepEqual(moveMonsters(f.room,START,random),[]);assert.equal(rolls,0);assert.equal(f.boss.mp,50);
+ let meleeHits=0;for(let now=START+50;now<START+2000;now+=50)meleeHits+=moveMonsters(f.room,now,random).length;
+ assert.ok(meleeHits>=1);assert.equal(rolls,0);
+ assert.deepEqual(moveMonsters(f.room,START+2000,random),[]);assert.equal(rolls,1);assert.equal(f.boss.pendingAttack,undefined);
  for(let now=START+2050;now<START+4000;now+=50)moveMonsters(f.room,now,random);
  assert.equal(rolls,1);
  moveMonsters(f.room,START+4000,()=>{rolls++;return .399999;});assert.equal(rolls,2);assert.equal(f.boss.mp,35);

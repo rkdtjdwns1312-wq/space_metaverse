@@ -161,7 +161,9 @@ export function fromRecord(r,now=Date.now()) {
     const equipmentSlots=validateEquipmentSlots(p.equipmentSlots);
     if(equipmentSlots.some(id=>id&&equipmentOf(id).level>avatar.level))bad();
     const crownTrial=validateConstellationAbilityState(p.constellationAbilityState).coronaTrial;
-    if(crownTrial&&(avatar.level!==1||avatar.constellationId!=='corona-borealis'||
+    const borrowedCrown=p.constellationAbilityState?.ophiuchus?.copied;
+    if(crownTrial&&(avatar.level!==1||
+      !(avatar.constellationId==='corona-borealis'||avatar.constellationId==='ophiuchus'&&borrowedCrown?.constellationId==='corona-borealis'&&borrowedCrown.level===4)||
       crownTrial.savedEquipmentSlots.some(id=>id&&!equipmentOf(id))))bad();
     room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,

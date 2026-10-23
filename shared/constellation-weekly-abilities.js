@@ -10,6 +10,20 @@ const rewards=Object.freeze({
   taurus:Object.freeze({2:Object.freeze([3,-1,3,-1,3,-1]),3:Object.freeze([6,-2,6,-2,6,-2]),4:Object.freeze([9,-3,9,-3,9,-3]),5:Object.freeze([12,-3,12,-3,12,-3])})
 });
 export function weeklyAbilityFor(id,level){
+  if(id==='leo'&&Number.isInteger(level)&&level>=2&&level<=5)return {
+    configured:true,available:true,challenge:true,maxReward:0,minBalance:0,
+    description:level===2?'무작위 친구 2명에게 하루 동안 하급 도전을 줘요. 각 친구가 과제를 제출하면 나는 별 파편 1개를 받아요. 친구마다 1회만 적용돼요.':
+      level===3?'무작위 친구 2명에게 하루 동안 중급 도전을 줘요. 각 친구가 과제를 제출하면 그 친구와 나는 별 파편 1개씩 받아요. 친구마다 1회만 적용돼요.':
+      level===4?'Lv3 이하 친구 1명을 골라 하루 동안 고급 도전을 줘요. 그 친구가 과제를 제출하면 경험치 4, 나는 별 파편 4개를 받아요. 1회만 적용돼요.':
+      'Lv3 이하 친구 2명을 골라 하루 동안 고급 도전을 줘요. 각 친구가 과제를 제출하면 경험치 4, 나는 별 파편 4개를 받아요. 친구마다 1회만 적용돼요.'
+  };
+  if(id==='ophiuchus'&&Number.isInteger(level)&&level>=2&&level<=5)return {
+    configured:true,available:true,paralysis:true,maxReward:0,minBalance:0,
+    description:level===2?'친구 1명을 골라 중급 마비를 걸어요. 2일 동안 아이템을 사용할 수 없고, 별 파편 1개로 즉시 풀 수 있어요.':
+      level===3?'무작위 친구에게 하급 마비를 걸어요. 하루 동안 아이템을 사용할 수 없고, 다음 날 학생 명단의 다음 친구에게 옮겨가요. 별 파편 2개로 즉시 풀 수 있어요.':
+      level===4?'무작위 친구에게 고급 마비를 걸어요. 하루 동안 아이템을 사용할 수 없고, 그 친구의 별자리 능력은 이번 주 봉인돼요. 능력 1회를 복사해 사용할 수 있어요. 별 파편 3개로 즉시 풀 수 있어요.':
+      'Lv2 중급·Lv3 하급·Lv4 고급 마비를 이번 주에 각각 한 번씩 사용할 수 있어요.'
+  };
   if(id==='cancer'&&Number.isInteger(level)&&level>=2&&level<=5){
     const win={2:1,3:2,4:4,5:6}[level],loss={2:0,3:1,4:2,5:3}[level];
     return {configured:true,available:true,cancerDuel:true,win,loss,maxReward:win,minBalance:0,

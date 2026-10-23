@@ -1,3 +1,5 @@
+import {drawOriginWalkFrame} from './origin-monster-walk.js';
+
 const SUPPORTED = new Set(['star-crab', 'water-star']);
 const imageCache = new Map();
 
@@ -85,11 +87,13 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
   let squashY = 1;
   let recoil = 0;
   let attackProgress = 0;
+  let attackActive = false;
   let direction = { x: face, y: 0 };
   const duration = Math.max(1, Number(attack?.durationMs) || 600);
   if (attack && Number.isFinite(attack.startedAt)) {
     const elapsed = now - attack.startedAt;
     if (elapsed >= 0 && elapsed <= duration) {
+      attackActive = true;
       attackProgress = elapsed / duration;
       const magnitude = Math.hypot(Number(attack.dx) || 0, Number(attack.dy) || 0);
       if (magnitude > 0.001) direction = { x: attack.dx / magnitude, y: attack.dy / magnitude };
@@ -126,7 +130,9 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
     ctx.scale(face * squashX, squashY);
     ctx.rotate(roll);
     const image = monsterImage(monster.shape);
-    if (image?.complete && image.naturalWidth > 0) {
+    if (moving && !attackActive && drawOriginWalkFrame(ctx,monster.shape,now,-size/2,-size/2,size)) {
+      // 걷는 동안에는 별도 발걸음 프레임을 재생하고, 공격 중에는 기존 원화를 씁니다.
+    } else if (image?.complete && image.naturalWidth > 0) {
       ctx.drawImage(image, -size / 2, -size / 2, size, size);
     } else {
       const gradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.08, 0, 0, radius * 1.25);

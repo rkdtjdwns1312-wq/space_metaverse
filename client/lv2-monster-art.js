@@ -1,3 +1,5 @@
+import {drawOriginWalkFrame} from './origin-monster-walk.js';
+
 // 첨부 디자인으로 만든 2×2 투명 포즈 시트를 사용합니다.
 // 좌우는 같은 원화를 반전하고, 공격 연출은 서버의 실제 반격 이벤트에만 연결합니다.
 export const LV2_MONSTER_ART=Object.freeze({
@@ -65,7 +67,9 @@ export function drawLv2Monster(ctx,m,time=0,attack){
   ctx.translate(m.x,m.y+bob);ctx.scale(face*(1+squash),1-squash);
   if(m.moving&&!pose.active)ctx.rotate(Math.sin(phase)*.025);
   const frames=LV2_MONSTER_ART[m.shape].frames;
-  if(frames){
+  if(m.moving&&!pose.active&&drawOriginWalkFrame(ctx,m.shape,time,-size/2,r*.8-size*570/640,size)){
+    // 걷기 시트는 네 발의 기준선을 맞추고 공격 포즈는 원래 시트를 유지합니다.
+  }else if(frames){
     const [sx,sy,sw,sh,ax,ay]=frames[pose.frame],sourceScale=image.naturalWidth/1280,scale=size/640;
     ctx.drawImage(image,sx*sourceScale,sy*sourceScale,sw*sourceScale,sh*sourceScale,-ax*scale,r*.8-ay*scale,sw*scale,sh*scale);
   }else{

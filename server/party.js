@@ -60,13 +60,13 @@ export function invitePiscesPair(room,player,targetId,now=Date.now()){
   room.piscesInvites.set(invite.id,invite);
   return invite;
 }
-export function respondPiscesPair(room,player,requestId,accept,now=Date.now()){
+export function respondPiscesPair(room,player,requestId,accept,now=Date.now(),sourceOverride=null){
   state(room,now);
   ensure(typeof accept==='boolean','수락 또는 거절을 골라주세요.');
   const invite=room.piscesInvites.get(requestId);
   ensure(invite?.toId===player.id,'짝 신청이 끝났거나 나에게 온 신청이 아니에요.');
   if(!accept){room.piscesInvites.delete(requestId);room.piscesDeclines.set(invite.fromId+':'+player.id,now+PARTY_REJECT_MS);return {accepted:false,invite};}
-  const source=room.players.get(invite.fromId),status=source&&constellationAbilityStatus(source,now);
+  const source=sourceOverride||room.players.get(invite.fromId),status=source&&constellationAbilityStatus(source,now);
   ensure(source?.connected&&!source.away&&player.connected&&!player.away&&status?.canUse&&status.level===invite.level&&status.constellationId==='pisces','신청한 친구의 별자리 능력을 다시 확인해 주세요.');
   ensure(!partyOf(room,source.id)&&!partyOf(room,player.id)&&!activePiscesPair(source,now)&&!activePiscesPair(player,now),'두 사람 모두 다른 파티나 짝 상태가 없어야 해요.');
   const endsAt=now+invite.days*DAY_MS,pair={sourceId:source.id,level:invite.level,startsAt:now,endsAt};

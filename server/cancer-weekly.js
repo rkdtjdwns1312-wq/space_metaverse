@@ -35,13 +35,13 @@ export function inviteCancerDuel(room,source,targetId,choice,now=Date.now()){
   room.cancerInvites.set(invite.id,invite);
   return invite;
 }
-export function respondCancerDuel(room,target,requestId,accept,targetChoice,now=Date.now(),die=()=>randomInt(1,7)){
+export function respondCancerDuel(room,target,requestId,accept,targetChoice,now=Date.now(),die=()=>randomInt(1,7),sourceOverride=null){
   if(typeof accept!=='boolean')throw new GameError('수락 또는 거절을 골라 주세요.');
   const invite=room.cancerInvites?.get(requestId);
   if(!invite||invite.toId!==target.id||invite.expiresAt<=now)
     throw new GameError('대결 신청이 끝났거나 나에게 온 신청이 아니에요.');
   if(!accept){room.cancerInvites.delete(requestId);return {accepted:false,invite,message:'대결 신청을 거절했어요.'};}
-  const source=room.players.get(invite.fromId);
+  const source=sourceOverride||room.players.get(invite.fromId);
   if(!source?.connected||source.away||!target.connected||target.away)
     throw new GameError('두 친구가 접속 중일 때 대결할 수 있어요.');
   const level=ensureDuel(source,now);

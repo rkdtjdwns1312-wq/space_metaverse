@@ -13,6 +13,7 @@ import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
 import {freshConstellationAbilityState,constellationAbilityStatus} from './constellation-weekly-abilities.js';
 import {swanCampaignSigns,swanCampaignRequests,swanCardOffer} from './swan-weekly.js';
+import {crownPriorities} from './corona-weekly.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
@@ -60,6 +61,14 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
   add('swan-wings','백조의 날개','🪽',player.swanAura?.endsAt);
   add('pair','물고기자리 짝','🤝',player.piscesPair?.endsAt);
   add('sleep','양자리 수면','💤',player.constellationAbilityState?.ariesSleep?.endsAt);
+  const paralysis=player.constellationAbilityState?.paralysis;
+  if(paralysis?.endsAt>now)add(`paralysis-${paralysis.level===2?'mid':paralysis.level===3?'low':'high'}`,
+    `${paralysis.level===2?'중급':paralysis.level===3?'하급':'고급'} 마비상태`,'🐍',paralysis.endsAt);
+  add('ability-seal','별자리 능력 봉인','🔒',player.constellationAbilityState?.abilitySeal?.endsAt);
+  for(const challenge of player.constellationAbilityState?.leoChallenges||[]){
+    if(challenge.endsAt>now&&!challenge.rewarded)add(`challenge-${challenge.level===2?'low':challenge.level===3?'mid':'high'}`,
+      `${challenge.level===2?'하급':challenge.level===3?'중급':'고급'} 도전 상태`,'♌',challenge.endsAt);
+  }
   return [...cardMarkerViews(player,viewerIsTeacher,now),...abilityBlockViews(player,now),...effectsView(player.effects,viewerIsTeacher),...poison,...combat];
 }
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -159,7 +168,7 @@ export class RoomStore {
         if(invite.fromId===viewer.id)return {...invite};
         const {choice,...visible}=invite;return visible;
       }),
-      starCards:activeStarCards(room),campaignSigns:swanCampaignSigns(room,now),...(isTeacher?{campaignRequests:swanCampaignRequests(room,now)}:{}),
+      starCards:activeStarCards(room),campaignSigns:swanCampaignSigns(room,now),...(isTeacher?{campaignRequests:swanCampaignRequests(room,now),crownPriorities:crownPriorities(room,now)}:{}),
       exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},
       shopDiscounts:starCardShopDiscounts(room,viewer),

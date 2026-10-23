@@ -3,7 +3,7 @@ import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals,damagePlayer} from './vitals.js';
 import {constellationOf} from '../shared/constellations.js';
-import {damagePlayersInArea} from './area-combat.js';
+import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
@@ -14,7 +14,15 @@ import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokser
 import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skills.js';
 
 
-export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,mapExitHealCount:3});
+export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:1000,mapExitHealCount:3});
+const delayedMeleeBoss=type=>type?.id==='noksera'||type?.id==='leoon';
+function bossMeleeEligible(room,monster,now,x,y){
+  const present=playersInArea(room,{mapId:monster.mapId,x,y,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:monster.teacherRetaliation});
+  const since=monster.meleePresence??=new Map(),ids=new Set(present.map(player=>player.id));
+  for(const id of since.keys())if(!ids.has(id))since.delete(id);
+  for(const id of ids)if(!since.has(id))since.set(id,now);
+  return new Set([...since].filter(([,enteredAt])=>now-enteredAt>=MONSTER_RULES.bossMeleeDwellMs).map(([id])=>id));
+}
 const randomPatrolOffset=random=>Math.floor(Math.max(0,Math.min(.999999999,random()))*(MONSTER_RULES.walkMs+MONSTER_RULES.restMs));
 const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
 const largeSpawns=[[430.56,256.94],[597.22,256.94],[763.89,256.94],[291.67,312.5],[902.78,312.5]];
@@ -40,7 +48,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
       mp:type.boss?BOSS_MANA.max:0,maxMp:type.boss?BOSS_MANA.max:0,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,
       moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,
       roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,leoonSkill:null,
-      targetId:null,attackers:new Map(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
+      targetId:null,attackers:new Map(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   };
   if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map(create));
@@ -109,7 +117,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
       addRecipeDrop(room,target,target.contributors,now,recipeRoll);
       addEnergyDrop(room,target,target.contributors,now,energyRoll);
     }
-    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.mapExitCount=0;
+    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.meleePresence?.clear();target.mapExitCount=0;
   }
   else{
     registerMonsterAttacker(room,target,player,now,retaliateTeacher);
@@ -155,12 +163,12 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
-      m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.moving=false;
+      m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
-      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,leoonSkill:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
+      Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,leoonSkill:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
       if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
@@ -170,6 +178,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const factor=rule.speedFactor;
     if(type.boss)regenerateBossMana(m,now);
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
+    if(delayedMeleeBoss(type)&&(!target||m.pendingAttack||m.moonCast||m.leoonSkill||(m.sleepUntil||0)>now||(m.stunUntil||0)>now))m.meleePresence?.clear();
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
     if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;}
     if(m.leoonSkill){
@@ -268,22 +277,25 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
-    if(target&&now>=m.nextAttackAt){
+    if(target){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
       // 초근접에서도 몸을 뚫고 지나가거나 후방을 원격 공격하지 않도록 몸 앞 근접 거리만 판정합니다.
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){
         if(distance>0){m.dx=dx/distance;m.dy=dy/distance;}
         const attackReach=Math.min(reach,distance);
+        const hitX=m.x+m.dx*attackReach,hitY=m.y+m.dy*attackReach;
+        const eligibleIds=delayedMeleeBoss(type)?bossMeleeEligible(room,m,now,hitX,hitY):null;
+        if(now<m.nextAttackAt||(eligibleIds&&!eligibleIds.has(target.id)))continue;
         if(rule.warningMs){
           m.pendingAttack={x:target.x,y:target.y,radius:rule.warningRadius,dx:m.dx,dy:m.dy,reach:attackReach,startsAt:now,endsAt:now+rule.warningMs};
           m.moving=false;continue;
         }
-        const results=damagePlayersInArea(room,{mapId:m.mapId,x:m.x+m.dx*attackReach,y:m.y+m.dy*attackReach,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},rule.power,now);
+        const results=damagePlayersInArea(room,{mapId:m.mapId,x:hitX,y:hitY,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,eligibleIds,sourceMonsterId:m.id},rule.power,now);
         if(results.length){m.nextAttackAt=now+(rule.attackMs??MONSTER_RULES.attackMs/factor);
           for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:attackReach,durationMs:ATTACK_VISUAL.durationMs,...result});
           if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
         }
-      }
+      }else if(delayedMeleeBoss(type))m.meleePresence?.clear();
     }
   }
   return hits;

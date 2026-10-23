@@ -7,17 +7,25 @@ const DAY=86400000,HOUR=3600000,FRIDAY=5;
 const currentDay=(now,week)=>Math.floor((now-week)/DAY);
 const warningBefore=(room,player,start,end)=>[...room.planets.values()].some(planet=>(planet.warnings?.entries||[])
   .some(entry=>entry.targetId===player.id&&entry.at>=start&&entry.at<end));
+const borrowedSwanLedger=player=>{
+  const copied=player.constellationAbilityState?.ophiuchus?.copied;
+  return player.avatar?.constellationId==='ophiuchus'&&copied?.used&&copied.constellationId==='cygnus'&&copied.level>=4?copied:null;
+};
+const borrowedSwan=(player,now)=>{const copied=borrowedSwanLedger(player);return copied?.endsAt>now?copied:null;};
+const swanLevel=(player,now)=>borrowedSwan(player,now)?.level??player.avatar?.level;
+const swanState=player=>borrowedSwanLedger(player)?.state??player.constellationAbilityState;
 const qualifying=(player,now)=>player.role==='student'&&!player.avatar?.teacherPreview&&
-  player.avatar?.constellationId==='cygnus'&&[4,5].includes(player.avatar?.level)&&!constellationChangedThisWeek(player,now);
+  (player.avatar?.constellationId==='cygnus'||!!borrowedSwan(player,now))&&[4,5].includes(swanLevel(player,now))&&!constellationChangedThisWeek(player,now)&&
+  !(player.constellationAbilityState?.abilitySeal?.endsAt>now);
 
 export function swanDailyDue(room,now=Date.now()){
   const week=constellationWeekStart(now);
   return [...room.players.values()].some(player=>{
-    const ledger=player.constellationAbilityState?.swanDaily;
+    const ledger=swanState(player)?.swanDaily;
     if(ledger?.unclaimed&&player.starShards<SHARDS.max)return true;
     if(!qualifying(player,now))return false;
     if(!ledger||ledger.week!==week)return true;
-    for(let day=1;day<=(player.avatar.level===4?5:4);day++){
+    for(let day=1;day<=(swanLevel(player,now)===4?5:4);day++){
       const cutoff=week+day*DAY+15*HOUR;
       if(now>=cutoff&&ledger.startedAt<=cutoff&&!(ledger.checkedMask&(1<<day)))return true;
     }
@@ -32,11 +40,11 @@ export function settleSwanDaily(room,now=Date.now()){
   let changed=false;
   for(const player of room.players.values()){
     if(player.role!=='student')continue;
-    const state=validateConstellationAbilityState(player.constellationAbilityState);
+    const borrowed=borrowedSwanLedger(player),state=validateConstellationAbilityState(swanState(player));
     let ledger=state.swanDaily;
     if(qualifying(player,now)){
       if(!ledger||ledger.week!==week){ledger={week,startedAt:now,checkedMask:0,awardedMask:0,unclaimed:ledger?.unclaimed??0,cardBought:false};changed=true;}
-      for(let day=1;day<=(player.avatar.level===4?5:4);day++){
+      for(let day=1;day<=(swanLevel(player,now)===4?5:4);day++){
         const start=week+day*DAY,cutoff=start+15*HOUR,bit=1<<day;
         if(now<cutoff||ledger.startedAt>cutoff||ledger.checkedMask&bit)continue;
         ledger.checkedMask|=bit;changed=true;
@@ -49,15 +57,18 @@ export function settleSwanDaily(room,now=Date.now()){
       const paid=Math.min(ledger.unclaimed,SHARDS.max-player.starShards);
       player.starShards+=paid;ledger.unclaimed-=paid;changed=true;
     }
-    if(ledger!==state.swanDaily){state.swanDaily=ledger;player.constellationAbilityState=state;}
-    else if(changed&&ledger)player.constellationAbilityState=state;
+    if(ledger!==state.swanDaily||changed&&ledger){
+      state.swanDaily=ledger;
+      if(borrowed){const outer=validateConstellationAbilityState(player.constellationAbilityState);outer.ophiuchus.copied.state=state;player.constellationAbilityState=outer;}
+      else player.constellationAbilityState=state;
+    }
   }
   return {changed,awards};
 }
 
 export function swanCardOffer(room,player,now=Date.now()){
-  const week=constellationWeekStart(now),day=currentDay(now,week),ledger=validateConstellationAbilityState(player.constellationAbilityState).swanDaily;
-  if(!qualifying(player,now)||player.avatar.level!==5||player.avatar.blackStar||day<FRIDAY||day>6||ledger?.week!==week||ledger.cardBought)return false;
+  const week=constellationWeekStart(now),day=currentDay(now,week),ledger=validateConstellationAbilityState(swanState(player)).swanDaily;
+  if(!qualifying(player,now)||swanLevel(player,now)!==5||player.avatar.blackStar||day<FRIDAY||day>6||ledger?.week!==week||ledger.cardBought)return false;
   return !warningBefore(room,player,week+DAY,week+FRIDAY*DAY);
 }
 
@@ -69,15 +80,18 @@ export function buySwanStarCard(room,player,now=Date.now()){
     throw new GameError('가방에 별 카드를 담을 자리가 없어요.');
   player.starShards-=4;
   if(owned)owned.quantity++;else player.inventory.push({id:item.id,quantity:1});
-  const state=validateConstellationAbilityState(player.constellationAbilityState);
-  state.swanDaily.cardBought=true;player.constellationAbilityState=state;
+  const borrowed=borrowedSwan(player,now),state=validateConstellationAbilityState(swanState(player));
+  state.swanDaily.cardBought=true;
+  if(borrowed){const outer=validateConstellationAbilityState(player.constellationAbilityState);outer.ophiuchus.copied.state=state;player.constellationAbilityState=outer;}
+  else player.constellationAbilityState=state;
   return {starShards:player.starShards,inventory:[...player.inventory],message:'별 파편 4개로 별 카드 1장을 구매했어요.'};
 }
 
 export function swanCampaignSigns(room,now=Date.now()){
   const week=constellationWeekStart(now);
   const signs=[...room.players.values()].filter(player=>player.role==='student').flatMap(player=>{
-    const state=validateConstellationAbilityState(player.constellationAbilityState),result=state.lastResult;
+    const copied=player.constellationAbilityState?.ophiuchus?.copied;
+    const state=validateConstellationAbilityState(copied?.used&&copied.constellationId==='cygnus'&&copied.level===3?copied.state:player.constellationAbilityState),result=state.lastResult;
     return state.usedWeek===week&&result?.constellationId==='cygnus'&&result.level===3&&result.approvedAt!==null?
       [{id:'swan-campaign-'+player.id,playerId:player.id,nickname:player.nickname,text:result.campaignText,approvedAt:result.approvedAt}]:[];
   }).sort((a,b)=>a.approvedAt-b.approvedAt||a.id.localeCompare(b.id));
@@ -89,7 +103,8 @@ export function swanCampaignSigns(room,now=Date.now()){
 export function swanCampaignRequests(room,now=Date.now()){
   const week=constellationWeekStart(now);
   return [...room.players.values()].filter(player=>player.role==='student').flatMap(player=>{
-    const state=validateConstellationAbilityState(player.constellationAbilityState),result=state.lastResult;
+    const copied=player.constellationAbilityState?.ophiuchus?.copied;
+    const state=validateConstellationAbilityState(copied?.used&&copied.constellationId==='cygnus'&&copied.level===3?copied.state:player.constellationAbilityState),result=state.lastResult;
     return state.usedWeek===week&&result?.constellationId==='cygnus'&&result.level===3&&result.approvedAt===null?
       [{playerId:player.id,nickname:player.nickname,text:result.campaignText,submittedAt:result.submittedAt}]:[];
   }).sort((a,b)=>a.submittedAt-b.submittedAt);
