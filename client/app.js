@@ -24,6 +24,7 @@ import {createCharacterSkillsUI} from './character-skills-ui.js';
 import {createConstellationAbilityUI} from './constellation-ability-ui.js';
 import {createAriesSleepUI} from './aries-sleep-ui.js';
 import {createCancerDuelUI} from './cancer-duel-ui.js';
+import {createCetusUI} from './cetus-ui.js';
 import {createStatusUI} from './status-ui.js';
 import {createStatusDockUI} from './status-dock.js';
 import {createVitalsUI} from './vitals-ui.js';
@@ -56,7 +57,7 @@ import {createMissionUI} from './mission-ui.js';
 import {createInteriorDecorUI} from './interior-decor-ui.js';
 import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
-import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
+import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
@@ -82,6 +83,7 @@ window.addEventListener('resize',updateControlAlignment);
 updateControlAlignment();
 startClassroomClock($('classroom-clock'));
 const audio=createAudio();
+const cetusUI=createCetusUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
 function syncAudioControls(){
   audioVolume.value=Math.round(audio.volume*100);
@@ -420,7 +422,7 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
-  marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();ariesSleepUI.update();cancerDuelUI.update();
+  marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();ariesSleepUI.update();cancerDuelUI.update();cetusUI.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
   if(isTeacher&&$('teacher-dialog').open){renderTeacherPiscesPairs();renderTeacherSwanCampaigns();renderTeacherCrownPriorities();}
@@ -433,6 +435,7 @@ function shopSignature(){const me=room?.players.find(p=>p.id===selfId);return my
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
+  if(myMapId===WHALE_STOMACH_ID)return '🐋 고래 배 속 · 함께 있는 친구와 대화하거나 언제든 탈출할 수 있어요';
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 낙원의 갈림길 · 위로 태양, 아래로 달, 오른쪽으로 별의 기원';
@@ -1285,7 +1288,7 @@ function reset(message){
   bossDialogueUI.reset();
   recipeBook.reset();
   holdings.reset();
-  characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();
+  characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();cetusUI.reset();
   craftingUI.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();

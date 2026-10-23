@@ -65,7 +65,7 @@ test('warning API negates only newest warning; reward/black transitions save tog
 
 test('Sunday KST epoch, all 16 frames, exact 3 currency tables and forged dice ignored',()=>{
  assert.equal(constellationWeekStart(NOW),Date.parse('2026-10-10T15:00:00Z'));assert.equal(constellationWeekStart(SUNDAY),SUNDAY);
- for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules','libra','pisces','sagittarius','cygnus','corona-borealis','aries','cancer','ophiuchus','leo'].includes(c.id));
+ for(const c of CONSTELLATIONS)assert.equal(weeklyAbilityFor(c.id,2).configured,['aquarius','capricorn','taurus','corvus','gemini','hercules','libra','pisces','sagittarius','cygnus','corona-borealis','aries','cancer','ophiuchus','leo','cetus'].includes(c.id));
  for(const [level,reward] of [[2,1],[3,2],[4,4],[5,6]]){const p=make('aquarius',level);assert.equal(useConstellationAbility(p,NOW,()=>{throw Error('no die');}).reward,reward);}
  for(const [id,table] of [['capricorn',[[0,1,1,1,1,2],[0,0,2,2,4,4],[2,2,4,4,6,6],[3,3,6,6,9,9]]],['taurus',[[3,-1,3,-1,3,-1],[6,-2,6,-2,6,-2],[9,-3,9,-3,9,-3],[12,-3,12,-3,12,-3]]]]){
   for(let level=2;level<=5;level++)for(let roll=1;roll<=6;roll++){const p=make(id,level),r=useConstellationAbility(p,NOW,()=>roll);assert.equal(r.roll,roll);assert.equal(r.reward,table[level-2][roll-1]);assert.equal(p.starShards,100+r.reward);assert(r.used);assert.throws(()=>useConstellationAbility(p,NOW,()=>6));assert.deepEqual(validateConstellationAbilityState(p.constellationAbilityState),p.constellationAbilityState);}

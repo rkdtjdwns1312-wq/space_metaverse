@@ -132,6 +132,9 @@ export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부'
   {id:'black-hole-exit',name:'블랙홀 밖으로 나가기',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:5150,y:1230}),passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
+// 고래자리 배 속은 초대받은 학생에게만 열리는 공간이며 우주 지도에는 표시하지 않습니다.
+export const WHALE_STOMACH=Object.freeze({id:'whale-stomach',name:'고래 배 속',theme:'whale-stomach',width:1200,height:760,spawn:{x:600,y:390},objects:[]});
+export const WHALE_STOMACH_ID=WHALE_STOMACH.id;
 // 위쪽 맵은 1→2→3→4로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
 // 문과 귀환 좌표는 각 맵 크기에서 계산해 서로 다른 크기에서도 같은 상대 위치를 유지합니다.
 export const STAR_ORIGIN = Object.freeze({baseWidth:1200,baseHeight:900,scale:1.2,maxStage:4});
@@ -147,7 +150,7 @@ export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},
       ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2,radius:58,kind:'goddess-statue'}]:[])
     ]});
 }));
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[WHALE_STOMACH.id]:WHALE_STOMACH,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
 // 우주 지도 선택 화면의 5열×6행 배치입니다. 각 맵은 서로 다른 칸을 사용합니다.
 export const UNIVERSE_MAP_LAYOUT=Object.freeze([
   ...[...ORIGIN_MAPS.map((map,i)=>({id:map.id,icon:'✧',row:4-i,column:4}))].reverse(),

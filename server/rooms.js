@@ -14,6 +14,7 @@ import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js'
 import {freshConstellationAbilityState,constellationAbilityStatus} from './constellation-weekly-abilities.js';
 import {swanCampaignSigns,swanCampaignRequests,swanCardOffer} from './swan-weekly.js';
 import {crownPriorities} from './corona-weekly.js';
+import {cetusInviteViews} from './cetus-weekly.js';
 import {TEACHER_AVATAR} from '../shared/teacher-avatar.js';
 import {energyDropViews} from './energy-drops.js';
 import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
@@ -65,6 +66,9 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
   if(paralysis?.endsAt>now)add(`paralysis-${paralysis.level===2?'mid':paralysis.level===3?'low':'high'}`,
     `${paralysis.level===2?'중급':paralysis.level===3?'하급':'고급'} 마비상태`,'🐍',paralysis.endsAt);
   add('ability-seal','별자리 능력 봉인','🔒',player.constellationAbilityState?.abilitySeal?.endsAt);
+  add('cetus-praise','고래의 칭찬','🐋',player.constellationAbilityState?.cetusPraise?.endsAt);
+  add('cetus-stomach','고래 배 속','🐋',player.constellationAbilityState?.cetusStomach?.endsAt);
+  add('cetus-afterglow','고래의 선물','✨',player.constellationAbilityState?.cetusAfterglow?.endsAt);
   for(const challenge of player.constellationAbilityState?.leoChallenges||[]){
     if(challenge.endsAt>now&&!challenge.rewarded)add(`challenge-${challenge.level===2?'low':challenge.level===3?'mid':'high'}`,
       `${challenge.level===2?'하급':challenge.level===3?'중급':'고급'} 도전 상태`,'♌',challenge.endsAt);
@@ -168,6 +172,7 @@ export class RoomStore {
         if(invite.fromId===viewer.id)return {...invite};
         const {choice,...visible}=invite;return visible;
       }),
+      cetusInvites:viewer?cetusInviteViews(room,viewer,now):[],
       starCards:activeStarCards(room),campaignSigns:swanCampaignSigns(room,now),...(isTeacher?{campaignRequests:swanCampaignRequests(room,now),crownPriorities:crownPriorities(room,now)}:{}),
       exploration:{energy:room.exploration?.energy||0,goal:EXPLORATION_GOAL,festival:(room.exploration?.energy||0)>=EXPLORATION_GOAL},
       objectSignals:viewer?objectSignals(room,viewer):{},

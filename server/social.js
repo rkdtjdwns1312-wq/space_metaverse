@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ensure } from './rooms.js';
-import { planetIdOfMap, STATIC_MAPS, BLACK_HOLE_ID } from '../shared/config.js';
+import { planetIdOfMap, STATIC_MAPS, BLACK_HOLE_ID, WHALE_STOMACH_ID } from '../shared/config.js';
 import { arrivePosition } from './world.js';
 
 export const SOCIAL = { rejectMs:24*60*60*1000, requestMs:60_000, cooldownMs:5000 };
@@ -16,10 +16,12 @@ export function chatScope(room, player, data) {
   }
   const target=room.players.get(data.targetId);
   ensure(target&&target.id!==player.id,'대화할 친구를 골라주세요.');
+  ensure(player.mapId!==WHALE_STOMACH_ID&&target.mapId!==WHALE_STOMACH_ID,'고래 배 속에서는 함께 갇힌 친구와 맵 대화만 할 수 있어요.');
   return {channel,targetId:target.id};
 }
 export function canReadChat(player,msg) {
   if(msg.role==='system')return true; // 공통 운영 안내, 개인 안내는 별도 notes에 보관
+  if(player.mapId===WHALE_STOMACH_ID)return msg.channel==='map'&&msg.mapId===WHALE_STOMACH_ID;
   if(msg.channel==='map')return msg.mapId===player.mapId;
   if(msg.channel==='department')return !!player.avatar.departmentId&&msg.departmentId===player.avatar.departmentId;
   if(msg.channel==='direct')return msg.playerId===player.id||msg.targetId===player.id;
@@ -35,6 +37,7 @@ function state(room,now) {
   for(const [key,until] of room.summonCooldowns)if(until<=now)room.summonCooldowns.delete(key);
 }
 function canTravel(room,target,host) {
+  ensure(target.mapId!==WHALE_STOMACH_ID&&host.mapId!==WHALE_STOMACH_ID,'고래 배 속에 있는 동안은 친구를 부르거나 이동할 수 없어요.');
   ensure(!target.avatar.blackStar || host.mapId===BLACK_HOLE_ID,'현재 검은별 상태입니다');
   const planetId=planetIdOfMap(host.mapId);
   ensure(planetId?room.planets.has(planetId):!!STATIC_MAPS[host.mapId],'친구가 있는 맵을 찾지 못했어요.');

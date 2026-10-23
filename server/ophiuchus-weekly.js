@@ -3,6 +3,7 @@ import {SHARDS} from '../shared/config.js';
 import {constellationWeekStart,CONSTELLATION_WEEK_MS,weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
 import {constellationAbilityStatus,constellationChangedThisWeek,validateConstellationAbilityState,freshConstellationAbilityState,chooseConstellationItem} from './constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
+import {settleCetusUnclaimed} from './cetus-weekly.js';
 
 const DAY=86400000;
 const costOf=level=>({2:1,3:2,4:3})[level];
@@ -30,7 +31,10 @@ export function useOphiuchus(room,actor,{level,targetId}={},now=Date.now(),pick=
   if(![2,3,4].includes(slot)||actor.avatar.level===5&&level!==slot||
     actor.avatar.level!==5&&level!==undefined&&level!==slot)throw new GameError('사용할 마비 단계를 골라 주세요.');
   const week=constellationWeekStart(now),state=validateConstellationAbilityState(actor.constellationAbilityState);
-  if(state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(slot))throw new GameError('이번 주에 이미 사용한 마비 단계예요.');
+  const usedOnce=state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(slot);
+  const praise=state.cetusPraise,bonusAllowed=usedOnce&&praise?.endsAt>now&&praise.eligibleWeek<=week&&!praise.bonusUsed&&
+    !state.ophiuchus?.bonusUsedLevels?.includes(slot);
+  if(usedOnce&&!bonusAllowed)throw new GameError('이번 주에 이미 사용한 마비 단계예요.');
   const candidates=ophiuchusCandidates(room,actor,slot,now);
   if(!candidates.length)throw new GameError('마비를 걸 수 있는 다른 학생이 없어요.');
   const target=slot===2?candidates.find(player=>player.id===targetId):candidates[pick(candidates.length)];
@@ -40,10 +44,12 @@ export function useOphiuchus(room,actor,{level,targetId}={},now=Date.now(),pick=
   if(slot===4)targetState.abilitySeal={sourceId:actor.id,endsAt:now+7*DAY};
   target.constellationAbilityState=targetState;
   const usedLevels=state.ophiuchus?.week===week?[...state.ophiuchus.usedLevels]:[];
-  usedLevels.push(slot);
+  const bonusUsedLevels=state.ophiuchus?.week===week?[...(state.ophiuchus.bonusUsedLevels||[])]:[];
+  if(bonusAllowed)bonusUsedLevels.push(slot);else usedLevels.push(slot);
   const copied=slot===4?{fromId:target.id,constellationId:target.avatar.constellationId,level:target.avatar.level,used:false,useCount:0,usedLevels:[],
     endsAt:now+7*DAY,state:freshConstellationAbilityState()}:state.ophiuchus?.copied?.endsAt>now?state.ophiuchus.copied:null;
-  state.ophiuchus={week,usedLevels,copied};
+  state.ophiuchus={week,usedLevels,bonusUsedLevels,copied};
+  if(bonusAllowed&&bonusUsedLevels.length===(actor.avatar.level===5?3:1))state.cetusPraise.bonusUsed=true;
   actor.constellationAbilityState=state;
   return {...constellationAbilityStatus(actor,now),targetId:target.id,targetName:target.nickname,
     message:`${target.nickname} 친구에게 ${slot===2?'중급':slot===3?'하급':'고급'} 마비를 걸었어요.${slot===4?' 별자리 능력도 1주일간 봉인됐어요.':''}`};
@@ -107,7 +113,15 @@ export function borrowedOphiuchusActor(player,now=Date.now()){
       target[key]=value;return true;
     }
   });
-  const save=()=>{const current=validateConstellationAbilityState(player.constellationAbilityState);current.ophiuchus.copied=copied;player.constellationAbilityState=current;};
+  const save=()=>{
+    const current=validateConstellationAbilityState(player.constellationAbilityState);
+    // 복사한 고래자리 보상은 임시 복사 상태가 교체되어도 사라지지 않도록 본인 장부로 옮깁니다.
+    current.cetusUnclaimed+=copied.state.cetusUnclaimed??0;
+    copied.state.cetusUnclaimed=0;
+    current.ophiuchus.copied=copied;
+    player.constellationAbilityState=validateConstellationAbilityState(current);
+    settleCetusUnclaimed(player);
+  };
   return {actor,copied,save};
 }
 

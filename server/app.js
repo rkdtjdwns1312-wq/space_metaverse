@@ -103,12 +103,13 @@ import {constellationAbilityStatus,useConstellationAbility,chooseConstellationIt
 import {weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
 import {activeOphiuchusParalysis,useOphiuchus,clearOphiuchusParalysis,ophiuchusTransferDue,settleOphiuchusTransfers,borrowedOphiuchusActor,promoteBorrowedOphiuchusCopy,chooseCopiedOphiuchusItem} from './ophiuchus-weekly.js';
 import {useLeoChallenge,rewardLeoSubmission,settleLeoUnclaimed} from './leo-weekly.js';
+import {activeCetusStomach,useCetus,respondCetus,escapeCetus,settleCetusStomachs,settleCetusUnclaimed,cetusAfterAbility} from './cetus-weekly.js';
 import {swanDailyDue,settleSwanDaily,swanCardOffer,buySwanStarCard} from './swan-weekly.js';
 import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekly.js';
 import {activeAriesSleep,ariesSleepDue,settleAriesSleep,inviteAriesSleep,respondAriesSleep,useAriesSleep,wakeAriesSleep} from './aries-weekly.js';
 import {inviteCancerDuel,respondCancerDuel} from './cancer-weekly.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
-  MAP, STREET, STREET_ID, BLACK_HOLE_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
+  MAP, STREET, STREET_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -342,8 +343,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             throw new GameError('마비상태에서는 아이템을 사용할 수 없어요.');
           if(session?.teacherAccessDigest)ensure(session.room.teacherAccess?.digest===session.teacherAccessDigest,'선생님 접속 코드가 바뀌었어요. 다시 입장해주세요.');
           if(session?.player.role==='student'&&activeAriesSleep(session.player,clock())&&
-            !['room:leave','constellation-ability:status','aries-sleep:respond','aries-sleep:wake'].includes(name))
+            !['room:leave','constellation-ability:status','aries-sleep:respond','aries-sleep:wake','cetus:escape'].includes(name))
             throw new GameError('수면 중에는 행동할 수 없어요. 깨어나는 시간을 기다려 주세요.');
+          if(session?.player.role==='student'&&activeCetusStomach(session.player,clock())&&
+            !['room:leave','chat:send','chat:history','cetus:escape'].includes(name))
+            throw new GameError('고래 배 속에서는 대화하거나 탈출만 할 수 있어요.');
           if(session&&name.startsWith('combat:')&&expireTransformation(session.player,clock()))roster(session.room);
           if(session&&['combat:attack','combat:skill','combat:transform','map:travel','evolution:evolve','evolution:change','evolution:teacher-select'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
@@ -354,6 +358,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           const result=handler(data);
           const current=socket.data.session;
           if(save&&current?.player.role==='student'&&settleLeoUnclaimed(current.player))roster(current.room);
+          if(save&&current?.player.role==='student'&&settleCetusUnclaimed(current.player))roster(current.room);
           if(save&&current&&store.rooms.get(current.room.code)===current.room&&ensureDailyMissions(current.room,clock()))roster(current.room);
           return result;
         })});
@@ -886,6 +891,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const now=Date.now();
       const {text:filtered,flagged}=filterChat(text);
       const scope=chatScope(room,p,data);
+      if(p.mapId===WHALE_STOMACH_ID)ensure(scope.channel==='map','고래 배 속에서는 함께 갇힌 친구와만 대화할 수 있어요.');
       if(scope.channel==='direct')ensure(room.players.get(scope.targetId)?.connected,'현재 접속 중인 친구에게 말해주세요.');
       const recentChats=checkChatRate(p,filtered,now);
       const msg=store.pushChat(room,{playerId:p.id,nickname:p.nickname,role:p.role,text:filtered,flagged,...scope});
@@ -930,8 +936,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 짝 신청에 답할 수 있어요.');
       const invite=s.room.piscesInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
         borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const source=invite&&s.room.players.get(invite.fromId),cetusBonus=source&&!borrowed?constellationAbilityStatus(source,clock()).cetusBonusUse:false;
       const result=respondPiscesPair(s.room,s.player,data.requestId,data.accept,clock(),borrowed?.actor);
       if(result.accepted&&borrowed){borrowed.copied.used=true;borrowed.save();}
+      if(result.accepted&&source&&!borrowed)cetusAfterAbility(source,clock(),cetusBonus);
       if(result.accepted){
         announce(s.room,`${result.invite.fromNickname} 친구와 ${s.player.nickname} 친구가 ${result.invite.days}일 동안 물고기자리 짝이 되었어요. 책상과 급식 자리를 함께해 주세요.`);
       }else{
@@ -1909,6 +1917,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(s.player.avatar?.constellationId==='leo'){
         const result=useLeoChallenge(s.room,s.player,data,clock());roster(s.room);return result;
       }
+      if(s.player.avatar?.constellationId==='cetus'){
+        const result=useCetus(s.room,s.player,data,clock());roster(s.room);return result;
+      }
       if(s.player.avatar?.constellationId==='sagittarius'){
         const p=s.player,room=s.room,status=constellationAbilityStatus(p,clock());
         ensure(status.canUse,status.message||'이번 주 사수자리 능력을 사용할 수 없어요.');
@@ -1930,7 +1941,25 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=useConstellationAbility(s.player,clock(),abilityDie,craftingRecipes);
       roster(s.room);return result;
     };
-    action('constellation-ability:use',weeklyAbilityUse);
+    const weeklyAbilityWithCetus=data=>{
+      const s=weeklyAbilitySession(),before=constellationAbilityStatus(s.player,clock()),bonus=before.cetusBonusUse;
+      const result=weeklyAbilityUse(data);
+      const internallyCounted=before.constellationId==='ophiuchus'||before.constellationId==='sagittarius'||before.constellationId==='cetus'||before.constellationId==='cygnus'&&before.level===2;
+      if(!result.invitation&&cetusAfterAbility(s.player,clock(),bonus&&!internallyCounted))roster(s.room);
+      return result;
+    };
+    action('constellation-ability:use',weeklyAbilityWithCetus);
+    action('cetus:respond',data=>{
+      const s=weeklyAbilitySession();ensure(s.player.role==='student','학생만 고래자리 초대에 답할 수 있어요.');
+      const invite=s.room.cetusInvites?.get(data?.requestId),borrowed=invite?.borrowedFromOphiuchus?
+        borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const result=respondCetus(s.room,s.player,data?.requestId,data?.accept,clock(),borrowed?.actor);
+      if(result.accepted&&borrowed)borrowed.save();
+      roster(s.room);return result;
+    });
+    action('cetus:escape',()=>{
+      const s=weeklyAbilitySession();const result=escapeCetus(s.room,s.player,clock());roster(s.room);return result;
+    });
     action('constellation-ability:paralysis-clear',()=>{
       const s=weeklyAbilitySession();ensure(s.player.role==='student','학생만 마비를 해제할 수 있어요.');
       const result=clearOphiuchusParalysis(s.player,clock());roster(s.room);return result;
@@ -1949,7 +1978,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=weeklyAbilityUse(data,borrowed);
       if(result.invitation)result.invitation.borrowedFromOphiuchus=true;
       if(!promoteBorrowedOphiuchusCopy(borrowed)){
-        if(!result.invitation){
+        if(ability.cetus&&result.invitation){
+          borrowed.copied.useCount++;
+          borrowed.copied.used=borrowed.copied.useCount>=(borrowed.copied.level===4?2:borrowed.copied.level===5?4:1);
+        }else if(!result.invitation){
           borrowed.copied.useCount++;
           if(ability.paralysis)borrowed.copied.usedLevels.push(borrowedSlot);
           borrowed.copied.used=ability.paralysis?borrowed.copied.usedLevels.length===(borrowed.copied.level===5?3:1):
@@ -1971,8 +2003,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 대결 신청에 답할 수 있어요.');
       const invite=s.room.cancerInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
         borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const source=invite&&s.room.players.get(invite.fromId),cetusBonus=source&&!borrowed?constellationAbilityStatus(source,clock()).cetusBonusUse:false;
       const result=respondCancerDuel(s.room,s.player,data.requestId,data.accept,data.choice,clock(),abilityDie,borrowed?.actor);
       if(result.accepted&&!result.tie&&borrowed){borrowed.copied.used=true;borrowed.save();}
+      if(result.accepted&&!result.tie&&source&&!borrowed)cetusAfterAbility(source,clock(),cetusBonus);
       if(result.accepted){for(const id of [result.fromId,result.toId]){
         const participant=s.room.players.get(id),sock=participant&&io.sockets.sockets.get(participant.socketId);
         if(sock)deliver(()=>sock.emit('cancer-duel:result',result));
@@ -1983,8 +2017,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s?.player.role==='student','학생만 수면 신청에 답할 수 있어요.');
       const invite=s.room.ariesInvites?.get(data.requestId),borrowed=invite?.borrowedFromOphiuchus?
         borrowedOphiuchusActor(s.room.players.get(invite.fromId),clock()):null;
+      const source=invite&&s.room.players.get(invite.fromId),cetusBonus=source&&!borrowed?constellationAbilityStatus(source,clock()).cetusBonusUse:false;
       const result=respondAriesSleep(s.room,s.player,data.requestId,data.accept,clock(),borrowed?.actor);
       if(result.accepted&&borrowed){borrowed.copied.used=true;borrowed.save();}
+      if(result.accepted&&source&&!borrowed)cetusAfterAbility(source,clock(),cetusBonus);
       roster(s.room);
       return {...result,message:result.accepted?'수면 신청을 수락했어요. 다음 날 오전 8시에 깨어나요.':'수면 신청을 거절했어요.'};
     });
@@ -2007,7 +2043,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return {message:'캠페인 푯말을 승인했어요.',...result};
     });
     // Old clients share the exact same Sunday stamp; unconfigured abilities cannot start.
-    action('ability:use',weeklyAbilityUse);
+    action('ability:use',weeklyAbilityWithCetus);
     const weeklyAbilityChoose=data=>{const s=weeklyAbilitySession(),result=chooseConstellationItem(s.player,data.itemId,clock());roster(s.room);return result;};
     action('constellation-ability:choose-item',weeklyAbilityChoose);
     action('ability:choose-item',data=>{
@@ -2204,6 +2240,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(!p || !data || typeof data!=='object')return;
       if(p.role==='student'&&!studentOpen())return;
       if(activeAriesSleep(p,clock())){p.input={x:0,y:0,at:0};return;}
+      if(activeCetusStomach(p,clock())){p.input={x:0,y:0,at:0};return;}
       if(!Number.isFinite(data.x)||!Number.isFinite(data.y)||Math.abs(data.x)>1||Math.abs(data.y)>1)return;
       p.input={x:data.x,y:data.y,at:Date.now()};
     });
@@ -2217,6 +2254,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(step%20===0&&ariesSleepDue(room,clock())){
         try{transaction(()=>{if(settleAriesSleep(room,clock()))roster(room);});}
         catch(error){console.error('양자리 수면 정산 저장 실패:',error.message);continue;}
+      }
+      if(step%20===0&&[...room.players.values()].some(p=>p.constellationAbilityState?.cetusStomach&&
+        (p.constellationAbilityState.cetusStomach.endsAt<=clock()||p.avatar?.blackStar))){
+        try{transaction(()=>{if(settleCetusStomachs(room,clock()))roster(room);});}
+        catch(error){console.error('고래 배 속 귀환 저장 실패:',error.message);continue;}
       }
       if(step%20===0&&coronaDue(room,clock())){
         try{transaction(()=>{if(settleCorona(room,clock()))roster(room);});}

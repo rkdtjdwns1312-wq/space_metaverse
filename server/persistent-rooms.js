@@ -25,7 +25,7 @@ import {pinHash,checkPin} from './pin-auth.js';
 export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
 import { ClassFileStore } from './store.js';
 import {isEncryptedTeacherCode} from './teacher-access.js';
-import { RULES, PLAZA_ID, BLACK_HOLE_ID, itemOf, PROGRESSION } from '../shared/config.js';
+import { RULES, PLAZA_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import { spawnPosition,spawnInside } from './world.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
@@ -261,8 +261,8 @@ export class PersistentRoomStore extends RoomStore {
       ensure(!p.connected,'이미 사용 중인 닉네임이에요. 원래 창에서 계속해주세요.');
       checkPin(p,data.pin);
       this.sessions.delete(p.token);
-      const mapId=p.avatar.blackStar?BLACK_HOLE_ID:PLAZA_ID;
-      Object.assign(p,mapId===BLACK_HOLE_ID?spawnInside(room,mapId,p):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
+      const mapId=p.avatar.blackStar?BLACK_HOLE_ID:p.constellationAbilityState?.cetusStomach?.endsAt>this.clock()?WHALE_STOMACH_ID:PLAZA_ID;
+      Object.assign(p,mapId===BLACK_HOLE_ID||mapId===WHALE_STOMACH_ID?spawnInside(room,mapId,p):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
         expiresAt:null,mapId,input:{x:0,y:0,at:0}});
       const session={room,player:p};this.sessions.set(p.token,session);return session;
     }

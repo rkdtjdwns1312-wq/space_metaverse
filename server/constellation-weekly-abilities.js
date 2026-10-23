@@ -3,7 +3,7 @@ import {SHARDS,SHOP} from '../shared/config.js';
 import {weeklyAbilityFor,constellationWeekStart,CONSTELLATION_WEEK_MS,corvusBudget} from '../shared/constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
 
-export const freshConstellationAbilityState=()=>({usedWeek:null,lastResult:null,pending:null,changedWeek:null,warningWeek:null,warningCount:0,blackWeek:null,swanDaily:null,coronaTrial:null,coronaUnclaimed:0,ariesSleep:null,ariesUnclaimed:0,ophiuchus:null,paralysis:null,abilitySeal:null,leoChallenges:[],leoUnclaimed:0});
+export const freshConstellationAbilityState=()=>({usedWeek:null,lastResult:null,pending:null,changedWeek:null,warningWeek:null,warningCount:0,blackWeek:null,swanDaily:null,coronaTrial:null,coronaUnclaimed:0,ariesSleep:null,ariesUnclaimed:0,ophiuchus:null,paralysis:null,abilitySeal:null,leoChallenges:[],leoUnclaimed:0,cetus:null,cetusPraise:null,cetusStomach:null,cetusAfterglow:null,cetusUnclaimed:0});
 const validWeek=week=>week===null||(Number.isSafeInteger(week)&&week>=0&&week<=8640000000000000-CONSTELLATION_WEEK_MS&&constellationWeekStart(week)===week);
 function invalidCancerResult(result,level){
   const {roll,reward,targetId,winnerId,choice,opponentChoice,rolls,deltaTo}=result;
@@ -81,12 +81,25 @@ export function validateConstellationAbilityState(value){
     ![2,3,4,5].includes(entry.level)||!Number.isSafeInteger(entry.startsAt)||entry.startsAt<0||
     !Number.isSafeInteger(entry.endsAt)||entry.endsAt!==entry.startsAt+86400000||typeof entry.rewarded!=='boolean')||
     !Number.isSafeInteger(leoUnclaimed)||leoUnclaimed<0||leoUnclaimed>1000000)bad();
+  const cetus=value.cetus??null,praise=value.cetusPraise??null,stomach=value.cetusStomach??null,afterglow=value.cetusAfterglow??null,cetusUnclaimed=value.cetusUnclaimed??0;
+  if(cetus&&(!validWeek(cetus.week)||cetus.week===null||!Array.isArray(cetus.targetIds)||cetus.targetIds.length>8||
+    new Set(cetus.targetIds).size!==cetus.targetIds.length||cetus.targetIds.some(id=>typeof id!=='string'||!id)))bad();
+  if(praise&&(!praise.sourceId||typeof praise.sourceId!=='string'||!Number.isSafeInteger(praise.startsAt)||praise.startsAt<0||
+    praise.endsAt!==praise.startsAt+7*86400000||!validWeek(praise.eligibleWeek)||praise.eligibleWeek===null||typeof praise.bonusUsed!=='boolean'))bad();
+  if(stomach&&(!stomach.sourceId||typeof stomach.sourceId!=='string'||![4,5].includes(stomach.level)||
+    !Number.isSafeInteger(stomach.startsAt)||stomach.startsAt<0||stomach.endsAt!==stomach.startsAt+86400000||
+    typeof stomach.returnMapId!=='string'||!Number.isFinite(stomach.returnX)||!Number.isFinite(stomach.returnY)))bad();
+  if(afterglow&&(!afterglow.sourceId||typeof afterglow.sourceId!=='string'||!Number.isSafeInteger(afterglow.endsAt)||afterglow.endsAt<0||typeof afterglow.claimed!=='boolean'))bad();
+  if(!Number.isSafeInteger(cetusUnclaimed)||cetusUnclaimed<0||cetusUnclaimed>1000000)bad();
   if(serpent&&(!validWeek(serpent.week)||serpent.week===null||!Array.isArray(serpent.usedLevels)||serpent.usedLevels.length>3||
     new Set(serpent.usedLevels).size!==serpent.usedLevels.length||serpent.usedLevels.some(n=>![2,3,4].includes(n))||
+    !Array.isArray(serpent.bonusUsedLevels??[])||(serpent.bonusUsedLevels??[]).length>3||
+    new Set(serpent.bonusUsedLevels??[]).size!==(serpent.bonusUsedLevels??[]).length||
+    (serpent.bonusUsedLevels??[]).some(n=>!serpent.usedLevels.includes(n))||
     (serpent.copied!==null&&serpent.copied!==undefined&&(!serpent.copied||typeof serpent.copied.fromId!=='string'||!serpent.copied.fromId||
       typeof serpent.copied.constellationId!=='string'||!weeklyAbilityFor(serpent.copied.constellationId,serpent.copied.level).configured||
       typeof serpent.copied.used!=='boolean'||
-      !Number.isInteger(serpent.copied.useCount??0)||(serpent.copied.useCount??0)<0||(serpent.copied.useCount??0)>3||
+      !Number.isInteger(serpent.copied.useCount??0)||(serpent.copied.useCount??0)<0||(serpent.copied.useCount??0)>8||
       !Array.isArray(serpent.copied.usedLevels??[])||(serpent.copied.usedLevels??[]).length>3||
       new Set(serpent.copied.usedLevels??[]).size!==(serpent.copied.usedLevels??[]).length||
       (serpent.copied.usedLevels??[]).some(level=>![2,3,4].includes(level))||
@@ -100,14 +113,18 @@ export function validateConstellationAbilityState(value){
   if(seal&&(!Number.isSafeInteger(seal.endsAt)||seal.endsAt<0||typeof seal.sourceId!=='string'||!seal.sourceId))bad();
   const extra={changedWeek:value.changedWeek??null,warningWeek:value.warningWeek??null,warningCount:value.warningCount??0,blackWeek:value.blackWeek??null,swanDaily:validateSwanDaily(value.swanDaily),coronaTrial:trial?{week:trial.week,endsAt:trial.endsAt,savedXp:trial.savedXp,savedLevel:trial.savedLevel??4,savedEquipmentSlots:[...trial.savedEquipmentSlots]}:null,coronaUnclaimed:unclaimed,
     ariesSleep:sleep?{sourceId:sleep.sourceId,startsAt:sleep.startsAt,endsAt:sleep.endsAt,reward:sleep.reward,wakeCost:sleep.wakeCost}:null,ariesUnclaimed:sleepUnclaimed,
-    ophiuchus:serpent?{week:serpent.week,usedLevels:[...serpent.usedLevels],copied:serpent.copied?{
+    ophiuchus:serpent?{week:serpent.week,usedLevels:[...serpent.usedLevels],bonusUsedLevels:[...(serpent.bonusUsedLevels??[])],copied:serpent.copied?{
       fromId:serpent.copied.fromId,constellationId:serpent.copied.constellationId,level:serpent.copied.level,
       used:serpent.copied.used,useCount:serpent.copied.useCount??0,usedLevels:[...(serpent.copied.usedLevels??[])],
       endsAt:serpent.copied.endsAt,state:validateConstellationAbilityState(serpent.copied.state)}:null}:null,
     paralysis:paralysis?{level:paralysis.level,sourceId:paralysis.sourceId,startsAt:paralysis.startsAt,endsAt:paralysis.endsAt}:null,
     abilitySeal:seal?{sourceId:seal.sourceId,endsAt:seal.endsAt}:null,
-    leoChallenges:challenges.map(entry=>({sourceId:entry.sourceId,level:entry.level,startsAt:entry.startsAt,endsAt:entry.endsAt,rewarded:entry.rewarded})),leoUnclaimed};
-  if(!validWeek(extra.changedWeek)||!validWeek(extra.warningWeek)||!validWeek(extra.blackWeek)||!Number.isInteger(extra.warningCount)||extra.warningCount<0||extra.warningCount>2||(extra.warningWeek===null)!==(extra.warningCount===0))bad();
+    leoChallenges:challenges.map(entry=>({sourceId:entry.sourceId,level:entry.level,startsAt:entry.startsAt,endsAt:entry.endsAt,rewarded:entry.rewarded})),leoUnclaimed,
+    cetus:cetus?{week:cetus.week,targetIds:[...cetus.targetIds]}:null,
+    cetusPraise:praise?{sourceId:praise.sourceId,startsAt:praise.startsAt,endsAt:praise.endsAt,eligibleWeek:praise.eligibleWeek,bonusUsed:praise.bonusUsed}:null,
+    cetusStomach:stomach?{sourceId:stomach.sourceId,level:stomach.level,startsAt:stomach.startsAt,endsAt:stomach.endsAt,returnMapId:stomach.returnMapId,returnX:stomach.returnX,returnY:stomach.returnY}:null,
+    cetusAfterglow:afterglow?{sourceId:afterglow.sourceId,endsAt:afterglow.endsAt,claimed:afterglow.claimed}:null,cetusUnclaimed};
+  if(!validWeek(extra.changedWeek)||!validWeek(extra.warningWeek)||!validWeek(extra.blackWeek)||!Number.isInteger(extra.warningCount)||extra.warningCount<0||extra.warningCount>4||(extra.warningWeek===null)!==(extra.warningCount===0))bad();
   if(usedWeek===null){if(lastResult!==null||value.pending!=null)bad();return {...freshConstellationAbilityState(),...extra};}
   if(!Number.isSafeInteger(usedWeek)||usedWeek<0||usedWeek>8640000000000000-CONSTELLATION_WEEK_MS||constellationWeekStart(usedWeek)!==usedWeek)bad();
   if(!lastResult||typeof lastResult!=='object'||Array.isArray(lastResult))bad();
@@ -116,7 +133,9 @@ export function validateConstellationAbilityState(value){
   if(ability.rollCount){
     if(!Array.isArray(lastResult.rolls)||lastResult.rolls.length!==ability.rollCount||lastResult.rolls.some(n=>!Number.isInteger(n)||n<1||n>6)||roll!==lastResult.rolls[0]||
       reward!==(ability.card?0:Math.abs(lastResult.rolls[0]-lastResult.rolls[1])))bad();
-  }else if(ability.challenge?(roll!==null||reward!==0||!Array.isArray(lastResult.targetIds)||
+  }else if(ability.cetus?(roll!==null||reward!==0||typeof lastResult.targetId!=='string'||!lastResult.targetId||
+    !Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>(level===4?4:level===5?8:2)):
+    ability.challenge?(roll!==null||reward!==0||!Array.isArray(lastResult.targetIds)||
     lastResult.targetIds.length!==(level===4?1:2)||new Set(lastResult.targetIds).size!==lastResult.targetIds.length||
     lastResult.targetIds.some(id=>typeof id!=='string'||!id)):
     ability.corona?(roll!==null||reward!==0||!['food','both','trial'].includes(lastResult.choice)||
@@ -130,21 +149,22 @@ export function validateConstellationAbilityState(value){
       (level>=4&&(lastResult.days!==1||!Array.isArray(lastResult.targetIds)||lastResult.targetIds.length<1||
         lastResult.targetIds.length>(level===4?6:10)||new Set(lastResult.targetIds).size!==lastResult.targetIds.length||
         lastResult.targetIds.some(id=>typeof id!=='string'||!id)))):
-    ability.compliment?(roll!==null||reward!==1||!Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>2||typeof lastResult.targetId!=='string'||!lastResult.targetId):
+    ability.compliment?(roll!==null||reward!==1||!Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>4||typeof lastResult.targetId!=='string'||!lastResult.targetId):
     ability.campaign?(roll!==null||![0,3].includes(reward)||typeof lastResult.campaignText!=='string'||lastResult.campaignText.length<1||lastResult.campaignText.length>80||
       !Number.isSafeInteger(lastResult.submittedAt)||lastResult.submittedAt<usedWeek||
       (reward===3?!Number.isSafeInteger(lastResult.approvedAt)||lastResult.approvedAt<lastResult.submittedAt:lastResult.approvedAt!==null)):
     ability.pair?(roll!==null||reward!==0||typeof lastResult.targetId!=='string'||!lastResult.targetId):
-    ability.warningHunter?(roll!==null||reward!==0||!Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>ability.uses||
+    ability.warningHunter?(roll!==null||reward!==0||!Number.isInteger(lastResult.uses)||lastResult.uses<1||lastResult.uses>ability.uses*2||
       !['warning','black-star','department'].includes(lastResult.mode)||
       (level<=3&&lastResult.mode!=='warning')||(level===4&&lastResult.mode!=='black-star')||
-      (level===5&&lastResult.mode==='warning')||(lastResult.mode==='department'&&lastResult.uses!==ability.uses)||
+      (level===5&&lastResult.mode==='warning')||(lastResult.mode==='department'&&(lastResult.uses%ability.uses!==0||lastResult.uses>ability.uses*2))||
       (lastResult.mode==='warning'&&(typeof lastResult.warningId!=='string'||!lastResult.warningId))||
       (lastResult.mode==='department'&&(typeof lastResult.planetId!=='string'||!lastResult.planetId))):
     (ability.dice?(!Number.isInteger(roll)||roll<1||roll>6||reward!==(ability.craft?0:ability.rewards[roll-1])):(roll!==null||reward!==(ability.copy||ability.manualXp?0:ability.reward))))bad();
   const result={constellationId,level,roll,reward};
   if(ability.corona){result.choice=lastResult.choice;result.expiresAt=lastResult.expiresAt;}
   if(ability.challenge)result.targetIds=[...lastResult.targetIds];
+  if(ability.cetus){result.targetId=lastResult.targetId;result.uses=lastResult.uses;}
   if(ability.sleep){result.days=lastResult.days;if(lastResult.targetId)result.targetId=lastResult.targetId;if(lastResult.targetIds)result.targetIds=[...lastResult.targetIds];}
   if(ability.cancerDuel){result.targetId=lastResult.targetId;result.winnerId=lastResult.winnerId;result.choice=lastResult.choice;result.opponentChoice=lastResult.opponentChoice;result.rolls=[...lastResult.rolls];result.deltaTo=lastResult.deltaTo;}
   if(ability.compliment){result.uses=lastResult.uses;result.targetId=lastResult.targetId;}
@@ -174,6 +194,10 @@ export const constellationChangedThisWeek=(player,now=Date.now())=>{
   const week=player.constellationAbilityState?.changedWeek;
   return week!=null&&week>=constellationWeekStart(now);
 };
+export function cetusPraiseApplies(player,now=Date.now()){
+  const praise=player?.constellationAbilityState?.cetusPraise;
+  return !!praise&&praise.startsAt<=now&&praise.endsAt>now&&praise.eligibleWeek<=constellationWeekStart(now);
+}
 export function markConstellationChange(player,now=Date.now()){
   if(player.role!=='student')return;
   const state=validateConstellationAbilityState(player.constellationAbilityState);
@@ -191,11 +215,23 @@ function denial(player,ability,state,week,now){
   if(state.ariesSleep?.endsAt>now)return '수면 중에는 별자리 능력을 사용할 수 없어요.';
   if(ability.paralysis){
     const allowed=player.avatar.level===5?[2,3,4]:[player.avatar.level];
-    if(allowed.every(level=>state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(level)))return '이번 주 뱀주인자리 능력을 모두 사용했어요.';
+    const baseDone=allowed.every(level=>state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(level));
+    const praised=state.cetusPraise?.endsAt>now&&state.cetusPraise.eligibleWeek<=week&&!state.cetusPraise.bonusUsed;
+    const doubledDone=allowed.every(level=>state.ophiuchus?.bonusUsedLevels?.includes(level));
+    if(baseDone&&(!praised||doubledDone))return '이번 주 뱀주인자리 능력을 모두 사용했어요.';
   }
+  const praised=state.cetusPraise?.endsAt>now&&state.cetusPraise.eligibleWeek<=week&&!state.cetusPraise.bonusUsed;
+  const cetusLimit=(player.avatar.level===4?2:player.avatar.level===5?4:1)*(praised?2:1);
+  if(ability.cetus&&state.cetus?.week===week&&state.cetus.targetIds.length>=cetusLimit)
+    return '이번 주 고래자리 초대 횟수를 모두 사용했어요.';
   if(!ability.configured)return '이 별자리의 능력은 준비 중이에요.';
-  if(state.usedWeek!==null&&state.usedWeek>=week&&!ability.paralysis&&!(ability.warningHunter&&state.usedWeek===week&&state.lastResult?.constellationId==='sagittarius'&&state.lastResult.level===player.avatar?.level&&state.lastResult.uses<ability.uses&&state.lastResult.mode!=='department')&&
-    !(ability.compliment&&state.usedWeek===week&&state.lastResult?.constellationId==='cygnus'&&state.lastResult.level===2&&state.lastResult.uses<2))return '이번 주 별자리 능력은 이미 사용했어요. 다음 일요일에 다시 쓸 수 있어요.';
+  const repeatable=ability.warningHunter&&state.usedWeek===week&&state.lastResult?.constellationId==='sagittarius'&&state.lastResult.level===player.avatar?.level&&state.lastResult.uses<ability.uses*(praised?2:1)&&(state.lastResult.mode!=='department'||praised)||
+    ability.compliment&&state.usedWeek===week&&state.lastResult?.constellationId==='cygnus'&&state.lastResult.level===2&&state.lastResult.uses<2*(praised?2:1)||
+    ability.cetus&&state.cetus?.week===week&&state.cetus.targetIds.length<cetusLimit;
+  const praise=state.cetusPraise;
+  const bonus=!!praise&&praise.startsAt<=now&&praise.endsAt>now&&praise.eligibleWeek<=week&&!praise.bonusUsed&&!ability.passive&&!ability.swanDaily;
+  if(state.usedWeek!==null&&state.usedWeek>=week&&!ability.paralysis&&!repeatable&&!bonus)
+    return '이번 주 별자리 능력은 이미 사용했어요. 다음 일요일에 다시 쓸 수 있어요.';
   if(!Number.isSafeInteger(player.starShards)||player.starShards<0||player.starShards>SHARDS.max)return '별 파편 잔액을 확인해주세요.';
   if(player.starShards<ability.minBalance)return `주사위를 굴리려면 별 파편 ${ability.minBalance}개가 있어야 해요.`;
   if(player.starShards>SHARDS.max-ability.maxReward)return '별 파편을 더 담을 수 없어요.';
@@ -207,21 +243,31 @@ export function constellationAbilityStatus(player,now=Date.now()){
   const message=denial(player,ability,state,week,now);
   const warningUsed=state.warningWeek!==null&&state.warningWeek>=week?state.warningCount:0,blackUsed=state.blackWeek!==null&&state.blackWeek>=week?1:0;
   const sameWeek=state.usedWeek!==null&&state.usedWeek>=week;
-  const used=ability.paralysis?(level===5?[2,3,4]:[level]).every(slot=>state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(slot)):
+  const cetusSlots=level===4?2:level===5?4:1;
+  const baseUsed=ability.paralysis?(level===5?[2,3,4]:[level]).every(slot=>state.ophiuchus?.week===week&&state.ophiuchus.usedLevels.includes(slot)):
     ability.swanDaily?false:ability.passive?warningUsed>=ability.warningLimit&&blackUsed>=ability.blackLimit:
     ability.compliment&&sameWeek&&state.lastResult?.constellationId==='cygnus'&&state.lastResult.level===2?state.lastResult.uses>=2:
     ability.warningHunter&&sameWeek&&state.lastResult?.constellationId==='sagittarius'&&state.lastResult.level===level?
-      state.lastResult.uses>=ability.uses||state.lastResult.mode==='department':sameWeek;
+      state.lastResult.uses>=ability.uses||state.lastResult.mode==='department':
+    ability.cetus?state.cetus?.week===week&&state.cetus.targetIds.length>=cetusSlots:sameWeek;
+  const praise=state.cetusPraise,cetusBonusUse=!!baseUsed&&!ability.passive&&!ability.swanDaily&&praise?.startsAt<=now&&praise.endsAt>now&&praise.eligibleWeek<=week&&!praise.bonusUsed;
+  const used=baseUsed&&!cetusBonusUse;
   const blockedByChange=constellationChangedThisWeek(player,now),day=new Date(now+9*3600000).getUTCDay();
   const pending=state.pending?.week===week?state.pending:null;
   const lastResult=!ability.passive&&sameWeek&&state.lastResult?(()=>{
     const {roll,rolls,reward,budget,itemId,targetId,constellationId,mode,uses,planetId,warningId,campaignText,approvedAt}=state.lastResult;
     return {roll,reward,...(rolls?{rolls}:{}),...(budget!==undefined?{budget,mode:constellationId==='gemini'?'copy':'craft'}:{}),...(itemId?{itemId}:{}),...(targetId?{targetId}:{}),...(constellationId==='sagittarius'?{mode,uses,planetId,warningId}:{}),...(constellationId==='cygnus'&&level===2?{uses}:{}),...(campaignText?{campaignText,approved:approvedAt!==null}:{}),...(constellationId==='corona-borealis'?{choice:state.lastResult.choice,expiresAt:state.lastResult.expiresAt}:{}),...(constellationId==='aries'?{days:state.lastResult.days,targetIds:state.lastResult.targetIds}:{}),...(constellationId==='cancer'?{winnerId:state.lastResult.winnerId,choice:state.lastResult.choice,opponentChoice:state.lastResult.opponentChoice,deltaTo:state.lastResult.deltaTo}:{} )};
   })():null;
-  return {configured:ability.configured,used,canUse:!message,passive:!!ability.passive||!!ability.swanDaily,blockedByChange,
-    uses:(ability.warningHunter||ability.compliment)&&sameWeek&&state.lastResult?.constellationId===constellationId?state.lastResult.uses:0,useLimit:ability.warningHunter||ability.compliment?ability.uses:0,
-    warningUsed,warningLimit:ability.warningLimit??0,blackUsed,blackLimit:ability.blackLimit??0,
+  return {configured:ability.configured,used,canUse:!message,passive:!!ability.passive||!!ability.swanDaily,blockedByChange,cetusBonusUse,
+    cetus:ability.cetus?{usedCount:state.cetus?.week===week?state.cetus.targetIds.length:0,limit:cetusSlots*(cetusPraiseApplies(player,now)&&!praise.bonusUsed?2:1),
+      targetIds:state.cetus?.week===week?[...state.cetus.targetIds]:[]}:null,
+    cetusPraise:praise?.endsAt>now?{endsAt:praise.endsAt,eligibleWeek:praise.eligibleWeek,bonusUsed:praise.bonusUsed}:null,
+    cetusStomach:state.cetusStomach?.endsAt>now?{endsAt:state.cetusStomach.endsAt,level:state.cetusStomach.level}:null,
+    cetusAfterglow:state.cetusAfterglow?.endsAt>now?{endsAt:state.cetusAfterglow.endsAt,claimed:state.cetusAfterglow.claimed}:null,
+    uses:(ability.warningHunter||ability.compliment)&&sameWeek&&state.lastResult?.constellationId===constellationId?state.lastResult.uses:0,useLimit:ability.warningHunter||ability.compliment?ability.uses*(cetusPraiseApplies(player,now)&&!praise.bonusUsed?2:1):0,
+    warningUsed,warningLimit:(ability.warningLimit??0)*(ability.passive&&cetusPraiseApplies(player,now)?2:1),blackUsed,blackLimit:ability.blackLimit??0,
     ophiuchus:ability.paralysis?{usedLevels:state.ophiuchus?.week===week?[...state.ophiuchus.usedLevels]:[],
+      bonusUsedLevels:state.ophiuchus?.week===week?[...(state.ophiuchus.bonusUsedLevels||[])]:[],
       copied:state.ophiuchus?.copied?.endsAt>now?(()=>{const copied=state.ophiuchus.copied,pending=copied.state.pending;
         return {fromId:copied.fromId,constellationId:copied.constellationId,level:copied.level,used:copied.used,endsAt:copied.endsAt,
           usedLevels:copied.constellationId==='ophiuchus'?[...copied.usedLevels]:[],
@@ -295,8 +341,10 @@ export function completeSwanCompliment(player,targetId,now=Date.now()){
   if(typeof targetId!=='string'||!targetId||targetId===player.id)throw new GameError('칭찬할 다른 친구를 골라주세요.');
   const week=constellationWeekStart(now),uses=status.uses+1;
   player.starShards++;
-  player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),usedWeek:week,lastResult:{constellationId:'cygnus',level:2,roll:null,reward:1,uses,targetId},pending:null};
-  return {...constellationAbilityStatus(player,now),reward:1,starShards:player.starShards,message:`칭찬 메시지를 보내고 별 파편 1개를 받았어요. (${uses}/2회)`};
+  const state=validateConstellationAbilityState(player.constellationAbilityState);
+  if(state.cetusPraise&&uses>=4)state.cetusPraise.bonusUsed=true;
+  player.constellationAbilityState={...state,usedWeek:week,lastResult:{constellationId:'cygnus',level:2,roll:null,reward:1,uses,targetId},pending:null};
+  return {...constellationAbilityStatus(player,now),reward:1,starShards:player.starShards,message:`칭찬 메시지를 보내고 별 파편 1개를 받았어요. (${uses}/${status.useLimit}회)`};
 }
 export function submitSwanCampaign(player,campaignText,now=Date.now()){
   const status=constellationAbilityStatus(player,now);
@@ -320,16 +368,18 @@ export function validateSagittariusUse(player,mode,now=Date.now()){
   const status=constellationAbilityStatus(player,now),ability=weeklyAbilityFor(status.constellationId,status.level);
   if(!status.canUse||!ability.warningHunter)throw new GameError(status.message||'사수자리 능력을 사용할 수 없어요.');
   if(status.lastResult?.mode&&status.lastResult.mode!==mode)throw new GameError('이번 주에는 처음 고른 방식을 계속 사용해 주세요.');
-  const previous=status.lastResult?.mode==='department'?ability.uses:status.lastResult?.uses??0;
-  const uses=mode==='department'?ability.uses:previous+1;
-  if(uses>ability.uses||levelModeInvalid(status.level,mode))throw new GameError('현재 단계에서 선택할 수 없는 능력이에요.');
+  const previous=status.lastResult?.uses??0;
+  const uses=mode==='department'?previous+ability.uses:previous+1;
+  if(uses>status.useLimit||levelModeInvalid(status.level,mode))throw new GameError('현재 단계에서 선택할 수 없는 능력이에요.');
   return {status,uses};
 }
 export function completeSagittariusUse(player,mode,{warningId=null,planetId=null}={},now=Date.now()){
   const {status,uses}=validateSagittariusUse(player,mode,now);
   if(mode==='warning'&&(typeof warningId!=='string'||!warningId)||mode==='department'&&(typeof planetId!=='string'||!planetId))throw new GameError('삭제할 내 경고나 부서를 골라주세요.');
   const week=constellationWeekStart(now);
-  player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),usedWeek:week,lastResult:{constellationId:'sagittarius',level:status.level,roll:null,reward:0,mode,uses,...(warningId?{warningId}:{}),...(planetId?{planetId}:{})},pending:null};
+  const state=validateConstellationAbilityState(player.constellationAbilityState);
+  if(state.cetusPraise&&uses>=status.useLimit&&status.useLimit>weeklyAbilityFor('sagittarius',status.level).uses)state.cetusPraise.bonusUsed=true;
+  player.constellationAbilityState={...state,usedWeek:week,lastResult:{constellationId:'sagittarius',level:status.level,roll:null,reward:0,mode,uses,...(warningId?{warningId}:{}) ,...(planetId?{planetId}:{})},pending:null};
   return constellationAbilityStatus(player,now);
 }
 const levelModeInvalid=(level,mode)=>level<=3?mode!=='warning':level===4?mode!=='black-star':!['black-star','department'].includes(mode);
@@ -360,7 +410,9 @@ export function applyHerculesWeekly(player,event,now=Date.now()){
   const state=borrowed?validateConstellationAbilityState(copied.state):outer,week=constellationWeekStart(now),black=event==='black';
   if(!['warning','black'].includes(event))return null;
   if(black){if(!ability.blackLimit||(state.blackWeek!==null&&state.blackWeek>=week))return null;state.blackWeek=week;}
-  else{const count=state.warningWeek!==null&&state.warningWeek>=week?state.warningCount:0;if(state.warningWeek>week||count>=ability.warningLimit)return null;state.warningWeek=week;state.warningCount=count+1;}
+  else{const count=state.warningWeek!==null&&state.warningWeek>=week?state.warningCount:0;
+    const limit=ability.warningLimit*(cetusPraiseApplies(player,now)?2:1);
+    if(state.warningWeek>week||count>=limit)return null;state.warningWeek=week;state.warningCount=count+1;}
   const negated=!black&&level===2,amount=black?8:negated?0:level===5?4:3;
   const reward=Number.isSafeInteger(player.starShards)&&player.starShards>=0&&player.starShards<=SHARDS.max-amount?amount:0;
   player.starShards+=reward;

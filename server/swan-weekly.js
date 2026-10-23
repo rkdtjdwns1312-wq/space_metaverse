@@ -1,6 +1,6 @@
 import {SHARDS,SHOP} from '../shared/config.js';
 import {constellationWeekStart} from '../shared/constellation-weekly-abilities.js';
-import {constellationChangedThisWeek,validateConstellationAbilityState} from './constellation-weekly-abilities.js';
+import {constellationChangedThisWeek,validateConstellationAbilityState,cetusPraiseApplies} from './constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
 
 const DAY=86400000,HOUR=3600000,FRIDAY=5;
@@ -49,7 +49,7 @@ export function settleSwanDaily(room,now=Date.now()){
         if(now<cutoff||ledger.startedAt>cutoff||ledger.checkedMask&bit)continue;
         ledger.checkedMask|=bit;changed=true;
         if(!player.avatar.blackStar&&!warningBefore(room,player,start,cutoff)){
-          ledger.awardedMask|=bit;ledger.unclaimed++;awards.push({playerId:player.id,day});
+          ledger.awardedMask|=bit;ledger.unclaimed+=cetusPraiseApplies(player,cutoff)?2:1;awards.push({playerId:player.id,day});
         }
       }
     }

@@ -109,7 +109,7 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
       huntChoices.append(select,button('고른 경고 1개 삭제','warning',{get warningId(){return select.value;}}));
     }
     if(status.level>=4&&huntOptions.blackStarAt!==null)huntChoices.append(button('내 검은별 해제','black-star',{blackStarAt:huntOptions.blackStarAt}));
-    if(status.level===5&&!status.lastResult?.mode&&huntOptions.departments.length){
+    if(status.level===5&&(!status.lastResult?.mode||status.lastResult.mode==='department')&&huntOptions.departments.length){
       const select=document.createElement('select');select.setAttribute('aria-label','내 경고를 모두 삭제할 부서');
       for(const department of huntOptions.departments){const option=document.createElement('option');option.value=department.id;option.textContent=`${department.name} · 내 경고 ${department.count}개`;select.append(option);}
       huntChoices.append(select,button('이 부서의 내 경고 모두 삭제','department',{get planetId(){return select.value;}}));
@@ -232,8 +232,22 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     renderChoices();renderPairChoices();renderHunterChoices();renderSwanChoices();renderCoronaChoices();renderSerpentChoices();renderParalysis();updateReminder();
   }
   function renderSerpentChoices(){
-    serpentChoices.replaceChildren();serpentChoices.hidden=!['ophiuchus','leo'].includes(status?.constellationId);
+    serpentChoices.replaceChildren();serpentChoices.hidden=!['ophiuchus','leo','cetus'].includes(status?.constellationId);
     if(serpentChoices.hidden)return;
+    if(status.constellationId==='cetus'){
+      const heading=document.createElement('h3');heading.textContent='고래자리 칭찬과 배 속 초대';serpentChoices.append(heading);
+      const level=status.level,used=new Set(status.cetus?.targetIds||[]);
+      const eligible=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id&&friend.connected&&!friend.away&&
+        (level===2||friend.avatar?.level<=Math.min(level,level===5?4:level))&&!used.has(friend.id)&&!friend.avatar?.blackStar&&friend.mapId!=='whale-stomach');
+      const row=document.createElement('div');row.className='ability-serpent-row';
+      const label=document.createElement('strong');label.textContent=`이번 주 ${status.cetus?.usedCount||0}/${status.cetus?.limit||1}명 초대`;row.append(label);
+      const select=document.createElement('select');select.setAttribute('aria-label','고래자리 대상 친구');
+      for(const friend of eligible){const option=document.createElement('option');option.value=friend.id;option.textContent=`${friend.nickname} · Lv${friend.avatar.level}`;select.append(option);}
+      const button=document.createElement('button');button.type='button';button.className='primary';
+      button.textContent=level===3?'선택한 친구 칭찬하기':level===2?'칭찬 동의 요청':'배 속 초대 보내기';
+      button.disabled=busy||!status.canUse||!eligible.length;
+      button.onclick=()=>void castCetus(select.value);row.append(select,button);serpentChoices.append(row);return;
+    }
     if(status.constellationId==='leo'){
       const heading=document.createElement('h3');heading.textContent='사자자리 도전 능력';serpentChoices.append(heading);
       const level=status.level,eligible=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id&&friend.avatar?.level<=3);
@@ -257,8 +271,9 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     const levels=status.level===5?[2,3,4]:[status.level];
     for(const level of levels){
       const row=document.createElement('div');row.className='ability-serpent-row';
-      const used=status.ophiuchus?.usedLevels?.includes(level);
-      const label=document.createElement('strong');label.textContent=`Lv${level} · ${level===2?'중급':level===3?'하급':'고급'} 마비 ${used?'✓ 사용 완료':''}`;row.append(label);
+      const firstUsed=status.ophiuchus?.usedLevels?.includes(level);
+      const used=firstUsed&&(!status.cetusPraise||status.cetusPraise.bonusUsed||status.ophiuchus?.bonusUsedLevels?.includes(level));
+      const label=document.createElement('strong');label.textContent=`Lv${level} · ${level===2?'중급':level===3?'하급':'고급'} 마비 ${used?'✓ 사용 완료':firstUsed?'· 칭찬 추가 사용 가능':''}`;row.append(label);
       if(level===2){
         const select=document.createElement('select');select.setAttribute('aria-label','중급 마비 대상 친구');
         for(const friend of getRoom()?.players||[])if(friend.role==='student'&&friend.id!==getPlayer()?.id){
@@ -295,14 +310,14 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
       .map(friend=>[friend.id,friend.nickname]);
     const allTargets=(getRoom()?.players||[]).filter(friend=>friend.role==='student'&&friend.id!==getPlayer()?.id)
       .map(friend=>[friend.id,friend.nickname]);
-    if(id==='pisces'||id==='cancer'||id==='aries'&&level===2||id==='cygnus'&&level===2||id==='ophiuchus'&&level===2){
+    if(id==='pisces'||id==='cancer'||id==='cetus'||id==='aries'&&level===2||id==='cygnus'&&level===2||id==='ophiuchus'&&level===2){
       const target=addSelect('복사 능력을 사용할 친구',id==='ophiuchus'?allTargets:targets);
       if(id==='cancer'&&level!==4){const choices=level===2?[['rock','바위'],['paper','보'],['scissors','가위']]:level===3?[['heads','앞'],['tails','뒤']]:[['odd','홀'],['even','짝']];
         const choice=addSelect('대결 선택',choices);send('친구에게 대결 신청',()=>({targetId:target.value,choice:choice.value}),!targets.length);
       }else if(id==='cygnus'){
         const praise=addSelect('칭찬 문구',[['0','친절하게 도와줘서 고마워!'],['1','함께할 때 즐거워!'],['2','열심히 도전하는 모습이 멋져!'],['3','배려하는 마음이 참 좋아!']]);
         send('칭찬 보내기',()=>({targetId:target.value,praiseIndex:Number(praise.value)}),!targets.length);
-      }else send(id==='pisces'?'짝 신청 보내기':id==='aries'?'수면 신청 보내기':'복사 능력 사용',()=>({targetId:target.value,...(id==='ophiuchus'?{level:2}:{})}),!(id==='ophiuchus'?allTargets:targets).length);
+      }else send(id==='pisces'?'짝 신청 보내기':id==='cetus'?'고래자리 초대 보내기':id==='aries'?'수면 신청 보내기':'복사 능력 사용',()=>({targetId:target.value,...(id==='ophiuchus'?{level:2}:{})}),!(id==='ophiuchus'?allTargets:targets).length);
     }else if(id==='aries'&&level===3){const days=addSelect('잠잘 기간',[[1,'1일'],[2,'2일'],[3,'3일']]);send('선택한 기간 잠들기',()=>({days:Number(days.value)}));}
     else if(id==='corona-borealis'&&level===4){const choice=addSelect('왕관자리 효과',[['trial','Lv1 체험'],['both','기간제 카드 받기']]);send('복사 능력 사용',()=>({choice:choice.value}));}
     else if(id==='cygnus'&&level===3){const text=document.createElement('input');text.maxLength=80;text.placeholder='캠페인 푯말 문구';text.setAttribute('aria-label','캠페인 푯말 문구');form.append(text);send('푯말 신청',()=>({campaignText:text.value}));}
@@ -355,6 +370,12 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     catch(error){toast(error.message);void refresh();}
     finally{busy=false;render();}
   }
+  async function castCetus(targetId){
+    if(busy)return;busy=true;render();
+    try{const response=await request('constellation-ability:use',{targetId});status=response;toast(response.message);render();scheduleReset();}
+    catch(error){toast(error.message);void refresh();}
+    finally{busy=false;render();}
+  }
   function renderParalysis(){
     const p=getPlayer(),effect=p?.constellationAbility?.paralysis;
     paralysisPanel.replaceChildren();paralysisPanel.hidden=!effect;
@@ -398,7 +419,7 @@ export function createConstellationAbilityUI({request,getPlayer,getRoom,stop,toa
     if(status.constellationId==='cygnus'){open();renderSwanChoices();return;}
     if(status.constellationId==='corona-borealis'&&status.level===4){open();renderCoronaChoices();return;}
     if(status.constellationId==='ophiuchus'){open();renderSerpentChoices();return;}
-    if(status.constellationId==='leo'){open();renderSerpentChoices();return;}
+    if(status.constellationId==='leo'||status.constellationId==='cetus'){open();renderSerpentChoices();return;}
     const token=++revision,key=identity();busy=true;render();let failed=false;
     try{
       const response=await request('constellation-ability:use',{});

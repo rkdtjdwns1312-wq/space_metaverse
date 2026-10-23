@@ -10,6 +10,13 @@ const rewards=Object.freeze({
   taurus:Object.freeze({2:Object.freeze([3,-1,3,-1,3,-1]),3:Object.freeze([6,-2,6,-2,6,-2]),4:Object.freeze([9,-3,9,-3,9,-3]),5:Object.freeze([12,-3,12,-3,12,-3])})
 });
 export function weeklyAbilityFor(id,level){
+  if(id==='cetus'&&Number.isInteger(level)&&level>=2&&level<=5)return {
+    configured:true,available:true,cetus:true,maxReward:0,minBalance:0,
+    description:level===2?'친구가 동의하면 그 친구에게 하급 칭찬을 주고 별 파편 1개를 새로 만들어요. 앞으로 쓰는 주간 능력이 2배가 돼요.':
+      level===3?'내 레벨 이하 친구 1명에게 하급 칭찬을 주고 (3 − 친구 Lv)개의 별 파편을 만들어요. 앞으로 쓰는 주간 능력이 2배가 돼요.':
+      level===4?'내 레벨 이하 친구 2명을 각각 동의받아 하루 동안 숨겨진 고래 배 속으로 초대해요. 완료하면 친구의 앞으로 쓸 별자리 능력이 2배가 돼요. 친구마다 (5 − 친구 Lv)개 별 파편을 만들어요.':
+      'Lv4 이하 친구 4명을 각각 동의받아 하루 동안 고래 배 속으로 초대해요. 완료 후 친구가 별자리 능력을 쓰면 별 파편 1개를 받아요. 친구마다 (5 − 친구 Lv)개 별 파편을 만들어요.'
+  };
   if(id==='leo'&&Number.isInteger(level)&&level>=2&&level<=5)return {
     configured:true,available:true,challenge:true,maxReward:0,minBalance:0,
     description:level===2?'무작위 친구 2명에게 하루 동안 하급 도전을 줘요. 각 친구가 과제를 제출하면 나는 별 파편 1개를 받아요. 친구마다 1회만 적용돼요.':
