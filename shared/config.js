@@ -133,7 +133,7 @@ export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부'
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 고래자리 배 속은 초대받은 학생에게만 열리는 공간이며 우주 지도에는 표시하지 않습니다.
-export const WHALE_STOMACH=Object.freeze({id:'whale-stomach',name:'고래 배 속',theme:'whale-stomach',width:1200,height:760,spawn:{x:600,y:390},objects:[]});
+export const WHALE_STOMACH=Object.freeze({id:'whale-stomach',name:'고래자리의 배 속',theme:'whale-stomach',width:1200,height:760,spawn:{x:600,y:390},objects:[]});
 export const WHALE_STOMACH_ID=WHALE_STOMACH.id;
 // 위쪽 맵은 1→2→3→4로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
 // 문과 귀환 좌표는 각 맵 크기에서 계산해 서로 다른 크기에서도 같은 상대 위치를 유지합니다.

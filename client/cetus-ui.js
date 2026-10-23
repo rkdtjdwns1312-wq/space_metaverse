@@ -25,13 +25,17 @@ export function createCetusUI({request,getPlayer,getRoom,stop,toast}){
     const invites=(room?.cetusInvites||[]).filter(invite=>invite.toId===me?.id&&invite.expiresAt>Date.now());
     panel.replaceChildren();panel.hidden=!stomach&&!invites.length;
     if(stomach){
-      const heading=document.createElement('strong');heading.textContent='🐋 고래 배 속';
-      const note=document.createElement('p');note.textContent='안에서는 함께 있는 친구와 채팅만 할 수 있어요. 혼자서도 언제든 나갈 수 있지만 고래자리의 이후 효과는 받지 못해요.';
-      panel.append(heading,note,button('즉시 탈출하기',escape,'primary'));
+      const heading=document.createElement('strong');heading.textContent='🐋 고래자리의 배 속';
+      const note=document.createElement('p');note.textContent='안에서는 함께 있는 친구와 채팅할 수 있어요.';
+      const exitNote=document.createElement('p');exitNote.className='cetus-exit-note';
+      for(const text of ['혼자서도 언제든지 나갈 수 있지만','고래자리의 이후 효과는 받지 못해요.']){
+        const line=document.createElement('span');line.textContent=text;exitNote.append(line);
+      }
+      panel.append(heading,note,exitNote,button('즉시 탈출하기',escape,'primary'));
       return;
     }
     for(const invite of invites){
-      const heading=document.createElement('strong');heading.textContent=`🐋 ${invite.fromNickname} 친구의 ${invite.level===2?'칭찬 제안':'고래 배 속 초대'}`;
+      const heading=document.createElement('strong');heading.textContent=`🐋 ${invite.fromNickname} 친구의 ${invite.level===2?'칭찬 제안':'고래자리의 배 속 초대'}`;
       const note=document.createElement('p');note.textContent=invite.level===2?'동의하면 앞으로 쓸 별자리 능력이 2배가 돼요.':'동의하면 하루 동안 배 속에 머물 수 있어요. 언제든 혼자 탈출할 수 있어요.';
       const actions=document.createElement('div');actions.className='cetus-actions';
       actions.append(button('거절',()=>void respond(invite,false)),button('수락',()=>void respond(invite,true),'primary'));

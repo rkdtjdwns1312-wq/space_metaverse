@@ -380,21 +380,16 @@ export function createWorld(canvas) {
     const floor=ctx.createRadialGradient(w/2,h/2,35,w/2,h/2,w*.62);
     floor.addColorStop(0,'#273149');floor.addColorStop(.55,'#171d31');floor.addColorStop(1,'#0c1021');
     ctx.fillStyle=floor;ctx.fillRect(0,0,w,h);
+    const background=loadedAvatarSprite('/assets/maps/cetus-belly-interior.png');
+    if(background)ctx.drawImage(background,0,0,w,h);
     ctx.save();
-    // 둥근 갈비뼈와 부드러운 별빛으로 캄캄하지만 무섭지 않은 고래 배 속을 그립니다.
-    for(let side of [-1,1])for(let i=0;i<5;i++){
-      const x=side<0?92+i*18:w-92-i*18,y=110+i*125;
-      ctx.beginPath();ctx.ellipse(x,y,195,93,side*.19,side<0?-.75:Math.PI-.75,side<0?.75:Math.PI+.75);
-      ctx.strokeStyle='#9aaed630';ctx.lineWidth=16;ctx.stroke();
-      ctx.beginPath();ctx.ellipse(x,y,195,93,side*.19,side<0?-.75:Math.PI-.75,side<0?.75:Math.PI+.75);
-      ctx.strokeStyle='#d7e6ff43';ctx.lineWidth=3;ctx.stroke();
-    }
+    // 원화의 넓은 바닥은 아바타가 보이도록 비워 두고 작은 별빛만 덧그립니다.
     for(let i=0;i<30;i++){
-      const x=70+(i*181)%1060,y=50+(i*223)%660,pulse=.45+.25*Math.sin(time*.001+i);
-      ctx.globalAlpha=pulse;ctx.fillStyle=i%3?'#a9c7ee':'#e9d5f7';ctx.beginPath();ctx.arc(x,y,i%4===0?3:1.7,0,Math.PI*2);ctx.fill();
+      const x=70+(i*181)%1060,y=50+(i*223)%660,pulse=reducedMotion.matches ? .3 : .3+.15*Math.sin(time*.001+i);
+      ctx.globalAlpha=pulse;ctx.fillStyle=i%3?'#a9c7ee':'#e9d5f7';ctx.beginPath();ctx.arc(x,y,i%4===0?2:1,0,Math.PI*2);ctx.fill();
     }
-    ctx.globalAlpha=1;ctx.textAlign='center';ctx.font='700 38px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e3e8ff';ctx.fillText('고래 배 속',w/2,95);
-    ctx.font='18px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#b7c9e8';ctx.fillText('친구와 이야기하거나 아래의 버튼으로 언제든 나갈 수 있어요',w/2,130);
+    ctx.globalAlpha=1;ctx.textAlign='center';ctx.font='700 34px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#f5edff';
+    ctx.shadowColor='#080d29';ctx.shadowBlur=12;ctx.shadowOffsetY=2;ctx.fillText(map.name,w/2,95);
     ctx.restore();
   }
   function drawBlackHoleInterior(map,time){

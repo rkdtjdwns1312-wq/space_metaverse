@@ -435,7 +435,7 @@ function shopSignature(){const me=room?.players.find(p=>p.id===selfId);return my
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
-  if(myMapId===WHALE_STOMACH_ID)return '🐋 고래 배 속 · 함께 있는 친구와 대화하거나 언제든 탈출할 수 있어요';
+  if(myMapId===WHALE_STOMACH_ID)return '🐋 고래자리의 배 속 · 함께 있는 친구와 대화하거나 언제든 탈출할 수 있어요';
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 별상점에서 별 파편으로 물건을 사고팔아요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 낙원의 갈림길 · 위로 태양, 아래로 달, 오른쪽으로 별의 기원';
