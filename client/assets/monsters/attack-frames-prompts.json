@@ -1,0 +1,43 @@
+{
+  "mode": "builtin image_gen, transparent generation and identity-preserving edits",
+  "prompts": [
+    {
+      "id": "baby-energy-star",
+      "prompt": "Use case: stylized-concept. Production transparent sprite sheet for a Korean children's 2D fantasy classroom RPG. Redesign a baby star monster as an extremely sweet simple plump five-pointed baby star, round soft stubby tips, creamy butter-yellow body with a faint lavender edge, tiny oval dark eyes with one highlight, little curved smile, peach cheeks, no limbs beyond its five soft star points, no scary face. Delicate hand-painted storybook 2D game artwork, soft shading and fine warm outline, not shiny 3D plastic. Exactly 8 full-body poses of the SAME character arranged in a precise uniform 4 column x 2 row grid on actual transparent background, landscape 2:1 canvas, equal square cells, no separators or text. Each character centered at the same pivot and same scale in its cell, occupies at most 65 percent cell width/height with clear margins. Reading order left-to-right: 1 relaxed idle; 2 small crouch preparing a friendly bump; 3 stronger crouch leaning back to left; 4 springs forward to RIGHT with star tips stretching slightly; 5 maximum gentle bump to RIGHT eyes determined but still cute; 6 follows through with cheeks puffed; 7 settles back towards neutral; 8 relaxed neutral again. Actual clearly distinct body poses and expressions, not duplicates and not rotating the entire same drawing. No detached particles, no weapons, no shadows, no glow outside silhouette, no stars or moons held in hands. All 8 complete silhouettes isolated, consistent face and palette. This is a usable animation sheet, not a scene."
+    },
+    {
+      "id": "star-crab",
+      "prompt": "Use case: identity-preserve. Input image: character identity reference. Make a production 8-pose attack sprite sheet of EXACTLY this same character preserving its face, anatomy, costume, colors and hand-painted 2D RPG style. Transparent background. Exactly 4 columns and 2 rows of equal square cells, landscape 2:1. Same character scale throughout, full silhouette within each cell with 15% clear margins, no clipping, no labels, no gridlines, no cast shadows or detached effects. Read left-to-right top row then bottom. Real limb/body pose changes, not whole-image rotations. Character faces RIGHT. 1 neutral; 2 lifts both claws; 3 draws right claw back and crouches; 4 swings claw forward; 5 reaches maximum claw snap; 6 follows through; 7 lowers claws; 8 returns neutral. Keep the blue shell, yellow crescent and stars, tiny legs and cheerful expression.",
+      "reference": "star-crab.png"
+    },
+    {
+      "id": "water-star",
+      "prompt": "Use case: identity-preserve. Input image: character identity reference. Make a production 8-pose attack sprite sheet of EXACTLY this same character preserving its face, anatomy, costume, colors and hand-painted 2D RPG style. Transparent background. Exactly 4 columns and 2 rows of equal square cells, landscape 2:1. Same character scale throughout, full silhouette within each cell with 15% clear margins, no clipping, no labels, no gridlines, no cast shadows or detached effects. Read left-to-right top row then bottom. Real limb/body pose changes, not whole-image rotations. Character faces RIGHT. 1 neutral; 2 braces its short feet; 3 squeezes body drawing breath with puffed cheeks; 4 leans forward opening mouth; 5 stretches front to spit a water jet (do not draw the water, runtime adds it); 6 recoils; 7 relaxes; 8 neutral. Keep the blue gold star jar on its back in every pose and cute watery creature anatomy.",
+      "reference": "water-star.png"
+    },
+    {
+      "id": "leoon",
+      "prompt": "Use case: identity-preserve. Input image: character identity reference. Make a production 8-pose attack sprite sheet of EXACTLY this same character preserving its face, anatomy, costume, colors and hand-painted 2D RPG style. Transparent background. Exactly 4 columns and 2 rows of equal square cells, landscape 2:1. Same character scale throughout, full silhouette within each cell with 15% clear margins, no clipping, no labels, no gridlines, no cast shadows or detached effects. Read left-to-right top row then bottom. Real limb/body pose changes, not whole-image rotations. Character faces RIGHT. 1 neutral four paws down; 2 crouches; 3 lifts right forepaw backwards; 4 swings that forepaw forward; 5 reaches forward with paw at contact; 6 follows through lowering paw; 7 settles four paws; 8 neutral. Preserve golden fluffy lion cub, star mane, tail, child-friendly playful expression.",
+      "reference": "leoon.png"
+    },
+    {
+      "id": "noksera",
+      "prompt": "Use case: identity-preserve. Input image: character identity reference. Make a production 8-pose attack sprite sheet of EXACTLY this same character preserving its face, anatomy, costume, colors and hand-painted 2D RPG style. Transparent background. Exactly 4 columns and 2 rows of equal square cells, landscape 2:1. Same character scale throughout, full silhouette within each cell with 15% clear margins, no clipping, no labels, no gridlines, no cast shadows or detached effects. Read left-to-right top row then bottom. Real limb/body pose changes, not whole-image rotations. Character faces LEFT like the reference in every cell. 1 neutral four hooves; 2 bends front legs; 3 raises head slightly to prepare; 4 lowers head and antlers forwards; 5 maximum gentle antler push to LEFT; 6 head rises in follow-through; 7 settles hooves; 8 neutral. Keep all antlers, moon charms, gold jewelry, ribbons and white fluffy body, consistent full antlers within EVERY cell.",
+      "reference": "noksera-v2.png"
+    },
+    {
+      "step": "spacing-refinement",
+      "prompt": "Edit this eight-pose character sprite sheet. Keep every character's identity, colors, pose order and 4-column x 2-row layout. CRITICAL FIX: make EACH character much SMALLER, only 55% of its square cell width and height. Center each pose within its own cell. Provide wide empty transparent gutters between all 8 poses and generous empty transparent margin around the entire image. No character may touch another cell or the outer image border, including antlers/tails/claws. Do NOT enlarge to fill the canvas. Keep all 8 complete figures, repair cropped tips. Same absolute body size in each pose. Preserve true transparency. No new effects, shadows, text, lines, numbers, or grid. 2:1 landscape image. This is for cutting the image into 4x2 square animation cells, so STRICT separation is essential."
+    }
+  ],
+  "additional": [
+  {
+    "id": "spirit-king-attack-v2",
+    "prompt": "Use case: identity-preserve. Reference image shows the exact character and general attack idea, NOT the background. Create a NEW eight frame 2D attack sprite sheet of this white-haired celestial boy king with ornate golden crown, purple-blue cape and gem staff. MUST be isolated cutout sprites on fully transparent alpha, absolutely NO colored backdrop, NO purple rectangle and no floor. Same character in eight distinct consecutive staff-casting poses: neutral, pull staff back, charge staff, lift staff, point staff forward, follow through, lower staff, neutral. Keep magic small close to staff, no large detached swirls. Arrange exactly FOUR columns and TWO rows in a 2:1 landscape sheet, square equal cells. The complete body including staff, cape and crown occupies only 55% of every cell's dimensions; extensive EMPTY TRANSPARENT gutters and outer margins. Character faces right, fixed scale and consistent feet baseline. No text or grid. Use same hand-painted cute fantasy RPG art as reference, not 3D. Background transparency is the principal requirement."
+  },
+  {
+    "id": "spirit-king-walk-v2",
+    "prompt": "Use case: identity-preserve. Reference is character identity and exact small sprite sizing/layout. Create WALK animation instead of attack. Same celestial boy king, crown, cape and staff, exact same face/color and painted art. Exactly 8 small full-body poses in the SAME 4-column x 2-row transparent sheet layout. EACH occupies only 55% cell with very generous empty transparent margins, same body scale as reference neutral pose, do not fill canvas. Facing RIGHT. Poses show an 8-step walking loop with left foot forward contact, left foot weight, right foot passing, right foot lifted, right foot forward contact, right foot weight, left foot passing, left foot lifted. Feet and knees visibly change, cape gently sways, head/face stays consistent. Staff held upright, no attack/magic explosion, NO background gradient or rectangle, actual transparent alpha, no text/grid/shadows. 2:1 landscape."
+  }
+]
+}

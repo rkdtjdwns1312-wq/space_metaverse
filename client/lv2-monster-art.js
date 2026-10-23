@@ -59,9 +59,10 @@ export function drawLv2Monster(ctx,m,time=0,attack){
   if(!LV2_MONSTER_ART[m?.shape])return false;
   if(!ctx)return true;
   const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return false;
-  const r=Math.max(1,m.radius||48),size=r*3.6,face=m.facingX<0?-1:1;
+  const r=Math.max(1,m.radius||48),size=r*3.6;
   const pose=lv2MonsterPose(time,attack),phase=time*.01;
-  const bob=m.moving?Math.sin(phase)*r*.045:0;
+  const face=pose.active&&Math.abs(attack.dx)>.05?Math.sign(attack.dx):m.facingX<0?-1:1;
+  const bob=m.moving&&!pose.active?Math.sin(phase)*r*.045:0;
   const squash=pose.active?Math.sin(pose.progress*Math.PI)*.025:Math.sin(time*.002)*.012;
   ctx.save();ctx.fillStyle='#17162d44';ctx.beginPath();ctx.ellipse(m.x,m.y+r*.8,r*1.15,r*.28,0,0,Math.PI*2);ctx.fill();
   ctx.translate(m.x,m.y+bob);ctx.scale(face*(1+squash),1-squash);

@@ -49,6 +49,7 @@ import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
 import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-art.js';
 import {drawBossMonster,bossMonsterBounds,preloadBossArt} from './boss-monster-art.js';
+import {MONSTER_ATTACK_ART,preloadMonsterAttack} from './monster-attack-frames.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
 import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
@@ -889,7 +890,8 @@ export function createWorld(canvas) {
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       setMonsters(room?.monsters||[]);
-      for(const id of ['noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
+      for(const id of ['leoon','noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
+      for(const id of Object.keys(MONSTER_ATTACK_ART))if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadMonsterAttack(id).catch(()=>{});
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
       const now=performance.now();for(const p of players)recordPosition(p,now);

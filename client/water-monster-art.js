@@ -1,4 +1,5 @@
 import {drawOriginWalkFrame} from './origin-monster-walk.js';
+import {drawPaintedMonsterFrame,monsterAttackPose} from './monster-attack-frames.js';
 
 const SUPPORTED = new Set(['star-crab', 'water-star']);
 const imageCache = new Map();
@@ -79,7 +80,8 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
   const size = radius * 3.6;
   const x = Number(monster.x) || 0;
   const y = Number(monster.y) || 0;
-  const face = Number(monster.facingX) < 0 ? -1 : 1;
+  const attackPose=monsterAttackPose(now,attack);
+  const face = attackPose.active&&Math.abs(attack.dx)>.05?Math.sign(attack.dx):Number(monster.facingX) < 0 ? -1 : 1;
   const moving = Boolean(monster.moving);
   let bob = 0;
   let roll = 0;
@@ -100,7 +102,7 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
       recoil = Math.sin(Math.PI * attackProgress) * radius * 0.18;
     }
   }
-  if (moving) {
+  if (moving && !attackActive) {
     const phase = now * 0.012;
     bob = Math.sin(phase) * radius * 0.055;
     roll = Math.sin(phase) * 0.055;
@@ -130,8 +132,10 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
     ctx.scale(face * squashX, squashY);
     ctx.rotate(roll);
     const image = monsterImage(monster.shape);
-    if (moving && !attackActive && drawOriginWalkFrame(ctx,monster.shape,now,-size/2,-size/2,size)) {
-      // 걷는 동안에는 별도 발걸음 프레임을 재생하고, 공격 중에는 기존 원화를 씁니다.
+    if (attackActive && drawPaintedMonsterFrame(ctx,monster.shape,attackPose.frame,radius,0,radius*.82)) {
+      // 집게·몸통이 실제로 바뀌는 8포즈를 서버 반격 이벤트 동안 재생합니다.
+    } else if (moving && !attackActive && drawOriginWalkFrame(ctx,monster.shape,now,-size/2,-size/2,size)) {
+      // 걷기 프레임은 기존 발걸음을 유지합니다.
     } else if (image?.complete && image.naturalWidth > 0) {
       ctx.drawImage(image, -size / 2, -size / 2, size, size);
     } else {
