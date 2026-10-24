@@ -2280,7 +2280,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         try{transaction(()=>{if(ensureDailyMissions(room,clock()))roster(room);});}
         catch(error){const restored=store.rooms.get(room.code);if(restored)restored.dailyRetryAt=now+1000;console.error('일일 미션 저장 실패:',error.message);continue;}
       }
-      // 21시에 토큰도 회수합니다. 열린 브라우저나 재접속으로 시간을 우회할 수 없습니다.
+      // 22시에 토큰도 회수합니다. 열린 브라우저나 재접속으로 시간을 우회할 수 없습니다.
       if(!studentOpen()&&[...room.players.values()].some(p=>p.role==='student'&&(p.connected||p.token))&&now>=(room.cleanupRetryAt||0)){
         try {transaction(()=>{
           for(const p of room.players.values())if(p.role==='student'&&(p.connected||p.token)){

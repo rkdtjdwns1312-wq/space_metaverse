@@ -31,14 +31,14 @@ async function roomWithStudents(t,options={}){
 test('studentHours false keeps the existing flow and true follows UTC Korean boundaries with teacher exception',async t=>{
   const f=await fixture(t,{studentHours:false}),teacher=await f.connect();
   assert.equal((await call(teacher,'room:create',{teacherKey:key,title:'x',allowedNames:['1']})).ok,true);
-  const times=[['06:59',Date.UTC(2026,0,1,21,59)],['07:00',Date.UTC(2026,0,1,22,0)],['20:59',Date.UTC(2026,0,2,11,59)],['21:00',Date.UTC(2026,0,2,12,0)]];
-  for(const [label,now] of times){const g=await fixture(t,{studentHours:true,clock:()=>now}),teacher2=await g.connect();const r=await call(teacher2,'room:create',{teacherKey:key,title:'시간검사',allowedNames:['1']});assert.equal(r.ok,true,r.error);const s=await g.connect();const j=await call(s,'room:join',{code:r.room.code,nickname:'1'});assert.equal(j.ok,label==='07:00'||label==='20:59',label);if(label==='21:00')assert.match(j.error,/오전 7시/);}
+  const times=[['06:59',Date.UTC(2026,0,1,21,59)],['07:00',Date.UTC(2026,0,1,22,0)],['20:59',Date.UTC(2026,0,2,11,59)],['21:59',Date.UTC(2026,0,2,12,59)],['22:00',Date.UTC(2026,0,2,13,0)]];
+  for(const [label,now] of times){const g=await fixture(t,{studentHours:true,clock:()=>now}),teacher2=await g.connect();const r=await call(teacher2,'room:create',{teacherKey:key,title:'시간검사',allowedNames:['1']});assert.equal(r.ok,true,r.error);const s=await g.connect();const j=await call(s,'room:join',{code:r.room.code,nickname:'1'});assert.equal(j.ok,label==='07:00'||label==='20:59'||label==='21:59',label);if(label==='22:00')assert.match(j.error,/오전 7시/);}
 });
 
-test('21시에는 접속 학생도 나가고 토큰과 이동 요청이 차단된다',async t=>{
-  let clock=Date.UTC(2026,0,2,11,59,59);const f=await roomWithStudents(t,{studentHours:true,clock:()=>clock});
+test('22시에는 접속 학생도 나가고 토큰과 이동 요청이 차단된다',async t=>{
+  let clock=Date.UTC(2026,0,2,12,59,59);const f=await roomWithStudents(t,{studentHours:true,clock:()=>clock});
   assert.ok(studentAccessOpen(clock));let closed=false;f.a.on('room:closed',()=>closed=true);
-  clock=Date.UTC(2026,0,2,12);await sleep(100);assert.ok(closed);assert.equal(f.game.store.sessions.has(f.ja.token),false);
+  clock=Date.UTC(2026,0,2,13);await sleep(100);assert.ok(closed);assert.equal(f.game.store.sessions.has(f.ja.token),false);
   assert.equal((await call(f.a,'room:join',{code:f.room.code,nickname:'1'})).ok,false);
   assert.ok((await call(f.teacher,'chat:setEnabled',{enabled:false})).ok);
 });

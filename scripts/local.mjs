@@ -11,7 +11,7 @@ process.chdir(root);
 if(!existsSync('.env'))writeFileSync('.env','TEACHER_KEY='+randomBytes(32).toString('hex')+'\nADMIN_PASSWORD='+randomBytes(24).toString('base64url')+'\nPORT=3000\nHOST=127.0.0.1\nPUBLIC_ORIGIN=\n',{mode:0o600});
 process.loadEnvFile('.env');
 const studentHours=studentHoursFromEnv();
-const hoursNotice=studentHours?'학생 이용 시간: 한국 시간 07:00~21:00':'테스트 기간 · 학생은 시간 제한 없이 접속할 수 있어요.';
+const hoursNotice=studentHours?'학생 이용 시간: 한국 시간 07:00~22:00':'테스트 기간 · 학생은 시간 제한 없이 접속할 수 있어요.';
 const secret=process.env.TEACHER_KEY;
 if(!secret||secret.length<16||secret.startsWith('replace-'))throw new Error('Please set a private TEACHER_KEY in .env (at least 16 characters).');
 const port=Number(process.env.PORT || 3000);

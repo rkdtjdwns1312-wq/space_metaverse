@@ -44,7 +44,7 @@ test('STUDENT_HOURS parser defaults to enabled, accepts trimmed case-insensitive
   assert.throws(() => studentHoursFromEnv('0'), /STUDENT_HOURS/);
 });
 
-test('studentHours=false keeps an entered student connected, reconnectable, and able to chat across 21:00', async t => {
+test('studentHours=false keeps an entered student connected, reconnectable, and able to chat across 22:00', async t => {
   let now = kst(20, 59);
   const game = createClassroomServer({ teacherKey: key, studentHours: false, clock: () => now });
   const address = await game.listen();
@@ -68,14 +68,14 @@ test('studentHours=false keeps an entered student connected, reconnectable, and 
 
   student.disconnect();
   await new Promise(resolve => setTimeout(resolve, 30));
-  now = kst(21);
+  now = kst(22);
   await new Promise(resolve => setTimeout(resolve, 100));
 
   const resumed = await connect(address.port);
   sockets.push(resumed);
   const reconnected = await call(resumed, 'session:resume', { token });
   assert.equal(reconnected.ok, true, reconnected.error);
-  assert.equal((await call(resumed, 'chat:send', { text: '21시 이후에도 접속' })).ok, true);
+  assert.equal((await call(resumed, 'chat:send', { text: '22시 이후에도 접속' })).ok, true);
 
   now = kst(0, 30);
   const afterMidnight = await connect(address.port);
@@ -98,12 +98,12 @@ test('studentHours=true rejects a student attempting to enter at night', async t
   sockets.push(teacher);
   const created = await call(teacher, 'room:create', { teacherKey: key, title: '야간 입장 거부', allowedNames: ['1'] });
   assert.equal(created.ok, true, created.error);
-  now = kst(21);
+  now = kst(22);
   const student = await connect(address.port);
   sockets.push(student);
   const denied = await call(student, 'room:join', { code: created.room.code, nickname: '1' });
   assert.equal(denied.ok, false);
-  assert.match(denied.error, /오후 9시|입장/);
+  assert.match(denied.error, /오후 10시|입장/);
 });
 
 test('public-config reports the selected student-hours policy', async t => {

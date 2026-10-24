@@ -1448,7 +1448,7 @@ $('leave').onclick=()=>{
   const persistent=room?.persistent===true;
   $('leave-title').textContent=teacher&&persistent?'수업을 마칠까요?':teacher?'모두의 교실을 종료할까요?':'교실에서 나갈까요?';
   $('leave-description').textContent=teacher&&persistent?'저장하고 수업을 마칩니다. 교실 코드와 아이들이 만든 내용은 그대로 유지돼요.':teacher?'모든 친구들이 나가게 되고, 이 교실 코드는 사용할 수 없어요.':'다시 교실 코드로 입장할 수 있어요.';
-  if(teacher&&room.unattended){$('leave-title').textContent='선생님 화면에서 나갈까요?';$('leave-description').textContent='학생들은 서버가 켜져 있으면 07~21시에 계속 이용할 수 있어요. 다음에는 기존 교실 열기로 돌아오세요.';}
+  if(teacher&&room.unattended){$('leave-title').textContent='선생님 화면에서 나갈까요?';$('leave-description').textContent='학생들은 서버가 켜져 있으면 07~22시에 계속 이용할 수 있어요. 다음에는 기존 교실 열기로 돌아오세요.';}
   $('leave-dialog').showModal();
 };
 $('stay').onclick=()=>{$('leave-dialog').close();$('world').focus();};
