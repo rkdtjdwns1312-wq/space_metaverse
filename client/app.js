@@ -412,6 +412,7 @@ function updateRoom(value){
   teacherInventory.update();
   teacherCardCatalog.update();
   $('copy-student-link').hidden=!isTeacher;
+  $('copy-student-qr').hidden=!isTeacher;
   $('pin-panel').hidden=!isTeacher||room.persistent!==true||room.managedAccounts;
   if(!placing)$('map-caption').textContent=mapCaption(myMapId);
   if(!room.players.some(p=>p.role==='teacher'&&p.connected))$('connection').textContent=room.unattended?'우주와 연결되었어요 · 선생님 자리 비움':'선생님 연결 대기 · 잠시 이동을 멈춰요';

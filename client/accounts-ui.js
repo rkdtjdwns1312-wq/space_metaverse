@@ -1,3 +1,5 @@
+import { drawStudentQr, shareableStudentLink } from './student-qr.js';
+
 export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   const $=id=>document.getElementById(id),classCode=new URLSearchParams(location.search).get('class')||'';
   let managed=false;
@@ -53,8 +55,35 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   };
   $('password-dialog').addEventListener('close',()=>$('password-form').reset());
   $('copy-student-link').onclick=async()=>{
-    try{const result=await request('room:studentLink',{});await navigator.clipboard.writeText(result.url);toast('학생 입장 링크를 복사했어요.');}
+    try{const result=await request('room:studentLink',{});await navigator.clipboard.writeText(shareableStudentLink(result.url));toast('학생 입장 링크를 복사했어요.');}
     catch(e){toast(e.message);}
+  };
+  $('copy-student-qr').onclick=async()=>{
+    try{
+      const result=await request('room:studentLink',{});
+      const url=shareableStudentLink(result.url);
+      drawStudentQr($('student-qr-canvas'),url);
+      $('student-qr-link').textContent=url;
+      $('student-qr-dialog').showModal();
+      await copyStudentQrImage();
+    }catch(e){toast(e.message);}
+  };
+  async function copyStudentQrImage(){
+    if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw new Error('이 브라우저에서는 QR 이미지 복사를 지원하지 않아요. PNG 저장을 이용해주세요.');
+    const blob=await new Promise(resolve=>$('student-qr-canvas').toBlob(resolve,'image/png'));
+    if(!blob)throw new Error('QR 이미지를 만들지 못했어요. 다시 시도해주세요.');
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    toast('학생 입장 QR 코드를 복사했어요.');
+  }
+  $('student-qr-copy').onclick=async()=>{
+    try{await copyStudentQrImage();}
+    catch(e){toast(e.message||'QR 이미지를 복사하지 못했어요. PNG 저장을 이용해주세요.');}
+  };
+  $('student-qr-download').onclick=()=>{
+    const anchor=document.createElement('a');
+    anchor.href=$('student-qr-canvas').toDataURL('image/png');
+    anchor.download='우주교실-학생입장-QR.png';
+    anchor.click();
   };
   function renderCredentials(room=getRoom()){
     const me=room?.players.find(p=>p.id===getSelfId()),teacher=me?.role==='teacher'&&room?.managedAccounts;
