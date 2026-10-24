@@ -102,6 +102,7 @@ test('actual culture and science dialogs refresh at KST midnight without repeati
     '/client/reading-refresh.js':'client/reading-refresh.js',
     '/shared/culture-stories.js':'shared/culture-stories.js',
     '/shared/culture-stories-extra.js':'shared/culture-stories-extra.js',
+    '/shared/culture-stories-more.js':'shared/culture-stories-more.js',
     '/shared/history-keywords.js':'shared/history-keywords.js',
     '/shared/station-rewards.js':'shared/station-rewards.js',
     '/shared/science-facts.js':'shared/science-facts.js',

@@ -6,6 +6,7 @@ import {createClassroomServer} from '../server/app.js';
 import {STREET} from '../shared/config.js';
 import {SCIENCE_FACTS} from '../shared/science-facts.js';
 import {CULTURE_STORIES_EXTRA} from '../shared/culture-stories-extra.js';
+import {CULTURE_STORIES_MORE} from '../shared/culture-stories-more.js';
 import {HISTORY_LESSONS} from '../shared/history-lessons.js';
 import {cultureDay} from '../server/culture-library.js';
 import {JOURNEY_VERSION} from '../shared/tutorial-journey.js';
@@ -24,5 +25,12 @@ try{
  await page.setViewportSize({width:390,height:844});await page.locator('#history-library-dialog').screenshot({path:'.local/650-652-ui/history-mobile.png'});assert(await page.locator('#history-library-dialog').evaluate(e=>e.scrollWidth<=e.clientWidth+1));await page.locator('#history-library-dialog header button').click();await page.setViewportSize({width:1100,height:920});
  p.scienceReading={day:cultureDay(Date.now()),seenIds:SCIENCE_FACTS.slice(0,-1).map(f=>f.id),openedIds:[],claimedIds:[],activeId:null};await at('science');await page.locator('.science-start').click();await page.locator('.science-memo').waitFor({state:'visible'});assert.equal(await page.locator('.science-memo h3').innerText(),SCIENCE_FACTS.at(-1).title);await page.locator('.science-done').click();await page.locator('#science-library-dialog .culture-notice').filter({hasText:'초기화'}).waitFor();assert.equal(p.scienceReading.cyclesCompleted,1);assert.equal(p.scienceReading.openedIds.length,1);await page.locator('#science-library-dialog').screenshot({path:'.local/650-652-ui/science-reset.png'});await page.locator('.science-next').click();await page.locator('.science-done').waitFor({state:'visible'});await page.locator('.science-done').click();await page.locator('#science-library-dialog .culture-notice').filter({hasText:'오늘의 두 이야기'}).waitFor();assert.equal(p.scienceReading.openedIds.length,2);assert.equal(await page.locator('.science-next').isVisible(),false);await page.locator('#science-library-dialog header button').click();
  await at('culture');const story=CULTURE_STORIES_EXTRA[0];await page.locator(`[data-story-id="${story.id}"]`).click();await page.waitForFunction(title=>document.querySelector('#culture-library-dialog .culture-book-title').textContent===title,story.title);assert.equal(await page.locator('#culture-library-dialog .culture-book-title').innerText(),story.title);assert.deepEqual(await page.locator('#culture-library-dialog .culture-paragraphs p').allTextContents(),story.paragraphs);await page.locator('#culture-library-dialog').screenshot({path:'.local/650-652-ui/culture-new.png'});await page.locator('#culture-library-dialog .culture-done').click();await page.locator('#culture-library-dialog .culture-notice').filter({hasText:'우주에너지'}).waitFor();
- assert.deepEqual(errors,[]);const report={historySamples:3,historyTextUnchanged:true,redKeywords:true,mobileFits:true,scienceTotal:SCIENCE_FACTS.length,scienceReset:true,dailyLimitPreserved:true,newStories:CULTURE_STORIES_EXTRA.length,cultureReward:true,errors};await writeFile('.local/650-652-ui/report.json',JSON.stringify(report));console.log(JSON.stringify(report));
+ const addedStory=CULTURE_STORIES_MORE[0];
+ await page.locator('#culture-library-dialog .culture-back').click();
+ await page.locator('[data-story-id="'+addedStory.id+'"]').click();
+ await page.waitForFunction(title=>document.querySelector('#culture-library-dialog .culture-book-title').textContent===title,addedStory.title);
+ assert.deepEqual(await page.locator('#culture-library-dialog .culture-paragraphs p').allTextContents(),addedStory.paragraphs);
+ await page.locator('#culture-library-dialog .culture-done').click();
+ await page.locator('#culture-library-dialog .culture-notice').filter({hasText:'우주에너지'}).waitFor();
+ assert.deepEqual(errors,[]);const report={historySamples:3,historyTextUnchanged:true,redKeywords:true,mobileFits:true,scienceTotal:SCIENCE_FACTS.length,scienceReset:true,dailyLimitPreserved:true,newStories:CULTURE_STORIES_EXTRA.length,additionalStories:CULTURE_STORIES_MORE.length,cultureReward:true,errors};await writeFile('.local/650-652-ui/report.json',JSON.stringify(report));console.log(JSON.stringify(report));
 }finally{teacher?.disconnect();await browser?.close();await game.close();}

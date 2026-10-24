@@ -45,9 +45,9 @@ try{
     await as(id,2);assert(await page.locator('#self-ability-panel').isVisible());
     const a=await page.locator('#self-ability-effect').boundingBox(),b=await page.locator('#self-ability-use').boundingBox();
     assert(Math.abs(a.y-b.y)<1&&b.x>a.x+a.width,'two buttons in one row');
-    if(!['aquarius','capricorn','taurus','corvus','gemini','libra','pisces','sagittarius','cygnus','corona-borealis','aries','cancer'].includes(id))assert(await page.locator('#self-ability-use').isDisabled());
+    assert.equal(await page.locator('#self-ability-use').isDisabled(),id==='hercules',id+' Lv2 button state');
   }
-  report.checks.push('16종 한 줄 2버튼 / 백조·왕관 활성 / 미설정 능력 비활성');
+  report.checks.push('16종 한 줄 2버튼 / 15종 능력 사용 가능 / 헤라클레스 자동 패시브');
   await as('libra',2);await page.locator('#self-ability-use').click();
   await page.locator('#ability-outcome').getByText('선생님이 주차를 확인하면 경험치를 받아요.',{exact:true}).waitFor();
   assert.equal(player.abilityState.markers.length,1);await page.screenshot({path:`${output}/libra-lv2.png`});

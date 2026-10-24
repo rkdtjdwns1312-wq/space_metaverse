@@ -1,6 +1,7 @@
 // 요청607: 공개 원전의 줄거리를 참고해 3~6학년 독자를 위해 새로 풀어쓴 이야기.
 // 원문 번역을 복사하지 않았으며, 출처와 확인일을 각 항목에 기록한다.
 import { CULTURE_STORIES_EXTRA } from './culture-stories-extra.js';
+import { CULTURE_STORIES_MORE } from './culture-stories-more.js';
 const aesopSource = (title) => ({
   title: `이솝 우화 「${title}」 — 조지 타운센드 편 Project Gutenberg 공개 원문`,
   url: 'https://www.gutenberg.org/files/21/21-h/21-h.htm',
@@ -209,4 +210,4 @@ const ORIGINAL_CULTURE_STORIES = Object.freeze([
   ],'배움에는 글뿐 아니라 설명과 질문, 서로의 신뢰도 필요해요.',talmudSource('샤밧 31a — 글자와 구전 가르침','https://www.sefaria.org/Shabbat.31a?lang=en'),'탈무드 원문'),
 ]);
 
-export const CULTURE_STORIES = Object.freeze([...ORIGINAL_CULTURE_STORIES, ...CULTURE_STORIES_EXTRA]);
+export const CULTURE_STORIES = Object.freeze([...ORIGINAL_CULTURE_STORIES, ...CULTURE_STORIES_EXTRA, ...CULTURE_STORIES_MORE]);
