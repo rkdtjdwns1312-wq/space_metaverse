@@ -3,14 +3,14 @@ export {oneStrokePuzzle};
 const labels={low:'하',medium:'중',high:'상'};
 
 export function createStarPathGame({board,setScore,request,toast=()=>{}}={}){
-  let difficulty='low',puzzle=null,current=null,used=new Set(),moves=[],finished=false,active=true,runId=null,busy=false,revision=0;
+  let difficulty='low',puzzle=null,startNode=null,current=null,used=new Set(),moves=[],finished=false,active=true,runId=null,busy=false,revision=0;
   const root=document.createElement('section');root.className='star-path-game';
   const levels=document.createElement('div');levels.className='star-path-levels';
   for(const [key,label] of Object.entries(labels)){
     const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.difficulty=key;
     button.onclick=()=>{if(busy)return;difficulty=key;start();};levels.append(button);
   }
-  const help=document.createElement('p');help.className='star-path-help';help.textContent='같은 선을 두 번 지나지 않고 모든 선을 이어 보세요. 점은 다시 지나갈 수 있어요.';
+  const help=document.createElement('p');help.className='star-path-help';help.textContent='‘시작’ 점부터 같은 선을 두 번 지나지 않고 이어 보세요. 점은 다시 지나갈 수 있어요.';
   const field=document.createElement('div');field.className='star-path-field';
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('aria-hidden','true');
   const nodes=document.createElement('div');nodes.className='star-path-nodes';field.append(svg,nodes);
@@ -32,14 +32,19 @@ export function createStarPathGame({board,setScore,request,toast=()=>{}}={}){
     });
     puzzle.points.forEach(([x,y],index)=>{
       const button=document.createElement('button');button.type='button';button.className='star-path-node';
-      button.style.left=`${x*100}%`;button.style.top=`${y*100}%`;button.textContent=current===index?'✦':'•';
-      button.setAttribute('aria-label',`${index+1}번 점${current===index?' 현재 위치':''}`);button.onclick=()=>choose(index);nodes.append(button);
+      button.style.left=`${x*100}%`;button.style.top=`${y*100}%`;button.textContent=index===startNode?'시작':current===index?'✦':'•';
+      if(index===startNode)button.dataset.start='true';
+      if(current===index)button.dataset.current='true';
+      button.setAttribute('aria-label',`${index===startNode?'시작 점, ':''}${index+1}번 점${current===index?' 현재 위치':''}`);button.onclick=()=>choose(index);nodes.append(button);
     });
     undo.disabled=!moves.length||finished;
   }
   function choose(index){
     if(!active||finished||busy||!puzzle)return;
-    if(current===null){current=index;draw();update('출발했어요');return;}
+    if(current===null){
+      if(index!==startNode){update('‘시작’ 점을 골라요');return;}
+      current=index;draw();update('출발했어요');return;
+    }
     const edgeIndex=puzzle.edges.findIndex(([a,b],id)=>!used.has(id)&&(a===current&&b===index||b===current&&a===index));
     if(edgeIndex<0){update('이어진 새 선을 골라요');return;}
     used.add(edgeIndex);moves.push({edgeIndex,from:current,to:index});current=index;
@@ -53,9 +58,9 @@ export function createStarPathGame({board,setScore,request,toast=()=>{}}={}){
     catch(error){if(active&&rev===revision){setScore('완료 확인을 다시 눌러 주세요.');toast(error.message);retry.hidden=false;}}
     finally{if(active&&rev===revision)busy=false;}
   }
-  async function start(){if(busy)return;busy=true;const rev=++revision;current=null;used=new Set();moves=[];finished=false;retry.hidden=true;puzzle=null;svg.replaceChildren();nodes.replaceChildren();setScore('새 도형을 준비하고 있어요…');
+  async function start(){if(busy)return;busy=true;const rev=++revision;current=null;startNode=null;used=new Set();moves=[];finished=false;retry.hidden=true;puzzle=null;svg.replaceChildren();nodes.replaceChildren();setScore('새 도형을 준비하고 있어요…');
     for(const button of levels.children)button.setAttribute('aria-pressed',String(button.dataset.difficulty===difficulty));
-    try{const result=await request('one-stroke:start',{difficulty});if(!active||rev!==revision)return;puzzle=result;runId=result.runId;draw();update('아무 점에서 시작해 보세요');}
+    try{const result=await request('one-stroke:start',{difficulty});if(!active||rev!==revision)return;puzzle=result;runId=result.runId;startNode=puzzle.points.findIndex((_,index)=>puzzle.edges.filter(([a,b])=>a===index||b===index).length%2===1);draw();update('‘시작’ 점에서 이어 보세요');}
     catch(error){if(active&&rev===revision){setScore('새 도형을 눌러 다시 시작해 주세요.');toast(error.message);}}
     finally{if(active&&rev===revision)busy=false;}}
   start();

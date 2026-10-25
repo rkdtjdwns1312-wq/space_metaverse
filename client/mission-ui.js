@@ -11,18 +11,32 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
   }
   const limitsData=prefix=>({maxRecipients:$(`${prefix}-capacity`).disabled||!$(`${prefix}-capacity`).value.trim()?null:Number($(`${prefix}-capacity`).value),
     validityHours:!$(`${prefix}-hours`).value.trim()?null:Number($(`${prefix}-hours`).value)});
-  dialog.querySelector('label[for="mission-auto-distribution"]').insertAdjacentHTML('beforebegin','<label for="mission-auto-repeat">반복하기</label><select id="mission-auto-repeat"><option value="">한 번만 나누기</option><option value="daily">매일 반복해서 나누기</option></select><p id="mission-daily-guide" class="muted" hidden>매일 한국시간 자정에 새로 시작해요. 오늘 받지 않은 보상은 사라져요. 일일미션 보상은 별 부스러기입니다.</p>');
+  dialog.querySelector('label[for="mission-auto-distribution"]').insertAdjacentHTML('beforebegin','<label for="mission-auto-repeat">반복하기</label><select id="mission-auto-repeat"><option value="">한 번만 나누기</option><option value="daily">매일 반복해서 나누기</option></select><p id="mission-daily-guide" class="muted" hidden>매일 한국시간 자정에 새로 시작해요. 오늘 받지 않은 보상은 사라져요.</p>');
+  $('mission-auto-reward').insertAdjacentHTML('afterend','<fieldset id="mission-auto-rewards"><legend>보상 선택</legend><label><input type="checkbox" data-reward-type="star-crumb"> 별 부스러기</label><input type="number" data-reward-quantity="star-crumb" min="1" max="10" step="1" value="1" aria-label="별 부스러기 수량"><label><input type="checkbox" data-reward-type="star-shard" checked> 별 파편</label><input type="number" data-reward-quantity="star-shard" min="1" max="10" step="1" value="1" aria-label="별 파편 수량"><label><input type="checkbox" data-reward-type="cosmic-energy"> 우주에너지</label><input type="number" data-reward-quantity="cosmic-energy" min="1" max="10" step="1" value="1" aria-label="우주에너지 수량"></fieldset>');
+  const autoRewards=$('mission-auto-rewards');
+  $('mission-auto-reward').previousElementSibling.hidden=true;
+  $('mission-auto-reward').hidden=true;
+  for(const checkbox of autoRewards.querySelectorAll('[data-reward-type]')){
+    const quantity=autoRewards.querySelector(`[data-reward-quantity="${checkbox.dataset.rewardType}"]`);
+    checkbox.onchange=()=>{quantity.disabled=!checkbox.checked;};checkbox.onchange();
+  }
+  const selectedRewards=()=>[...autoRewards.querySelectorAll('[data-reward-type]:checked')].map(input=>{
+    const type=input.dataset.rewardType,quantity=Number(autoRewards.querySelector(`[data-reward-quantity="${type}"]`).value);
+    if(!Number.isSafeInteger(quantity)||quantity<1||quantity>10)throw new Error('선택한 보상 수량은 1~10개로 정해 주세요.');
+    return {type,quantity};
+  });
   $('mission-auto-repeat').onchange=()=>{
     const daily=$('mission-auto-repeat').value==='daily',distribution=$('mission-auto-distribution');
     distribution.disabled=daily;if(daily)distribution.value='all';distribution.onchange();
     $('mission-daily-guide').hidden=!daily;$('mission-auto-hours').max=daily?'24':'8760';
     $('mission-auto-hours').placeholder=daily?'오늘 자정까지':'제한 없음';
     if(daily&&Number($('mission-auto-hours').value)>24)$('mission-auto-hours').value='24';
-    dialog.querySelector('label[for="mission-auto-reward"]').textContent=daily?'보상 · 별 부스러기':'보상 · 별 파편';
     const tutorialOption=$('mission-auto-objective').querySelector('[value="tutorial-complete"]');if(tutorialOption)tutorialOption.disabled=daily;
     if(daily&&$('mission-auto-objective').value==='tutorial-complete'){$('mission-auto-objective').value='timetable-read';$('mission-auto-objective').onchange();}
   };
-  const rewardText=mission=>`${mission.rewardItem==='star-crumb'?'별 부스러기':'별 파편'} ${mission.rewardQuantity??mission.rewardShards}개`;
+  const rewardNames={'star-crumb':'별 부스러기','star-shard':'별 파편','cosmic-energy':'우주에너지'};
+  const rewardText=mission=>mission.rewards?.length?mission.rewards.map(reward=>`${rewardNames[reward.type]} ${reward.quantity}개`).join(' · '):
+    `${mission.rewardItem==='star-crumb'?'별 부스러기':'별 파편'} ${mission.rewardQuantity??mission.rewardShards}개`;
   $('mission-auto-guide').insertAdjacentHTML('afterend','<div id="mission-auto-grade-row" hidden><label for="mission-auto-grade">수학 단계</label><select id="mission-auto-grade"><option value="1">기초 1학년</option><option value="2">기초 2학년</option><option value="3">중급 3학년</option><option value="4">중급 4학년</option><option value="5">고급 5학년</option><option value="6">고급 6학년</option></select></div><div id="mission-auto-item-level-row" hidden><label for="mission-auto-item-level">완성 아이템 레벨</label><select id="mission-auto-item-level"><option value="2">LV2</option><option value="3">LV3</option><option value="4">LV4</option><option value="5">LV5</option></select></div>');
   const mineDialog=$('student-missions-dialog'),mine=$('my-missions'),mineEmpty=$('my-missions-empty');
   const notice=document.createElement('button');notice.id='new-mission-notice';notice.type='button';notice.className='secondary';notice.hidden=true;
@@ -197,11 +211,14 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
         :objective==='signal-stage'?`우주 신호 따라하기 ${stage}단계 성공하기`
         :['baseball-win','sudoku-win','one-stroke-win'].includes(objective)?`${objective==='baseball-win'?'숫자야구':objective==='one-stroke-win'?'별 길 한번에 그리기':'별빛 스도쿠'} ${difficulty==='high'?'상':difficulty==='medium'?'중':'하'} ${goal}회 성공하기`
         :`${objectiveText[objective]} ${objective==='tetris-lines'?goal+'줄':goal+'회'}`;
+      const daily=$('mission-auto-repeat').value==='daily',rewards=selectedRewards();
+      if(!rewards.length)throw new Error('보상을 하나 이상 선택해 주세요.');
       await request('mission:auto:create',{title:$('mission-auto-title').value,description,objective,goal,
         ...(objective==='math-correct'?{grade}:{}),...(objective==='craft-level'?{itemLevel}:{}),
         ...(['baseball-win','sudoku-win','one-stroke-win'].includes(objective)?{difficulty}:{}),...(objective==='signal-stage'?{stage}:{}),
-        rewardShards:Number($('mission-auto-reward').value),distribution:$('mission-auto-distribution').value,...limitsData('mission-auto'),
-        ...($('mission-auto-repeat').value==='daily'?{repeat:'daily',rewardQuantity:Number($('mission-auto-reward').value)}:{})});
+        ...(daily?{repeat:'daily',rewards,rewardShards:rewards.find(reward=>reward.type==='star-shard')?.quantity||0}:
+          {rewardShards:rewards.find(reward=>reward.type==='star-shard')?.quantity||0,rewards}),
+        distribution:$('mission-auto-distribution').value,...limitsData('mission-auto')});
       $('mission-auto-title').value='';await refreshBoard();$('mission-auto-create').hidden=false;toast('자동미션을 만들었어요.');}
     catch(error){$('mission-board-error').textContent=error.message;}
     finally{button.disabled=false;}

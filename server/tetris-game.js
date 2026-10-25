@@ -89,10 +89,10 @@ export function createTetrisRuns({randomPiece=()=>randomInt(7)}={}){
     },
     move(player,data,now=performance.now()){
       const run=active(player,data?.runId);advance(run,now);
-      ensure(['left','right','rotate'].includes(data?.move),'움직일 방향을 골라 주세요.');
+      ensure(['left','right','rotate','down'].includes(data?.move),'움직일 방향을 골라 주세요.');
       if(!run.done&&run.current){
         const base=run.current;
-        const candidate=data.move==='left'?{...base,x:base.x-1}:data.move==='right'?{...base,x:base.x+1}:{...base,rotation:(base.rotation+1)%4};
+        const candidate=data.move==='left'?{...base,x:base.x-1}:data.move==='right'?{...base,x:base.x+1}:data.move==='down'?{...base,y:base.y+1}:{...base,rotation:(base.rotation+1)%4};
         const offsets=data.move==='rotate'?[0,-1,1,-2,2]:[0];
         for(const offset of offsets){const shifted={...candidate,x:candidate.x+offset};if(fits(run,shifted)){run.current=shifted;break;}}
       }

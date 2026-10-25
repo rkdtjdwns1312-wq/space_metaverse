@@ -1,10 +1,16 @@
 import {LIBRA_VFX} from '/shared/libra-skills.js';
 
 const images=new Map();
+function softDraw(ctx,draw,{alpha=1,blur=0}={}){
+  ctx.save();
+  ctx.globalAlpha*=alpha;
+  if(blur){ctx.shadowColor='rgba(245,218,255,.55)';ctx.shadowBlur=blur;ctx.filter=`blur(${blur*.12}px) saturate(.82) brightness(.94)`;}
+  draw();ctx.restore();
+}
 function frame(ctx,id,index,size){let image=images.get(id);
   if(!image){image=new Image();image.src=LIBRA_VFX[id].url;images.set(id,image);}
   if(!image.complete||!image.naturalWidth)return;
-  ctx.drawImage(image,(index%6)*256,Math.floor(index/6)*256,256,256,-size/2,-size/2,size,size);
+  softDraw(ctx,()=>ctx.drawImage(image,(index%6)*256,Math.floor(index/6)*256,256,256,-size/2,-size/2,size,size),{alpha:.86,blur:5});
 }
 export function drawLibraProjectile(ctx,cast,elapsedMs,reducedMotion=false){
   if(cast.kind!=='libra-attack')return false;
@@ -22,7 +28,7 @@ export function drawLibraAura(ctx,aura,elapsedMs,reducedMotion=false){
       const fade=Math.max(0,Math.min(1,elapsedMs/500,(aura.durationMs-elapsedMs)/500));
       const side=size*(aura.stage===3?.78:.73),ratio=core.naturalWidth/core.naturalHeight;
       const width=ratio>=1?side:side*ratio,height=ratio>=1?side/ratio:side;
-      ctx.save();ctx.globalAlpha*=fade*fade*(3-2*fade);ctx.drawImage(core,-width/2,-height/2,width,height);ctx.restore();
+      softDraw(ctx,()=>ctx.drawImage(core,-width/2,-height/2,width,height),{alpha:fade*fade*(3-2*fade)*.9,blur:4});
     }
     return;
   }
@@ -31,7 +37,7 @@ export function drawLibraAura(ctx,aura,elapsedMs,reducedMotion=false){
       const key='lv4-core';let core=images.get(key);
       if(!core){core=new Image();core.src='/assets/skills/libra/source/scale-lv4-painted.png';images.set(key,core);}
       // 큰 실제 표시 크기에서도 사슬과 금빛 조각이 흐려지지 않도록 원해상도로 표시합니다.
-      if(core.complete&&core.naturalWidth){ctx.drawImage(core,-size*106/256,-size*108/256,size*212/256,size*212/256);return;}
+      if(core.complete&&core.naturalWidth){softDraw(ctx,()=>ctx.drawImage(core,-size*106/256,-size*108/256,size*212/256,size*212/256),{alpha:.9,blur:4});return;}
     }
     frame(ctx,`skill-lv${aura.stage}`,12,size);
     return;

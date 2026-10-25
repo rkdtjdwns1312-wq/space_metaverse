@@ -39,7 +39,12 @@ export function drawCoronaAura(ctx,aura,elapsedMs,reducedMotion=false){
   const image=images.get(id);if(!image.complete||!image.naturalWidth)return;
   // 기존 단계별 왕관 원화를 머리 위 아이콘 크기로 표시하고 몸 오라는 별도 렌더러에 둡니다.
   const height=size*image.naturalHeight/image.naturalWidth,opacity=coronaOpacity(aura,elapsedMs);
-  ctx.save();ctx.globalAlpha*=opacity;ctx.drawImage(image,-size/2,-aura.size*.55-height,size,height);ctx.restore();
+  ctx.save();
+  ctx.globalAlpha*=opacity*.9;
+  ctx.filter='blur(0.55px)';
+  ctx.shadowColor='#f3cc8a';ctx.shadowBlur=3;
+  ctx.drawImage(image,-size/2,-aura.size*.55-height,size,height);
+  ctx.restore();
 }
 export function drawCoronaBodyAura(ctx,sprite,aura,elapsedMs,size,reducedMotion=false){
   if(!sprite)return;

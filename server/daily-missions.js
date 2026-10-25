@@ -1,6 +1,9 @@
 import {validateMissions,missionExpired} from './missions.js';
 
 export const DAILY_HISTORY_LIMIT=100;
+const rewardTypes=new Set(['star-crumb','star-shard','cosmic-energy']);
+const validRewards=rewards=>Array.isArray(rewards)&&rewards.length>0&&new Set(rewards.map(reward=>reward?.type)).size===rewards.length&&
+ rewards.every(reward=>reward&&rewardTypes.has(reward.type)&&Number.isSafeInteger(reward.quantity)&&reward.quantity>=1&&reward.quantity<=10);
 export const dailyMissionDay=now=>new Date(now+9*3600000).toISOString().slice(0,10);
 const dayStart=day=>Date.parse(day+'T00:00:00+09:00');
 const validDay=day=>typeof day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(dayStart(day))&&dailyMissionDay(dayStart(day))===day;
@@ -30,9 +33,11 @@ export function validateDailyMissionHistory(raw){
  const ids=new Set();
  return raw.map(m=>{
   if(!m||typeof m.templateId!=='string'||!m.templateId||!validDay(m.day)||m.id!==idFor(m.templateId,m.day)||ids.has(m.id)||typeof m.title!=='string'||!m.title||m.title.length>40||
-   typeof m.description!=='string'||!m.description||m.description.length>240||m.rewardItem!=='star-crumb'||!Number.isSafeInteger(m.rewardQuantity)||m.rewardQuantity<1||m.rewardQuantity>10||
+   typeof m.description!=='string'||!m.description||m.description.length>240||!(m.rewards!==undefined?validRewards(m.rewards):
+    m.rewardItem==='star-crumb'&&Number.isSafeInteger(m.rewardQuantity)&&m.rewardQuantity>=1&&m.rewardQuantity<=10)||
    !Number.isSafeInteger(m.claimedAt)||m.claimedAt<dayStart(m.day)||m.claimedAt>=dayStart(m.day)+86400000)throw Error('Invalid daily history entry');
-  ids.add(m.id);return {id:m.id,templateId:m.templateId,day:m.day,title:m.title,description:m.description,rewardItem:'star-crumb',rewardQuantity:m.rewardQuantity,claimedAt:m.claimedAt};
+  ids.add(m.id);return {id:m.id,templateId:m.templateId,day:m.day,title:m.title,description:m.description,
+   ...(m.rewards!==undefined?{rewards:structuredClone(m.rewards)}:{rewardItem:'star-crumb',rewardQuantity:m.rewardQuantity}),claimedAt:m.claimedAt};
  });
 }
 
@@ -45,7 +50,7 @@ export function ensureDailyMissions(room,now=Date.now()){
   for(const m of state?.instances||[])for(const player of room.players.values())if(player.role==='student'&&m.claimedIds.includes(player.id)){
    const history=player.dailyMissionHistory||[];
    if(!history.some(entry=>entry.id===m.id))player.dailyMissionHistory=[...history,{id:m.id,templateId:m.templateId,day:m.day,title:m.title,description:m.description,
-    rewardItem:'star-crumb',rewardQuantity:m.rewardQuantity,claimedAt:m.claimedAt[player.id]}].slice(-DAILY_HISTORY_LIMIT);
+    ...(m.rewards?{rewards:structuredClone(m.rewards)}:{rewardItem:'star-crumb',rewardQuantity:m.rewardQuantity}),claimedAt:m.claimedAt[player.id]}].slice(-DAILY_HISTORY_LIMIT);
   }
   state=room.dailyMissions={day,instances:[]};changed=true;
  }
@@ -67,5 +72,6 @@ export function ensureDailyMissions(room,now=Date.now()){
 }
 
 export function dailyHistoryViews(player){
- return (player.dailyMissionHistory||[]).map(m=>({...m,repeat:'daily',rewardShards:0,distribution:'all',status:'claimed',archived:true,expired:true}));
+ return (player.dailyMissionHistory||[]).map(m=>({...m,repeat:'daily',rewardShards:m.rewards?.find(reward=>reward.type==='star-shard')?.quantity||0,
+  distribution:'all',status:'claimed',archived:true,expired:true}));
 }

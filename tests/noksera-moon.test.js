@@ -21,15 +21,16 @@ function full(f){tick(f,START);tick(f,START+2000);return START+9000;}
 
 test('달 준비2초와 공개 timeline 7/6/7초·마나25·쿨60초·준비 중 이동/평타 금지',()=>{
   const f=fixture(),{boss,player,room}=f,xy=[boss.x,boss.y],hp=ensureVitals(player).hp;
-  boss.nextAttackAt=0;assert.deepEqual(tick(f,START),[]);assert.equal(boss.mp,25);assert.equal(boss.moonReadyAt,START+60000);
+  boss.nextAttackAt=0;assert.deepEqual(tick(f,START),[]);assert.equal(boss.mp,75);assert.equal(boss.moonReadyAt,START+60000);
   const v=monsterViews(room,START)[0];assert.deepEqual(v.moonCast,{kind:MOON.kind,mapId:boss.mapId,startsAt:START,endsAt:START+2000});
   assert.deepEqual(v.moonAura,{...nokseraMoonTimeline(START),mapId:boss.mapId});
   assert.deepEqual([v.moonAura.startsAt,v.moonAura.fullStartsAt,v.moonAura.fullEndsAt,v.moonAura.endsAt],[3000,10000,16000,23000]);
   assert.deepEqual(tick(f,START+1999),[]);assert.deepEqual([boss.x,boss.y],xy);assert.equal(ensureVitals(player).hp,hp);
   const hits=tick(f,START+2000);assert.equal(boss.moonCast,null);assert.deepEqual(hits,[]);
   assert.deepEqual(tick(f,START+2999),[]);
-  assert.ok(tick(f,START+3000).length);
-  player.x=boss.x+500;const x=boss.x;tick(f,START+3100);assert.ok(boss.x>x);
+  assert.deepEqual(tick(f,START+3000),[]);
+  assert.ok(tick(f,START+4000).length);
+  player.x=boss.x+500;const x=boss.x;tick(f,START+4100);assert.ok(boss.x>x);
   assert.equal(monsterViews(room,START+22000)[0].moonAura,undefined);tick(f,START+22000);assert.equal(boss.moonAura,null);
 });
 
@@ -105,7 +106,7 @@ test('준비 중 죽음/기절/수면/대상이탈/맵변경 취소·달 공개�
     f=>f.boss.sleepUntil=START+1500,f=>f.player.connected=false,f=>f.player.mapId='space-plaza',
     f=>f.boss.mapId='sun-paradise-3',f=>f.boss.mapId='missing-map']){
     const f=fixture();tick(f,START);mutate(f);assert.deepEqual(tick(f,START+2000),[]);
-    assert.equal(f.boss.moonCast,null);assert.equal(f.boss.moonAura,null);assert.equal(f.boss.mp,25);
+    assert.equal(f.boss.moonCast,null);assert.equal(f.boss.moonAura,null);assert.equal(f.boss.mp,75);
     const v=monsterViews(f.room,START+2000)[0];assert.equal(v.moonCast,undefined);assert.equal(v.moonAura,undefined);
   }
 });
@@ -114,7 +115,7 @@ test('달 활성 후 행동불능은 달을 지우지 않으며 사망/재소환
   const f=fixture();full(f);f.boss.stunUntil=START+12000;tick(f,START+10000);assert.ok(f.boss.moonAura);
   f.boss.stunUntil=0;damageMonster(f.room,f.boss,f.player,5000,START+16000,{energyRoll:()=>400,bossRoll:()=>2});
   assert.equal(f.boss.hp,0);assert.equal(f.boss.moonAura,null);assert.equal(f.boss.moonCast,null);
-  tick(f,f.boss.respawnAt);assert.equal(f.boss.mp,50);assert.equal(f.boss.moonReadyAt,0);assert.equal(f.boss.moonAura,null);
+  tick(f,f.boss.respawnAt);assert.equal(f.boss.mp,100);assert.equal(f.boss.moonReadyAt,0);assert.equal(f.boss.moonAura,null);
   const g=fixture();full(g);g.boss.mapId='sun-paradise-3';tick(g,START+3000);assert.equal(g.boss.moonAura,null);
 });
 
@@ -139,8 +140,8 @@ test('스킬1/2 준비는 배타적·달 유지 중 스킬1 허용·20초 끝 �
   tick(g,START+1000);assert.equal(g.boss.pendingAttack,undefined);
   tick(g,START+2000);assert.equal(g.boss.pendingAttack.kind,HORN.kind);assert.ok(g.boss.moonAura);
   const h=fixture();full(h);h.boss.moonReadyAt=0;h.boss.mp=50;
-  tick(h,START+21999);assert.equal(h.boss.moonCast,null);assert.equal(h.boss.mp,50);
-  tick(h,START+22000);assert.ok(h.boss.moonCast);assert.equal(h.boss.mp,25);
+  tick(h,START+21999);assert.equal(h.boss.moonCast,null);assert.equal(h.boss.mp,70);
+  tick(h,START+22000);assert.ok(h.boss.moonCast);assert.equal(h.boss.mp,45);
 });
 
 test('지연된 준비완료는 원래타임라인을 유지하며 이미 끝난 달을 다시 시작하지 않음',()=>{

@@ -1,4 +1,4 @@
-// 저장된 교실을 읽지 않는 23종 시트/전용 모션/실제 게임 통합 검사.
+// 저장된 교실을 읽지 않는 등록 시트/전용 모션/실제 게임 통합 검사.
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
@@ -6,9 +6,9 @@ import {createClassroomServer} from '../server/app.js';
 import {fillNewClass} from './class-setup.mjs';
 import {WALK_POSE_REGISTRATION} from '../client/walk-pose-sheet.js';
 const out='.local/669-pose',entries=Object.keys(WALK_POSE_REGISTRATION),errors=[],results=[];
-assert.equal(entries.length,23);assert.ok(Object.values(WALK_POSE_REGISTRATION).every(r=>r.enabled));
+assert.ok(entries.length>=24);assert.ok(Object.values(WALK_POSE_REGISTRATION).every(r=>r.enabled));
 const only=process.argv.find(a=>a.startsWith('--only='))?.slice(7),selected=only?entries.filter(k=>k===only):entries;
-assert.ok(selected.length);const report=out+(only?'/runtime-'+only.replace(':','-')+'.json':'/runtime-23.json');
+assert.ok(selected.length);const report=out+(only?'/runtime-'+only.replace(':','-')+'.json':'/runtime-all.json');
 const game=createClassroomServer({teacherKey:'pose-runtime-synthetic',studentHours:false});let browser;
 try{
  await mkdir(out,{recursive:true});const url=`http://127.0.0.1:${(await game.listen()).port}`;
@@ -20,7 +20,7 @@ try{
    const {walkPoseRegistration}=await import('/walk-pose-sheet.js');
    const {gaitRig,motionFramesReady}=await import('/locomotion-gait.js');
    const {constellationWalkFrame,prepareConstellationWalk}=await import('/constellation-locomotion.js');
-   const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':`/assets/avatars/${level===2?'':`lv${level}/`}${id==='hercules'&&level===2?'hercules-front':id}.png`;await im.decode();
+   const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':`/assets/avatars/${level===2?'':`lv${level}/`}${id==='hercules'&&level===2?'hercules-front-v2':id}.png`;await im.decode();
    let original,frames,atomic;
    if(['taurus','capricorn','gemini','hercules','corvus'].includes(id)){
     const mod=await import('/'+id+'-animation.js');frames=mod[id+'WalkFrames'](im,level);original=frames[0];atomic=frames.every(f=>f===original);await motionFramesReady(frames);

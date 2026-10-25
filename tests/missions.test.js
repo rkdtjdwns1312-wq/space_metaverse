@@ -63,6 +63,38 @@ test('게시판 미션은 학생 수락·교사 달성 확인·본인 완료 보
   assert.equal(room.missions[1].claimedIds.includes(joinedB.selfId),false);
 });
 
+test('자동미션은 선택한 보상을 저장하고 한 번에 모두 지급하며 구형 별 파편 미션과 호환된다',async t=>{
+  const key='mission-reward-choice-key',game=createClassroomServer({teacherKey:key,studentHours:false});
+  const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,sockets=[];
+  t.after(async()=>{for(const socket of sockets)socket.disconnect();await game.close();});
+  const connect=async()=>{const socket=io(url,{transports:['websocket'],forceNew:true,reconnection:false});sockets.push(socket);
+    await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;};
+  const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'보상 선택',allowedNames:['1']});
+  assert.equal(created.ok,true,created.error);
+  const room=game.store.rooms.get(created.room.code),studentSocket=await connect();
+  const joined=await call(studentSocket,'room:join',{code:room.code,nickname:'1'});assert.equal(joined.ok,true,joined.error);
+  const student=room.players.get(joined.selfId),selected=[{type:'star-crumb',quantity:2},{type:'star-shard',quantity:3},{type:'cosmic-energy',quantity:4}];
+  const made=await call(teacher,'mission:auto:create',{title:'세 가지 보상',description:'맵을 이동해요',rewards:selected,rewardShards:3,
+    distribution:'all',objective:'map-travel',goal:1});
+  assert.equal(made.ok,true,made.error);assert.deepEqual(room.missions[0].rewards,selected);
+  student.pin=pinHash('1234');const persisted=fromRecord({...toRecord(room),createdAt:Date.now()});
+  assert.deepEqual(persisted.missions[0].rewards,selected);
+  assert.equal((await call(teacher,'mission:auto:create',{title:'수량 0',description:'잘못된 보상',rewards:[{type:'cosmic-energy',quantity:0}],rewardShards:0,
+    distribution:'all',objective:'map-travel',goal:1})).ok,false);
+  room.missions[0].completedIds.push(student.id);
+  const first=await call(studentSocket,'mission:claim',{missionId:made.missionId});assert.equal(first.ok,true,first.error);
+  assert.deepEqual(first.rewards,selected);assert.equal(student.inventory.find(item=>item.id==='star-crumb').quantity,2);
+  assert.equal(student.starShards,3);assert.equal(student.cosmicEnergy,4);
+  assert.equal((await call(studentSocket,'mission:claim',{missionId:made.missionId})).ok,false);
+  assert.equal(student.inventory.find(item=>item.id==='star-crumb').quantity,2);assert.equal(student.starShards,3);assert.equal(student.cosmicEnergy,4);
+  const legacy=await call(teacher,'mission:auto:create',{title:'옛 보상',description:'별 파편 하나',rewardShards:1,
+    distribution:'all',objective:'map-travel',goal:1});assert.equal(legacy.ok,true,legacy.error);
+  room.missions[1].completedIds.push(student.id);
+  const oldClaim=await call(studentSocket,'mission:claim',{missionId:legacy.missionId});assert.equal(oldClaim.ok,true,oldClaim.error);
+  assert.equal(oldClaim.rewardShards,1);assert.equal(student.starShards,4);assert.equal(student.cosmicEnergy,4);
+});
+
 test('영어 발전소 자동미션은 서버 채점 10문제 중 7개 이상인 완료 판만 센다',async t=>{
   const key='english-mission-key',game=createClassroomServer({teacherKey:key,studentHours:false});
   const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,sockets=[];

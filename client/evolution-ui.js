@@ -1,5 +1,7 @@
 import {PROGRESSION} from '/shared/config.js';
 import {constellationOf} from '/shared/constellations.js';
+import {weeklyAbilityFor} from '/shared/constellation-weekly-abilities.js';
+import {characterAbilities} from '/shared/character-skills.js';
 function replyInfo(value) {
   return value?.info && typeof value.info === 'object' ? value.info : value;
 }
@@ -21,10 +23,11 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     <p id="evolution-summary"></p><p id="evolution-error" role="alert"></p>
     <section id="evolution-menu"><button id="evolution-change" class="primary" type="button">별자리 아바타 변경하기</button><button id="evolution-evolve" class="primary" type="button">별자리 아바타 진화하기</button><button id="evolution-teacher" class="primary" type="button" hidden>별자리와 단계 자유 선택</button><button id="evolution-close" class="secondary evolution-close-allowed" type="button">닫기</button></section>
     <section id="evolution-panel" hidden><h3 id="evolution-panel-title"></h3><p id="evolution-help"></p><div id="evolution-levels" hidden></div><div id="evolution-types" hidden></div><div id="evolution-grid" class="constellation-grid"></div><div class="dialog-actions"><button id="evolution-refresh" class="secondary" type="button">새로고침</button><button id="evolution-back" class="secondary" type="button">처음으로</button></div></section>
-    <section id="evolution-confirm" hidden><p id="evolution-confirm-text"></p><div class="dialog-actions"><button id="evolution-no" class="secondary" type="button">아니오</button><button id="evolution-yes" class="primary" type="button">예</button></div></section>`;
+    <section id="evolution-confirm" hidden><p id="evolution-confirm-text"></p><div class="dialog-actions"><button id="evolution-no" class="secondary" type="button">아니오</button><button id="evolution-yes" class="primary" type="button">예</button></div></section>
+    <section id="evolution-details" hidden><h3 id="evolution-details-title"></h3><div class="evolution-detail-sections"><section><h4>별자리 능력</h4><p id="evolution-ability-description"></p></section><section><h4>캐릭터 스킬 · E</h4><p id="evolution-skill-name"></p><p id="evolution-skill-description"></p></section></div><button id="evolution-details-back" class="secondary" type="button">카드로 돌아가기</button></section>`;
   document.body.append(dialog);
   const $ = id => dialog.querySelector('#evolution-' + id);
-  let info = null, mode = 'menu', selectedId = null, selectedType = null, selectedLevel = null, selectedAction = 'evolve', busy = false, revision = 0;
+  let info = null, mode = 'menu', selectedId = null, selectedType = null, selectedLevel = null, selectedAction = 'evolve', detailReturnMode = 'change', busy = false, revision = 0;
 
   const joined = () => typeof isJoined !== 'function' || isJoined();
   const active = version => version === revision && dialog.open && joined();
@@ -41,31 +44,51 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
       ' · 별 파편 ' + info.starShards + '개';
   }
   function choiceButton(option, onChoose) {
+    const card = document.createElement('div');
+    card.className = 'constellation-card';
+    card.style.setProperty('--constellation-color', option.color);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'constellation-choice';
+    button.setAttribute('aria-label',option.name+' 선택');
     button.dataset.constellationId = option.id;
     button.style.setProperty('--constellation-color', option.color);
     // LV5는 선생님 미리보기에서도 평소 LV4 외형을 보여 줍니다.
     const previewLevel=Math.max(2,Math.min(4,info.teacherMode?selectedLevel:info.avatar.level));
     button.dataset.previewLevel=String(previewLevel);
     button.disabled = busy || !option.available || mode==='change'&&(option.current||info.starShards<info.changeCost);
-    if (option.current) button.classList.add('current');
+    if (option.current) { button.classList.add('current');card.classList.add('current'); }
     const icon = document.createElement('span'); icon.className = 'constellation-icon';
     const sprite=option.legacy?null:constellationOf(option.id,previewLevel)?.sprite;
-    if(sprite){const art=document.createElement('img');art.src=sprite;art.alt='';art.loading='lazy';icon.append(art);
-      const type=document.createElement('small');type.className='constellation-art-type';type.textContent=option.type;icon.append(type);}
+    if(sprite){const art=document.createElement('img');art.src=sprite;art.alt='';art.loading='lazy';icon.append(art);}
     else icon.textContent=option.icon;
     if(sprite){const level=document.createElement('small');level.className='constellation-preview-level';level.textContent=`LV${previewLevel}${(info.teacherMode?selectedLevel:info.avatar.level)>=5?' 평소 모습':''}`;icon.append(level);}
     const name = document.createElement('span'); name.className = 'constellation-name'; name.textContent = option.name;
     const count = document.createElement('span'); count.className = 'constellation-count';
     count.textContent = info.teacherMode?option.type+ (option.current&&selectedLevel===info.avatar.level?' · 현재':'') :
       (option.legacy?'이전 별자리':option.type)+' · '+(option.current ? '현재 · ' : '')+option.count+'/2명';
-    button.append(icon, name, count);
+    button.append(icon);
+    const infoButton=document.createElement('button');infoButton.type='button';infoButton.className='constellation-info-button';
+    infoButton.textContent='정보보기';infoButton.setAttribute('aria-label',option.name+' 정보보기');
+    infoButton.onclick=()=>showDetails(option);
+    const artRow=document.createElement('div');artRow.className='constellation-card-art';artRow.append(button,infoButton);
+    card.append(artRow,name,count);
+    card.onclick=event=>{if(event.target.closest('.constellation-info-button,.constellation-choice'))return;if(!button.disabled)onChoose(option);};
     if (!option.available) button.title = '이미 두 친구가 선택했어요.';
     else if(mode==='change'&&info.starShards<info.changeCost)button.title='별 파편 '+info.changeCost+'개가 필요해요.';
     button.onclick = () => onChoose(option);
-    return button;
+    return card;
+  }
+  function showDetails(option){
+    detailReturnMode=mode;
+    const level=info.teacherMode?selectedLevel:mode==='evolve'?Math.min(5,info.avatar.level+1):info.avatar.level;
+    const ability=weeklyAbilityFor(option.id,level);
+    const skill=characterAbilities({avatar:{level,constellationId:option.id},role:'student'}).find(value=>value.slot==='skill');
+    $('details-title').textContent=option.name+' · Lv'+level;
+    $('ability-description').textContent=ability?.description||'이 단계의 별자리 능력 설명이 없습니다.';
+    $('skill-name').textContent=skill?.name||'일반 스킬';
+    $('skill-description').textContent=skill?.description||'이 단계의 스킬 설명이 없습니다.';
+    mode='details';render();
   }
   function renderGrid(onChoose) {
     $('grid').replaceChildren(...info.options.map(option => choiceButton(option, onChoose)));
@@ -92,6 +115,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     $('menu').hidden = mode !== 'menu';
     $('panel').hidden = !['change', 'evolve','teacher'].includes(mode);
     $('confirm').hidden = mode !== 'confirm';
+    $('details').hidden = mode !== 'details';
     $('teacher').hidden = !info?.teacherMode;
     $('change').hidden = !!info?.teacherMode;
     $('evolve').hidden = !!info?.teacherMode;
@@ -232,6 +256,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
   $('back').onclick = () => { if (!busy) { mode = 'menu'; selectedId = null; selectedType = null; $('error').textContent = ''; render(); } };
   $('no').onclick = () => { if (!busy) { selectedId = null; selectedType = null; mode = info?.teacherMode?'teacher':selectedAction==='change'?'change':'menu'; render(); } };
   $('yes').onclick = () => info?.teacherMode?teacherSelect():selectedAction==='change'?change(selectedId):evolve();
+  $('details-back').onclick=()=>{if(!busy){mode=detailReturnMode;render();}};
   dialog.addEventListener('close', () => { if(dialog.open)return;revision++; busy = false; info = null; selectedId = null; selectedType = null; mode = 'menu'; });
 
   return {

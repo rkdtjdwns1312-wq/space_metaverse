@@ -12,7 +12,7 @@ export const BOSS_DIALOGUES=Object.freeze({
   'spirit-king':Object.freeze({
     name:'성령의 왕',
     lines:Object.freeze(['놀랍군.. 이렇게 뛰어난 아이들이 있을줄이야','한계를 모르는 아이들이여 앞길을 응원하지','끝없는 새로운 세계에서 또 만나길 기도하지']),
-    portrait:Object.freeze({src:'/assets/monsters/spirit-king-walk.png',columns:4,rows:2})
+    portrait:Object.freeze({src:'/assets/monsters/spirit-king-walk-v3.png',columns:4,rows:2})
   }),
   serena:Object.freeze({
     name:'별의 시초신 세레나',

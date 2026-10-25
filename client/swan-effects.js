@@ -27,12 +27,24 @@ export function drawSwanProjectile(ctx,cast,elapsedMs,reducedMotion=false){
 }
 export function drawSwanAura(ctx,aura,x,y,size,reducedMotion=false){
   const spec=SWAN_VFX[`skill-lv${aura.stage}`];if(!spec)return;
-  preloadSwan([spec.id,'skill-lv2']);
+  // 원화 속 위아래로 쌓인 날개를 그대로 확대하지 않고 한 쌍씩 등 뒤에서 펼칩니다.
+  const wingSpec=SWAN_VFX['skill-lv2'];preloadSwan([wingSpec.id]);
   const elapsed=Math.max(0,aura.elapsedMs);
   const frame=reducedMotion?12:swanFrameAt(elapsed,aura.durationMs);
-  const width=size*(aura.stage===2?2.2:aura.stage===3?2.55:2.95);
   ctx.save();ctx.globalAlpha*=reducedMotion?.78:1;
-  // 각 단계 원화에 1/2/3쌍이 이미 포함되어 있어 중복 날개를 겹치지 않습니다.
-  drawFrame(ctx,spec,frame,x,y-size*.36,width);
+  ctx.shadowColor='#a8c8ff';ctx.shadowBlur=size*.08;
+  const image=images.get(wingSpec.url),rootY=y-size*.14;
+  if(image?.complete&&image.naturalWidth){
+    const pairs=aura.stage-1,scales=pairs===1?[1]:pairs===2?[1.17,.77]:[1.35,1.02,.69];
+    for(let pair=0;pair<pairs;pair++)for(const side of [-1,1]){
+      const wingWidth=size*1.1*scales[pair],wingHeight=size*2.2*scales[pair];
+      const spread=pairs===1?0:(pairs-pair-1)*.19;
+      ctx.save();ctx.translate(x,rootY);ctx.rotate(side*spread);ctx.scale(side,1);
+      // V자 날개의 오른쪽 절반을 좌우에 대칭으로 놓고, 아래 뿌리를 공통점에 맞춥니다.
+      ctx.drawImage(image,(frame%6)*256+128,Math.floor(frame/6)*256,128,256,
+        0,-wingHeight*195/256,wingWidth,wingHeight);
+      ctx.restore();
+    }
+  }
   ctx.restore();
 }

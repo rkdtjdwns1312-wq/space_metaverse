@@ -1,6 +1,6 @@
 import {MONSTER_BODY_GEOMETRY} from './monster-geometry.js';
 
-export const BOSS_MANA=Object.freeze({max:50,regenMs:10000,regenFraction:.1});
+export const BOSS_MANA=Object.freeze({max:100,regenMs:10000,regenFraction:.1});
 // 비용·쿨타임·반경은 사용자 답변에 따라 이 규격만 조정합니다. 쿨타임은 시전 시작 기준.
 export const NOKSERA_HORN_BURST=Object.freeze({kind:'noksera-horn-burst',mana:15,cooldownMs:20000,decisionMs:2000,chance:.4,
   warningMs:3000,radiusWidths:1.5,damageMultiplier:2,durationMs:800});
@@ -18,7 +18,10 @@ export const nokseraFullMoon=(monster,now)=>monster.typeId==='noksera'&&monster.
   monster.moonAura?.mapId===monster.mapId&&now>=monster.moonAura.fullStartsAt&&now<monster.moonAura.fullEndsAt;
 
 export const LEOON_ROAR=Object.freeze({kind:'leoon-roar',mana:10,cooldownMs:15000,decisionMs:2000,chance:.4,
-  glowMs:1000,warningMs:2000,damageMultiplier:2,areas:5,areaRadiusFactor:.58,ringRadiusFactor:1.25,durationMs:800});
+  glowMs:1000,warningMs:2000,damageMultiplier:2,targetAreas:2,randomAreas:3,areaRadiusFactor:.58,rangeFactor:5.4,durationMs:800});
 export const LEOON_CHARGE=Object.freeze({kind:'leoon-charge',mana:20,cooldownMs:30000,decisionMs:2500,chance:.35,
   stompMs:900,warningMs:2000,dashMs:700,repeats:3,stomps:3,damageMultiplier:2,
   distanceFactor:3.4,halfWidthFactor:.48,durationMs:700});
+export const SPIRIT_SUMMON=Object.freeze({kind:'spirit-summon',mana:20,cooldownMs:60000,decisionMs:2000,chance:.4,count:3});
+export const SPIRIT_ORB=Object.freeze({kind:'spirit-orb',mana:10,cooldownMs:30000,decisionMs:2000,chance:.4,
+  durationMs:20000,speed:300,radius:38,hitIntervalMs:1000,damageMultiplier:1});

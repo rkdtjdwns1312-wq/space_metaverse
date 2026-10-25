@@ -284,6 +284,7 @@ body.joined:not(.placing) .map-caption{display:none}
 .mission-title-list{max-height:50vh;overflow-y:auto}.mission-title-row{display:block;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .mission-detail-fields dt{font-weight:800;margin-top:18px}.mission-detail-fields dd{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}#student-missions-title{overflow-wrap:anywhere}
 #mission-board-dialog{width:min(570px,calc(100vw - 24px))}#mission-create,#mission-auto-create{display:grid;gap:7px;margin:12px 0 20px;padding:14px;border:1px solid #d9c9ec;border-radius:14px;background:#faf7ff}#mission-create[hidden],#mission-auto-create[hidden]{display:none}#mission-create label,#mission-auto-create label{font-weight:700}#mission-create input,#mission-create textarea,#mission-create select,#mission-auto-create input,#mission-auto-create select{width:100%;font-size:16px;padding:9px;border:2px solid #cfbce9;border-radius:10px;background:white;color:#473967}#mission-create-button,#mission-auto-create-button{margin-top:7px;min-height:44px}#mission-board-list{max-height:40vh}#mission-board-error{color:#a33e5b}
+#mission-auto-rewards{display:grid;grid-template-columns:minmax(0,1fr) 90px;align-items:center;gap:9px;padding:12px;border:1px solid #cfbce9;border-radius:12px;background:#fff}#mission-auto-rewards legend{padding:0 5px;color:#5d4795;font-weight:800}#mission-auto-rewards label{display:flex;align-items:center;gap:8px;margin:0;font-size:15px}#mission-auto-rewards input[type=checkbox]{width:19px;height:19px;min-height:19px;margin:0;padding:0;accent-color:#7053a3;flex:none}#mission-auto-rewards input[type=number]{height:38px;padding:5px;text-align:center}#mission-auto-rewards input[type=number]:disabled{opacity:.45}
 #assignment-dialog{width:min(620px,calc(100vw - 24px));box-sizing:border-box}
 .assignment-weeks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.assignment-weeks button.selected{background:#fff3c5;color:#62498d;border-color:#b99ce8}
 .assignment-items{list-style:none;padding:0;margin:0;display:grid;gap:8px}.assignment-items button{width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere}
@@ -542,6 +543,13 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 #teacher-dialog .teacher-tool-toggle:focus-visible{outline:3px solid #f0b35b;outline-offset:3px;border-radius:14px}
 #teacher-dialog .teacher-tool-toggle[aria-expanded="true"] .teacher-tool-indicator{transform:rotate(180deg)}
 #teacher-dialog .teacher-tool-toggle .teacher-tool-indicator{transition:transform .15s ease}
+#teacher-dialog #teacher-constellation>.teacher-tool-content>section{margin-top:10px}
+#teacher-dialog #teacher-constellation .teacher-tool-content>section>.teacher-tool-heading{font-size:16px;line-height:1.4;margin:0}
+#teacher-dialog #teacher-constellation .teacher-tool-content>section .teacher-tool-toggle{padding:9px 12px;background:#f8f5fd;border-color:#ddd1eb;box-shadow:none}
+#teacher-dialog #teacher-constellation .teacher-tool-content>section .teacher-tool-content{padding:8px 4px 2px}
+#teacher-dialog #teacher-constellation>.teacher-tool-heading .teacher-tool-toggle{position:relative;padding-right:48px}
+#teacher-dialog .teacher-tool-new{position:absolute;top:3px;right:27px;color:#d72f49;font-size:11px;font-weight:800;font-style:italic;line-height:1;text-transform:lowercase;transform:rotate(-8deg)}
+#teacher-dialog .teacher-tool-new[hidden]{display:none}
 
 /* 원형 조작 슬롯: 기존 버튼 크기·고정 위치는 위의 반응형 규칙을 그대로 사용합니다. */
 .combat-buttons>button{position:relative;overflow:visible;--key-size:23px}

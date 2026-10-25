@@ -8,6 +8,7 @@ import {mapOf} from '../shared/config.js';
 import {monstersOf,monsterViews,moveMonsters,strikeMonster,MONSTER_RULES} from '../server/monsters.js';
 import {createClassroomServer} from '../server/app.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
+import {onOriginFloor} from '../shared/origin-floor.js';
 
 function singleMonster(id){
   const room={};monstersOf(room,0,()=>0);const monster=room.monsters.get(id);
@@ -17,8 +18,8 @@ function singleMonster(id){
 
 test('각 맵 5마리·별의기원3 3용이+2사조·방별 독립 몬스터 상태',()=>{
   const a={},b={};assert.equal(monstersOf(a).size,43);
-  assert.equal(MONSTER_TYPES.length,15);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,15);
+  assert.equal(MONSTER_TYPES.length,16);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,16);
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='star-origin-4').map(m=>[m.id,m.level,m.boss]),[['serena',6,true]]);
   assert.equal(MONSTER_SPAWNS.some(m=>m.typeId==='serena'),false,'세레나는 자동 스폰 목록에 포함하지 않는다');
   assert.equal(monsterViews(a).some(m=>m.mapId==='star-origin-4'),false,'휴면 교실에는 세레나가 자동 생성되지 않는다');
@@ -210,7 +211,10 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
-  assert.equal(packet.monsters.length,43);assert.equal(game.store.rooms.get(other.room.code).monsters.get(m.id).x<300,true);
+  assert.equal(packet.monsters.length,43);
+  const otherMonster=game.store.rooms.get(other.room.code).monsters.get(m.id);
+  assert.notStrictEqual(otherMonster,m);
+  assert.ok(onOriginFloor(mapOf(otherMonster.mapId),otherMonster.x,otherMonster.y,otherMonster.radius));
 });
 
 test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 좌표가 함께 온다',async t=>{

@@ -12,11 +12,11 @@ const files = new Map([
   ['/evolution.css', ['client/evolution.css', 'text/css; charset=utf-8']],
   ['/shared/constellations.js', ['shared/constellations.js', 'text/javascript; charset=utf-8']]
 ]);
-const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/evolution.css"><style>body{font-family:Arial,sans-serif}button,input{font:inherit;padding:8px}.primary{background:#7953a5;color:white}.secondary{background:#eee}.dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}</style></head><body><canvas id="world" tabindex="0"></canvas></body></html>`;
+const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/evolution.css"><style>:root{--button-bg:#f0ebff;--button-text:#5e4f8a;--button-border:#d8cef6}body{font-family:Arial,sans-serif}button,input{font:inherit;padding:8px}.primary{background:#7953a5;color:white}.secondary{background:#eee}.dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}</style></head><body><canvas id="world" tabindex="0"></canvas></body></html>`;
 const server = createServer(async (request, response) => {
   try {
     if (request.url === '/') { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end(html); return; }
-    const entry = files.get(request.url) || (/^\/assets\/avatars\/(?:lv[34]\/)?[a-z-]+\.png$/.test(request.url)
+    const entry = files.get(request.url) || (/^\/assets\/avatars\/(?:lv[34]\/)?[a-z0-9-]+\.png$/.test(request.url)
       ? ['client'+request.url,'image/png'] : null) || (/^\/shared\/[a-z0-9-]+\.js$/.test(request.url)
       ? [request.url.slice(1),'text/javascript; charset=utf-8'] : null);
     if (!entry) { response.statusCode = 404; response.end('not found'); return; }
@@ -25,12 +25,22 @@ const server = createServer(async (request, response) => {
 });
 server.listen(0, '127.0.0.1'); await once(server, 'listening');
 const url = 'http://127.0.0.1:' + server.address().port;
-const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) });
+const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'chrome', args: ['--no-proxy-server'] } : {}) });
 const page = await browser.newPage({ viewport: { width: 900, height: 800 } });
 const checks = [], errors = [];
 const check = value => { checks.push(value); console.log(value); };
 page.setDefaultTimeout(12000);
 page.on('pageerror', error => errors.push(error.message));
+await page.route('**/*',async route=>{
+  const pathname=new URL(route.request().url()).pathname;
+  if(pathname==='/'){await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});return;}
+  const entry=files.get(pathname)||(/^\/assets\/avatars\/(?:lv[34]\/)?[a-z0-9-]+\.png$/.test(pathname)?
+    ['client'+pathname,'image/png']:null)||(/^\/shared\/[a-z0-9-]+\.js$/.test(pathname)?
+    [pathname.slice(1),'text/javascript; charset=utf-8']:null);
+  if(!entry){await route.fulfill({status:404,body:'not found'});return;}
+  try{await route.fulfill({status:200,contentType:entry[1],body:await readFile(entry[0])});}
+  catch(error){await route.fulfill({status:500,body:error.message});}
+});
 await mkdir('.local', { recursive: true });
 
 try {
@@ -108,13 +118,19 @@ try {
   await page.locator('#evolution-types [data-constellation-type]').first().waitFor();
   assert.deepEqual(await page.locator('#evolution-types [data-constellation-type]').allTextContents(), ['생산계', '제작계', '공격계', '수호계', '특수계']);
   const typeButtonStyle = await page.locator('[data-constellation-type="생산계"]').evaluate(element => ({background: getComputedStyle(element).backgroundColor, color: getComputedStyle(element).color}));
-  assert.deepEqual(typeButtonStyle, {background: 'rgb(117, 66, 168)', color: 'rgb(255, 255, 255)'});
+  assert.deepEqual(typeButtonStyle, {background: 'rgb(240, 235, 255)', color: 'rgb(94, 79, 138)'});
   await page.locator('[data-constellation-type="제작계"]').click();
   assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(), true);
   await page.locator('#evolution-types-back').click();
   await page.locator('[data-constellation-type="생산계"]').click();
   await page.locator('#evolution-grid .constellation-choice').first().waitFor();
   assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 3);
+  assert.equal(await page.locator('#evolution-grid .constellation-art-type').count(),0);
+  await page.getByRole('button',{name:'황소자리 정보보기'}).click();
+  assert.match(await page.locator('#evolution-ability-description').textContent(),/주사위/);
+  assert.match(await page.locator('#evolution-skill-description').textContent(),/공격력:/);
+  assert.equal(await page.locator('#evolution-details .evolution-detail-sections section').count(),2);
+  await page.locator('#evolution-details-back').click();
   await page.locator('[data-constellation-id="taurus"]').click();
   await page.locator('#evolution-confirm-text').filter({ hasText: '정말 진화하시겠습니까?' }).waitFor();
   await page.locator('#evolution-no').click();

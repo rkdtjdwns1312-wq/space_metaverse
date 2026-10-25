@@ -65,6 +65,7 @@ import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
+import {spiritOrbViews} from './spirit-king-skills.js';
 import {summonSerena} from './serena.js';
 import {serenaView,settleBossDeaths,restoreSerenaStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
@@ -442,23 +443,31 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       else{ensure(mission,'알 수 없는 미션이에요.');
         ensure(mission.acceptedIds.includes(player.id)&&mission.completedIds.includes(player.id),'아직 완료 조건이 확인되지 않았어요.');
         ensure(!mission.claimedIds.includes(player.id),'이미 받은 미션 보상이에요.');}
-      const reward=tutorial?1:mission.rewardShards,rewardItem=mission?.repeat==='daily'?'star-crumb':null,rewardQuantity=rewardItem?mission.rewardQuantity:reward;
-      const entry=rewardItem?player.inventory.find(item=>item.id===rewardItem):null;
-      if(rewardItem){
-        ensure(itemOf(rewardItem),'보상 아이템을 찾을 수 없어요.');
-        ensure((entry?.quantity||0)+rewardQuantity<=SHOP.maxStack,'별 부스러기 가방이 가득 찼어요. 조합한 뒤 받아 주세요.');
-        ensure(entry||player.inventory.length<SHOP.maxKinds,'가방 종류가 가득 찼어요. 정리한 뒤 받아 주세요.');
+      const legacyReward=tutorial?1:mission.rewardShards;
+      const rewards=tutorial?[{type:'star-shard',quantity:1}]:mission.rewards||
+        (mission.repeat==='daily'?[{type:'star-crumb',quantity:mission.rewardQuantity}]:[{type:'star-shard',quantity:legacyReward}]);
+      const inventoryRewards=rewards.filter(reward=>reward.type==='star-crumb'),crumbTotal=inventoryRewards.reduce((sum,reward)=>sum+reward.quantity,0);
+      const crumbEntry=inventoryRewards.length?player.inventory.find(item=>item.id==='star-crumb'):null;
+      if(crumbTotal){
+        ensure(itemOf('star-crumb'),'보상 아이템을 찾을 수 없어요.');
+        ensure((crumbEntry?.quantity||0)+crumbTotal<=SHOP.maxStack,'별 부스러기 가방이 가득 찼어요. 조합한 뒤 받아 주세요.');
+        ensure(crumbEntry||player.inventory.length<SHOP.maxKinds,'가방 종류가 가득 찼어요. 정리한 뒤 받아 주세요.');
       }
-      ensure(player.starShards<=SHARDS.max-reward,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 받아 주세요.');
+      const shardReward=rewards.filter(reward=>reward.type==='star-shard').reduce((sum,reward)=>sum+reward.quantity,0);
+      const energyReward=rewards.filter(reward=>reward.type==='cosmic-energy').reduce((sum,reward)=>sum+reward.quantity,0);
+      ensure(player.starShards<=SHARDS.max-shardReward,'별 파편 가방이 가득 찼어요. 별 파편을 사용한 뒤 받아 주세요.');
+      ensure(Number.isSafeInteger(player.cosmicEnergy??0)&&player.cosmicEnergy<=Number.MAX_SAFE_INTEGER-energyReward,'우주에너지를 더 담을 수 없어요.');
       const claimedAt=clock();
       if(tutorial){const result=claimJourney(player,data.missionId,claimedAt);
         if(result.completed){if(!player.tutorialCompleted){player.tutorialCompleted=true;player.tutorialCompletedAt=claimedAt;}
           advanceMissions(session.room,player,'tutorial-complete',undefined,clock());}
       }else claimMission(session.room,player,data.missionId,claimedAt);
-      player.starShards+=reward;
-      if(rewardItem){if(entry)entry.quantity+=rewardQuantity;else player.inventory.push({id:rewardItem,quantity:rewardQuantity});}
-      if(reward)recordReward(session.room,player.id,reward,claimedAt);roster(session.room);
-      return {missionId:data.missionId,rewardItem,rewardQuantity,rewardShards:reward,starShards:player.starShards,claimedAt};
+      player.starShards+=shardReward;player.cosmicEnergy=(player.cosmicEnergy??0)+energyReward;
+      if(crumbTotal){if(crumbEntry)crumbEntry.quantity+=crumbTotal;else player.inventory.push({id:'star-crumb',quantity:crumbTotal});}
+      if(shardReward)recordReward(session.room,player.id,shardReward,claimedAt);roster(session.room);
+      const single=rewards.length===1?rewards[0]:null;
+      return {missionId:data.missionId,rewards:structuredClone(rewards),rewardItem:single?.type==='star-crumb'?single.type:null,rewardQuantity:single?.quantity??null,
+        rewardShards:shardReward,cosmicEnergy:player.cosmicEnergy,starShards:player.starShards,claimedAt};
     });
     const learningStationAccess=(kind,label)=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
@@ -1271,6 +1280,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player:p}=s;
       ensure(typeof data.to==='string' && Object.prototype.hasOwnProperty.call(STATIC_MAPS,data.to),'그런 곳은 없어요.');
       ensure(!p.avatar.blackStar || data.to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
+      ensure(data.to!==BLACK_HOLE_ID||p.role==='teacher'||!!p.avatar.blackStar,'검은별 상태일 때만 블랙홀에 들어갈 수 있어요.');
       const here=mapOf(p.mapId,room.planets.values());
       const gate=here.objects.find(o=>(o.kind==='gate'||o.kind==='black-hole') && o.target===data.to);
       ensure(gate,'여기서는 그곳으로 갈 수 없어요.');
@@ -2538,7 +2548,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         previous.set(room.code,next);
       }

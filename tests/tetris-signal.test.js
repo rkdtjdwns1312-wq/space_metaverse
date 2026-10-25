@@ -30,6 +30,15 @@ test('별 테트리스는 서버 낙하와 회전으로 줄을 지우고 종료 
   assert.throws(()=>runs.finish(room,player,{runId:state.runId},now));
 });
 
+test('별 테트리스 아래 키는 진행 시간을 기다리지 않고 블록을 한 칸 내린다',()=>{
+  const runs=createTetrisRuns({randomPiece:()=>1}),player={id:'p',nickname:'별이',role:'student'};
+  const started=runs.start(player,0);
+  const moved=runs.move(player,{runId:started.runId,move:'down'},0);
+  assert.equal(moved.current.y,started.current.y+1);
+  assert.equal(moved.elapsedMs,0);
+  assert.throws(()=>runs.move(player,{runId:started.runId,move:'teleport'},0));
+});
+
 test('테트리스 랭킹은 지운 줄 우선, 같으면 먼저 끝난 기록 우선이며 교사만 초기화한다',()=>{
   const now=Date.now(),teacher={id:'t',role:'teacher'},student={id:'a',role:'student'};
   const room={players:new Map([[teacher.id,teacher],[student.id,student]]),tetrisRanking:[

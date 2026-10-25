@@ -15,7 +15,7 @@ try{
  for(const key of Object.keys(WALK_POSE_REGISTRATION).filter(k=>!only||only.includes(k))){const [id,lv]=key.split(':'),level=Number(lv);
  const result=await page.evaluate(async({id,level})=>{
   const {prepareWalkPoseSheet,composeWalkPose}=await import('/walk-pose-sheet.js');
-  const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':'/assets/avatars/'+(level===2?'':'lv'+level+'/')+(id==='hercules'&&level===2?'hercules-front':id)+'.png';await im.decode();
+  const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':'/assets/avatars/'+(level===2?'':'lv'+level+'/')+(id==='hercules'&&level===2?'hercules-front-v2':id)+'.png';await im.decode();
   const original=document.createElement('canvas');original.width=original.height=256;original.getContext('2d').drawImage(im,0,0,256,256);
   const poses=await prepareWalkPoseSheet(id,level),frames=poses.frames.map((_,i)=>composeWalkPose(original,poses,i));
   document.body.replaceChildren();document.body.style='margin:0;background:#33485c;color:white';

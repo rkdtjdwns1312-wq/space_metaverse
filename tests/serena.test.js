@@ -19,15 +19,16 @@ function fixture(){
   return {player,room:{players:new Map([['a',player]]),planets:new Map()}};
 }
 
-test('세레나 자격은 LV5와 두 보스 직접 처치 경력을 모두 요구하며 교사 예외가 없다',()=>{
+test('세레나 자격은 학생에게 LV5와 두 보스 직접 처치 경력을 요구하고 교사는 예외다',()=>{
   for(const [level,kills] of [[4,['leoon','noksera']],[5,[]],[5,['leoon']],[5,['noksera']]]){
     const {room,player}=fixture();player.avatar.level=level;player.serenaProgress={highestLevel:level,bossKills:kills};
     assert.equal(serenaEligible(player),false);
     assert.throws(()=>summonSerena(room,player,1000),{message:'자격이 충분하지 않습니다'});
   }
-  const {player}=fixture();player.role='teacher';delete player.serenaProgress;
+  const {room,player}=fixture();player.role='teacher';delete player.serenaProgress;
   assert.equal(serenaEligibility(player).reachedLv5,false);
   assert.equal(serenaEligible(player),false);
+  assert.deepEqual(summonSerena(room,player,1000),{serena:{state:'active',respawnAt:null,monsterId:SERENA.monsterId}});
   player.role='student';assert.deepEqual(validateSerenaProgress(undefined,player.avatar),{highestLevel:5,bossKills:[]});
   recordSerenaLevel(player);player.avatar.level=2;assert.equal(serenaEligibility(player).reachedLv5,true);
 });
@@ -84,7 +85,7 @@ test('세레나 경고는 2초 동안 고정되고 회피한 폭발도 원래 �
   player.x+=500;assert.equal(moveMonsters(room,2999,()=>0).length,0);
   const [hit]=moveMonsters(room,3000,()=>0);
   assert.equal(hit.attackOnly,true);assert.equal(hit.warningX,warning.x);assert.equal(hit.warningY,warning.y);assert.equal(hit.warningRadius,90);
-  assert.equal(boss.nextAttackAt,6000);
+  assert.equal(boss.nextAttackAt,4000);
 });
 
 test('세레나는 시작점4의 모서리와 외곽을 향해 걸어도 실제 바닥 밖으로 나가지 않는다',()=>{

@@ -27,8 +27,43 @@ function sprite(shape) {
   return images.get(shape);
 }
 
-// 기존 8단계 리듬(대기→웅크림→박치기→회복)을 그대로 사용합니다.
+// 기존 자세 시트의 준비→입 벌림→회복 흐름을 유지합니다.
 export const sunMonsterPose = lv2MonsterPose;
+
+// 성장한 따뜻한 별의 600ms 근접 숨결: 예열→짧은 불꽃→잦아듦 16연속 프레임.
+// 몸통을 늘리거나 투사체를 만들지 않고 입 앞에만 그립니다.
+export const GROWN_WARM_BREATH_FRAMES = Object.freeze([
+  [0,0],[0,0],[0,0],[.08,.35],[.2,.55],[.38,.75],[.61,.94],[.82,1],
+  [1,1],[.94,.91],[.79,.76],[.56,.58],[.33,.39],[.12,.2],[0,0],[0,0]
+].map(([length,width])=>Object.freeze({length,width})));
+
+function grownWarmBreath(ctx, x, y, r, direction, face, progress) {
+  const frame=GROWN_WARM_BREATH_FRAMES[Math.max(0,Math.min(15,Math.floor(progress*16)))];
+  if(!frame.length)return;
+  const mouthX=x+face*r*.68,mouthY=y+r*.17;
+  const length=r*.82*frame.length,width=r*.29*frame.width;
+  ctx.save();ctx.translate(mouthX,mouthY);ctx.rotate(Math.atan2(direction.y,direction.x));
+  ctx.globalAlpha*=Math.min(1,frame.length*2.5);
+  const glow=ctx.createRadialGradient(length*.34,0,r*.03,length*.34,0,length+width);
+  glow.addColorStop(0,'#fff6bd88');glow.addColorStop(.5,'#ffb23b5c');glow.addColorStop(1,'#ef643800');
+  ctx.fillStyle=glow;ctx.fillRect(-width,-length-width,length+width*2,(length+width)*2);
+  ctx.shadowColor='#ff9b39';ctx.shadowBlur=r*.2;
+  // 불꽃 세 겹의 굽은 윤곽이 프레임마다 길이와 폭을 바꾸며 입에서 피어납니다.
+  for(const [scale,color] of [[1,'#f37a2b'],[.78,'#ffc653'],[.53,'#fff3ad']]){
+    const tip=length*scale,w=width*scale;
+    ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-r*.045,0);
+    ctx.bezierCurveTo(tip*.25,-w*.9,tip*.47,-w*.72,tip,-w*.12);
+    ctx.quadraticCurveTo(tip*.78,0,tip,w*.14);
+    ctx.bezierCurveTo(tip*.48,w*.85,tip*.23,w*.65,-r*.045,0);
+    ctx.fill();
+  }
+  ctx.shadowBlur=0;
+  for(let i=0;i<3;i++){
+    const px=length*(.38+i*.2),py=(i-1)*width*.62;
+    ctx.fillStyle=i===1?'#fff7c8':'#ffc266';spark(ctx,px,py,r*(.022+frame.width*.018));
+  }
+  ctx.restore();
+}
 
 function attackDirection(attack, face) {
   const dx = Number.isFinite(attack?.dx) ? attack.dx : 0;
@@ -93,7 +128,7 @@ export function drawSunMonster(ctx, monster, time = 0, attack) {
   const phase = now * .011;
   const bob = monster.moving && !pose.active ? Math.sin(phase) * radius * .035 : 0;
   const p = pose.progress;
-  const push = !pose.active ? 0 : p < .375 ? -Math.sin(p / .375 * Math.PI) * radius * .07
+  const push = !pose.active || monster.shape==='grown-warm-star' ? 0 : p < .375 ? -Math.sin(p / .375 * Math.PI) * radius * .07
     : p < .75 ? Math.sin((p - .375) / .375 * Math.PI) * radius * .2 : 0;
   const squash = pose.active ? Math.sin(p * Math.PI * 2) * .025 : Math.sin(now * .002) * .01;
   const groundY = y + radius;
@@ -120,6 +155,9 @@ export function drawSunMonster(ctx, monster, time = 0, attack) {
   ctx.drawImage(image, sx * sourceX, sy * sourceY, sw * sourceX, sh * sourceY,
     -ax * scale, -ay * scale, sw * scale, sh * scale);
   ctx.restore();
-  if (pose.active) goldenBash(ctx, x + direction.x * push, y + direction.y * push, radius, direction, p);
+  if (pose.active) {
+    if (monster.shape==='grown-warm-star') grownWarmBreath(ctx,x,y,radius,direction,face,p);
+    else goldenBash(ctx, x + direction.x * push, y + direction.y * push, radius, direction, p);
+  }
   return true;
 }

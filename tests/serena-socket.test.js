@@ -38,7 +38,7 @@ function qualify(f,p){f.game.store.transact(()=>{
 test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요청 중 하나만 소환한다',async t=>{
   const f=await fixture(t);
   assert.deepEqual(await call(f.a,'serena:summon',{serenaEligible:true,serenaProgress:{highestLevel:5,bossKills:['leoon','noksera']}}),{ok:false,error:'자격이 충분하지 않습니다'});
-  assert.equal((await call(f.teacher,'serena:summon')).error,'자격이 충분하지 않습니다');
+  assert.match((await call(f.teacher,'serena:summon')).error,/석상 가까이/);
   qualify(f,f.pa);qualify(f,f.pb);
   let snapshot,tick;f.a.on('room:state',r=>snapshot=r);f.a.on('world:positions',r=>tick=r);
   const results=await Promise.all([call(f.a,'serena:summon'),call(f.b,'serena:summon')]);
@@ -49,6 +49,16 @@ test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요
   assert.equal(me.serenaEligible,true);assert.deepEqual(me.serenaEligibility,{reachedLv5:true,defeatedLeoon:true,defeatedNoksera:true});
   assert.equal(Object.hasOwn(other,'serenaEligible'),false);
   assert.equal(tick.monsters.filter(m=>m.typeId==='serena').length,1);assert.equal(f.disk().serena.state,'active');
+});
+
+test('선생님은 학생 자격 기록 없이 석상 앞에서 세레나를 소환한다',async t=>{
+  const f=await fixture(t);
+  const teacher=[...f.room.players.values()].find(p=>p.role==='teacher');
+  assert.ok(teacher);
+  Object.assign(teacher,{mapId:SERENA.mapId,x:statue.x,y:statue.y+90});
+  const result=await call(f.teacher,'serena:summon');
+  assert.equal(result.ok,true,result.error);
+  assert.equal(f.room.serena.state,'active');
 });
 
 test('소켓 소환 저장 실패는 성공 응답과 active 알림을 보내지 않는다',async t=>{

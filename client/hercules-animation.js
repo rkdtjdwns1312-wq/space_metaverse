@@ -19,7 +19,7 @@ function insideFace(level,u,v){
 }
 export function herculesWalkFrames(sprite,level){
   if(!sprite?.complete||!sprite.naturalWidth||level<2||level>4)return null;
-  if(level===2&&!String(sprite.currentSrc||sprite.src).includes('hercules-front.png'))return null;
+  if(level===2&&!String(sprite.currentSrc||sprite.src).includes('hercules-front-v2.png'))return null;
   let byLevel=cache.get(sprite);if(!byLevel){byLevel=new Map();cache.set(sprite,byLevel);}
   if(byLevel.has(level))return byLevel.get(level);
   const original=canvas(),originalContext=original.getContext('2d',{willReadFrequently:true});

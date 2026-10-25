@@ -4,17 +4,33 @@ import {playersInArea,reflectLibraDamage} from './area-combat.js';
 import {damagePlayer,ensureVitals} from './vitals.js';
 
 const TAU=Math.PI*2;
-export function leoonRoarAreas(monster){
-  const offset=monster.radius*LEOON_ROAR.ringRadiusFactor,radius=monster.radius*LEOON_ROAR.areaRadiusFactor;
-  return Array.from({length:LEOON_ROAR.areas},(_,i)=>{
-    const angle=-Math.PI/2+i*TAU/LEOON_ROAR.areas;
-    return {x:monster.x+Math.cos(angle)*offset,y:monster.y+Math.sin(angle)*offset,radius};
-  });
+export function leoonRoarAreas(room,monster,target,map,random=Math.random){
+  const radius=monster.radius*LEOON_ROAR.areaRadiusFactor,range=monster.radius*LEOON_ROAR.rangeFactor;
+  const eligible=player=>player?.connected&&!player.away&&!player.avatar?.blackStar&&player.mapId===monster.mapId&&
+    (player.role!=='teacher'||(!player.avatar?.teacherPreview&&monster.teacherRetaliation?.has(player.id)))&&ensureVitals(player)?.hp>0;
+  const attackers=[...monster.attackers].sort((a,b)=>b[1]-a[1]).map(([id])=>room.players.get(id));
+  const selected=[target,...attackers].filter((player,index,list)=>eligible(player)&&list.findIndex(other=>other?.id===player.id)===index).slice(0,LEOON_ROAR.targetAreas);
+  const areas=selected.map(player=>({x:player.x,y:player.y,radius}));
+  for(let i=0;i<LEOON_ROAR.randomAreas;i++){
+    let picked=null;
+    for(let attempt=0;attempt<24;attempt++){
+      const angle=TAU*random(),distance=range*Math.sqrt(Math.max(0,Math.min(1,random())));
+      const x=monster.x+Math.cos(angle)*distance,y=monster.y+Math.sin(angle)*distance;
+      if(map.onFloor(x,y,radius*.5)&&areas.every(area=>Math.hypot(area.x-x,area.y-y)>=radius*1.3)){picked={x,y,radius};break;}
+    }
+    if(!picked){
+      const angle=TAU*(i+.5)/LEOON_ROAR.randomAreas,distance=monster.radius*1.8;
+      const x=monster.x+Math.cos(angle)*distance,y=monster.y+Math.sin(angle)*distance;
+      picked=map.onFloor(x,y,radius*.5)?{x,y,radius}:{x:monster.x,y:monster.y,radius};
+    }
+    areas.push(picked);
+  }
+  return areas;
 }
 export function beginLeoonRoar(monster,now,power){
   monster.mp-=LEOON_ROAR.mana;monster.roarReadyAt=now+LEOON_ROAR.cooldownMs;
   monster.leoonSkill={kind:LEOON_ROAR.kind,mapId:monster.mapId,stage:'glow',startsAt:now,stageEndsAt:now+LEOON_ROAR.glowMs,
-    endsAt:now+LEOON_ROAR.glowMs+LEOON_ROAR.warningMs,areas:leoonRoarAreas(monster),power};
+    endsAt:now+LEOON_ROAR.glowMs+LEOON_ROAR.warningMs,areas:[],power};
   monster.moving=false;
 }
 export function beginLeoonCharge(monster,now,power){
@@ -52,8 +68,9 @@ function chargeEnd(monster,target,map){
   let distance=0;
   for(let candidate=step;candidate<=max+step/2;candidate+=step){
     const traveled=Math.min(max,candidate),x=monster.x+ux*traveled,y=monster.y+uy*traveled;
-    if(x<monster.radius||x>map.width-monster.radius||y<monster.radius||y>map.height-monster.radius||
-      !map.onFloor(x,y,monster.radius*.8))break;
+    if(x<Math.max(120,monster.radius)||x>map.width-Math.max(120,monster.radius)||
+      y<Math.max(190,monster.radius)||y>map.height-Math.max(190,monster.radius)||
+      !map.onFloor(x,y,monster.radius))break;
     distance=traveled;
   }
   return {fromX:monster.x,fromY:monster.y,toX:monster.x+ux*distance,toY:monster.y+uy*distance,dx:ux,dy:uy,
@@ -74,14 +91,15 @@ function chargeHits(room,monster,skill,now){
   }
   return [{...visual,attackOnly:true},...hitPlayers(room,monster,candidates,skill.power*LEOON_CHARGE.damageMultiplier,now,visual)];
 }
-export function tickLeoonSkill(room,monster,target,now,map){
+export function tickLeoonSkill(room,monster,target,now,map,random=Math.random){
   const skill=monster.leoonSkill;if(!skill)return null;
   if(!target||monster.hp<=0||skill.mapId!==monster.mapId||(monster.sleepUntil||0)>skill.startsAt||(monster.stunUntil||0)>skill.startsAt){
     monster.leoonSkill=null;monster.moving=false;return [];
   }
   if(skill.kind===LEOON_ROAR.kind){
     monster.moving=false;
-    if(skill.stage==='glow'&&now>=skill.stageEndsAt){skill.stage='warning';skill.stageEndsAt=skill.endsAt;}
+    if(skill.stage==='glow'&&now>=skill.stageEndsAt){skill.stage='warning';skill.stageEndsAt=skill.endsAt;
+      skill.areas=leoonRoarAreas(room,monster,target,map,random);}
     if(now<skill.endsAt)return [];
     const hits=roarHits(room,monster,now);monster.leoonSkill=null;monster.nextAttackAt=now+1000;return hits;
   }

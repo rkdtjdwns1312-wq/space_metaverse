@@ -4,7 +4,7 @@ const COLORS=['','#a9daf7','#ffe2a3','#d7bef6','#aeead7','#f5c6da','#bbc9ff','#f
 
 export function createTetrisGame({board,setScore,request,footer,subscribeRanking,toast=()=>{}}={}){
   const root=document.createElement('section');root.className='tetris-game';
-  root.innerHTML='<div class="tetris-top"><button id="tetris-start" class="arcade-go" type="button">별 테트리스 시작</button><p id="tetris-status" role="status">시작 버튼을 눌러요.</p></div><div class="tetris-play"><div id="tetris-grid" class="tetris-grid" role="img" aria-label="별 테트리스 10칸 20줄"></div><div class="tetris-side"><p id="tetris-lines">지운 줄 0</p><p id="tetris-speed">내려오는 속도 0.85초</p><p>시간이 지나면 새 블록이 더 빨리 나오고 내려와요.</p><div class="tetris-controls"><button type="button" data-move="left" aria-label="왼쪽">◀ 왼쪽</button><button type="button" data-move="rotate" aria-label="블록 돌리기">⟳ 돌리기</button><button type="button" data-move="right" aria-label="오른쪽">오른쪽 ▶</button></div><p class="tetris-key-help">키보드 A·D 또는 ←·→ 이동, F 또는 ↑·↓ 돌리기</p></div></div><section id="tetris-ranking-panel" hidden><h3>이번 주 별 테트리스 순위</h3><p>지운 줄이 많은 순서, 같은 줄 수면 먼저 완성한 순서예요. 월요일 0시 새로 시작해요.</p><ol id="tetris-ranking"></ol></section>';
+  root.innerHTML='<div class="tetris-top"><button id="tetris-start" class="arcade-go" type="button">별 테트리스 시작</button><p id="tetris-status" role="status">시작 버튼을 눌러요.</p></div><div class="tetris-play"><div id="tetris-grid" class="tetris-grid" role="img" aria-label="별 테트리스 10칸 20줄"></div><div class="tetris-side"><p id="tetris-lines">지운 줄 0</p><p id="tetris-speed">내려오는 속도 0.85초</p><p>시간이 지나면 새 블록이 더 빨리 나오고 내려와요.</p><div class="tetris-controls"><div class="tetris-control"><button type="button" data-move="left" aria-label="왼쪽">◀ 왼쪽</button><div class="tetris-keys"><kbd>←</kbd><kbd>A</kbd></div></div><div class="tetris-control"><button type="button" data-move="rotate" aria-label="블록 돌리기">⟳ 돌리기</button><div class="tetris-keys"><kbd>F</kbd><kbd>↑</kbd></div></div><div class="tetris-control"><button type="button" data-move="right" aria-label="오른쪽">오른쪽 ▶</button><div class="tetris-keys"><kbd>→</kbd><kbd>D</kbd></div></div><div class="tetris-control tetris-control-down"><button type="button" data-move="down" aria-label="도형 빨리 내리기">도형 빨리 내리기</button><div class="tetris-keys"><kbd>S</kbd><kbd>↓</kbd></div></div></div></div></div><section id="tetris-ranking-panel" hidden><h3>이번 주 별 테트리스 순위</h3><p>지운 줄이 많은 순서, 같은 줄 수면 먼저 완성한 순서예요. 월요일 0시 새로 시작해요.</p><ol id="tetris-ranking"></ol></section>';
   board.append(root);
   const $=selector=>root.querySelector(selector),grid=$('#tetris-grid'),buttons=[...root.querySelectorAll('[data-move]')];
   const rankingUI=createArcadeRanking({game:'tetris',prefix:'tetris',root,footer,request,subscribe:subscribeRanking,toast});
@@ -58,7 +58,7 @@ export function createTetrisGame({board,setScore,request,footer,subscribeRanking
   for(const button of buttons){button.disabled=true;button.onclick=()=>command(button.dataset.move);}
   function onKeyDown(event){
     if(!active||!runId||event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
-    const move=({a:'left',ArrowLeft:'left',d:'right',ArrowRight:'right',f:'rotate',ArrowUp:'rotate',ArrowDown:'rotate'})[event.key];
+    const move=({a:'left',A:'left',ArrowLeft:'left',d:'right',D:'right',ArrowRight:'right',f:'rotate',F:'rotate',ArrowUp:'rotate',s:'down',S:'down',ArrowDown:'down'})[event.key];
     if(move){event.preventDefault();command(move);}
   }
   document.addEventListener('keydown',onKeyDown);

@@ -48,7 +48,7 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
 });
 
 test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 고정표와 일치하고 입력 위조를 무시한다',async t=>{
- let now=100000;const game=createClassroomServer({teacherKey:'attack-class-test',studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
+ let now=Date.parse('2026-10-05T09:00:00+09:00');const game=createClassroomServer({teacherKey:'attack-class-test',studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
  t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();

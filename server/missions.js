@@ -4,6 +4,7 @@ import {journeyComplete,journeyMissions} from './tutorial-journey.js';
 import {dailyInstances,ensureDailyMissions,dailyHistoryViews} from './daily-missions.js';
 
 export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10,recipients:30,hours:8760});
+export const MISSION_REWARD_TYPES=Object.freeze(['star-crumb','star-shard','cosmic-energy']);
 export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read','culture-read','history-read','science-read','one-stroke-win']);
 const autoObjectives=new Set(AUTO_OBJECTIVES);
 const difficulties=new Set(['low','medium','high']);
@@ -19,10 +20,16 @@ export function validateMissions(value,{limit=MISSION_LIMITS.count,instances=fal
   if(!Array.isArray(value)||value.length>limit)throw new Error('Invalid missions');
   const ids=new Set();
   return value.map(mission=>{
+    const validRewards=mission?.rewards===undefined||Array.isArray(mission.rewards)&&mission.rewards.length>0&&
+      new Set(mission.rewards.map(reward=>reward?.type)).size===mission.rewards.length&&mission.rewards.every(reward=>
+        reward&&MISSION_REWARD_TYPES.includes(reward.type)&&Number.isSafeInteger(reward.quantity)&&reward.quantity>=1&&reward.quantity<=MISSION_LIMITS.reward);
     if(!mission||typeof mission!=='object'||typeof mission.id!=='string'||ids.has(mission.id)||
       typeof mission.title!=='string'||!mission.title.trim()||mission.title.length>MISSION_LIMITS.title||
       typeof mission.description!=='string'||!mission.description.trim()||mission.description.length>MISSION_LIMITS.description||
-      !(mission.repeat==='daily'?mission.rewardShards===0&&mission.rewardItem==='star-crumb'&&Number.isSafeInteger(mission.rewardQuantity)&&mission.rewardQuantity>=1&&mission.rewardQuantity<=10:
+      !validRewards||!(mission.repeat==='daily'?mission.rewards!==undefined?
+          Number.isSafeInteger(mission.rewardShards)&&mission.rewardShards===(mission.rewards.find(reward=>reward.type==='star-shard')?.quantity||0):
+          mission.rewardShards===0&&mission.rewardItem==='star-crumb'&&Number.isSafeInteger(mission.rewardQuantity)&&mission.rewardQuantity>=1&&mission.rewardQuantity<=10:
+        mission.rewards!==undefined?Number.isSafeInteger(mission.rewardShards)&&mission.rewardShards>=0&&mission.rewardShards<=MISSION_LIMITS.reward:
         Number.isSafeInteger(mission.rewardShards)&&mission.rewardShards>=1&&mission.rewardShards<=MISSION_LIMITS.reward)||
       !['all','board'].includes(mission.distribution)||!Number.isSafeInteger(mission.at)||mission.at<0||
       !uniqueIds(mission.acceptedIds)||!uniqueIds(mission.completedIds)||!uniqueIds(mission.claimedIds)||
@@ -53,8 +60,21 @@ export function createMission(room,data,now=Date.now()){
   ensure(title.length>0&&title.length<=MISSION_LIMITS.title,'미션 이름을 40자 이내로 적어 주세요.');
   ensure(description.length>0&&description.length<=MISSION_LIMITS.description,'완료 조건을 240자 이내로 적어 주세요.');
   ensure(data.repeat==null||data.repeat==='daily','반복 설정을 확인해주세요.');
-  const daily=data.repeat==='daily',quantity=daily?data.rewardQuantity:data.rewardShards;
-  ensure(Number.isSafeInteger(quantity)&&quantity>=1&&quantity<=MISSION_LIMITS.reward,'보상은 1~10개로 정해 주세요.');
+  const daily=data.repeat==='daily',legacyQuantity=daily?data.rewardQuantity:data.rewardShards;
+  let rewards;
+  if(data.rewards!==undefined){
+    ensure(Array.isArray(data.rewards)&&data.rewards.length>0&&data.rewards.length<=MISSION_REWARD_TYPES.length,'보상을 하나 이상 선택해 주세요.');
+    const types=new Set();
+    rewards=data.rewards.map(reward=>{
+      ensure(reward&&MISSION_REWARD_TYPES.includes(reward.type)&&!types.has(reward.type),'보상 종류를 확인해주세요.');types.add(reward.type);
+      ensure(Number.isSafeInteger(reward.quantity)&&reward.quantity>=1&&reward.quantity<=MISSION_LIMITS.reward,'각 보상 수량은 1~10개로 정해 주세요.');
+      return {type:reward.type,quantity:reward.quantity};
+    });
+    const shardAmount=rewards.find(reward=>reward.type==='star-shard')?.quantity||0;
+    ensure(data.rewardShards===undefined||data.rewardShards===shardAmount||data.rewardShards===0&&shardAmount===0,'별 파편 보상 값이 선택한 보상과 달라요.');
+  }else if(daily)ensure(Number.isSafeInteger(legacyQuantity)&&legacyQuantity>=1&&legacyQuantity<=MISSION_LIMITS.reward,'보상은 1~10개로 정해 주세요.');
+  else ensure(Number.isSafeInteger(legacyQuantity)&&legacyQuantity>=1&&legacyQuantity<=MISSION_LIMITS.reward,'보상은 1~10개로 정해 주세요.');
+  const shardReward=rewards?rewards.find(reward=>reward.type==='star-shard')?.quantity||0:daily?0:legacyQuantity;
   ensure(!daily||data.objective&&data.objective!=='tutorial-complete'&&data.distribution==='all'&&data.maxRecipients==null,'매일 반복은 다시 수행할 수 있는 자동미션을 전체 배포로 정해주세요.');
   ensure(['all','board'].includes(data?.distribution),'배포 방식을 선택해 주세요.');
   const maxRecipients=data.maxRecipients??null,validityHours=data.validityHours??null;
@@ -74,8 +94,8 @@ export function createMission(room,data,now=Date.now()){
   }
   room.missions??=[];ensure(room.missions.length<MISSION_LIMITS.count,'미션은 교실당 30개까지 만들 수 있어요.');
   if(daily)ensure(dailyInstances(room,now).filter(m=>m.templateId!=='builtin-timetable').length<MISSION_LIMITS.count,'오늘 배정한 반복 미션은 중지한 미션을 포함해 30개까지 만들 수 있어요.');
-  const mission={id:randomUUID(),title,description,rewardShards:daily?0:quantity,distribution:data.distribution,at:now,maxRecipients,
-    ...(daily?{repeat:'daily',rewardItem:'star-crumb',rewardQuantity:quantity,validityHours}:{}),
+  const mission={id:randomUUID(),title,description,rewardShards:shardReward,...(rewards?{rewards}:{}),distribution:data.distribution,at:now,maxRecipients,
+    ...(daily?{repeat:'daily',...(rewards?{}:{rewardItem:'star-crumb',rewardQuantity:legacyQuantity}),validityHours}:{}),
     expiresAt:daily||validityHours===null?null:now+validityHours*3600000,
     acceptedIds:!daily&&data.distribution==='all'?[...room.players.values()].filter(p=>p.role==='student').map(p=>p.id):[],completedIds:[],claimedIds:[],
     ...(data.objective?{objective:data.objective,goal:data.goal,progress:{},
@@ -92,6 +112,7 @@ export function createMission(room,data,now=Date.now()){
 export const activeMissionRecords=(room,now=Date.now())=>[...(room.missions||[]).filter(m=>m.repeat!=='daily'),...dailyInstances(room,now)];
 export const findMission=(room,id,now=Date.now())=>activeMissionRecords(room,now).find(m=>m.id===id);
 const rewardView=m=>({rewardItem:m.rewardItem??null,rewardQuantity:m.rewardQuantity??m.rewardShards,rewardShards:m.rewardShards,
+  ...(m.rewards?{rewards:structuredClone(m.rewards)}:{}),
   ...(m.repeat==='daily'?{repeat:'daily',templateId:m.templateId,day:m.day}:{} )});
 
 export function acceptMission(room,player,missionId,now=Date.now()){

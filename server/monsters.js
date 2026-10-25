@@ -12,9 +12,10 @@ import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
 import {bossVictoryCredits} from './serena-progress.js';
 import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokseraMoonTimeline,nokseraFullMoon,LEOON_ROAR,LEOON_CHARGE} from '../shared/boss-skills.js';
 import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skills.js';
+import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spirit-king-skills.js';
 
 
-export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:1000,mapExitHealCount:3});
+export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:2000,mapExitHealCount:3});
 const delayedMeleeBoss=type=>type?.id==='noksera'||type?.id==='leoon';
 function bossMeleeEligible(room,monster,now,x,y){
   const present=playersInArea(room,{mapId:monster.mapId,x,y,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:monster.teacherRetaliation});
@@ -36,11 +37,18 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
     const statue=type.id===SERENA.typeId?map.objects.find(o=>o.id===SERENA.statueId):null;
-    const x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
+    let x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
     const multiplier={1:1,2:2,3:4,4:5}[type.level]||1;
     const radius=type.radius??MONSTER_RULES.radius*(type.boss?8:multiplier);
+    if(/^star-origin-[123]$/.test(map.id)&&!onOriginFloor(map,x,y,radius)){
+      const startX=x,startY=y;
+      for(let part=.05;part<=1;part+=.05){
+        const candidateX=startX+(map.width/2-startX)*part,candidateY=startY+(map.height/2-startY)*part;
+        if(onOriginFloor(map,candidateX,candidateY,radius)){x=candidateX;y=candidateY;break;}
+      }
+    }
     const patrolPhaseOffset=randomPatrolOffset(phaseRandom),patrolStartedAt=now+patrolPhaseOffset;
     const respawnAt=room.bossRespawns?.[spawn.id]>now?room.bossRespawns[spawn.id]:null;
     return [spawn.id,{id:spawn.id,typeId:type.id,mapId:type.mapId,x,y,radius,
@@ -48,6 +56,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
       mp:type.boss?BOSS_MANA.max:0,maxMp:type.boss?BOSS_MANA.max:0,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,
       moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,
       roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,leoonSkill:null,
+      summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,
       targetId:null,attackers:new Map(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   };
@@ -108,16 +117,17 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
     if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
+    if(target.typeId==='spirit-king')clearSpiritKingEffects(room,target.id);
     if(type?.boss){
       if(room.persistBossDefeats){
         room.pendingBossDeaths??=new Map();
         room.pendingBossDeaths.set(target.id,{at:now,contributors:[...target.contributors],credits:bossVictoryCredits(room,target,target.contributors)});
       }else finishBossDefeat(room,target,target.contributors,now,{energyRoll,recipeRoll,bossRoll});
-    }else{
+    }else if(!target.summonerId){
       addRecipeDrop(room,target,target.contributors,now,recipeRoll);
       addEnergyDrop(room,target,target.contributors,now,energyRoll);
     }
-    target.respawnAt=now+monsterRespawnMs(type);target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.meleePresence?.clear();target.mapExitCount=0;
+    target.respawnAt=now+(target.summonerId?600:monsterRespawnMs(type));target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.meleePresence?.clear();target.mapExitCount=0;
   }
   else{
     registerMonsterAttacker(room,target,player,now,retaliateTeacher);
@@ -159,17 +169,18 @@ export function selectMonsterTarget(room,monster){
 export function moveMonsters(room,now=Date.now(),random=Math.random){
   if(!Number.isFinite(now))return [];
   const monsters=monstersOf(room,now);
-  const hits=[];
+  const hits=tickSpiritOrbs(room,now,mapId=>mapOf(mapId,room.planets?.values?.()||[]));
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
+      if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
       if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
       Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,leoonSkill:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
-      if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs});
+      if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const type=monsterType(m.typeId),rule=type?.combat??MONSTER_COMBAT[m.mapId];
@@ -183,7 +194,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;}
     if(m.leoonSkill){
       const map=mapOf(m.mapId,room.planets?.values?.()||[]);
-      const results=tickLeoonSkill(room,m,target,now,{width:map.width,height:map.height,onFloor:(x,y,radius)=>onParadiseFloor(map,x,y,radius)});
+      const results=tickLeoonSkill(room,m,target,now,{width:map.width,height:map.height,onFloor:(x,y,radius)=>onParadiseFloor(map,x,y,radius)},random);
       hits.push(...results);
       if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
       continue;
@@ -206,7 +217,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(now>=m.pendingAttack.endsAt){
         const warning=m.pendingAttack;m.pendingAttack=null;
         const results=damagePlayersInArea(room,{mapId:m.mapId,x:warning.x,y:warning.y,radius:warning.radius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,sourceMonsterId:m.id},horn?warning.power:rule.power,now);
-        m.nextAttackAt=now+rule.attackMs;
+        m.nextAttackAt=now+MONSTER_RULES.attackMs;
         const visual={monsterId:m.id,mapId:m.mapId,x:horn?warning.x:m.x,y:horn?warning.y:m.y,dx:warning.dx,dy:warning.dy,reach:warning.reach,durationMs:horn?NOKSERA_HORN_BURST.durationMs:800,
           ...(horn?{skillKind:warning.kind}:{}),
           warningX:warning.x,warningY:warning.y,warningRadius:warning.radius};
@@ -248,12 +259,13 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
         const roll=random();
         if(Number.isFinite(roll)&&roll>=0&&roll<LEOON_CHARGE.chance){beginLeoonCharge(m,now,power);continue;}
       }
-      if(now>=(m.roarReadyAt||0)&&now>=(m.roarDecisionAt??now)&&m.mp>=LEOON_ROAR.mana&&distance<=m.radius*2.7){
+      if(now>=(m.roarReadyAt||0)&&now>=(m.roarDecisionAt??now)&&m.mp>=LEOON_ROAR.mana&&distance<=m.radius*LEOON_ROAR.rangeFactor){
         m.roarDecisionAt=now+LEOON_ROAR.decisionMs;
         const roll=random();
         if(Number.isFinite(roll)&&roll>=0&&roll<LEOON_ROAR.chance){beginLeoonRoar(m,now,power);continue;}
       }
     }
+    if(type.id==='spirit-king'&&target&&trySpiritKingSkills(room,m,target,now,random,mapOf(m.mapId,room.planets?.values?.()||[]))){m.moving=false;continue;}
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
     let resting=false;
@@ -291,7 +303,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
           m.moving=false;continue;
         }
         const results=damagePlayersInArea(room,{mapId:m.mapId,x:hitX,y:hitY,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:m.teacherRetaliation,eligibleIds,sourceMonsterId:m.id},rule.power,now);
-        if(results.length){m.nextAttackAt=now+(rule.attackMs??MONSTER_RULES.attackMs/factor);
+        if(results.length){m.nextAttackAt=now+MONSTER_RULES.attackMs;
           for(const result of results)hits.push({monsterId:m.id,mapId:m.mapId,x:m.x,y:m.y,dx:m.dx,dy:m.dy,reach:attackReach,durationMs:ATTACK_VISUAL.durationMs,...result});
           if(results.some(result=>result.defeated))selectMonsterTarget(room,m);
         }

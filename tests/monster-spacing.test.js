@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MONSTER_TYPES} from '../shared/monsters.js';
 import {ORIGIN_MAPS,STATIC_MAPS} from '../shared/config.js';
+import {onOriginFloor} from '../shared/origin-floor.js';
 import {monstersOf,monsterViews,moveMonsters,MONSTER_RULES} from '../server/monsters.js';
 
 function assertNoOverlap(room, message) {
@@ -22,9 +23,11 @@ test('별의 시작점 3 몬스터는 반경과 그림 크기가 기존의 정�
   assert.ok(level3.every(monster=>monster.radius===MONSTER_RULES.radius*4));
 });
 
-test('별의 시작점 맵은 1.2배씩 커지고 문과 귀환 좌표가 실제 크기를 따른다',()=>{
-  assert.deepEqual(ORIGIN_MAPS.slice(0,3).map(map=>[map.width,map.height]),[[1200,900],[1440,1080],[1728,1296]]);
-  assert.ok(Math.abs(ORIGIN_MAPS[3].width-2073.6)<1e-9&&Math.abs(ORIGIN_MAPS[3].height-1555.2)<1e-9);
+test('별의 시작점 맵은 전체가 20% 커진 뒤 단계마다 1.2배씩 커지고 문과 귀환 좌표가 실제 크기를 따른다',()=>{
+  for(const [index,map] of ORIGIN_MAPS.entries()){
+    assert.ok(Math.abs(map.width-1440*1.2**index)<1e-9);
+    assert.ok(Math.abs(map.height-1080*1.2**index)<1e-9);
+  }
   for(const map of ORIGIN_MAPS){
     const back=map.objects.find(object=>object.id==='gate-back');
     assert.equal(back.x,map.width/2);assert.equal(back.y,map.height-80*(map.width/1200));
@@ -60,6 +63,7 @@ test('세 맵의 몬스터 배치가 실제 맵 경계 안이고 안전 간격�
     const monsters=list.filter(monster=>monster.mapId===map.id);
     assert.equal(monsters.length,map.id==='star-origin-4'?0:5);
     for(const monster of monsters){
+      assert.ok(onOriginFloor(map,monster.x,monster.y,monster.radius),`${monster.id} must spawn on the round floor`);
       assert.ok(monster.x>=Math.max(120,monster.radius));
       assert.ok(monster.x<=map.width-Math.max(120,monster.radius));
       assert.ok(monster.y>=Math.max(190,monster.radius));

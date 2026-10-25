@@ -31,7 +31,7 @@ try{
     for(const [id,levels] of Object.entries(LOCOMOTION_PROFILES)){
       const sheet=document.createElement('canvas');sheet.id='sheet-'+id;sheet.width=1080;sheet.height=870;document.body.append(sheet);const ctx=sheet.getContext('2d');
       for(const level of Object.keys(levels).map(Number)){
-        const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':`/assets/avatars/${level===2?'':`lv${level}/`}${id==='hercules'&&level===2?'hercules-front':id}.png`;await im.decode();
+        const im=new Image();im.src=id==='teacher'?'/assets/avatars/teacher/star-sovereign.png':`/assets/avatars/${level===2?'':`lv${level}/`}${id==='hercules'&&level===2?'hercules-front-v2':id}.png`;await im.decode();
         const started=performance.now(),fallback=make(im,id,level,4),coldCallMs=performance.now()-started;
         const fallbackIsOriginal=fallback===make(im,id,level,0);await prepare(im,id,level);
         const count=id==='cetus'?24:32;const frames=Array.from({length:count},(_,i)=>make(im,id,level,i));

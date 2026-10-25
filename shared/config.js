@@ -43,6 +43,7 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
   '#c5c9f7', '#ffd2a8', '#ffe0b5', '#cfd8e6', '#f7e39b', '#f9c6e0', '#ffcfa3', '#bfe3d6']);
 // 광장의 기둥·생명의 별·과제·블랙홀·출입문은 고정 배치입니다. 방별 부서행성은 mapOf로 합칩니다.
 // gate: 통과 가능한 문. 가까이에서 이동하면 target 맵의 arrival 좌표 근처에 도착합니다.
+export const STAR_ORIGIN = Object.freeze({baseWidth:1440,baseHeight:1080,scale:1.2,maxStage:4});
 export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:plazaPoint({x:3000,y:2340}),templeCenter:PLAZA_LAYOUT.center,
   objects: [
     {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
@@ -56,7 +57,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     { id: 'gate-garden', name: '낙원의 갈림길', x:78,y:1320,radius: 38, kind: 'gate', target:'moon-garden',
       arrival:paradisePoint({x:1030,y:380}),color:'#bdeade',passable:true },
     {id:'gate-valley',name:'은하수계곡',x:1800,y:2562,radius:38,kind:'gate',target:'milky-valley',arrival:VALLEY_LAYOUT.spawn,color:'#c5cff8',passable:true},
-    {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:600,y:740},color:'#d2d3ef',passable:true},
+    {id:'gate-origin',name:'별의 시작점 1',x:1800,y:78,radius:38,kind:'gate',target:'star-origin-1',arrival:{x:STAR_ORIGIN.baseWidth/2,y:STAR_ORIGIN.baseHeight-160*STAR_ORIGIN.baseWidth/1200},color:'#d2d3ef',passable:true},
     // Lv4 아바타 한 높이(80×1.15²=105.8px)만큼 함께 위로 이동합니다.
     {id:'assignment-andromeda',name:'과제별서고',x:430,y:404.2,radius:144,kind:'andromeda',passable:true},
     {id:'star-mission-board',name:'별 미션 게시판',x:800,y:404.2,radius:90,kind:'mission-board',passable:true},
@@ -135,13 +136,14 @@ export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 고래자리 배 속은 초대받은 학생에게만 열리는 공간이며 우주 지도에는 표시하지 않습니다.
 export const WHALE_STOMACH=Object.freeze({id:'whale-stomach',name:'고래자리의 배 속',theme:'whale-stomach',width:1200,height:760,spawn:{x:600,y:390},objects:[]});
 export const WHALE_STOMACH_ID=WHALE_STOMACH.id;
-// 위쪽 맵은 1→2→3→4로 이어지며, 단계가 오를수록 가로·세로가 기준의 1.2배씩 커집니다.
+// 위쪽 맵은 1→2→3→4로 이어지며, 확대된 1구역에서 단계마다 가로·세로가 1.2배씩 커집니다.
 // 문과 귀환 좌표는 각 맵 크기에서 계산해 서로 다른 크기에서도 같은 상대 위치를 유지합니다.
-export const STAR_ORIGIN = Object.freeze({baseWidth:1200,baseHeight:900,scale:1.2,maxStage:4});
 export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},(_,i)=>i+1).map(n=>{
-  const factor=STAR_ORIGIN.scale**(n-1),width=STAR_ORIGIN.baseWidth*factor,height=STAR_ORIGIN.baseHeight*factor;
-  const previousFactor=STAR_ORIGIN.scale**Math.max(0,n-2),previousWidth=STAR_ORIGIN.baseWidth*previousFactor,
-    nextFactor=STAR_ORIGIN.scale**n,nextWidth=STAR_ORIGIN.baseWidth*nextFactor,nextHeight=STAR_ORIGIN.baseHeight*nextFactor;
+  const stageFactor=STAR_ORIGIN.scale**(n-1),width=STAR_ORIGIN.baseWidth*stageFactor,height=STAR_ORIGIN.baseHeight*stageFactor;
+  const factor=width/1200,previousFactor=STAR_ORIGIN.baseWidth*STAR_ORIGIN.scale**Math.max(0,n-2)/1200,
+    previousWidth=STAR_ORIGIN.baseWidth*STAR_ORIGIN.scale**Math.max(0,n-2),
+    nextFactor=STAR_ORIGIN.baseWidth*STAR_ORIGIN.scale**n/1200,
+    nextWidth=STAR_ORIGIN.baseWidth*STAR_ORIGIN.scale**n,nextHeight=STAR_ORIGIN.baseHeight*STAR_ORIGIN.scale**n;
   return Object.freeze({id:'star-origin-'+n,name:'별의 시작점 '+n,theme:'star-origin',width,height,
     spawn:{x:width/2,y:height-160*factor},objects:[
       {id:'gate-back',name:(n===1?'별의 기원':'별의 시작점 '+(n-1))+' ↓',x:width/2,y:height-80*factor,radius:38,kind:'gate',

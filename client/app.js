@@ -408,7 +408,7 @@ function updateRoom(value){
   if(movingPlanetId&&(myMapId!==PLAZA_ID||me?.role!=='student'||me?.departmentId!==movingPlanetId||!planetById(movingPlanetId)||me?.avatar?.blackStar||me?.away)){
     $('planet-move-dialog').close();stopPlacement();
   }
-  $('teacher-tools').hidden=!isTeacher;$('lv4-teacher-tools').hidden=!isTeacher;
+  $('teacher-tools').hidden=!isTeacher;
   teacherInventory.update();
   teacherCardCatalog.update();
   $('copy-student-link').hidden=!isTeacher;
@@ -730,9 +730,11 @@ function updateTeacherPanels(isTeacher){
 }
 function updateTeacherBadge(isTeacher){
   const proposals=room?.proposals||[];
-
-  const total=proposals.length+(room?.campaignRequests?.length||0);
+  const campaignRequests=room?.campaignRequests||[];
+  const total=proposals.length+campaignRequests.length;
   $('teacher-badge').hidden=!isTeacher||total===0;$('teacher-badge').textContent=String(total);
+  $('teacher-constellation-new').hidden=!isTeacher||campaignRequests.length===0;
+  $('teacher-constellation-toggle').setAttribute('aria-label',campaignRequests.length&&isTeacher?'별자리캐릭터 확인, 새 검토 요청':'별자리캐릭터 확인');
 }
 function updateShardsTargetOptions(){
   const select=$('shards-target'),prev=select.value;
@@ -855,6 +857,9 @@ function openPlanetDialog(planetId){
   $('planet-warnings').hidden=true;$('planet-warnings-toggle').setAttribute('aria-expanded','false');
   renderPlanetDialog(planetId);stop();
   if(!$('planet-dialog').open)$('planet-dialog').showModal();
+  // 대화창을 열 때 첫 버튼에 자동 초점 테두리가 생기지 않도록 창 자체에 초점을 둡니다.
+  $('planet-dialog').setAttribute('tabindex','-1');
+  $('planet-dialog').focus({preventScroll:true});
 }
 $('planet-info').onclick=()=>{
   const me=room?.players.find(p=>p.id===selfId);
@@ -1079,8 +1084,19 @@ function renderTeacherCrownPriorities(){
   }
   $('teacher-crown-priority-empty').hidden=!!list.children.length;
 }
+const constellationTeacherSection=document.createElement('section');
+constellationTeacherSection.id='teacher-constellation';
+constellationTeacherSection.innerHTML='<h3>별자리캐릭터 확인</h3>';
+$('teacher-dialog').querySelector('.teacher-footer').before(constellationTeacherSection);
+const constellationTeacherSections=[piscesTeacherSection,swanTeacherSection,crownTeacherSection];
+constellationTeacherSection.append(...constellationTeacherSections);
+const lv4TeacherSection=document.createElement('section');
+lv4TeacherSection.id='teacher-lv4-item-activity';
+lv4TeacherSection.innerHTML='<h3>Lv4 아이템 활동 확인</h3><button id="teacher-lv4-item-open" class="secondary" type="button">활동 내역 열기</button>';
+$('teacher-dialog').querySelector('.teacher-footer').before(lv4TeacherSection);
+$('teacher-lv4-item-open').onclick=()=>{$('teacher-dialog').close();void lv4UI.openTeacher();};
 // 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
-for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section')].entries()){
+for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section'),...constellationTeacherSections].entries()){
   const heading=section.querySelector(':scope > h3');
   if(!heading)continue;
   const button=document.createElement('button');
@@ -1091,7 +1107,12 @@ for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > 
   const title=document.createElement('span');title.textContent=label;
   const indicator=document.createElement('span');indicator.className='teacher-tool-indicator';indicator.setAttribute('aria-hidden','true');indicator.textContent='⌄';
   button.append(title,indicator);
-  const panel=document.createElement('div');panel.id=`teacher-tool-content-${index+1}`;panel.hidden=true;
+  if(section===constellationTeacherSection){
+    button.id='teacher-constellation-toggle';
+    const badge=document.createElement('span');badge.id='teacher-constellation-new';badge.className='teacher-tool-new';badge.textContent='new';badge.hidden=true;
+    button.append(badge);
+  }
+  const panel=document.createElement('div');panel.className='teacher-tool-content';panel.id=`teacher-tool-content-${index+1}`;panel.hidden=true;
   button.setAttribute('aria-controls',panel.id);
   const headingRow=document.createElement('h3');headingRow.className='teacher-tool-heading';headingRow.append(button);
   heading.replaceWith(headingRow);headingRow.after(panel);
@@ -1513,5 +1534,3 @@ setInterval(()=>{if(!room)return;const me=room.players.find(p=>p.id===selfId);
 },1000);
 function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
 requestAnimationFrame(interactionFrame);controls();socket.connect();
-
-$('lv4-teacher-tools').onclick=()=>lv4UI.openTeacher();

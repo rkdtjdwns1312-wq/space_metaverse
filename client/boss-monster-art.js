@@ -7,7 +7,7 @@ import {drawPaintedMonsterFrame,paintedMonsterImage,preloadMonsterAttack,monster
 const ART=Object.freeze({
   noksera:{src:'/assets/monsters/noksera-v2.png',walkSrc:'/assets/monsters/noksera-walk.png',color:'#c9d6ff',face:-1,width:2.05,aspect:1221/1289,walkAspect:1},
   leoon:{src:'/assets/monsters/leoon.png',walkSrc:'/assets/monsters/leoon-walk.png',color:'#ffd47a',face:1,width:2,aspect:1254/1254,walkAspect:1145/1374},
-  'spirit-king':{src:'/assets/monsters/spirit-king-walk-v2.png',walkSrc:'/assets/monsters/spirit-king-walk-v2.png',color:'#bcb3ff',face:1,width:2.2,aspect:512/384,walkAspect:512/384,frames:8}
+  'spirit-king':{src:'/assets/monsters/spirit-king-walk-v3.png',walkSrc:'/assets/monsters/spirit-king-walk-v3.png',color:'#bcb3ff',face:1,width:2.2,aspect:512/384,walkAspect:512/384,frames:8}
 });
 const images=new Map();
 function sprite(shape,walking=false){
@@ -25,7 +25,7 @@ export function bossMonsterBounds(m,walking=false){
   if(m.shape==='serena')return serenaBounds(m);
   const art=ART[m.shape],r=m.radius,w=r*art.width;
   // 새 성령왕 시트의 지팡이를 든 최대 높이까지 이름/상태 아이콘 위 공간을 확보합니다.
-  const h=m.shape==='spirit-king'?r*2.85:w*(walking?art.walkAspect:art.aspect);
+  const h=m.shape==='spirit-king'?r*3.05:w*(walking?art.walkAspect:art.aspect);
   const top=m.y+r*.9-h,bottom=m.y+r*.9;
   return {top,bottom,width:w,height:h};
 }

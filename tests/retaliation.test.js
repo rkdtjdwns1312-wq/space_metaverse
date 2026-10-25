@@ -32,15 +32,16 @@ test('공격계3종의 LV2~5 방어0/0/0/0와 실제 LV1 몬스터 공격3의 �
    const before=playerVitals(p).hp.current;assert.equal(damagePlayer(p,3,0).damage,damage);assert.equal(playerVitals(p).hp.current,before-damage);
  }
 });
-test('단계별 이동량·공격 속도는1/1.3/1.69배이며 산책 주기는4초로 같다',()=>{
+test('단계별 이동량은1/1.3/1.69배, 일반 공격은 모두 1초 간격이며 산책 주기는4초다',()=>{
  for(const [id,power] of [['star-crab',3],['star-scorpion-1',6],['star-dragon-1',10]]){
-   const {room,m}=fixture(id),factor=MONSTER_COMBAT[m.mapId].speedFactor;Object.assign(m,{x:600,y:450});
+   const {room,m}=fixture(id),factor=MONSTER_COMBAT[m.mapId].speedFactor,map=mapOf(m.mapId);
+   Object.assign(m,{x:map.width/2,y:map.height/2});const startX=m.x;
    moveMonsters(room,0,()=>0);moveMonsters(room,50,()=>0);
-   assert.ok(Math.abs(m.x-600-MONSTER_RULES.speed*factor*.05)<1e-8);
+   assert.ok(Math.abs(m.x-startX-MONSTER_RULES.speed*factor*.05)<1e-8);
    assert.equal(m.nextDirectionAt,MONSTER_RULES.walkMs+MONSTER_RULES.restMs);
    const p=player('p','gemini');Object.assign(p,{mapId:m.mapId,x:m.x+m.radius+24,y:m.y});room.players.set(p.id,p);
    m.attackers.set(p.id,1);const hit=moveMonsters(room,100,()=>0)[0];assert.ok(hit);assert.equal(hit.damage,Math.max(1,power-defensePowerOf(5,'gemini')));
-   assert.equal(m.nextAttackAt,100+1000/factor);
+   assert.equal(m.nextAttackAt,1100);
    assert.equal(moveMonsters(room,m.nextAttackAt-1,()=>0).length,0);
    assert.equal(moveMonsters(room,m.nextAttackAt,()=>0).length,1);
  }

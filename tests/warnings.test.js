@@ -81,10 +81,9 @@ test('소속 학생의 직접 경고가 누적되면 검은별로 이동하고 �
   assert.equal(released.students.length,0);assert.equal(target.avatar.blackStar,null);assert.equal(target.mapId,PLAZA_ID);
   assert.equal(warningCount(planet,target.id),0);
   const portal=MAP.objects.find(object=>object.kind==='black-hole');Object.assign(target,{x:portal.x,y:portal.y});
-  assert.equal((await call(targetSocket,'map:travel',{to:BLACK_HOLE_ID})).ok,true);
-  assert.equal(target.mapId,BLACK_HOLE_ID);
-  Object.assign(target,{x:600,y:680});
-  assert.equal((await call(targetSocket,'map:travel',{to:PLAZA_ID})).ok,true);
+  const noBlackStar=await call(targetSocket,'map:travel',{to:BLACK_HOLE_ID});
+  assert.equal(noBlackStar.ok,false);assert.match(noBlackStar.error,/검은별 상태일 때만/);
+  assert.equal(target.mapId,PLAZA_ID);
 });
 
 test('검은별·경고는 서버 재시작 뒤에도 보존되고 학생은 블랙홀에 재입장한다',async t=>{

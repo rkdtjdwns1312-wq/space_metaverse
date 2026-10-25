@@ -49,6 +49,8 @@ import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
 import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-art.js';
 import {drawBossMonster,bossMonsterBounds,preloadBossArt} from './boss-monster-art.js';
+import {drawGuardianMonster,preloadGuardianArt} from './guardian-monster-art.js';
+import {drawSpiritOrb} from './spirit-orb-art.js';
 import {MONSTER_ATTACK_ART,preloadMonsterAttack} from './monster-attack-frames.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
@@ -147,7 +149,7 @@ export function createWorld(canvas) {
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&
     (d.publicAt<=Date.now()?d.remaining>0:d.shares.some(s=>s.playerId===selfId&&s.amount>0)));
   const damageNumbers=createDamageNumbers();
-  let monsters=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
+  let monsters=[],spiritOrbs=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
@@ -682,12 +684,12 @@ export function createWorld(canvas) {
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
       const visualRadius=m.radius*monsterVisualScale(m.mapId,m.typeId);
       const body={...type,...m,...pos,radius:visualRadius},activeAttack=monsterAttacks.get(m.id);
-      if(!drawBossMonster(ctx,body,t,activeAttack)&&!drawBabyStar(ctx,body,t,activeAttack)&&!drawCelestialMonster(ctx,body,t,activeAttack)&&!drawSunMonster(ctx,body,t,activeAttack)&&!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
+      if(!drawBossMonster(ctx,body,t,activeAttack)&&!drawGuardianMonster(ctx,body,t,activeAttack)&&!drawBabyStar(ctx,body,t,activeAttack)&&!drawCelestialMonster(ctx,body,t,activeAttack)&&!drawSunMonster(ctx,body,t,activeAttack)&&!drawLv2Monster(ctx,body,t,activeAttack)&&!drawWaterMonster(ctx,body,t,activeAttack))drawMonster(ctx,body,t);
       drawNokseraMoon(ctx,body);
       const isWater=['star-crab','water-star'].includes(type.shape);
       // 별전갈의 높이 솟은 꼬리를 체력바가 가리지 않도록 원화 높이를 반영합니다.
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
-      const barScale=type.boss?1.75:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
+      const barScale=type.boss?1.75:type.shape==='star-guardian'?1.9:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
       const bossBounds=type.boss?bossMonsterBounds(body,(m.moving||m.leoonSkill?.stage==='stomp')&&!activeAttack):null;
       const barWidth=type.boss?200:64,barY=type.boss?bossBounds.bottom+3:pos.y-visualRadius*barScale-18;
       const barHeight=type.boss?14:9;
@@ -785,7 +787,9 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
+      const visibleOrbs=spiritOrbs.filter(orb=>orb.mapId===myMapId&&Date.now()>=(orb.startsAt??0)&&Date.now()<(orb.endsAt??Infinity));
       const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
+        ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
@@ -889,8 +893,9 @@ export function createWorld(canvas) {
       starCards=room?.starCards||[];campaignSigns=room?.campaignSigns||[];exploration=room?.exploration||null;
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      setMonsters(room?.monsters||[]);
+      setMonsters(room?.monsters||[]);spiritOrbs=Array.isArray(room?.spiritOrbs)?room.spiritOrbs:[];
       for(const id of ['leoon','noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
+      if(monsters.some(m=>m.typeId==='star-guardian'&&m.mapId===myMapId))void preloadGuardianArt().catch(()=>{});
       for(const id of Object.keys(MONSTER_ATTACK_ART))if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadMonsterAttack(id).catch(()=>{});
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
@@ -903,7 +908,7 @@ export function createWorld(canvas) {
     leoRoar(data){if(data.mapId===myMapId)leoRoars.push({...data,startsAt:performance.now(),until:performance.now()+data.durationMs});},
     positions(data){if(data.serena)serena=data.serena;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
-    monsters(data){setMonsters(data.monsters||[]);},
+    monsters(data){setMonsters(data.monsters||[]);if(Array.isArray(data.spiritOrbs))spiritOrbs=data.spiritOrbs;},
     energyDrops(data){energyDrops=data.drops||[];},
     sagittariusState(data){
       const previous=new Map(sagittariusCasts.map(c=>[c.id,c])),now=performance.now();

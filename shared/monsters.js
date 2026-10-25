@@ -23,15 +23,15 @@ export const MONSTER_COMBAT=Object.freeze({
   'sun-paradise-2':combatFor(4,1.3*1.3),
   'moon-paradise-1':combatFor(3,1.3),
   'moon-paradise-2':combatFor(4,1.3*1.3),
-  'moon-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3,attackMs:2000}),
-  'sun-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3,attackMs:2000})
+  'moon-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3}),
+  'sun-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3})
 });
 export const MONSTER_TYPES = Object.freeze([
   { id:'baby-energy-star', name:'Lv2 기운을 품은 아기별', description:'따뜻한 빛과 서늘한 빛 사이에서 자신의 힘을 찾아가는 아기별. 반짝이며 몸을 굴려 가까이 다가와요.', mapId:'moon-garden', shape:'baby-energy-star', color:'#d7c8ff', level:2 },
   { id:'warm-star', name:'Lv3 따뜻한별', description:'작은 햇살을 나누는 따뜻한별. 공격받으면 금빛으로 몸을 부딪쳐 반격해요.', mapId:'sun-paradise', shape:'warm-star', color:'#ffd16a', level:3 },
-  { id:'grown-warm-star', name:'Lv4 성장한따뜻한별', description:'별의 궤도를 품고 성장한 따뜻한별. 황금빛을 모아 몸통으로 반격해요.', mapId:'sun-paradise-2', shape:'grown-warm-star', color:'#ffba4f', level:4 },
+  { id:'grown-warm-star', name:'Lv4 성장한따뜻한별', description:'별의 궤도를 품고 성장한 따뜻한별. 입에서 짧은 황금 불꽃을 내뿜어 반격해요.', mapId:'sun-paradise-2', shape:'grown-warm-star', color:'#ffba4f', level:4 },
   { id:'cool-star', name:'Lv3 서늘한별', description:'달빛을 머금은 서늘한별. 차분한 빛으로 가까운 모험가를 밀어내요.', mapId:'moon-paradise-1', shape:'cool-star', color:'#9bd8ff', level:3 },
-  { id:'grown-cool-star', name:'Lv4 성장한서늘한별', description:'달의 궤도에서 자라난 서늘한별. 푸른 달빛을 모아 힘차게 반격해요.', mapId:'moon-paradise-2', shape:'grown-cool-star', color:'#879dff', level:4 },
+  { id:'grown-cool-star', name:'Lv4 성장한서늘한별', description:'달의 궤도에서 자라난 서늘한별. 입에서 짧은 푸른 냉기 숨결을 내뿜어 반격해요.', mapId:'moon-paradise-2', shape:'grown-cool-star', color:'#879dff', level:4 },
   { id: 'star-crab', name: 'Lv1 별게', description: '달과 별을 품은 파란 등껍질, 집게에서 작은 물결을 일으키는 별게', mapId: 'star-origin-1', shape: 'star-crab', color: '#96cfff', level: 1 },
   { id: 'water-star', name: 'Lv1 물별이', description: '별무늬 물병을 메고 물보라를 뿌리는 작은 물별이', mapId: 'star-origin-1', shape: 'water-star', color: '#b6ecff', level: 1 },
   { id: 'star-scorpion', name: 'Lv2 별전갈', description: '보랏빛 별가루를 품은 별전갈', mapId: 'star-origin-2', shape: 'star-scorpion', color: '#a875d8', level: 2 },
@@ -41,9 +41,11 @@ export const MONSTER_TYPES = Object.freeze([
   {id:'noksera',name:'노크세라',description:'달빛의 뿔로 별의 꿈을 지키는 보스',mapId:'moon-paradise-3',shape:'noksera',color:'#e3d9ff',level:1,boss:true,hp:2000,defense:5,power:20},
   {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:2000,defense:5,power:20},
   {id:'spirit-king',name:'성령의 왕',description:'별들의 낙원을 지키는 Lv6 성령왕',mapId:'star-paradise',shape:'spirit-king',color:'#d6c9ff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
-    combat:Object.freeze({power:30,defense:0,speedFactor:1.5,attackMs:3000,warningMs:2000,warningRadius:90})},
+    combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
+  {id:'star-guardian',name:'Lv4 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 별무늬 방패를 들고 가까이 다가와 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:4,hp:1000,power:15,defense:4,
+    combat:Object.freeze({power:15,defense:4,speedFactor:1.69})},
   {id:'serena',name:'별의 시초신 세레나',description:'별의 여신 석상에서 깨어난 별의 시초신',mapId:'star-origin-4',shape:'serena',color:'#e4dcff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
-    combat:Object.freeze({power:30,defense:0,speedFactor:1.5,attackMs:3000,warningMs:2000,warningRadius:90})}
+    combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})}
 ]);
 
 export function monsterType(id) {

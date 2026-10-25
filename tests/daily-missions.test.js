@@ -30,6 +30,27 @@ test('daily timetable validates location, awards one crumb atomically and retain
  assert.equal(f.p.inventory.find(e=>e.id==='star-crumb').quantity,1);
 });
 
+test('teacher daily automatic missions grant selected rewards while built-in timetable keeps its crumb default',async t=>{
+ const f=await readingFixture(t),selected=[{type:'star-crumb',quantity:2},{type:'star-shard',quantity:3},{type:'cosmic-energy',quantity:4}];
+ const made=ok(await call(f.teacher,'mission:auto:create',{title:'매일 세 가지',description:'시간표를 확인해요',objective:'timetable-read',goal:1,
+  repeat:'daily',distribution:'all',rewards:selected,rewardShards:3}));
+ const custom=f.room.dailyMissions.instances.find(m=>m.templateId===made.missionId),builtin=daily(f);
+ assert.deepEqual(custom.rewards,selected);assert.deepEqual(builtin.rewards,undefined);
+ ok(await read(f));
+ const customClaim=ok(await call(f.student,'mission:claim',{missionId:custom.id}));
+ assert.deepEqual(customClaim.rewards,selected);assert.equal(f.p.starShards,3);assert.equal(f.p.cosmicEnergy,4);
+ assert.equal(f.p.inventory.find(item=>item.id==='star-crumb').quantity,2);
+ const defaultClaim=ok(await call(f.student,'mission:claim',{missionId:builtin.id}));
+ assert.deepEqual(defaultClaim.rewards,[{type:'star-crumb',quantity:1}]);
+ assert.equal(f.p.inventory.find(item=>item.id==='star-crumb').quantity,3);
+ assert.equal((await call(f.student,'mission:claim',{missionId:custom.id})).ok,false);
+ await f.restart();
+ assert.deepEqual(f.room.dailyMissions.instances.find(m=>m.templateId===made.missionId).rewards,selected);
+ f.advance(86400000);ok(await call(f.teacher,'mission:board:read'));
+ const history=f.p.dailyMissionHistory.find(entry=>entry.templateId===made.missionId);
+ assert.deepEqual(history.rewards,selected);assert(validateDailyMissionHistory(f.p.dailyMissionHistory).some(entry=>entry.id===history.id));
+});
+
 test('teacher daily templates renew at Korean midnight with independent progress and expire old claims',async t=>{
  const f=await readingFixture(t);
  assert.equal((await call(f.student,'mission:auto:create',template)).ok,false);
