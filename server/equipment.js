@@ -1,6 +1,7 @@
 import {EQUIPMENT_ITEMS,equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 import {SHOP} from '../shared/config.js';
 import {GameError} from './rooms.js';
+import {hasUnlimitedShards} from '../shared/economy.js';
 
 function ensure(ok,message){if(!ok)throw new GameError(message);}
 const levelOf=p=>p.role==='teacher'?5:p.avatar?.level||1;
@@ -12,7 +13,7 @@ function addToBag(player,itemId){
 export function buyEquipment(player,itemId){
   const item=equipmentOf(itemId);ensure(item&&EQUIPMENT_ITEMS.includes(item)&&!item.craftOnly,'우주에너지 상점의 물건을 골라주세요.');
   ensure(levelOf(player)>=item.level,'이 장비는 LV'+item.level+'부터 살 수 있어요.');
-  const free=player.role==='teacher';
+  const free=hasUnlimitedShards(player);
   ensure(free||Number.isSafeInteger(player.cosmicEnergy)&&player.cosmicEnergy>=item.price,'우주에너지가 부족해요.');
   addToBag(player,item.id);
   if(!free)player.cosmicEnergy-=item.price;

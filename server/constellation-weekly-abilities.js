@@ -1,5 +1,6 @@
 import {randomInt,randomUUID} from 'node:crypto';
 import {SHARDS,SHOP} from '../shared/config.js';
+import {shardCost} from '../shared/economy.js';
 import {weeklyAbilityFor,constellationWeekStart,CONSTELLATION_WEEK_MS,corvusBudget} from '../shared/constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
 
@@ -233,7 +234,7 @@ function denial(player,ability,state,week,now){
   if(state.usedWeek!==null&&state.usedWeek>=week&&!ability.paralysis&&!repeatable&&!bonus)
     return '이번 주 별자리 능력은 이미 사용했어요. 다음 일요일에 다시 쓸 수 있어요.';
   if(!Number.isSafeInteger(player.starShards)||player.starShards<0||player.starShards>SHARDS.max)return '별 파편 잔액을 확인해주세요.';
-  if(player.starShards<ability.minBalance)return `주사위를 굴리려면 별 파편 ${ability.minBalance}개가 있어야 해요.`;
+  if(player.starShards<shardCost(player,ability.minBalance))return `주사위를 굴리려면 별 파편 ${ability.minBalance}개가 있어야 해요.`;
   if(player.starShards>SHARDS.max-ability.maxReward)return '별 파편을 더 담을 수 없어요.';
   return null;
 }

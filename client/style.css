@@ -539,7 +539,12 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 #teacher-dialog{--teacher-heading-size:24px}
 #teacher-dialog>h2{font-size:var(--teacher-heading-size);line-height:1.4;overflow-wrap:anywhere}
 #teacher-dialog>section>.teacher-tool-heading{font-size:var(--teacher-heading-size);line-height:1.4;margin:0 0 8px}
-#teacher-dialog .teacher-tool-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;font-family:inherit;font-size:inherit;font-weight:700;line-height:inherit;color:#5d4795;background:linear-gradient(145deg,#fff9f0,#eee8fa);border:1px solid #c9b6db;border-radius:14px;padding:12px 16px;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16;cursor:pointer}
+#teacher-dialog button{font-weight:400}
+#account-delete-options{border:1px solid #d8c8e8;border-radius:12px;padding:10px;margin:10px 0}
+#account-delete-list{max-height:170px;overflow:auto}
+#account-delete-list label{display:flex;align-items:center;gap:9px;margin:0;padding:6px 2px;cursor:pointer}
+#account-delete-list input[type="checkbox"]{width:20px;height:20px;min-height:20px;flex:0 0 20px;margin:0;padding:0;accent-color:#8560b2}
+#teacher-dialog .teacher-tool-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;font-family:inherit;font-size:inherit;font-weight:400;line-height:inherit;color:#5d4795;background:linear-gradient(145deg,#fff9f0,#eee8fa);border:1px solid #c9b6db;border-radius:14px;padding:12px 16px;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16;cursor:pointer}
 #teacher-dialog .teacher-tool-toggle:focus-visible{outline:3px solid #f0b35b;outline-offset:3px;border-radius:14px}
 #teacher-dialog .teacher-tool-toggle[aria-expanded="true"] .teacher-tool-indicator{transform:rotate(180deg)}
 #teacher-dialog .teacher-tool-toggle .teacher-tool-indicator{transition:transform .15s ease}

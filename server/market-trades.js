@@ -2,10 +2,11 @@ import {randomUUID} from 'node:crypto';
 import {ensure,GameError} from './rooms.js';
 import {itemOf,TRADE,SHOP,SHARDS} from '../shared/config.js';
 import {inMarket,MARKET_TRADE_TTL} from '../shared/market.js';
+import {hasUnlimitedShards,hasUnlimitedCrumbs} from '../shared/economy.js';
 
 const empty=()=>({shards:0,energy:0,items:[]});
-const hasAssets=(p,s)=>p.starShards>=s.shards&&(p.cosmicEnergy??0)>=s.energy
-  &&s.items.every(i=>(p.inventory.find(e=>e.id===i.id)?.quantity??0)>=i.quantity);
+const hasAssets=(p,s)=>(hasUnlimitedShards(p)||p.starShards>=s.shards&&(p.cosmicEnergy??0)>=s.energy)
+  &&s.items.every(i=>i.id==='star-crumb'&&hasUnlimitedCrumbs(p)||(p.inventory.find(e=>e.id===i.id)?.quantity??0)>=i.quantity);
 const party=(t,id)=>t&&(t.fromId===id||t.toId===id);
 const offered=s=>s.shards>0||s.energy>0||s.items.length>0;
 function side(value){
@@ -23,8 +24,9 @@ function side(value){
 }
 function exchangedBag(p,give,receive){
   const bag=new Map(p.inventory.map(i=>[i.id,{...i}]));
-  for(const i of give){const entry=bag.get(i.id),left=entry.quantity-i.quantity;left?bag.set(i.id,{...entry,quantity:left}):bag.delete(i.id);}
+  for(const i of give){if(i.id==='star-crumb'&&hasUnlimitedCrumbs(p))continue;const entry=bag.get(i.id),left=entry.quantity-i.quantity;left?bag.set(i.id,{...entry,quantity:left}):bag.delete(i.id);}
   for(const i of receive){
+    if(i.id==='star-crumb'&&hasUnlimitedCrumbs(p))continue;
     const current=bag.get(i.id),quantity=(current?.quantity||0)+i.quantity;
     ensure(quantity<=Math.min(SHOP.maxStack,itemOf(i.id)?.maxOwned||SHOP.maxStack),'가방이 가득 차서 거래할 수 없어요.');
     bag.set(i.id,current?{...current,quantity}:{id:i.id,quantity});
@@ -92,8 +94,8 @@ export function registerMarketTrades({action,socket,roster,whisper,clock}){
     let bagA,bagB,shardsA,shardsB,energyA,energyB;
     try{
       ensure(hasAssets(a,t.give)&&hasAssets(b,t.want),'가진 것이 바뀌어서 거래할 수 없어요.');
-      shardsA=a.starShards-t.give.shards+t.want.shards;shardsB=b.starShards-t.want.shards+t.give.shards;
-      energyA=(a.cosmicEnergy??0)-t.give.energy+t.want.energy;energyB=(b.cosmicEnergy??0)-t.want.energy+t.give.energy;
+      shardsA=hasUnlimitedShards(a)?a.starShards:a.starShards-t.give.shards+t.want.shards;shardsB=hasUnlimitedShards(b)?b.starShards:b.starShards-t.want.shards+t.give.shards;
+      energyA=hasUnlimitedShards(a)?(a.cosmicEnergy??0):(a.cosmicEnergy??0)-t.give.energy+t.want.energy;energyB=hasUnlimitedShards(b)?(b.cosmicEnergy??0):(b.cosmicEnergy??0)-t.want.energy+t.give.energy;
       ensure(shardsA<=SHARDS.max&&shardsB<=SHARDS.max,'별 파편이 넘쳐서 거래할 수 없어요.');
       ensure(Number.isSafeInteger(energyA)&&Number.isSafeInteger(energyB),'우주에너지가 넘쳐서 거래할 수 없어요.');
       bagA=exchangedBag(a,t.give.items,t.want.items);bagB=exchangedBag(b,t.want.items,t.give.items);

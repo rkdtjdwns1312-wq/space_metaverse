@@ -185,7 +185,7 @@ export class RoomStore {
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
       players:[...room.players.values()].map(p=>{
-        const out={id:p.id,nickname:p.nickname,role:p.role,x:p.x,y:p.y,facingX:p.facingX||1,
+        const out={id:p.id,nickname:p.nickname,role:p.role,accountKind:p.accountKind==='master'?'master':'student',x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
           ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,

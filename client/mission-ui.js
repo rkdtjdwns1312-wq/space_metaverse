@@ -1,10 +1,15 @@
 // 별 미션 게시판: 선생님이 조건을 확인한 뒤 학생이 직접 보상을 받습니다.
 import {RULES} from '/shared/config.js';
-export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial}){
+export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial,onCreateMenu}){
   const $=id=>document.getElementById(id);
   const dialog=document.createElement('dialog');dialog.id='mission-board-dialog';
   dialog.innerHTML='<h2>별 미션 게시판</h2><p id="mission-board-intro" class="muted">미션을 받고 조건을 달성해 보세요. 자동미션은 게임 안에서 달성되며, 일반 미션은 선생님이 확인해요.</p><section id="mission-create" hidden><h3>새 미션 만들기</h3><label for="mission-title">미션 이름</label><input id="mission-title" maxlength="40" placeholder="예: 오늘의 별빛 약속"><label for="mission-description">완료 조건</label><textarea id="mission-description" maxlength="240" rows="3" placeholder="어떤 일을 하면 완료되는지 적어 주세요."></textarea><label for="mission-reward">보상 · 별 파편</label><input id="mission-reward" type="number" min="1" max="10" value="1"><label for="mission-distribution">나누는 방법</label><select id="mission-distribution"><option value="all">교실 친구 모두에게 나누기</option><option value="board">친구들이 게시판에서 직접 받기</option></select><button id="mission-create-button" class="primary" type="button">미션 만들기</button></section><section id="mission-auto-create" hidden><h3>자동미션 만들기</h3><label for="mission-auto-title">미션 이름</label><input id="mission-auto-title" maxlength="40" placeholder="예: 별빛 여행자"><label for="mission-auto-objective">게임 안의 완료 조건</label><select id="mission-auto-objective"><option value="map-travel">다른 맵으로 이동하기</option><option value="energy-collect">우주에너지 줍기</option><option value="stars-win">반짝별 찾기 성공하기</option><option value="memory-win">별그림 짝맞추기 성공하기</option><option value="english-success">별 영어 발전소 성공하기</option></select><p id="mission-auto-guide" class="muted">맵의 문을 지나 다른 맵으로 이동할 때 1회로 셉니다.</p><label for="mission-auto-goal">목표 횟수</label><input id="mission-auto-goal" type="number" min="1" max="10" value="1"><label for="mission-auto-reward">보상 · 별 파편</label><input id="mission-auto-reward" type="number" min="1" max="10" value="1"><label for="mission-auto-distribution">나누는 방법</label><select id="mission-auto-distribution"><option value="all">교실 친구 모두에게 나누기</option><option value="board">친구들이 게시판에서 직접 받기</option></select><button id="mission-auto-create-button" class="primary" type="button">자동미션 만들기</button></section><h3 id="mission-board-list-title">받을 수 있는 미션</h3><div id="mission-board-list" class="mission-list"></div><p id="mission-board-error" role="alert"></p><div class="dialog-actions"><button id="mission-board-close" class="secondary" type="button">닫기</button></div>';
   document.body.append(dialog);
+  $('mission-board-close').insertAdjacentHTML('beforebegin','<button id="mission-board-create-open" class="primary" type="button" hidden>미션 만들기</button>');
+  $('mission-board-create-open').onclick=()=>{
+    if(getRoom()?.players.find(p=>p.id===getSelfId())?.role!=='teacher')return;
+    dialog.close();onCreateMenu?.();
+  };
   for(const prefix of ['mission','mission-auto']){
     $(`${prefix}-create-button`).insertAdjacentHTML('beforebegin',`<div class="mission-limits"><label for="${prefix}-capacity">선착순 수령 인원</label><input id="${prefix}-capacity" type="number" min="1" max="${RULES.maxStudents}" step="1" placeholder="제한 없음"><p class="muted">게시판에서 직접 받는 미션에 설정할 수 있어요.</p><label for="${prefix}-hours">유효기간 · 시간</label><input id="${prefix}-hours" type="number" min="1" max="8760" step="1" placeholder="제한 없음"><p class="muted">만든 시각부터 계산해요. 시간이 끝나면 받기·완료·보상 수령이 모두 마감돼요.</p></div>`);
     const distribution=$(`${prefix}-distribution`),capacity=$(`${prefix}-capacity`);
@@ -138,6 +143,7 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
     const me=getRoom()?.players.find(p=>p.id===getSelfId());
     const result=await request('mission:board:read',{});
     $('mission-create').hidden=true;$('mission-auto-create').hidden=true;
+    $('mission-board-create-open').hidden=me?.role!=='teacher';
     $('mission-board-list-title').textContent=me?.role==='teacher'?'교실 미션':'받을 수 있는 미션';
     const list=$('mission-board-list');list.replaceChildren();
     if(!result.missions.length){const p=document.createElement('p');p.className='muted';p.textContent=me?.role==='teacher'?'아직 만든 미션이 없어요.':'지금 받을 수 있는 미션이 없어요.';list.append(p);return;}

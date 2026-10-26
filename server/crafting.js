@@ -1,7 +1,8 @@
 import { CRAFTING,PUBLIC_CRAFTING_RECIPES,STAR_CRUMB_RECIPE } from '../shared/crafting.js';
 import { SHOP,SHARDS } from '../shared/config.js';
 import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
-import {shardCost} from '../shared/economy.js';
+import {shardCost,hasUnlimitedCrumbs} from '../shared/economy.js';
+import {isMaster} from '../shared/master-account.js';
 
 const validId = value => typeof value === 'string' && value.length > 0;
 const levelOf = item => Number.isSafeInteger(item?.level) ? item.level : null;
@@ -52,6 +53,7 @@ function validRecipe(recipe, catalog, maxQuantity) {
 
 function craftPublicRecipe(player, recipe, catalog) {
   if(recipe===STAR_CRUMB_RECIPE){
+    if(hasUnlimitedCrumbs(player))return {success:true,item:{id:recipe.output.id,name:'별 파편'},error:null,balance:player.starShards,inventory:player.inventory};
     const part=recipe.ingredients[0],owned=player.inventory.find(entry=>entry.id===part.id);
     if(!owned||owned.quantity<part.quantity)return fail(player,'insufficient-ingredients');
     if(player.starShards>=SHARDS.max)return fail(player,'shard-cap');
@@ -63,8 +65,9 @@ function craftPublicRecipe(player, recipe, catalog) {
   if(!output)return fail(player,'invalid-recipe');
   const ownedEntries=recipe.ingredients.map(part=>({part,entry:player.inventory.find(item=>item.id===part.id)}));
   if(ownedEntries.some(({part,entry})=>!entry||entry.quantity<part.quantity))return fail(player,'insufficient-ingredients');
-  if(!Number.isSafeInteger(player.cosmicEnergy)||player.cosmicEnergy<recipe.cosmicEnergy)return fail(player,'insufficient-energy');
-  const fee=recipe.starShards||0;
+  const energyFee=isMaster(player)?0:recipe.cosmicEnergy;
+  if(!Number.isSafeInteger(player.cosmicEnergy)||player.cosmicEnergy<energyFee)return fail(player,'insufficient-energy');
+  const fee=isMaster(player)?0:recipe.starShards||0;
   if(player.starShards<fee)return fail(player,'insufficient-fee');
   const existing=player.inventory.find(entry=>entry.id===output.id);
   if(existing?.quantity>=CRAFTING.maxQuantity)return fail(player,'output-stack-full');
@@ -75,7 +78,7 @@ function craftPublicRecipe(player, recipe, catalog) {
   if(existing)existing.quantity++;
   else player.inventory.push({id:output.id,quantity:1});
   player.starShards-=fee;
-  player.cosmicEnergy-=recipe.cosmicEnergy;
+  player.cosmicEnergy-=energyFee;
   if(!(player.learnedRecipeIds||[]).includes(output.id))player.learnedRecipeIds=[...(player.learnedRecipeIds||[]),output.id];
   return {success:true,item:output,error:null,balance:player.starShards,energyBalance:player.cosmicEnergy,inventory:player.inventory};
 }
@@ -93,6 +96,7 @@ export function attemptCraft(player, input, { recipes = [], catalog = [...SHOP.i
   const known = new Map(catalog.filter(item => validId(item?.id)).map(item => [item.id, item]));
   if (ingredients.some(part => !known.has(part.id))) return fail(player, 'unknown-ingredient');
   const owned = new Map(player.inventory.filter(item => validId(item?.id)).map(item => [item.id, item]));
+  if(hasUnlimitedCrumbs(player))owned.set('star-crumb',{id:'star-crumb',quantity:CRAFTING.maxQuantity+1});
   if (ingredients.some(part => !Number.isSafeInteger(owned.get(part.id)?.quantity) || owned.get(part.id).quantity < part.quantity)) return fail(player, 'insufficient-ingredients');
   const validRecipes = recipes.map(recipe => validRecipe(recipe, catalog, CRAFTING.maxQuantity)).filter(Boolean);
   if (validRecipes.length === 0) return fail(player, 'invalid-recipe');

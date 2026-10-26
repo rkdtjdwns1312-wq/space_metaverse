@@ -1,5 +1,6 @@
 import { PROGRESSION, VALLEY, VALLEY_ID } from '../shared/config.js';
 import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
+import {isTeacher} from '../shared/teacher-avatar.js';
 import { CONSTELLATIONS, CONSTELLATION_LIMIT, constellationOf } from '../shared/constellations.js';
 import { ensure } from './rooms.js';
 import { isNear } from './world.js';
@@ -11,7 +12,7 @@ const evolutionStar = VALLEY.objects.find(object => object.id === 'evolution-sta
 const growthStar = VALLEY.objects.find(object => object.id === 'growth-star');
 
 function requireStudentAt(player, object, label, allowTeacher = false) {
-  ensure(player?.role === 'student' || (allowTeacher && hasUnlimitedShards(player)), '학생만 ' + label + '을 이용할 수 있어요.');
+  ensure(player?.role === 'student' || (allowTeacher && isTeacher(player)), '학생만 ' + label + '을 이용할 수 있어요.');
   ensure(player.mapId === VALLEY_ID, '은하수계곡에서 ' + label + ' 가까이 가주세요.');
   ensure(object && isNear(player, object), label + ' 가까이 가주세요.');
 }
@@ -42,7 +43,7 @@ function quotaMessage(room, name) {
 function optionsFor(room, player) {
   const currentLegacy=constellationOf(player.avatar?.constellationId);
   const values=currentLegacy?.legacy?[...CONSTELLATIONS,currentLegacy]:CONSTELLATIONS;
-  const teacher=hasUnlimitedShards(player);
+  const teacher=isTeacher(player);
   const limit=constellationLimit(room);
   return values.map(value => {
     const count = constellationCount(room, value.id);
@@ -53,7 +54,7 @@ function optionsFor(room, player) {
 
 function baseInfo(room, player) {
   const requiredXp = requirement(player.avatar);
-  const teacher=hasUnlimitedShards(player);
+  const teacher=isTeacher(player);
   return {
     options: optionsFor(room, player),
     constellationLimit: constellationLimit(room),
@@ -62,7 +63,7 @@ function baseInfo(room, player) {
     canEvolve: player.avatar.level < PROGRESSION.transcendentLevel && player.avatar.xp >= requiredXp,
     teacherMode: teacher,
     starShards: player.starShards??0,
-    changeCost: teacher?0:player.avatar.level*2
+    changeCost: shardCost(player,player.avatar.level*2)
   };
 }
 
@@ -73,7 +74,7 @@ export function evolutionInfo(room, player) {
 
 export function selectTeacherEvolution(room,player,{level,constellationId}={}){
   requireStudentAt(player,evolutionStar,'진화의 별',true);
-  ensure(hasUnlimitedShards(player),'선생님만 자유 진화를 선택할 수 있어요.');
+  ensure(isTeacher(player),'선생님만 자유 진화를 선택할 수 있어요.');
   ensure(Number.isInteger(level)&&level>=1&&level<=PROGRESSION.transcendentLevel,'LV1~LV5 중 단계를 골라주세요.');
   const selected=level>=2?constellationOf(constellationId,level):null;
   ensure(level===1||(selected&&!selected.legacy),'현재 선택할 수 있는 별자리를 골라주세요.');
@@ -91,7 +92,7 @@ export function changeConstellation(room, player, { constellationId } = {},now=D
   ensure(player.avatar.constellationId!==selected.id,'지금과 다른 별자리를 골라주세요.');
   ensure(constellationCount(room, selected.id, player.id) < constellationLimit(room),
     quotaMessage(room, selected.name));
-  const cost=player.avatar.level*2;
+  const cost=shardCost(player,player.avatar.level*2);
   ensure(Number.isSafeInteger(player.starShards)&&player.starShards>=cost,
     '별자리를 변경하려면 별 파편 '+cost+'개가 필요해요.');
   player.avatar = {

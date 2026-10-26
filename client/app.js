@@ -171,7 +171,7 @@ const growthUI=createGrowthUI({request,stop,toast,isJoined:()=>!!selfId});
 const mailboxUI=createMailboxUI({request,stop,toast});
 const warningUI=createWarningUI({request,stop,toast,getSelfId:()=>selfId});
 const assignmentUI=createAssignmentUI({request,stop,toast});
-const missionUI=createMissionUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,onTutorial:()=>tutorial.open()});
+const missionUI=createMissionUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,onTutorial:()=>tutorial.open(),onCreateMenu:()=>social.openMissionCreate()});
 socket.on('department:changed',event=>departmentWork.changed(event));
 const departmentButton=document.createElement('button');departmentButton.id='planet-work';departmentButton.className='small primary';departmentButton.textContent='부서실적 · 분배하기 · 분배결과';
 $('planet-rename').after(departmentButton);
@@ -343,7 +343,7 @@ function updateRoom(value){
     li.append(name);
     if(p.id!==selfId){const select=document.createElement('button');select.type='button';select.className='small secondary friend-select';select.dataset.playerId=p.id;select.textContent='대화 · 부르기 · 파티';select.setAttribute('aria-label',p.nickname+' 친구 선택');select.onclick=()=>{social.friend(p.id);partyUI.friend(p.id);};li.append(select);}
     // 별 파편 잔액은 본인과 선생님에게만 보여 줍니다(친구끼리 비교·놀림 방지).
-    if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+(p.starShards||0);li.append(shards);}
+    if(p.role!=='teacher'&&(isTeacher||p.id===selfId)){const shards=document.createElement('span');shards.className='shards-badge';shards.textContent='★ '+formatShards(p);li.append(shards);}
     const effects=document.createElement('span');effects.className='effects';effects.textContent=(p.effects||[]).map(e=>e.icon).join(' ');
     li.append(effects);
     li.append(state);
@@ -1094,7 +1094,7 @@ const constellationTeacherSections=[piscesTeacherSection,swanTeacherSection,crow
 constellationTeacherSection.append(...constellationTeacherSections);
 const lv4TeacherSection=document.createElement('section');
 lv4TeacherSection.id='teacher-lv4-item-activity';
-lv4TeacherSection.innerHTML='<h3>Lv4 아이템 활동 확인</h3><button id="teacher-lv4-item-open" class="secondary" type="button">활동 내역 열기</button>';
+lv4TeacherSection.innerHTML='<h3>아이템 활동 확인</h3><button id="teacher-lv4-item-open" class="secondary" type="button">활동 내역 열기</button>';
 $('teacher-dialog').querySelector('.teacher-footer').before(lv4TeacherSection);
 $('teacher-lv4-item-open').onclick=()=>{$('teacher-dialog').close();void lv4UI.openTeacher();};
 // 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
@@ -1191,7 +1191,7 @@ function applyShopAck(reply){
 }
 function renderShopBuyList(){
   updateShopLevels();
-  const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=hasUnlimitedShards(me);
+  const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=me?.role==='teacher';
   const items=SHOP.items.filter(item=>!item.shopHidden&&shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)||teacher&&[2,3,4].includes(item.level)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
@@ -1220,7 +1220,7 @@ function renderShopBuyList(){
     const updatePrice=()=>{
       const quote=teacher?{cost:0,discounted:0}:discountedPurchase(item.price,shopQty(qty),discounts);
       const cost=shardCost(me,quote.cost);
-      price.textContent=teacher?'교사 무료 · 합계 ★ 0':'합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
+      price.textContent=hasUnlimitedShards(me)?(teacher?'교사 무료':'마스터 무제한')+' · 합계 ★ 0':'합계 ★ '+quote.cost+(quote.discounted?' · 반값 할인 '+quote.discounted+'개':'');
       buy.disabled=shards<cost;buy.title=buy.disabled?'별 파편이 부족해요.':'';
     };
     qty.oninput=updatePrice;updatePrice();

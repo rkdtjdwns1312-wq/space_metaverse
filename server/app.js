@@ -1,4 +1,5 @@
 import {advanceProjectiles,projectileViews} from './projectiles.js';
+import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
 import {teacherInventoryView,adjustTeacherInventory} from './teacher-inventory.js';
 import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
@@ -843,6 +844,25 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');ensure(persistent,'저장 기능이 필요해요.');
       const player=store.createStudent(s.room,data);roster(s.room);return {playerId:player.id};
     });
+    action('master:create',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');ensure(persistent,'저장 기능이 필요해요.');
+      const player=store.createMaster(s.room,data);roster(s.room);return {playerId:player.id};
+    });
+    action('student:delete',data=>{
+      const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 할 수 있어요.');ensure(persistent,'저장 기능이 필요해요.');
+      const result=deleteStudentAccounts(store,s.room,s.player,data.playerIds,clock());
+      const deleted=new Set(result.deletedIds);
+      for(const planet of s.room.planets.values())evaluateRename(s.room,planet);
+      // No disconnect or UI event can escape a failed disk transaction.
+      deliver(()=>{
+        for(const oldSocket of io.sockets.sockets.values())if(oldSocket.data.session?.room===s.room&&deleted.has(oldSocket.data.session.player.id)){
+          oldSocket.data.session=null;oldSocket.leave(s.room.code);
+          oldSocket.emit('room:closed',{message:'선생님이 이 계정을 삭제했어요. 다시 참여하려면 선생님께 문의해주세요.'});
+        }
+        for(const id of deleted)duelArcade.playerLeft(s.room.code,id);
+      });
+      roster(s.room);return result;
+    });
     action('teacher:inventory:read',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       return teacherInventoryView(s.room,s.player,data.playerId);
@@ -1305,8 +1325,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(p.role==='student','해금은 소속 학생이 자신의 별 파편으로 할 수 있어요.');
       ensure(tier,'해금할 모습을 골라주세요.');
       if(interiorUpgradeUnlocked(planet,object.id,tier.id))return {alreadyUnlocked:true};
-      ensure(p.starShards>=tier.price,`별 파편 ${tier.price}개가 필요해요.`);
-      p.starShards-=tier.price;planet.interiorUnlocks??={};planet.interiorUnlocks[object.id]??=[];planet.interiorUnlocks[object.id].push(tier.id);
+      const price=shardCost(p,tier.price);ensure(p.starShards>=price,`별 파편 ${tier.price}개가 필요해요.`);
+      p.starShards-=price;planet.interiorUnlocks??={};planet.interiorUnlocks[object.id]??=[];planet.interiorUnlocks[object.id].push(tier.id);
       roster(room);return {objectId:object.id,shapeId:tier.id,price:tier.price};
     });
     action('planet:interior-decor:set',data=>{
@@ -1320,7 +1340,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         ?mapOf(p.mapId).objects.find(item=>item.id===controlId&&item.kind==='interior-decor-machine'):null;
       ensure(control&&isNear(p,control),'제어장치 가까이에서 꾸며주세요.');
       ensure(interiorDecorColor(data.colorId)&&object.shapes.some(shape=>shape.id===data.shapeId),'준비된 색과 모양 중에서 골라주세요.');
-      ensure(interiorUpgradeUnlocked(planet,object.id,data.shapeId),'먼저 이 모습을 해금해 주세요.');
+      ensure(p.role==='teacher'||interiorUpgradeUnlocked(planet,object.id,data.shapeId),'먼저 이 모습을 해금해 주세요.');
       const style={colorId:data.colorId,shapeId:data.shapeId};
       planet.interiorDecor??={};planet.interiorDecor[object.id]=style;
       roster(room);

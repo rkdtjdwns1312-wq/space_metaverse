@@ -1,4 +1,6 @@
 import {MAP} from '../shared/config.js';
+import {shardCost,hasUnlimitedShards} from '../shared/economy.js';
+import {isMaster} from '../shared/master-account.js';
 import {ITEM_USE,SHOP,SHARDS,itemOf,PLAZA_ID,BLACK_HOLE_ID} from '../shared/config.js';
 import {STAR_CARD_CATALOG,goldItemIdOf} from '../shared/star-cards.js';
 import {ensure} from './rooms.js';
@@ -95,11 +97,11 @@ export function blackHolePreview(room,actor,ids,now=Date.now()){
     if(!amount)continue;
     ensure(level(p)<=level(actor),'대상 중 나보다 레벨이 높은 친구가 있어요.');
     ensure(!hasItemImmunity(p,now)&&!hasMoonProtectionFrom(p,actor,now),'대상 중 아이템 보호 중인 친구가 있어요.');
-    ensure(p.starShards>=amount,p.nickname+' 친구의 별 파편이 부족해요.');costs.push({playerId:p.id,nickname:p.nickname,amount});
+    ensure(p.starShards>=shardCost(p,amount),p.nickname+' 친구의 별 파편이 부족해요.');costs.push({playerId:p.id,nickname:p.nickname,amount});
   }
   const total=costs.reduce((n,p)=>n+p.amount,0);ensure(total>0,'선택한 부서에 해제할 경고나 검은별이 없어요.');
   const selfCost=costs.find(cost=>cost.playerId===actor.id)?.amount||0;
-  ensure(actor.role==='teacher'||actor.starShards+total-selfCost<=SHARDS.max,'받을 별 파편을 담을 잔액 여유가 부족해요.');
+  ensure(hasUnlimitedShards(actor)||actor.starShards+total-selfCost<=SHARDS.max,'받을 별 파편을 담을 잔액 여유가 부족해요.');
   return {costs,total,readyAt:now+BLACK_HOLE_COOLDOWN};
 }
 export function useLv4Item(room,actor,card,data={},now=Date.now()){
@@ -118,11 +120,11 @@ export function useLv4Item(room,actor,card,data={},now=Date.now()){
     message='친구 7명에게 소행성을 지급했어요. 급식 순서는 선생님이 확인해요.';
   }else if(card.id==='black-hole-card'){
     const preview=blackHolePreview(draft,user,data.planetIds,now);ids=preview.costs.map(c=>c.playerId);
-    for(const c of preview.costs){const p=draft.players.get(c.playerId);p.starShards-=c.amount;
+    for(const c of preview.costs){const p=draft.players.get(c.playerId);p.starShards-=shardCost(p,c.amount);
       for(const id of data.planetIds)for(const e of draft.planets.get(id).warnings?.entries||[])if(e.targetId===p.id)e.active=false;
       if(p.avatar.blackStar&&data.planetIds.includes(p.avatar.blackStar.planetId)){p.avatar.blackStar=null;if(p.mapId===BLACK_HOLE_ID)Object.assign(p,arrivePosition(draft,PLAZA_ID,{x:MAP.objects.find(o=>o.kind==='black-hole').x,y:MAP.objects.find(o=>o.kind==='black-hole').y+228}),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});}
     }
-    user.starShards+=preview.total;state(user).blackHoleReadyAt=preview.readyAt;
+    if(!isMaster(user))user.starShards+=preview.total;state(user).blackHoleReadyAt=preview.readyAt;
     message=`경고와 검은별을 해제하고 별 파편 ${preview.total}개를 받았어요. 2주 뒤 다시 사용할 수 있어요.`;
   }else if(card.id==='nebula-card'){
     const people=targets(draft,user,data.targetIds,3,3,now);

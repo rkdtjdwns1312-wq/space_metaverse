@@ -1,4 +1,5 @@
 import {SHARDS,SHOP} from '../shared/config.js';
+import {shardCost} from '../shared/economy.js';
 import {constellationWeekStart} from '../shared/constellation-weekly-abilities.js';
 import {constellationChangedThisWeek,validateConstellationAbilityState,cetusPraiseApplies} from './constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
@@ -74,11 +75,11 @@ export function swanCardOffer(room,player,now=Date.now()){
 
 export function buySwanStarCard(room,player,now=Date.now()){
   if(!swanCardOffer(room,player,now))throw new GameError('이번 주 별 카드 구매 기회가 없어요.');
-  if(player.starShards<4)throw new GameError('별 카드를 사려면 별 파편 4개가 필요해요.');
+  if(player.starShards<shardCost(player,4))throw new GameError('별 카드를 사려면 별 파편 4개가 필요해요.');
   const item=SHOP.items.find(value=>value.id==='star-card'),owned=player.inventory.find(value=>value.id===item.id);
   if(owned?owned.quantity>=Math.min(SHOP.maxStack,item.maxOwned??Infinity):player.inventory.length>=SHOP.maxKinds)
     throw new GameError('가방에 별 카드를 담을 자리가 없어요.');
-  player.starShards-=4;
+  player.starShards-=shardCost(player,4);
   if(owned)owned.quantity++;else player.inventory.push({id:item.id,quantity:1});
   const borrowed=borrowedSwan(player,now),state=validateConstellationAbilityState(swanState(player));
   state.swanDaily.cardBought=true;

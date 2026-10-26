@@ -1,4 +1,5 @@
 import {randomInt,randomUUID} from 'node:crypto';
+import {shardCost} from '../shared/economy.js';
 import {SHARDS} from '../shared/config.js';
 import {constellationWeekStart} from '../shared/constellation-weekly-abilities.js';
 import {constellationAbilityStatus,validateConstellationAbilityState} from './constellation-weekly-abilities.js';
@@ -116,9 +117,9 @@ export function useAriesSleep(room,player,data,now=Date.now(),pick=randomInt){
 export function wakeAriesSleep(player,now=Date.now()){
   const sleep=activeAriesSleep(player,now);
   if(!sleep||sleep.wakeCost!==1)throw new GameError('별 파편으로 즉시 깨어날 수 있는 수면 상태가 아니에요.');
-  if(player.starShards<1)throw new GameError('즉시 깨어나려면 별 파편 1개가 필요해요.');
+  if(player.starShards<shardCost(player,1))throw new GameError('즉시 깨어나려면 별 파편 1개가 필요해요.');
   const state=validateConstellationAbilityState(player.constellationAbilityState);
-  player.starShards--;
+  player.starShards-=shardCost(player,1);
   player.constellationAbilityState={...state,ariesSleep:null};
   return {starShards:player.starShards,message:'별 파편 1개를 내고 잠에서 깨어났어요.'};
 }

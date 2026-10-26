@@ -1,4 +1,7 @@
 import {validateJoinRequests} from './planet-membership.js';
+import {constellationOf,CONSTELLATION_LIMIT} from '../shared/constellations.js';
+import {MASTER_BASE} from '../shared/master-account.js';
+import {recordSerenaLevel} from './serena-progress.js';
 import {relocateDepartments} from './plaza-migration.js';
 import {validateLv4State} from './lv4-item-effects.js';
 import { randomBytes, randomInt } from 'node:crypto';
@@ -66,6 +69,7 @@ export function toRecord(room) {
     planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
     proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
+      ...(p.accountKind==='master'?{accountKind:'master'}:{}),
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
       serenaProgress:validateSerenaProgress(p.serenaProgress,p.avatar,p.role),
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
@@ -89,7 +93,7 @@ export function toRecord(room) {
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
 export function fromRecord(r,now=Date.now()) {
   const bad=()=>{throw new Error('교실 저장 데이터가 올바르지 않습니다: '+r.code);};
-  if(!Array.isArray(r.allowedNames)||r.allowedNames.length<(r.adminCreated?0:1)||r.allowedNames.length>RULES.maxStudents ||
+  if(!Array.isArray(r.allowedNames)||r.allowedNames.length>RULES.maxStudents ||
     !Array.isArray(r.students)||r.students.length>RULES.maxStudents||!Array.isArray(r.planets)||!Array.isArray(r.proposals)||
     !Array.isArray(r.itemLog)||!Array.isArray(r.tradeLog)||!Array.isArray(r.chat?.history)||
     typeof r.chat.enabled!=='boolean'||!Number.isFinite(r.createdAt))bad();
@@ -125,6 +129,7 @@ export function fromRecord(r,now=Date.now()) {
   }
   const names=new Set();
   for(const p of r.students){
+    if(p.accountKind!==undefined&&p.accountKind!=='student'&&p.accountKind!=='master')bad();
     // 이전 저장 파일에 없는 새 재화만 0으로 보완합니다. 잘못된 값은 초기화하지 않습니다.
     const cosmicEnergy=p.cosmicEnergy===undefined?0:p.cosmicEnergy;
     if(typeof p.id!=='string'||room.players.has(p.id)||!allowedNames.has(p.nickname)||names.has(p.nickname)||
@@ -230,6 +235,17 @@ export class PersistentRoomStore extends RoomStore {
     ensure(room.allowedNames.has(name)||room.allowedNames.size<RULES.maxStudents,`학생은 최대 ${RULES.maxStudents}명까지 만들 수 있어요.`);
     room.allowedNames.add(name);
     const player=this.add(room,name,'student',null);player.pin=pin;this.remove(room,player);return player;
+  }
+  createMaster(room,data){
+    const selected=constellationOf(data.constellationId,MASTER_BASE.level);
+    ensure(selected&&!selected.legacy,'마스터 계정의 첫 별자리를 골라주세요.');
+    const count=[...room.players.values()].filter(p=>p.role==='student'&&p.avatar.level>=2&&p.avatar.constellationId===selected.id).length;
+    ensure(count<(room.allowedNames.size+1>=33?3:CONSTELLATION_LIMIT),'이 별자리는 이미 정원이 찼어요. 다른 별자리를 골라주세요.');
+    const player=this.createStudent(room,data);
+    player.accountKind='master';
+    player.avatar={...player.avatar,level:MASTER_BASE.level,xp:0,form:'transcendent',constellationId:selected.id};
+    recordSerenaLevel(player);
+    return player;
   }
   open(data,socketId){
     const code=typeof data.code==='string'?data.code.trim().toUpperCase():'';

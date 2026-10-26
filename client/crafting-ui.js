@@ -1,7 +1,8 @@
 import {itemOf} from '/shared/config.js';
-import {hasUnlimitedShards,shardCost} from '/shared/economy.js';
+import {hasUnlimitedShards,hasUnlimitedCrumbs,shardCost} from '/shared/economy.js';
+import {isMaster} from '/shared/master-account.js';
 import {renderWallet} from './wallet-ui.js';
-import {PUBLIC_CRAFTING_RECIPES} from '/shared/crafting.js';
+import {PUBLIC_CRAFTING_RECIPES,CRAFTING} from '/shared/crafting.js';
 import {SHARDS} from '/shared/config.js';
 
 // 선택한 재료는 화면에서만 예약합니다. 닫기/실패/연결 종료 때 아이템을 잃지 않습니다.
@@ -61,7 +62,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     const player=getPlayer();if(!player){dialog.close();return;}
     $('crafting-recipes-open').hidden=player.role!=='teacher';
     if(player.role!=='teacher')clearRecipes();
-    const inventory=player.inventory||[];
+    const inventory=hasUnlimitedCrumbs(player)?[...(player.inventory||[]).filter(i=>i.id!=='star-crumb'),{id:'star-crumb',quantity:CRAFTING.maxQuantity+1}]:player.inventory||[];
     // 지급/사용으로 가방이 바뀌어도 실제 보유량보다 많이 예약하지 않습니다.
     for(const [id,count] of selected){const own=inventory.find(i=>i.id===id)?.quantity||0;if(!own)selected.delete(id);else selected.set(id,Math.min(count,own));}
     $('crafting-grid').replaceChildren();const materials=[...selected];
@@ -76,14 +77,15 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     for(const entry of inventory){
       const item=itemOf(entry.id);if(!item)continue;const count=selected.get(entry.id)||0,available=entry.quantity-count;
       const button=document.createElement('button');button.type='button';button.dataset.itemId=entry.id;icon(button,item);
-      button.append(Object.assign(document.createElement('span'),{textContent:item.name+' · '+available+'개'}));button.setAttribute('aria-label',item.name+' 넣기, 남은 '+available+'개');button.disabled=busy||available===0;
+      const unlimited=entry.id==='star-crumb'&&hasUnlimitedCrumbs(player);
+      button.append(Object.assign(document.createElement('span'),{textContent:item.name+' · '+(unlimited?'∞':available+'개')}));button.setAttribute('aria-label',item.name+' 넣기, 남은 '+(unlimited?'무제한':available+'개'));button.disabled=busy||available===0||count>=CRAFTING.maxQuantity;
       button.onclick=()=>{if(!selected.has(entry.id)&&selected.size>=16){toast('재료는 16종류까지 넣을 수 있어요.');return;}selected.set(entry.id,count+1);render();};$('crafting-bag').append(button);
     }
     const publicRecipe=PUBLIC_CRAFTING_RECIPES.find(recipe=>recipe.ingredients.length===selected.size&&recipe.ingredients.every(part=>selected.get(part.id)===part.quantity));
-    const cost=publicRecipe?(publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
+    const cost=publicRecipe?(isMaster(player)?0:publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
-    $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+publicRecipe.cosmicEnergy.toLocaleString():teacher?'조합 · 교사 무료':'조합 · 별 파편 '+cost+'개';
-    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(publicRecipe&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&(player.starShards||0)>=SHARDS.max);
+    $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+(isMaster(player)?0:publicRecipe.cosmicEnergy).toLocaleString():teacher?'조합 · 재화 비용 없음':'조합 · 별 파편 '+cost+'개';
+    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(publicRecipe&&!isMaster(player)&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&!isMaster(player)&&(player.starShards||0)>=SHARDS.max);
     $('crafting-clear').disabled=busy||!selected.size;
   }
   $('crafting-close').onclick=()=>dialog.close();$('crafting-clear').onclick=()=>{selected.clear();render();};
@@ -94,12 +96,12 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     try{
       const result=await request('crafting:combine',{ingredients});selected.clear();
       const player=getPlayer(),charge=shardCost(player,fee);
-      $('crafting-note').textContent=result.success?'조합 성공! '+itemOf(result.itemId)?.name+'을 얻었어요.':`조합에 실패했어요. 재료는 모두 가방으로 돌아왔어요. ${hasUnlimitedShards(player)?'교사는 무료예요.':'별 파편 '+charge+'개를 사용했어요.'}`;
+      $('crafting-note').textContent=result.success?'조합 성공! '+itemOf(result.itemId)?.name+'을 얻었어요.':`조합에 실패했어요. 재료는 모두 가방으로 돌아왔어요. ${hasUnlimitedShards(player)?'재화 비용은 없어요.':'별 파편 '+charge+'개를 사용했어요.'}`;
     }catch(e){$('crafting-note').textContent=e.message;}finally{busy=false;render();}
   };
   return {
     async open(){
-      try{const info=await request('crafting:open',{});enabled=info.enabled;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=(hasUnlimitedShards(player)?'일반 조합은 교사 무료예요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+' 공개 보스 조합은 재료와 우주에너지가 필요하며, 조합법에서 확인할 수 있어요.';render();stop();if(!dialog.open)dialog.showModal();}
+      try{const info=await request('crafting:open',{});enabled=info.enabled;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=(hasUnlimitedShards(player)?'일반 조합은 재화 비용이 없어요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+(isMaster(player)?' 마스터도 보스 조합 재료는 직접 구해야 해요.':' 공개 보스 조합은 재료와 우주에너지가 필요하며, 조합법에서 확인할 수 있어요.');render();stop();if(!dialog.open)dialog.showModal();}
       catch(e){toast(e.message);}
     },
     update(){if(dialog.open)render();},

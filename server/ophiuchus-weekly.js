@@ -1,5 +1,6 @@
 import {randomInt} from 'node:crypto';
 import {SHARDS} from '../shared/config.js';
+import {shardCost} from '../shared/economy.js';
 import {constellationWeekStart,CONSTELLATION_WEEK_MS,weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
 import {constellationAbilityStatus,constellationChangedThisWeek,validateConstellationAbilityState,freshConstellationAbilityState,chooseConstellationItem} from './constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
@@ -58,9 +59,9 @@ export function useOphiuchus(room,actor,{level,targetId}={},now=Date.now(),pick=
 export function clearOphiuchusParalysis(player,now=Date.now()){
   const current=activeOphiuchusParalysis(player,now);
   if(!current)throw new GameError('해제할 마비상태가 없어요.');
-  if(!Number.isSafeInteger(player.starShards)||player.starShards<current.cost||player.starShards>SHARDS.max)throw new GameError(`별 파편 ${current.cost}개가 필요해요.`);
+  if(!Number.isSafeInteger(player.starShards)||player.starShards<shardCost(player,current.cost)||player.starShards>SHARDS.max)throw new GameError(`별 파편 ${current.cost}개가 필요해요.`);
   const state=validateConstellationAbilityState(player.constellationAbilityState);
-  player.starShards-=current.cost;state.paralysis=null;
+  player.starShards-=shardCost(player,current.cost);state.paralysis=null;
   if(current.level===4&&state.abilitySeal?.sourceId===current.sourceId)state.abilitySeal=null;
   player.constellationAbilityState=state;
   return {starShards:player.starShards,message:`별 파편 ${current.cost}개로 마비상태를 해제했어요.`,paralysis:null};

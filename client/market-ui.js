@@ -1,5 +1,6 @@
 import {itemOf, TRADE} from '/shared/config.js';
 import {inMarket} from '/shared/market.js';
+import {hasUnlimitedShards,hasUnlimitedCrumbs,formatCurrency} from '/shared/economy.js';
 
 const number = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
 const amount = value => number(value).toLocaleString('ko-KR');
@@ -244,17 +245,17 @@ export function createMarketUI({getRoom, getSelfId, request, stop, toast}) {
   function draftProblem(value) {
     if (!value) return '재화는 0 이상의 정수로 입력해 주세요. 별 파편은 ' + TRADE.maxShards + '개까지 올릴 수 있어요.';
     const player = self();
-    if (value.shards > number(player?.starShards) || value.energy > number(player?.cosmicEnergy)) return '가지고 있는 재화보다 많이 올릴 수 없어요.';
+    if (!hasUnlimitedShards(player)&&(value.shards > number(player?.starShards) || value.energy > number(player?.cosmicEnergy))) return '가지고 있는 재화보다 많이 올릴 수 없어요.';
     if (value.items.length > TRADE.maxItemKinds) return '아이템은 ' + TRADE.maxItemKinds + '종류까지 올릴 수 있어요.';
     if (value.items.some(entry => !Number.isSafeInteger(entry.quantity) || entry.quantity < 1 || entry.quantity > 99
-      || entry.quantity > number(player?.inventory?.find(item => item.id === entry.id)?.quantity))) return '아이템 수량을 확인해 주세요. 종류마다 보유량 안에서 최대 99개까지 올릴 수 있어요.';
+      || !(entry.id==='star-crumb'&&hasUnlimitedCrumbs(player))&&entry.quantity > number(player?.inventory?.find(item => item.id === entry.id)?.quantity))) return '아이템 수량을 확인해 주세요. 종류마다 보유량 안에서 최대 99개까지 올릴 수 있어요.';
     return '';
   }
   function adjustItem(id, delta) {
     const trade = active();
     if (action || !trade || trade.id !== draftTradeId || trade.status !== 'negotiating') return;
     const entry = draft.items.find(item => item.id === id), quantity = (entry?.quantity || 0) + delta;
-    const owned = number(self()?.inventory?.find(item => item.id === id)?.quantity);
+    const owned = id==='star-crumb'&&hasUnlimitedCrumbs(self())?99:number(self()?.inventory?.find(item => item.id === id)?.quantity);
     if (quantity < 0 || quantity > Math.min(owned, 99)) return;
     if (!entry && draft.items.length >= TRADE.maxItemKinds) {
       message('한 번에 ' + TRADE.maxItemKinds + '종류까지 올릴 수 있어요.'); return;
@@ -385,8 +386,9 @@ export function createMarketUI({getRoom, getSelfId, request, stop, toast}) {
     refs.other.state.textContent = confirmed.includes(otherId) ? '✓ 수락했어요' : '수락 전';
     refs.own.state.dataset.confirmed = String(mine && !dirty);
     refs.other.state.dataset.confirmed = String(confirmed.includes(otherId));
-    refs.wallet.textContent = '내 보유량 · 별 파편 ' + amount(self()?.starShards) + ' · 우주에너지 ' + amount(self()?.cosmicEnergy);
-    const inventory = (self()?.inventory || []).filter(entry => entry.quantity > 0);
+    refs.wallet.textContent = '내 보유량 · 별 파편 ' + formatCurrency(self(),'starShards') + ' · 우주에너지 ' + formatCurrency(self(),'cosmicEnergy');
+    const inventory = (self()?.inventory || []).filter(entry => entry.quantity > 0&&!(entry.id==='star-crumb'&&hasUnlimitedCrumbs(self())));
+    if(hasUnlimitedCrumbs(self()))inventory.push({id:'star-crumb',quantity:99});
     const ids = new Set(inventory.map(entry => entry.id));
     for (const [id, row] of refs.bagRows) if (!ids.has(id)) { row.remove(); refs.bagRows.delete(id); }
     for (const entry of inventory) {
@@ -399,7 +401,8 @@ export function createMarketUI({getRoom, getSelfId, request, stop, toast}) {
       }
       if (row.dataset.remaining !== String(remaining)) {
         row.dataset.remaining = String(remaining); row.replaceChildren(); itemContent(row, entry.id, remaining);
-        row.setAttribute('aria-label', itemName(entry.id) + ' 하나 추가, 남은 ' + remaining + '개');
+        if(entry.id==='star-crumb'&&hasUnlimitedCrumbs(self()))row.append(document.createTextNode(' · ∞'));
+        row.setAttribute('aria-label', itemName(entry.id) + ' 하나 추가, 남은 ' + (entry.id==='star-crumb'&&hasUnlimitedCrumbs(self())?'무제한':remaining+'개'));
       }
       row.disabled = !!action || !remaining || selected >= 99 || (!selected && draft.items.length >= TRADE.maxItemKinds);
     }

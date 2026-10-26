@@ -8,6 +8,7 @@ import {createClassroomServer} from '../server/app.js';
 import {damageMonster} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {summonSerena} from '../server/serena.js';
+import {beginSerenaSkill} from '../server/serena-skills.js';
 import {SERENA} from '../shared/serena.js';
 import {mapOf} from '../shared/config.js';
 const key='serena-test-only-key',call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data);
@@ -34,6 +35,26 @@ function qualify(f,p){f.game.store.transact(()=>{
   Object.assign(p.avatar,{level:5,form:'transcendent',constellationId:'taurus'});
   p.serenaProgress={highestLevel:5,bossKills:['leoon','noksera']};
 });Object.assign(p,{mapId:SERENA.mapId,x:statue.x,y:statue.y+90});}
+
+test('세레나 별 표식 스냅샷과 실제 서버 틱의 즉사·활력 이벤트가 일치하며 다른 맵에는 피해를 보내지 않는다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  const boss=f.room.monsters.get(SERENA.monsterId),hits=[],vitals=[],otherHits=[];let ownTick,otherTick;
+  f.a.on('world:positions',v=>ownTick=v);f.b.on('world:positions',v=>otherTick=v);
+  f.a.on('combat:monster-hit',v=>hits.push(v));f.a.on('combat:vitals',v=>vitals.push(v));
+  f.b.on('combat:monster-hit',v=>otherHits.push(v));
+  assert.equal(beginSerenaSkill(f.room,boss,'black',f.now,()=>0),true);
+  await until(()=>ownTick?.monsters.some(m=>m.serenaSkillEffects?.marks.length)&&otherTick);
+  const mark=ownTick.monsters.find(m=>m.id===boss.id).serenaSkillEffects.marks[0];
+  assert.equal(mark.kind,'black');assert.equal(mark.remaining,5);assert.equal(mark.playerId,f.pa.id);assert.equal(Object.hasOwn(mark,'contacts'),false);
+  // 기존 몬스터 위치는 교실 전체에 공유하고 클라이언트가 mapId로 그림을 제한합니다.
+  const otherBoss=otherTick.monsters.find(m=>m.id===boss.id);
+  assert.notEqual(otherBoss.mapId,f.pb.mapId);assert.equal(otherBoss.serenaSkillEffects.marks.some(m=>m.playerId===f.pb.id),false);
+  f.now+=10000;
+  await until(()=>hits.some(h=>h.skillKind==='serena-black')&&vitals.some(v=>v.playerId===f.pa.id&&v.vitals.defeated));
+  assert.equal(ensureVitals(f.pa).hp,0);assert.equal(hits.filter(h=>h.skillKind==='serena-black').length,1);
+  assert.equal(otherHits.length,0);
+  await until(()=>!ownTick.monsters.find(m=>m.id===boss.id)?.serenaSkillEffects?.marks.length);
+});
 
 test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요청 중 하나만 소환한다',async t=>{
   const f=await fixture(t);

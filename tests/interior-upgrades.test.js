@@ -103,8 +103,20 @@ test('outsiders, other interiors, distance, forged controller/target and teacher
   }
   f.at(f.teacherPlayer);
   assert.equal((await call(f.teacher,UNLOCK,f.data())).ok,false,'teacher cannot bypass the student shard charge');
-  assert.equal((await call(f.teacher,SET,f.data())).ok,false,'teacher cannot select a locked paid style');
   assert.deepEqual(f.state(),before);
+});
+
+test('teacher selects all interior tiers free without granting student unlocks',async t=>{
+  const f=await fixture(t);f.at(f.teacherPlayer);
+  const before=f.state();
+  for(const objectId of INTERIOR_DECOR_TARGETS){
+    for(const shapeId of ['tier1','tier2','tier3'])ok(await call(f.teacher,SET,f.data(objectId,shapeId)));
+    assert.equal(f.planet.interiorDecor[objectId].shapeId,'tier3');
+  }
+  assert.deepEqual(f.state().balances,before.balances);
+  assert.deepEqual(f.planet.interiorUnlocks||{},{});
+  assert.equal((await call(f.students[0].socket,SET,f.data('room','tier3',{role:'teacher'}))).ok,false);
+  const saved=f.state();await f.restart();assert.deepEqual(f.state(),saved);
 });
 
 test('concurrent duplicate unlocks by two members charge exactly one payer once',async t=>{

@@ -1,5 +1,6 @@
 import {randomInt,randomUUID} from 'node:crypto';
 import {SHARDS} from '../shared/config.js';
+import {hasUnlimitedShards,shardCost} from '../shared/economy.js';
 import {constellationWeekStart,weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
 import {constellationAbilityStatus,validateConstellationAbilityState} from './constellation-weekly-abilities.js';
 import {GameError} from './pin-auth.js';
@@ -18,7 +19,7 @@ function eligible(room,source,target,level,now){
     throw new GameError('접속 중인 다른 친구를 골라 주세요.');
   const {win,loss}=weeklyAbilityFor('cancer',level);
   for(const player of [source,target]){
-    if(player.starShards<loss)throw new GameError('대결하려면 두 친구에게 잃을 수 있는 별 파편이 있어야 해요.');
+    if(player.starShards<shardCost(player,loss))throw new GameError('대결하려면 두 친구에게 잃을 수 있는 별 파편이 있어야 해요.');
     if(player.starShards>SHARDS.max-win)throw new GameError('두 친구 모두 이길 때 받을 별 파편 공간이 있어야 해요.');
   }
 }
@@ -73,7 +74,7 @@ export function respondCancerDuel(room,target,requestId,accept,targetChoice,now=
   }
   const {win,loss}=weeklyAbilityFor('cancer',level);
   const deltaFrom=won?win:level===2?1:0,deltaTo=won?-loss:win;
-  source.starShards+=deltaFrom;target.starShards+=deltaTo;
+  if(!hasUnlimitedShards(source))source.starShards+=deltaFrom;if(!hasUnlimitedShards(target))target.starShards+=deltaTo;
   const state=validateConstellationAbilityState(source.constellationAbilityState);
   source.constellationAbilityState={...state,usedWeek:constellationWeekStart(now),pending:null,
     lastResult:{constellationId:'cancer',level,roll:null,reward:deltaFrom,targetId:target.id,winnerId:won?source.id:target.id,

@@ -18,7 +18,8 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('menu-dialog').addEventListener('click',e=>{if(e.target.closest('#teacher-tools,#planet-new,#planet-exit,#planet-info,#leave'))closeRoots();},true);
   $('crew-button').addEventListener('click',closeRoots,true);
   $('open-chat').onclick=()=>openChat();
-  $('open-missions').onclick=()=>me()?.role==='teacher'?open('mission-create-menu'):(closeRoots(),onMissionOpen());
+  function openMissionCreate(){if(me()?.role==='teacher')open('mission-create-menu');}
+  $('open-missions').onclick=()=>me()?.role==='teacher'?openMissionCreate():(closeRoots(),onMissionOpen());
   $('mission-create-menu-close').onclick=()=>$('mission-create-menu').close();
   for(const [id,mode] of [['mission-manual-open','manual'],['mission-auto-open','auto']])$(id).onclick=()=>{
     $('mission-create-menu').close();onMissionCreate(mode);
@@ -82,7 +83,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('summon-dialog').addEventListener('cancel',e=>{e.preventDefault();respond(false);});
   setInterval(()=>{if(getSelfId()){invitations();if($('friend-dialog').open)friendState();}},1000);
   return {
-    friend,openChat,
+    friend,openChat,openMissionCreate,
     update(){
       const room=getRoom(),self=me();if(!self)return;
       const old=$('chat-recipient').value;

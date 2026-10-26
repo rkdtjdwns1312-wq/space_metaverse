@@ -57,6 +57,7 @@ import {drawSerenaExplosion} from './serena-art.js';
 import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
 import {drawNokseraMoon} from './noksera-moon.js';
 import {NOKSERA_HORN_BURST} from '/shared/boss-skills.js';
+import {drawSerenaGround,drawSerenaMarks} from './serena-skill-art.js';
 import {LEOON_ROAR,LEOON_CHARGE} from '/shared/boss-skills.js';
 import {drawLeoonWarning,drawLeoonImpact} from './leoon-skill.js';
 import {drawEquipmentAura} from './equipment-aura.js';
@@ -761,6 +762,10 @@ export function createWorld(canvas) {
       ctx.restore();
     }
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
+    const serenaEffects=visibleMonsters.filter(m=>m.serenaSkillEffects).map(m=>m.serenaSkillEffects),serenaNow=Date.now();
+    canvas.dataset.serenaMarkCount=String(serenaEffects.reduce((n,e)=>n+(e.marks||[]).filter(m=>m.endsAt>serenaNow).length,0));
+    canvas.dataset.serenaWarningCount=String(serenaEffects.reduce((n,e)=>n+(e.warnings||[]).filter(w=>w.endsAt>serenaNow).length,0));
+    for(const effects of serenaEffects)drawSerenaGround(ctx,effects,visiblePlayers,points,serenaNow,reducedMotion.matches);
     canvas.dataset.waterAuraCount=String(waterAuras.length);
     canvas.dataset.waterAuraKind=waterAuras[0]?.kind||'';
     canvas.dataset.waterAuraFrame=waterAuras[0]?String(waterFrameAt(t-waterAuras[0].startsAt,waterAuras[0].durationMs)):'';
@@ -794,6 +799,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
+    for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
     for(const roll of lootRolls)if(roll.mapId===myMapId&&roll.expiresAt>Date.now())
       for(const result of roll.rolls||[]){

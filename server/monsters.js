@@ -13,6 +13,7 @@ import {bossVictoryCredits} from './serena-progress.js';
 import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokseraMoonTimeline,nokseraFullMoon,LEOON_ROAR,LEOON_CHARGE} from '../shared/boss-skills.js';
 import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skills.js';
 import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spirit-king-skills.js';
+import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
 
 
 export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:2000,mapExitHealCount:3});
@@ -57,6 +58,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
       moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,
       roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,leoonSkill:null,
       summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,
+      serenaDecisionAt:now+2000,
       targetId:null,attackers:new Map(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   };
@@ -75,6 +77,7 @@ export function monsterViews(room,now=Date.now()){
     ...(m.hp>0&&m.moonCast?.mapId===m.mapId&&m.moonCast.endsAt>now?{moonCast:{...m.moonCast}}:{}),
     ...(m.hp>0&&m.moonAura?.mapId===m.mapId&&m.moonAura.endsAt>now?{moonAura:{...m.moonAura}}:{}),
     ...(m.hp>0&&m.leoonSkill?.mapId===m.mapId?{leoonSkill:{...m.leoonSkill}}:{}),
+    ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
@@ -117,6 +120,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
     if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
+    if(target.typeId==='serena')clearSerenaSkills(target);
     if(target.typeId==='spirit-king')clearSpiritKingEffects(room,target.id);
     if(type?.boss){
       if(room.persistBossDefeats){
@@ -173,6 +177,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.hp<=0){
+      if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
       if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
@@ -184,6 +189,10 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const type=monsterType(m.typeId),rule=type?.combat??MONSTER_COMBAT[m.mapId];
+    if(type?.id==='serena'){
+      hits.push(...tickSerenaSkills(room,m,now));
+      if(m.hp<=0){m.moving=false;continue;}
+    }
     if(!type||!rule||mapOf(m.mapId,room.planets?.values?.()||[]).id!==m.mapId){m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.moving=false;continue;}
     if(m.moonAura&&(now>=m.moonAura.endsAt||m.moonAura.mapId!==m.mapId))m.moonAura=null;
     const factor=rule.speedFactor;
@@ -266,6 +275,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       }
     }
     if(type.id==='spirit-king'&&target&&trySpiritKingSkills(room,m,target,now,random,mapOf(m.mapId,room.planets?.values?.()||[]))){m.moving=false;continue;}
+    if(type.id==='serena'&&target&&now>=(m.serenaDecisionAt||0)&&trySerenaSkills(room,m,target,now,random)){m.moving=false;continue;}
     const reach=m.radius+(ATTACK_VISUAL.reach-RULES.radius);
     let distance=Infinity;
     let resting=false;
