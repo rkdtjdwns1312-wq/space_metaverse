@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 systemctl is-active --quiet woozooclass.service
-curl --connect-timeout 5 --max-time 15 --fail --silent --show-error http://127.0.0.1:3000/health |
+# Type=simple reports active before Node has opened its HTTP listener.
+# Wait at most about 35 seconds (30-second retry window + final 5-second request).
+health_json=$(curl --retry 15 --retry-connrefused --retry-delay 1 --retry-max-time 30 --connect-timeout 5 --max-time 5 --fail --silent --show-error http://127.0.0.1:3000/health)
+printf '%s' "$health_json" |
   /usr/local/bin/node --input-type=module -e 'let s="";for await(const c of process.stdin)s+=c;const v=JSON.parse(s);if(!v.ok||!v.persistent||v.publicOrigin!=="https://woozooclass.kr")process.exit(1);console.log("Local persistent health: OK");'
 for path in /.env /data/classes/ /deploy/ /server/index.js; do
   status=$(curl --connect-timeout 5 --max-time 15 --silent --show-error --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:3000$path")
