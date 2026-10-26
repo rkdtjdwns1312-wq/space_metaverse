@@ -178,7 +178,7 @@ try{
  await student.locator('#nickname').fill('1');await student.locator('#student-pin').fill('1234');await student.locator('#student-form .submit').click();
  await student.locator('#lobby').waitFor({state:'hidden'});
  await dismissTutorial(student);
- await openSocialFromDock(teacher);await teacher.locator('#player-count').filter({hasText:'2 / 30'}).waitFor({state:'attached'});check('Allowlist enforced, same-room student appears');
+ await openSocialFromDock(teacher);await teacher.locator('#player-count').filter({hasText:`2 / ${RULES.maxPlayers}`}).waitFor({state:'attached'});check('Allowlist enforced, same-room student appears');
  const room=game.store.rooms.get(code),p=[...room.players.values()].find(p=>p.role==='student'),id=p.id;
  const initialX=p.x;
  const canvasBefore=await teacher.locator('#world').evaluate(c=>c.toDataURL());

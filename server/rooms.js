@@ -98,8 +98,8 @@ export class RoomStore {
   create(data,socketId,{archivedCreation=false}={}) {
     ensure(archivedCreation||this.rooms.size<this.maxActiveRooms,'지금은 교실이 가득 찼어요. 잠시 후 다시 시도해주세요.');
     const title=nickname(data.title || '우리 우주 교실');
-    ensure(Array.isArray(data.allowedNames) && data.allowedNames.length>=(data.allowEmpty===true?0:1) && data.allowedNames.length<=29,
-      '학생 닉네임을 1~29개 입력해주세요.');
+    ensure(Array.isArray(data.allowedNames) && data.allowedNames.length>=(data.allowEmpty===true?0:1) && data.allowedNames.length<=RULES.maxStudents,
+      `학생 닉네임을 1~${RULES.maxStudents}개 입력해주세요.`);
     const allowedNames=new Set(data.allowedNames.map(nickname));
     ensure(allowedNames.size===data.allowedNames.length,'허용 닉네임에 같은 이름이 있어요.');
     ensure(!allowedNames.has('선생님'),'선생님은 학생 닉네임으로 사용할 수 없어요.');
@@ -130,7 +130,7 @@ export class RoomStore {
     }
     // 저장하지 않는 임시 교실의 기존 소켓 호출은 PIN을 보내지 않을 수 있습니다.
     const pin=data.pin===undefined?null:pinHash(data.pin);
-    ensure(room.players.size<RULES.maxPlayers,'교실 정원 30명이 모두 찼어요.');
+    ensure(room.players.size<RULES.maxPlayers,`교실 정원 ${RULES.maxPlayers}명이 모두 찼어요.`);
     const player=this.add(room,name,'student',socketId);player.pin=pin;return {room,player};
   }
   add(room,name,role,socketId) {

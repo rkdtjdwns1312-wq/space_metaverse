@@ -89,8 +89,8 @@ export function toRecord(room) {
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
 export function fromRecord(r,now=Date.now()) {
   const bad=()=>{throw new Error('교실 저장 데이터가 올바르지 않습니다: '+r.code);};
-  if(!Array.isArray(r.allowedNames)||r.allowedNames.length<(r.adminCreated?0:1)||r.allowedNames.length>29 ||
-    !Array.isArray(r.students)||r.students.length>29||!Array.isArray(r.planets)||!Array.isArray(r.proposals)||
+  if(!Array.isArray(r.allowedNames)||r.allowedNames.length<(r.adminCreated?0:1)||r.allowedNames.length>RULES.maxStudents ||
+    !Array.isArray(r.students)||r.students.length>RULES.maxStudents||!Array.isArray(r.planets)||!Array.isArray(r.proposals)||
     !Array.isArray(r.itemLog)||!Array.isArray(r.tradeLog)||!Array.isArray(r.chat?.history)||
     typeof r.chat.enabled!=='boolean'||!Number.isFinite(r.createdAt))bad();
   if(r.teacherAccess && (typeof r.teacherAccess!=='object'||
@@ -207,8 +207,8 @@ export class PersistentRoomStore extends RoomStore {
     let accounts=null;
     if(data.studentAccounts!==undefined){
       ensure(this.teacherManagedAccounts,'학생 계정 동시 생성은 저장 교실에서만 가능해요.');
-      ensure(Array.isArray(data.studentAccounts)&&data.studentAccounts.length>=1&&data.studentAccounts.length<=29,
-        '학생 수는 1~29명으로 정해주세요.');
+      ensure(Array.isArray(data.studentAccounts)&&data.studentAccounts.length>=1&&data.studentAccounts.length<=RULES.maxStudents,
+        `학생 수는 1~${RULES.maxStudents}명으로 정해주세요.`);
       accounts=data.studentAccounts.map(entry=>{
         ensure(entry&&typeof entry==='object'&&!Array.isArray(entry),'학생 이름과 비밀번호를 확인해주세요.');
         const name=nickname(entry.nickname);
@@ -227,7 +227,7 @@ export class PersistentRoomStore extends RoomStore {
   createStudent(room,data){
     const name=nickname(data.nickname),pin=pinHash(data.pin);
     ensure(name!=='선생님'&&![...room.players.values()].some(p=>p.nickname===name),'이미 있는 이름이에요. 다른 이름을 적어주세요.');
-    ensure(room.allowedNames.has(name)||room.allowedNames.size<29,'학생은 최대 29명까지 만들 수 있어요.');
+    ensure(room.allowedNames.has(name)||room.allowedNames.size<RULES.maxStudents,`학생은 최대 ${RULES.maxStudents}명까지 만들 수 있어요.`);
     room.allowedNames.add(name);
     const player=this.add(room,name,'student',null);player.pin=pin;this.remove(room,player);return player;
   }
@@ -268,7 +268,7 @@ export class PersistentRoomStore extends RoomStore {
     }
     ensure(!this.teacherManagedAccounts,'선생님이 아직 계정을 만들지 않았어요. 선생님께 알려주세요.');
     const pin=pinHash(data.pin);
-    ensure(room.players.size<RULES.maxPlayers,'교실 정원 30명이 모두 찼어요.');
+    ensure(room.players.size<RULES.maxPlayers,`교실 정원 ${RULES.maxPlayers}명이 모두 찼어요.`);
     const player=this.add(room,name,'student',socketId);player.pin=pin;return {room,player};
   }
   remove(room,p){

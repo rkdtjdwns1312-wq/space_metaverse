@@ -1,5 +1,5 @@
 import {PROGRESSION} from '/shared/config.js';
-import {constellationOf} from '/shared/constellations.js';
+import {CONSTELLATION_LIMIT,constellationOf} from '/shared/constellations.js';
 import {weeklyAbilityFor} from '/shared/constellation-weekly-abilities.js';
 import {characterAbilities} from '/shared/character-skills.js';
 function replyInfo(value) {
@@ -66,7 +66,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     const name = document.createElement('span'); name.className = 'constellation-name'; name.textContent = option.name;
     const count = document.createElement('span'); count.className = 'constellation-count';
     count.textContent = info.teacherMode?option.type+ (option.current&&selectedLevel===info.avatar.level?' · 현재':'') :
-      (option.legacy?'이전 별자리':option.type)+' · '+(option.current ? '현재 · ' : '')+option.count+'/2명';
+      (option.legacy?'이전 별자리':option.type)+' · '+(option.current ? '현재 · ' : '')+option.count+'/'+(info.constellationLimit??CONSTELLATION_LIMIT)+'명';
     button.append(icon);
     const infoButton=document.createElement('button');infoButton.type='button';infoButton.className='constellation-info-button';
     infoButton.textContent='정보보기';infoButton.setAttribute('aria-label',option.name+' 정보보기');
@@ -74,7 +74,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     const artRow=document.createElement('div');artRow.className='constellation-card-art';artRow.append(button,infoButton);
     card.append(artRow,name,count);
     card.onclick=event=>{if(event.target.closest('.constellation-info-button,.constellation-choice'))return;if(!button.disabled)onChoose(option);};
-    if (!option.available) button.title = '이미 두 친구가 선택했어요.';
+    if (!option.available) button.title = '이미 '+(info.constellationLimit??CONSTELLATION_LIMIT)+'명의 친구가 선택했어요.';
     else if(mode==='change'&&info.starShards<info.changeCost)button.title='별 파편 '+info.changeCost+'개가 필요해요.';
     button.onclick = () => onChoose(option);
     return card;
@@ -132,7 +132,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     if (mode === 'menu' && info?.avatar.level === 1) $('error').textContent = 'LV1은 별자리를 바로 변경할 수 없어요. 첫 진화를 할 때 별자리를 골라주세요.';
     if (mode === 'change') {
       $('panel-title').textContent = '별자리 아바타 변경하기';
-      $('help').textContent = '변경 비용: 별 파편 '+info.changeCost+'개 · 보유 '+info.starShards+'개. 같은 교실에서 별자리마다 두 명까지 선택할 수 있어요.';
+      $('help').textContent = '변경 비용: 별 파편 '+info.changeCost+'개 · 보유 '+info.starShards+'개. 같은 교실에서 별자리마다 '+(info.constellationLimit??CONSTELLATION_LIMIT)+'명까지 선택할 수 있어요.';
       renderGrid(option => showConfirmation(option.id,'change'));
     }
     if (mode === 'evolve') renderEvolutionChoice();

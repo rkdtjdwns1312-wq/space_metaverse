@@ -1,9 +1,10 @@
 import {randomUUID} from 'node:crypto';
 import {ensure} from './rooms.js';
+import {RULES} from '../shared/config.js';
 import {journeyComplete,journeyMissions} from './tutorial-journey.js';
 import {dailyInstances,ensureDailyMissions,dailyHistoryViews} from './daily-missions.js';
 
-export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10,recipients:30,hours:8760});
+export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10,recipients:RULES.maxStudents,hours:8760});
 export const MISSION_REWARD_TYPES=Object.freeze(['star-crumb','star-shard','cosmic-energy']);
 export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read','culture-read','history-read','science-read','one-stroke-win']);
 const autoObjectives=new Set(AUTO_OBJECTIVES);
@@ -78,7 +79,7 @@ export function createMission(room,data,now=Date.now()){
   ensure(!daily||data.objective&&data.objective!=='tutorial-complete'&&data.distribution==='all'&&data.maxRecipients==null,'매일 반복은 다시 수행할 수 있는 자동미션을 전체 배포로 정해주세요.');
   ensure(['all','board'].includes(data?.distribution),'배포 방식을 선택해 주세요.');
   const maxRecipients=data.maxRecipients??null,validityHours=data.validityHours??null;
-  ensure(maxRecipients===null||Number.isSafeInteger(maxRecipients)&&maxRecipients>=1&&maxRecipients<=MISSION_LIMITS.recipients,'선착순 인원은 1~30명으로 정해 주세요.');
+  ensure(maxRecipients===null||Number.isSafeInteger(maxRecipients)&&maxRecipients>=1&&maxRecipients<=MISSION_LIMITS.recipients,`선착순 인원은 1~${MISSION_LIMITS.recipients}명으로 정해 주세요.`);
   ensure(maxRecipients===null||data.distribution==='board','선착순 미션은 게시판에서 직접 받기로 정해 주세요.');
   ensure(validityHours===null||Number.isSafeInteger(validityHours)&&validityHours>=1&&validityHours<=MISSION_LIMITS.hours,'유효기간은 1~8760시간으로 정해 주세요.');
   ensure(!daily||validityHours===null||validityHours<=24,'일일 미션의 유효기간은 1~24시간으로 정해 주세요.');

@@ -5,7 +5,7 @@ import { RoomStore } from '../server/rooms.js';
 import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
 import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
 import {departmentSlots} from '../shared/plaza-layout.js';
-const roomData={title:'테스트 교실',allowedNames:Array.from({length:29},(_,i)=>String(i+1))};
+const roomData={title:'테스트 교실',allowedNames:Array.from({length:35},(_,i)=>String(i+1))};
 test('the enlarged plaza exposes its real objects and department placement slots',()=>{
  assert.deepEqual([MAP.width,MAP.height],[3720,2640]);
  assert.deepEqual(MAP.spawn,{x:1800,y:1404});
@@ -30,12 +30,12 @@ test('students start as level-one asteroids, teacher is a guardian; identities a
  assert.throws(()=>store.join({code:room.code,nickname:'1'},'other'));
  assert.throws(()=>store.join({code:room.code,nickname:'허용안됨'},'other'));
 });
-test('capacity is 30 including teacher, with non-overlapping spawn positions',()=>{
+test('capacity is 35 students plus one teacher, with non-overlapping spawn positions',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'teacher');
- for(let i=1;i<=29;i++)store.join({code:room.code,nickname:String(i),pin:'1234'},'s'+i);
+ for(let i=1;i<=35;i++)store.join({code:room.code,nickname:String(i),pin:'1234'},'s'+i);
  assert.equal(room.players.size,RULES.maxPlayers);
  for(const p of room.players.values())assert.ok(isFree(room,p.x,p.y,p.id));
- assert.throws(()=>store.join({code:room.code,nickname:'30'},'extra'));assert.equal(room.players.size,30);
+ assert.throws(()=>store.join({code:room.code,nickname:'36'},'extra'));assert.equal(room.players.size,36);
 });
 test('room names and allowlist are validated atomically',()=>{
  const s=new RoomStore();

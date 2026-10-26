@@ -78,6 +78,55 @@ test('two sequential first evolutions fill a constellation and the next request 
   assert.deepEqual(third.avatar, before);
 });
 
+for (const size of [32,33,34,35]) test(`registered roster ${size} sets quota regardless of online count`, () => {
+  const me=player({avatar:{...createAvatar(),xp:15}});
+  const chosen=Array.from({length:2},()=>player({connected:false,avatar:{...createAvatar(),level:2,constellationId:'gemini'}}));
+  const teacher=player({role:'teacher'});
+  const classroom=room(me,teacher,...chosen);
+  classroom.allowedNames=new Set(Array.from({length:size},(_,i)=>'학생'+i));
+  const info=evolutionInfo(classroom,me);
+  assert.equal(info.constellationLimit,size>=33?3:2);
+  assert.equal(info.options.find(value=>value.id==='gemini').available,size>=33);
+  if(size===32){
+    assert.throws(()=>evolveConstellation(classroom,me,{constellationId:'gemini'}),/이미 두 친구/);
+  }else{
+    evolveConstellation(classroom,me,{constellationId:'gemini'});
+    const fourth=player({avatar:{...createAvatar(),xp:15}});
+    classroom.players.set(fourth.id,fourth);
+    assert.throws(()=>evolveConstellation(classroom,fourth,{constellationId:'gemini'}),/이미 세 친구/);
+    assert.equal(fourth.avatar.level,1);
+  }
+});
+
+test('quota updates when the 33rd student registers and applies to paid changes without resetting existing avatars',()=>{
+  const me=player({starShards:20,avatar:{...createAvatar(),level:2,constellationId:'aries'}});
+  const peers=Array.from({length:2},()=>player({connected:false,avatar:{...createAvatar(),level:2,constellationId:'gemini'}}));
+  const classroom=room(me,...peers);
+  classroom.allowedNames=new Set(Array.from({length:32},(_,i)=>'학생'+i));
+  assert.throws(()=>changeConstellation(classroom,me,{constellationId:'gemini'}),/이미 두 친구/);
+  assert.equal(me.starShards,20);
+  classroom.allowedNames.add('추가학생');
+  changeConstellation(classroom,me,{constellationId:'gemini'});
+  assert.equal(me.starShards,16);
+  const fourth=player({starShards:20,avatar:{...createAvatar(),level:2,constellationId:'aries'}});
+  classroom.players.set(fourth.id,fourth);
+  assert.throws(()=>changeConstellation(classroom,fourth,{constellationId:'gemini'}),/이미 세 친구/);
+  assert.equal(fourth.starShards,20);
+  classroom.allowedNames.delete('추가학생');
+  me.avatar.xp=20;
+  evolveConstellation(classroom,me,{});
+  assert.equal(me.avatar.level,3);
+  assert.equal(me.avatar.constellationId,'gemini');
+});
+
+test('all 33 registered students can evolve across the 16 constellations',()=>{
+  const students=Array.from({length:33},()=>player({avatar:{...createAvatar(),xp:15}}));
+  const classroom=room(...students);
+  classroom.allowedNames=new Set(students.map(value=>value.id));
+  students.forEach((value,index)=>evolveConstellation(classroom,value,{constellationId:CONSTELLATIONS[index%16].id}));
+  assert.ok(students.every(value=>value.avatar.level===2));
+});
+
 test('constellation change preserves level, xp, form, equipment, and department metadata', () => {
   const me = player({ starShards:12,avatar: { ...createAvatar(), level: 4, xp: 17, constellationId: 'orion', departmentId: 'science', equipment: { pet: 'comet' } } });
   const before = structuredClone(me.avatar);

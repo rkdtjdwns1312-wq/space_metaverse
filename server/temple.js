@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {ensure} from './rooms.js';
+import {RULES} from '../shared/config.js';
 const KST = 9 * 60 * 60 * 1000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -48,7 +49,7 @@ export function validateTemple(value) {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.week !== 'string' || !Array.isArray(entry.totals)) fail(`weeks[${i}]`);
     validDate(entry.week, `weeks[${i}]`);
     if (weekStart(Date.parse(`${entry.week}T00:00:00Z`)) !== entry.week || weeks.has(entry.week)) fail(`duplicate/invalid week ${entry.week}`);
-    weeks.add(entry.week); if (entry.totals.length > 29) fail('totals length');
+    weeks.add(entry.week); if (entry.totals.length > RULES.maxStudents) fail('totals length');
     const ids = new Set();
     const totals = entry.totals.map((row, j) => {
       if (!row || typeof row.playerId !== 'string' || !Number.isSafeInteger(row.total) || row.total < 0 || ids.has(row.playerId)) fail(`weeks[${i}].totals[${j}]`);
@@ -63,7 +64,7 @@ export function validateTemple(value) {
   out.assignments=assignments.map((entry,i)=>{
     if(!entry||typeof entry.id!=='string'||!entry.id||assignmentIds.has(entry.id)||typeof entry.text!=='string'||!entry.text.trim()||entry.text.length>2000||
       !Number.isInteger(entry.lineIndex)||entry.lineIndex<0||entry.lineIndex>2000||!Number.isSafeInteger(entry.at)||entry.at<0||
-      !Array.isArray(entry.completedIds)||entry.completedIds.length>29||entry.completedIds.some(id=>typeof id!=='string')||
+      !Array.isArray(entry.completedIds)||entry.completedIds.length>RULES.maxStudents||entry.completedIds.some(id=>typeof id!=='string')||
       new Set(entry.completedIds).size!==entry.completedIds.length)fail(`assignments[${i}]`);
     validDate(entry.sourceDate,`assignments[${i}].sourceDate`);validDate(entry.week,`assignments[${i}].week`);
     if(weekStart(Date.parse(`${entry.sourceDate}T00:00:00Z`))!==entry.week)fail(`assignments[${i}].week`);
@@ -177,7 +178,7 @@ export function recordReward(room, playerId, amount, now = Date.now()) {
   const temple = templeOf(room), week = weekStart(now); let row = temple.weeks.find(v => v.week === week);
   if (!row) { row = { week, totals: [] }; temple.weeks.unshift(row); }
   let total = row.totals.find(v => v.playerId === playerId);
-  if (!total) { if (row.totals.length >= 29) throw new Error('too many reward players'); total = { playerId, total: 0 }; row.totals.push(total); }
+  if (!total) { if (row.totals.length >= RULES.maxStudents) throw new Error('too many reward players'); total = { playerId, total: 0 }; row.totals.push(total); }
   if (total.total > Number.MAX_SAFE_INTEGER - amount) throw new Error('reward total overflow');
   total.total += amount; temple.weeks.sort((a, b) => b.week.localeCompare(a.week)); temple.weeks.splice(8);
 }

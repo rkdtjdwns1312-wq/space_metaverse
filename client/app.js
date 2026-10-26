@@ -1,4 +1,5 @@
 import {appearanceLevelOf} from '/shared/character-skills.js';
+import {RULES} from '/shared/config.js';
 import {allowsOfflineItemTarget} from '/shared/item-targets.js';
 import {createMailboxUI} from './mailbox-ui.js';
 import {createMarketUI} from './market-ui.js';
@@ -262,7 +263,7 @@ $('teacher-key').addEventListener('input',()=>{
 const studentAccountDraft=[];
 function renderStudentAccountRows(){
   const count=Number($('student-count').value);
-  if(!Number.isInteger(count)||count<1||count>29)return;
+  if(!Number.isInteger(count)||count<1||count>RULES.maxStudents)return;
   for(const [index,row] of [...$('student-account-rows').children].entries()){
     studentAccountDraft[index]={name:row.querySelector('.student-account-name').value,
       pin:row.querySelector('.student-account-pin').value};
@@ -287,11 +288,12 @@ function clearStudentAccountPins(){
 }
 $('student-count').addEventListener('input',renderStudentAccountRows);
 $('student-count').addEventListener('change',()=>{
-  const normalized=String(Math.min(29,Math.max(1,Number($('student-count').value)||1)));
+  const normalized=String(Math.min(RULES.maxStudents,Math.max(1,Number($('student-count').value)||1)));
   if($('student-count').value!==normalized){$('student-count').value=normalized;renderStudentAccountRows();}
 });
 renderStudentAccountRows();
-$('allowed-names').value=Array.from({length:29},(_,i)=>String(i+1)).join(', ');
+$('student-count').max=String(RULES.maxStudents);
+$('allowed-names').value=Array.from({length:RULES.maxStudents},(_,i)=>String(i+1)).join(', ');
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('teacher')){
   const key=fragment.get('teacher');$('teacher-key').value=key;setMode('teacher');history.replaceState(null,'',location.pathname);
@@ -1325,7 +1327,7 @@ function reset(message){
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   teacherInventory.update();
   teacherCardCatalog.reset();
-  $('players').replaceChildren();$('player-count').textContent='0 / 30';$('crew-count').textContent='0 / 30';$('crew-empty').hidden=false;
+  $('players').replaceChildren();$('player-count').textContent=`0 / ${RULES.maxPlayers}`;$('crew-count').textContent=`0 / ${RULES.maxPlayers}`;$('crew-empty').hidden=false;
   clearChat();$('chat-input').value='';updateChatCount();$('chat-feedback').textContent='';$('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';
   $('room-title').textContent='우리들의 우주 광장';$('self-name').textContent='나의 소행성';
   $('self-description').textContent='교실에 입장하면 내 소행성의 정보를 볼 수 있어요.';

@@ -121,6 +121,31 @@ try {
   assert.deepEqual(typeButtonStyle, {background: 'rgb(240, 235, 255)', color: 'rgb(94, 79, 138)'});
   await page.locator('[data-constellation-type="제작계"]').click();
   assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(), true);
+  const geminiCard=page.locator('.constellation-card').filter({has:page.locator('[data-constellation-id="gemini"]')});
+  assert.match(await geminiCard.locator('.constellation-count').textContent(),/2\/2명/);
+  assert.match(await page.locator('[data-constellation-id="gemini"]').getAttribute('title'),/2명의 친구/);
+  await page.evaluate(()=>{
+    window.evolutionInfo.constellationLimit=3;
+    const gemini=window.evolutionInfo.options.find(option=>option.id==='gemini');gemini.available=true;
+  });
+  await page.locator('#evolution-refresh').click();
+  await geminiCard.locator('.constellation-count').filter({hasText:'2/3명'}).waitFor();
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(),false);
+  await page.evaluate(()=>{
+    const gemini=window.evolutionInfo.options.find(option=>option.id==='gemini');gemini.count=3;gemini.available=false;
+  });
+  await page.locator('#evolution-refresh').click();
+  await geminiCard.locator('.constellation-count').filter({hasText:'3/3명'}).waitFor();
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(),true);
+  assert.match(await page.locator('[data-constellation-id="gemini"]').getAttribute('title'),/3명의 친구/);
+  await page.screenshot({path:'.local/evolution-quota-three.png'});
+  await page.evaluate(()=>{
+    window.evolutionInfo.constellationLimit=2;
+    window.evolutionInfo.options.find(option=>option.id==='gemini').count=2;
+  });
+  await page.locator('#evolution-refresh').click();
+  await geminiCard.locator('.constellation-count').filter({hasText:'2/2명'}).waitFor();
+  check('별자리 정원 2명·3명 표시, 세 번째 허용 및 정원 마감 버튼·설명');
   await page.locator('#evolution-types-back').click();
   await page.locator('[data-constellation-type="생산계"]').click();
   await page.locator('#evolution-grid .constellation-choice').first().waitFor();
@@ -149,6 +174,14 @@ try {
 
   await page.locator('#evolution-change').click();
   assert.equal(await page.locator('#evolution-grid .constellation-choice').count(), 16);
+  assert.match(await page.locator('#evolution-help').textContent(),/별자리마다 2명/);
+  await page.evaluate(()=>{window.evolutionInfo.constellationLimit=3;});
+  await page.locator('#evolution-refresh').click();
+  await page.locator('#evolution-help').filter({hasText:'별자리마다 3명'}).waitFor();
+  await page.evaluate(()=>{window.evolutionInfo.constellationLimit=2;});
+  await page.locator('#evolution-refresh').click();
+  await page.locator('#evolution-help').filter({hasText:'별자리마다 2명'}).waitFor();
+  check('유료 별자리 변경 안내도 서버 정원 2명·3명을 반영');
   await page.locator('[data-constellation-id="libra"]').click();
   await page.locator('#evolution-confirm-text').filter({hasText:'별 파편 4개'}).waitFor();
   await page.locator('#evolution-yes').click();

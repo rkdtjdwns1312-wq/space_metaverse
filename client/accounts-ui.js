@@ -1,4 +1,5 @@
 import { drawStudentQr, shareableStudentLink } from './student-qr.js';
+import { RULES } from '/shared/config.js';
 
 export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
   const $=id=>document.getElementById(id),classCode=new URLSearchParams(location.search).get('class')||'';
@@ -17,7 +18,7 @@ export function createAccountsUI({getRoom,getSelfId,request,toast,saveToken}) {
       document.querySelector('label[for="join-code"]').hidden=!!classCode;
       $('nickname').placeholder='선생님이 알려주신 이름';document.querySelector('label[for="nickname"]').textContent='이름';
       $('pin-help').textContent='선생님이 알려주신 비밀번호로 들어오세요.';
-      $('names-help').textContent='학생 이름을 쉼표나 줄바꿈으로 구분 · 최대 29명. 계정과 임시 비밀번호가 만들어져요.';
+      $('names-help').textContent=`학생 이름을 쉼표나 줄바꿈으로 구분 · 최대 ${RULES.maxStudents}명. 계정과 임시 비밀번호가 만들어져요.`;
     }
   }).catch(()=>{throw new Error('입장 설정을 불러오지 못했어요. 새로고침해주세요.');});
   ready.catch(e=>toast(e.message));

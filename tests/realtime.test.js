@@ -23,7 +23,7 @@ async function fixture(t,options={}) {
  return {game,url,connect};
 }
 const call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
-const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNames:Array.from({length:29},(_,i)=>String(i+1))});
+const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNames:Array.from({length:35},(_,i)=>String(i+1))});
 
 test('타격 표시는 마지막 실제 이동 방향·간격을 서버가 정하고 같은 맵에만 보이며 피해를 주지 않는다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
@@ -115,12 +115,12 @@ test('real sockets enforce teacher permissions and keep rooms isolated',async t=
  student.emit('player:input',{x:0,y:0});await sleep(70);const stopped=p.x;await sleep(200);assert.equal(p.x,stopped);
  assert.equal(leak,false);assert.equal(game.store.rooms.get(rb.room.code).players.size,1);
 });
-test('30 real browser-equivalent connections admitted, extra and duplicate membership rejected',async t=>{
+test('36 real browser-equivalent connections admitted, extra and duplicate membership rejected',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher);
- const students=await Promise.all(Array.from({length:29},()=>connect()));
+ const students=await Promise.all(Array.from({length:35},()=>connect()));
  const joins=await Promise.all(students.map((s,i)=>call(s,'room:join',{code:r.room.code,nickname:String(i+1)})));
- assert.ok(joins.every(r=>r.ok));assert.equal(game.store.rooms.get(r.room.code).players.size,30);
- assert.equal((await call(await connect(),'room:join',{code:r.room.code,nickname:'30'})).ok,false);
+ assert.ok(joins.every(r=>r.ok));assert.equal(game.store.rooms.get(r.room.code).players.size,36);
+ assert.equal((await call(await connect(),'room:join',{code:r.room.code,nickname:'36'})).ok,false);
  assert.equal((await call(students[0],'room:join',{code:r.room.code,nickname:'2'})).ok,false);
 });
 test('disconnect, authenticated resume, expiry and explicit teacher closure',async t=>{

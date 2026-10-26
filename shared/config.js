@@ -15,7 +15,8 @@ import {DUEL_ARCADES} from './duel-arcade.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
 // 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
-export const RULES = Object.freeze({ maxPlayers: 30, maxRooms: 10, tickMs: 50, broadcastMs: 100,
+const MAX_STUDENTS = 35;
+export const RULES = Object.freeze({ maxStudents: MAX_STUDENTS, maxPlayers: MAX_STUDENTS + 1, maxRooms: 10, tickMs: 50, broadcastMs: 100,
   speed: 620, radius: 16, reconnectMs: 60_000, inputExpiryMs: 300 });
 // 상호작용: 행성·문 가장자리에서 이 거리 안에 있으면 살펴보기/나가기를 할 수 있습니다. 서버도 같은 값으로 검사합니다.
 export const INTERACT = Object.freeze({ radius: 40 });

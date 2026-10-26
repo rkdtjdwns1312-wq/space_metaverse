@@ -1,4 +1,5 @@
 import {ensure} from './rooms.js';
+import {RULES} from '../shared/config.js';
 // 계정이 잠시 접속하지 않아도 부원으로 셉니다. 가입 전에는 명시적으로 탈퇴해야 합니다.
 export function requireNoDepartment(player){
   ensure(!player.avatar.departmentId,'현재 부서행성에서 먼저 탈퇴해주세요.');
@@ -6,7 +7,7 @@ export function requireNoDepartment(player){
 export const departmentMembers=(room,planetId)=>[...room.players.values()].filter(p=>p.role==='student'&&p.avatar.departmentId===planetId);
 export function validateJoinRequests(value){
   if(value===undefined)return [];
-  ensure(Array.isArray(value)&&value.length<=29&&value.every(r=>r&&typeof r.playerId==='string'&&Number.isSafeInteger(r.at)&&r.at>=0)&&new Set(value.map(r=>r.playerId)).size===value.length,'행성 가입 신청 저장 데이터가 올바르지 않습니다.');
+  ensure(Array.isArray(value)&&value.length<=RULES.maxStudents&&value.every(r=>r&&typeof r.playerId==='string'&&Number.isSafeInteger(r.at)&&r.at>=0)&&new Set(value.map(r=>r.playerId)).size===value.length,'행성 가입 신청 저장 데이터가 올바르지 않습니다.');
   return value.map(({playerId,at})=>({playerId,at}));
 }
 export function clearJoinRequests(room,playerId){for(const planet of room.planets.values())planet.joinRequests=(planet.joinRequests||[]).filter(r=>r.playerId!==playerId);}
