@@ -1,0 +1,30 @@
+[Unit]
+Description=Woozoo classroom application
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=woozooclass
+Group=woozooclass
+WorkingDirectory=/opt/woozooclass/current
+EnvironmentFile=/etc/woozooclass/app.env
+ExecStartPre=/usr/local/bin/node /opt/woozooclass/current/deploy/prepare-store.mjs
+ExecStart=/usr/local/bin/node /opt/woozooclass/current/server/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/woozooclass
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

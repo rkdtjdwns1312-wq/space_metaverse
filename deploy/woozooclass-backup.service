@@ -1,0 +1,9 @@
+[Unit]
+Description=Private local backup of Woozoo classroom
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/local/sbin/woozooclass-backup
+TimeoutStartSec=300

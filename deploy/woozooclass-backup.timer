@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Woozoo classroom backup at 04:10 KST
+
+[Timer]
+OnCalendar=*-*-* 19:10:00 UTC
+Persistent=false
+AccuracySec=1min
+Unit=woozooclass-backup.service
+
+[Install]
+WantedBy=timers.target
