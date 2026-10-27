@@ -54,7 +54,8 @@ export async function verifyPersistence(browser){
     // 이동 자체는 기존 82개 시나리오에서 검증합니다. 이 검사는 상점 앞을 시작 위치로 고정합니다.
     const shop=STREET.objects.find(o=>o.kind==='shop');Object.assign(p,{mapId:STREET_ID,x:shop.x,y:shop.y+shop.radius+30});
     await openMenu(teacher);await teacher.locator('#teacher-tools').click();
-    await teacher.getByRole('button',{name:'별 파편 지급',exact:true}).click();
+    await teacher.getByRole('button',{name:'자원 지급',exact:true}).click();
+    await teacher.locator('#resource-kind').selectOption('starShards');
     await teacher.locator('#shards-target').selectOption(id);
     await teacher.locator('#shards-amount').fill('40');await teacher.locator('#shards-give').click();
     await student.locator('#self-shards').filter({hasText:'40'}).waitFor({state:'attached'});await teacher.locator('#teacher-close').click();

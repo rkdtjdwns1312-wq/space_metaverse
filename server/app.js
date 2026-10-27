@@ -1,7 +1,9 @@
+import {normalizePlanetDesign} from '../shared/planet-design.js';
+import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
 import {advanceProjectiles,projectileViews} from './projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
-import {teacherInventoryView,adjustTeacherInventory} from './teacher-inventory.js';
+import {teacherInventoryView,adjustTeacherInventory,teacherResourcesCatalog,grantTeacherResources} from './teacher-inventory.js';
 import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
 import {teacherCardCatalog} from './teacher-card-catalog.js';
 import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
@@ -111,7 +113,7 @@ import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekl
 import {activeAriesSleep,ariesSleepDue,settleAriesSleep,inviteAriesSleep,respondAriesSleep,useAriesSleep,wakeAriesSleep} from './aries-weekly.js';
 import {inviteCancerDuel,respondCancerDuel} from './cancer-weekly.js';
 import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
-  MAP, STREET, STREET_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, WARNING_RULES, STATIC_MAPS, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
+  MAP, STREET, STREET_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, WARNING_RULES, STATIC_MAPS, UNIVERSE_MAP_LAYOUT, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
   if(typeof value!=='string') return false;
@@ -168,9 +170,11 @@ const planetInput=(room,data) => {
   ensure(placementFree(room,x,y),'오른쪽 아래 부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
   ensure(PLANET_COLORS.includes(data.color),'행성 색을 골라주세요.');
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
-  return {name,description,x,y,color:data.color,templateId:data.templateId};
+  const customDesign=data.customDesign==null?null:normalizePlanetDesign(data.customDesign);
+  ensure(data.customDesign==null||customDesign,'행성 그림을 확인해주세요.');
+  return {name,description,x,y,color:data.color,templateId:data.templateId,customDesign};
 };
-export function createClassroomServer({teacherKey, adminPassword=randomBytes(24).toString('base64url'), publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, maxActiveRooms=RULES.maxRooms, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom}={}) {
+export function createClassroomServer({teacherKey, adminPassword=randomBytes(24).toString('base64url'), publicOrigin='', reconnectMs=RULES.reconnectMs, dataDir=null, studentHours=true, clock=Date.now, unattended=true, teacherManagedAccounts=true, maxActiveRooms=RULES.maxRooms, abilityDie=rollStarDie,craftingRecipes=loadCraftingRecipes(),starCardRandom,statGrowthDraw}={}) {
   if(!teacherKey || teacherKey.length<16) throw new Error('TEACHER_KEY must be at least 16 characters.');
   configuredAdminPassword(adminPassword);
   const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts,maxActiveRooms,clock}):new RoomStore({maxActiveRooms,clock});
@@ -181,7 +185,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   const connections=new Set();
   http.on('connection',connection=>{connections.add(connection);connection.once('close',()=>connections.delete(connection));});
   const originAllowed=req => !req.headers.origin || req.headers.origin==='http://'+req.headers.host || (!!publicOrigin&&req.headers.origin===publicOrigin);
-  const io=new Server(http,{maxHttpBufferSize:32768,allowRequest:(req,done)=>done(null,originAllowed(req))});
+  // A validated planet drawing may occupy 64 KiB; allow room for the event envelope.
+  const io=new Server(http,{maxHttpBufferSize:128*1024,allowRequest:(req,done)=>done(null,originAllowed(req))});
   app.disable('x-powered-by');
   app.use((req,res,next)=>{
     const frameAncestors=req.path==='/admin.html'?"'self'":"'none'";
@@ -189,10 +194,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store'});
     next();
   });
-  app.get('/health',(_req,res)=>res.json({ok:true,service:'space-classroom',version:'0.2.0',persistent,publicOrigin}));
+  const craftingReadiness=Object.freeze({ready:craftingRecipes.length>0,privateRecipeCount:craftingRecipes.length});
+  app.get('/health',(_req,res)=>res.json({ok:true,service:'space-classroom',version:'0.2.0',persistent,publicOrigin,crafting:craftingReadiness}));
   app.get('/api/public-config',(_req,res)=>res.json({managedAccounts:persistent&&teacherManagedAccounts,studentHours}));
-  app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url))));
-  app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
+  // Public files can reuse bytes after ETag/Last-Modified validation. Dynamic and
+  // private responses keep the default no-store policy above.
+  const publicStatic={setHeaders:res=>res.setHeader('Cache-Control','no-cache')};
+  app.use('/shared',express.static(fileURLToPath(new URL('../shared',import.meta.url)),publicStatic));
+  app.use(express.static(fileURLToPath(new URL('../client',import.meta.url)),publicStatic));
   // 교사 키 무작위 대입은 연결을 새로 열어도 제한되도록 주소별로 집계합니다.
   const authAttempts=new Map(),lastAttacks=new WeakMap(),lastSkills=new WeakMap(),englishStation=createEnglishStation(),mathStation=createMathStation(),baseballRuns=createBaseballRuns(),signalRuns=createSignalRuns(),tetrisRuns=createTetrisRuns(),sudokuRuns=createSudokuRuns();
   // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
@@ -351,12 +360,17 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             !['room:leave','chat:send','chat:history','cetus:escape'].includes(name))
             throw new GameError('고래 배 속에서는 대화하거나 탈출만 할 수 있어요.');
           if(session&&name.startsWith('combat:')&&expireTransformation(session.player,clock()))roster(session.room);
-          if(session&&['combat:attack','combat:skill','combat:transform','map:travel','evolution:evolve','evolution:change','evolution:teacher-select'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
+          if(session&&['combat:attack','combat:skill','combat:transform','map:travel','map:fast-travel','evolution:evolve','evolution:change','evolution:teacher-select'].includes(name))ensure(!isDefeated(session.player),'체력을 회복하는 중이에요. 잠시 기다려주세요.');
           if(session?.player.role==='student'&&name!=='room:leave')ensure(studentOpen(),STUDENT_HOURS_MESSAGE);
           if(persistent && !session?.room.unattended && session?.player.role==='student' && name!=='room:leave')
             ensure([...session.room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
           // 인벤토리가 바뀌기 전에 보유 기간을 정산해, 마지막 카드를 팔 때 지난 주의 스택을 잃지 않습니다.
           if(save&&session){settleLv4Items(session.room,clock());if(ensureDailyMissions(session.room,clock()))roster(session.room);}
+          if(session&&['combat:attack','combat:skill'].includes(name)&&data.aim!==undefined){
+            const aim=data.aim,length=aim&&Math.hypot(aim.x,aim.y);
+            ensure(aim&&typeof aim.x==='number'&&typeof aim.y==='number'&&Number.isFinite(length)&&length>0,'공격 방향을 확인해주세요.');
+            session.player.facing={x:aim.x/length,y:aim.y/length};if(aim.x!==0)session.player.facingX=aim.x<0?-1:1;
+          }
           const result=handler(data);
           const current=socket.data.session;
           if(save&&current?.player.role==='student'&&settleLeoUnclaimed(current.player))roster(current.room);
@@ -556,7 +570,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       const targets=strikeMonsters(room,player,power,now);
       if(targets.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id},power,now);
+      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id,basic:true},power,now);
       for(const result of playerTargets)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
         io.to(viewer.socketId).emit('combat:player-hit',{...hit,...result});
         io.to(viewer.socketId).emit('combat:vitals',{playerId:result.targetId,vitals:result.vitals});
@@ -863,6 +877,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       });
       roster(s.room);return result;
     });
+    action('teacher:resources:catalog',()=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return teacherResourcesCatalog(s.room,s.player);},false);
+    action('teacher:resources:grant',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const result=grantTeacherResources(s.room,s.player,data);roster(s.room);return result;});
     action('teacher:inventory:read',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       return teacherInventoryView(s.room,s.player,data.playerId);
@@ -1030,6 +1046,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const input=planetInput(room,data);
       // 새 행성의 기본 규칙은 고른 종류의 규칙(없으면 공통 기본 규칙)으로 시작합니다.
       const planet=addPlanet(room,{...input,rules:[...(templateOf(input.templateId)?.rules||PLANET.defaultRules)],createdBy:p.id});
+      if(input.customDesign)planet.customDesign=input.customDesign;
       roster(room);
       announce(room,'선생님이 새 행성 "'+planet.name+'"을 만들었어요.');
       return {planetId:planet.id};
@@ -1046,6 +1063,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       const planet=addPlanet(room,{name:proposal.name,description:proposal.description,x:proposal.x,y:proposal.y,
         color:proposal.color,rules:[...(templateOf(proposal.templateId)?.rules||PLANET.defaultRules)],createdBy:proposal.playerId,templateId:proposal.templateId});
+      if(proposal.customDesign)planet.customDesign=normalizePlanetDesign(proposal.customDesign);
       const student=room.players.get(proposal.playerId);
       if(student){
         const previousId=student.avatar.departmentId;
@@ -1295,6 +1313,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       announce(room,'선생님이 "'+oldName+'" 행성의 이름을 "'+name+'"'+ro(name)+' 바꿨어요.');
       return {};
     });
+    action('map:fast-travel',data=>{
+      const s=socket.data.session;ensure(s?.player.connected&&!s.player.away,'먼저 교실에 입장해주세요.');
+      const {room,player:p}=s,to=data.to;
+      ensure(typeof to==='string'&&to!==WHALE_STOMACH_ID,'그곳으로 바로 이동할 수 없어요.');
+      ensure(!p.avatar.blackStar||to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
+      ensure(to!==BLACK_HOLE_ID||p.role==='teacher'||!!p.avatar.blackStar,'검은별 상태일 때만 블랙홀에 들어갈 수 있어요.');
+      const planetId=planetIdOfMap(to),planet=planetId&&room.planets.get(planetId);
+      ensure(planet||UNIVERSE_MAP_LAYOUT.some(m=>m.id===to),'지도에서 갈 곳을 선택해주세요.');
+      if(planet)ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,planet.name+' 소속 친구만 들어갈 수 있어요.');
+      const map=mapOf(to,room.planets.values());
+      if(map.minLevel)ensure(p.role==='teacher'||p.avatar.level>=map.minLevel,'이곳에 들어가기 위한 레벨이 부족해요.');
+      Object.assign(p,spawnInside(room,to,p),{mapId:to,input:{x:0,y:0,at:0}});
+      advanceMissions(room,p,'map-travel',undefined,clock());roster(room);return {mapId:to};
+    });
     action('map:travel',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
@@ -1459,7 +1491,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const assignmentAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const portal=MAP.objects.find(o=>o.kind==='andromeda');
-      ensure(s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
+      ensure(s.player.role==='teacher'||s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
       return s;
     };
     action('assignment:read',()=>{
@@ -1633,7 +1665,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return s;
     };
     action('crafting:open',()=>{
-      const {player}=requireCrafting();return {enabled:true,fee:shardCost(player,CRAFTING.fee)};
+      const {player}=requireCrafting();return {enabled:true,fee:shardCost(player,CRAFTING.fee),configured:craftingReadiness.ready,privateRecipeCount:craftingReadiness.privateRecipeCount};
     },false);
     action('recipes:learned',data=>{
       const s=socket.data.session;
@@ -1645,10 +1677,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;
       ensure(s?.player.role==='teacher','선생님만 조합법을 볼 수 있어요.');
       requireCrafting();
-      ensure([2,3,4,5].includes(data.level),'LV2~LV5 중 하나를 골라주세요.');
+      ensure([1,2,3,4,5].includes(data.level),'LV1~LV5 중 하나를 골라주세요.');
       // 비공개 파일의 필요한 필드만 인증된 교사에게 응답합니다. 방 방송/공개 스냅샷에는 넣지 않습니다.
       const recipes=availableCraftingRecipes(craftingRecipes).filter(r=>itemOf(r.output.id)?.level===data.level).map(r=>({
         output:{id:r.output.id,quantity:1},ingredients:r.ingredients.map(p=>({id:p.id,quantity:p.quantity})),
+        ...(r.currency?{currency:r.currency}:{}),
         ...(r.cosmicEnergy?{starShards:r.starShards,cosmicEnergy:r.cosmicEnergy}:{})
       }));
       return {level:data.level,recipes};
@@ -1656,7 +1689,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('crafting:combine',data=>{
       const {room,player}=requireCrafting();
       const result=attemptCraft(player,data.ingredients,{recipes:craftingRecipes});
-      const messages={'invalid-recipe':'조합법을 준비 중이에요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','insufficient-energy':'우주에너지가 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
+      const messages={'invalid-recipe':'일반 조합법 데이터가 준비되지 않았어요. 선생님께 알려 주세요.','invalid-input':'조합 재료와 수량을 확인해주세요.','unknown-ingredient':'사용할 수 없는 재료예요.','insufficient-ingredients':'가방에 재료가 부족해요.','insufficient-fee':'별 파편이 부족해요.','insufficient-energy':'우주에너지가 부족해요.','output-stack-full':'완성 아이템은 99개까지만 가질 수 있어요.','inventory-full':'가방에 빈칸이 필요해요.'};
       ensure(!result.error||result.error==='recipe-mismatch',messages[result.error]||'조합할 수 없어요.');
       if(result.success)advanceMissions(room,player,'craft-level',result.item?.level,clock());
       roster(room);return {...result,itemId:result.item?.id??null};
@@ -1672,6 +1705,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(s.player.connected&&!s.player.away&&s.player.mapId===STREET_ID&&isNear(s.player,shop),'우주에너지 상점에 더 가까이 가주세요.');
       return {currency:'cosmicEnergy',items:s.player.role==='teacher'?EQUIPMENT_ITEMS:EQUIPMENT_ITEMS.filter(item=>!item.craftOnly)};
     },false);
+    const statShopSession=()=>{const s=socket.data.session;ensure(s?.player.connected&&!s.player.away,'먼저 교실에 입장해주세요.');const shop=STREET.objects.find(o=>o.kind==='energy-shop');ensure(s.player.mapId===STREET_ID&&isNear(s.player,shop),'우주에너지 상점에 더 가까이 가주세요.');return s;};
+    action('shop:energy:stat-info',()=>statGrowthInfo(statShopSession().player,clock()),false);
+    action('shop:energy:stat-buy',()=>{const s=statShopSession(),result=buyStatGrowth(s.player,clock(),statGrowthDraw);roster(s.room);return result;});
     action('shop:energy:buy',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s?.player.away,'먼저 교실에 입장해주세요.');
       const shop=STREET.objects.find(o=>o.kind==='energy-shop');
@@ -2160,7 +2196,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(item.mode!=='journey-practice','연습 아이템은 첫 여행 연습 버튼으로 사용해 주세요.');
       ensure(item.usable!==false,'이 아이템의 사용 효과는 준비 중이에요.');
       if(item.mode==='recipe'){
-        const result=useRecipeItem(room,p,data,craftingRecipes,clock());
+        const result=useRecipeItem(room,p,data,availableCraftingRecipes(craftingRecipes),clock());
         if(result.learned)roster(room);
         return result;
       }
@@ -2578,7 +2614,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     for(const [ip,b] of authAttempts)if(now-b.at>60_000)authAttempts.delete(ip);
     step++;
   },RULES.tickMs);
-  return {app,http,io,store,
+  return {app,http,io,store,craftingReadiness,
     setPublicOrigin(value){const url=new URL(value);if(url.protocol!=='https:'||url.origin!==value)throw new Error('공개 주소는 HTTPS origin이어야 합니다.');publicOrigin=value;},
     listen:(port=0,host='127.0.0.1')=>new Promise((resolve,reject)=>{
       http.once('error',reject);http.listen(port,host,()=>{http.off('error',reject);resolve(http.address());});

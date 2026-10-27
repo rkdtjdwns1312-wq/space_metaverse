@@ -41,6 +41,8 @@ import {drawLifeStar} from './life-star-art.js';
 import {drawValleyAltar} from './valley-art.js';
 import {drawInteriorFloor,drawInteriorProp,drawInteriorDecoration} from './interior-art.js';
 import {drawStreetGround} from './street-art.js';
+import {prepareMapArt} from './map-art-ready.js';
+import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
 import {drawPaintedGate,gateVisualBox} from './gate-art.js';
@@ -156,7 +158,7 @@ export function createWorld(canvas) {
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
     for(const id of monsterTracks.keys())if(!monsters.some(m=>m.id===id)){monsterTracks.delete(id);monsterPoints.delete(id);}
   }
-  let view={x:0,y:0,scale:1},overview=false;
+  let view={x:0,y:0,scale:1},overview=false,mapArt=null;
   function recordPosition(p,now){
     if(!tracks.has(p.id))tracks.set(p.id,createMotionTrack());
     tracks.get(p.id).push(p.x,p.y,p.mapId||PLAZA_ID,now);
@@ -384,8 +386,8 @@ export function createWorld(canvas) {
     const floor=ctx.createRadialGradient(w/2,h/2,35,w/2,h/2,w*.62);
     floor.addColorStop(0,'#273149');floor.addColorStop(.55,'#171d31');floor.addColorStop(1,'#0c1021');
     ctx.fillStyle=floor;ctx.fillRect(0,0,w,h);
-    const background=loadedAvatarSprite('/assets/maps/cetus-belly-interior.png');
-    if(background)ctx.drawImage(background,0,0,w,h);
+    const background=whaleMapImage();
+    if(mapImageReady(background))ctx.drawImage(background,0,0,w,h);
     ctx.save();
     // 원화의 넓은 바닥은 아바타가 보이도록 비워 두고 작은 별빛만 덧그립니다.
     for(let i=0;i<30;i++){
@@ -640,9 +642,23 @@ export function createWorld(canvas) {
     ctx.restore();
   }
   function frame(t){
+    // The lobby and hidden tabs have no visible world. Do not run collision,
+    // canvas allocation or background rendering there.
+    if(!selfId||document.hidden){requestAnimationFrame(frame);return;}
+    if(mapArt?.status==='loading'){
+      const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+      const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
+      if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+      ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#252c4d';ctx.fillRect(0,0,rect.width,rect.height);
+      ctx.textAlign='center';ctx.font='22px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#fff4d9';
+      ctx.fillText('별빛 풍경을 불러오고 있어요',rect.width/2,rect.height/2);
+      canvas.dataset.artStatus='loading';requestAnimationFrame(frame);return;
+    }
+    canvas.dataset.artStatus=mapArt?.status||'ready';
     // 도착한 위치를 시간순으로 재생합니다. 화면 프레임 수와 관계없이 같은 시각은
     // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
     for(const p of players){
+      if(p.mapId!==myMapId)continue;
       const position=tracks.get(p.id)?.at(t)||{x:p.x,y:p.y};
       const previous=points.get(p.id);
       // 모서리에서 막힌 보간을 복구할 때도 한 프레임에 밀린 거리를 뛰지 않습니다.
@@ -650,7 +666,7 @@ export function createWorld(canvas) {
       points.set(p.id,{...avatarRenderPoint(serenaMap(mapOf(p.mapId,planets),serena),position,{x:p.x,y:p.y},p,monsters,
         previous?.mapId===p.mapId?previous:null,maxDistance),mapId:p.mapId,time:t});
     }
-    for(const m of monsters)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
+    for(const m of monsters)if(m.mapId===myMapId)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
     const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
     const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
@@ -874,6 +890,11 @@ export function createWorld(canvas) {
     canvas.dataset.waterPulseCount=String(waterPulses.length);
     damageNumbers.draw(ctx,t,reducedMotion.matches);
     canvas.dataset.damageNumberCount=String(damageNumbers.size);
+    if(mapArt?.status==='error'){
+      ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#332843e8';ctx.fillRect(12,12,Math.min(490,rect.width-24),40);
+      ctx.font='15px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='left';ctx.fillStyle='#fff1d4';
+      ctx.fillText('일부 그림을 불러오지 못했어요. 새로고침하면 다시 시도해요.',22,38);
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -887,18 +908,20 @@ export function createWorld(canvas) {
       players=(room?.players||[]).map(p=>({...p}));selfId=id;
       extraLocomotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));
       bodyMotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));
-      if(players.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
-      for(const p of players)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);
-      if(players.some(p=>p.avatar?.constellationId==='cygnus'))preloadSwan(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='cygnus').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
-      if(players.some(p=>p.avatar?.constellationId==='ophiuchus'))preloadOphiuchus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='ophiuchus').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
-      if(players.some(p=>p.avatar?.constellationId==='gemini'))preloadGemini(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='gemini').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
-      if(players.some(p=>p.avatar?.constellationId==='aries'))preloadAries(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='aries').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
-      if(players.some(p=>p.avatar?.constellationId==='sagittarius'))preloadSagittarius(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='sagittarius').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
-      if(players.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(players.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
+      const localPlayers=players.filter(p=>(p.mapId||PLAZA_ID)===nextMap);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='aquarius'))preloadAquarius();
+      for(const p of localPlayers)if(['cancer','cetus','pisces'].includes(p.avatar?.constellationId))preloadWater(p.avatar.constellationId,['attack',`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='cygnus'))preloadSwan(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='cygnus').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='ophiuchus'))preloadOphiuchus(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='ophiuchus').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='gemini'))preloadGemini(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='gemini').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='aries'))preloadAries(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='aries').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='sagittarius'))preloadSagittarius(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='sagittarius').map(p=>`skill-lv${Math.max(2,Math.min(4,p.avatar.level))}`))]);
+      if(localPlayers.some(p=>p.avatar?.constellationId==='corvus'))preloadCorvus(['attack',...new Set(localPlayers.filter(p=>p.avatar?.constellationId==='corvus').map(p=>'skill-lv'+Math.max(2,Math.min(4,p.avatar.level))))]);
       planets=room?.planets||[];proposals=room?.proposals||[];
       starCards=room?.starCards||[];campaignSigns=room?.campaignSigns||[];exploration=room?.exploration||null;
       energyDrops=room?.energyDrops||[];lootRolls=room?.lootRolls||[];
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
+      mapArt=selfId?prepareMapArt(currentMap(),planets):null;
       setMonsters(room?.monsters||[]);spiritOrbs=Array.isArray(room?.spiritOrbs)?room.spiritOrbs:[];
       for(const id of ['leoon','noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
       if(monsters.some(m=>m.typeId==='star-guardian'&&m.mapId===myMapId))void preloadGuardianArt().catch(()=>{});
@@ -1023,6 +1046,14 @@ export function createWorld(canvas) {
       return null;
     },
     currentMapId(){return myMapId;},
+    aimAt(event){
+      if(!Number.isFinite(event?.clientX)||!Number.isFinite(event?.clientY))return null;
+      const player=players.find(p=>p.id===selfId),me=points.get(selfId)||player;if(!me)return null;
+      const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/view.scale+view.x,y=(event.clientY-rect.top)/view.scale+view.y;
+      const length=Math.hypot(x-me.x,y-me.y);if(length<1)return null;
+      const dx=(x-me.x)/length,dy=(y-me.y)/length,facingX=dx<0?-1:dx>0?1:(player.facingX||1);
+      player.facingX=facingX;return {x,y,dx,dy,facingX};
+    },
     // Canvas에서 쓰는 카메라·배율과 동일하게 변환해야 물체 옆 안내가 이동 중에도 붙어 있습니다.
     screenPoint(point){const rect=canvas.getBoundingClientRect(),pos=point.kind==='monster'?(monsterPoints.get(point.id)||point):point.kind==='player'?(points.get(point.id)||point):point;return {x:rect.left+(pos.x-view.x)*view.scale,y:rect.top+(pos.y-view.y)*view.scale,scale:view.scale};},
     setOverview(value){overview=!!value;},

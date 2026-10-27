@@ -14,7 +14,7 @@ import {leoSkillOf} from '/shared/leo-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
 import {isSagittarius,sagittariusSkillOf} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
-export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{}}){
+export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{},getAim=()=>null}){
   const attack=document.getElementById('touch-attack'),skill=document.getElementById('touch-skill');
   const last={attack:-Infinity,skill:-Infinity};
   let cooldowns={},owner=null,serverOffset=0;
@@ -34,7 +34,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
       if(slot!==0){toast('보조 스킬은 준비 중이에요.');return;}
       if(performance.now()-last.skill<SKILL_COOLDOWN_MS)return;last.skill=performance.now();
     }
-    try{const result=await request('combat:skill',{slot});if(result.ready){sync(result);onSound('e',player.avatar.constellationId);}else toast('전투 스킬은 준비 중이에요. 지금은 별자리 이펙트를 미리 볼 수 있어요.');}
+    try{const aim=getAim();const result=await request('combat:skill',{slot,...(aim?{aim}:{})});if(result.ready){sync(result);onSound('e',player.avatar.constellationId);}else toast('전투 스킬은 준비 중이에요. 지금은 별자리 이펙트를 미리 볼 수 있어요.');}
     catch(error){toast(error.message);}
   }
   async function act(kind){
@@ -46,7 +46,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     if(player.avatar.level<2){toast('LV2부터 공격할 수 있어요.');return;}
     const power=player.combat?.attackPower;
     if(power==null){toast('이 단계의 공격력은 설정 준비 중이에요.');return;}
-    try{const result=await request('combat:attack',{});onSound('q',player.avatar.constellationId);if(result.cooldowns)sync(result);}catch(error){toast(error.message);}
+    try{const aim=getAim();const result=await request('combat:attack',aim?{aim}:{});onSound('q',player.avatar.constellationId);if(result.cooldowns)sync(result);}catch(error){toast(error.message);}
   }
   attack.onclick=()=>act('attack');skill.onclick=()=>act('skill');
   window.addEventListener('keydown',event=>{

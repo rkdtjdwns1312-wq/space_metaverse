@@ -5,6 +5,9 @@ import {drawOriginArt,originArtCacheKey,onOriginArtReady} from './origin-art.js'
 // 동화풍 배경은 한 번 그려 보관합니다. 매 프레임 복잡한 성운을 다시 그리지 않아
 // 크롬북에서도 이동·채팅에 쓸 여유를 남깁니다. 외부 이미지로 교체하기 쉬운 모듈입니다.
 const backgrounds=new Map();
+// Eight paradise maps plus origin maps previously accumulated full-size RGBA
+// surfaces for the life of the tab. Retain only the two most recently used maps.
+const BACKGROUND_LIMIT=2;
 document.fonts.load('20px Jua').then(()=>backgrounds.clear());
 onParadiseArtReady(()=>backgrounds.clear());
 onOriginArtReady(()=>backgrounds.clear());
@@ -28,9 +31,13 @@ function sky(ctx,w,h,colors=['#b8b7e3','#d5c3e5','#a9cddf']){
 }
 function cached(map,draw){
   const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}:${originArtCacheKey()}`;
-  if(!backgrounds.has(key)){const canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));backgrounds.set(key,canvas);}
-  return backgrounds.get(key);
+  let canvas=backgrounds.get(key);
+  if(!canvas){canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));}
+  backgrounds.delete(key);backgrounds.set(key,canvas);
+  while(backgrounds.size>BACKGROUND_LIMIT){const oldest=backgrounds.keys().next().value,old=backgrounds.get(oldest);old.width=old.height=1;backgrounds.delete(oldest);}
+  return canvas;
 }
+export function sceneryCacheStats(){return {entries:backgrounds.size,bytes:[...backgrounds.values()].reduce((sum,c)=>sum+c.width*c.height*4,0)};}
 export function drawTemple(ctx,map){
   ctx.drawImage(cached(map,c=>{
     sky(c,map.width,map.height);

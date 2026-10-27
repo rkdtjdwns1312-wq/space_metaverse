@@ -1,9 +1,21 @@
+import {drawPlanetDesign} from '/shared/planet-design.js';
 // 부서의 고정 종류 ID로 그림을 고릅니다. 이름을 바꿔도 소속·규칙·기존 그림 계열은 유지됩니다.
 export const DEPARTMENT_VISUAL_SCALE=Math.SQRT2; // 화면 면적 200% = 가로·세로 각각 √2.
 export const DEPARTMENT_ART=Object.freeze(Object.fromEntries([
   'diary','subject','reading','rules','pe','meal','facility','finance','counsel','cleaning','art','show','audit'
 ].map(id=>[id,Object.freeze({src:`/assets/planets/${id}.png`})])));
 const images=new Map();
+const customSurfaces=new Map();
+const designSurfaces=new WeakMap();
+function customSurface(design){
+  if(typeof design!=='object'||!design)return null;
+  if(designSurfaces.has(design))return designSurfaces.get(design);
+  const key=JSON.stringify(design);if(customSurfaces.has(key)){const surface=customSurfaces.get(key);designSurfaces.set(design,surface);return surface;}
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=384;
+  if(!drawPlanetDesign(canvas.getContext('2d'),design,0,0,384,384)){designSurfaces.set(design,null);return null;}
+  designSurfaces.set(design,canvas);
+  customSurfaces.set(key,canvas);if(customSurfaces.size>40)customSurfaces.delete(customSurfaces.keys().next().value);return canvas;
+}
 function imageFor(id){
   if(!DEPARTMENT_ART[id])return null;
   if(!images.has(id)&&typeof Image!=='undefined'){
@@ -23,7 +35,10 @@ export function drawDepartmentHome(ctx,o,myDept,template){
   ctx.save();
   // 발밑 충돌과 서버 배치 간격은 기존대로 유지하고 외관만 넓힙니다.
   if(o.id===myDept){ctx.strokeStyle='#b999df';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(o.x,o.y+o.radius*.55,box.width*.43,o.radius*.5,0,0,Math.PI*2);ctx.stroke();}
-  if(image?.complete&&image.naturalWidth){
+  const custom=o.customDesign&&customSurface(o.customDesign);
+  if(custom){
+    const size=box.width*.9;ctx.drawImage(custom,o.x-size/2,o.y-size*.75,size,size);
+  }else if(image?.complete&&image.naturalWidth){
     // 원화의 종횡비를 유지하고 동일한 외관 상자 안에 맞춥니다.
     const scale=Math.min(box.width/image.naturalWidth,box.height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;
     ctx.drawImage(image,box.x+(box.width-w)/2,box.y+box.height-h,w,h);

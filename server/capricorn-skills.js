@@ -18,7 +18,7 @@ export function castCapricorn(room,player,now,{basic=false}={}){
     const x=player.x+dx*size*.75,y=player.y+dy*size*.75,radius=size*.43;
     const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId&&Math.hypot(m.x-x,m.y-y)<=m.radius+radius)
       .map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
-    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id},power,now);
+    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id,basic:true},power,now);
     return {ready:true,targets,playerTargets,vitals:playerVitals(player),hit:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,
       dx,dy,reach:size*.75,radius,kind:'capricorn-attack',vfxId:'attack',durationMs:500,size}};
   }

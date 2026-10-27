@@ -61,7 +61,7 @@ export function createGrowthUI({ request, stop, toast, isJoined }) {
     if (disabled) $('amount').value = '';
     else { if (!$('amount').value) $('amount').value = '1'; clamp(); }
     if (!busy && info.maxBuy === 0 && !top) {
-      $('error').textContent = info.remainingXp === 0 ? '현재 단계의 경험치를 모두 채웠어요. 진화의 별로 가주세요.' : '별 파편이 부족해요.';
+      $('error').textContent = info.remainingXp === 0 ? '이미 경험치가 가득 찬 상태입니다. 진화의 별에서 다음 단계로 진화해 주세요.' : '별 파편이 부족해요.';
     } else if (!busy && top) $('error').textContent = info.unlimitedShards
       ? '선생님은 이미 최고 단계예요. 경험치를 구매할 필요가 없어요.'
       : '초월체는 경험치를 더 살 수 없어요.';

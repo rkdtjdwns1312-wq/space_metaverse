@@ -1,3 +1,4 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {visualFloor,visualFloorPath} from './visual-floor.js';
 import { VALLEY_LAYOUT, VALLEY_EDGES, VALLEY_POLYGONS, onValleyFloor } from '/shared/valley-layout.js';
 import {drawStoneRim} from './stone-rim.js';
@@ -16,13 +17,12 @@ for (const [id, file] of Object.entries({
   evolution: 'evolution-altar.png', growth: 'growth-altar.png',
 })) {
   if (typeof Image === 'undefined') break;
-  const image = new Image();
-  image.onload = invalidate;
-  image.src = `/assets/maps/${file}`;
+  const image = mapImage(`/assets/maps/${file}`,invalidate);
   images.set(id, image);
 }
 if (typeof document !== 'undefined') document.fonts?.load('32px Jua').then(invalidate).catch(() => {});
-const ready = image => image?.complete && image.naturalWidth > 0;
+const ready = mapImageReady;
+export async function preloadValleyArt(){await decodeMapImages([...images.values()]);}
 // 확인한 원본의 투명 여백만 제외합니다. 원화 파일은 변경하지 않습니다.
 const altarArt = {
   evolution: { width: 1230, height: 1278, crop: [236, 76, 756, 1116], orb: [617, 263] },

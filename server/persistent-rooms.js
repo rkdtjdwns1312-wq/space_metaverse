@@ -1,3 +1,6 @@
+import {normalizePlanetDesign} from '../shared/planet-design.js';
+const savedPlanetDesign=value=>{if(value==null)return null;const result=normalizePlanetDesign(value);if(!result)throw Error('행성 그림 저장 데이터가 올바르지 않습니다.');return result;};
+import {validateStatGrowth} from './stat-growth.js';
 import {validateJoinRequests} from './planet-membership.js';
 import {constellationOf,CONSTELLATION_LIMIT} from '../shared/constellations.js';
 import {MASTER_BASE} from '../shared/master-account.js';
@@ -66,8 +69,8 @@ export function toRecord(room) {
     memoryRanking:structuredClone(room.memoryRanking||[]),signalRanking:validateSignalRanking(room.signalRanking),tetrisRanking:validateTetrisRanking(room.tetrisRanking),missions:validateMissions(room.missions),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
-    planets:[...room.planets.values()].map(p=>({...p,rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
-    proposals:[...room.proposals.values()],itemLog:room.itemLog,tradeLog:room.tradeLog,
+    planets:[...room.planets.values()].map(p=>({...p,customDesign:savedPlanetDesign(p.customDesign),rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
+    proposals:[...room.proposals.values()].map(p=>({...p,customDesign:savedPlanetDesign(p.customDesign)})),itemLog:room.itemLog,tradeLog:room.tradeLog,
     students:[...room.players.values()].filter(p=>p.role==='student').map(p=>({
       ...(p.accountKind==='master'?{accountKind:'master'}:{}),
       id:p.id,nickname:p.nickname,avatar:p.avatar,inventory:p.inventory,equipmentSlots:validateEquipmentSlots(p.equipmentSlots),starShards:p.starShards,cosmicEnergy:p.cosmicEnergy??0,explorationChances:validateExplorationChances(p.explorationChances),
@@ -86,7 +89,7 @@ export function toRecord(room) {
       holdingState:validateHoldingState(p.holdingState),
       constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),
       piscesPair:validatePiscesPair(p.piscesPair),
-      learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),
+      learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),statGrowth:validateStatGrowth(p.statGrowth),
       rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
     }))};
 }
@@ -125,7 +128,7 @@ export function fromRecord(r,now=Date.now()) {
     if(typeof pl.id!=='string'||room.planets.has(pl.id)||typeof pl.name!=='string'||
       !Array.isArray(pl.rules)||!Number.isFinite(pl.x)||!Number.isFinite(pl.y)||!Number.isFinite(pl.radius))bad();
     if(pl.rename && !Array.isArray(pl.rename.votes))bad();
-    room.planets.set(pl.id,structuredClone({...pl,joinRequests:validateJoinRequests(pl.joinRequests),work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),interiorUnlocks:validateInteriorUnlocks(pl.interiorUnlocks),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
+    room.planets.set(pl.id,structuredClone({...pl,customDesign:savedPlanetDesign(pl.customDesign),joinRequests:validateJoinRequests(pl.joinRequests),work:validateWork(pl.work),warnings:validateWarnings(pl.warnings),interiorDecor:validateInteriorDecor(pl.interiorDecor),interiorUnlocks:validateInteriorUnlocks(pl.interiorUnlocks),rename:pl.rename?{...pl.rename,votes:new Map(pl.rename.votes)}:null}));
   }
   const names=new Set();
   for(const p of r.students){
@@ -180,13 +183,13 @@ export function fromRecord(r,now=Date.now()) {
       learningRewards:validateLearningRewards(p.learningRewards),
       dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
-      starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
+      starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),statGrowth:validateStatGrowth(p.statGrowth),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),piscesPair:validatePiscesPair(p.piscesPair),role:'student'}));
   }
   restorePiscesParties(room,now);
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
-    room.proposals.set(pr.id,structuredClone(pr));
+    room.proposals.set(pr.id,structuredClone({...pr,customDesign:savedPlanetDesign(pr.customDesign)}));
   }
   if(r.summonCooldowns!==undefined&&(!Array.isArray(r.summonCooldowns)||r.summonCooldowns.some(e=>!Array.isArray(e)||e.length!==2||typeof e[0]!=='string'||!Number.isSafeInteger(e[1]))))bad();
   room.summonCooldowns=new Map((r.summonCooldowns||[]).filter(([,until])=>until>Date.now()));

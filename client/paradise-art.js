@@ -1,15 +1,17 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {onFloatingCliffReady} from './floating-island.js';
 const images={};
 let cacheEpoch=0;
 const listeners=new Set();
 onFloatingCliffReady(()=>{cacheEpoch++;for(const fn of listeners)fn();});
-const ready=image=>image?.complete&&image.naturalWidth>0;
+const ready=mapImageReady;
 for(const [key,file] of Object.entries({sun:'paradise-sun.png',moon:'paradise-moon.png',sky:'plaza-sanctuary.png'})){
-  const image=new Image();image.onload=()=>{cacheEpoch++;for(const listener of listeners)listener();};image.src='/assets/maps/'+file;images[key]=image;
+  images[key]=mapImage('/assets/maps/'+file,()=>{cacheEpoch++;for(const listener of listeners)listener();});
 }
-const paving=new Image();paving.onload=()=>{cacheEpoch++;for(const listener of listeners)listener();};paving.src='/assets/maps/plaza-paving.png';images.paradisePaving=paving;
+images.paradisePaving=mapImage('/assets/maps/plaza-paving.png',()=>{cacheEpoch++;for(const listener of listeners)listener();});
 export function onParadiseArtReady(listener){listeners.add(listener);return()=>listeners.delete(listener);}
 export function paradiseArtCacheKey(){return cacheEpoch;}
+export async function preloadParadiseArt(){await decodeMapImages(Object.values(images));}
 
 function fallbackBody(ctx,map,moon){
   const {bodyX:x,bodyY:y,bodyRadius:r}=map.vista;

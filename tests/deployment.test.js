@@ -64,6 +64,9 @@ test('production entry point boots a new empty private store and serves no priva
     }
     const base=`http://127.0.0.1:${port}`,health=await (await fetch(base+'/health')).json();
     assert.equal(health.ok,true);assert.equal(health.persistent,true);assert.equal(health.publicOrigin,'https://woozooclass.kr');
+    assert.deepEqual(health.crafting,{ready:false,privateRecipeCount:0});
+    assert.match(errors,/Crafting recipes unavailable: privateRecipeCount=0/);
+    assert.match(errors,/CRAFTING_RECIPES_FILE/);
     assert.equal(readdirSync(classes).filter(name=>name.endsWith('.json')).length,0);
     for(const path of ['/.env','/data/classes/','/deploy/','/server/index.js'])assert.equal((await fetch(base+path)).status,404,path);
     const response=await fetch(base+'/socket.io/?EIO=4&transport=polling',{headers:{Origin:'https://woozooclass.kr'}});

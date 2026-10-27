@@ -1,3 +1,4 @@
+import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {warningSummary} from './warnings.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {playerVitals} from './vitals.js';
@@ -181,23 +182,23 @@ export class RoomStore {
         radius:pl.radius,color:pl.color,rules:[...pl.rules],memberCount:memberCount(pl.id),createdBy:pl.createdBy,
         joinPending:!!viewer&&(pl.joinRequests||[]).some(r=>r.playerId===viewer.id),
         mailboxCount:viewer&&(isTeacher||viewer.avatar.departmentId===pl.id)?(pl.joinRequests||[]).length:0,
-        warningStatus:warningSummary(room,pl),templateId:pl.templateId,interiorDecor:structuredClone(pl.interiorDecor||{}),interiorUnlocks:structuredClone(pl.interiorUnlocks||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
+        warningStatus:warningSummary(room,pl),templateId:pl.templateId,customDesign:normalizePlanetDesign(pl.customDesign),interiorDecor:structuredClone(pl.interiorDecor||{}),interiorUnlocks:structuredClone(pl.interiorUnlocks||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
-        radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId})),
+        radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId,customDesign:normalizePlanetDesign(pr.customDesign)})),
       players:[...room.players.values()].map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,accountKind:p.accountKind==='master'?'master':'student',x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
           ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
-        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0; out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
+        if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0;out.statGrowth=structuredClone(p.statGrowth||{bonuses:{hp:0,mp:0,attack:0,defense:0},lastPurchaseDay:null}); out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}
         return out;
       }),
-      ...(isTeacher ? {itemLog:[...room.itemLog]} : {}),
+      ...(isTeacher ? {itemLog:[...room.itemLog],teacherActivity:{tasks:[...room.players.values()].filter(p=>p.role==='student').flatMap(p=>(p.tasks||[]).map(t=>({id:t.id,playerId:p.id,status:t.status,at:t.at}))),warnings:[...room.planets.values()].flatMap(p=>(p.warnings?.entries||[]).map(w=>({id:w.id,at:w.at}))),items:room.itemLog.map(i=>({id:i.id,at:i.at}))}} : {}),
       trades:[...room.trades.values()]
         .filter(t=>viewer && (t.fromId===viewer.id || t.toId===viewer.id))
         .map(t=>({id:t.id,fromId:t.fromId,fromNickname:t.fromNickname,toId:t.toId,toNickname:t.toNickname,

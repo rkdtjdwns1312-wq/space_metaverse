@@ -25,6 +25,8 @@
 <link rel="stylesheet" href="/lv4-item-ui.css">
 <link rel="stylesheet" href="/readability.css">
 <link rel="stylesheet" href="/fantasy-ui.css">
+<link rel="stylesheet" href="/classroom-improvements.css">
+<link rel="stylesheet" href="/planet-designer.css">
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/">✦ <span>우주 교실<small>우리들의 작은 우주</small></span></a>
@@ -190,12 +192,13 @@
     <ul id="proposals" aria-label="승인 기다리는 행성"></ul>
     <p id="proposals-empty" class="muted">기다리는 신청이 없어요.</p>
   </section>
-  <section class="shards-give"><h3>② 별 파편 지급</h3>
+  <section class="shards-give"><h3>② 자원 지급</h3>
     <label for="shards-target">누구에게</label><select id="shards-target"><option value="all">모두에게</option></select>
-    <label for="shards-amount">몇 개</label><input id="shards-amount" type="number" min="-999" max="999" value="5">
+    <label for="resource-kind">무엇을</label><select id="resource-kind"><option value="starShards">별 파편</option><option value="cosmicEnergy">우주 에너지</option><option value="recipe">조합법</option></select>
+    <label id="resource-amount-label" for="shards-amount">몇 개</label><input id="shards-amount" type="number" min="-999" max="9999" value="5"><select id="shards-recipe" aria-label="어떤 조합법" hidden></select>
     <button id="shards-give" class="primary small" type="button">지급</button>
     <p id="shards-feedback" role="status" aria-live="polite"></p>
-    <p class="muted">음수를 적으면 거두어요.</p>
+    <p id="resource-hint" class="muted">별 파편은 음수를 적으면 거두어요. 조합법은 선택한 아이템의 조합법을 1개 지급해요.</p>
   </section>
   <section id="teacher-inventory-tools" hidden><h3>③ 인벤토리 조정</h3><button id="teacher-inventory-open" class="small secondary" type="button" hidden>학생 인벤토리 조정하기</button></section>
   <section class="item-log-panel"><h3>④ 아이템 사용 기록</h3>

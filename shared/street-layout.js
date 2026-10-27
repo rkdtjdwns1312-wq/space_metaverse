@@ -2,7 +2,7 @@
 import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const STREET_LAYOUT=Object.freeze({
   id:'star-street',width:1800,height:3300,wallWidth:10,bridgeWidth:180*BRIDGE_WIDTH_SCALE,
-  north:Object.freeze({x:900,y:480,rx:840,ry:440}),
+  north:Object.freeze({x:900,y:530,rx:870,ry:490}),
   upper:Object.freeze({x:900,y:1690,rx:760,ry:570}),
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
   westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})

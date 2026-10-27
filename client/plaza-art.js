@@ -1,3 +1,4 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {visualFloor,visualFloorPath} from './visual-floor.js';
 import {PLAZA_LAYOUT as L,PLAZA_POLYGONS,PLAZA_EDGES,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawStoneRim} from './stone-rim.js';
@@ -8,9 +9,10 @@ const images={},tiles=new Map(),SIZE=768,LIMIT=16;
 let overview=null;
 onFloatingCliffReady(()=>{tiles.clear();overview=null;});
 for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-paving.png',pillar:'plaza-pillar.png',temple:'plaza-temple.png',flask:'plaza-exploration-flask.png'})){
-  const image=new Image();image.onload=()=>{tiles.clear();overview=null;};image.src='/assets/maps/'+path;images[id]=image;
+  images[id]=mapImage('/assets/maps/'+path,()=>{tiles.clear();overview=null;});
 }
-const ready=img=>img.complete&&img.naturalWidth>0;
+const ready=mapImageReady;
+export async function preloadPlazaArt(){await decodeMapImages(Object.values(images));}
 const visual=visualFloor(PLAZA_POLYGONS,PLAZA_EDGES,L,Object.values(L.gates));
 const floorPath=visualFloorPath(visual.polygons);
 const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}

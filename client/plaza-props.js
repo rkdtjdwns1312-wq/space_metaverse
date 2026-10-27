@@ -1,12 +1,14 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {PLAZA_LAYOUT as L} from '/shared/plaza-layout.js';
 import {drawPaintedProp} from './painted-props.js';
 export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
 for(const name of ['market','bazaar','andromeda','mission-board','black-hole']){
-  const img=new Image();img.src='/assets/maps/plaza-'+name+'.png';art[name]=img;
+  art[name]=mapImage('/assets/maps/plaza-'+name+'.png');
 }
-const ready=name=>art[name].complete&&art[name].naturalWidth>0;
+const ready=name=>mapImageReady(art[name]);
+export async function preloadPlazaProps(){await decodeMapImages(Object.values(art));}
 function sprite(ctx,name,x,y,w,h){if(!ready(name))return false;ctx.drawImage(art[name],x-w/2,y-h,w,h);return true;}
 function label(ctx,text,x,y,size=18){ctx.save();ctx.font=`${size}px "Jua","Malgun Gothic",sans-serif`;ctx.textAlign='center';ctx.lineJoin='round';ctx.strokeStyle='#fffaf4';ctx.lineWidth=5;ctx.strokeText(text,x,y);ctx.fillStyle='#67537f';ctx.fillText(text,x,y);ctx.restore();}
 

@@ -9,13 +9,22 @@ import {drawStreetGround,onStreetArtReady} from './street-art.js';
 import {drawBlackHoleGround} from './black-hole-art.js';
 import {drawInteriorFloor} from './interior-art.js';
 import {DEPARTMENT_ART} from './department-art.js';
+import {drawPlanetDesign} from '/shared/planet-design.js';
+import {prepareMapArt} from './map-art-ready.js';
 import {PAINTED_PROPS} from './painted-props.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,UNIVERSE_MAP_LAYOUT,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
-// 서버가 알려준 내 위치만 표시합니다. 지도를 고르는 동작은 실제 이동 요청을 보내지 않습니다.
-export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
+// Single selection previews a map; double activation opens a confirmation before server-authorized travel.
+export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,request,toast=()=>{}}) {
   const $=id=>document.getElementById(id),dialog=$('universe-dialog');
   let position=null,selected=null,signature='';
+  let lastTap=null,lastDraw=0,artSignature='';const backgrounds=new Map(),watchedArt=new WeakSet();
+  const confirm=document.createElement('dialog');confirm.id='map-travel-confirm';confirm.setAttribute('aria-labelledby','map-travel-question');confirm.innerHTML='<h2 id="map-travel-question">이동하겠습니까?</h2><p id="map-travel-destination"></p><p id="map-travel-error" role="alert"></p><div class="dialog-actions"><button id="map-travel-no" type="button" class="secondary">아니오</button><button id="map-travel-yes" type="button" class="primary">예</button></div>';document.body.append(confirm);let target=null,travelling=false,travelRevision=0;
+  $('map-travel-no').onclick=()=>confirm.close();confirm.addEventListener('close',()=>{target=null;travelRevision++;});
+  function askTravel(id){if(!me()||travelling||confirm.open)return;if(id===me().mapId){toast('지금 이 맵에 있어요.');return;}target=id;$('map-travel-destination').textContent=map(id).name+'으로 이동해요.';$('map-travel-error').textContent='';$('map-travel-yes').disabled=false;stop();confirm.showModal();}
+  $('map-travel-yes').onclick=async()=>{if(travelling||!target||!request)return;const revision=travelRevision;travelling=true;$('map-travel-yes').disabled=true;try{await request('map:fast-travel',{to:target});if(revision!==travelRevision)return;confirm.close();dialog.close();toast('맵으로 이동했어요.');}catch(e){if(revision===travelRevision)$('map-travel-error').textContent=e.message;}finally{travelling=false;$('map-travel-yes').disabled=false;}};
+  const guide=document.createElement('p');guide.className='muted';guide.textContent='지도를 빠르게 두 번 클릭하거나 터치하면 이동할 수 있어요. 상태·레벨에 따라 이동이 제한될 수 있어요.';
+  $('universe-preview').nextElementSibling.replaceWith(guide);
   let minimapOpen=true;
   function setMinimapOpen(open){
     minimapOpen=open;
@@ -39,20 +48,21 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   };
   // 원화가 늦게 도착해도 열려 있는 지도와 지도 선택 그림을 함께 갱신합니다.
   function refreshArt(){
-    if(me())draw($('minimap'),me().mapId);
+    backgrounds.clear();
+    if(me()&&minimapOpen)draw($('minimap'),me().mapId);
     if(dialog.open)draw($('universe-preview'),selected||me()?.mapId,true);
-    for(const canvas of $('universe-links').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
-    for(const canvas of $('universe-planets').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
+    if(dialog.open){for(const canvas of $('universe-links').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
+    for(const canvas of $('universe-planets').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);}
   }
   onFloatingCliffReady(refreshArt);
   onParadiseArtReady(refreshArt);onOriginArtReady(refreshArt);onStreetArtReady(refreshArt);
   function close(){dialog.close();}
   $('universe-close').onclick=close;
   $('universe-footer-close').onclick=close;
-  $('minimap-toggle').onclick=()=>setMinimapOpen(!minimapOpen);
+  $('minimap-toggle').onclick=()=>{setMinimapOpen(!minimapOpen);if(minimapOpen&&me())draw($('minimap'),me().mapId);};
   $('map-overview').onclick=()=>{
-    if(!me())return;stop();selected=me().mapId;signature='';render();
-    if(!dialog.open)dialog.showModal();draw($('universe-preview'),selected,true);
+    if(!me())return;stop();selected=me().mapId;signature='';
+    if(!dialog.open)dialog.showModal();render();
   };
   $('map-area-view').onclick=()=>{close();onAreaView();};
   function node(id,icon){
@@ -64,12 +74,14 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
     draw(thumbnail,id);
     if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
     button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
-    button.onclick=()=>{selected=id;signature='';render();};return button;
+    button.style.touchAction='manipulation';
+    button.onclick=()=>{const now=performance.now(),double=lastTap?.id===id&&now-lastTap.at<400;lastTap=double?null:{id,at:now};selected=id;signature='';render();if(double)askTravel(id);};button.ondblclick=event=>{event.preventDefault();askTravel(id);};return button;
   }
   // 물체는 게임 화면에서 쓰는 원화의 작은 판을 사용합니다. 축소 지도용 도형을 따로
   // 유지하면 실제 상점·행성·문과 모양이 달라져 아이들이 위치를 알아보기 어렵습니다.
   function drawSilhouette(ctx,o,x,y,r,theme,scale){
     const kind=o.kind||'planet';
+    if(kind==='planet'&&o.customDesign){drawPlanetDesign(ctx,o.customDesign,x-r,y-r,r*2,r*2);return;}
     const src=kind==='planet'?DEPARTMENT_ART[o.templateId]?.src:
       PAINTED_PROPS[kind]?'/assets/maps/'+PAINTED_PROPS[kind].file:
       ['gate','door'].includes(kind)?'/assets/maps/star-gate.png':
@@ -119,8 +131,18 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 좌표가 어긋나지 않습니다.
   function draw(canvas,mapId,detailed=false){
     const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:info.planetId?4:12;
+    const art=prepareMapArt(info,planets());
+    if(!watchedArt.has(art)){watchedArt.add(art);art.promise.then(refreshArt);}
+    if(art.status==='loading'){
+      ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='#675881';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('별빛 지도 준비 중',w/2,h/2);
+      canvas.dataset.mapId=mapId;return;
+    }
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
-    ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
+    const cacheKey=mapId+':'+w+':'+h+':'+detailed;const cached=backgrounds.get(cacheKey);
+    ctx.clearRect(0,0,w,h);
+    if(cached){ctx.drawImage(cached,0,0);}else{
+    ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
     mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
     // 실세계에는 사각 테두리가 없습니다. 지도에서도 인공적인 외곽선을 덧그리지 않습니다.
     const labels=[];
@@ -164,6 +186,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
       }
       ctx.restore();
     }
+    const layer=document.createElement('canvas');layer.width=w;layer.height=h;layer.getContext('2d').drawImage(canvas,0,0);backgrounds.set(cacheKey,layer);while(backgrounds.size>24)backgrounds.delete(backgrounds.keys().next().value);
+    }
     const p=position||me();canvas.dataset.mapId=mapId;
     if(p&&p.mapId===mapId){
       const x=ox+Math.max(0,Math.min(info.width,p.x))*scale,y=oy+Math.max(0,Math.min(info.height,p.y))*scale;
@@ -175,9 +199,10 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   }
   function render(){
     const p=me();if(!p)return;
-    $('minimap-title').textContent=map(p.mapId).name;draw($('minimap'),p.mapId);
+    $('minimap-title').textContent=map(p.mapId).name;if(minimapOpen)draw($('minimap'),p.mapId);
+    if(!dialog.open)return;
     if(!selected||!([...Object.keys(STATIC_MAPS),...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
-    const next=JSON.stringify([p.mapId,selected,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y])]);
+    const next=JSON.stringify([p.mapId,selected,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
       $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
@@ -189,8 +214,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView}) {
   }
   // showModal 직후에도 첫 프레임을 그립니다. 열린 동안에만 큰 지도를 갱신합니다.
   return {
-    update(){position=me()?{...me()}:null;render();},
-    positions(data){const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};render();}},
-    reset(){if(dialog.open)dialog.close();position=null;selected=null;signature='';$('minimap').getContext('2d').clearRect(0,0,300,180);}
+    update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
+    positions(data){const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};const now=performance.now();if(now-lastDraw>=100&&(minimapOpen||dialog.open)){lastDraw=now;render();}}},
+    reset(){if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
   };
 }

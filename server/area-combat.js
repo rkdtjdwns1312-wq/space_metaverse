@@ -10,7 +10,7 @@ export function playersInArea(room,{mapId,x,y,radius,sourceId=null,excludeTeache
     Math.hypot(p.x-x,p.y-y)<=radius+RULES.radius);
 }
 export function damagePlayersInArea(room,area,power,now){
-  return playersInArea(room,area).map(p=>{
+  return playersInArea(room,area).filter(p=>!(area.basic&&room.players.get(area.sourceId)?.role==='student'&&p.role==='student')).map(p=>{
     const hit=damagePlayer(p,power,now,{room});
     if(hit?.reflectedDamage)reflectLibraDamage(room,p,area,hit.reflectedDamage,now);
     return {targetId:p.id,...hit};

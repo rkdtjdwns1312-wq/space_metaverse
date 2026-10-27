@@ -13,7 +13,7 @@ import {attemptCraft} from '../server/crafting.js';
 import {addRecipeDrop,collectEnergyDrop,energyDropViews} from '../server/energy-drops.js';
 import {damageMonster} from '../server/monsters.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
-import {adjustTeacherInventory} from '../server/teacher-inventory.js';
+import {adjustTeacherInventory,teacherInventoryView} from '../server/teacher-inventory.js';
 
 const recipes=[
   {output:{id:'android-card',quantity:1},ingredients:[{id:'space-food-card',quantity:1},{id:'space-robot-card',quantity:1}]},
@@ -158,9 +158,16 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   for(const data of [{playerId:f.p.id,role:'teacher'},{targetId:f.p.id}])assert.equal((await call(f.other,'recipes:learned',data)).ok,false);
   assert.deepEqual(ok(await call(f.other,'recipes:learned')).recipes,[]);
   assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[recipes[0]]);
-  assert.equal((await call(f.student,'crafting:recipes',{level:3,role:'teacher'})).ok,false);
+  for(const client of [anon,f.student,f.other])for(const level of [1,2,3,4,5])
+    assert.equal((await call(client,'crafting:recipes',{level,role:'teacher'})).ok,false);
   f.atMachine([...f.room.players.values()].find(p=>p.role==='teacher'));
-  assert.deepEqual(ok(await call(f.teacher,'crafting:recipes',{level:3})).recipes,recipes.slice(1));
+  const teacherAll=[];
+  for(const level of [1,2,3,4,5]){
+    const answer=ok(await call(f.teacher,'crafting:recipes',{level}));
+    assert.equal(answer.level,level);teacherAll.push(...answer.recipes);
+  }
+  assert.deepEqual(teacherAll.filter(r=>recipes.some(sample=>sample.output.id===r.output.id)),recipes);
+  assert.equal(teacherAll.length,recipes.length+PUBLIC_CRAFTING_RECIPES.length);
   const teacherLv5=ok(await call(f.teacher,'crafting:recipes',{level:5})).recipes;
   assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
@@ -177,8 +184,21 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
 
 test('successful socket crafting learns and persists across restart; no legacy migration from purchased or granted holdings',async t=>{
   const f=await fixture(t);f.mutate(p=>{p.inventory=structuredClone(recipes[0].ingredients);});f.atMachine();
+  assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[]);
+  const info=ok(await call(f.student,'crafting:open'));assert.equal(info.configured,true);assert.equal(info.privateRecipeCount,recipes.length);assert.equal(info.fee,1);
+  const ingredientsBefore=structuredClone(f.p.inventory),balanceBefore=f.p.starShards;
+  const mismatch=ok(await call(f.student,'crafting:combine',{ingredients:[recipes[0].ingredients[0]],learnedRecipeIds:['android-card'],role:'teacher'}));
+  assert.equal(mismatch.success,false);assert.equal(mismatch.error,'recipe-mismatch');assert.equal(f.p.starShards,balanceBefore-1);
+  assert.deepEqual(f.p.inventory,ingredientsBefore);assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[]);
+  assert.equal(JSON.stringify(mismatch).includes('ingredients'),false);
+  await f.restart();assert.equal(f.p.starShards,balanceBefore-1);assert.deepEqual(f.p.inventory,ingredientsBefore);f.atMachine();
   const result=ok(await call(f.student,'crafting:combine',{ingredients:recipes[0].ingredients,learnedRecipeIds:['supernova-alpha-card']}));
   assert.equal(result.success,true);assert.deepEqual(f.p.learnedRecipeIds,['android-card']);
+  assert.equal(f.p.starShards,balanceBefore-2);assert.deepEqual(f.p.inventory,[{id:'android-card',quantity:1}]);
+  f.mutate(p=>p.inventory.push(...structuredClone(recipes[0].ingredients)));
+  const repeat=ok(await call(f.student,'crafting:combine',{ingredients:recipes[0].ingredients}));assert.equal(repeat.success,true);
+  assert.deepEqual(f.p.learnedRecipeIds,['android-card']);assert.deepEqual(f.p.inventory,[{id:'android-card',quantity:2}]);
+  assert.equal(f.p.inventory.some(item=>item.id.startsWith('recipe:')),false);assert.equal(f.p.starShards,balanceBefore-3);
   await f.restart();assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[recipes[0]]);
   const legacy=toRecord(f.room);delete legacy.students.find(p=>p.id===f.p.id).learnedRecipeIds;
   assert.deepEqual(fromRecord(legacy).players.get(f.p.id).learnedRecipeIds,[]);
@@ -209,7 +229,9 @@ test('F pickup is once-only, item use learns only consumer, and both inventory a
   assert.equal(results.filter(r=>r.ok).length,1);assert.equal(f.p.inventory.find(i=>i.id===RID).quantity,1);
   await f.restart();assert.equal(f.p.inventory.find(i=>i.id===RID).quantity,1);assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[]);
   assert.equal((await call(f.other,'item:use',{itemId:RID,targetId:f.p.id})).ok,false);
+  const shardsBefore=f.p.starShards,energyBefore=f.p.cosmicEnergy;
   const learned=ok(await call(f.student,'item:use',{itemId:RID}));assert.equal(learned.learned,true);assert.equal(f.p.inventory.some(i=>i.id===RID),false);
+  assert.equal(f.p.starShards,shardsBefore);assert.equal(f.p.cosmicEnergy,energyBefore);
   await f.restart();assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[recipes[0]]);
   assert.deepEqual(ok(await call(f.other,'recipes:learned')).recipes,[]);assert.equal((await call(f.student,'energy:collect',{dropId:drop.id})).ok,false);
   // room:open restored the configured output list before any combat takes place.
@@ -238,7 +260,7 @@ test('disk failure rolls back craft learning, pickup ownership, item consumption
 
 test('sixty-kind inventory does not expand teacher single-grant batch beyond forty',()=>{
   const student=makePlayer('a'),teacher={...makePlayer('t'),role:'teacher'},room=makeRoom([student,teacher]);
-  const ids=SHOP.items.filter(i=>i.level>=1&&i.level<=4&&!i.temporaryCrown).slice(0,41).map(i=>i.id);assert.equal(ids.length,41);
+  const ids=teacherInventoryView(room,teacher).catalog.slice(0,41).map(i=>i.id);assert.equal(ids.length,41);
   assert.throws(()=>adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids},'give'),/40/);assert.deepEqual(student.inventory,[]);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(0,40)},'give');assert.equal(student.inventory.length,40);
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(40)},'give');assert.equal(student.inventory.length,41);

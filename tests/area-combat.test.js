@@ -27,7 +27,7 @@ async function fixture(t, options={}){
   return {game,connect,call};
 }
 
-test('실제 소켓 공격은 겹친 몹 2마리와 학생 2명을 모두 맞히고 서버 대상만 사용한다',async t=>{
+test('학생 기본 공격은 겹친 몹 2마리만 맞히고 친구 2명과 위조 대상을 무시한다',async t=>{
   const {game,connect,call}=await fixture(t);
   const teacher=await connect();
   const created=await call(teacher,'room:create',{teacherKey:key,title:'범위 전투',allowedNames:['1','2','3']});
@@ -46,9 +46,9 @@ test('실제 소켓 공격은 겹친 몹 2마리와 학생 2명을 모두 맞히
   monsters.forEach((monster,index)=>Object.assign(monster,{x:400+ATTACK_VISUAL.reach+index*10,y:400,hp:20,maxHp:20}));
   const forged=await call(a,'combat:attack',{power:99999,radius:99999,targets:[targetB.id],mapId:PLAZA_ID,dx:-1,dy:0});
   assert.equal(forged.ok,true);
-  assert.deepEqual(forged.playerTargets.map(hit=>hit.targetId),[targetB.id,targetC.id]);
+  assert.deepEqual(forged.playerTargets,[]);
   assert.deepEqual(forged.targets.map(hit=>hit.monsterId),monsters.map(monster=>monster.id));
-  assert.equal(ensureVitals(targetB).hp,15);assert.equal(ensureVitals(targetC).hp,15);
+  assert.equal(ensureVitals(targetB).hp,20);assert.equal(ensureVitals(targetC).hp,20);
   assert.deepEqual(monsters.map(monster=>monster.hp),[15,15]);
   assert.equal(ensureVitals(attacker).hp,20);
 });
@@ -72,8 +72,8 @@ test('범위 전투는 자신·다른 방·다른 맵·범위 밖·검은별·�
   const otherPlayer=game.store.rooms.get(second.room.code).players.get(joinedOther.selfId);
   Object.assign(otherPlayer,{mapId:'star-origin-1',x:400+ATTACK_VISUAL.reach,y:400});
   const result=await call(sockets[0],'combat:attack');
-  assert.deepEqual(result.playerTargets.map(hit=>hit.targetId),[players[1].id]);
-  assert.equal(ensureVitals(players[1]).hp,34);
+  assert.deepEqual(result.playerTargets,[]);
+  assert.equal(ensureVitals(players[1]).hp,40);
   assert.equal(ensureVitals(players[2]).hp,40);
   assert.equal(ensureVitals(players[3]).hp,40);
   assert.equal(ensureVitals(players[4]).hp,0);assert.equal(ensureVitals(players[5]).hp,40);
@@ -99,7 +99,7 @@ test('공격 쿨다운은 중복을 막고 스킬은 같은 서버 대상 목록
   const event=new Promise(resolve=>b.once('combat:hit',resolve));
   const skill=await call(a,'combat:skill',{radius:99999,targetIds:['forged'],power:99999});
   assert.equal(skill.ok,true);
-  assert.equal(ensureVitals(target).hp,before-5);
+  assert.equal(ensureVitals(target).hp,before);
   assert.deepEqual(skill.ready,false);
   const hit=await event;assert.equal(hit.kind,'skill');assert.deepEqual(hit.playerTargetIds,[target.id]);
   assert.equal((await call(a,'combat:skill',{targets:['forged']})).ok,false);
@@ -181,10 +181,10 @@ for (const [role,level,size,radius] of [
   assert.equal(attack.ok,true,attack.error);
   const [attackHit]=await attackEvent;checkGeometry(attackHit);
   assert.equal(attackHit.power,power);assert.equal(attackHit.durationMs,340);
-  assert.deepEqual(attack.playerTargets.map(p=>p.targetId),[targets[0].id]);
+  assert.deepEqual(attack.playerTargets.map(p=>p.targetId),role==='teacher'?[targets[0].id]:[]);
   assert.deepEqual(attack.targets.map(m=>m.monsterId),[monsters[0].id]);
-  const targetDamage=Math.max(1,power-defensePowerOf(5,'aries',targets[0]));
-  assert.equal(attack.playerTargets[0].damage,targetDamage);
+  const targetDamage=role==='teacher'?Math.max(1,power-defensePowerOf(5,'aries',targets[0])):0;
+  if(role==='teacher')assert.equal(attack.playerTargets[0].damage,targetDamage);
   assert.equal(attack.targets[0].damage,power);
   assert.equal(ensureVitals(targets[0]).hp,Math.max(0,before[0]-targetDamage));
   assert.equal(ensureVitals(targets[1]).hp,before[1]);

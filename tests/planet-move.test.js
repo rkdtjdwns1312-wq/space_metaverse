@@ -52,7 +52,7 @@ test('부원 무료 이동: ID/소속/내용 유지·새 자리 플레이어 안
   assert.equal(mapOf(PLAZA_ID,f.room().planets.values()).objects.find(p=>p.id===f.planetId).x,site(2).x);
   assert.equal((await call(f.clients.inside,'planet:exit')).ok,true);
   assert.equal(f.person('inside').mapId,PLAZA_ID);assert.ok(Math.hypot(f.person('inside').x-site(2).x,f.person('inside').y-site(2).y)<250);
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,f.code+'.json'),'utf8')).planets.find(p=>p.id===f.planetId),JSON.parse(JSON.stringify(f.planet())));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,f.code+'.json'),'utf8')).planets.find(p=>p.id===f.planetId),JSON.parse(JSON.stringify({...f.planet(),customDesign:f.planet().customDesign??null})));
 });
 
 test('교사·비부원·미인증·다른 방 ID·가짜 소속·선택 후 탈퇴 권한 거부',async t=>{

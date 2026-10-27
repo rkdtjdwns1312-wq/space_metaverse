@@ -2,6 +2,8 @@ import { createClassroomServer } from './app.js';
 import {studentHoursFromEnv} from './access-hours.js';
 import {configuredAdminPassword} from './admin-password.js';
 const game=createClassroomServer({teacherKey:process.env.TEACHER_KEY,adminPassword:configuredAdminPassword(process.env.ADMIN_PASSWORD),publicOrigin:process.env.PUBLIC_ORIGIN,dataDir:process.env.DATA_DIR||'data/classes',studentHours:studentHoursFromEnv(),maxActiveRooms:process.env.MAX_ACTIVE_ROOMS===undefined?undefined:Number(process.env.MAX_ACTIVE_ROOMS)});
+if(game.craftingReadiness.ready)console.log('Crafting recipes ready: '+game.craftingReadiness.privateRecipeCount);
+else console.warn('Crafting recipes unavailable: privateRecipeCount=0. Check CRAFTING_RECIPES_FILE; only public recipes are available.');
 const port=Number(process.env.PORT || 3000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error('Invalid PORT');
 await game.listen(port,process.env.HOST || '0.0.0.0');

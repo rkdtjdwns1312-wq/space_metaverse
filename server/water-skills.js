@@ -48,7 +48,7 @@ export function castWater(room,player,now,{basic=false}={}){
 }
 
 // 기존 공통 투사체가 선택한 대상만 처리합니다. 게자리 강화 Q는 친구를
-// 피해 없이 회복하며, 다른 별자리/일반 Q는 기존 학생 PvP 규칙을 따릅니다.
+// 피해 없이 회복하며, 다른 별자리/일반 Q는 친구에게 피해를 주지 않습니다.
 export function resolveWaterHit(room,player,selected,power,now,cast){
   if(!cast.healing)return damageTargets(room,player,selected,power,now);
   const targets=[],healed=[];

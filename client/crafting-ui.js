@@ -9,9 +9,10 @@ import {SHARDS} from '/shared/config.js';
 export function createCraftingUI({getPlayer,request,stop,toast}) {
   const dialog=document.createElement('dialog');dialog.id='crafting-dialog';dialog.setAttribute('aria-labelledby','crafting-title');
   dialog.innerHTML=`<header><h2 id="crafting-title">별빛 조합기</h2><button id="crafting-close" type="button" class="secondary">닫기</button></header>
-    <button id="crafting-recipes-open" type="button" class="secondary" hidden>선생님 조합법 보기</button>
+    <button id="crafting-recipes-open" type="button" class="secondary" hidden>모든 조합법 보기</button>
     <section id="crafting-recipes-panel" hidden aria-label="선생님 전용 조합법">
       <h3>선생님 전용 조합법</h3><div id="crafting-recipe-tabs" role="tablist" aria-label="완성 아이템 레벨">
+      <button type="button" role="tab" data-recipe-level="1" aria-selected="false">LV1 · 교환</button>
       <button type="button" role="tab" data-recipe-level="2" aria-selected="true">LV2</button>
       <button type="button" role="tab" data-recipe-level="3" aria-selected="false">LV3</button>
       <button type="button" role="tab" data-recipe-level="4" aria-selected="false">LV4</button>
@@ -24,7 +25,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     <section><h3>내 인벤토리</h3><div id="crafting-bag" aria-label="조합에 넣을 아이템"></div><p id="crafting-bag-empty" hidden>가방이 비었어요.</p></section></div>
     <p id="crafting-wallet"></p><p id="crafting-note" role="status"></p><footer><button id="crafting-clear" type="button" class="secondary">재료 모두 빼기</button><button id="crafting-submit" type="button" class="primary">조합</button></footer>`;
   document.body.append(dialog);const $=id=>dialog.querySelector('#'+id);
-  let selected=new Map(),busy=false,enabled=false,fee=0;
+  let selected=new Map(),busy=false,enabled=false,configured=true,fee=0;
   let recipeRequest=0;
   function clearRecipes(){
     recipeRequest++;$('crafting-recipes-panel').hidden=true;
@@ -44,11 +45,11 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
         const li=document.createElement('li'),output=itemOf(recipe.output.id);
         const title=document.createElement('strong');title.textContent=output.name+' × '+recipe.output.quantity;
         const image=document.createElement('span');image.className='recipe-output';icon(image,output);image.append(title);
-        const parts=document.createElement('p');parts.textContent=recipe.ingredients.map(p=>itemOf(p.id)?.name+' × '+p.quantity).join(' + ')+(recipe.cosmicEnergy?' · 별 파편 '+(recipe.starShards||0)+'개 · 우주에너지 '+recipe.cosmicEnergy.toLocaleString()+'개':'');
+        const parts=document.createElement('p');parts.textContent=recipe.ingredients.map(p=>itemOf(p.id)?.name+' × '+p.quantity).join(' + ')+(recipe.currency==='starShards'?' · 추가 조합 비용 없음':recipe.cosmicEnergy?' · 별 파편 '+(recipe.starShards||0)+'개 · 우주에너지 '+recipe.cosmicEnergy.toLocaleString()+'개':'');
         li.append(image,parts);$('crafting-recipes-list').append(li);
       }
       const player=getPlayer(),cost=shardCost(player,fee);
-      $('crafting-recipes-status').textContent=info.recipes.length?'LV'+level+' 조합법 '+info.recipes.length+'개'+(level===5?' · 공개 조합은 표시된 재료와 재화가 필요해요.':' · 일반 조합 비용 '+(hasUnlimitedShards(player)?'교사 무료 (합계 0)':'별 파편 '+cost+'개')):'등록된 조합법이 없습니다.';
+      $('crafting-recipes-status').textContent=info.recipes.length?'LV'+level+' 조합법 '+info.recipes.length+'개'+(level===1?' · 별 부스러기 교환은 추가 비용이 없어요.':level===5?' · 공개 조합은 표시된 재료와 재화가 필요해요.':' · 일반 조합 비용 '+(hasUnlimitedShards(player)?'교사 무료 (합계 0)':'별 파편 '+cost+'개')):'등록된 조합법이 없습니다.';
     }catch(e){if(ticket===recipeRequest)$('crafting-recipes-status').textContent=e.message;}
   }
   $('crafting-recipes-open').onclick=()=>showRecipes(2);
@@ -85,7 +86,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     const cost=publicRecipe?(isMaster(player)?0:publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
     $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+(isMaster(player)?0:publicRecipe.cosmicEnergy).toLocaleString():teacher?'조합 · 재화 비용 없음':'조합 · 별 파편 '+cost+'개';
-    $('crafting-submit').disabled=busy||!enabled||!selected.size||(player.starShards||0)<cost||(publicRecipe&&!isMaster(player)&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&!isMaster(player)&&(player.starShards||0)>=SHARDS.max);
+    $('crafting-submit').disabled=busy||!enabled||(!configured&&!publicRecipe)||!selected.size||(player.starShards||0)<cost||(publicRecipe&&!isMaster(player)&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&!isMaster(player)&&(player.starShards||0)>=SHARDS.max);
     $('crafting-clear').disabled=busy||!selected.size;
   }
   $('crafting-close').onclick=()=>dialog.close();$('crafting-clear').onclick=()=>{selected.clear();render();};
@@ -101,7 +102,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
   };
   return {
     async open(){
-      try{const info=await request('crafting:open',{});enabled=info.enabled;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=(hasUnlimitedShards(player)?'일반 조합은 재화 비용이 없어요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+(isMaster(player)?' 마스터도 보스 조합 재료는 직접 구해야 해요.':' 공개 보스 조합은 재료와 우주에너지가 필요하며, 조합법에서 확인할 수 있어요.');render();stop();if(!dialog.open)dialog.showModal();}
+      try{const info=await request('crafting:open',{});enabled=info.enabled;configured=info.configured!==false;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=configured?'조합법을 몰라도 올바른 재료로 조합할 수 있어요. 성공하면 내 조합레시피에 자동 등록돼요. '+(hasUnlimitedShards(player)?'일반 조합은 재화 비용이 없어요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+(isMaster(player)?' 마스터도 보스 조합 재료는 직접 구해야 해요.':' 공개 보스 조합은 재료와 우주에너지가 필요해요.'):'일반 조합법 데이터가 준비되지 않았어요. 선생님께 알려 주세요. 재료와 별 파편은 차감되지 않아요. 별 부스러기 5개 → 별 파편 1개와 공개 보스 조합은 이용할 수 있어요.';render();stop();if(!dialog.open)dialog.showModal();}
       catch(e){toast(e.message);}
     },
     update(){if(dialog.open)render();},

@@ -1,3 +1,4 @@
+import {itemOf} from '/shared/config.js';
 export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()=>{}}){
   const stylesheet=document.createElement('link');stylesheet.rel='stylesheet';stylesheet.href='/teacher-inventory.css';document.head.append(stylesheet);
   const dialog=document.createElement('dialog');dialog.id='teacher-inventory-dialog';dialog.setAttribute('aria-labelledby','teacher-inventory-title');
@@ -49,13 +50,13 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
     if(!state.inventory.some(entry=>entry.id===selected))selected=null;
     const byId=new Map(state.catalog.map(item=>[item.id,item]));$('grid').replaceChildren();
     for(const entry of state.inventory){
-      const item=byId.get(entry.id)||{id:entry.id,name:entry.id,icon:'✦'},button=document.createElement('button');button.type='button';button.className='teacher-inventory-slot';button.dataset.itemId=entry.id;button.setAttribute('aria-pressed',String(selected===entry.id));button.setAttribute('aria-label',`${item.name} ${entry.quantity}개`);
+      const item=byId.get(entry.id)||itemOf(entry.id)||{id:entry.id,name:entry.id,icon:'✦'},button=document.createElement('button');button.type='button';button.className='teacher-inventory-slot';button.dataset.itemId=entry.id;button.setAttribute('aria-pressed',String(selected===entry.id));button.setAttribute('aria-label',`${item.name} ${entry.quantity}개`);
       const name=document.createElement('span');name.textContent=item.name;
       const count=document.createElement('small');count.textContent='×'+entry.quantity;button.append(visual(item),name,count);
       button.onclick=()=>{if(busy)return;selected=selected===entry.id?null:entry.id;render();};$('grid').append(button);
     }
     if(!state.inventory.length){const empty=document.createElement('p');empty.className='teacher-inventory-empty';empty.textContent=loaded?'보유한 아이템이 없어요.':'학생 인벤토리를 불러와 주세요.';$('grid').append(empty);}
-    $('selection').textContent=selected?`${byId.get(selected)?.name||selected} · 1개를 제거해요.`:'제거할 아이템을 선택하세요.';
+    $('selection').textContent=selected?`${byId.get(selected)?.name||itemOf(selected)?.name||selected} · 1개를 제거해요.`:'제거할 아이템을 선택하세요.';
     for(const id of gifts)if(!byId.has(id))gifts.delete(id);
     renderCatalog();
   }

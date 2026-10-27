@@ -27,7 +27,7 @@ function companion(room,player,id,level=player.avatar.level){
 }
 const poisonHits=result=>result.events.flatMap(e=>e.targets);
 
-test('검은 수정 Q는 기존 사거리4배·첫 몬스터 종료 및 PvP 유지',()=>{
+test('검은 수정 Q는 기존 사거리4배·첫 몬스터 종료 및 학생 기본공격 보호 유지',()=>{
   const {room,player,size,monster,power}=setup();
   monster.x=player.x+size*1.2;monster.y=player.y;
   const farther={...monster,id:'far',x:player.x+size*2.8};room.monsters.set(farther.id,farther);
@@ -39,7 +39,7 @@ test('검은 수정 Q는 기존 사거리4배·첫 몬스터 종료 및 PvP 유�
   room.monsters.clear();const hp=ensureVitals(other).hp;
   castOphiuchus(room,player,now+1000,{basic:true});
   advanceProjectiles(room,now+1700,combatEnemies,damageTargets);
-  assert.ok(ensureVitals(other).hp<hp);assert.equal(other.combatPoison,undefined);
+  assert.equal(ensureVitals(other).hp,hp);assert.equal(other.combatPoison,undefined);
 });
 
 test('단계별 14초 고정 지대·물병 공용 타원·공개 필드·새 아이콘과 이름',()=>{

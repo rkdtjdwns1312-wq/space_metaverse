@@ -1,3 +1,4 @@
+import {statGrowthBonus} from './stat-growth.js';
 import {transformationBonus} from './transformation.js';
 import {constellationOf} from './constellations.js';
 import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
@@ -12,19 +13,19 @@ export function attackPowerOf(level,constellationId,player=null){
   // LV1은 아직 공격을 배우지 않은 상태입니다. 미지원 단계에는 보정을 적용하지 않습니다.
   if(!isMaster(player)&&(!Number.isInteger(level)||!Object.hasOwn(ATTACK_POWER,level)))return null;
   const type=constellationOf(constellationId,level)?.type;
-  return Math.max(0,(isMaster(player)?MASTER_BASE.attack:ATTACK_POWER[level]+(ATTACK_MODIFIERS[type]??0))+transformationBonus(player).attackBonus+equipmentBonus(player).attack+
+  return Math.max(0,(isMaster(player)?MASTER_BASE.attack:ATTACK_POWER[level]+(ATTACK_MODIFIERS[type]??0))+transformationBonus(player).attackBonus+equipmentBonus(player).attack+statGrowthBonus(player,'attack')+
     (player?.libraBuff?.bonus||0)+(player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0));
 }
 export const DEFENSE_POWER=Object.freeze({1:0,2:0,3:1,4:2,5:2});
 export const DEFENSE_MODIFIERS=Object.freeze({'생산계':0,'제작계':0,'공격계':-2,'특수계':0,'수호계':2});
 export function defensePowerOf(level,constellationId,player=null){
   if(isTeacher(player))return TEACHER_AVATAR.defensePower;
-  if(!isMaster(player)&&(!Number.isInteger(level)||level<2||!Object.hasOwn(DEFENSE_POWER,level)))return 0;
+  if(!isMaster(player)&&(!Number.isInteger(level)||level<2||!Object.hasOwn(DEFENSE_POWER,level)))return level===1?statGrowthBonus(player,'defense'):0;
   const base=DEFENSE_POWER[level]??0,type=constellationOf(constellationId,level)?.type;
   // 고래자리 E는 10초간 임시 방어력입니다. 서버 시각으로만 유효성을 판단합니다.
   const cetusBonus=player?.avatar?.constellationId==='cetus'&&player?.waterAura?.kind==='cetus'&&
     player.waterAura.endsAt>Date.now()?player.waterAura.defenseBonus:0;
-  return Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+equipmentBonus(player).defense+cetusBonus);
+  return Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+equipmentBonus(player).defense+cetusBonus)+statGrowthBonus(player,'defense');
 }
 export const damageAfterDefense=(power,defense)=>Math.max(1,power-defense);
 

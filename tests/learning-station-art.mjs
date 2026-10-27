@@ -12,7 +12,7 @@ try{
   await page.route('**/*',async route=>{
     const path=new URL(route.request().url()).pathname;
     if(path==='/')return route.fulfill({contentType:'text/html',body:'<html><head><meta charset="utf-8"></head><body></body></html>'});
-    if(path==='/painted-props.js')return route.fulfill({contentType:'text/javascript',body:await readFile(new URL('../client/painted-props.js',import.meta.url))});
+    if(['/painted-props.js','/map-image.js'].includes(path))return route.fulfill({contentType:'text/javascript',body:await readFile(new URL('../client'+path,import.meta.url))});
     if(/^\/assets\/maps\/[a-z-]+\.png$/.test(path)){
       return route.fulfill({contentType:'image/png',body:await readFile(new URL(`../client${path}`,import.meta.url))});
     }

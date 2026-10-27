@@ -1,3 +1,4 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 // 공유 보행면 아래에만 그리는 손그림 암벽. 바닥 좌표·경계·이동 판정에는 관여하지 않습니다.
 const THEMES={
   plaza:{shell:['#eee5ec','#afa9c2','#61668d'],light:'#fff9ed',dark:'#494f77',seam:'#d6c8eb',core:'#f7d9a0'},
@@ -13,20 +14,13 @@ const THEMES={
 };
 // 한 원화를 공유하고 로드 완료 시 모든 배경·타일·축소판 캐시를 깨웁니다.
 export const FLOATING_CLIFF_SRC='/assets/floating-cliff-painted.png';
-const cliff=typeof Image==='undefined'?null:new Image(),listeners=new Set();
+const listeners=new Set();
+const cliff=mapImage(FLOATING_CLIFF_SRC,()=>{revision++;for(const fn of listeners)fn();});
 let revision=0;
 export const floatingCliffCacheKey=()=>revision;
-export const floatingCliffReady=()=>!!cliff?.complete&&cliff.naturalWidth>0;
+export const floatingCliffReady=()=>mapImageReady(cliff);
 export function onFloatingCliffReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
-let loaded=Promise.resolve(false);
-if(cliff){
-  loaded=new Promise(resolve=>{
-    cliff.onload=()=>{revision++;for(const fn of listeners)fn();resolve(true);};
-    cliff.onerror=()=>resolve(false);
-  });
-  cliff.src=FLOATING_CLIFF_SRC;
-}
-export const preloadFloatingCliff=()=>loaded;
+export async function preloadFloatingCliff(){try{await decodeMapImages([cliff]);return !!cliff;}catch{return false;}}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const noise=(x,seed)=>Math.sin(x*7.3+seed)*.45+Math.sin(x*19.1-seed*2)*.32+Math.sin(x*43.7+seed)*.23;
 const topY=(z,u)=>z.y+z.ry*Math.sqrt(Math.max(0,1-u*u));

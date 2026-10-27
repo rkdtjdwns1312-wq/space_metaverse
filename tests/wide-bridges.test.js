@@ -56,5 +56,5 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   const {offsetY}=avatarCollisionShape(p),sideX=S.upper.x+S.bridgeWidth/2+10;
   assert.equal(avatarFitsFloor(STREET,sideX,710,p),true,'하반신이 북쪽 섬 안쪽에 있는 위치');
   assert.equal(avatarFitsFloor(STREET,S.upper.x,S.north.y+S.north.ry+20-offsetY,p),true,'북쪽 발전소 다리 안쪽');
-  assert.equal(avatarFitsFloor(STREET,STREET.width-150,710-offsetY,p),false,'확장된 바닥의 동쪽 끝 바깥 좌표');
+  assert.equal(avatarFitsFloor(STREET,S.north.x+S.north.rx+10,S.north.y-offsetY,p),false,'확장된 바닥의 동쪽 끝 바깥 좌표');
 });

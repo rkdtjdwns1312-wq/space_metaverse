@@ -1,3 +1,4 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 // 그림 안에 글씨를 굽지 않고 공통 게임 글꼴로 간판을 얹습니다.
 export const PAINTED_PROPS=Object.freeze({
   shop:{file:'star-shop-front.png',width:300,height:300,foot:70,signY:.35,signWidth:.34},
@@ -14,12 +15,12 @@ export const PAINTED_PROPS=Object.freeze({
 });
 const images=new Map();
 for(const [key,entry] of Object.entries(PAINTED_PROPS))if(typeof Image!=='undefined'){
-  const image=new Image();image.src='/assets/maps/'+entry.file;images.set(key,image);
+  images.set(key,mapImage('/assets/maps/'+entry.file));
 }
-export async function preloadPaintedProps(){await Promise.all([...images.values()].map(image=>image.decode()));}
+export async function preloadPaintedProps(kinds=Object.keys(PAINTED_PROPS)){await decodeMapImages(kinds.map(kind=>images.get(kind)).filter(Boolean));}
 export function drawPaintedProp(ctx,o){
   const spec=PAINTED_PROPS[o.kind],image=images.get(o.kind);
-  if(!spec||!image?.complete||!image.naturalWidth)return false;
+  if(!spec||!mapImageReady(image))return false;
   const source=spec.source||{x:0,y:0,width:image.naturalWidth,height:image.naturalHeight};
   const scale=Math.min(spec.width/source.width,spec.height/source.height);
   const w=source.width*scale,h=source.height*scale,x=o.x-w/2,y=o.y+spec.foot-h;

@@ -146,6 +146,7 @@ export function buyExperience(room, player, { amount } = {}) {
   requireStudentAt(player, growthStar, '성장의 별', true);
   ensure(player.avatar.level < PROGRESSION.transcendentLevel, '초월체는 경험치를 더 살 수 없어요.');
   ensure(Number.isSafeInteger(player.starShards) && player.starShards >= 0, '별 파편 잔액을 확인해주세요.');
+  ensure(player.avatar.xp<requirement(player.avatar),'현재 단계의 경험치를 모두 채웠어요. 진화의 별로 가주세요.');
   ensure(Number.isSafeInteger(amount) && amount > 0, '구매할 경험치는 1 이상의 정수로 입력해주세요.');
   const requiredXp = requirement(player.avatar);
   const remainingXp = Math.max(0, requiredXp - player.avatar.xp);

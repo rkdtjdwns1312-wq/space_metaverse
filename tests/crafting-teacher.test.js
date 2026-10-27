@@ -83,12 +83,14 @@ test('교사의 맵 이탈·기계와 거리 이탈·away·미접속·전투 제
   assert.equal((await call(socket,'crafting:recipes',{level:2})).ok,false);
 });
 
-test('level은 숫자 2·3·4·5만 허용하고 공개 LV5 망토 조합을 보여 준다',async t=>{
+test('level은 숫자 1~5만 허용하고 공개 LV1 교환과 LV5 망토 조합을 보여 준다',async t=>{
   const {game,connect,call}=await fixture(t),{socket,room:created}=await createTeacher(connect,call);
   placeAtMachine([...game.store.rooms.get(created.room.code).players.values()].find(value=>value.role==='teacher'));
+  const lv1=await call(socket,'crafting:recipes',{level:1});
+  assert.deepEqual(lv1,{ok:true,level:1,recipes:[{output:{id:'star-shard',quantity:1},ingredients:[{id:'star-crumb',quantity:5}],currency:'starShards'}]});
   const lv5=await call(socket,'crafting:recipes',{level:5});
   assert.equal(lv5.ok,true);assert.equal(lv5.recipes.some(recipe=>recipe.output.id==='spirit-king-cloak'),true);
-  for(const level of ['2',1,6,null,{},0])
+  for(const level of ['2','1',6,null,{},0])
     assert.equal((await call(socket,'crafting:recipes',{level})).ok,false,`level=${String(level)}`);
 });
 
@@ -98,7 +100,8 @@ test('학생 스냅샷과 crafting:open에는 레시피 내용이 포함되지 �
   const player=game.store.rooms.get(created.room.code).players.get(joined.selfId);placeAtMachine(player);
   const opened=await call(student,'crafting:open');
   assert.equal(opened.ok,true);
-  assert.deepEqual(Object.keys(opened).sort(),['enabled','fee','ok']);
+  assert.deepEqual(Object.keys(opened).sort(),['configured','enabled','fee','ok','privateRecipeCount']);
+  assert.equal(opened.configured,true);assert.ok(opened.privateRecipeCount>0);
   const state=game.store.snapshot(game.store.rooms.get(created.room.code),player);
   assert.equal(JSON.stringify(state).includes('space-station-card'),false);
   assert.equal(JSON.stringify(state).includes('android-card'),false);

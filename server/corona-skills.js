@@ -24,7 +24,7 @@ export function castCorona(room,player,now,{basic=false}={}){
       return along>=-m.radius&&along<=reach+m.radius&&Math.abs(vx*dy-vy*dx)<=width+m.radius;
     }).map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
     const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+dx*reach,y:player.y+dy*reach,
-      radius:width,sourceId:player.id},power,now);
+      radius:width,sourceId:player.id,basic:true},power,now);
     const falls=[];
     if(active&&targets.length){
       player.coronaAura.successfulHits++;

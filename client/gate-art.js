@@ -1,8 +1,9 @@
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 // 광장·낙원·사냥터·은하수·부서 출구가 같은 원화를 공유합니다.
 export const GATE_ART_SRC='/assets/maps/star-gate.png';
-const image=typeof Image==='undefined'?null:new Image();
-if(image)image.src=GATE_ART_SRC;
-export async function preloadGateArt(){await image?.decode();}
+const image=mapImage(GATE_ART_SRC);
+
+export async function preloadGateArt(){await decodeMapImages([image]);}
 export function gateVisualBox(o){
   const radius=Number(o.radius)||36,width=radius*2.8,height=radius*3.5;
   // 북쪽 문 위의 목적지 이름이 맵 밖으로 잘리지 않게 합니다.
@@ -11,7 +12,7 @@ export function gateVisualBox(o){
 }
 export function drawPaintedGate(ctx,o){
   const box=gateVisualBox(o);ctx.save();
-  if(image?.complete&&image.naturalWidth){
+  if(mapImageReady(image)){
     const scale=Math.min(box.width/image.naturalWidth,box.height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;
     ctx.drawImage(image,box.x+(box.width-w)/2,box.y+box.height-h,w,h);
   }else{

@@ -4,6 +4,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {ensureVitals} from '../server/vitals.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
+import {damagePlayersInArea} from '../server/area-combat.js';
 
 test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/만료 후 피해 재개',async t=>{
   // The room timer uses wall time for animation expiry, so keep this fixture on the same epoch.
@@ -32,9 +33,13 @@ test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/�
   room.monsters=new Map();
   const cast=await call(clients[0],'combat:skill',{slot:0});assert.equal(cast.ok,true);
   const hp=ensureVitals(ally).hp,attackerHp=ensureVitals(attacker).hp;
+  const basic=await call(clients[2],'combat:attack');assert.equal(basic.ok,true);
+  assert.deepEqual(basic.playerTargets,[]);assert.equal(ensureVitals(ally).hp,hp);assert.equal(ensureVitals(attacker).hp,attackerHp);
   const attack=async()=>{
-    const result=await call(clients[2],'combat:attack');assert.equal(result.ok,true);
-    const hit=result.playerTargets.find(h=>h.targetId===ally.id);assert.ok(hit);return hit;
+    // Students' basic attacks are harmless. Exercise the remaining skill-area
+    // damage path against the aura created by the real socket skill above.
+    const hits=damagePlayersInArea(room,{sourceId:attacker.id,mapId:ally.mapId,x:ally.x,y:ally.y,radius:1},10,now);
+    const hit=hits.find(h=>h.targetId===ally.id);assert.ok(hit);return hit;
   };
   const protectedHit=await attack();assert.equal(protectedHit.damage,0);assert.ok(protectedHit.reflectedDamage>0);
   assert.equal(ensureVitals(ally).hp,hp);assert.ok(ensureVitals(attacker).hp<attackerHp);

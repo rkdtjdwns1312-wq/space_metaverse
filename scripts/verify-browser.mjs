@@ -128,19 +128,13 @@ async function holdKey(page,code,ms){
   await page.keyboard.up(code);
 }
 async function clearShopPath(page,p,shop){
-  // 어느 쪽에서 상점에 도착했든 건물 반대쪽으로 먼저 빠져나옵니다.
-  // 고정적으로 아래만 누르면 북쪽에서 접근한 경우 상점 벽에 막힐 수 있습니다.
-  const direction=p.x<shop.x?'ArrowLeft':'ArrowRight';
-  for(let i=0;i<12&&Math.abs(p.x-shop.x)<shop.radius+90;i++)await holdKey(page,direction,120);
-  assert.ok(Math.abs(p.x-shop.x)>=shop.radius+90,'상점 옆 통로로 나와야 합니다');
-  // 상점은 북쪽, 게임기는 남쪽에 있어 귀환문과 같은 높이의 통로가 비어 있습니다.
+  // 이 시나리오는 상점 남쪽에서 들어옵니다. 새 초승달 배치의 동쪽 길에는
+  // 조합기가 있으므로 상점 아래에서 서쪽 중앙 공원(x=900)을 거쳐 돌아갑니다.
+  await walkNear(page,p,{x:p.x,y:shop.y+shop.radius+100},{waypoint:true});
+  await walkNear(page,p,{x:900,y:p.y},{waypoint:true});
   const corridorY=STREET.objects.find(o=>o.id==='gate-plaza').y;
-  // 70ms 펄스를 이동속도로 축소하면 서버 한 틱보다 짧아 입력을 놓칠 수 있습니다.
-  // 키를 유지한 상태로 실제 서버 좌표가 도착하는 것을 확인합니다.
-  const vertical=p.y<corridorY?'ArrowDown':'ArrowUp';await page.locator('#world').focus();await page.keyboard.down(vertical);
-  try{const end=Date.now()+5000;while(Math.abs(p.y-corridorY)>25&&Date.now()<end)await page.waitForTimeout(20);}finally{await page.keyboard.up(vertical);}
-  assert.ok(Math.abs(p.y-corridorY)<=25,'상점과 게임기 사이 통로에 도착해야 합니다');
-  for(let i=0;i<25&&p.x>300;i++)await holdKey(page,'ArrowLeft',120);
+  await walkNear(page,p,{x:900,y:corridorY},{waypoint:true});
+  await walkNear(page,p,{x:300,y:corridorY},{waypoint:true});
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}
 async function openChatFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
@@ -506,7 +500,7 @@ try{
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
  assert.equal((await teacher.locator('#shards-feedback').innerText()).trim(),'');
- await expandTeacherSection(teacher,'별 파편 지급');
+await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#shards-target').selectOption({value:id});
  await teacher.locator('#shards-amount').fill('20');
  await teacher.locator('#shards-give').click();
@@ -630,16 +624,9 @@ try{
 
  // Item 5: the street/shop are only reachable from the street; walking back through the plaza gate
  // returns the student near its configured arrival point, with planet-making available again.
- // Same reasoning as Item 3: right after closing the shop dialog the student is still within its
- // interact radius (and roughly level with it), so step down first to clear that row before
- // walking toward the far-away gate.
+ // Clear the shop's south entrance, then use the open central park to reach the west gate.
  const gateBack=STREET.objects.find(o=>o.id==='gate-plaza');
  await student.locator('#world').focus();
- // Step down clear of the shop's row first, then left past its column at that safe row - a direct
- // diagonal walkNear toward the far-off gate would cut back across the shop's radius on the way
- // (held arrow keys move at a fixed 45°, not a straight line at the target's exact angle, so a
- // shallow diagonal like this one swings close to whatever sits near the midpoint). The row is
- // picked to also clear the street lamps' collision radius, not just the shop's interact radius.
  await clearShopPath(student,p,shopObj);
  // 새 도착 위치에서는 이미 귀환문 근처일 수 있다. 아래에서 실제 목표와 거리를 확인한다.
  await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});

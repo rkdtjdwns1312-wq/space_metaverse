@@ -71,24 +71,24 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
-    { id: 'shop', name: '별 상점', x: 580, y: 1590, radius: 72, kind: 'shop', color: '#ffe59b' },
-    { id: 'energy-shop', name: '우주에너지 상점', x: 1180, y: 1607, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
-    {id:'math-station',name:'별 수학 발전소',x:300,y:600,radius:86,kind:'math-station'},
-    {id:'english-station',name:'별 영어 발전소',x:1500,y:600,radius:86,kind:'english-station'},
-    {id:'history-station',name:'별 역사 발전소',x:550,y:370,radius:86,kind:'history-station'},
-    {id:'science-station',name:'별 과학 발전소',x:900,y:290,radius:86,kind:'science-station'},
-    {id:'culture-station',name:'별 교양 발전소',x:1250,y:370,radius:86,kind:'culture-station'},
+    { id: 'shop', name: '별 상점', x: 1290, y: 1450, radius: 72, kind: 'shop', color: '#ffe59b' },
+    { id: 'energy-shop', name: '우주에너지 상점', x: 1290, y: 1980, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
+    {id:'math-station',name:'별 수학 발전소',x:250,y:650,radius:86,kind:'math-station'},
+    {id:'english-station',name:'별 영어 발전소',x:1550,y:650,radius:86,kind:'english-station'},
+    {id:'history-station',name:'별 역사 발전소',x:430,y:390,radius:86,kind:'history-station'},
+    {id:'science-station',name:'별 과학 발전소',x:900,y:280,radius:86,kind:'science-station'},
+    {id:'culture-station',name:'별 교양 발전소',x:1370,y:390,radius:86,kind:'culture-station'},
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['tetris','별 테트리스','#ffdfd5'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
       ['path','별 길 한번에 그리기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:2900,radius:32,kind:'arcade'})),
     ...DUEL_ARCADES,
-    {id:'crafting-machine',name:'별빛 조합기',x:1430,y:1840,radius:62,kind:'crafting',color:'#cdb8ef'},
+    {id:'crafting-machine',name:'별빛 조합기',x:1450,y:1730,radius:62,kind:'crafting',color:'#cdb8ef'},
     {id:'playground-sign',name:'놀이터가는길',x:900,y:2350,radius:24,kind:'street-sign',passable:true},
-    {id:'station-sign',name:'별 발전소 가는길',x:900,y:1020,radius:24,kind:'street-sign',passable:true},
+    {id:'station-sign',name:'별 발전소 가는길',x:900,y:1070,radius:24,kind:'street-sign',passable:true},
     { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 1690, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
-    { id: 'lamp-right', name: '별빛 가로등', x: 1300, y: 1320, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
+    { id: 'lamp-right', name: '별빛 가로등', x: 1110, y: 1290, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
 export const STREET_ID = STREET.id;
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
