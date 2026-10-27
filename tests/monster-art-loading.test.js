@@ -38,4 +38,3 @@ test('cold images keep all 16 painted species out of legacy fallback, including 
     assert.equal(drawers.some(draw=>draw(ctx,{shape:'unknown'},0)),false);
   }finally{delete globalThis.Image;}
 });
-
