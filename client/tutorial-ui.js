@@ -36,13 +36,16 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
  dialog.innerHTML='<p id="tutorial-progress"></p><h2 id="tutorial-title"></h2><p id="tutorial-body"></p><ol id="tutorial-goals"></ol><p class="journey-reward">미션 보상 · 별 파편 1개</p><p id="tutorial-error" role="alert"></p><div class="dialog-actions"><button id="tutorial-later" class="secondary" type="button">게임에서 진행하기</button><button id="tutorial-next" class="secondary" type="button">안내 시작하기</button></div>';
  document.body.append(dialog);
  const hud=document.createElement('aside');hud.id='journey-hud';hud.hidden=true;hud.setAttribute('aria-label','첫 여행 미션 안내');
- hud.innerHTML='<div class="journey-heading"><strong id="journey-heading"></strong><button id="journey-details" class="small secondary" type="button">미션 보기</button></div><p id="journey-instruction" aria-live="polite"></p><button id="journey-claim" class="secondary" type="button" hidden>완료 · 별 파편 1개 받기</button>';
+ hud.innerHTML='<div class="journey-heading"><strong id="journey-heading"></strong><button id="journey-details" class="small secondary" type="button">미션 보기</button><button id="journey-hide" class="small secondary" type="button" aria-label="미션 안내 숨기기" title="미션 안내 숨기기">×</button></div><p id="journey-instruction" aria-live="polite"></p><button id="journey-claim" class="secondary" type="button" hidden>완료 · 별 파편 1개 받기</button>';
  document.querySelector('.map-wrap').append(hud);
  const arrow=document.createElement('div');arrow.id='journey-arrow';arrow.hidden=true;arrow.setAttribute('aria-hidden','true');arrow.textContent='➜';document.body.append(arrow);
  const notice=document.createElement('dialog');notice.id='journey-place-dialog';notice.innerHTML='<h2>새로운 곳을 만났어요!</h2><p id="journey-place-text"></p><div class="dialog-actions"><button class="secondary" type="button">알겠어요</button></div>';document.body.append(notice);notice.querySelector('button').onclick=()=>notice.close();
  const practice=document.createElement('dialog');practice.id='journey-planet-practice-dialog';practice.setAttribute('aria-labelledby','journey-planet-practice-title');
  practice.innerHTML='<h2 id="journey-planet-practice-title">행성 만들기 연습</h2><p>지금은 연습시간이라 행성을 만들 수는 없어요</p><div class="dialog-actions"><button id="journey-planet-practice-close" class="secondary" type="button">닫기</button></div>';document.body.append(practice);
- let signature='',snapshot=null,goal=null,busy=false,highlight=null,route=null,routeKey='',lastRouteAt=0,lastRouteCheck=0,announcement=[],pending=new Set(),lastObserved=new Map();
+ let signature='',snapshot=null,goal=null,busy=false,hudDismissed=false,highlight=null,route=null,routeKey='',lastRouteAt=0,lastRouteCheck=0,announcement=[],pending=new Set(),lastObserved=new Map();
+ function hideHud(){hudDismissed=true;hud.hidden=true;$('world').focus();}
+ $('journey-hide').onclick=hideHud;
+ hud.addEventListener('click',event=>{if(!event.target.closest('button'))hideHud();});
  const goals=()=>me()?.journey?.goals||[];
  const current=()=>JOURNEY_STEPS.find(s=>s.stage===me()?.journey?.stage);
  const done=id=>goals().includes(id);
@@ -66,7 +69,7 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
  $('journey-claim').onclick=claim;$('journey-details').onclick=()=>open();
  $('tutorial-later').onclick=()=>dialog.close();$('tutorial-next').onclick=()=>{const step=current();if(step&&step.goals.every(g=>done(g.id)))claim();else dialog.close();};
  function render(){
-  const p=me(),step=current(),journey=p?.journey;hud.hidden=p?.role!=='student'||!step;
+  const p=me(),step=current(),journey=p?.journey;hud.hidden=hudDismissed||p?.role!=='student'||!step;
   if(!step){clearHighlight();if(dialog.open){$('tutorial-progress').textContent='첫 여행 미션 · 모두 완료';$('tutorial-title').textContent='우주 교실의 탐험가가 되었어요!';$('tutorial-body').textContent='다섯 미션을 모두 마쳤어요. 이제 배운 기능으로 친구들과 즐겁게 활동해 보세요.';$('tutorial-goals').replaceChildren();$('tutorial-next').hidden=true;dialog.querySelector('.journey-reward').hidden=true;}return;}
   const ready=step.goals.every(g=>done(g.id));goal=step.goals.find(g=>!done(g.id))?.id||null;
   const key=JSON.stringify([journey,busy]);if(signature===key)return;signature=key;
@@ -80,7 +83,7 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   if(snapshot&&journey.stage!==snapshot.stage&&journey.stage<=5){announcement=[];toast(`${journey.stage}번째 미션이 열렸어요. ${step.title}`);}
   snapshot={stage:journey.stage,goals:[...goals()]};
  }
- function open(){render();$('tutorial-error').textContent='';stop();if(!dialog.open)dialog.showModal();}
+ function open(){hudDismissed=false;render();$('tutorial-error').textContent='';stop();if(!dialog.open)dialog.showModal();}
  dialog.addEventListener('close',()=>$('world').focus());notice.addEventListener('close',()=>$('world').focus());
  function visible(el){return el&&el.getClientRects().length&&!el.hidden&&(!el.closest('dialog')||el.closest('dialog').open);}
  function buttonForGoal(){
@@ -141,5 +144,5 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   if($('inventory-dialog').open){const tab=document.querySelector('.inventory-page-tab[aria-selected="true"]');if(tab)observe('bag-'+tab.textContent.trim());}
   if($('chat-dialog').open)observe('chat-open');if($('crew-dialog').open)observe('friends-open');
  },300);
- return {open,update:render,observe,steps:JOURNEY_STEPS.map(s=>s.title),startIfNeeded(result){const p=result.room.players.find(p=>p.id===result.selfId);if(p?.role!=='student'||p.journey?.stage===6)return;const offer=$('password-offer-dialog');if(offer.open)offer.addEventListener('close',()=>{if($('lobby').hidden)open();},{once:true});else open();},reset(){signature='';snapshot=null;goal=null;route=null;routeKey='';announcement=[];pending.clear();lastObserved.clear();hud.hidden=true;clearHighlight();if(dialog.open)dialog.close();if(notice.open)notice.close();if(practice.open)practice.close();}};
+ return {open,update:render,observe,steps:JOURNEY_STEPS.map(s=>s.title),startIfNeeded(result){const p=result.room.players.find(p=>p.id===result.selfId);if(p?.role!=='student'||p.journey?.stage===6)return;const offer=$('password-offer-dialog');if(offer.open)offer.addEventListener('close',()=>{if($('lobby').hidden)open();},{once:true});else open();},reset(){hudDismissed=false;signature='';snapshot=null;goal=null;route=null;routeKey='';announcement=[];pending.clear();lastObserved.clear();hud.hidden=true;clearHighlight();if(dialog.open)dialog.close();if(notice.open)notice.close();if(practice.open)practice.close();}};
 }
