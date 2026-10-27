@@ -32,10 +32,10 @@ try{
  const result=await gallery.evaluate(async()=>{
   const {MONSTER_TYPES}=await import('/shared/monsters.js');
   const painted=await import('/monster-attack-frames.js'),lv2=await import('/lv2-monster-art.js'),sun=await import('/sun-monster-art.js'),celestial=await import('/celestial-monster-art.js'),boss=await import('/boss-monster-art.js');
-  const {drawBabyStar}=await import('/baby-star-art.js'),{drawWaterMonster}=await import('/water-monster-art.js');
-  await painted.preloadMonsterAttack();await celestial.preloadCelestialArt();await boss.preloadBossArt();await boss.preloadBossArt('serena');
-  for(const src of [...Object.values(lv2.LV2_MONSTER_ART),...Object.values(sun.SUN_MONSTER_ART)].map(a=>a.src)){const im=new Image();im.src=src;await im.decode();}
-  const drawers=[boss.drawBossMonster,drawBabyStar,celestial.drawCelestialMonster,sun.drawSunMonster,lv2.drawLv2Monster,drawWaterMonster];
+  const {drawBabyStar}=await import('/baby-star-art.js'),{drawWaterMonster}=await import('/water-monster-art.js'),{drawGuardianMonster}=await import('/guardian-monster-art.js');
+  const {prepareMonsterArt}=await import('/monster-art-ready.js');
+  await Promise.all(MONSTER_TYPES.map(m=>prepareMonsterArt(m.shape)));
+  const drawers=[boss.drawBossMonster,drawGuardianMonster,drawBabyStar,celestial.drawCelestialMonster,sun.drawSunMonster,lv2.drawLv2Monster,drawWaterMonster];
   const probe=document.createElement('canvas');probe.width=probe.height=300;const pc=probe.getContext('2d');
   const draw=(ctx,m,time,attack)=>drawers.some(fn=>fn(ctx,m,time,attack));
   for(const m of MONSTER_TYPES)draw(pc,{...m,x:150,y:160,radius:35,facingX:1},0,null);
@@ -56,7 +56,7 @@ try{
   document.body.replaceChildren();document.body.style.cssText='margin:0;background:#20263b';
   const c=document.createElement('canvas');c.width=1440;c.height=1150;document.body.append(c);const ctx=c.getContext('2d');
   window.renderMonsterGallery=group=>{ctx.fillStyle='#20263b';ctx.fillRect(0,0,c.width,c.height);for(let row=0;row<5;row++){
-   const m=MONSTER_TYPES[group*5+row];for(let col=0;col<6;col++){const time=[0,150,250,340,480,590][col],x=120+col*240,y=row*230+160;
+   const m=MONSTER_TYPES[group*5+row];if(!m)continue;for(let col=0;col<6;col++){const time=[0,150,250,340,480,590][col],x=120+col*240,y=row*230+160;
     ctx.fillStyle='#fff8e8';ctx.font='15px sans-serif';ctx.textAlign='center';ctx.fillText(m.name+' · '+['대기','준비','전진','타격','복귀','마무리'][col],x,row*230+24);
     const duration=['serena','spirit-king'].includes(m.id)?800:600;
     draw(ctx,{...m,x,y,radius:42,facingX:col===5?-1:1,moving:false},time*duration/600,col?{startedAt:0,durationMs:duration,dx:col===5?-1:1,dy:0,reach:45}:null);
@@ -64,9 +64,9 @@ try{
   }};
   return {checks,alpha};
  });
- assert.equal(result.checks.length,15);for(const row of result.checks)assert(row.distinct>=3,JSON.stringify(row));
+ assert.equal(result.checks.length,16);for(const row of result.checks)assert(row.distinct>=3,JSON.stringify(row));
  // Generated transparent PNGs may retain imperceptible 1/255 alpha at an edge.
  for(const row of result.alpha){assert(row.corner<=2,row.id);assert(row.clear>.35,row.id);assert.equal(row.distinct,8,row.id);}
- for(let group=0;group<3;group++){await gallery.evaluate(g=>window.renderMonsterGallery(g),group);await gallery.screenshot({path:`.local/monster-attacks-${group+1}.png`});}
+ for(let group=0;group<Math.ceil(result.checks.length/5);group++){await gallery.evaluate(g=>window.renderMonsterGallery(g),group);await gallery.screenshot({path:`.local/monster-attacks-${group+1}.png`});}
  assert.deepEqual(errors,[]);console.log(JSON.stringify({result,errors,game:'baby Q hit and counter PASS'},null,2));
 }finally{socket.disconnect();await browser.close();await game.close();}

@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {preloadSerenaArt,serenaBounds,drawSerena} from './serena-art.js';
 import {preloadNokseraSkill,drawNokseraSkill} from './noksera-skill.js';
 import {preloadNokseraMoon,drawNokseraMoonCast} from './noksera-moon.js';
@@ -37,7 +38,7 @@ export function drawBossMonster(ctx,m,time=0,attack){
   const r=m.radius,pose=monsterAttackPose(time,attack),active=pose.active;
   const walking=!!art.walkSrc&&(m.moving||m.leoonSkill?.stage==='stomp')&&!active;
   const paintedShape=m.shape==='spirit-king'?(active?'spirit-king':'spirit-king-walk'):active?m.shape:null;
-  const image=paintedShape?paintedMonsterImage(paintedShape):sprite(m.shape,walking);if(!image?.complete||!image.naturalWidth)return false;
+  const image=paintedShape?paintedMonsterImage(paintedShape):sprite(m.shape,walking);if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const direction=active&&Math.abs(attack.dx)>.05?Math.sign(attack.dx):m.facingX<0?-1:1,flip=direction===art.face?1:-1;
   const progress=pose.progress,brace=active&&progress<.36?Math.sin(progress/.36*Math.PI):0;
   const strike=active&&progress>=.36&&progress<.8?Math.sin((progress-.36)/.44*Math.PI):0;

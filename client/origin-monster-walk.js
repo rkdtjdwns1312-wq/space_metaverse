@@ -9,6 +9,7 @@ export function originWalkImage(shape){
   if(!images.has(shape)){const image=new Image();image.src=src;images.set(shape,image);}
   return images.get(shape);
 }
+export async function preloadOriginWalkArt(shape){await originWalkImage(shape)?.decode();}
 export function drawOriginWalkFrame(ctx,shape,time,x,y,size){
   const image=originWalkImage(shape);if(!image?.complete||!image.naturalWidth)return false;
   const frame=originWalkFrame(time),width=image.naturalWidth/2,height=image.naturalHeight/2;

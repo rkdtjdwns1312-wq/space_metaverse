@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {drawOriginWalkFrame} from './origin-monster-walk.js';
 
 // 첨부 디자인으로 만든 2×2 투명 포즈 시트를 사용합니다.
@@ -16,6 +17,7 @@ function sprite(shape){
   }
   return images.get(shape);
 }
+export async function preloadLv2MonsterArt(shape){if(LV2_MONSTER_ART[shape])await sprite(shape)?.decode();}
 // 8단계 공격 리듬을 4개의 주요 포즈와 연속 이펙트로 표현합니다.
 export function lv2MonsterPose(time,attack){
   if(!attack||!Number.isFinite(attack.startedAt))return {frame:0,progress:0,active:false};
@@ -58,7 +60,7 @@ function attackEffect(ctx,m,attack,progress,face){
 export function drawLv2Monster(ctx,m,time=0,attack){
   if(!LV2_MONSTER_ART[m?.shape])return false;
   if(!ctx)return true;
-  const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return false;
+  const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const r=Math.max(1,m.radius||48),size=r*3.6;
   const pose=lv2MonsterPose(time,attack),phase=time*.01;
   const face=pose.active&&Math.abs(attack.dx)>.05?Math.sign(attack.dx):m.facingX<0?-1:1;

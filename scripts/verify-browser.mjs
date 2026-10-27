@@ -50,9 +50,15 @@ async function waitForChatInput(page,{disabled,placeholder}){
 // object-fit:contain, so the bitmap is letterboxed inside the element and the blank bands must be
 // subtracted - exactly what client/world.js canvasPoint() does.
 async function worldClick(page,mx,my){
+  // The game intentionally pauses canvas rendering in hidden browser tabs.
+  await page.bringToFront();
+  await page.waitForFunction(()=>!document.hidden);
   await closeOpenDialogs(page);
   // 배치 모드/창 닫기 직후에는 다음 프레임에서 카메라 축척이 바뀝니다.
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  // A cold map can still be preparing its painted background after two frames.
+  // Do not send NaN coordinates to Playwright before the camera has rendered.
+  await page.waitForFunction(()=>{const d=document.getElementById('world')?.dataset;return d&&Number.isFinite(Number(d.viewX))&&Number.isFinite(Number(d.viewY))&&Number(d.viewScale)>0;});
   let view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
   let box=await page.locator('#world').boundingBox();
   const placing=await page.evaluate(()=>document.body.classList.contains('placing'));
@@ -143,6 +149,17 @@ async function openInventoryFromDock(page){await closeOpenDialogs(page);await pa
 async function openAvatarFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-avatar').click();await page.locator('#avatar-dialog').waitFor({state:'visible'});}
 async function clickMenuAction(page,id){await openMenuFromDock(page);await page.locator('#'+id).click();}
 async function openMenuFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-menu').click();await page.locator('#menu-dialog').waitFor({state:'visible'});}
+async function submitTemplatePlanet(page,templateId){
+ const template=PLANET_TEMPLATES.find(t=>t.id===templateId);
+ await page.locator(`input[name="planet-type"][value="${templateId}"]`).check();
+ assert.equal(await page.locator('#planet-name').inputValue(),template.name,'Selecting a template must fill its name');
+ assert.equal(await page.locator('#planet-desc').inputValue(),template.description,'Selecting a template must fill its description');
+ await page.locator('#planet-create-submit').click();
+ await page.waitForFunction(()=>!document.getElementById('planet-create-dialog').open||document.getElementById('planet-create-error').textContent.trim());
+ const error=await page.locator('#planet-create-error').textContent();
+ assert.equal(error.trim(),'',`Creating ${templateId} planet was rejected: ${error}`);
+ await page.locator('#planet-create-dialog').waitFor({state:'hidden'});
+}
 try{
  const teacherContext=await newContext({viewport:{width:1440,height:1000}});
  const studentContext=await newContext({viewport:{width:1440,height:1000},hasTouch:true});
@@ -740,18 +757,14 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.waitForFunction(()=>document.body.classList.contains('placing'));
  await worldClick(teacher,sites[24].x,sites[24].y);
  await teacher.locator('#planet-create-dialog').waitFor({state:'visible'});
- await teacher.locator('input[name="planet-type"][value="pe"]').check();
- await teacher.locator('#planet-create-submit').click();
- await teacher.locator('#planet-create-dialog').waitFor({state:'hidden'});
+ await submitTemplatePlanet(teacher,'pe');
  const teacherCanvasAfterFirstType=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  assert.notEqual(teacherCanvasBeforeTypes,teacherCanvasAfterFirstType);
  await clickMenuAction(teacher,'planet-new');
  await teacher.waitForFunction(()=>document.body.classList.contains('placing'));
  await worldClick(teacher,sites[38].x,sites[38].y);
  await teacher.locator('#planet-create-dialog').waitFor({state:'visible'});
- await teacher.locator('input[name="planet-type"][value="art"]').check();
- await teacher.locator('#planet-create-submit').click();
- await teacher.locator('#planet-create-dialog').waitFor({state:'hidden'});
+ await submitTemplatePlanet(teacher,'art');
  const teacherCanvasAfterSecondType=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  assert.notEqual(teacherCanvasAfterFirstType,teacherCanvasAfterSecondType);
  assert.equal(room.planets.size,2);

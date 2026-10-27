@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 // Twelve painted poses share a 256×512 canvas and the same foot anchor.
 export const SERENA_ART={src:'/assets/monsters/serena.png',columns:4,rows:3,frameWidth:256,frameHeight:512,footY:496};
 let image;
@@ -15,7 +16,7 @@ export function serenaPose(m,time,attack,now=Date.now()){
 export function drawSerena(ctx,m,time,attack){
   if(m.shape!=='serena')return false;if(!ctx)return true;
   if(!image)void preloadSerenaArt()?.catch(()=>{});
-  if(!image?.complete||!image.naturalWidth)return true;
+  if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const pose=serenaPose(m,time,attack);
   const frame=pose<4?Math.round(pose)%4:Math.min(11,Math.round(pose));
   const {width,height,top}=serenaBounds(m);

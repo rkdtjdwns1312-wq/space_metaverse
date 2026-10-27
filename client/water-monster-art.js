@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {drawOriginWalkFrame} from './origin-monster-walk.js';
 import {drawPaintedMonsterFrame,monsterAttackPose} from './monster-attack-frames.js';
 
@@ -13,6 +14,8 @@ function monsterImage(shape) {
   }
   return imageCache.get(shape);
 }
+
+export async function preloadWaterMonsterArt(shape){if(SUPPORTED.has(shape))await monsterImage(shape)?.decode();}
 
 function drawCrabWave(ctx, x, y, radius, reach, progress, direction) {
   const distance = reach * (0.45 + 0.5 * progress);
@@ -75,6 +78,8 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
   if (!monster || !SUPPORTED.has(monster.shape)) return false;
   if (!ctx) return true;
 
+  const image = monsterImage(monster.shape);
+  if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,monster,image);
   const now = Number.isFinite(time) ? time : (globalThis.performance?.now?.() ?? Date.now());
   const radius = Math.max(1, Number(monster.radius) || 30);
   const size = radius * 3.6;
@@ -131,46 +136,12 @@ export function drawWaterMonster(ctx, monster, time = 0, attack) {
     ctx.translate(drawX, drawY);
     ctx.scale(face * squashX, squashY);
     ctx.rotate(roll);
-    const image = monsterImage(monster.shape);
     if (attackActive && drawPaintedMonsterFrame(ctx,monster.shape,attackPose.frame,radius,0,radius*.82)) {
       // 집게·몸통이 실제로 바뀌는 8포즈를 서버 반격 이벤트 동안 재생합니다.
     } else if (moving && !attackActive && drawOriginWalkFrame(ctx,monster.shape,now,-size/2,-size/2,size)) {
       // 걷기 프레임은 기존 발걸음을 유지합니다.
     } else if (image?.complete && image.naturalWidth > 0) {
       ctx.drawImage(image, -size / 2, -size / 2, size, size);
-    } else {
-      const gradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.08, 0, 0, radius * 1.25);
-      gradient.addColorStop(0, '#d8fbff');
-      gradient.addColorStop(0.5, monster.shape === 'star-crab' ? '#52b9ec' : '#51d7dc');
-      gradient.addColorStop(1, '#2872bd');
-      ctx.fillStyle = gradient;
-      ctx.strokeStyle = '#e0fbff';
-      ctx.lineWidth = Math.max(2, radius * 0.09);
-      ctx.beginPath();
-      if (monster.shape === 'star-crab') {
-        for (let i = 0; i < 10; i++) {
-          const angle = -Math.PI / 2 + i * Math.PI / 5;
-          const r = radius * (i % 2 ? 0.86 : 1.16);
-          const px = Math.cos(angle) * r;
-          const py = Math.sin(angle) * r * 0.78;
-          if (!i) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-      } else {
-        ctx.ellipse(0, 0, radius * 0.91, radius * 0.79, 0, 0, Math.PI * 2);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(radius * 0.3, -radius * 0.1, radius * 0.09, 0, Math.PI * 2);
-      ctx.arc(radius * 0.58, -radius * 0.08, radius * 0.09, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#174878';
-      ctx.beginPath();
-      ctx.arc(radius * 0.33, -radius * 0.08, radius * 0.035, 0, Math.PI * 2);
-      ctx.arc(radius * 0.61, -radius * 0.06, radius * 0.035, 0, Math.PI * 2);
-      ctx.fill();
     }
     ctx.restore();
 

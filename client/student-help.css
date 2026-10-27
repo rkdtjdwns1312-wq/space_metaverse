@@ -1,0 +1,48 @@
+/* A small illustrated guidebook using the classroom's ivory, gold and lavender palette. */
+#classroom-help-dialog{width:min(880px,calc(100vw - 24px));height:min(800px,calc(100dvh - 28px));max-height:calc(100dvh - 28px);padding:20px;overflow:hidden;background:radial-gradient(ellipse at top right,#e7defb88,transparent 65%),#fffaf0;border:2px solid #bfa978;box-shadow:inset 0 0 0 4px #fffdf6,0 15px 65px #211a3544;color:#493b60}
+#classroom-help-dialog[open]{display:flex;flex-direction:column;gap:8px}
+#classroom-help-dialog header{flex:none;gap:12px;margin:0;border-bottom:1px solid #d8c8a6;padding-bottom:10px}
+#classroom-help-dialog header small{color:#78644b;font-size:12px;letter-spacing:.04em}
+#classroom-help-dialog h2{margin:3px 0 0;font-size:23px;color:#654e89}
+#classroom-help-dialog button{font-weight:400;box-shadow:inset 0 1px 0 #fffc;background:linear-gradient(#fffdf7,#eee6f4);border:1px solid #c8b98f;color:#57446e}
+#classroom-help-close{flex:none;min-height:44px}#classroom-help-dialog label{margin:0;font-weight:500;font-size:14px}
+.help-search-row{display:flex;gap:7px;flex:none}.help-search-row input{flex:1;min-width:0}
+#classroom-help-search{margin:0;height:44px;background:#fffefb;border:1px solid #b9a2cf;color:#48365f;font-size:16px}
+#classroom-help-clear{padding:5px 10px;min-width:72px;font-size:12px}
+#help-suggestions{display:flex;flex:none;gap:6px;overflow-x:auto;padding:2px}
+#help-suggestions button{flex:none;min-height:36px;padding:5px 12px;font-size:13px;border-radius:18px}
+#help-result-status{flex:none;margin:0;color:#695977;font-size:13px;line-height:1.5}
+#classroom-help-dialog .classroom-help-layout{height:auto;flex:1;min-height:0;grid-template-columns:175px minmax(0,1fr);gap:12px}
+#classroom-help-tabs{border-right:1px solid #ddcfb7;padding:2px 10px 2px 2px;gap:6px;min-height:0}
+#classroom-help-tabs button{flex:none;min-height:40px;line-height:1.5;font-size:13px;padding:7px 9px;border-radius:10px;text-align:left}
+#classroom-help-tabs button[aria-pressed=true]{background:linear-gradient(#e6d9f5,#d8c7ec);color:#493568;border-color:#ac91c5}
+#classroom-help-content{min-width:0;min-height:0;overflow-y:auto;padding:2px 6px 14px 2px;overscroll-behavior:contain;scrollbar-gutter:stable}
+.help-answer{margin:0 0 9px;border:1px solid #d5c3a2;border-radius:13px;overflow:hidden;background:#fffef9;box-shadow:0 2px 3px #725a3110}
+.help-answer summary{position:relative;list-style:none;cursor:pointer;padding:12px 30px 12px 14px;color:#5d437d;font-size:15px;line-height:1.5;font-weight:500;overflow-wrap:anywhere}
+.help-answer summary::-webkit-details-marker{display:none}.help-answer summary::after{content:'+';position:absolute;right:12px;top:12px;font-size:18px;color:#9e834b}.help-answer[open] summary::after{content:'−'}
+.help-answer summary small{display:block;margin-top:3px;color:#796b80;font-size:11px}.help-answer summary:focus-visible{outline:2px solid #9870b1;outline-offset:-3px}
+.help-answer[open] summary{background:linear-gradient(110deg,#f5edf9,#fff9e7);border-bottom:1px solid #e7dcca}
+.help-answer-body{padding:12px 16px 14px;line-height:1.75;overflow-wrap:anywhere}
+#classroom-help-content .help-answer-body p{margin:0;font-size:14px}.help-answer ol{padding-left:22px;margin:12px 0}.help-answer li{padding:2px 0 5px 4px;font-size:14px}.help-answer li::marker{color:#8c6b32;font-weight:600}
+#classroom-help-content .help-note{padding:9px 11px;background:#f3eef8;border-radius:9px;border-left:3px solid #c3acd9;font-size:13px;color:#635273}
+.help-empty{line-height:1.8;font-size:15px;padding:14px;background:#fffdf5;border:1px dashed #c7b58b;border-radius:12px}
+#map-guide-dialog{width:min(450px,calc(100vw - 24px));max-height:calc(100dvh - 28px);background:linear-gradient(145deg,#fffaf0,#f2eaf8);border:2px solid #bfa978;box-shadow:inset 0 0 0 4px #fffdf6,0 12px 50px #211a3544;color:#574269}
+#map-guide-dialog h2{color:#654e89}#map-guide-dialog h3{font-size:14px;margin:18px 0 8px}.map-help-links{display:flex;flex-wrap:wrap;gap:8px}.map-help-links button,.student-help-link{font-weight:400;border:1px solid #c8b98f;background:linear-gradient(#fffdf7,#eee6f4);color:#57446e}
+.student-help-link{font-size:12px;min-height:34px;padding:5px 10px;flex-shrink:0;margin:0 0 8px}
+header>.student-help-link{margin:0 auto 0 0}#crafting-dialog header,#energy-shop-dialog header{flex-wrap:wrap}
+@media(max-width:620px){
+ #classroom-help-dialog{padding:12px;gap:7px}#classroom-help-dialog h2{font-size:20px}
+ #classroom-help-dialog .classroom-help-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:8px}
+ #classroom-help-tabs{flex-direction:row;max-height:none;overflow-x:auto;border:0;padding:2px;gap:6px}
+ #classroom-help-tabs button{white-space:nowrap;min-height:36px;padding:5px 10px}
+ #classroom-help-content{padding-right:2px}.help-answer summary{font-size:14px;padding-top:10px;padding-bottom:10px}
+ #help-suggestions button{min-height:32px;padding:4px 10px}.help-answer-body{padding:10px 12px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ #classroom-help-dialog{padding:10px 14px;gap:5px}#classroom-help-dialog header{padding-bottom:5px}
+ #classroom-help-dialog header small,#classroom-help-dialog>label,#help-suggestions{display:none}
+ #classroom-help-dialog h2{font-size:18px}#classroom-help-close{min-height:36px;padding:5px 14px}
+ #classroom-help-dialog .classroom-help-layout{grid-template-columns:145px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+ #classroom-help-tabs{flex-direction:column;border-right:1px solid #ddcfb7;overflow-y:auto;overflow-x:hidden}
+ #classroom-help-tabs button{white-space:normal}#classroom-help-search{height:38px}#help-result-status{font-size:12px}
+}

@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import { lv2MonsterPose } from './lv2-monster-art.js';
 
 // 1280×1280 생성 원본: [sx, sy, sw, sh, 발 중심 x, 발 바닥 y].
@@ -26,6 +27,8 @@ function sprite(shape) {
   }
   return images.get(shape);
 }
+
+export async function preloadSunMonsterArt(shape){if(SUN_MONSTER_ART[shape])await sprite(shape)?.decode();}
 
 // 기존 자세 시트의 준비→입 벌림→회복 흐름을 유지합니다.
 export const sunMonsterPose = lv2MonsterPose;
@@ -118,7 +121,7 @@ export function drawSunMonster(ctx, monster, time = 0, attack) {
   if (!art) return false;
   if (!ctx) return true;
   const image = sprite(monster.shape);
-  if (!image?.complete || !image.naturalWidth) return false;
+  if (!image?.complete || !image.naturalWidth) return drawMonsterArtLoading(ctx,monster,image);
   const now = Number.isFinite(time) ? time : 0;
   const radius = Math.max(1, Number(monster.radius) || art.radius) * art.visualScale;
   const x = Number(monster.x) || 0, y = Number(monster.y) || 0;

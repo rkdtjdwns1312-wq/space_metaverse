@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {drawPaintedMonsterFrame,paintedMonsterImage,preloadMonsterAttack,monsterAttackPose} from './monster-attack-frames.js';
 
 export async function preloadGuardianArt(){
@@ -10,7 +11,7 @@ export function drawGuardianMonster(ctx,m,time=0,attack){
   const pose=monsterAttackPose(time,attack);
   const sheet=pose.active?'star-guardian':'star-guardian-walk';
   const image=paintedMonsterImage(sheet);
-  if(!image?.complete||!image.naturalWidth)return false;
+  if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const direction=pose.active&&Math.abs(Number(attack?.dx)||0)>.05?Math.sign(attack.dx):m.facingX<0?-1:1;
   const frame=pose.active?pose.frame:m.moving?Math.floor(time/130)%8:0;
   const r=m.radius,bob=m.moving&&!pose.active?Math.sin(time/130)*r*.025:0;

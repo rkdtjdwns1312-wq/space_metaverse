@@ -1,3 +1,4 @@
+import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {lv2MonsterPose} from './lv2-monster-art.js';
 import {drawOriginWalkFrame} from './origin-monster-walk.js';
 
@@ -18,7 +19,7 @@ function sprite(shape){
   if(!images.has(shape)&&typeof Image!=='undefined'){const image=new Image();image.src=CELESTIAL_MONSTER_ART[shape].src;images.set(shape,image);}
   return images.get(shape);
 }
-export async function preloadCelestialArt(){await Promise.all(Object.keys(CELESTIAL_MONSTER_ART).map(id=>sprite(id)?.decode()));}
+export async function preloadCelestialArt(shape){await Promise.all((shape?(CELESTIAL_MONSTER_ART[shape]?[shape]:[]):Object.keys(CELESTIAL_MONSTER_ART)).map(id=>sprite(id)?.decode()));}
 // 성장한 서늘한 별의 근접 냉기 숨결: 입 앞에서 자라고 잦아드는 16프레임.
 export const GROWN_COOL_BREATH_FRAMES=Object.freeze([
   [0,0],[0,0],[0,0],[.08,.34],[.2,.52],[.38,.72],[.6,.91],[.82,1],
@@ -78,7 +79,7 @@ function effect(ctx,m,attack,pose,art,r,dx,dy){
 }
 export function drawCelestialMonster(ctx,m,time=0,attack){
   const art=CELESTIAL_MONSTER_ART[m?.shape];if(!art)return false;if(!ctx)return true;
-  const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return false;
+  const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const pose=lv2MonsterPose(time,attack),r=Math.max(1,Number(m.radius)||48)*art.scale;
   let dx=Number(attack?.dx)||0,dy=Number(attack?.dy)||0,len=Math.hypot(dx,dy);
   if(len){dx/=len;dy/=len;}else{dx=m.facingX<0?-1:1;dy=0;}

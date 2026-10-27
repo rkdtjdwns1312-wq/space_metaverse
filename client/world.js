@@ -51,10 +51,10 @@ import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
 import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-art.js';
-import {drawBossMonster,bossMonsterBounds,preloadBossArt} from './boss-monster-art.js';
-import {drawGuardianMonster,preloadGuardianArt} from './guardian-monster-art.js';
+import {drawBossMonster,bossMonsterBounds} from './boss-monster-art.js';
+import {drawGuardianMonster} from './guardian-monster-art.js';
 import {drawSpiritOrb} from './spirit-orb-art.js';
-import {MONSTER_ATTACK_ART,preloadMonsterAttack} from './monster-attack-frames.js';
+import {prepareMonsterArt} from './monster-art-ready.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
 import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
@@ -156,6 +156,7 @@ export function createWorld(canvas) {
   let monsters=[],spiritOrbs=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
+    for(const m of monsters)if(m.mapId===myMapId)void prepareMonsterArt(monsterType(m.typeId)?.shape);
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
     for(const id of monsterTracks.keys())if(!monsters.some(m=>m.id===id)){monsterTracks.delete(id);monsterPoints.delete(id);}
   }
@@ -928,9 +929,6 @@ export function createWorld(canvas) {
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       mapArt=selfId?prepareMapArt(currentMap(),planets):null;
       setMonsters(room?.monsters||[]);spiritOrbs=Array.isArray(room?.spiritOrbs)?room.spiritOrbs:[];
-      for(const id of ['leoon','noksera','spirit-king','serena'])if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadBossArt(id).catch(()=>{});
-      if(monsters.some(m=>m.typeId==='star-guardian'&&m.mapId===myMapId))void preloadGuardianArt().catch(()=>{});
-      for(const id of Object.keys(MONSTER_ATTACK_ART))if(monsters.some(m=>m.typeId===id&&m.mapId===myMapId))void preloadMonsterAttack(id).catch(()=>{});
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
       const now=performance.now();for(const p of players)recordPosition(p,now);
