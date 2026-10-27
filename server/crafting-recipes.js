@@ -4,7 +4,10 @@ import {SHOP} from '../shared/config.js';
 import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import {PUBLIC_CRAFTING_RECIPES} from '../shared/crafting.js';
 
-export const availableCraftingRecipes=(privateRecipes=[])=>[...privateRecipes,...PUBLIC_CRAFTING_RECIPES];
+export const availableCraftingRecipes=(privateRecipes=[])=>[
+  ...privateRecipes.filter(recipe=>!PUBLIC_CRAFTING_RECIPES.some(publicRecipe=>publicRecipe.output.id===recipe.output?.id)),
+  ...PUBLIC_CRAFTING_RECIPES
+];
 
 // Git·웹 공개 대상이 아닌 data 파일에 실제 조합법을 보관합니다.
 // 다른 PC로 옮길 때 학급 데이터와 함께 이 파일도 비공개로 복사해야 합니다.

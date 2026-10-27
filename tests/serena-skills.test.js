@@ -22,18 +22,45 @@ function fixture(count=3){
 const view=(f,now)=>serenaSkillViews(f.room,f.boss,now);
 
 test('three server-owned spells have requested mana, cooldown, duration and target limits',()=>{
-  const f=fixture(35);
   for(const [kind,cooldown,duration,count] of [['yellow',30000,20000,35],['black',30000,10000,2],['red',60000,20000,2]]){
+    const f=fixture(35);
     assert.equal(beginSerenaSkill(f.room,f.boss,kind,1000,()=>0),true);
     const marks=view(f,1000).marks.filter(m=>m.kind===kind);
     assert.equal(marks.length,count);assert.equal(new Set(marks.map(m=>m.playerId)).size,count);
     assert.equal(marks[0].endsAt,1000+duration);assert.equal(f.boss.serenaSkills.ready[kind],1000+cooldown);
     assert.equal(beginSerenaSkill(f.room,f.boss,kind,1001,()=>0),false);
+    assert.equal(f.boss.mp,90);
+    assert.equal(beginSerenaSkill(f.room,f.boss,kind,1000+cooldown-1),false);
   }
-  assert.equal(f.boss.mp,70);
-  assert.equal(beginSerenaSkill(f.room,f.boss,'yellow',30999),false);
-  assert.equal(beginSerenaSkill(f.room,f.boss,'yellow',31000),true);
-  f.boss.mp=9;assert.equal(beginSerenaSkill(f.room,f.boss,'black',31000),false);
+});
+
+test('세레나는 세 스킬을 겹치지 않고 한 번의 확률 판단 후 다음 기회를 기다린다',()=>{
+  const f=fixture(3),p=f.players[0];
+  assert.equal(beginSerenaSkill(f.room,f.boss,'yellow',1000,()=>0),true);
+  assert.equal(beginSerenaSkill(f.room,f.boss,'black',11000,()=>0),false);
+  assert.equal(beginSerenaSkill(f.room,f.boss,'red',23000,()=>0),false,'마지막 경고의 폭발까지 시전 잠금');
+  tickSerenaSkills(f.room,f.boss,21000);
+  tickSerenaSkills(f.room,f.boss,23000);
+  assert.equal(trySerenaSkills(f.room,f.boss,p,23650,()=>0),false,'폭발 후 판단 휴식');
+  tickSerenaSkills(f.room,f.boss,25650);
+  assert.equal(trySerenaSkills(f.room,f.boss,p,25650,()=>1),false,'판단 실패 시 즉시 다른 스킬 시도하지 않음');
+  assert.equal(trySerenaSkills(f.room,f.boss,p,25651,()=>0),false,'판단 간격 2초');
+  assert.equal(trySerenaSkills(f.room,f.boss,p,27650,()=>0),true,'다음 판단에서 다른 스킬 시작');
+  assert.equal(f.boss.serenaSkills.marks.filter(mark=>mark.kind==='red').length,2);
+  assert.equal(beginSerenaSkill(f.room,f.boss,'black',37650,()=>0),false);
+});
+
+test('지연된 노란 경고 폭발이 끝날 때까지 다른 스킬을 시작하지 않는다',()=>{
+  const f=fixture(1),p=f.players[0];
+  assert.equal(beginSerenaSkill(f.room,f.boss,'yellow',1000),true);
+  tickSerenaSkills(f.room,f.boss,21000);
+  assert.equal(trySerenaSkills(f.room,f.boss,p,26000,()=>0),false,'미처 처리되지 않은 경고를 우선 완료');
+  tickSerenaSkills(f.room,f.boss,26000);
+  assert.equal(f.boss.serenaSkills.bursts[0].endsAt,26650);
+  assert.equal(beginSerenaSkill(f.room,f.boss,'black',26000),false);
+  tickSerenaSkills(f.room,f.boss,26650);
+  assert.equal(trySerenaSkills(f.room,f.boss,p,28649,()=>0),false,'실제 폭발 후 판단 휴식');
+  assert.equal(trySerenaSkills(f.room,f.boss,p,28650,()=>0),true);
 });
 
 test('yellow follows carrier for warning placement, locks coordinates and explodes after two seconds at 100% attack',()=>{

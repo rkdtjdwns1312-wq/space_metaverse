@@ -68,7 +68,7 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
 const teacherUpdates=createTeacherUpdates();
-const controlSettings=createControlSettings({stop,onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));}});
+const controlSettings=createControlSettings({stop,onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -144,7 +144,7 @@ const characterSkills=createCharacterSkillsUI({getKey:controlSettings.label});
 const constellationAbility=createConstellationAbilityUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const ariesSleepUI=createAriesSleepUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const cancerDuelUI=createCancerDuelUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
-const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
+const auxiliarySkills=createAuxiliarySkills({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>!!selfId&&!placing&&!document.querySelector('dialog:modal'),getKey:controlSettings.code,toast,castSkill:combatControls.castSkill,transform:combatControls.transform});
 const planetById=id=>room?.planets.find(p=>p.id===id)||null;
 const marketUI=createMarketUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const social=createSocialUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast,renderMessage:addChatMessage,clearMessages:clearChat,onMissionCreate:mode=>missionUI.openCreate(mode),onMissionOpen:()=>missionUI.openMine()});
@@ -153,7 +153,7 @@ $('avatar-card').append($('experience-panel'));
 document.querySelector('.top-right').append($('connection'));
 $('connection').setAttribute('role','status');
 let overview=false;
-const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,request,toast,onAreaView:()=>{overview=!overview;world.setOverview(overview);$('map-area-view').textContent=overview?'내 주변으로 돌아가기':'현재 맵 한눈에 보기';$('world').focus();}});
+const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,request,toast,onMapInfo:(mapId,opener)=>classroomHelp.openMapGuide(mapId,opener),onAreaView:()=>{overview=!overview;world.setOverview(overview);$('map-area-view').textContent=overview?'내 주변으로 돌아가기':'현재 맵 한눈에 보기';$('world').focus();}});
 const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
 const temple=createTempleUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
 const teacherInventory=createTeacherInventoryUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
@@ -759,8 +759,6 @@ function updateTeacherBadge(isTeacher){
   const campaignRequests=room?.campaignRequests||[];
   const total=proposals.length+campaignRequests.length;
   $('teacher-badge').hidden=!isTeacher||total===0;$('teacher-badge').textContent=String(total);
-  $('teacher-constellation-new').hidden=!isTeacher||campaignRequests.length===0;
-  $('teacher-constellation-toggle').setAttribute('aria-label',campaignRequests.length&&isTeacher?'별자리캐릭터 확인, 새 검토 요청':'별자리캐릭터 확인');
 }
 function updateShardsTargetOptions(){
   const select=$('shards-target'),prev=select.value;
@@ -944,6 +942,7 @@ function doInteract(){
   if(n.id){objectUpdates.acknowledge(world.currentMapId(),n.id);world.setObjectUpdates(objectUpdates.pending());}
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
@@ -1119,13 +1118,42 @@ const constellationTeacherSections=[piscesTeacherSection,swanTeacherSection,crow
 constellationTeacherSection.append(...constellationTeacherSections);
 const lv4TeacherSection=document.createElement('section');
 lv4TeacherSection.id='teacher-lv4-item-activity';
-lv4TeacherSection.innerHTML='<h3>아이템 활동 확인</h3><button id="teacher-lv4-item-open" class="secondary" type="button">활동 내역 열기</button>';
+lv4TeacherSection.innerHTML='<h3>아이템 사용 확인</h3><p class="teacher-active-title">현재 사용 중인 아이템</p><ul id="teacher-active-items" aria-label="현재 사용 중인 아이템"></ul><p id="teacher-active-empty" class="muted">펼치면 현재 사용 중인 아이템을 불러와요.</p><button id="teacher-active-refresh" class="secondary small" type="button">새로고침</button><button id="teacher-lv4-item-open" class="secondary small" type="button">사용 내역 열기</button><button id="teacher-lv4-process-open" class="secondary small" type="button">Lv4 아이템 처리</button>';
 $('teacher-dialog').querySelector('.teacher-footer').before(lv4TeacherSection);
-$('teacher-lv4-item-open').onclick=()=>{$('teacher-dialog').close();void lv4UI.openTeacher();};
+let activeItemsRevision=0;
+function clearTeacherActiveItems(){
+  activeItemsRevision++;
+  $('teacher-active-items').replaceChildren();
+  $('teacher-active-empty').hidden=false;
+  $('teacher-active-empty').textContent='펼치면 현재 사용 중인 아이템을 불러와요.';
+}
+async function loadTeacherActiveItems(){
+  const revision=++activeItemsRevision,list=$('teacher-active-items'),empty=$('teacher-active-empty');
+  const originToken=sessionToken,originSelfId=selfId,originRoomCode=room?.code;
+  empty.textContent='불러오는 중이에요.';empty.hidden=false;list.replaceChildren();
+  try{
+    const {rows=[]}=await request('item:teacher:active',{});
+    if(revision!==activeItemsRevision||sessionToken!==originToken||selfId!==originSelfId||room?.code!==originRoomCode)return;
+    for(const row of rows){
+      const item=itemOf(row.itemId),li=document.createElement('li');
+      const remain=row.until==null?'종료 전까지':`${Math.max(0,Math.ceil((row.until-Date.now())/1000))}초 남음`;
+      li.textContent=`${row.icon||item?.icon||'✦'} ${row.nickname} · ${item?.name||row.label||row.itemId} · ${remain}`;
+      list.append(li);
+    }
+    empty.textContent='현재 사용 중인 아이템이 없어요.';empty.hidden=!!rows.length;
+  }catch(error){if(revision===activeItemsRevision&&sessionToken===originToken&&selfId===originSelfId&&room?.code===originRoomCode)empty.textContent=error?.message||'아이템 목록을 불러오지 못했어요.';}
+}
+$('teacher-active-refresh').onclick=()=>{void loadTeacherActiveItems();};
+$('teacher-lv4-item-open').onclick=()=>{
+  const section=$('teacher-dialog').querySelector('.item-log-panel'),toggle=section.querySelector('.teacher-tool-toggle');
+  if(toggle?.getAttribute('aria-expanded')!=='true')toggle?.click();
+  section.scrollIntoView({block:'nearest'});
+};
+$('teacher-lv4-process-open').onclick=()=>{$('teacher-dialog').close();void lv4UI.openTeacher();};
 const taskTeacherSection=document.createElement('section');taskTeacherSection.id='teacher-assignment-activity';taskTeacherSection.innerHTML='<h3>과제 제출 확인</h3><button id="teacher-tasks-open" class="secondary" type="button">과제별서고 열기</button>';$('teacher-dialog').querySelector('.teacher-footer').before(taskTeacherSection);
 $('teacher-tasks-open').onclick=()=>{$('teacher-dialog').close();assignmentUI.open();};
 const activityBadge=document.createElement('span');activityBadge.id='teacher-activity-new';activityBadge.className='teacher-tool-new';activityBadge.textContent='NEW';activityBadge.hidden=true;$('teacher-tools').append(activityBadge);
-// 선생님 도구의 번호 제목을 키보드로도 조작할 수 있는 독립 펼침 버튼으로 바꿉니다.
+// 선생님 도구 항목 전체를 클릭해 펼치고, 오른쪽 글자로 현재 동작을 보여 줍니다.
 for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > section'),...constellationTeacherSections].entries()){
   const heading=section.querySelector(':scope > h3');
   if(!heading)continue;
@@ -1134,20 +1162,18 @@ for(const [index,section] of [...$('teacher-dialog').querySelectorAll(':scope > 
   button.setAttribute('aria-expanded','false');
   const label=heading.textContent.trim().replace(/^[\u2460-\u2473]\s*/u,'');
   button.setAttribute('aria-label',label);
-  const title=document.createElement('span');title.textContent=label;
-  const indicator=document.createElement('span');indicator.className='teacher-tool-indicator';indicator.setAttribute('aria-hidden','true');indicator.textContent='⌄';
+  const title=document.createElement('span');title.className='teacher-tool-title';title.textContent=label;
+  const indicator=document.createElement('span');indicator.className='teacher-tool-indicator';indicator.setAttribute('aria-hidden','true');indicator.textContent='펼치기';
   button.append(title,indicator);
   if(section===constellationTeacherSection){
     button.id='teacher-constellation-toggle';
-    const badge=document.createElement('span');badge.id='teacher-constellation-new';badge.className='teacher-tool-new';badge.textContent='new';badge.hidden=true;
-    button.append(badge);
   }
   const panel=document.createElement('div');panel.className='teacher-tool-content';panel.id=`teacher-tool-content-${index+1}`;panel.hidden=true;
   button.setAttribute('aria-controls',panel.id);
   const headingRow=document.createElement('h3');headingRow.className='teacher-tool-heading';headingRow.append(button);
   heading.replaceWith(headingRow);headingRow.after(panel);
   for(const child of [...section.children])if(child!==headingRow&&child!==panel)panel.append(child);
-  button.onclick=()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));panel.hidden=expanded;};
+  button.onclick=()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));indicator.textContent=expanded?'펼치기':'접기';panel.hidden=expanded;if(section===lv4TeacherSection&&!expanded)void loadTeacherActiveItems();};
   const category=section===taskTeacherSection?'tasks':section.classList.contains('black-star-tools')?'warnings':section.classList.contains('item-log-panel')||section===lv4TeacherSection?'items':section.id==='proposals-panel'?'proposals':section===constellationTeacherSection?'constellations':null;
   if(category)teacherUpdates.bind(category,button);
 }
@@ -1345,6 +1371,7 @@ function addChatMessage(msg){
 function clearChat(){$('chat-log').replaceChildren();$('chat-empty').hidden=false;}
 function enter(result){
   showReconnect(false);
+  clearTeacherActiveItems();
   social.reset();selfId=result.selfId;saveToken(result.token,result.room.players.find(p=>p.id===result.selfId)?.role);updateRoom(result.room);$('lobby').hidden=true;
   $('menu-dialog').prepend($('connection'));
   $('room-badge').hidden=false;$('leave').hidden=false;$('chat-panel').hidden=false;
@@ -1359,6 +1386,7 @@ function enter(result){
 }
 function reset(message){
   showReconnect(false);classroomHelp.reset();teacherUpdates.reset();mouseAim=null;aimMap=null;
+  clearTeacherActiveItems();
   resourceCatalogRevision++;$('resource-kind').value='starShards';$('resource-kind').onchange();
   bossDialogueUI.reset();
   recipeBook.reset();

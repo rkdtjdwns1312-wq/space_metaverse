@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CRAFTING,PRIMORDIAL_STAR_GEM_RECIPE,STAR_CRUMB_RECIPE } from '../shared/crafting.js';
+import { CRAFTING,PRIMORDIAL_STAR_GEM_RECIPE,STAR_CRUMB_RECIPE,BOSS_EQUIPMENT_RECIPES } from '../shared/crafting.js';
 import { attemptCraft } from '../server/crafting.js';
+import {availableCraftingRecipes} from '../server/crafting-recipes.js';
+import {EQUIPMENT_ITEMS} from '../shared/equipment.js';
 import { SHOP,itemOf } from '../shared/config.js';
 
 const catalog = [
@@ -61,6 +63,25 @@ test('성령왕의 영혼은 공개 조합법으로 재화 두 종류를 소비�
   assert.deepEqual(p.inventory,[{id:'spirit-king-cloak',quantity:1}]);
   assert.equal(p.starShards,0);assert.equal(p.cosmicEnergy,0);
   assert.deepEqual(p.learnedRecipeIds,['spirit-king-cloak']);
+});
+
+test('보스 장비 3종은 비공개 조합 파일 없이도 정확한 재료로 한 개씩 만들어진다',()=>{
+  for(const recipe of BOSS_EQUIPMENT_RECIPES){
+    const p={role:'student',avatar:{level:4},inventory:structuredClone(recipe.ingredients),starShards:0,cosmicEnergy:0};
+    const result=attemptCraft(p,recipe.ingredients,{recipes:[]});
+    assert.equal(result.success,true,recipe.output.id);
+    assert.equal(result.item.id,recipe.output.id);
+    assert.deepEqual(p.inventory,[{id:recipe.output.id,quantity:1}]);
+    assert.equal(p.starShards,0);assert.equal(p.cosmicEnergy,0);
+  }
+});
+
+test('제작 전용 장비는 공개 조합법에 모두 있고 비공개 파일과 중복 표시되지 않는다',()=>{
+  const privateDuplicates=BOSS_EQUIPMENT_RECIPES.map(recipe=>structuredClone(recipe));
+  const available=availableCraftingRecipes(privateDuplicates);
+  const outputs=available.map(recipe=>recipe.output.id);
+  assert.equal(new Set(outputs).size,outputs.length);
+  for(const item of EQUIPMENT_ITEMS.filter(item=>item.craftOnly))assert(outputs.includes(item.id),item.id);
 });
 
 test('성령왕 망토 조합은 별 파편·우주에너지 부족이나 꽉 찬 가방에서 원자적으로 거절한다',()=>{

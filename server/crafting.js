@@ -65,7 +65,7 @@ function craftPublicRecipe(player, recipe, catalog) {
   if(!output)return fail(player,'invalid-recipe');
   const ownedEntries=recipe.ingredients.map(part=>({part,entry:player.inventory.find(item=>item.id===part.id)}));
   if(ownedEntries.some(({part,entry})=>!entry||entry.quantity<part.quantity))return fail(player,'insufficient-ingredients');
-  const energyFee=isMaster(player)?0:recipe.cosmicEnergy;
+  const energyFee=isMaster(player)?0:(recipe.cosmicEnergy??0);
   if(!Number.isSafeInteger(player.cosmicEnergy)||player.cosmicEnergy<energyFee)return fail(player,'insufficient-energy');
   const fee=isMaster(player)?0:recipe.starShards||0;
   if(player.starShards<fee)return fail(player,'insufficient-fee');

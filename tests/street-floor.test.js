@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {MAP,RULES,STREET} from '../shared/config.js';
 import {onParadiseFloor,isParadise} from '../shared/paradise-floor.js';
 import {STREET_EDGES,STREET_LAYOUT,STREET_POLYGONS,onStreetFloor} from '../shared/street-layout.js';
+import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 
 test('오색별빛 쉼터의 발전소·상점·놀이터가 하나의 외곽 경계로 이어진다',()=>{
   assert.equal(STREET.width,1800);assert.equal(STREET.height,3300);
@@ -40,17 +41,19 @@ test('발전소·상점·조합기·오락기가 북·중앙·남쪽 마당에 �
   assert.equal(STREET.objects.find(o=>o.id==='station-sign')?.name,'별 발전소 가는길');
 });
 
-test('쉼터 공원 중앙길·상점 진입로가 열리고 발전소 중심 여유가 늘어난다',()=>{
+test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고 발전소 중심 여유가 늘어난다',()=>{
   const old={ 'math-station':[300,600], 'english-station':[1500,600], 'history-station':[550,370], 'science-station':[900,290], 'culture-station':[1250,370] };
   for(const o of STREET.objects.filter(o=>o.kind.endsWith('-station'))){
     assert(Math.hypot(o.x-900,o.y-530)>Math.hypot(old[o.id][0]-900,old[o.id][1]-480),o.id+' 중앙에서 멀어짐');
   }
   const shop=STREET.objects.find(o=>o.kind==='shop'),craft=STREET.objects.find(o=>o.kind==='crafting'),energy=STREET.objects.find(o=>o.kind==='energy-shop');
   assert(shop.y<craft.y&&craft.y<energy.y);assert(craft.x>shop.x&&craft.x>energy.x);
-  for(let y=1160;y<2250;y+=10){
-    assert(onStreetFloor(STREET,900,y,30));
-    assert(!STREET.objects.some(o=>!o.passable&&Math.hypot(o.x-900,o.y-y)<o.radius+30),'중앙 산책로 '+y);
-  }
+  const walker={role:'student',avatar:{level:2,constellationId:'aries'}};
+  for(let y=1160;y<=1350;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`북쪽 접근 ${y}`);
+  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,1350,walker),`북쪽 우회 ${x}`);
+  for(let y=1350;y<=2060;y+=10)assert(avatarPositionIsClear(STREET,700,y,walker),`공원 서쪽 통로 ${y}`);
+  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,2060,walker),`남쪽 복귀 ${x}`);
+  for(let y=2060;y<=2250;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`남쪽 출구 ${y}`);
   for(const o of [shop,craft,energy]){
     assert(onStreetFloor(STREET,o.x,o.y+o.radius+45,20),o.id+' 입구');
   }

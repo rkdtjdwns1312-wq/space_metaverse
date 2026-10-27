@@ -26,6 +26,7 @@ import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusVie
 import {startTransformation} from '../server/transformation.js';
 import {monstersOf} from '../server/monsters.js';
 import {playerEffectsView} from '../server/rooms.js';
+import {ensureVitals} from '../server/vitals.js';
 
 const badge=['asteroid-badge',null,null];
 function setup(id,level=4,equipped=true){
@@ -82,13 +83,13 @@ for(const [id,cast,advance,views,key,cooldown,statusId] of auras)test(`${id}: �
     if(id==='capricorn')assert.equal(monster.capricornCurses.get(player.id).endsAt,end);
     advance(room,end);assert.equal(player[key],null);assert.equal(views(room,player.mapId,end).length,0);
     assert.ok(!playerEffectsView(player,false,end).some(s=>s.statusId===statusId));
-    assert.equal(player[cooldown],id==='cygnus'?end+10000:now+spec.cooldownMs);
+    assert.equal(player[cooldown],id==='cygnus'?end+10000:now+(id==='capricorn'?Math.round(spec.cooldownMs/2):spec.cooldownMs));
     if(id==='libra')assert.equal(player.libraBuff,null);
     if(id==='capricorn')assert.equal(monster.capricornCurses.size,0);
   }
 });
 
-test('염소 축복은 자신과 가장 가까운 유효 동료 최대 2명, 동료가 없으면 기존 몬스터 저주를 유지',()=>{
+test('염소 축복은 자신과 가까운 동료 최대 2명, 동료가 없으면 저주와 마나·쿨타임 절반 환급',()=>{
   for(const level of [2,3,4]){
     const {room,player,monster}=setup('capricorn',level,false),size=avatarSizeOf(player),now=Date.now();
     const add=(id,x,{mapId=player.mapId,connected=true,away=false,hp=100000,blackStar=false}={})=>{
@@ -104,7 +105,7 @@ test('염소 축복은 자신과 가장 가까운 유효 동료 최대 2명, 동
     add('defeated',player.x+1,{hp:0});
     add('black-star',player.x+1,{blackStar:true});
 
-    const result=castCapricorn(room,player,now);
+    const beforeMp=ensureVitals(player).mp,spec=specs.capricorn(player),result=castCapricorn(room,player,now);
     assert.deepEqual(result.recipientIds,['caster','near','middle'],`LV${level}: self and two nearest valid allies`);
     assert.ok(player.capricornBlessing&&near.capricornBlessing&&middle.capricornBlessing);
     for(const excluded of [far,'other-map','away','disconnected','defeated','black-star']){
@@ -113,14 +114,18 @@ test('염소 축복은 자신과 가장 가까운 유효 동료 최대 2명, 동
     }
     assert.deepEqual(result.cursed,[]);
     assert.equal(monster.capricornCurses,undefined);
+    assert.equal(player.capricornCooldownUntil,now+spec.cooldownMs);
+    assert.equal(ensureVitals(player).mp,beforeMp-spec.mana);
   }
 
   for(const level of [2,3,4]){
     const {room,player,monster}=setup('capricorn',level,false),now=Date.now();
-    const result=castCapricorn(room,player,now);
+    const beforeMp=ensureVitals(player).mp,spec=specs.capricorn(player),result=castCapricorn(room,player,now);
     assert.deepEqual(result.recipientIds,['caster'],`LV${level}: self is always blessed`);
     assert.deepEqual(result.cursed,['target'],`LV${level}: no allies keeps the nearest monster curse`);
     assert.ok(monster.capricornCurses.has(player.id));
+    assert.equal(player.capricornCooldownUntil,now+Math.round(spec.cooldownMs/2));
+    assert.equal(ensureVitals(player).mp,beforeMp-spec.mana+Math.round(spec.mana/2));
   }
 });
 

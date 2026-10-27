@@ -22,6 +22,8 @@ export function avatarFitsFloor(map,x,y,player){
 }
 export function avatarTouchesObject(player,x,y,object){
   const foot=avatarFootprint(player,x,y);
+  if(Number.isFinite(object.collisionRx)&&Number.isFinite(object.collisionRy))
+    return ((foot.x-object.x)/(object.collisionRx+foot.radius))**2+((foot.y-object.y)/(object.collisionRy+foot.radius))**2<1;
   return Math.hypot(foot.x-object.x,foot.y-object.y)<foot.radius+object.radius;
 }
 export function avatarMonsterDistance(player,x,y,monster){

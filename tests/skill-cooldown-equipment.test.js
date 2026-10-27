@@ -77,7 +77,7 @@ test('유성 장화: 16종 E 설명에 10% 감소, 생산계 초월50%와 곱적
 test('16종 E 서버 쿨타임은 시전 스냅샷·장착/해제 소급 없음·재시전 정확한 경계',()=>{
   for(const [id,cast] of Object.entries(casts))for(const equipped of [false,true]){
     const {room,player}=setup(id,4,equipped),now=Date.now(),duration=cooldownOf(player);
-    const result=cast(room,player,now);let readyAt=now+duration;
+    const result=cast(room,player,now);let readyAt=now+(id==='capricorn'?Math.round(duration/2):duration);
     player.equipmentSlots=equipped?[]:['meteor-boots',null,null];
     if(id==='cygnus'){
       const end=player.swanAura.endsAt;assert.equal(player.swanAura.cooldownMs,duration);
@@ -87,7 +87,7 @@ test('16종 E 서버 쿨타임은 시전 스냅샷·장착/해제 소급 없음�
     const nextDuration=cooldownOf(player),next=cast(room,player,readyAt);
     assert.equal(next.ready,true,id);
     if(id==='cygnus')assert.equal(player.swanAura.cooldownMs,nextDuration);
-    else assert.equal(next.cooldowns[0],readyAt+nextDuration,id);
+    else assert.equal(next.cooldowns[0],readyAt+(id==='capricorn'?Math.round(nextDuration/2):nextDuration),id);
   }
 });
 test('백조 10번째 Q/시간만료/취소 종료 모두 발동 당시 재사용 시간, 대기 중 변경도 무관',()=>{

@@ -17,6 +17,15 @@ try{
  await page.locator('#world').focus();events.length=0;await page.keyboard.press('q');await page.keyboard.press('e');await page.keyboard.press('f');await page.waitForTimeout(100);assert.deepEqual(events,[]);
  await page.keyboard.press('j');await page.waitForTimeout(100);assert(events.includes('combat:attack'));await page.keyboard.press('k');await page.waitForTimeout(100);assert(events.includes('combat:skill'));await page.keyboard.press('l');await page.locator('#energy-shop-dialog').waitFor({state:'visible'});assert(events.includes('shop:energy:open'));await close(page);
  console.log('PASS new J/K/L actions, old Q/E/F inactive, duplicate rejection, shop interaction at distance200 (old140)');
+ await page.locator('#control-settings-open').click();
+ for(const [action,code] of [['attack','Digit1'],['skill','Digit2'],['interact','Digit6']])await page.locator('#control-key-'+action).selectOption(code);
+ await page.locator('#control-settings-save').click();await page.locator('#control-settings-close').click();
+ assert.equal(await page.locator('#touch-attack .combat-key-badge').textContent(),'1');assert.equal(await page.locator('#interact-key').textContent(),'6');
+ await page.locator('#world').focus();await page.waitForTimeout(1100);events.length=0;await page.keyboard.press('1');await page.waitForTimeout(100);assert(events.includes('combat:attack'));await page.keyboard.press('2');await page.waitForTimeout(100);assert(events.includes('combat:skill'));await page.keyboard.press('6');await page.locator('#energy-shop-dialog').waitFor({state:'visible'});assert(events.includes('shop:energy:open'));await close(page);
+ console.log('PASS top-row 1/2/6 settings invoke attack, skill and interaction');
+ await page.locator('#control-settings-open').click();
+ for(const [action,code] of [['attack','KeyJ'],['skill','KeyK'],['interact','KeyL']])await page.locator('#control-key-'+action).selectOption(code);
+ await page.locator('#control-settings-save').click();await page.locator('#control-settings-close').click();
  const student=await context.newPage();student.setDefaultTimeout(15000);student.on('pageerror',e=>errors.push(e.message));await student.goto(url);await student.locator('#student-tab').click();await student.locator('#join-code').fill(room.code);await student.locator('#nickname').fill('키검증');await student.locator('#student-pin').fill('1234');await student.locator('#student-form .submit').click();await student.locator('#lobby').waitFor({state:'hidden'});await close(student);
  for(const layoutPage of [page,student]){const page=layoutPage;
  for(const viewport of [{width:1280,height:900},{width:390,height:844},{width:844,height:390},{width:801,height:900},{width:820,height:900},{width:640,height:360},{width:320,height:568}]){

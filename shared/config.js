@@ -1,7 +1,7 @@
 import {enlargeParadise,paradisePoint} from './paradise-floor.js';
 import {PLAZA_LAYOUT,departmentSlots,plazaPoint,DEPARTMENT_RADIUS,DEPARTMENT_GAP} from './plaza-layout.js';
 import {VALLEY_LAYOUT} from './valley-layout.js';
-import {STREET_LAYOUT} from './street-layout.js';
+import {STREET_LAYOUT,STREET_PARK} from './street-layout.js';
 import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
@@ -71,6 +71,8 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
+    ...STREET_PARK.beds.map((bed,i)=>({id:`shelter-flowerbed-${i+1}`,name:'별빛 화단',x:bed.x,y:bed.y,radius:bed.rx,collisionRx:bed.rx,collisionRy:bed.ry,kind:'shelter-flowerbed'})),
+    {id:'shelter-fountain',name:'별의 수호 분수대',x:STREET_PARK.fountain.x,y:STREET_PARK.fountain.y,radius:STREET_PARK.fountain.rx,collisionRx:STREET_PARK.fountain.rx,collisionRy:STREET_PARK.fountain.ry,kind:'shelter-fountain'},
     { id: 'shop', name: '별 상점', x: 1290, y: 1450, radius: 72, kind: 'shop', color: '#ffe59b' },
     { id: 'energy-shop', name: '우주에너지 상점', x: 1290, y: 1980, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     {id:'math-station',name:'별 수학 발전소',x:250,y:650,radius:86,kind:'math-station'},

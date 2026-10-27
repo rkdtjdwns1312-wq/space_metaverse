@@ -5,16 +5,16 @@ import {walkPoseRegistration} from '../client/walk-pose-sheet.js';
 
 test('뱀주인자리 Lv4는 왼쪽 진행 방향에 맞춘 8포즈 시트를 사용한다',()=>{
   const pose=walkPoseRegistration('ophiuchus',4);
-  assert.equal(pose.source,'/assets/avatars/walk-poses/ophiuchus-lv4-v2.png');
+  assert.equal(pose.source,'/assets/avatars/walk-poses/ophiuchus-lv4-v3.png');
   assert.equal(pose.columns,4);
   assert.equal(pose.rows,2);
-  assert.deepEqual(pose.sourceHip,[.5,.69]);
+  assert.deepEqual(pose.sourceHip,[.5,.67]);
   assert.deepEqual(pose.targetHip,[.5,.77]);
 });
 
 test('헤라클레스 Lv4는 새 방향 정렬 보행 시트를 사용한다',()=>{
   const pose=walkPoseRegistration('hercules',4);
-  assert.equal(pose.source,'/assets/avatars/walk-poses/hercules-lv4-v2.png');
+  assert.equal(pose.source,'/assets/avatars/walk-poses/hercules-lv4-v3.png');
   assert.equal(pose.columns,4);
   assert.equal(pose.rows,2);
 });

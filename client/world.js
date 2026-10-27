@@ -1023,7 +1023,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','crafting','evolution','growth','black-star','goddess-statue'].includes(o.kind));
+        const candidates=currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance(me,o);

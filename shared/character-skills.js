@@ -127,7 +127,7 @@ export function characterAbilities(player){
     Object.assign(attack,{name:CAPRICORN_NAMES.attack,iconUrl:CAPRICORN_VFX.attack.iconUrl,
       description:'빛의 뿔로 가까이 있는 대상을 들이받아 피해를 줍니다.'});
     Object.assign(skill,{name:CAPRICORN_NAMES[level],iconUrl:CAPRICORN_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 직접 피해 없음\n특수효과: 최대 2명의 동료에게 ${spec.durationMs/1000}초 축복 · 자신에게도 적용 · 5초마다 체력·마나 10% 회복 · 사망 시 30% 부활 · 동료가 없으면 최대 2마리 저주(2초마다 시전 시 공격력의 100% 피해)\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 직접 피해 없음\n특수효과: 최대 2명의 동료에게 ${spec.durationMs/1000}초 축복 · 자신에게도 적용 · 5초마다 체력·마나 10% 회복 · 사망 시 30% 부활 · 동료가 없으면 최대 2마리 저주(2초마다 공격력의 100% 피해), 쿨타임과 마나 절반을 돌려받음\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='leo'){
     const spec=leoSkillOf(player);

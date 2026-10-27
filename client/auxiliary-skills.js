@@ -48,7 +48,7 @@ function setSlotIcon(button, url = '') {
   else { image.onload = null; image.removeAttribute('src'); }
 }
 
-export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, transform, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
+export function createAuxiliarySkills({ getPlayer, canAct, getKey=action=>action==='attack'?'KeyQ':'KeyE', toast, castSkill, transform, iconUrls = CHARACTER_SKILL_ICON_URLS }) {
   const controls = document.querySelector('.combat-buttons');
   const skill = document.getElementById('touch-skill');
   const attack = document.getElementById('touch-attack');
@@ -59,7 +59,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
     if(mode===attackMode||!attack)return;attackMode=mode;
     const container=attack.querySelector('.combat-slot-icon');
     container.innerHTML=mode!=='sword'?'<img alt="" src="'+spec.iconUrl+'">':defaultAttackIcon;
-    attack.title=spec.name+' (Q)';attack.setAttribute('aria-label',attack.title);
+    attack.title=spec.name+' ('+getKey('attack').replace(/^(?:Key|Digit)/,'')+')';attack.setAttribute('aria-label',attack.title);
   }
   if (!controls || !skill) return { update() {}, reset() {} };
 
@@ -83,6 +83,7 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
   window.addEventListener('keydown', event => {
     const index = skillIndexForCode(event.code);
     if (index < 0 || event.ctrlKey || event.metaKey || event.altKey ||
+        ['attack','skill','interact'].some(action=>getKey(action)===event.code) ||
         document.querySelector('dialog:modal') || keyboardTargetBlocksSkill(event.target) || !canAct()) return;
     const button = group.children[index];
     if (!button) return;
@@ -124,21 +125,23 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
 
   function update() {
     const player = getPlayer();
+    const attackKey=getKey('attack').replace(/^(?:Key|Digit)/,''),skillKey=getKey('skill').replace(/^(?:Key|Digit)/,'');
     const unlocked = canUseSpecialSkill(player);
     updateAttackIcon(player);
+    if(attack&&unlocked){attack.title=characterAbilities(player)[0].name+' ('+attackKey+')';attack.setAttribute('aria-label',attack.title);}
     if(attack){attack.disabled=!unlocked;attack.classList.toggle('is-locked',!unlocked);attack.setAttribute('aria-disabled',String(!unlocked));const lock=attack.querySelector('.combat-slot-lock');if(lock)lock.hidden=unlocked;}
     const requiredLevel=2;
     skill.disabled = !unlocked;
     skill.classList.toggle('is-locked', !unlocked);
     skill.setAttribute('aria-disabled', String(!unlocked));
-    skill.setAttribute('aria-label', unlocked ? '특수 공격(E)' : `특수 공격(E), LV${requiredLevel}부터 해금`);
-    skill.title = unlocked ? '특수 공격 (E)' : `LV${requiredLevel}부터 특수 공격을 사용할 수 있어요`;
-    if(unlocked&&isSagittarius(player)){skill.title='유성화살 (E)';skill.setAttribute('aria-label',skill.title);}
+    skill.setAttribute('aria-label', unlocked ? `특수 공격(${skillKey})` : `특수 공격(${skillKey}), LV${requiredLevel}부터 해금`);
+    skill.title = unlocked ? `특수 공격 (${skillKey})` : `LV${requiredLevel}부터 특수 공격을 사용할 수 있어요`;
+    if(unlocked&&isSagittarius(player)){skill.title=`유성화살 (${skillKey})`;skill.setAttribute('aria-label',skill.title);}
     const lock = skill.querySelector('.combat-slot-lock');
     if (lock) {lock.hidden = unlocked;lock.querySelector('span').textContent=`LV${requiredLevel}`;}
     const urls = iconUrls[player?.avatar?.constellationId] || [];
     setSlotIcon(skill, unlocked ? characterAbilities(player)[1].iconUrl : '');
-    if(unlocked){skill.title=characterAbilities(player)[1].name+' (E)';skill.setAttribute('aria-label',skill.title);}
+    if(unlocked){skill.title=characterAbilities(player)[1].name+' ('+skillKey+')';skill.setAttribute('aria-label',skill.title);}
     const wanted = player?.avatar?.level===5 ? 1 : 0;
     if (wanted !== count) {
       count = wanted;
@@ -160,7 +163,9 @@ export function createAuxiliarySkills({ getPlayer, canAct, toast, castSkill, tra
     }
     [...group.children].forEach((button, index) => {
       setSlotIcon(button, characterAbilities(player)[2].iconUrl);
-      button.setAttribute('aria-label','별자리초월 (1)');button.dataset.skillSlot='transformation';
+      const numberTaken=['attack','skill','interact'].some(action=>getKey(action)==='Digit1');
+      button.querySelector('.combat-key-badge').textContent=numberTaken?'버튼':'1';
+      button.setAttribute('aria-label',numberTaken?'별자리초월 (화면 버튼)':'별자리초월 (1)');button.dataset.skillSlot='transformation';
       button.title=button.getAttribute('aria-label');
     });
     layout();

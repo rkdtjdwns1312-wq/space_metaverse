@@ -33,7 +33,7 @@ try{
   await page.locator('#dock-inventory').click();await page.locator('#inventory-dialog [data-student-help]').click();await page.locator('#classroom-help-close').click();assert(await page.locator('#inventory-dialog').isVisible());assert.equal(await page.evaluate(()=>document.activeElement.dataset.studentHelp),'items');await close(page);
   console.log(`PASS ${viewport.width}: common questions, natural/alias search, answer disclosure, no-result reset, text safety, bounds, context help and focus return`);
  }
- await page.setViewportSize({width:1280,height:900});await page.locator('#map-guide-bar').click();await page.screenshot({path:'.local/student-help/map-guide.png'});
+ await page.setViewportSize({width:1280,height:900});await page.locator('#map-overview').click();await page.locator('#map-info-current').click();await page.screenshot({path:'.local/student-help/map-guide.png'});
  await page.locator('#map-guide-dialog .map-help-links button').first().click();assert(await page.locator('#classroom-help-dialog').isVisible());assert.equal(await page.locator('#map-guide-dialog').isVisible(),false);await page.keyboard.press('Escape');
  assert.deepEqual(errors,[]);console.log('PASS map-context link and browser errors 0; no real class data used');
 }finally{await browser.close();await game.close();}

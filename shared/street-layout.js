@@ -7,6 +7,16 @@ export const STREET_LAYOUT=Object.freeze({
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
   westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})
 });
+// 중앙 쉼터의 장식과 충돌 판정은 같은 좌표를 사용합니다.
+export const STREET_PARK=Object.freeze({
+  fountain:Object.freeze({x:850,y:1740,rx:94,ry:39}),
+  beds:Object.freeze([
+    Object.freeze({x:555,y:1510,rx:95,ry:49,seed:1}),
+    Object.freeze({x:1115,y:1535,rx:91,ry:48,seed:2}),
+    Object.freeze({x:560,y:1945,rx:95,ry:49,seed:3}),
+    Object.freeze({x:1110,y:1920,rx:91,ry:48,seed:4})
+  ])
+});
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;
 function ellipse(z,steps=160){return Array.from({length:steps},(_,i)=>{const a=i*Math.PI*2/steps;return {x:z.x+z.rx*Math.cos(a),y:z.y+z.ry*Math.sin(a)};});}
 const half=STREET_LAYOUT.bridgeWidth/2;

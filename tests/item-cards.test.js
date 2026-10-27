@@ -52,6 +52,16 @@ test('현실 교실 카드는 대상 이름과 함께 기둥에 남고 선생님
   assert.equal((await call(teacher,'temple:read',{objectId:pillar.id})).rows.some(entry=>entry.itemId==='alien-card'),false);
 });
 
+test('선생님 메뉴에서 위치와 관계없이 사용 중인 아이템을 확인하고 학생 조회는 거부한다',async t=>{
+  const {room,teacher,first,a}=await fixture(t),student=room.players.get(a.selfId);
+  student.inventory=[{id:'alien-card',quantity:1}];
+  assert.ok((await call(first,'item:use',{itemId:'alien-card',exemption:'diary',targetId:a.selfId})).ok);
+  const active=await call(teacher,'item:teacher:active');
+  assert.ok(active.ok,active.error);
+  assert.equal(active.rows.find(row=>row.itemId==='alien-card')?.nickname,'별이');
+  assert.equal((await call(first,'item:teacher:active')).ok,false);
+});
+
 test('꼬마 해 자외선은 자정까지 사용을 막고 꼬마 달은 해제·보호한다',async t=>{
   const {room,first,second,a,b}=await fixture(t),sunUser=room.players.get(a.selfId),target=room.players.get(b.selfId);
   sunUser.inventory=[{id:'little-sun-card',quantity:2}];target.inventory=[{id:'star-sticker',quantity:1},{id:'little-moon-card',quantity:1}];

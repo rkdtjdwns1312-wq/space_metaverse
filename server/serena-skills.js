@@ -7,7 +7,13 @@ import {damagePlayersInArea,reflectLibraDamage} from './area-combat.js';
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const candidates=(room,boss)=>[...room.players.values()].filter(p=>valid(boss,p)&&(p.role==='teacher'||p.avatar?.level>=2));
-const stateOf=boss=>boss.serenaSkills??={mapId:boss.mapId,sequence:0,marks:[],warnings:[],bursts:[],ready:{},decision:{}};
+const stateOf=boss=>boss.serenaSkills??={mapId:boss.mapId,sequence:0,marks:[],warnings:[],bursts:[],ready:{},nextDecisionAt:0,nextSkillIndex:0,busyUntil:0};
+// 미처 처리하지 못한 경고도 다음 틱에서 폭발하므로 새 시전을 막습니다.
+const hasPendingEffect=(state,now)=>state.marks.length>0||state.warnings.length>0||state.bursts.some(burst=>now<burst.endsAt);
+function extendBusyUntil(state,until){
+  state.busyUntil=Math.max(state.busyUntil,until);
+  state.nextDecisionAt=Math.max(state.nextDecisionAt,state.busyUntil+SERENA_SKILLS.yellow.decisionMs);
+}
 const nextId=(boss,state)=>`${boss.id}-star-${++state.sequence}`;
 const visual=(boss,kind,x,y)=>({monsterId:boss.id,mapId:boss.mapId,x,y,dx:0,dy:0,reach:0,skillKind:`serena-${kind}`,durationMs:450,noEffect:true});
 export function clearSerenaSkills(boss){boss.serenaSkills=null;}
@@ -17,7 +23,7 @@ export function beginSerenaSkill(room,boss,kind,now,random=Math.random){
   if(!rule||boss.typeId!=='serena'||boss.hp<=0||!Number.isFinite(now)||(boss.sleepUntil||0)>now||(boss.stunUntil||0)>now)return false;
   const state=stateOf(boss);
   if(state.mapId!==boss.mapId){clearSerenaSkills(boss);return false;}
-  if(now<(state.ready[kind]||0)||boss.mp<rule.mana)return false;
+  if(now<(state.ready[kind]||0)||now<(state.busyUntil||0)||hasPendingEffect(state,now)||boss.mp<rule.mana)return false;
   const targets=candidates(room,boss);
   if(!targets.length)return false;
   // 부분 Fisher–Yates: 같은 캐릭터가 한 시전에 두 번 선택되지 않습니다.
@@ -29,19 +35,24 @@ export function beginSerenaSkill(room,boss,kind,now,random=Math.random){
     id:nextId(boss,state),kind,playerId:p.id,startsAt:now,endsAt:now+rule.durationMs,nextTickAt:now+(rule.intervalMs||0),
     ...(kind==='black'?{remaining:rule.contacts,contacts:new Set()}:{}),...(kind==='red'?serenaRedRadii(p):{})
   });
-  boss.mp-=rule.mana;state.ready[kind]=now+rule.cooldownMs;return true;
+  boss.mp-=rule.mana;state.ready[kind]=now+rule.cooldownMs;
+  state.busyUntil=now+rule.durationMs+(kind==='yellow'?rule.warningMs+rule.burstMs:0);
+  state.nextDecisionAt=state.busyUntil+rule.decisionMs;
+  return true;
 }
 
 export function trySerenaSkills(room,boss,target,now,random=Math.random){
   if(!target||boss.typeId!=='serena'||boss.hp<=0)return false;
   const state=stateOf(boss);
-  for(const [kind,rule] of Object.entries(SERENA_SKILLS)){
-    if(now<(state.ready[kind]||0)||now<(state.decision[kind]??now)||boss.mp<rule.mana)continue;
-    state.decision[kind]=now+rule.decisionMs;
-    const roll=random();
-    if(Number.isFinite(roll)&&roll>=0&&roll<rule.chance&&beginSerenaSkill(room,boss,kind,now,random))return true;
-  }
-  return false;
+  if(now<(state.busyUntil||0)||now<(state.nextDecisionAt||0)||hasPendingEffect(state,now))return false;
+  const kinds=Object.keys(SERENA_SKILLS),start=state.nextSkillIndex||0;
+  const index=Array.from({length:kinds.length},(_,offset)=>(start+offset)%kinds.length)
+    .find(i=>now>=(state.ready[kinds[i]]||0)&&boss.mp>=SERENA_SKILLS[kinds[i]].mana);
+  if(index===undefined){state.nextDecisionAt=now+2000;return false;}
+  const kind=kinds[index],rule=SERENA_SKILLS[kind],roll=random();
+  state.nextSkillIndex=(index+1)%kinds.length;
+  state.nextDecisionAt=now+rule.decisionMs;
+  return Number.isFinite(roll)&&roll>=0&&roll<rule.chance&&beginSerenaSkill(room,boss,kind,now,random);
 }
 
 // 즉사는 방어·면역·반사·자동 부활로 회피하지 않으며 일반 사망 상태를 기록합니다.
@@ -66,6 +77,7 @@ export function tickSerenaSkills(room,boss,now){
     const results=damagePlayersInArea(room,{mapId:boss.mapId,x:w.x,y:w.y,radius:w.radius,excludeTeachers:true,teacherTargetIds:boss.teacherRetaliation,sourceMonsterId:boss.id},power,now);
     for(const result of results)hits.push({...visual(boss,'yellow',w.x,w.y),...result});
     state.bursts.push({id:w.id,x:w.x,y:w.y,radius:w.radius,startsAt:now,endsAt:now+SERENA_SKILLS.yellow.burstMs});
+    extendBusyUntil(state,now+SERENA_SKILLS.yellow.burstMs);
     return false;
   });
   if(boss.hp<=0){clearSerenaSkills(boss);return hits;}
@@ -86,7 +98,10 @@ export function tickSerenaSkills(room,boss,now){
     if(now>=mark.nextTickAt){
       // 서버 지연 뒤 과거 위치를 추측하거나 밀린 피해를 한꺼번에 적용하지 않습니다.
       mark.nextTickAt+=(Math.floor((now-mark.nextTickAt)/interval)+1)*interval;
-      if(mark.kind==='yellow')state.warnings.push({id:nextId(boss,state),playerId:p.id,x:p.x,y:p.y,radius:SERENA_SKILLS.yellow.radius,startsAt:now,endsAt:now+SERENA_SKILLS.yellow.warningMs});
+      if(mark.kind==='yellow'){
+        state.warnings.push({id:nextId(boss,state),playerId:p.id,x:p.x,y:p.y,radius:SERENA_SKILLS.yellow.radius,startsAt:now,endsAt:now+SERENA_SKILLS.yellow.warningMs});
+        extendBusyUntil(state,now+SERENA_SKILLS.yellow.warningMs+SERENA_SKILLS.yellow.burstMs);
+      }
       else{
         Object.assign(mark,serenaRedRadii(p));
         for(const other of candidates(room,boss)){

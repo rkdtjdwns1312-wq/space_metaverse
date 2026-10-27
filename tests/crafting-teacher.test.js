@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {STREET, STREET_ID} from '../shared/config.js';
+import {BOSS_EQUIPMENT_RECIPES} from '../shared/crafting.js';
 
 const teacherKey='crafting-teacher-test-secret';
 const recipes=[
@@ -35,7 +36,7 @@ function placeAtMachine(player){
   Object.assign(player,{mapId:STREET_ID,x:machine.x,y:machine.y,connected:true,away:false});
 }
 
-test('교사는 LV2·LV3 조합만 조회하고 LV4는 빈 목록을 받으며 정확한 수량과 무변경을 보장한다',async t=>{
+test('교사는 LV2·LV3 조합과 LV4 보스 장비 3종을 조회하며 정확한 수량과 무변경을 보장한다',async t=>{
   const {game,connect,call}=await fixture(t),{socket,room:created}=await createTeacher(connect,call);
   const state=game.store.rooms.get(created.room.code),player=[...state.players.values()].find(value=>value.role==='teacher');
   placeAtMachine(player);
@@ -45,7 +46,7 @@ test('교사는 LV2·LV3 조합만 조회하고 LV4는 빈 목록을 받으며 �
   assert.deepEqual(lv2,{ok:true,level:2,recipes:[recipes[0]]});
   const lv3=await call(socket,'crafting:recipes',{level:3});
   assert.deepEqual(lv3,{ok:true,level:3,recipes:[recipes[1]]});
-  assert.deepEqual(await call(socket,'crafting:recipes',{level:4}),{ok:true,level:4,recipes:[]});
+  assert.deepEqual(await call(socket,'crafting:recipes',{level:4}),{ok:true,level:4,recipes:BOSS_EQUIPMENT_RECIPES.map(recipe=>({output:{...recipe.output},ingredients:recipe.ingredients.map(part=>({...part}))}))});
   assert.deepEqual(player.inventory,before.inventory);
   assert.equal(player.starShards,before.starShards);
 });

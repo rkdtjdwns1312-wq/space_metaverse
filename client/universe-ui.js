@@ -15,7 +15,7 @@ import {PAINTED_PROPS} from './painted-props.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,UNIVERSE_MAP_LAYOUT,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
 // Single selection previews a map; double activation opens a confirmation before server-authorized travel.
-export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,request,toast=()=>{}}) {
+export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,request,toast=()=>{}}) {
   const $=id=>document.getElementById(id),dialog=$('universe-dialog');
   let position=null,selected=null,signature='';
   let lastTap=null,lastDraw=0,artSignature='';const backgrounds=new Map(),watchedArt=new WeakSet();
@@ -65,17 +65,23 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,request,toas
     if(!dialog.open)dialog.showModal();render();
   };
   $('map-area-view').onclick=()=>{close();onAreaView();};
+  $('map-info-current').onclick=()=>{if(me())onMapInfo?.(me().mapId,$('map-info-current'));};
   function node(id,icon){
-    const button=document.createElement('button');button.type='button';button.className='universe-node';button.dataset.mapId=id;
+    const button=document.createElement('div');button.className='universe-node';button.dataset.mapId=id;
+    const select=document.createElement('button');select.type='button';select.className='universe-node-select';select.setAttribute('aria-label',map(id).name+' 지도 보기');
     const thumbnail=document.createElement('canvas');thumbnail.width=144;thumbnail.height=84;thumbnail.className='universe-thumbnail';thumbnail.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.textContent=map(id).name;
-    if(map(id).planetId){button.classList.add('universe-department');thumbnail.width=320;thumbnail.height=220;button.append(name,thumbnail);}
-    else button.append(thumbnail,name);
+    if(map(id).planetId){button.classList.add('universe-department');thumbnail.width=320;thumbnail.height=220;select.append(name,thumbnail);}
+    else select.append(thumbnail,name);
     draw(thumbnail,id);
-    if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';button.append(badge);button.classList.add('is-current');button.setAttribute('aria-current','location');}
-    button.classList.toggle('is-selected',id===selected);button.setAttribute('aria-pressed',String(id===selected));
-    button.style.touchAction='manipulation';
-    button.onclick=()=>{const now=performance.now(),double=lastTap?.id===id&&now-lastTap.at<500;lastTap=double?null:{id,at:now};selected=id;render();if(double)askTravel(id);};button.ondblclick=event=>{event.preventDefault();askTravel(id);};return button;
+    if(id===me()?.mapId){const badge=document.createElement('span');badge.className='location-badge';badge.textContent='내가 있는 곳';select.append(badge);button.classList.add('is-current');select.setAttribute('aria-current','location');}
+    button.classList.toggle('is-selected',id===selected);select.setAttribute('aria-pressed',String(id===selected));
+    select.style.touchAction='manipulation';
+    const info=document.createElement('button');info.type='button';info.className='universe-node-info';info.textContent='맵 정보';info.setAttribute('aria-label',map(id).name+' 맵 정보');
+    info.onclick=event=>{event.stopPropagation();lastTap=null;onMapInfo?.(id,info);};
+    info.ondblclick=event=>event.stopPropagation();
+    button.append(select,info);
+    button.onclick=()=>{const now=performance.now(),double=lastTap?.id===id&&now-lastTap.at<(matchMedia('(pointer:coarse)').matches?1200:500);lastTap=double?null:{id,at:now};selected=id;render();if(double)askTravel(id);};button.ondblclick=event=>{event.preventDefault();askTravel(id);};return button;
   }
   // 물체는 게임 화면에서 쓰는 원화의 작은 판을 사용합니다. 축소 지도용 도형을 따로
   // 유지하면 실제 상점·행성·문과 모양이 달라져 아이들이 위치를 알아보기 어렵습니다.
@@ -210,7 +216,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,request,toas
       if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
     }
     // Keep the same button between taps: replacing it interrupts native double activation.
-    for(const button of dialog.querySelectorAll('.universe-node')){const active=button.dataset.mapId===selected;button.classList.toggle('is-selected',active);button.setAttribute('aria-pressed',String(active));}
+    for(const button of dialog.querySelectorAll('.universe-node')){const active=button.dataset.mapId===selected;button.classList.toggle('is-selected',active);button.querySelector('.universe-node-select').setAttribute('aria-pressed',String(active));}
     $('universe-preview-title').textContent=map(selected).name;
     if(dialog.open)draw($('universe-preview'),selected,true);
   }

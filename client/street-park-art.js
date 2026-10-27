@@ -1,5 +1,5 @@
-// Ground-layer city park: the broad crosswalks stay open to both bridges and
-// the eastern shops. All foliage is low decorative planting, not hidden walls.
+// 쉼터의 원형 정원. 화단·분수의 발밑 좌표는 shared/street-layout.js와 같습니다.
+import {STREET_PARK} from '/shared/street-layout.js';
 function oval(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}
 function path(c,points,width,color){c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();}
 function gardenBed(c,x,y,rx,ry,seed){
@@ -21,35 +21,59 @@ function bench(c,x,y,angle){
   path(c,[[-43,-24],[43,-24]],9,'#ddbea1');path(c,[[-39,-25],[39,-25]],2,'#fae6c7');
   c.restore();
 }
+function tree(c,x,y,scale=1){
+  c.save();c.translate(x,y);c.scale(scale,scale);
+  oval(c,4,9,30,13,'#6b668537');
+  path(c,[[0,4],[0,-74]],14,'#856b7b');path(c,[[-3,-6],[-3,-74]],4,'#e6bfaa');
+  for(const [dx,dy,rx,ry] of [[-24,-76,35,39],[22,-78,36,40],[0,-104,43,44]]){
+    const leaves=c.createRadialGradient(dx-13,dy-19,2,dx,dy,55);
+    leaves.addColorStop(0,'#e8edc7');leaves.addColorStop(.43,'#a8c8ac');leaves.addColorStop(1,'#568a8d');
+    oval(c,dx+4,dy+5,rx+3,ry+3,'#4e748a77');oval(c,dx,dy,rx,ry,leaves);
+  }
+  for(let i=0;i<75;i++){
+    const a=i*2.399,r=Math.sqrt((i+.5)/75),px=Math.cos(a)*47*r,py=-88+Math.sin(a)*47*r;
+    if(py> -42)continue;
+    oval(c,px,py,2.6+(i%3),1.8+(i%2),['#fff1ca','#f2c4d6','#d6e5cf','#c8c8ec'][i%4]);
+  }
+  c.restore();
+}
 function fountain(c,x,y){
-  oval(c,x+5,y+27,99,38,'#6f648f28');
+  // 낮은 별 모양 수반과 세 갈래 샘물: 기존 높은 원기둥 분수와 다른 실루엣.
+  oval(c,x+5,y+27,105,43,'#6f648f28');
   const stone=c.createLinearGradient(0,y-30,0,y+30);stone.addColorStop(0,'#fff9e8');stone.addColorStop(.48,'#e9dcef');stone.addColorStop(1,'#b9abc9');
-  oval(c,x,y+20,92,35,'#ac9bbf');oval(c,x,y+13,92,34,stone);oval(c,x,y+5,85,31,'#fff8df');oval(c,x,y+3,78,27,'#b4a9c8');
+  oval(c,x,y+21,94,39,'#9d8db7');oval(c,x,y+11,94,37,stone);oval(c,x,y+3,86,32,'#fff8df');oval(c,x,y+1,79,27,'#ad9fc5');
   const water=c.createLinearGradient(0,y-24,0,y+26);water.addColorStop(0,'#b2e1e9');water.addColorStop(.5,'#cceef3');water.addColorStop(1,'#83bdcd');oval(c,x,y,74,25,water);
-  c.strokeStyle='#f6ffffb0';c.lineWidth=1.5;for(const radius of [34,52,67]){c.beginPath();c.ellipse(x,y+2,radius,radius*.29,0,.12,Math.PI*1.86);c.stroke();}
-  const pillar=c.createLinearGradient(x-13,0,x+13,0);pillar.addColorStop(0,'#b5a7c9');pillar.addColorStop(.45,'#fff7e3');pillar.addColorStop(.7,'#f4e8ee');pillar.addColorStop(1,'#b8a6c9');
-  c.fillStyle=pillar;c.beginPath();c.moveTo(x-20,y+4);c.quadraticCurveTo(x-11,y-24,x-10,y-56);c.lineTo(x+10,y-56);c.quadraticCurveTo(x+11,y-24,x+20,y+4);c.closePath();c.fill();oval(c,x,y+3,20,7,'#d9c9df');
-  oval(c,x,y-55,43,17,'#b6a3c4');oval(c,x,y-61,43,17,stone);oval(c,x,y-65,36,12,'#d5f2f4');
-  c.lineCap='round';
-  for(const direction of [-1,1]){c.strokeStyle='#8ac5daaa';c.lineWidth=6;c.beginPath();c.moveTo(x+direction*25,y-61);c.quadraticCurveTo(x+direction*55,y-43,x+direction*54,y);c.stroke();c.strokeStyle='#f4ffffdf';c.lineWidth=2;c.stroke();}
-  path(c,[[x,y-64],[x,y-96]],9,pillar);oval(c,x,y-97,11,11,'#ad97c0');oval(c,x,y-99,8,9,'#e4dcff');
-  c.save();c.translate(x,y-104);c.fillStyle='#ffe6a0';c.strokeStyle='#bda575';c.lineWidth=1;c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?5:11;i?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();c.stroke();c.restore();
-  for(const [dx,dy] of [[-61,-4],[62,6],[-31,9],[29,-8]]){oval(c,x+dx,y+dy,2.5,1.5,'#fffef0');}
+  c.strokeStyle='#f6ffffb0';c.lineWidth=1.5;for(const radius of [37,55,68]){c.beginPath();c.ellipse(x,y+2,radius,radius*.29,0,.12,Math.PI*1.86);c.stroke();}
+  oval(c,x,y-13,29,14,'#c6b5d2');oval(c,x,y-20,26,11,stone);
+  for(const direction of [-1,0,1]){
+    c.strokeStyle='#73bfd5b9';c.lineWidth=7;c.lineCap='round';c.beginPath();c.moveTo(x+direction*12,y-21);c.quadraticCurveTo(x+direction*33,y-72,x+direction*48,y-4);c.stroke();
+    c.strokeStyle='#f6ffffd7';c.lineWidth=2;c.stroke();
+    oval(c,x+direction*48,y-4,3,3,'#e7fcff');
+  }
+  c.save();c.translate(x,y-50);c.fillStyle='#fff2bd';c.strokeStyle='#aa9ac0';c.lineWidth=2;c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?7:16;i?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();c.stroke();c.restore();
 }
 export function drawStreetPark(c,texture=null){
   c.save();
-  // Wide walking routes remain open. Low flower beds mark their edges visually;
-  // the small fountain and all planting are decorative, not collision objects.
-  path(c,[[900,1280],[900,2160]],116,'#c8bacd');path(c,[[900,1280],[900,2160]],106,'#fff4df');path(c,[[900,1280],[900,2160]],92,'#f0e3d9');
-  path(c,[[330,1690],[740,1745],[1220,1745]],104,'#c8bacd');path(c,[[330,1690],[740,1745],[1220,1745]],94,'#fff4df');path(c,[[330,1690],[740,1745],[1220,1745]],80,'#f0e3d9');
-  oval(c,740,1748,121,106,'#baaac5');oval(c,740,1744,118,103,'#fff5e4');oval(c,740,1744,108,94,'#eadfe4');
-  if(texture?.complete&&texture.naturalWidth){
-    c.save();c.beginPath();c.ellipse(740,1744,108,94,0,0,Math.PI*2);c.clip();const pattern=c.createPattern(texture,'repeat');pattern.setTransform(new DOMMatrix().scale(.17));c.globalAlpha=.16;c.globalCompositeOperation='multiply';c.fillStyle=pattern;c.fillRect(630,1645,220,200);c.restore();
+  // 예전 긴 중앙 길·벤치·분수 배치를 지우고 별꽃 모자이크를 중심으로 재구성합니다.
+  oval(c,850,1738,298,204,'#8f809e67');oval(c,850,1731,290,196,'#fff8e8');oval(c,850,1731,280,187,'#cfc2d3');
+  oval(c,850,1731,271,178,'#eee5df');
+  c.save();c.beginPath();c.ellipse(850,1731,269,176,0,0,Math.PI*2);c.clip();
+  // 맞물린 연보라·크림 석재를 조금씩 다르게 채색해 기하학적 도식처럼 보이지 않게 합니다.
+  for(let row=0;row<12;row++)for(let col=0;col<14;col++){
+    const x=577+col*43+(row%2)*21,y=1549+row*33,j=(row*17+col*11)%7;
+    c.fillStyle=['#f8f1e8','#e6dce3','#fff5e8','#e1d8e8','#eee7e1','#f2e7dc','#e8e1ed'][j];
+    c.strokeStyle='#b8a9c078';c.lineWidth=1.8;c.beginPath();c.roundRect(x+2+(j%3),y+2,38,27,5);c.fill();c.stroke();
+    c.strokeStyle='#fffaf3a6';c.lineWidth=1;c.beginPath();c.moveTo(x+5,y+5);c.lineTo(x+32,y+5);c.stroke();
   }
-  gardenBed(c,620,1515,117,48,1);gardenBed(c,1050,1555,48,103,2);
-  gardenBed(c,620,1950,117,48,3);gardenBed(c,1050,1940,48,103,4);
-  bench(c,643,1600,-.12);bench(c,653,1867,.12);
-  fountain(c,740,1748);
-  c.font='18px "Jua","Malgun Gothic",sans-serif';c.textAlign='center';c.lineWidth=4;c.strokeStyle='#fff9ed';c.fillStyle='#7a6a90';c.strokeText('오색별빛 쉼터',740,1905);c.fillText('오색별빛 쉼터',740,1905);
+  c.restore();
+  c.strokeStyle='#fff9e8';c.lineWidth=7;c.beginPath();c.ellipse(850,1731,279,186,0,0,Math.PI*2);c.stroke();
+  c.strokeStyle='#a994bf99';c.lineWidth=2;c.beginPath();c.ellipse(850,1731,283,190,0,0,Math.PI*2);c.stroke();
+  if(texture?.complete&&texture.naturalWidth){
+    c.save();c.beginPath();c.ellipse(850,1731,274,183,0,0,Math.PI*2);c.clip();const pattern=c.createPattern(texture,'repeat');pattern.setTransform(new DOMMatrix().scale(.17));c.globalAlpha=.1;c.globalCompositeOperation='multiply';c.fillStyle=pattern;c.fillRect(570,1540,560,390);c.restore();
+  }
+  for(const bed of STREET_PARK.beds)gardenBed(c,bed.x,bed.y,bed.rx,bed.ry,bed.seed);
+  tree(c,555,1505,.76);tree(c,1115,1530,.82);tree(c,560,1940,.78);tree(c,1110,1915,.75);
+  bench(c,625,1690,-.4);bench(c,1080,1790,.4);
+  fountain(c,STREET_PARK.fountain.x,STREET_PARK.fountain.y);
   c.restore();
 }

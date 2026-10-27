@@ -4,7 +4,7 @@ export function createControlSettings({stop,onChange=()=>{}}){
   let bindings={...DEFAULT_CONTROL_KEYS};
   try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY));if(validateControlKeys(stored))bindings=stored;}catch{}
   const dialog=document.createElement('dialog');dialog.id='control-settings-dialog';dialog.setAttribute('aria-labelledby','control-settings-title');
-  dialog.innerHTML='<header><h2 id="control-settings-title">조작 키 설정</h2><button type="button" class="secondary" id="control-settings-close">닫기</button></header><p>자주 쓰는 세 가지 키를 편한 알파벳으로 바꿔 보세요.</p><div id="control-key-fields"></div><p class="muted">이동 W·A·S·D, 파티 R, 숫자 키는 기존 기능에 사용돼요.<br>설정은 이 기기의 현재 브라우저에 저장돼요.</p><p id="control-settings-message" role="status"></p><footer><button type="button" class="secondary" id="control-settings-default">기본값 Q · E · F</button><button type="button" class="primary" id="control-settings-save">저장</button></footer>';
+  dialog.innerHTML='<header><h2 id="control-settings-title">조작 키 설정</h2><button type="button" class="secondary" id="control-settings-close">닫기</button></header><p>자주 쓰는 세 가지 키를 알파벳 또는 키보드 윗줄 1~6으로 바꿔 보세요.</p><div id="control-key-fields"></div><p class="muted">이동 W·A·S·D와 파티 R은 그대로 사용해요. 1을 선택하면 별자리초월은 화면 버튼으로 사용할 수 있어요.<br>설정은 이 기기의 현재 브라우저에 저장돼요.</p><p id="control-settings-message" role="status"></p><footer><button type="button" class="secondary" id="control-settings-default">기본값 Q · E · F</button><button type="button" class="primary" id="control-settings-save">저장</button></footer>';
   document.body.append(dialog);
   const labels={attack:'기본공격',skill:'스킬',interact:'상호작용'},selects={};
   for(const [action,label] of Object.entries(labels)){
@@ -15,7 +15,7 @@ export function createControlSettings({stop,onChange=()=>{}}){
   function refresh(){
     for(const [action,id] of [['attack','touch-attack'],['skill','touch-skill']]){
       const button=document.getElementById(id);button.querySelector('.combat-key-badge').textContent=label(action);
-      for(const attr of ['aria-label','title']){const text=button.getAttribute(attr);if(text)button.setAttribute(attr,text.replace(/\([A-Z]\)/g,'('+label(action)+')'));}
+      for(const attr of ['aria-label','title']){const text=button.getAttribute(attr);if(text)button.setAttribute(attr,text.replace(/\([A-Z1-6]\)/g,'('+label(action)+')'));}
     }
     document.getElementById('interact-key').textContent=label('interact');
     document.querySelector('#interact-prompt>span').textContent=label('interact')+' 상호작용하기';

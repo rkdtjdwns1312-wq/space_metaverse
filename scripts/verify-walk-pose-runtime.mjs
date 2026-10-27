@@ -43,7 +43,7 @@ try{
  const move=async n=>{for(let i=0;i<n;i++){p.x+=p.facingX*2;publish();await page.waitForTimeout(90);}};
  for(const result of results){const {id,level}=result;
   Object.assign(p,{x:650,y:900,facingX:1});Object.assign(p.avatar,{level,constellationId:id==='teacher'?'aquarius':id,form:'constellation',teacherPreview:id!=='teacher'});publish();
-  await page.waitForFunction(id=>document.querySelector('#world').dataset.selfSprite.includes(id==='teacher'?'star-sovereign':id),id);
+  await page.waitForFunction(id=>document.querySelector('#world')?.dataset.selfSprite?.includes(id==='teacher'?'star-sovereign':id)===true,id);
   await page.evaluate(()=>{window.seenWalkPoses=new Set();});
   // 최초 비동기 32프레임 생성과 최소 두 주기의 8포즈를 기다립니다.
   await move(70);const seen=await page.evaluate(()=>[...window.seenWalkPoses]);assert.equal(seen.length,8,`${id}${level} moving right`);

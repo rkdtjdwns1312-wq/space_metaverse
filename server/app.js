@@ -24,6 +24,7 @@ import {isWaterConstellation} from '../shared/water-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery,finishLifeRecovery} from './life-star.js';
+import {blessAtShelterFountain} from './shelter-fountain.js';
 import {advancePassiveRecovery} from './passive-recovery.js';
 import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,updateExplorationCards} from './exploration.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
@@ -396,6 +397,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('life-star:recover',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       return startLifeRecovery(session.player,clock());
+    },false);
+    action('shelter-fountain:bless',()=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const result=blessAtShelterFountain(s.player,clock());roster(s.room);return result;
     },false);
     action('tutorial:complete',()=>{ensure(false,'새 첫 여행 미션의 행동 목표를 완료해 주세요.');},false);
     action('tutorial:observe',data=>{
@@ -1866,6 +1871,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('lv4:holding:use',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=useLv4Holding(s.room,s.player,data,clock());roster(s.room);return r;});
     action('lv4:teacher:end',data=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 종료할 수 있어요.');const p=s.room.players.get(data.targetId),m=p?.cardMarkers?.find(m=>m.id===data.markerId&&itemOf(m.itemId)?.mode==='lv4');ensure(m,'사용 기록을 찾지 못했어요.');p.cardMarkers=p.cardMarkers.filter(e=>e.id!==m.id);roster(s.room);return {message:'효과를 종료했어요.'};});
     action('lv4:teacher:info',()=>{const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 확인할 수 있어요.');return lv4TeacherInfo(s.room);},false);
+    action('item:teacher:active',()=>{
+      const s=socket.data.session;
+      ensure(s?.player.role==='teacher','선생님만 사용 중인 아이템을 확인할 수 있어요.');
+      return {rows:templeItemRows(s.room,s.player,clock()).filter(row=>row.itemId&&itemOf(row.itemId))};
+    },false);
     action('lv4:teacher:confirm',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');const r=confirmLv4(s.room,s.player,data,clock());roster(s.room);return r;});
     action('item:complete',data=>{
       const {room,player,pillar}=templeAccess(data);

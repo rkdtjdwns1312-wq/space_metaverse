@@ -218,6 +218,10 @@ body:not(.joined) #ability-unused-reminder,body.placing #ability-unused-reminder
 #item-log{list-style:none;padding:0;margin:10px 0 0;max-height:200px;overflow:auto;font-size:12px;color:#726d87;display:flex;flex-direction:column;gap:4px}
 #item-log li{border-bottom:1px solid var(--line);padding:5px 0}
 #item-log li:last-child{border-bottom:0}
+#teacher-lv4-item-activity .teacher-active-title{font-size:14px;font-weight:700;color:#54417f;margin:3px 0 6px}
+#teacher-active-items{list-style:none;margin:0 0 8px;padding:0;max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+#teacher-active-items li{padding:8px 10px;border:1px solid #ddd3ee;border-radius:10px;background:#fbf9ff;color:#41345e;font-size:13px;line-height:1.45}
+#teacher-lv4-item-activity button{margin:4px 5px 4px 0}
 #teacher-dialog>section{margin-top:18px}#teacher-dialog>section:first-of-type{margin-top:10px}
 .pin-panel fieldset{border:0;padding:0}.pin-panel input{max-width:220px}
 .shards-give .primary{margin-top:12px}
@@ -394,6 +398,9 @@ body.joined #world-navigation #minimap[hidden]{display:none}
 #universe-links .universe-node{flex-direction:column;justify-content:center;white-space:normal}
 #universe-links .universe-node{min-width:0;padding:9px 5px}
 #universe-links .universe-node,.universe-node{overflow:hidden;background:linear-gradient(145deg,#fff9f0,#eee8fa);border-color:#c9b6db;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16}
+.universe-node-select{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:100%;height:100%;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit}
+.universe-node-info{position:absolute;top:12px;right:10px;z-index:1;min-height:27px;padding:3px 7px;border:1px solid #c9b6db;border-radius:8px;background:#fff;color:#5d4795;font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;box-shadow:0 1px 4px #51416a22}
+#universe-planets .universe-node-select>span:first-child{padding-right:60px;box-sizing:border-box;text-align:left}
 .universe-thumbnail{display:block;width:100%;height:auto;aspect-ratio:12/7;border-radius:10px;object-fit:contain;background:#d9d0e9;pointer-events:none}
 body.joined #universe-links canvas.universe-thumbnail,body.joined #universe-planets canvas.universe-thumbnail{height:auto;min-height:0;max-height:none;aspect-ratio:12/7;object-fit:contain}
 .universe-node span:not(.location-badge){font-family:"Jua","Malgun Gothic",sans-serif;text-align:center;line-height:1.2}
@@ -425,6 +432,8 @@ body.joined #universe-planets canvas.universe-thumbnail{aspect-ratio:16/11;width
 #temple-content .notice-lines small{padding:2px 7px;border-radius:999px;background:#e9defa;color:#665087}
 #universe-dialog>.universe-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 #universe-dialog>.universe-actions button{flex:0 0 auto}
+@media(max-width:700px){#universe-links{grid-template-columns:repeat(3,minmax(0,1fr))}#universe-links .universe-node{grid-row:auto!important;grid-column:auto!important}}
+@media(max-width:480px){#universe-links{grid-template-columns:repeat(2,minmax(0,1fr))}#universe-dialog>.universe-actions{flex-wrap:wrap}}
 @media(max-width:520px){.notice-editor-row{gap:4px}.notice-editor-row .notice-line{font-size:13px}.notice-editor-row .notice-remove-line{padding:5px 7px;font-size:13px}.timetable-table{border-spacing:2px;font-size:12px}.timetable-table th{padding:4px 1px}.timetable-table td{padding:1px}.timetable-table input{font-size:12px}.timetable-table tbody th{font-size:11px}}
 @media(max-width:390px){body.joined:not(.placing) #world-navigation{width:150px;padding:9px;gap:5px}#world-navigation #map-overview{font-size:13px;padding:7px 6px}#minimap-title{font-size:22px}}
 
@@ -546,15 +555,14 @@ body.joined #menu-dialog .topline{flex-direction:column;align-items:stretch}#men
 #account-delete-list input[type="checkbox"]{width:20px;height:20px;min-height:20px;flex:0 0 20px;margin:0;padding:0;accent-color:#8560b2}
 #teacher-dialog .teacher-tool-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;font-family:inherit;font-size:inherit;font-weight:400;line-height:inherit;color:#5d4795;background:linear-gradient(145deg,#fff9f0,#eee8fa);border:1px solid #c9b6db;border-radius:14px;padding:12px 16px;box-shadow:inset 0 1px #fff,0 3px 9px #51416a16;cursor:pointer}
 #teacher-dialog .teacher-tool-toggle:focus-visible{outline:3px solid #f0b35b;outline-offset:3px;border-radius:14px}
-#teacher-dialog .teacher-tool-toggle[aria-expanded="true"] .teacher-tool-indicator{transform:rotate(180deg)}
-#teacher-dialog .teacher-tool-toggle .teacher-tool-indicator{transition:transform .15s ease}
+#teacher-dialog .teacher-tool-title{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+#teacher-dialog .teacher-tool-indicator{flex:none;padding:6px 10px;border:1px solid #c9b6db;border-radius:9px;background:#fff;color:#5d4795;font-size:16px;line-height:1.2;white-space:nowrap}
 #teacher-dialog #teacher-constellation>.teacher-tool-content>section{margin-top:10px}
 #teacher-dialog #teacher-constellation .teacher-tool-content>section>.teacher-tool-heading{font-size:16px;line-height:1.4;margin:0}
 #teacher-dialog #teacher-constellation .teacher-tool-content>section .teacher-tool-toggle{padding:9px 12px;background:#f8f5fd;border-color:#ddd1eb;box-shadow:none}
 #teacher-dialog #teacher-constellation .teacher-tool-content>section .teacher-tool-content{padding:8px 4px 2px}
-#teacher-dialog #teacher-constellation>.teacher-tool-heading .teacher-tool-toggle{position:relative;padding-right:48px}
-#teacher-dialog .teacher-tool-new{position:absolute;top:3px;right:27px;color:#d72f49;font-size:11px;font-weight:800;font-style:italic;line-height:1;text-transform:lowercase;transform:rotate(-8deg)}
-#teacher-dialog .teacher-tool-new[hidden]{display:none}
+#teacher-dialog .teacher-tool-new,#teacher-tools .teacher-tool-new{display:inline-block;position:static;flex:none;color:#c52243;font-size:14px;font-weight:800;font-style:normal;line-height:1;white-space:nowrap;text-transform:uppercase;transform:none}
+#teacher-dialog .teacher-tool-new[hidden],#teacher-tools .teacher-tool-new[hidden]{display:none}
 
 /* 원형 조작 슬롯: 기존 버튼 크기·고정 위치는 위의 반응형 규칙을 그대로 사용합니다. */
 .combat-buttons>button{position:relative;overflow:visible;--key-size:23px}

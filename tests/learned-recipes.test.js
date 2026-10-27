@@ -78,6 +78,7 @@ test('public Lv5 learned recipes retain their shard and energy costs in the stud
   const player={learnedRecipeIds:publicItemRecipes.map(recipe=>recipe.output.id)};
   const view=learnedRecipesView(player,PUBLIC_CRAFTING_RECIPES);
   assert.deepEqual(view.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
+    ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
   ]);
   assert.deepEqual(validateLearnedRecipeIds(player.learnedRecipeIds),player.learnedRecipeIds);
@@ -172,9 +173,10 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
   ]);
-  f.mutate(p=>{p.learnedRecipeIds=publicItemRecipes.map(recipe=>recipe.output.id);});
+  await f.mutate(p=>{p.learnedRecipeIds=publicItemRecipes.map(recipe=>recipe.output.id);});
   const learnedLv5=ok(await call(f.student,'recipes:learned')).recipes;
   assert.deepEqual(learnedLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
+    ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
     ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
   ]);
   const publicState=f.game.store.snapshot(f.room,f.q);

@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {DEFAULT_CONTROL_KEYS,validateControlKeys} from '../shared/control-keys.js';
 import {STREET,interactionReach,interactionDistance,RULES,INTERACT} from '../shared/config.js';
 import {isNear} from '../server/world.js';
-test('saved keys reject duplicate, movement, reroll, numbers and malformed settings',()=>{
+test('saved keys allow top-row 1–6 and reject duplicate, movement, reroll and malformed settings',()=>{
   assert(validateControlKeys(DEFAULT_CONTROL_KEYS));assert(validateControlKeys({attack:'KeyJ',skill:'KeyK',interact:'KeyL'}));
-  for(const bad of [null,[],{}, {...DEFAULT_CONTROL_KEYS,attack:'KeyF'},...['KeyW','KeyA','KeyS','KeyD','KeyR','Digit1','F5','Enter','Escape'].map(attack=>({...DEFAULT_CONTROL_KEYS,attack})),{...DEFAULT_CONTROL_KEYS,other:'KeyJ'}])assert.equal(validateControlKeys(bad),false);
+  assert(validateControlKeys({attack:'Digit1',skill:'Digit3',interact:'Digit6'}));
+  for(const bad of [null,[],{}, {...DEFAULT_CONTROL_KEYS,attack:'KeyF'},...['KeyW','KeyA','KeyS','KeyD','KeyR','Digit7','Numpad1','F5','Enter','Escape'].map(attack=>({...DEFAULT_CONTROL_KEYS,attack})),{...DEFAULT_CONTROL_KEYS,other:'KeyJ'}])assert.equal(validateControlKeys(bad),false);
 });
 test('energy shop reach increases by 80 with the same server/client boundary and unchanged collision',()=>{
  const shop=STREET.objects.find(o=>o.kind==='energy-shop'),old=RULES.radius+INTERACT.radius+shop.radius;
