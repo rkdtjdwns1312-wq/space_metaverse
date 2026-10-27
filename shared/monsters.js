@@ -42,8 +42,8 @@ export const MONSTER_TYPES = Object.freeze([
   {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:2000,defense:5,power:20},
   {id:'spirit-king',name:'성령의 왕',description:'별들의 낙원을 지키는 Lv6 성령왕',mapId:'star-paradise',shape:'spirit-king',color:'#d6c9ff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
-  {id:'star-guardian',name:'Lv4 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 별무늬 방패를 들고 가까이 다가와 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:4,hp:1000,power:15,defense:4,
-    combat:Object.freeze({power:15,defense:4,speedFactor:1.69})},
+  {id:'star-guardian',name:'Lv4 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 별무늬 방패를 들고 가까이 다가와 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:4,radius:30,hp:1000,power:15,defense:4,
+    combat:Object.freeze({power:15,defense:4,speedFactor:3.38})},
   {id:'serena',name:'별의 시초신 세레나',description:'별의 여신 석상에서 깨어난 별의 시초신',mapId:'star-origin-4',shape:'serena',color:'#e4dcff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})}
 ]);

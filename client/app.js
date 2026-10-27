@@ -21,6 +21,7 @@ import {equipmentOf} from '/shared/equipment.js';
 import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
+import {createControlSettings} from './control-settings.js';
 import {createCharacterSkillsUI} from './character-skills-ui.js';
 import {createConstellationAbilityUI} from './constellation-ability-ui.js';
 import {createAriesSleepUI} from './aries-sleep-ui.js';
@@ -67,6 +68,7 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
 const teacherUpdates=createTeacherUpdates();
+const controlSettings=createControlSettings({stop,onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));}});
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -137,8 +139,8 @@ tutorialButton.onclick=()=>{$('menu-dialog').close();tutorial.open();};
 const holdings=createHoldingUI({request,toast,onChanged:()=>renderBag(myInventory()),onDraw:async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();}});
 const vitals=createVitalsUI($('bottom-dock'));
 dockResizeObserver.observe($('vitals-hud'));
-const combatControls=createCombatControls({getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>socket.connected&&!placing&&!document.querySelector('dialog:modal'),getAim:()=>{const aim=mouseAim?world.aimAt(mouseAim):null;return aim?{x:aim.dx,y:aim.dy}:null;},toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
-const characterSkills=createCharacterSkillsUI();
+const combatControls=createCombatControls({getKey:controlSettings.code,getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>socket.connected&&!placing&&!document.querySelector('dialog:modal'),getAim:()=>{const aim=mouseAim?world.aimAt(mouseAim):null;return aim?{x:aim.dx,y:aim.dy}:null;},toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
+const characterSkills=createCharacterSkillsUI({getKey:controlSettings.label});
 const constellationAbility=createConstellationAbilityUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const ariesSleepUI=createAriesSleepUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const cancerDuelUI=createCancerDuelUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
@@ -413,8 +415,8 @@ function updateRoom(value){
   if(me)renderPortrait($('avatar-portrait'),{...me,deptIcon:myPlanetIcon},me.effects);
   renderEquipmentSlots(me);
   $('hint').textContent=isTeacher
-    ?(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 별 파편 지급')
-    :(inStreet?'별상점 가까이에서 F · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 F로 광장':'행성 가까이에서 F · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
+    ?(inStreet?'별상점 가까이에서 조사하기 · 왼쪽 문으로 우주 광장':inPlanet?'위 "우리 행성 정보"에서 규칙 편집 · "광장으로 나가기"로 복귀':'지도의 행성을 클릭해 관리 · "선생님 도구"에서 자원 지급')
+    :(inStreet?'별상점 가까이에서 조사하기 · 왼쪽 문으로 우주 광장':inPlanet?'위쪽 게시판에서 규칙 확인 · 아래 문 근처에서 조사하기로 광장':'행성 가까이에서 조사하기 · 오른쪽 문으로 오색별빛 쉼터 · 별 파편은 선생님이 나눠 줘요');
   renderBag(me?.inventory);
   renderMyTasks(me?.tasks||[]);
 
@@ -447,7 +449,7 @@ function updateRoom(value){
   updateProposalsPanel(isTeacher);
   updateShardsTargetOptions();
   updatePinTargetOptions();
-  marketUI.update();auxiliarySkills.update();characterSkills.update(me);constellationAbility.update();ariesSleepUI.update();cancerDuelUI.update();cetusUI.update();
+  marketUI.update();auxiliarySkills.update();controlSettings.refresh();characterSkills.update(me);constellationAbility.update();ariesSleepUI.update();cancerDuelUI.update();cetusUI.update();
   updateTeacherPanels(isTeacher);
   updateTeacherBadge(isTeacher);
   if(isTeacher&&$('teacher-dialog').open){renderTeacherPiscesPairs();renderTeacherSwanCampaigns();renderTeacherCrownPriorities();}
@@ -982,7 +984,7 @@ function updateInteractPrompt(){
   if(!n){hide();return;}
   const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
   const caption=$('interact-object');
-  if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · F 상호작용하기');}
+  if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · '+controlSettings.label('interact')+' 상호작용하기');}
   if(prompt.hidden)prompt.hidden=false;
   if(touchButton.disabled)touchButton.disabled=false;
   const point=world.screenPoint(n),width=prompt.offsetWidth,height=prompt.offsetHeight,gap=12;
@@ -1000,7 +1002,7 @@ function updateInteractPrompt(){
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
 window.addEventListener('keydown',e=>{
-  if(e.code!=='KeyF'||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)||e.target.isContentEditable)return;
+  if(e.code!==controlSettings.code('interact')||e.repeat||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)||e.target.isContentEditable)return;
   e.preventDefault();doInteract();
 });
 let movingPlanetId=null,movePoint=null;

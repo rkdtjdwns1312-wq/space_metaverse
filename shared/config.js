@@ -28,7 +28,7 @@ export function interactionDistance(player, object) {
   return Math.hypot(Math.max(left-player.x,0,player.x-right),Math.max(top-player.y,0,player.y-bottom));
 }
 export function interactionReach(object) {
-  return RULES.radius+INTERACT.radius+(object.interactionBox?0:object.radius);
+  return RULES.radius+INTERACT.radius+(object.interactionBox?0:object.radius)+(object.kind==='energy-shop'?80:0);
 }
 // 행성 규칙 편집 한도(소속 친구와 선생님이 내부 규칙판 근처에서 수정).
 export const DEPARTMENT_RULES = Object.freeze({ maxLines: 8, maxLineLength: 40 });

@@ -6,6 +6,7 @@
   <title>사이버 교실 · 우리들의 작은 우주</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/control-settings.css">
   <link rel="stylesheet" href="/culture-library.css">
   <link rel="stylesheet" href="/arcade.css">
   <link rel="stylesheet" href="/crafting.css">
@@ -115,7 +116,7 @@
         <div id="joystick" role="application" aria-label="터치 조이스틱" tabindex="0">
           <div id="joystick-knob" aria-hidden="true"></div>
         </div>
-        <button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기(F)">F <span>조사하기</span></button>
+        <div id="interaction-controls"><button id="touch-interact" class="interact" type="button" disabled aria-label="근처 물체 조사하기(F)"><span id="interact-key">F</span> <span>조사하기</span></button><button id="control-settings-open" type="button" aria-label="조작 키 설정" title="조작 키 설정"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m13 3 6 0 1 4 3 2 4-1 3 5-3 3 0 3 3 3-3 5-4-1-3 2-1 4h-6l-1-4-3-2-4 1-3-5 3-3v-3l-3-3 3-5 4 1 3-2Z" transform="translate(0 -1) scale(.94)"/><circle cx="15" cy="15" r="5"/></svg></button></div>
       </div>
     </div>
     <div class="map-footer"><span>⌨ WASD·방향키·조이스틱 이동 / Q 공격·E 스킬·F 상호작용</span><span>행성과 친구에게는 살짝 멈춰요</span></div>

@@ -2,9 +2,10 @@ import {SPIRIT_SUMMON,SPIRIT_ORB} from '../shared/boss-skills.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
 import {playersInArea,reflectLibraDamage} from './area-combat.js';
 import {damagePlayer} from './vitals.js';
+import {monsterType} from '../shared/monsters.js';
 
 const TAU=Math.PI*2;
-const guardianRadius=120;
+const guardianRadius=monsterType('star-guardian').radius;
 
 export function clearSpiritKingEffects(room,bossId){
   for(const [id,monster] of room.monsters||[])if(monster.summonerId===bossId)room.monsters.delete(id);

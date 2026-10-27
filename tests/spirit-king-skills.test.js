@@ -6,6 +6,8 @@ import {SPIRIT_SUMMON,SPIRIT_ORB} from '../shared/boss-skills.js';
 import {mapOf} from '../shared/config.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
 import {ensureVitals} from '../server/vitals.js';
+import {monsterType} from '../shared/monsters.js';
+import {MONSTER_RULES} from '../server/monsters.js';
 
 const START=1000;
 function fixture(){
@@ -24,7 +26,7 @@ test('성령의 왕은 마나20으로 Lv4 별 지킴이 셋을 소환하고, 지
   const guardians=[...f.room.monsters.values()].filter(m=>m.typeId==='star-guardian');
   assert.equal(guardians.length,3);assert.equal(f.boss.mp,80);
   assert.equal(f.boss.summonReadyAt,START+SPIRIT_SUMMON.cooldownMs);
-  assert.ok(guardians.every(m=>m.maxHp===1000&&m.summonerId===f.boss.id));
+  assert.ok(guardians.every(m=>m.maxHp===1000&&m.summonerId===f.boss.id&&m.radius===120/4));
   const map=mapOf(f.boss.mapId);
   assert.ok(guardians.every(m=>onParadiseFloor(map,m.x,m.y,m.radius)));
   assert.equal(monsterViews(f.room,START).filter(m=>m.typeId==='star-guardian').length,3);
@@ -32,6 +34,16 @@ test('성령의 왕은 마나20으로 Lv4 별 지킴이 셋을 소환하고, 지
   assert.equal(f.room.energyDrops?.size||0,0);
   f.tick(START+701,.99);assert.equal(f.room.monsters.has(guardians[0].id),false);
   f.tick(START+2000,.99);assert.equal([...f.room.monsters.values()].filter(m=>m.typeId==='star-guardian').length,2);
+});
+
+test('별 지킴이는 그림·충돌 반경을 1/4로 공유하고 실제 추적 속도는 두 배다',()=>{
+  const f=fixture();f.boss.orbReadyAt=Infinity;f.tick(START);
+  const guardian=[...f.room.monsters.values()].find(m=>m.summonerId===f.boss.id);
+  f.room.monsters=new Map([[guardian.id,guardian]]);Object.assign(f.player,{x:guardian.x+300,y:guardian.y});
+  const before={x:guardian.x,y:guardian.y};f.tick(START+100,.99);
+  assert.equal(monsterType('star-guardian').radius,30);
+  assert.equal(monsterViews(f.room,START+100)[0].radius,30);
+  assert.ok(Math.abs(Math.hypot(guardian.x-before.x,guardian.y-before.y)-MONSTER_RULES.speed*1.69*2*.1)<1e-8);
 });
 
 test('성령의 왕 구체는 20초 동안 바닥 안에서 튕기고, 같은 학생에게 1초 이내 재타격하지 않는다',()=>{

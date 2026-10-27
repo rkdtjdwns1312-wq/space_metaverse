@@ -8,9 +8,9 @@
 @media(max-width:620px){.classroom-help-layout{grid-template-columns:1fr;height:57dvh;grid-template-rows:auto minmax(0,1fr);gap:10px}#classroom-help-tabs{flex-direction:row;overflow-x:auto;max-height:90px}#classroom-help-tabs button{white-space:nowrap}#classroom-help-dialog h2{font-size:17px}#map-guide-bar{top:58px;left:8px;transform:none;max-width:calc(100% - 185px);font-size:12px;padding:4px 8px}#map-guide-bar strong{display:none}}
 /* Only landscape touch screens: portrait and desktop mission layouts remain unchanged. */
 @media(orientation:landscape) and (max-height:600px) and (pointer:coarse){
- #journey-hud{top:94px;left:8px;transform:none;width:min(230px,29vw);min-width:0;padding:6px 9px;border-radius:12px;font-size:12px;line-height:1.35;max-height:20dvh;overflow:auto}
- .journey-heading{gap:6px;flex-wrap:nowrap}.journey-heading strong{flex-basis:auto;font-size:12px}.journey-heading button{min-height:30px;padding:4px 7px;font-size:11px;white-space:nowrap}
- #journey-instruction{margin:4px 0 0;max-height:42px;overflow:auto}#journey-claim{margin-top:4px;min-height:30px;padding:4px;font-size:12px}
+ #journey-hud{top:94px;left:160px;transform:none;width:min(230px,calc(100vw - 410px));min-width:0;padding:6px 9px;border-radius:12px;font-size:12px;line-height:1.35;max-height:48px;overflow:hidden}
+ .journey-heading{gap:6px;flex-wrap:nowrap}.journey-heading strong{flex-basis:auto;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.journey-heading button{min-height:30px;padding:4px 7px;font-size:11px;white-space:nowrap;flex-shrink:0}
+ #journey-instruction,#journey-claim{display:none}
  #new-mission-notice{top:auto;bottom:calc(100dvh - var(--vitals-top,150px) + 5px);min-height:28px;padding:3px 10px;font-size:12px;max-width:45vw;border-width:1px}
  #student-missions-dialog{top:8px;width:min(460px,65vw);max-height:calc(100dvh - 100px);padding:12px;margin:0 auto;box-sizing:border-box}
  #student-missions-dialog h2{font-size:18px;margin:0 0 8px}#student-missions-dialog .dialog-actions{position:sticky;bottom:-12px;background:#faf6ff;padding:6px 0;margin:7px 0 0}#student-missions-dialog button{min-height:32px;font-size:13px;padding:6px 10px}

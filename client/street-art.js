@@ -57,7 +57,13 @@ export function drawStreetGround(ctx,map){
   if(!canvas||canvas.dataset.revision!==String(revision)||canvas.width!==map.width||canvas.height!==map.height){
     canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;canvas.dataset.revision=String(revision);paint(canvas.getContext('2d'),map);tiles.set(map.id,canvas);
   }
-  ctx.drawImage(canvas,0,0);
+  // Submit only the visible source rectangle instead of the 5.94M-pixel map.
+  // One-pixel overscan preserves filtering at the viewport's fractional edges.
+  const m=ctx.getTransform();
+  if(m.b||m.c||m.a<=0||m.d<=0){ctx.drawImage(canvas,0,0);return;}
+  const left=Math.max(0,Math.floor(-m.e/m.a)-1),top=Math.max(0,Math.floor(-m.f/m.d)-1);
+  const right=Math.min(canvas.width,Math.ceil((ctx.canvas.width-m.e)/m.a)+1),bottom=Math.min(canvas.height,Math.ceil((ctx.canvas.height-m.f)/m.d)+1);
+  if(right>left&&bottom>top)ctx.drawImage(canvas,left,top,right-left,bottom-top,left,top,right-left,bottom-top);
 }
 export function drawStreetMiniFloor(ctx,map){
   backdrop(ctx,map);drawRockSupports(ctx,visual.edges,'shelter',map.height);drawFloatingIslands(ctx,[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],'shelter',map.height);ctx.fillStyle='#eee8f4';ctx.fill(shape);

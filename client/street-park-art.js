@@ -21,27 +21,35 @@ function bench(c,x,y,angle){
   path(c,[[-43,-24],[43,-24]],9,'#ddbea1');path(c,[[-39,-25],[39,-25]],2,'#fae6c7');
   c.restore();
 }
+function fountain(c,x,y){
+  oval(c,x+5,y+27,99,38,'#6f648f28');
+  const stone=c.createLinearGradient(0,y-30,0,y+30);stone.addColorStop(0,'#fff9e8');stone.addColorStop(.48,'#e9dcef');stone.addColorStop(1,'#b9abc9');
+  oval(c,x,y+20,92,35,'#ac9bbf');oval(c,x,y+13,92,34,stone);oval(c,x,y+5,85,31,'#fff8df');oval(c,x,y+3,78,27,'#b4a9c8');
+  const water=c.createLinearGradient(0,y-24,0,y+26);water.addColorStop(0,'#b2e1e9');water.addColorStop(.5,'#cceef3');water.addColorStop(1,'#83bdcd');oval(c,x,y,74,25,water);
+  c.strokeStyle='#f6ffffb0';c.lineWidth=1.5;for(const radius of [34,52,67]){c.beginPath();c.ellipse(x,y+2,radius,radius*.29,0,.12,Math.PI*1.86);c.stroke();}
+  const pillar=c.createLinearGradient(x-13,0,x+13,0);pillar.addColorStop(0,'#b5a7c9');pillar.addColorStop(.45,'#fff7e3');pillar.addColorStop(.7,'#f4e8ee');pillar.addColorStop(1,'#b8a6c9');
+  c.fillStyle=pillar;c.beginPath();c.moveTo(x-20,y+4);c.quadraticCurveTo(x-11,y-24,x-10,y-56);c.lineTo(x+10,y-56);c.quadraticCurveTo(x+11,y-24,x+20,y+4);c.closePath();c.fill();oval(c,x,y+3,20,7,'#d9c9df');
+  oval(c,x,y-55,43,17,'#b6a3c4');oval(c,x,y-61,43,17,stone);oval(c,x,y-65,36,12,'#d5f2f4');
+  c.lineCap='round';
+  for(const direction of [-1,1]){c.strokeStyle='#8ac5daaa';c.lineWidth=6;c.beginPath();c.moveTo(x+direction*25,y-61);c.quadraticCurveTo(x+direction*55,y-43,x+direction*54,y);c.stroke();c.strokeStyle='#f4ffffdf';c.lineWidth=2;c.stroke();}
+  path(c,[[x,y-64],[x,y-96]],9,pillar);oval(c,x,y-97,11,11,'#ad97c0');oval(c,x,y-99,8,9,'#e4dcff');
+  c.save();c.translate(x,y-104);c.fillStyle='#ffe6a0';c.strokeStyle='#bda575';c.lineWidth=1;c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?5:11;i?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();c.stroke();c.restore();
+  for(const [dx,dy] of [[-61,-4],[62,6],[-31,9],[29,-8]]){oval(c,x+dx,y+dy,2.5,1.5,'#fffef0');}
+}
 export function drawStreetPark(c,texture=null){
   c.save();
-  // Pearl edging and warm paving connect the park to the existing stone art.
-  oval(c,780,1745,338,348,'#8d8aab1c');oval(c,780,1737,333,341,'#c6becf');oval(c,780,1732,327,335,'#f6eddc');
-  const lawn=c.createLinearGradient(450,1400,1070,2060);lawn.addColorStop(0,'#dbe6c9');lawn.addColorStop(.6,'#c3d6bd');lawn.addColorStop(1,'#aecbbb');oval(c,780,1732,315,323,lawn);
-  c.save();c.beginPath();c.ellipse(780,1732,315,323,0,0,Math.PI*2);c.clip();
-  for(let i=0;i<380;i++){const x=460+(i*137)%640,y=1400+(i*193)%670;oval(c,x,y,3+i%4,1.3,['#fff8d724','#69998016','#ecf3db40'][i%3]);}
-  // Four wide promenades retain a straight north/south route at x=900.
-  path(c,[[330,1690],[780,1732],[1220,1732]],92,'#d0c5c9');path(c,[[330,1690],[780,1732],[1220,1732]],82,'#f1e7d6');
-  path(c,[[900,1280],[900,2160]],104,'#d0c5c9');path(c,[[900,1280],[900,2160]],94,'#f1e7d6');
-  oval(c,780,1732,161,148,'#c8b9c4');oval(c,780,1730,155,142,'#faf1df');oval(c,780,1730,139,126,'#e6d9cd');
-  c.strokeStyle='#fff7e5';c.lineWidth=2;for(const r of [68,108,134]){c.beginPath();c.ellipse(780,1730,r,r*.9,0,0,Math.PI*2);c.stroke();}
-  for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?36:82;c.beginPath();c.moveTo(780,1730);c.lineTo(780+Math.cos(a)*r,1730+Math.sin(a)*r*.9);c.lineTo(780+Math.cos(a+.628)*(i%2?82:36),1730+Math.sin(a+.628)*(i%2?82:36)*.9);c.fillStyle=i%2?'#d5bdd0':'#f7e3ad';c.fill();}
-  c.restore();
-  gardenBed(c,628,1513,111,63,1);gardenBed(c,1050,1570,54,101,2);gardenBed(c,610,1932,104,66,3);gardenBed(c,1030,1937,61,90,4);
-  bench(c,680,1595,-.15);bench(c,690,1870,.15);bench(c,974,1748,Math.PI/2);
+  // Wide walking routes remain open. Low flower beds mark their edges visually;
+  // the small fountain and all planting are decorative, not collision objects.
+  path(c,[[900,1280],[900,2160]],116,'#c8bacd');path(c,[[900,1280],[900,2160]],106,'#fff4df');path(c,[[900,1280],[900,2160]],92,'#f0e3d9');
+  path(c,[[330,1690],[740,1745],[1220,1745]],104,'#c8bacd');path(c,[[330,1690],[740,1745],[1220,1745]],94,'#fff4df');path(c,[[330,1690],[740,1745],[1220,1745]],80,'#f0e3d9');
+  oval(c,740,1748,121,106,'#baaac5');oval(c,740,1744,118,103,'#fff5e4');oval(c,740,1744,108,94,'#eadfe4');
   if(texture?.complete&&texture.naturalWidth){
-    c.save();c.beginPath();c.ellipse(780,1732,327,335,0,0,Math.PI*2);c.clip();
-    const pattern=c.createPattern(texture,'repeat');pattern.setTransform(new DOMMatrix().scale(.17));
-    c.globalAlpha=.16;c.globalCompositeOperation='multiply';c.fillStyle=pattern;c.fillRect(450,1390,660,680);c.restore();
+    c.save();c.beginPath();c.ellipse(740,1744,108,94,0,0,Math.PI*2);c.clip();const pattern=c.createPattern(texture,'repeat');pattern.setTransform(new DOMMatrix().scale(.17));c.globalAlpha=.16;c.globalCompositeOperation='multiply';c.fillStyle=pattern;c.fillRect(630,1645,220,200);c.restore();
   }
-  c.font='21px "Jua","Malgun Gothic",sans-serif';c.textAlign='center';c.lineWidth=4;c.strokeStyle='#fff9ed';c.fillStyle='#6c817d';c.strokeText('오색별빛 공원',780,2088);c.fillText('오색별빛 공원',780,2088);
+  gardenBed(c,620,1515,117,48,1);gardenBed(c,1050,1555,48,103,2);
+  gardenBed(c,620,1950,117,48,3);gardenBed(c,1050,1940,48,103,4);
+  bench(c,643,1600,-.12);bench(c,653,1867,.12);
+  fountain(c,740,1748);
+  c.font='18px "Jua","Malgun Gothic",sans-serif';c.textAlign='center';c.lineWidth=4;c.strokeStyle='#fff9ed';c.fillStyle='#7a6a90';c.strokeText('오색별빛 쉼터',740,1905);c.fillText('오색별빛 쉼터',740,1905);
   c.restore();
 }

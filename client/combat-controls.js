@@ -14,7 +14,7 @@ import {leoSkillOf} from '/shared/leo-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
 import {isSagittarius,sagittariusSkillOf} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
-export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{},getAim=()=>null}){
+export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{},getAim=()=>null,getKey=action=>action==='attack'?'KeyQ':'KeyE'}){
   const attack=document.getElementById('touch-attack'),skill=document.getElementById('touch-skill');
   const last={attack:-Infinity,skill:-Infinity};
   let cooldowns={},owner=null,serverOffset=0;
@@ -50,9 +50,9 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
   }
   attack.onclick=()=>act('attack');skill.onclick=()=>act('skill');
   window.addEventListener('keydown',event=>{
-    if(!['KeyQ','KeyE'].includes(event.code)||event.repeat||event.ctrlKey||event.altKey||event.metaKey||
+    if(![getKey('attack'),getKey('skill')].includes(event.code)||event.repeat||event.ctrlKey||event.altKey||event.metaKey||
       event.target.isContentEditable||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(event.target.tagName)||!getPlayer()||!canAct())return;
-    event.preventDefault();act(event.code==='KeyQ'?'attack':'skill');
+    event.preventDefault();act(event.code===getKey('attack')?'attack':'skill');
   });
   // 숫자는 그림 위에만 겹쳐 표시해 슬롯·작은 단축키 위치는 바꾸지 않습니다.
   setInterval(()=>{

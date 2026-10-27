@@ -41,10 +41,16 @@ function outerEdges(){const edges=[];
   return edges;
 }
 export const STREET_EDGES=outerEdges();
+// Reject distant polygons/edges before ray casting or measuring a segment.
+// These bounds only skip impossible candidates; the original exact tests below
+// still decide every contact, including bridge joins and large-avatar margins.
+const polygonBounds=STREET_POLYGONS.map(poly=>({poly,minX:Math.min(...poly.map(p=>p.x)),maxX:Math.max(...poly.map(p=>p.x)),minY:Math.min(...poly.map(p=>p.y)),maxY:Math.max(...poly.map(p=>p.y))}));
+const edgeBounds=STREET_EDGES.map(([a,b])=>({a,b,minX:Math.min(a.x,b.x),maxX:Math.max(a.x,b.x),minY:Math.min(a.y,b.y),maxY:Math.max(a.y,b.y)}));
 function edgeDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(l||1)));return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);}
-export function streetFloorContains(x,y){const p={x,y};return STREET_POLYGONS.some(poly=>inPolygon(p,poly));}
+export function streetFloorContains(x,y){const p={x,y};return polygonBounds.some(b=>x>=b.minX&&x<=b.maxX&&y>=b.minY&&y<=b.maxY&&inPolygon(p,b.poly));}
 export function onStreetFloor(map,x,y,radius=0){
   if(map?.id!=='star-street')return true;
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;
-  const p={x,y};return streetFloorContains(x,y)&&!STREET_EDGES.some(([a,b])=>edgeDistance(p,a,b)<radius+STREET_LAYOUT.wallWidth/2);
+  const p={x,y},margin=radius+STREET_LAYOUT.wallWidth/2;
+  return streetFloorContains(x,y)&&!edgeBounds.some(b=>x>=b.minX-margin&&x<=b.maxX+margin&&y>=b.minY-margin&&y<=b.maxY+margin&&edgeDistance(p,b.a,b.b)<margin);
 }

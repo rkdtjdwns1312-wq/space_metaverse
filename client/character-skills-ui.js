@@ -1,6 +1,7 @@
 import {characterAbilities} from '/shared/character-skills.js';
 
-export function createCharacterSkillsUI(){
+export function createCharacterSkillsUI({getKey=action=>action==='attack'?'Q':'E'}={}){
+  const keyOf=spec=>['attack','skill'].includes(spec.slot)?getKey(spec.slot):spec.key;
   const container=document.getElementById('self-skill-slots');
   const dialog=document.createElement('dialog');dialog.id='skill-description-dialog';
   const title=document.createElement('h2');title.id='skill-description-title';
@@ -11,12 +12,12 @@ export function createCharacterSkillsUI(){
   let signature='',openSlot=null;
   dialog.addEventListener('close',()=>{openSlot=null;});
   return {update(player){
-    const next=[player?.avatar?.constellationId,player?.avatar?.level,player?.transformation?.active,...(player?.equipmentSlots||[])].join(':');
+    const next=[player?.avatar?.constellationId,player?.avatar?.level,player?.transformation?.active,getKey('attack'),getKey('skill'),...(player?.equipmentSlots||[])].join(':');
     if(next===signature)return;signature=next;
     const specs=characterAbilities(player);
     if(dialog.open){
       const current=specs.find(spec=>spec.slot===openSlot);
-      if(current&&player?.avatar?.level>=current.level){title.textContent=current.name+' · '+current.key;description.textContent=current.description;}
+      if(current&&player?.avatar?.level>=current.level){title.textContent=current.name+' · '+keyOf(current);description.textContent=current.description.replaceAll('Q ','기본공격 ');}
       else dialog.close();
     }
     container.replaceChildren();container.setAttribute('aria-label','일반 공격·일반 스킬·별자리초월');
@@ -31,12 +32,12 @@ export function createCharacterSkillsUI(){
         else{const icon=document.createElement('span');icon.textContent='✧';icon.setAttribute('aria-hidden','true');button.append(icon);}
         button.onclick=()=>{
           openSlot=spec.slot;
-          title.textContent=spec.name+' · '+spec.key;
-          description.textContent=spec.description;
+          title.textContent=spec.name+' · '+keyOf(spec);
+          description.textContent=spec.description.replaceAll('Q ','기본공격 ');
           window.dispatchEvent(new Event('game-ui-focus'));dialog.showModal();
         };
       }
-      const label=document.createElement('span');label.textContent=unlocked?spec.key:`LV${spec.level}`;button.append(label);container.append(button);
+      const label=document.createElement('span');label.textContent=unlocked?keyOf(spec):`LV${spec.level}`;button.append(label);container.append(button);
     }
   },reset(){signature='';if(dialog.open)dialog.close();}};
 }

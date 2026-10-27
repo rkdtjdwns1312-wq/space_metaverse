@@ -41,6 +41,7 @@ import {drawLifeStar} from './life-star-art.js';
 import {drawValleyAltar} from './valley-art.js';
 import {drawInteriorFloor,drawInteriorProp,drawInteriorDecoration} from './interior-art.js';
 import {drawStreetGround} from './street-art.js';
+import {drawCachedStreetProp} from './street-prop-cache.js';
 import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp} from './painted-props.js';
@@ -354,6 +355,10 @@ export function createWorld(canvas) {
   function drawStreet(map){
     drawStreetGround(ctx,map);
     for(const o of map.objects){
+      // Include the complete roof, sign and glow, even with the foot offscreen.
+      // The old loop repainted every station and arcade at the opposite end.
+      if(o.x+300<view.x||o.x-300>view.x+view.width||o.y+150<view.y||o.y-360>view.y+view.height)continue;
+      if(drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))continue;
       if(o.kind==='gate'){drawGate(o);continue;}
       if(o.kind==='shop'){drawShop(o);continue;}
       if(o.kind==='energy-shop'){drawEnergyShop(ctx,o);continue;}
@@ -677,7 +682,7 @@ export function createWorld(canvas) {
     const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
     const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
     const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
-    view={x,y,scale};
+    view={x,y,scale,width:cw,height:ch};
     interiorBoard.update({map,planet:planets.find(p=>p.id===map.planetId),view,rect,visible:!!selfId&&document.body.classList.contains('joined')});
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
@@ -708,11 +713,12 @@ export function createWorld(canvas) {
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
       const barScale=type.boss?1.75:type.shape==='star-guardian'?1.9:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
       const bossBounds=type.boss?bossMonsterBounds(body,(m.moving||m.leoonSkill?.stage==='stomp')&&!activeAttack):null;
-      const barWidth=type.boss?200:64,barY=type.boss?bossBounds.bottom+3:pos.y-visualRadius*barScale-18;
+      const nameY=type.boss?bossBounds.top-64:pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
+      const barWidth=type.boss?200:64,barY=type.boss?bossBounds.top-48:nameY+7;
       const barHeight=type.boss?14:9;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,barHeight,4);ctx.fill();
       ctx.fillStyle=type.boss?'#ffcf75':'#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),barHeight-2);
-      ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY-4);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY-4);ctx.restore();
+      ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY+barHeight+12);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY+barHeight+12);ctx.restore();
       if(type.boss&&m.maxMp>0){
         const manaY=barY+barHeight+3;
         ctx.save();ctx.fillStyle='#252d4a';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,manaY,barWidth,12,4);ctx.fill();
@@ -724,12 +730,11 @@ export function createWorld(canvas) {
       monsterStatuses.forEach((id,index)=>{
         const icon=loadedAvatarSprite('/assets/status/'+id+'.svg');
         if(icon){ctx.save();ctx.shadowColor='#f7efff';ctx.shadowBlur=7;
-          ctx.drawImage(icon,pos.x-(monsterStatuses.length*22)/2+index*22,type.boss?bossBounds.top-75:barY-43,20,20);ctx.restore();}
+          ctx.drawImage(icon,pos.x-(monsterStatuses.length*22)/2+index*22,type.boss?bossBounds.top-120:pos.y-visualRadius*barScale-61,20,20);ctx.restore();}
       });
       if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);canvas.dataset.monsterMp=String(m.mp??'');canvas.dataset.monsterMaxMp=String(m.maxMp??'');}
       ctx.save();ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#e5ddff';
       // 보스 이름은 머리 위 월드 좌표에 고정합니다. 화면 위 경계에서 따로 내려오지 않습니다.
-      const nameY=type.boss?bossBounds.top-12:pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
       if(type.boss){
         ctx.font='bold 30px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle=type.id==='leoon'?'#fff0b2':'#edf3ff';
         ctx.shadowColor=type.id==='leoon'?'#ff9d32':'#89a5f8';ctx.shadowBlur=15;
@@ -1023,8 +1028,8 @@ export function createWorld(canvas) {
         const candidates=currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','crafting','evolution','growth','black-star','goddess-statue'].includes(o.kind));
         let best=null,bestDist=Infinity;
         for(const o of candidates){
-          const d=Math.hypot(me.x-o.x,me.y-o.y);
-          if(d<=(o.radius||PLANET.radius)+NEAR&&d<bestDist){best=o;bestDist=d;}
+          const d=config.interactionDistance(me,o);
+          if(d<=config.interactionReach(o)&&d<bestDist){best=o;bestDist=d;}
         }
         if(!best)return null;
         return {...best};

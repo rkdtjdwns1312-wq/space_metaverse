@@ -292,10 +292,28 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       }
     }
     const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):resting?0:MONSTER_RULES.speed*factor*dt;
-    const x=m.x+m.dx*travel,y=m.y+m.dy*travel;
+    let x=m.x+m.dx*travel,y=m.y+m.dy*travel;
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
-    const blocked=!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(x-o.x,y-o.y)<m.radius+o.radius+10));
+    const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
+    const blockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>{
+      if(o===m||o.hp<=0||o.mapId!==m.mapId)return false;
+      const next=Math.hypot(x-o.x,y-o.y),current=Math.hypot(m.x-o.x,m.y-o.y),gap=m.radius+o.radius+10;
+      // A guardian spawned near an edge may already overlap. Permit only steps
+      // that separate existing overlap, never steps farther into another body.
+      return next<gap&&!(spiritGroup&&current<gap&&next>current+1e-6);
+    }));
+    let blocked=blockedAt(x,y);
+    if(blocked&&spiritGroup&&travel>0){
+      const angle=Math.atan2(m.dy,m.dx),side=m.avoidanceSide||1;
+      // The king and his guards can otherwise queue forever behind each other.
+      // Try short sideways steps with the same floor, body and speed limits.
+      for(const turn of [30,60,90,120,150].flatMap(a=>[a*side,-a*side])){
+        const direction=angle+turn*Math.PI/180,nx=m.x+Math.cos(direction)*travel,ny=m.y+Math.sin(direction)*travel;
+        if(blockedAt(nx,ny))continue;
+        x=nx;y=ny;m.avoidanceSide=Math.sign(turn);blocked=false;break;
+      }
+    }
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
