@@ -11,8 +11,10 @@ export const STREET_LAYOUT=Object.freeze({
 export const STREET_PARK=Object.freeze({
   fountain:Object.freeze({x:850,y:1740,rx:94,ry:39}),
   beds:Object.freeze([
-    Object.freeze({x:555,y:1510,rx:95,ry:49,seed:1}),
-    Object.freeze({x:560,y:1945,rx:95,ry:49,seed:3})
+    Object.freeze({x:762,y:1412,rx:95,ry:49,seed:1}),
+    Object.freeze({x:542,y:1596,rx:95,ry:49,seed:2}),
+    Object.freeze({x:542,y:1884,rx:95,ry:49,seed:3}),
+    Object.freeze({x:762,y:2068,rx:95,ry:49,seed:4})
   ])
 });
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;

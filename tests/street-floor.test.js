@@ -50,10 +50,11 @@ test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고
   assert(shop.y<craft.y&&craft.y<energy.y);assert(craft.x>shop.x&&craft.x>energy.x);
   const walker={role:'student',avatar:{level:2,constellationId:'aries'}};
   for(let y=1160;y<=1350;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`북쪽 접근 ${y}`);
-  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,1350,walker),`북쪽 우회 ${x}`);
-  for(let y=1350;y<=2060;y+=10)assert(avatarPositionIsClear(STREET,700,y,walker),`공원 서쪽 통로 ${y}`);
-  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,2060,walker),`남쪽 복귀 ${x}`);
-  for(let y=2060;y<=2250;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`남쪽 출구 ${y}`);
+  for(let y=1350;y<=1590;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`화단 오른쪽 북쪽 접근 ${y}`);
+  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,1590,walker),`분수 위 우회 ${x}`);
+  for(let y=1590;y<=1910;y+=10)assert(avatarPositionIsClear(STREET,700,y,walker),`화단과 분수 사이 통로 ${y}`);
+  for(let x=700;x<=900;x+=10)assert(avatarPositionIsClear(STREET,x,1910,walker),`분수 아래 복귀 ${x}`);
+  for(let y=1910;y<=2250;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`남쪽 출구 ${y}`);
   for(const o of [shop,craft,energy]){
     assert(onStreetFloor(STREET,o.x,o.y+o.radius+45,20),o.id+' 입구');
   }
