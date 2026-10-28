@@ -35,7 +35,8 @@ export function drawStreetPark(c,art={}){
     else gardenBed(c,bed.x,bed.y,bed.rx,bed.ry,bed.seed);
   }
   const f=STREET_PARK.fountain;
-  if(art.fountain?.complete&&art.fountain.naturalWidth)c.drawImage(art.fountain,f.x-104,f.y-100,208,208*2/3);
-  else fountain(c,f.x,f.y);
+  c.translate(f.x,f.y);c.scale(f.scale,f.scale);
+  if(art.fountain?.complete&&art.fountain.naturalWidth)c.drawImage(art.fountain,-104,-100,208,208*2/3);
+  else fountain(c,0,0);
   c.restore();
 }

@@ -9,12 +9,12 @@ export const STREET_LAYOUT=Object.freeze({
 });
 // 중앙 쉼터의 장식과 충돌 판정은 같은 좌표를 사용합니다.
 export const STREET_PARK=Object.freeze({
-  fountain:Object.freeze({x:850,y:1740,rx:94,ry:39}),
+  fountain:Object.freeze({x:850,y:1740,scale:1.4,rx:94*1.4,ry:39*1.4}),
   beds:Object.freeze([
-    Object.freeze({x:762,y:1412,rx:95,ry:49,seed:1}),
-    Object.freeze({x:542,y:1596,rx:95,ry:49,seed:2}),
-    Object.freeze({x:542,y:1884,rx:95,ry:49,seed:3}),
-    Object.freeze({x:762,y:2068,rx:95,ry:49,seed:4})
+    Object.freeze({x:850,y:1412,rx:95,ry:49,seed:1}),
+    Object.freeze({x:500,y:1596,rx:95,ry:49,seed:2}),
+    Object.freeze({x:500,y:1884,rx:95,ry:49,seed:3}),
+    Object.freeze({x:850,y:2068,rx:95,ry:49,seed:4})
   ])
 });
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;

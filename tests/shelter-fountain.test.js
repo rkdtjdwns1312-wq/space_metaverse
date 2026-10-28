@@ -15,7 +15,7 @@ test('화단과 분수의 바닥 판정은 그림의 좌표에 맞고 주변 통
   assert.equal(avatarPositionIsClear(STREET,f.x,f.y,p),false);
   assert.equal(avatarPositionIsClear(STREET,f.x,f.y+110,p),true);
   assert.equal(STREET_PARK.beds.length,4);
-  assert(STREET_PARK.beds.every(b=>b.x<f.x));
+  assert(STREET_PARK.beds.every(b=>b.x<=f.x));
   for(const [x,y] of [[1115,1535],[1110,1920]])assert.equal(avatarPositionIsClear(STREET,x,y,p),true,'삭제된 오른쪽 화단 통과');
   for(const bed of STREET_PARK.beds){
     assert.equal(avatarPositionIsClear(STREET,bed.x,bed.y,p),false);
