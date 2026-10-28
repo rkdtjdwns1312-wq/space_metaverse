@@ -295,7 +295,7 @@ export class PersistentRoomStore extends RoomStore {
     if(p.role==='student')offline(p);else room.players.delete(p.id);
   }
   destroy(room,now=Date.now()){
-    // 처치 직후 다음 전투 틱 전에 수업을 끝내도 자격과 24시간 시각을 보존합니다.
+    // 처치 직후 다음 전투 틱 전에 수업을 끝내도 자격과 다음 날 07시 복원 시각을 보존합니다.
     settleBossDeaths(room,now);
     this.records.set(room.code,structuredClone(toRecord(room)));
     super.destroy(room);

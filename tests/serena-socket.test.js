@@ -9,6 +9,7 @@ import {damageMonster} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {summonSerena} from '../server/serena.js';
 import {beginSerenaSkill} from '../server/serena-skills.js';
+import {nextBossRespawnAt} from '../server/boss-lifecycle.js';
 import {SERENA} from '../shared/serena.js';
 import {mapOf} from '../shared/config.js';
 const key='serena-test-only-key',call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data);
@@ -92,7 +93,7 @@ test('소켓 소환 저장 실패는 성공 응답과 active 알림을 보내지
   assert.equal((await call(f.a,'serena:summon')).ok,true);
 });
 
-test('실제 서버 틱은 처치 저장 실패를 재시도하고 24시간 경계에서 석상만 복원한다',async t=>{
+test('실제 서버 틱은 처치 저장 실패를 재시도하고 다음 날 07시 경계에서 석상만 복원한다',async t=>{
   const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
   const dialogues=[],elsewhere=[];f.a.on('combat:boss-defeated',e=>dialogues.push(e));f.b.on('combat:boss-defeated',e=>elsewhere.push(e));
   const drops=[],states=[];f.a.on('energy:drops',r=>drops.push(r));f.a.on('world:positions',r=>states.push(r.serena));
@@ -109,7 +110,7 @@ test('실제 서버 틱은 처치 저장 실패를 재시도하고 24시간 경�
   await until(()=>f.room.serena.state==='recovering');
   await until(()=>drops.some(r=>r.drops.some(d=>d.itemId==='radiant-star-origin')));
   await until(()=>dialogues.length===1);assert.equal(dialogues[0].bossId,'serena');assert.equal(elsewhere.length,0);
-  const untilAt=deathAt+86400000;assert.equal(f.disk().serena.respawnAt,untilAt);
+  const untilAt=nextBossRespawnAt(deathAt);assert.equal(f.disk().serena.respawnAt,untilAt);
   assert.equal([...f.room.energyDrops.values()].filter(d=>d.itemId==='radiant-star-origin').length,1);
   assert.ok([...f.room.energyDrops.values()].every(d=>d.publicAt===f.now+30000&&d.expiresAt===f.now+60000));
   f.now=untilAt-1;await pause(120);assert.equal(f.room.serena.state,'recovering');

@@ -15,14 +15,15 @@ import {ensure} from './rooms.js';
 const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
 function enemies(room,player){
   return [...monstersOf(room).values()].filter(m=>m.hp>0&&m.mapId===player.mapId).map(m=>({entity:m,kind:'monster',radius:m.radius}))
-    .concat([...room.players.values()].filter(p=>p.id!==player.id&&p.mapId===player.mapId&&valid(p)).map(p=>({entity:p,kind:'player',radius:RULES.radius})));
+    .concat(isSagittarius(player)?[]:[...room.players.values()].filter(p=>p.id!==player.id&&p.mapId===player.mapId&&valid(p)).map(p=>({entity:p,kind:'player',radius:RULES.radius})));
 }
 function nearest(list,x,y){return list.sort((a,b)=>Math.hypot(a.entity.x-x,a.entity.y-y)-Math.hypot(b.entity.x-x,b.entity.y-y))[0];}
 function damage(room,player,list,power,now){
   const targets=[],playerTargets=[];
   for(const target of list){
     if(target.kind==='monster'){const hit=damageMonster(room,target.entity,player,power,now);if(hit)targets.push(hit);}
-    else{const hit=damagePlayer(target.entity,power,now,{room});if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
+    // 사수자리는 Q/E/지속 스킬 모두 몬스터만 공격합니다. 공통 호출의 대상 목록도 재검증합니다.
+    else if(!isSagittarius(player)){const hit=damagePlayer(target.entity,power,now,{room});if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
   }
   return {targets,playerTargets};
 }

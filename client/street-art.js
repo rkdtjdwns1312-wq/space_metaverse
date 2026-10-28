@@ -13,7 +13,7 @@ export const STREET_ROUTE_LABELS=Object.freeze([
 const images={};let revision=0;
 const listeners=new Set(),tiles=new Map();
 onFloatingCliffReady(()=>{revision++;tiles.clear();for(const fn of listeners)fn();});
-for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png'})){
+for(const [key,src] of Object.entries({backdrop:STREET_BACKDROP_SRC,paving:'/assets/maps/plaza-paving.png',fountain:'/assets/maps/shelter-fountain-v2.webp',flowerbed:'/assets/maps/shelter-flowerbed-v2.webp'})){
   images[key]=mapImage(src,()=>{revision++;tiles.clear();for(const fn of listeners)fn();});
 }
 const ready=key=>mapImageReady(images[key]);
@@ -49,7 +49,7 @@ function paint(ctx,map){
   const wash=ctx.createLinearGradient(STREET_LAYOUT.upper.x-STREET_LAYOUT.upper.rx,0,STREET_LAYOUT.upper.x+STREET_LAYOUT.upper.rx,map.height);
   wash.addColorStop(0,'#ffd8eb30');wash.addColorStop(.5,'#fff6dc18');wash.addColorStop(1,'#bde6ff3d');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
   drawStoneRim(ctx,visual.edges);
-  drawStreetPark(ctx,images.paving);
+  drawStreetPark(ctx,images.paving,images);
   routeLabel(ctx);
 }
 export function drawStreetGround(ctx,map){
@@ -70,6 +70,6 @@ export function drawStreetMiniFloor(ctx,map){
   ctx.fillStyle='#d7ddff55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.north.x,STREET_LAYOUT.north.y,STREET_LAYOUT.north.rx-35,STREET_LAYOUT.north.ry-30,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#ffe0ed55';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.upper.x,STREET_LAYOUT.upper.y,STREET_LAYOUT.upper.rx-42,STREET_LAYOUT.upper.ry-34,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#c9eddf66';ctx.beginPath();ctx.ellipse(STREET_LAYOUT.lower.x,STREET_LAYOUT.lower.y,STREET_LAYOUT.lower.rx-38,STREET_LAYOUT.lower.ry-30,0,0,Math.PI*2);ctx.fill();
-  drawStreetPark(ctx,images.paving);
+  drawStreetPark(ctx,images.paving,images);
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle='#a39ab255';ctx.lineWidth=7;ctx.stroke(edgePath);ctx.restore();
 }

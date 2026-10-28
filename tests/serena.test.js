@@ -6,7 +6,7 @@ import {MONSTER_TYPES,monsterType} from '../shared/monsters.js';
 import {monstersOf,monsterViews,damageMonster,moveMonsters} from '../server/monsters.js';
 import {summonSerena} from '../server/serena.js';
 import {serenaEligible,serenaEligibility,recordSerenaLevel,recordBossVictory,validateSerenaProgress} from '../server/serena-progress.js';
-import {monsterRespawnMs,restoreSerenaStatue,BOSS_RESPAWN_MS,validateSerenaState,validateBossRespawns} from '../server/boss-lifecycle.js';
+import {monsterRespawnMs,restoreSerenaStatue,nextBossRespawnAt,validateSerenaState,validateBossRespawns} from '../server/boss-lifecycle.js';
 import {ensureVitals} from '../server/vitals.js';
 import {isFree} from '../server/world.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
@@ -110,17 +110,17 @@ test('세레나 보상은 고유 재료 1·빅뱅 1·탐사권 1~2·에너지 14
     assert.equal(drops.filter(d=>d.itemId==='gold-big-bang-card').length,1);
     assert.equal(drops.filter(d=>d.itemId==='exploration-ticket').length,count);
     assert.equal(drops.find(d=>!d.kind).total,1600);
-    assert.deepEqual(room.serena,{state:'recovering',respawnAt:2000+BOSS_RESPAWN_MS,monsterId:null});
-    moveMonsters(room,2000+BOSS_RESPAWN_MS,()=>0);assert.equal(boss.hp,0);
-    assert.equal(restoreSerenaStatue(room,1999+BOSS_RESPAWN_MS),false);
-    assert.equal(restoreSerenaStatue(room,2000+BOSS_RESPAWN_MS),true);
+    assert.deepEqual(room.serena,{state:'recovering',respawnAt:nextBossRespawnAt(2000),monsterId:null});
+    moveMonsters(room,nextBossRespawnAt(2000),()=>0);assert.equal(boss.hp,0);
+    assert.equal(restoreSerenaStatue(room,nextBossRespawnAt(2000)-1),false);
+    assert.equal(restoreSerenaStatue(room,nextBossRespawnAt(2000)),true);
     assert.equal(room.monsters.has(SERENA.monsterId),false);assert.deepEqual(room.serena,dormantSerena());
   }
 });
 
-test('일반 LV1/2 10초·LV3 15초·LV4 20초, 모든 보스 24시간 경계를 지킨다',()=>{
+test('일반 LV1/2 10초·LV3 15초·LV4 20초, 모든 보스 다음 날 07시 경계를 지킨다',()=>{
   for(const type of MONSTER_TYPES){
-    assert.equal(monsterRespawnMs(type),type.boss?86400000:type.level===4?20000:type.level===3?15000:10000,type.id);
+    assert.equal(monsterRespawnMs(type,2000),type.boss?nextBossRespawnAt(2000)-2000:type.level===4?20000:type.level===3?15000:10000,type.id);
   }
   for(const level of [1,2,3,4]){
     const {room,player}=fixture();const boss=[...monstersOf(room,1000,()=>0).values()].find(m=>!monsterType(m.typeId).boss&&monsterType(m.typeId).level===level);
@@ -132,7 +132,7 @@ test('일반 LV1/2 10초·LV3 15초·LV4 20초, 모든 보스 24시간 경계를
   for(const typeId of ['leoon','noksera','spirit-king']){
     const {room,player}=fixture(),boss=monstersOf(room,1000).get(typeId+'-boss');
     room.monsters=new Map([[boss.id,boss]]);player.mapId=boss.mapId;
-    damageMonster(room,boss,player,1e6,2000);assert.equal(boss.respawnAt,2000+BOSS_RESPAWN_MS);
+    damageMonster(room,boss,player,1e6,2000);assert.equal(boss.respawnAt,nextBossRespawnAt(2000));
     moveMonsters(room,boss.respawnAt-1,()=>0);assert.equal(boss.hp,0);
     moveMonsters(room,boss.respawnAt,()=>0);assert.equal(boss.hp,boss.maxHp);
   }

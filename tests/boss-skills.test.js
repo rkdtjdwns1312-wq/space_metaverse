@@ -7,7 +7,7 @@ import {monsterType} from '../shared/monsters.js';
 import {RULES} from '../shared/config.js';
 import {damageAfterDefense,defensePowerOf} from '../shared/combat.js';
 import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius} from '../shared/boss-skills.js';
-import {BOSS_RESPAWN_MS} from '../server/boss-lifecycle.js';
+import {nextBossRespawnAt} from '../server/boss-lifecycle.js';
 const START=1000;
 function fixture(id='noksera'){
  const room={players:new Map(),planets:new Map(),...(id==='serena'?{serena:{state:'active'}}:{})};
@@ -42,14 +42,14 @@ test('10초 경계마다10회복·최대100·시간역행/긴점프/비정상시
  }
 });
 
-test('사망 중 마나회복 없음·24시간 재소환100·세레나 재생성100',()=>{
+test('사망 중 마나회복 없음·다음 날 07시 재소환100·세레나 재생성100',()=>{
  for(const id of ['noksera','leoon','spirit-king','serena']){
-  const f=fixture(id);Object.assign(f.boss,{hp:0,mp:7,respawnAt:START+BOSS_RESPAWN_MS,pendingAttack:{kind:NOKSERA_HORN_BURST.kind}});
+  const f=fixture(id);Object.assign(f.boss,{hp:0,mp:7,respawnAt:nextBossRespawnAt(START),pendingAttack:{kind:NOKSERA_HORN_BURST.kind}});
   tick(f,START+20000);assert.equal(f.boss.mp,7);assert.equal(f.boss.pendingAttack,null);
   if(id==='serena'){
-   tick(f,START+BOSS_RESPAWN_MS);assert.equal(f.boss.hp,0);assert.equal(f.boss.mp,7);
-   f.room.monsters.delete(f.boss.id);assert.equal(monstersOf(f.room,START+BOSS_RESPAWN_MS).get('serena-boss').mp,100);
-  }else{tick(f,START+BOSS_RESPAWN_MS);assert.equal(f.boss.hp,f.boss.maxHp);assert.equal(f.boss.mp,100);assert.equal(f.boss.hornReadyAt,0);}
+   tick(f,nextBossRespawnAt(START));assert.equal(f.boss.hp,0);assert.equal(f.boss.mp,7);
+   f.room.monsters.delete(f.boss.id);assert.equal(monstersOf(f.room,nextBossRespawnAt(START)).get('serena-boss').mp,100);
+  }else{tick(f,nextBossRespawnAt(START));assert.equal(f.boss.hp,f.boss.maxHp);assert.equal(f.boss.mp,100);assert.equal(f.boss.hornReadyAt,0);}
  }
 });
 
@@ -94,7 +94,7 @@ test('전투대상 없이 시전하지 않으며 마나부족·쿨타임에는 �
 test('사망·기절·수면 취소, 틱 사이에 끝난 상태이상도 취소하며 마나환불 없음',()=>{
  for(const status of ['dead','stunUntil','sleepUntil'])for(const delayed of [false,true]){
   const f=fixture();tick(f,START);const hp=ensureVitals(f.player).hp;
-  if(status==='dead'){f.boss.hp=0;f.boss.respawnAt=START+BOSS_RESPAWN_MS;}else f.boss[status]=START+1500;
+  if(status==='dead'){f.boss.hp=0;f.boss.respawnAt=nextBossRespawnAt(START);}else f.boss[status]=START+1500;
   assert.deepEqual(tick(f,START+(delayed?3000:500)),[]);assert.equal(f.boss.pendingAttack,null);assert.equal(f.boss.mp,85);assert.equal(ensureVitals(f.player).hp,hp);
  }
  const f=fixture();tick(f,START);damageMonster(f.room,f.boss,f.player,5000,START+500,{energyRoll:()=>400,bossRoll:()=>2});assert.equal(f.boss.pendingAttack,null);assert.deepEqual(tick(f,START+3000),[]);

@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {PersistentRoomStore} from '../server/persistent-rooms.js';
 import {summonSerena} from '../server/serena.js';
 import {monstersOf,damageMonster,moveMonsters} from '../server/monsters.js';
-import {settleBossDeaths,restoreSerenaStatue,BOSS_RESPAWN_MS} from '../server/boss-lifecycle.js';
+import {settleBossDeaths,restoreSerenaStatue,nextBossRespawnAt} from '../server/boss-lifecycle.js';
 import {serenaEligible} from '../server/serena-progress.js';
 import {SERENA} from '../shared/serena.js';
 import {mapOf} from '../shared/config.js';
@@ -54,7 +54,7 @@ test('세레나 처치 저장 실패에는 보상도 복원 시각도 공개하�
   assert.equal(f.room.energyDrops?.size||0,0);assert.equal(f.room.pendingBossDeaths.size,1);
   assert.equal(f.room.serena.state,'active');assert.equal(f.disk().serena.state,'active');
   f.store.files.save=save;f.store.transact(()=>settleBossDeaths(f.room));
-  const until=now+10+BOSS_RESPAWN_MS,drops=f.room.energyDrops.size;
+  const until=nextBossRespawnAt(now+10),drops=f.room.energyDrops.size;
   assert.equal(f.disk().serena.respawnAt,until);assert.equal(f.disk().bossRespawns[SERENA.monsterId],until);
   assert.ok(drops>=4);f.store.transact(()=>settleBossDeaths(f.room));assert.equal(f.room.energyDrops.size,drops);
   assert.equal(f.room.bossDialogueEvents.length,1,'재정산에도 대화는 한 번만 발생');
@@ -68,7 +68,7 @@ test('세레나 처치 저장 실패에는 보상도 복원 시각도 공개하�
   assert.equal(monstersOf(f.room,until+1).has(SERENA.monsterId),false);
 });
 
-test('기존 세 보스의 처치 시각과 기여 자격은 저장되며 재시작으로 24시간이 늘거나 줄지 않는다',t=>{
+test('기존 세 보스의 처치 시각과 기여 자격은 저장되며 재시작해도 다음 날 07시 복원을 유지한다',t=>{
   const f=fixture(t),now=Date.now();
   f.store.transact(()=>Object.assign(f.player.avatar,{level:5,form:'transcendent',constellationId:'taurus'}));
   for(const id of ['leoon-boss','noksera-boss','spirit-king-boss']){
@@ -79,7 +79,7 @@ test('기존 세 보스의 처치 시각과 기여 자격은 저장되며 재시
     f.store.transact(()=>settleBossDeaths(f.room));f.player.connected=true;
   }
   assert.equal(serenaEligible(f.player),true);f.restart();assert.equal(serenaEligible(f.player),true);
-  const until=now+BOSS_RESPAWN_MS;
+  const until=nextBossRespawnAt(now);
   for(const id of ['leoon-boss','noksera-boss','spirit-king-boss']){
     const boss=monstersOf(f.room,until-1).get(id);assert.equal(boss.hp,0,id);assert.equal(boss.respawnAt,until);
   }
@@ -93,7 +93,7 @@ test('처치 직후 교실 종료도 대기 정산을 저장하여 재개 시 �
   const f=fixture(t);qualify(f);const now=Date.now();f.store.transact(()=>summonSerena(f.room,f.player,now));
   damageMonster(f.room,f.room.monsters.get(SERENA.monsterId),f.player,10000,now);
   f.store.transact(()=>f.store.destroy(f.room));assert.equal(f.disk().serena.state,'recovering');
-  f.restart();assert.equal(f.room.serena.respawnAt,now+BOSS_RESPAWN_MS);
+  f.restart();assert.equal(f.room.serena.respawnAt,nextBossRespawnAt(now));
 });
 
 test('기존 학생 LV5는 보존하되 없는 과거 보스 기록은 만들지 않는다',t=>{
@@ -101,4 +101,20 @@ test('기존 학생 LV5는 보존하되 없는 과거 보스 기록은 만들지
   const legacy=f.disk();delete legacy.serena;delete legacy.bossRespawns;delete legacy.students[0].serenaProgress;
   writeFileSync(join(f.dir,f.code+'.json'),JSON.stringify(legacy));f.restart();
   assert.deepEqual(f.player.serenaProgress,{highestLevel:5,bossKills:[]});assert.equal(serenaEligible(f.player),false);
+});
+
+test('옛 24시간 저장 파일을 재개하면 네 보스 모두 해당 날짜 07시로 맞추고 재저장한다',t=>{
+  const f=fixture(t),old=Date.parse('2026-10-29T14:30:00+09:00'),opening=Date.parse('2026-10-29T07:00:00+09:00');
+  const saved=f.disk();
+  saved.bossRespawns=Object.fromEntries(['leoon-boss','noksera-boss','spirit-king-boss','serena-boss'].map(id=>[id,old]));
+  saved.serena={state:'recovering',respawnAt:old,monsterId:null};
+  writeFileSync(join(f.dir,f.code+'.json'),JSON.stringify(saved));f.restart();
+  assert(Object.values(f.room.bossRespawns).every(time=>time===opening));
+  assert.equal(f.room.serena.respawnAt,opening);assert.equal(f.disk().serena.respawnAt,opening);
+  f.restart();assert(Object.values(f.disk().bossRespawns).every(time=>time===opening));
+  // 07시를 지나 교실을 여는 경우에도 다음 날로 대기를 연장하지 않습니다.
+  delete f.room.monsters;
+  for(const id of ['leoon-boss','noksera-boss','spirit-king-boss'])assert(monstersOf(f.room,opening+1000).get(id).hp>0);
+  assert.equal(restoreSerenaStatue(f.room,opening+1000),true);
+  assert.equal(f.room.monsters.has(SERENA.monsterId),false);
 });

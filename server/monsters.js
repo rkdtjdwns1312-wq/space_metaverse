@@ -16,7 +16,7 @@ import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spiri
 import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
 
 
-export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:2000,mapExitHealCount:3});
+export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:2000,mapExitHealCount:3,blockedChaseMs:3000});
 const delayedMeleeBoss=type=>type?.id==='noksera'||type?.id==='leoon';
 function bossMeleeEligible(room,monster,now,x,y){
   const present=playersInArea(room,{mapId:monster.mapId,x,y,radius:MONSTER_RULES.hitRadius,excludeTeachers:true,teacherTargetIds:monster.teacherRetaliation});
@@ -30,7 +30,7 @@ const spawns=[[260,280],[600,260],[920,300],[360,590],[830,590]];
 const largeSpawns=[[430.56,256.94],[597.22,256.94],[763.89,256.94],[291.67,312.5],[902.78,312.5]];
 const sunSpawns=[[-330,-110],[0,-170],[330,-110],[-240,140],[240,140]];
 export const monstersMayOverlap=mapId=>mapId==='star-origin-1'||mapId==='star-origin-2';
-// 일반 몬스터는 단계별 10/15/20초, 보스는 영구 저장한 24시간 뒤 복원합니다.
+// 일반 몬스터는 단계별 10/15/20초, 보스는 처치 다음 날 한국 시간 07시에 복원합니다.
 export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   const create=(spawn,i)=>{
     const type=monsterType(spawn.typeId);
@@ -63,7 +63,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
   };
   if(!room.monsters)room.monsters=new Map(MONSTER_SPAWNS.map(create));
-  // 수동 소환 상태만 복구합니다. 휴면/24시간 회복 중에는 자동 생성하지 않습니다.
+  // 수동 소환 상태만 복구합니다. 휴면/다음 날 07시 대기 중에는 자동 생성하지 않습니다.
   if(room.serena?.state==='active'&&!room.monsters.has(SERENA.monsterId)){
     const [id,m]=create({id:SERENA.monsterId,typeId:SERENA.typeId},0);
     m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
@@ -131,7 +131,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
       addRecipeDrop(room,target,target.contributors,now,recipeRoll);
       addEnergyDrop(room,target,target.contributors,now,energyRoll);
     }
-    target.respawnAt=now+(target.summonerId?600:monsterRespawnMs(type));target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.meleePresence?.clear();target.mapExitCount=0;
+    target.respawnAt=now+(target.summonerId?600:monsterRespawnMs(type,now));target.targetId=null;target.pendingAttack=null;target.moonCast=null;target.moonAura=null;target.leoonSkill=null;target.attackers.clear();target.teacherRetaliation?.clear();target.contributors.clear();target.meleePresence?.clear();target.mapExitCount=0;
   }
   else{
     registerMonsterAttacker(room,target,player,now,retaliateTeacher);
@@ -176,6 +176,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const hits=tickSpiritOrbs(room,now,mapId=>mapOf(mapId,room.planets?.values?.()||[]));
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
+    // 이번 틱에도 실제 추적 이동이 지형에 막힐 때만 누적합니다. 시전/수면/정지는 연속 막힘이 아닙니다.
+    const previousBlockedChase=m.blockedChase;m.blockedChase=null;
     if(m.hp<=0){
       if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
@@ -296,7 +298,9 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
     const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
-    const blockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>{
+    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
+    const terrainBlocked=terrainBlockedAt(x,y);
+    const blockedAt=(x,y)=>terrainBlockedAt(x,y)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>{
       if(o===m||o.hp<=0||o.mapId!==m.mapId)return false;
       const next=Math.hypot(x-o.x,y-o.y),current=Math.hypot(m.x-o.x,m.y-o.y),gap=m.radius+o.radius+10;
       // A guardian spawned near an edge may already overlap. Permit only steps
@@ -312,6 +316,20 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
         const direction=angle+turn*Math.PI/180,nx=m.x+Math.cos(direction)*travel,ny=m.y+Math.sin(direction)*travel;
         if(blockedAt(nx,ny))continue;
         x=nx;y=ny;m.avoidanceSide=Math.sign(turn);blocked=false;break;
+      }
+    }
+    // 문/다리 뒤의 공격자에게 닿지 못한 채 3초 연속 지형에 막히면 전투를 초기화합니다.
+    // 몸끼리 부딪히거나 우회에 성공한 경우, 이미 근접 공격 가능한 거리는 제외합니다.
+    if(target&&blocked&&terrainBlocked&&travel>0&&distance>reach+RULES.radius+MONSTER_RULES.hitRadius){
+      const elapsedMs=(previousBlockedChase?.targetId===target.id?previousBlockedChase.elapsedMs:0)+dt*1000;
+      m.blockedChase={targetId:target.id,elapsedMs};
+      if(elapsedMs>=MONSTER_RULES.blockedChaseMs){
+        m.hp=m.maxHp;m.attackers.clear();m.teacherRetaliation?.clear();m.contributors?.clear();m.meleePresence?.clear();
+        // 지난 전투의 독/저주 틱만으로 곧바로 다시 추적하지 않게 제거합니다. 새 공격은 정상 등록됩니다.
+        m.combatPoison=null;m.capricornCurses?.clear();
+        m.targetId=null;m.nextAttackAt=0;m.mapExitCount=0;m.blockedChase=null;m.moving=false;
+        m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;
+        continue;
       }
     }
     m.moving=!blocked&&travel>0.01;

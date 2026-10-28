@@ -7,7 +7,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews} from '../server/sagittarius-skills.js';
 import {ensureVitals} from '../server/vitals.js';
-import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
+import {attackPowerOf} from '../shared/combat.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {monstersOf} from '../server/monsters.js';
 import {toRecord} from '../server/persistent-rooms.js';
@@ -51,18 +51,50 @@ test('LV·종류·슬롯·MP·사망·검은별 검증 실패 시 소모 없음'
   player.avatar.blackStar=true;assert.throws(()=>castSagittarius(room,player,0,now));
   player.avatar.blackStar=false;ensureVitals(player).hp=0;assert.throws(()=>castSagittarius(room,player,0,now));
 });
-test('화살 방향/사거리, 겹친 몬스터·학생 모두 명중, 자기·뒤·다른맵·면역 제외',()=>{
+test('관통 화살은 겹친 몬스터만 명중, 학생·자기·뒤·다른맵·면역 제외',()=>{
   const {room,player,monster,power,size}=setup(3);
   const twin={...monster,id:'second',attackers:new Map(),contributors:new Map()};room.monsters.set(twin.id,twin);
   const behind={...monster,id:'behind',x:400,attackers:new Map(),contributors:new Map()};room.monsters.set(behind.id,behind);
   const far={...monster,id:'far',x:500+size*6+24+size*.13+25,attackers:new Map(),contributors:new Map()};room.monsters.set(far.id,far);
   const peer={...player,id:'friend',x:700,avatar:{level:5,constellationId:'taurus'}};
+  const peerHp=ensureVitals(peer).hp;
   room.players.set(peer.id,peer);room.players.set('immune',{...peer,id:'immune',avatar:{...peer.avatar,blackStar:true}});
   room.players.set('other',{...peer,id:'other',mapId:'star-origin-2'});
   castSagittarius(room,player,0,now);const hit=fly(room,now+900)[0];
-  assert.deepEqual(hit.targets.map(t=>t.monsterId),[monster.id,twin.id]);assert.deepEqual(hit.playerTargets.map(t=>t.targetId),['friend']);
-  assert.equal(hit.playerTargets[0].damage,Math.max(1,power*4-defensePowerOf(5,'taurus',peer)));
+  assert.deepEqual(hit.targets.map(t=>t.monsterId),[monster.id,twin.id]);assert.deepEqual(hit.playerTargets,[]);
+  assert.equal(monster.hp,1000-power*4);assert.equal(ensureVitals(peer).hp,peerHp);
   assert.equal(ensureVitals(player).hp,20);assert.equal(far.hp,1000);assert.equal(behind.hp,1000);
+});
+test('Q는 앞에 선 학생·교사를 통과해 몬스터를 맞히고 공통 피해 경계도 타인을 보호',()=>{
+  const {room,player,monster,power}=setup(4);
+  const peers=['student','teacher'].map((role,i)=>({id:role,role,connected:true,mapId:player.mapId,x:560+i*40,y:500,avatar:{level:4,constellationId:'aries'}}));
+  for(const peer of peers)room.players.set(peer.id,peer);
+  const hp=peers.map(p=>ensureVitals(p).hp);
+  attackSagittarius(room,player,now);const hit=fly(room,now+650)[0];
+  assert.equal(monster.hp,1000-power);assert.deepEqual(hit.playerTargets,[]);
+  assert.deepEqual(damageTargets(room,player,peers.map(entity=>({entity,kind:'player'})),999,now+700).playerTargets,[]);
+  assert.deepEqual(peers.map(p=>ensureVitals(p).hp),hp);
+});
+test('사냥꾼은 가까운 친구를 무시하고 몬스터를 추적, 몬스터가 없으면 비용 미소모',()=>{
+  const {room,player,monster,power}=setup(4);
+  const peer={...structuredClone(player),id:'friend',x:550};room.players.set(peer.id,peer);
+  const hp=ensureVitals(peer).hp;
+  castSagittarius(room,player,1,now);const cast=[...room.sagittariusCasts.values()][0];
+  assert.equal(cast.targetId,monster.id);assert.equal(cast.targetKind,'monster');
+  advanceSagittarius(room,now+1000);assert.equal(monster.hp,1000-power);
+  monster.hp=0;
+  const hits=advanceSagittarius(room,now+10000);assert.ok(hits.every(hit=>hit.playerTargets.length===0));assert.equal(ensureVitals(peer).hp,hp);
+  const mp=ensureVitals(player).mp,cooldowns={...player.sagittariusCooldowns};
+  assert.throws(()=>castSagittarius(room,player,1,now+15000),/대상/);
+  assert.equal(ensureVitals(player).mp,mp);assert.deepEqual(player.sagittariusCooldowns,cooldowns);
+});
+test('화살비 5회와 마지막 큰 화살은 범위 안 친구를 해치지 않는다',()=>{
+  const {room,player,monster,power}=setup(5);
+  const peer={...structuredClone(player),id:'friend',x:monster.x};room.players.set(peer.id,peer);
+  const hp=ensureVitals(peer).hp;castSagittarius(room,player,2,now);
+  const hits=advanceSagittarius(room,now+5000);
+  assert.equal(hits.filter(hit=>hit.kind==='rain-hit').length,5);assert.equal(hits.at(-1).kind,'great-arrow');
+  assert.equal(monster.hp,1000-power*20);assert.ok(hits.every(hit=>hit.playerTargets.length===0));assert.equal(ensureVitals(peer).hp,hp);
 });
 test('사냥꾼 1초마다 10회100%, 종료 피해 없음, 쿨15초',()=>{
   const {room,player,monster,power,size}=setup(4);
@@ -142,4 +174,37 @@ test('실제 소켓 위조 수치 무시·동일맵에만 효과·저장 데이�
   assert.equal((await call(student,'combat:skill',{slot:0})).ok,false);
   await new Promise(r=>setTimeout(r,150));assert.equal(leaks,0);
   const saved=JSON.stringify(toRecord(room));assert.ok(!saved.includes('sagittariusCooldowns'));assert.ok(!saved.includes('battleVitals'));assert.ok(!saved.includes('sagittariusCasts'));
+});
+test('실제 소켓 Q/E는 친구를 보호하고 몬스터에 정상 피해, 폐지된 보조 스킬은 거부',async t=>{
+  let time=now;const game=createClassroomServer({teacherKey:'sagittarius-peer-test',studentHours:false,clock:()=>time});
+  const {port}=await game.listen(),sockets=[];
+  t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
+  const connect=async()=>{const s=io(`http://127.0.0.1:${port}`,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((resolve,reject)=>{s.once('connect',resolve);s.once('connect_error',reject);});return s;};
+  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data);
+  const teacher=await connect(),student=await connect(),peerSocket=await connect();
+  const made=await call(teacher,'room:create',{teacherKey:'sagittarius-peer-test',allowedNames:['궁수','친구']});assert.ok(made.ok,made.error);
+  const joined=await call(student,'room:join',{code:made.room.code,nickname:'궁수'}),peerJoined=await call(peerSocket,'room:join',{code:made.room.code,nickname:'친구'});
+  assert.ok(joined.ok,joined.error);assert.ok(peerJoined.ok,peerJoined.error);
+  const room=game.store.rooms.get(made.room.code),player=room.players.get(joined.selfId),peer=room.players.get(peerJoined.selfId);
+  Object.assign(player,{mapId:'star-origin-1',x:500,y:500,facing:{x:1,y:0},avatar:{level:5,constellationId:'sagittarius'}});
+  Object.assign(peer,{mapId:player.mapId,x:600,y:500,avatar:{level:5,constellationId:'aries'}});
+  const monster=[...monstersOf(room,time).values()][0];
+  Object.assign(monster,{x:700,y:500,hp:1000,maxHp:1000,radius:24,stunUntil:time+1000000});room.monsters=new Map([[monster.id,monster]]);
+  const hp=ensureVitals(peer).hp,peerHits=[];
+  peerSocket.on('combat:player-hit',hit=>peerHits.push(hit));
+  for(const [event,slot,duration,multiplier] of [['combat:attack',undefined,650,1],['combat:skill',0,900,5]]){
+    time+=20000;monster.hp=1000;ensureVitals(player).mp=40;
+    const response=await call(student,event,{slot,targetId:peer.id,power:999999});assert.ok(response.ok,response.error);
+    const power=attackPowerOf(5,'sagittarius',player);time+=duration;
+    // 실제 서버 틱이 투사체를 처리할 때까지 제한된 시간만 기다립니다.
+    const deadline=Date.now()+2000;
+    while(monster.hp===1000&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));
+    assert.equal(monster.hp,1000-power*multiplier,`${event}:${slot} monster damage`);
+    assert.equal(ensureVitals(peer).hp,hp,`${event}:${slot} peer HP`);
+  }
+  const mp=ensureVitals(player).mp;
+  for(const slot of [1,2])assert.equal((await call(student,'combat:skill',{slot,targetId:peer.id})).ok,false);
+  assert.equal(ensureVitals(player).mp,mp);assert.equal(ensureVitals(peer).hp,hp);
+  await new Promise(resolve=>setTimeout(resolve,30));
+  assert.deepEqual(peerHits,[]);assert.equal(room.sagittariusCasts?.size||0,0);
 });

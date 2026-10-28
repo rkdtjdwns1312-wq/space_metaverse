@@ -99,8 +99,9 @@ test('공격자도 천칭 보호 중일 때 한 번만 반사하고 무한 왕�
   assert.equal(room.reflectedVitals.length,1);assert.equal(ensureVitals(ally).hp,30);
 });
 
-test('투사체/사수 공통 피해 경로도 아군 반사·범위 밖 피해 처리',()=>{
+test('까마귀 투사체 공통 피해 경로도 아군 반사·범위 밖 피해 처리',()=>{
   const {room,caster,ally,attacker}=fixture();
+  attacker.avatar.constellationId='corvus';
   const hit=damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+1).playerTargets[0];
   assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,10);
   caster.x-=2000;

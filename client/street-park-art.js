@@ -52,7 +52,7 @@ function fountain(c,x,y){
   }
   c.save();c.translate(x,y-50);c.fillStyle='#fff2bd';c.strokeStyle='#aa9ac0';c.lineWidth=2;c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?7:16;i?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();c.stroke();c.restore();
 }
-export function drawStreetPark(c,texture=null){
+export function drawStreetPark(c,texture=null,art={}){
   c.save();
   // 예전 긴 중앙 길·벤치·분수 배치를 지우고 별꽃 모자이크를 중심으로 재구성합니다.
   oval(c,850,1738,298,204,'#8f809e67');oval(c,850,1731,290,196,'#fff8e8');oval(c,850,1731,280,187,'#cfc2d3');
@@ -71,9 +71,14 @@ export function drawStreetPark(c,texture=null){
   if(texture?.complete&&texture.naturalWidth){
     c.save();c.beginPath();c.ellipse(850,1731,274,183,0,0,Math.PI*2);c.clip();const pattern=c.createPattern(texture,'repeat');pattern.setTransform(new DOMMatrix().scale(.17));c.globalAlpha=.1;c.globalCompositeOperation='multiply';c.fillStyle=pattern;c.fillRect(570,1540,560,390);c.restore();
   }
-  for(const bed of STREET_PARK.beds)gardenBed(c,bed.x,bed.y,bed.rx,bed.ry,bed.seed);
-  tree(c,555,1505,.76);tree(c,1115,1530,.82);tree(c,560,1940,.78);tree(c,1110,1915,.75);
+  for(const bed of STREET_PARK.beds){
+    if(art.flowerbed?.complete&&art.flowerbed.naturalWidth)c.drawImage(art.flowerbed,bed.x-112,bed.y-67,224,112);
+    else gardenBed(c,bed.x,bed.y,bed.rx,bed.ry,bed.seed);
+  }
+  tree(c,555,1450,.64);tree(c,560,1885,.64);
   bench(c,625,1690,-.4);bench(c,1080,1790,.4);
-  fountain(c,STREET_PARK.fountain.x,STREET_PARK.fountain.y);
+  const f=STREET_PARK.fountain;
+  if(art.fountain?.complete&&art.fountain.naturalWidth)c.drawImage(art.fountain,f.x-104,f.y-100,208,208*2/3);
+  else fountain(c,f.x,f.y);
   c.restore();
 }

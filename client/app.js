@@ -111,7 +111,18 @@ let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),to
 let mouseAim=null,aimMap=null,customPlanetDesign=null;
 $('world').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouseAim={clientX:e.clientX,clientY:e.clientY};});
 $('world').addEventListener('pointerleave',()=>{mouseAim=null;});
-$('world').addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')mouseAim=null;});
+$('world').addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='mouse'){mouseAim=null;return;}
+  mouseAim={clientX:e.clientX,clientY:e.clientY};
+  if(!selfId||!socket.connected||placing||document.querySelector('dialog:modal')||e.ctrlKey||e.altKey||e.metaKey||![0,2].includes(e.button))return;
+  const editing=document.activeElement?.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+  $('world').focus({preventScroll:true});
+  if(editing)return;
+  // 광장의 행성 클릭·배치 조작은 기존 상호작용이 우선입니다.
+  if(e.button===0&&world.currentMapId()===PLAZA_ID&&world.planetAt(world.canvasPoint(e)))return;
+  e.preventDefault();combatControls.act(e.button===0?'attack':'skill');
+});
+$('world').addEventListener('contextmenu',e=>{if(selfId)e.preventDefault();});
 window.addEventListener('blur',()=>{mouseAim=null;});
 const classroomHelp=createClassroomHelp({getRoom:()=>room,getSelfId:()=>selfId,stop});
 const helpButton=document.createElement('button');helpButton.id='dock-help';helpButton.type='button';helpButton.className='dock-button';helpButton.setAttribute('aria-label','도우미');helpButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c4-2 6-2 9 0 3-2 5-2 9 0v15c-4-2-6-2-9 0-3-2-5-2-9 0ZM12 5v15"/></svg><span>도우미</span>';$('dock-menu').before(helpButton);helpButton.onclick=()=>classroomHelp.open();

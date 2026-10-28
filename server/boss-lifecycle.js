@@ -1,28 +1,36 @@
 import {SERENA,dormantSerena} from '../shared/serena.js';
 import {addRecipeDrop,addEnergyDrop,addBossDrops} from './energy-drops.js';
 import {recordBossVictory} from './serena-progress.js';
-export const BOSS_RESPAWN_MS=24*60*60*1000;
+const DAY_MS=24*60*60*1000,KST_OFFSET_MS=9*60*60*1000;
+const validTime=time=>Number.isSafeInteger(time)&&time>=0&&time<=8640000000000000;
+// 기존 death+24h 저장값도 해당 한국 날짜의 오전 7시로 맞춥니다.
+const openingOnDate=time=>Math.max(0,Math.floor((time+KST_OFFSET_MS)/DAY_MS)*DAY_MS-KST_OFFSET_MS+7*60*60*1000);
+export function nextBossRespawnAt(deathAt){
+  if(!validTime(deathAt)||deathAt>8640000000000000-DAY_MS)throw new Error('보스 처치 시각이 올바르지 않습니다.');
+  return openingOnDate(deathAt+DAY_MS);
+}
 const BOSS_IDS=['noksera-boss','leoon-boss','spirit-king-boss','serena-boss'];
 export function validateBossRespawns(value={}){
-  if(!value||typeof value!=='object'||Array.isArray(value)||Object.entries(value).some(([id,time])=>!BOSS_IDS.includes(id)||!Number.isSafeInteger(time)||time<0))
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.entries(value).some(([id,time])=>!BOSS_IDS.includes(id)||!validTime(time)))
     throw new Error('보스 복원 시각 저장 데이터가 올바르지 않습니다.');
-  return {...value};
+  return Object.fromEntries(Object.entries(value).map(([id,time])=>[id,openingOnDate(time)]));
 }
 export function validateSerenaState(value){
   if(value===undefined)return dormantSerena();
   if(!value||!['dormant','active','recovering'].includes(value.state)||
-    (value.state==='recovering'?(!Number.isSafeInteger(value.respawnAt)||value.respawnAt<0):value.respawnAt!==null)||
+    (value.state==='recovering'?!validTime(value.respawnAt):value.respawnAt!==null)||
     value.monsterId!==(value.state==='active'?SERENA.monsterId:null))throw new Error('세레나 상태 저장 데이터가 올바르지 않습니다.');
-  return {state:value.state,respawnAt:value.respawnAt,monsterId:value.monsterId};
+  return {state:value.state,respawnAt:value.state==='recovering'?openingOnDate(value.respawnAt):null,monsterId:value.monsterId};
 }
 export const serenaView=room=>validateSerenaState(room.serena);
-export const monsterRespawnMs=type=>type?.boss?BOSS_RESPAWN_MS:type?.level===4?20000:type?.level===3?15000:10000;
+export const monsterRespawnMs=(type,now=Date.now())=>type?.boss?nextBossRespawnAt(now)-now:type?.level===4?20000:type?.level===3?15000:10000;
 export function finishBossDefeat(room,monster,contributors,deathAt,rolls={},credits,settledAt=deathAt){
   room.bossRespawns??={};
-  room.bossRespawns[monster.id]=deathAt+BOSS_RESPAWN_MS;
+  const respawnAt=nextBossRespawnAt(deathAt);
+  room.bossRespawns[monster.id]=respawnAt;
   recordBossVictory(room,monster,contributors,credits);
-  if(monster.typeId===SERENA.typeId)room.serena={state:'recovering',respawnAt:deathAt+BOSS_RESPAWN_MS,monsterId:null};
-  // 리젠은 처치 순간부터, 바닥 보상의 공개/만료는 저장 정산 시점부터 셉니다.
+  if(monster.typeId===SERENA.typeId)room.serena={state:'recovering',respawnAt,monsterId:null};
+  // 리젠은 처치 다음 날 07시, 바닥 보상의 공개/만료는 저장 정산 시점부터 셉니다.
   addRecipeDrop(room,monster,contributors,settledAt,rolls.recipeRoll);
   addEnergyDrop(room,monster,contributors,settledAt,rolls.energyRoll);
   addBossDrops(room,monster,contributors,settledAt,rolls.bossRoll);

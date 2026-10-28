@@ -67,5 +67,5 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     });
   },100);
   async function transform(){if(!canAct())return;try{await request('combat:transform',{});}catch(error){toast(error.message);}}
-  return {castSkill,sync,transform};
+  return {act,castSkill,sync,transform};
 }
