@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -203,7 +204,7 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   assert.equal((await call(stranger,'monster:info',{monsterId:'star-crab'})).ok,false);
   const r=await call(teacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['1']}),student=await connect();
   const j=await call(student,'room:join',{code:r.room.code,nickname:'1'});assert.ok(j.ok);
-  const room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId),m=monstersOf(room).get('star-crab');
+  const room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId),m=monstersOf(room).get('star-crab');chargeHuntingStation(p,'math');
   assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{mapId:m.mapId,x:1100,y:700});assert.equal((await call(student,'monster:info',{monsterId:m.id})).ok,false);
   Object.assign(p,{x:m.x+35,y:m.y});const info=await call(student,'monster:info',{monsterId:m.id,xp:999,level:6});
@@ -224,7 +225,7 @@ test('아바타 이동 중에도 같은 위치 패킷에 각 몬스터의 새 �
   const call=(s,event,data={})=>s.timeout(2000).emitWithAck(event,data);
   const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:'monster-motion-test-private',allowedNames:['1']});
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1'});
-  const room=game.store.rooms.get(created.room.code),player=room.players.get(joined.selfId);
+  const room=game.store.rooms.get(created.room.code),player=room.players.get(joined.selfId);chargeHuntingStation(player,'math');
   room.monsters=undefined;monstersOf(room,Date.now(),()=>0);
   Object.assign(player,{mapId:'star-origin-1',x:600,y:450});
   const firstMonster=game.store.rooms.get(created.room.code).monsters.get('star-crab');

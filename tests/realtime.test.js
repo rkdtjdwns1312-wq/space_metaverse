@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import {approveJoinFixture} from './membership-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +28,7 @@ const create=s=>call(s,'room:create',{teacherKey:key,title:'테스트',allowedNa
 
 test('타격 표시는 마지막 실제 이동 방향·간격을 서버가 정하고 같은 맵에만 보이며 피해를 주지 않는다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
- const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);
+ const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);chargeHuntingStation(p,'math');
  const other=await connect();await create(other);
  const hits=[],peers=[],leaks=[];s.on('combat:hit',e=>hits.push(e));teacher.on('combat:hit',e=>peers.push(e));other.on('combat:hit',e=>leaks.push(e));
  assert.equal((await call(s,'combat:attack',{level:4})).ok,false,'LV1 위조 공격 차단');
@@ -49,7 +50,7 @@ test('타격 표시는 마지막 실제 이동 방향·간격을 서버가 정�
 
 test('낙원 연결은 레벨 제한 없이 양방향 이동하며 서버가 거리·연결을 검사한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
- const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);
+ const j=await call(s,'room:join',{code:r.room.code,nickname:'1'}),room=game.store.rooms.get(r.room.code),p=room.players.get(j.selfId);chargeHuntingStation(p,'math');
  const path=[PLAZA_ID,GARDEN_ID,...PARADISE_MAPS.map(m=>m.id),STAR_PARADISE.id,...MOON_PARADISE_MAPS.map(m=>m.id).reverse(),GARDEN_ID,PLAZA_ID];
  p.avatar.level=1;
  assert.equal((await call(s,'map:travel',{to:STAR_PARADISE.id,level:6})).ok,false,'연결 없는 이동 거절');
@@ -71,7 +72,7 @@ test('낙원 연결은 레벨 제한 없이 양방향 이동하며 서버가 거
 test('친구 호출은 레벨 제한 없이 이동하며 맵·소속·검은별 조건은 계속 확인한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),a=await connect(),b=await connect();
  const ja=await call(a,'room:join',{code:r.room.code,nickname:'1'}),jb=await call(b,'room:join',{code:r.room.code,nickname:'2'});
- const room=game.store.rooms.get(r.room.code),host=room.players.get(ja.selfId),guest=room.players.get(jb.selfId);
+ const room=game.store.rooms.get(r.room.code),host=room.players.get(ja.selfId),guest=room.players.get(jb.selfId);chargeHuntingStation(host,'math');chargeHuntingStation(guest,'math');
  Object.assign(host,{mapId:STAR_PARADISE.id,x:600,y:400});host.avatar.level=5;
  host.avatar.level=1;guest.avatar.level=1;
  host.mapId=PLAZA_ID;host.lastSummonAt=0;
@@ -83,7 +84,7 @@ test('친구 호출은 레벨 제한 없이 이동하며 맵·소속·검은별 
 test('위쪽 네 맵은 가까운 연결 문으로만 왕복하고 건너뛰기 요청을 거절한다',async t=>{
  const {connect,game}=await fixture(t),teacher=await connect(),r=await create(teacher),s=await connect();
  const j=await call(s,'room:join',{code:r.room.code,nickname:'1'});assert.ok(j.ok);
- const p=game.store.rooms.get(r.room.code).players.get(j.selfId);
+ const p=game.store.rooms.get(r.room.code).players.get(j.selfId);chargeHuntingStation(p,'math');
  assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[2].id})).ok,false);
  assert.equal((await call(s,'map:travel',{to:ORIGIN_MAPS[0].id})).ok,false);
  const originIds=ORIGIN_MAPS.map(m=>m.id);

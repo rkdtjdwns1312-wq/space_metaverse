@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import {advanceProjectiles} from '../server/projectiles.js';
 import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
 const fly=(room,now)=>advanceProjectiles(room,now,combatEnemies,damageTargets);
@@ -157,7 +158,7 @@ test('실제 소켓 위조 수치 무시·동일맵에만 효과·저장 데이�
   const teacher=await connect(),student=await connect(),peer=await connect();
   const made=await call(teacher,'room:create',{teacherKey:'sagittarius-test-only',allowedNames:['1','2']});
   const joined=await call(student,'room:join',{code:made.room.code,nickname:'1'});await call(peer,'room:join',{code:made.room.code,nickname:'2'});
-  const room=game.store.rooms.get(made.room.code),player=room.players.get(joined.selfId);
+  const room=game.store.rooms.get(made.room.code),player=room.players.get(joined.selfId);chargeHuntingStation(player,'math',time);
   player.avatar.level=3;player.avatar.constellationId='sagittarius';player.mapId='star-origin-1';player.x=500;player.y=500;player.facing={x:1,y:0};
   const monster=[...monstersOf(room).values()][0];monster.x=700;monster.y=500;
   let leaks=0;peer.on('sagittarius:effect',()=>leaks++);
@@ -185,7 +186,7 @@ test('실제 소켓 Q/E는 친구를 보호하고 몬스터에 정상 피해, �
   const made=await call(teacher,'room:create',{teacherKey:'sagittarius-peer-test',allowedNames:['궁수','친구']});assert.ok(made.ok,made.error);
   const joined=await call(student,'room:join',{code:made.room.code,nickname:'궁수'}),peerJoined=await call(peerSocket,'room:join',{code:made.room.code,nickname:'친구'});
   assert.ok(joined.ok,joined.error);assert.ok(peerJoined.ok,peerJoined.error);
-  const room=game.store.rooms.get(made.room.code),player=room.players.get(joined.selfId),peer=room.players.get(peerJoined.selfId);
+  const room=game.store.rooms.get(made.room.code),player=room.players.get(joined.selfId),peer=room.players.get(peerJoined.selfId);chargeHuntingStation(player,'math',time);chargeHuntingStation(peer,'math',time);
   Object.assign(player,{mapId:'star-origin-1',x:500,y:500,facing:{x:1,y:0},avatar:{level:5,constellationId:'sagittarius'}});
   Object.assign(peer,{mapId:player.mapId,x:600,y:500,avatar:{level:5,constellationId:'aries'}});
   const monster=[...monstersOf(room,time).values()][0];

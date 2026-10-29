@@ -1,3 +1,4 @@
+import {huntingTimeView} from './hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {warningSummary} from './warnings.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
@@ -195,7 +196,7 @@ export class RoomStore {
           ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0;out.statGrowth=structuredClone(p.statGrowth||{bonuses:{hp:0,mp:0,attack:0,defense:0},lastPurchaseDay:null}); out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
-        if(viewer && viewer.id===p.id){out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
+        if(viewer && viewer.id===p.id){out.huntingTime=huntingTimeView(p,now);out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}

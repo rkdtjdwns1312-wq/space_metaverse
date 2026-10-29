@@ -30,7 +30,7 @@ test('분수는 이전 크기의 60%이며 제거한 화단 자리와 주변 통
   assert.equal(f.scale,2.4);
   assert.equal(f.rx,94*2.4);assert.equal(f.ry,39*2.4);
   for(const [x,y] of [[1270,1590],[1270,1850]])assert.equal(avatarPositionIsClear(STREET,x,y,p),true,'분수 동쪽 통로');
-  for(const [x,y] of [[650,1340],[300,1550],[300,1930],[650,2050]])assert.equal(avatarPositionIsClear(STREET,x,y,p),true);
+  // 옛 화단 자리 일부에는 독립 돌보기/꾸미기 장소가 새로 배치됩니다.
 });
 
 test('분수대 상호작용은 5분간 최대 체력·마나를 10% 높이고 반복 시 중첩 없이 갱신한다',()=>{

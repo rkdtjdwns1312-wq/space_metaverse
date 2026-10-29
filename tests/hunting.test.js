@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -32,11 +33,11 @@ test('실제 Q 요청의 조작 피해 무시·연타 차단·공유 HP·스킬 
  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
  const created=await call(teacher,'room:create',{teacherKey:'hunting-test-key',allowedNames:['1','2']}),s=await connect(),joined=await call(s,'room:join',{code:created.room.code,nickname:'1'});
- const room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
+ const room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');chargeHuntingStation(p,'math',now);
  // 확대된 LV4 몸이 바닥 보정으로 순간 이동하지 않도록 중앙의 실제 보행 영역에서 검사합니다.
  Object.assign(m,{x:700,y:500,dx:0,dy:0,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p.avatar.level=4;
  const r=await call(s,'combat:attack',{power:1000,dx:-1,monsterId:'star-dragon-1'});assert.equal(r.target.hp,40);assert.equal(r.target.damage,10);assert.equal((await call(s,'combat:attack')).ok,false);
- const peer=await connect(),joinedPeer=await call(peer,'room:join',{code:room.code,nickname:'2'});const p2=room.players.get(joinedPeer.selfId);Object.assign(p2,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p2.avatar.level=3;
+ const peer=await connect(),joinedPeer=await call(peer,'room:join',{code:room.code,nickname:'2'});const p2=room.players.get(joinedPeer.selfId);chargeHuntingStation(p2,'math',now);Object.assign(p2,{mapId:m.mapId,x:m.x-62,y:m.y,facing:{x:1,y:0}});p2.avatar.level=3;
  assert.equal((await call(peer,'combat:attack')).target.hp,33);assert.equal(game.store.snapshot(room,p2).monsters.find(m=>m.id==='star-crab').hp,33);
  now+=999;assert.equal((await call(s,'combat:attack')).ok,false);assert.equal(m.hp,33,'999ms에는 피해 없음');
  now+=1;assert.equal((await call(s,'combat:attack')).target.hp,23,'정확히1000ms에 다음 공격 허용');
@@ -53,7 +54,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
  const connect=async()=>{const s=io('http://127.0.0.1:'+port,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
  const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data),teacher=await connect();
  const created=await call(teacher,'room:create',{teacherKey:'attack-class-test',allowedNames:['1']}),student=await connect();
- const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');
+ const joined=await call(student,'room:join',{code:created.room.code,nickname:'1'}),room=game.store.rooms.get(created.room.code),p=room.players.get(joined.selfId),m=monstersOf(room).get('star-crab');chargeHuntingStation(p,'math',now);
  const table={'수호계':[3,5,8,8],'제작계':[4,6,9,9],'생산계':[4,6,9,9],'공격계':[6,8,11,11],'특수계':[5,7,10,10]};
  for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
    const baseHp=level===2?50:level===3?100:300;Object.assign(m,{x:700,y:500,hp:baseHp,maxHp:baseHp,nextAttackAt:Infinity,nextDirectionAt:Infinity,dx:0,dy:0});

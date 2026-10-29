@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
@@ -32,7 +33,7 @@ async function fixture(t){
     get room(){return game.store.rooms.get(code);},get pa(){return game.store.rooms.get(code).players.get(ja.selfId);},
     get pb(){return game.store.rooms.get(code).players.get(jb.selfId);},disk:()=>JSON.parse(readFileSync(join(dir,code+'.json'),'utf8'))};
 }
-function qualify(f,p){f.game.store.transact(()=>{
+function qualify(f,p){f.game.store.transact(()=>{chargeHuntingStation(p,'math',f.now);
   Object.assign(p.avatar,{level:5,form:'transcendent',constellationId:'taurus'});
   p.serenaProgress={highestLevel:5,bossKills:['leoon','noksera']};
 });Object.assign(p,{mapId:SERENA.mapId,x:statue.x,y:statue.y+90});}

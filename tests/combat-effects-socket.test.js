@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -16,7 +17,7 @@ test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, �
  const made=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2']});
  const joined=await call(a,'room:join',{code:made.room.code,nickname:'1'}),peer=await call(b,'room:join',{code:made.room.code,nickname:'2'});
  await call(outsider,'room:create',{teacherKey:key,allowedNames:['3']});
- const room=game.store.rooms.get(made.room.code),p=room.players.get(joined.selfId),friend=room.players.get(peer.selfId);
+ const room=game.store.rooms.get(made.room.code),p=room.players.get(joined.selfId),friend=room.players.get(peer.selfId);chargeHuntingStation(p,'math',now);chargeHuntingStation(friend,'math',now);
  Object.assign(p,{x:500,y:450,mapId:'star-origin-1',facing:{x:1,y:0}});Object.assign(p.avatar,{level:4,constellationId:'corvus'});
  Object.assign(friend,{x:700,y:450,mapId:p.mapId});Object.assign(friend.avatar,{level:4,constellationId:'taurus'});
  const monster=[...monstersOf(room).values()][0];Object.assign(monster,{x:690,y:450,hp:100,maxHp:100,nextAttackAt:Infinity,lastMoveAt:now});room.monsters=new Map([[monster.id,monster]]);

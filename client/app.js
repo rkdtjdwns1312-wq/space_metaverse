@@ -1,3 +1,4 @@
+import {createHuntingTimeUI} from './hunting-time-ui.js';
 import {appearanceLevelOf} from '/shared/character-skills.js';
 import {RULES} from '/shared/config.js';
 import {allowsOfflineItemTarget} from '/shared/item-targets.js';
@@ -51,6 +52,7 @@ import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
 import {createDuelArcadeUI} from './duel-arcade-ui.js';
 import {createHallOfFameUI} from './hall-of-fame-ui.js';
+import {createCozyActivitiesUI} from './cozy-activities-ui.js';
 import {createCultureLibrary} from './culture-library.js';
 import {createHistoryLibrary} from './history-library.js';
 import {createScienceLibrary} from './science-library.js';
@@ -92,6 +94,7 @@ dockResizeObserver.observe($('bottom-dock'));
 window.addEventListener('resize',updateControlAlignment);
 updateControlAlignment();
 startClassroomClock($('classroom-clock'));
+const huntingTime=createHuntingTimeUI({clock:$('classroom-clock'),stop});
 const audio=createAudio();
 const cetusUI=createCetusUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
@@ -226,6 +229,7 @@ setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const duelArcade=createDuelArcadeUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,socket});
 const hallOfFame=createHallOfFameUI({request,stop,toast});
+const cozyActivities=createCozyActivitiesUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const cultureLibrary=createCultureLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const historyLibrary=createHistoryLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const scienceLibrary=createScienceLibrary({request,stop});
@@ -405,6 +409,7 @@ function updateRoom(value){
   $('player-count').textContent=countLabel;$('crew-count').textContent=countLabel;
   $('crew-empty').hidden=room.players.some(p=>p.connected);
   const me=room.players.find(p=>p.id===selfId);
+  huntingTime.update(me?.huntingTime);
   const isTeacher=me?.role==='teacher';
   $('open-missions').textContent=isTeacher?'미션 만들기':'미션 확인하기';
   tutorialButton.hidden=me?.role!=='student';
@@ -1003,6 +1008,7 @@ function doInteract(){
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='hall-of-fame')hallOfFame.open();
+  else if(n.kind?.startsWith('cozy-'))cozyActivities.open(n.kind.slice(5));
   else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
@@ -1456,6 +1462,8 @@ function reset(message){
   holdings.reset();
   characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();cetusUI.reset();
   craftingUI.reset();
+  cozyActivities.reset();
+  huntingTime.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();
   vitals.reset();
@@ -1554,7 +1562,8 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('hunting:state',data=>{if(selfId)huntingTime.update(data);});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});

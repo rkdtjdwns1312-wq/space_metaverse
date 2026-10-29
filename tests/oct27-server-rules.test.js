@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -113,7 +114,7 @@ test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/
   t.after(async()=>{sockets.forEach(s=>s.disconnect());await game?.close();assert.equal(dirname(resolve(dir)),root);rmSync(dir,{recursive:true,force:true});});
   await start();const teacher=await connect(),anon=await connect();const made=await call(teacher,'room:create',{teacherKey:key,studentAccounts:[{nickname:'학생',pin:'1234'},{nickname:'친구',pin:'1234'}]});assert.ok(made.ok,made.error);
   const code=made.room.code,student=await connect(),joined=await call(student,'room:join',{code,nickname:'학생',pin:'1234'});assert.ok(joined.ok,joined.error);
-  const id=joined.selfId,room=()=>game.store.rooms.get(code),p=()=>room().players.get(id),friend=[...room().players.values()].find(p=>p.nickname==='친구').id;
+  const id=joined.selfId,room=()=>game.store.rooms.get(code),p=()=>room().players.get(id),friend=[...room().players.values()].find(p=>p.nickname==='친구').id;chargeHuntingStation(p(),'math',now);
   const machine=STREET.objects.find(o=>o.kind==='crafting');Object.assign(p(),{mapId:STREET_ID,x:machine.x,y:machine.y,starShards:10,inventory:[{id:'star-crumb',quantity:5}]});
   const craftInfo=await call(student,'crafting:open');assert.equal(craftInfo.configured,false);assert.equal(craftInfo.privateRecipeCount,0);assert.equal(craftInfo.enabled,true);
   const craftBefore=structuredClone({inventory:p().inventory,starShards:p().starShards});

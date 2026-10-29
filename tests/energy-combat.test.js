@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -51,7 +52,7 @@ test('근접 Q로 몬스터를 쓰러뜨리면 드롭을 즉시 화면에 알린
   const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1']});
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});
   // LV2 보상은 최소 6이므로, LV1의 합법적인 0 드랍에 따라 검사가 흔들리지 않습니다.
-  const room=game.store.rooms.get(created.room.code),person=room.players.get(joined.selfId),monster=monstersOf(room).get('star-scorpion-1');
+  const room=game.store.rooms.get(created.room.code),person=room.players.get(joined.selfId),monster=monstersOf(room).get('star-scorpion-1');chargeHuntingStation(person,'math');
   Object.assign(person,{mapId:monster.mapId,x:monster.x-45,y:monster.y,facing:{x:1,y:0}});
   person.avatar.level=4;person.avatar.constellationId='leo';monster.hp=1;
   let announced=null;student.on('energy:drops',data=>{announced=data;});
@@ -70,7 +71,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2']});assert.ok(created.ok,created.error);
   const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
   const code=created.room.code,id=joined.selfId;
-  const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);
+  const current=()=>game.store.rooms.get(code),person=()=>current().players.get(id);chargeHuntingStation(person(),'math');
   game.store.transact(()=>{const p=person(),m=monstersOf(current()).get('star-scorpion-1');Object.assign(m,{x:600,y:450,spawnX:600,spawnY:450,hp:1,nextDirectionAt:Infinity});Object.assign(p,{mapId:m.mapId,x:538,y:450,facing:{x:1,y:0},cosmicEnergy:100});p.avatar.level=3;p.avatar.constellationId='aquarius';});
   const killed=await call(student,'combat:attack');assert.ok(killed.ok,killed.error);
   // 물병 Q는 서버 투사체가 실제 적에게 도착한 뒤 처치와 드랍이 발생합니다.
@@ -79,7 +80,7 @@ test('Q 처치→권한·거리 확인→저장 실패 복구→재시도 한 �
   // The independent 1% recipe roll may insert a recipe before the energy reward.
   const drop=[...current().energyDrops.values()].find(value=>value.kind!=='recipe'),amount=drop.total;assert.equal(person().cosmicEnergy,100);
   const thief=await connect(),other=await call(thief,'room:join',{code,nickname:'2',pin:'1234'});assert.ok(other.ok,other.error);
-  Object.assign(current().players.get(other.selfId),{mapId:drop.mapId,x:drop.x,y:drop.y});
+  chargeHuntingStation(current().players.get(other.selfId),'math');Object.assign(current().players.get(other.selfId),{mapId:drop.mapId,x:drop.x,y:drop.y});
   assert.equal((await call(thief,'energy:collect',{dropId:drop.id,amount:999,playerId:id})).ok,false);
   const p=person();p.x=drop.x+1000;assert.equal((await call(student,'energy:collect',{dropId:drop.id})).ok,false);
   Object.assign(person(),{x:drop.x,y:drop.y});

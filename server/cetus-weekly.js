@@ -1,3 +1,4 @@
+import {huntingTimeView,huntingExempt,isHuntingMap} from './hunting-time.js';
 import {randomUUID} from 'node:crypto';
 import {SHARDS,WHALE_STOMACH_ID,PLAZA_ID,STATIC_MAPS} from '../shared/config.js';
 import {constellationWeekStart,CONSTELLATION_WEEK_MS} from '../shared/constellation-weekly-abilities.js';
@@ -119,8 +120,10 @@ function release(room,target,now,escaped){
     else state.cetusAfterglow={sourceId:stomach.sourceId,endsAt:now+7*DAY,claimed:false};
   }else{state.cetusPraise=null;state.cetusAfterglow=null;}
   if(target.mapId===WHALE_STOMACH_ID){
-    const destination=STATIC_MAPS[stomach.returnMapId]?stomach.returnMapId:PLAZA_ID;
-    Object.assign(target,arrivePosition(room,destination,{x:stomach.returnX,y:stomach.returnY},target),
+    let destination=STATIC_MAPS[stomach.returnMapId]?stomach.returnMapId:PLAZA_ID;
+    if(isHuntingMap(destination)&&!huntingExempt(target)&&huntingTimeView(target,now).remainingMs<=0)destination='star-street';
+    const pos=destination!==stomach.returnMapId?spawnInside(room,destination,target):arrivePosition(room,destination,{x:stomach.returnX,y:stomach.returnY},target);
+    Object.assign(target,pos,
       {mapId:destination,input:{x:0,y:0,at:0}});
   }
   return true;

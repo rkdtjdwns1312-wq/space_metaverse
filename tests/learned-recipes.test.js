@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -60,7 +61,7 @@ async function fixture(t,{persistent=true}={}){
       ok(await call(student,'room:join',{code,nickname:'하나',pin:'1234'}));ok(await call(other,'room:join',{code,nickname:'둘',pin:'1234'}));},
     advance(){now+=3000;}
   };
-  f.mutate((p,q)=>{p.avatar.level=3;q.avatar.level=3;p.starShards=20;});return f;
+  f.mutate((p,q)=>{chargeHuntingStation(p,'math',now);chargeHuntingStation(q,'math',now);p.avatar.level=3;q.avatar.level=3;p.starShards=20;});return f;
 }
 
 test('recipe wrapper metadata contains output only and valid learned IDs round-trip without exposing ingredients',()=>{

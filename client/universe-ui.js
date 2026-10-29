@@ -7,6 +7,7 @@ import {drawValleyGround} from './valley-art.js';
 import {drawOriginArt,ORIGIN_STATUE_RENDER,onOriginArtReady} from './origin-art.js';
 import {drawSleepingStarsArt,onSleepingStarsArtReady} from './sleeping-stars-art.js';
 import {drawStreetGround,onStreetArtReady} from './street-art.js';
+import {drawCozyProp} from './cozy-activities-art.js';
 import {drawBlackHoleGround} from './black-hole-art.js';
 import {drawInteriorFloor,drawInteriorProp} from './interior-art.js';
 import {DEPARTMENT_ART} from './department-art.js';
@@ -160,6 +161,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
       let painted=false;
+      if(o.kind?.startsWith('cozy-')){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);painted=drawCozyProp(ctx,o);ctx.restore();}
       if(interiorPlanet){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);painted=drawInteriorProp(ctx,o,interiorPlanet);ctx.restore();}
       if(!painted)drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
       if(detailed&&o.name)labels.push({text:o.name,x,y,r:Math.max(detailed?5:2.5,o.radius*scale)});

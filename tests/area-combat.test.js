@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
@@ -37,7 +38,7 @@ test('학생 기본 공격은 겹친 몹 2마리만 맞히고 친구 2명과 위
   const room=game.store.rooms.get(created.room.code);
   const attacker=room.players.get(ja.selfId);
   const jc=await call(c,'room:join',{code:created.room.code,nickname:'3'});
-  const targetB=room.players.get(jb.selfId),targetC=room.players.get(jc.selfId);
+  const targetB=room.players.get(jb.selfId),targetC=room.players.get(jc.selfId);for(const p of [attacker,targetB,targetC])chargeHuntingStation(p,'math');
   Object.assign(targetC,{mapId:'star-origin-1',x:462,y:400});targetC.avatar.level=2;
   for(const player of [attacker,targetB])Object.assign(player,{mapId:'star-origin-1',x:400,y:400}),player.avatar.level=2;
   targetB.x=462;targetB.y=400;
@@ -62,14 +63,14 @@ test('범위 전투는 자신·다른 방·다른 맵·범위 밖·검은별·�
   const joins=await Promise.all(sockets.map((socket,index)=>call(socket,'room:join',{code:first.room.code,nickname:String(index+1)})));
   const room=game.store.rooms.get(first.room.code), attacker=room.players.get(joins[0].selfId);
   const players=joins.map(join=>room.players.get(join.selfId));
-  players.forEach(player=>{player.mapId='star-origin-1';player.x=400;player.y=400;player.avatar.level=3;});
+  players.forEach(player=>{chargeHuntingStation(player,'math');player.mapId='star-origin-1';player.x=400;player.y=400;player.avatar.level=3;});
   players[1].x=400+attackGeometryOf(attacker).reach;players[1].avatar.constellationId='taurus';
   players[2].x=400+attackGeometryOf(attacker).reach+RULES.radius+attackGeometryOf(attacker).radius+1;
   players[3].avatar.blackStar=true;players[5].mapId=PLAZA_ID;
   ensureVitals(players[4]).hp=0;ensureVitals(players[4]).defeatedAt=Date.now();
   attacker.facing={x:1,y:0};
   const other=await connect();const joinedOther=await call(other,'room:join',{code:second.room.code,nickname:'1'});
-  const otherPlayer=game.store.rooms.get(second.room.code).players.get(joinedOther.selfId);
+  const otherPlayer=game.store.rooms.get(second.room.code).players.get(joinedOther.selfId);chargeHuntingStation(otherPlayer,'math');
   Object.assign(otherPlayer,{mapId:'star-origin-1',x:400+ATTACK_VISUAL.reach,y:400});
   const result=await call(sockets[0],'combat:attack');
   assert.deepEqual(result.playerTargets,[]);
@@ -86,7 +87,7 @@ test('공격 쿨다운은 중복을 막고 스킬은 같은 서버 대상 목록
   const created=await call(teacher,'room:create',{teacherKey:key,title:'스킬',allowedNames:['1','2']});
   const ja=await call(a,'room:join',{code:created.room.code,nickname:'1'}),jb=await call(b,'room:join',{code:created.room.code,nickname:'2'});
   const room=game.store.rooms.get(created.room.code),attacker=room.players.get(ja.selfId),target=room.players.get(jb.selfId);
-  [attacker,target].forEach(player=>{
+  [attacker,target].forEach(player=>{chargeHuntingStation(player,'math');
     Object.assign(player,{mapId:'star-origin-1',x:500,y:500});
     player.avatar.level=2;
   });
@@ -121,7 +122,7 @@ for (const [role,level,size,radius] of [
   const room=game.store.rooms.get(created.room.code);
   const attacker=room.players.get(role==='teacher'?created.selfId:joins[0].selfId);
   const actor=role==='teacher'?teacher:sockets[0];
-  const targets=joins.slice(1).map(join=>room.players.get(join.selfId));
+  const targets=joins.slice(1).map(join=>room.players.get(join.selfId));for(const p of [attacker,...targets])chargeHuntingStation(p,'math',now);
   Object.assign(attacker,{mapId:'star-origin-1',x:600,y:500,facing:{x:.6,y:.8}});
   // A constellation-free avatar exercises the common Q/E geometry.
   Object.assign(attacker.avatar,{level,constellationId:null});

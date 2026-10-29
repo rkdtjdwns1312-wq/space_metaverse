@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from './hunting-time.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
 import {HISTORY_LESSONS} from '../shared/history-lessons.js';
 import {stationReward} from '../shared/station-rewards.js';
@@ -117,6 +118,7 @@ export function registerReadingLibrary({socket,action,store,roster,clock=Date.no
       '먼저 이 이야기를 선택해 읽어주세요.');
     const status=currentStatus(room,player,clock());
     if(player.role==='teacher')return {...status,awarded:false,amount:0};
+    chargeHuntingStation(player,namespace,clock());
     if(status.claimedIds.includes(data.storyId))return {...status,awarded:false,amount:0,message:'오늘 이 이야기의 보상을 이미 받았어요.'};
     if(status.count>=CULTURE_DAILY_LIMIT)return {...status,awarded:false,amount:0,message:`오늘은 10${unit}의 보상을 모두 받았어요. 내일 다시 읽어주세요.`};
     const before=player.cosmicEnergy??0,amount=status.reward;

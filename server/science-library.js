@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from './hunting-time.js';
 import {randomInt} from 'node:crypto';
 import {SCIENCE_FACTS} from '../shared/science-facts.js';
 import {stationReward} from '../shared/station-rewards.js';
@@ -66,12 +67,13 @@ export function registerScienceLibrary({socket,action,store,roster,clock=Date.no
   need(typeof data.factId==='string'&&known.has(data.factId),'읽을 과학 상식을 골라주세요.');
   need(selected?.roomCode===room.code&&selected.playerId===player.id&&selected.token===player.token&&selected.factId===data.factId,'먼저 이 과학 상식을 열어 읽어주세요.');
   const status=scienceStatus(player,now),record=today(player,now);
-  if(record.activeId!==data.factId){need(record.seenIds.includes(data.factId)||record.claimedIds.includes(data.factId),'먼저 이 과학 상식을 열어 읽어주세요.');return {...status,awarded:false,amount:0,message:'이미 읽음 처리를 마친 과학 상식이에요.'};}
+  if(record.activeId!==data.factId){need(record.seenIds.includes(data.factId)||record.claimedIds.includes(data.factId),'먼저 이 과학 상식을 열어 읽어주세요.');chargeHuntingStation(player,'science',now);return {...status,awarded:false,amount:0,message:'이미 읽음 처리를 마친 과학 상식이에요.'};}
   // Finishing yesterday's still-open fact consumes one of today's two slots.
   if(!record.openedIds.includes(data.factId)){need(record.openedIds.length<2,'오늘은 과학 상식 2편을 모두 읽었어요.');record.openedIds.push(data.factId);}
   const amount=status.reward,before=player.cosmicEnergy??0;
   need(Number.isSafeInteger(before)&&before>=0&&Number.isSafeInteger(before+amount),'우주에너지를 더 담을 수 없어요.');
   player.cosmicEnergy=before+amount;record.claimedIds.push(data.factId);record.activeId=null;
+  chargeHuntingStation(player,'science',now);
   const completed=record.seenIds.length===ids.length;player.scienceReading=renewCycle(record);
   if(amount>0){advanceMissions(room,player,'science-read',undefined,now);roster(room);}
   const message=amount>0?`과학 상식을 다 읽었어요! 우주에너지 ${amount}을 받았어요.`:'선생님 읽음을 완료했어요. 보상 없이 다음 상식을 살펴볼 수 있어요.';

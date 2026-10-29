@@ -1,3 +1,5 @@
+import {validateHuntingTime} from './hunting-time.js';
+import {validateCozyActivities} from './cozy-activities.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 const savedPlanetDesign=value=>{if(value==null)return null;const result=normalizePlanetDesign(value);if(!result)throw Error('행성 그림 저장 데이터가 올바르지 않습니다.');return result;};
 import {validateStatGrowth} from './stat-growth.js';
@@ -83,7 +85,7 @@ export function toRecord(room) {
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
       scienceReading:validateScienceReading(p.scienceReading),
-      learningRewards:validateLearningRewards(p.learningRewards),
+      learningRewards:validateLearningRewards(p.learningRewards),cozyActivities:validateCozyActivities(p.cozyActivities),huntingTime:validateHuntingTime(p.huntingTime),
       dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,cardMarkers:p.cardMarkers||[],lv2State:p.lv2State||{galaxyNextAt:[]},
       lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),
@@ -174,14 +176,14 @@ export function fromRecord(r,now=Date.now()) {
     if(crownTrial&&(avatar.level!==1||
       !(avatar.constellationId==='corona-borealis'||avatar.constellationId==='ophiuchus'&&borrowedCrown?.constellationId==='corona-borealis'&&borrowedCrown.level===4)||
       crownTrial.savedEquipmentSlots.some(id=>id&&!equipmentOf(id))))bad();
-    room.players.set(p.id,offline({...structuredClone(p),tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
+    room.players.set(p.id,offline({...structuredClone(p),huntingTimer:null,tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       cultureReading:validateCultureReading(p.cultureReading),
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
       scienceReading:validateScienceReading(p.scienceReading),
-      learningRewards:validateLearningRewards(p.learningRewards),
+      learningRewards:validateLearningRewards(p.learningRewards),cozyActivities:validateCozyActivities(p.cozyActivities),huntingTime:validateHuntingTime(p.huntingTime),
       dailyMissionHistory:validateDailyMissionHistory(p.dailyMissionHistory),
       serenaProgress:validateSerenaProgress(p.serenaProgress,avatar,'student'),
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),statGrowth:validateStatGrowth(p.statGrowth),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,

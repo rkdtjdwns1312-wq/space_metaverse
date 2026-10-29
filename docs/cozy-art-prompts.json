@@ -1,0 +1,34 @@
+{
+  "tool": "built-in image_gen",
+  "prompts": [
+    {
+      "name": "baby-star-bed",
+      "designBrief": "기존 우주 교실의 부드러운 손그림 판타지 RPG 화풍, 아이보리·금색·라벤더 색감. 작은 별 아기가 이불을 덮고 누운 아기 침대, 투명 배경의 맵 오브젝트."
+    },
+    {
+      "name": "star-room-booth",
+      "designBrief": "같은 화풍과 색감의 작은 별 소품으로 꾸민 한 칸 방 부스. 입체감을 가진 2D 판타지 가구와 투명 배경."
+    },
+    {
+      "name": "cosmic-garden",
+      "designBrief": "같은 화풍의 작은 우주 꽃밭. 흙과 새싹, 반짝이는 별꽃, 투명 배경의 맵용 오브젝트."
+    },
+    {
+      "name": "pets-atlas",
+      "prompt": "Use case: stylized-concept. Asset type: production game sprite atlas with a precisely regular grid, no visible grid lines. A sprite atlas, exactly THREE columns and ONE row of three distinct adorable chubby baby FIVE-POINT STAR creatures. Left: golden baby star with little rabbit ears and a tiny moon ornament. Center: pale-blue baby star resting on a puff of cloud with small whale-like fins. Right: pale-pink baby star with a blossoming flower on its head and leafy arms. All are happy expressive STAR-shaped creatures, not humans or realistic animals. Each centered in its own identical square cell with generous clear margins, full body front view, not touching adjacent cells. Style: charming handpainted Korean fantasy storybook RPG, soft brush-shaded dimensional forms, delicate tidy outlines, ivory warm gold lavender teal palette, matching an ornate fairytale star cradle and dollhouse booth. Detailed painterly 2D, not emojis, not flat vector, not photoreal, not plastic3D. No text letters numbers watermark or scenery. Genuine transparent background, all cells same size."
+    },
+    {
+      "name": "furniture-atlas",
+      "prompt": "Use case: stylized-concept. Asset type: production game sprite atlas with a precisely regular grid, no visible grid lines. A sprite atlas with EXACTLY FOUR columns and THREE rows, twelve separate handpainted miniature furniture objects. In reading order row1: crescent bed, small desk, star chair, cloud sofa. Row2: round lavender rug, golden star lamp, ivory bookshelf, potted leafy plant. Row3: arched crescent window, moon clock, round plush cushion, small brass telescope on tripod. Each object fully visible centered in its own equally sized square cell with transparent generous padding, no contact across cells. Consistent three-quarter RPG dollhouse view. Style: charming handpainted Korean fantasy storybook RPG, soft brush-shaded dimensional forms, delicate tidy outlines, ivory warm gold lavender teal palette, matching an ornate fairytale star cradle and dollhouse booth. Detailed painterly 2D, not emojis, not flat vector, not photoreal, not plastic3D. No text letters numbers watermark or scenery. Genuine transparent background, all cells same size."
+    },
+    {
+      "name": "flowers-atlas",
+      "prompt": "Use case: stylized-concept. Asset type: production game sprite atlas with a precisely regular grid, no visible grid lines. A sprite atlas with EXACTLY THREE columns and TWO rows, six separate tiny magical plants, each centered in an equal square cell with transparent generous padding. Row1 left: golden star-shaped daisy; middle: lavender glowing hanging moonbell flowers; right: pastel blue fluffy cloud tulip. Row2 left: warm peach sun rose; middle: violet luminous galaxy lily; right: tiny seedling with two bright green leaves growing out of a small soil mound. Entire flowers with short stems leaves and small soil mounds visible. No pots, no labels. Style: charming handpainted Korean fantasy storybook RPG, soft brush-shaded dimensional forms, delicate tidy outlines, ivory warm gold lavender teal palette, matching an ornate fairytale star cradle and dollhouse booth. Detailed painterly 2D, not emojis, not flat vector, not photoreal, not plastic3D. No text letters numbers watermark or scenery. Genuine transparent background, all cells same size."
+    },
+    {
+      "name": "furniture-atlas-final",
+      "prompt": "Edit this furniture sprite atlas ONLY its layout and scale, preserving the twelve same hand-painted furniture designs and colors. Output exact 4 columns by 3 rows grid, all cells identical squares. Crucial: each object occupies at most 70% of its own cell width and height, with at least 15% transparent padding on all four sides. Every object fully contained in its cell, no overlap, no part touching a cell border. Bed desk chair sofa / rug lamp shelf plant / window clock cushion telescope. Keep reading order. Uniform flat transparent canvas, no gridlines, no text. This sheet will be cut at exact quarter-width and third-height boundaries, so must not cut any object at those boundaries. Genuine transparent background."
+    }
+  ],
+  "note": "첫 세 오브젝트는 원본 생성 문구가 보존되지 않아 아래 designBrief는 결과와 작업 지시를 요약한 제작 설명이다. 나머지 prompt 필드는 보존된 실제 생성 요청이다."
+}

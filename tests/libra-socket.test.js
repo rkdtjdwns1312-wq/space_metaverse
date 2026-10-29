@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -27,7 +28,7 @@ test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/�
     assert.equal(joined.ok,true);clients.push(socket);players.push(room.players.get(joined.selfId));
   }
   const [caster,ally,attacker]=players;
-  players.forEach(p=>{Object.assign(p,{mapId:'star-origin-1',x:500,y:450});Object.assign(p.avatar,{level:4,blackStar:false});});
+  players.forEach(p=>{chargeHuntingStation(p,'math',now);Object.assign(p,{mapId:'star-origin-1',x:500,y:450});Object.assign(p.avatar,{level:4,blackStar:false});});
   caster.avatar.constellationId='libra';ally.avatar.constellationId='sagittarius';attacker.avatar.constellationId='hercules';
   attacker.x=850;attacker.facing={x:-1,y:0};ally.x=attacker.x-avatarSizeOf(attacker)*.75;
   room.monsters=new Map();

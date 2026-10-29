@@ -20,6 +20,10 @@ const FILE_BGM = Object.freeze({
   'serena-dormant':'/assets/audio/serena-dormant-miss-you.mp3',
   'serena-battle':'/assets/audio/serena-battle-theory-of-relativity.mp3',
   'moon-paradise-3':'/assets/audio/moon-paradise-3-ancient-kingdom.mp3',
+  'sleeping-stars-1':'/assets/audio/sleeping-stars.mp3',
+  'sleeping-stars-2':'/assets/audio/sleeping-stars.mp3',
+  'sleeping-stars-3':'/assets/audio/sleeping-stars.mp3',
+  'sleeping-stars-4':'/assets/audio/sleeping-stars.mp3',
   'planet:':'/assets/audio/planet-interior-waddle.mp3'
 });
 const bgmUrlFor=id=>FILE_BGM[id]||(id.startsWith('planet:')?FILE_BGM['planet:']:undefined);

@@ -14,6 +14,7 @@ import {preloadBlackHoleArt} from './black-hole-art.js';
 import {preloadWhaleArt} from './map-image.js';
 import {preloadDuelArcades} from './duel-arcade-art.js';
 import {preloadHallOfFame} from './hall-of-fame-art.js';
+import {preloadCozyArt} from './cozy-activities-art.js';
 
 // Wait for the actual renderer's Image objects, not duplicate HTTP preloads.
 // Each family is decoded once. Failed assets remain observable until refresh.
@@ -31,7 +32,7 @@ export function prepareMapArt(map,planets=[]){
   const work=[preloadGateArt()];
   if(['plaza','street','valley','origin','sleeping-stars','paradise'].includes(family))work.push(preloadFloatingCliff().then(ok=>{if(!ok)throw Error('cliff');}));
   if(family==='plaza')work.push(preloadPlazaArt(),preloadPlazaProps(),preloadPaintedProps(['shop']),preloadDepartmentArt(departments));
-  else if(family==='street')work.push(preloadStreetArt(),preloadPaintedProps(),preloadHallOfFame(),preloadDuelArcades((map.objects||[]).filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
+  else if(family==='street')work.push(preloadStreetArt(),preloadPaintedProps(),preloadHallOfFame(),preloadCozyArt(),preloadDuelArcades((map.objects||[]).filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
   else if(family==='valley')work.push(preloadValleyArt());
   else if(family==='origin')work.push(preloadOriginArt());
   else if(family==='sleeping-stars')work.push(preloadSleepingStarsArt(map));

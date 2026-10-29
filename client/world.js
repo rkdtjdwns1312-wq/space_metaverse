@@ -17,6 +17,7 @@ import {locomotionMode} from './locomotion-gait.js';
 import {createBodyMotion} from './locomotion-body.js';
 import {drawDuelArcade} from './duel-arcade-art.js';
 import {drawHallOfFame} from './hall-of-fame-art.js';
+import {drawCozyProp} from './cozy-activities-art.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,createOphiuchusEffects} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -824,7 +825,8 @@ export function createWorld(canvas) {
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
-        ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)}))];
+        ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
+        ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
     for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
@@ -1030,7 +1032,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind)),
+        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind)),
           ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];
         let best=null,bestDist=Infinity;
         for(const o of candidates){

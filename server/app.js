@@ -1,3 +1,6 @@
+import {registerCozyActivities} from './cozy-activities.js';
+import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
+import {huntingCycle} from '../shared/hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
@@ -312,6 +315,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     }
   };
   const roomClosed=room=>{
+    for(const p of room.players.values())settleHuntingTime(p,clock());
     for(const p of room.players.values()){
       const s=io.sockets.sockets.get(p.socketId);
       if(s){
@@ -324,6 +328,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   };
   const detach=(socket,immediate)=>{
     const s=socket.data.session;if(!s)return;
+    settleHuntingTime(s.player,clock());
     deliver(()=>socket.leave(s.room.code));socket.data.session=null;
     if(immediate){
       if(s.player.role==='teacher'&&!s.room.unattended) roomClosed(s.room);
@@ -336,6 +341,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     }else {
       Object.assign(s.player,{connected:false,expiresAt:Date.now()+reconnectMs,input:{x:0,y:0,at:0}});
+      settleHuntingTime(s.player,clock());
       roster(s.room);
     }
   };
@@ -379,8 +385,27 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             ensure(aim&&typeof aim.x==='number'&&typeof aim.y==='number'&&Number.isFinite(length)&&length>0,'공격 방향을 확인해주세요.');
             session.player.facing={x:aim.x/length,y:aim.y/length};if(aim.x!==0)session.player.facingX=aim.x<0?-1:1;
           }
+          if(!save&&session)requireHuntingEntry(session.player,session.player.mapId,clock());
+          const huntingBefore=new Map();
+          if(save&&session)for(const p of session.room.players.values()){
+            settleHuntingTime(p,clock());huntingBefore.set(p.id,{mapId:p.mapId,charged:p.huntingTime.chargedStations.length});
+          }
+          if(save&&session&&!huntingExempt(session.player)&&isHuntingMap(session.player.mapId)&&huntingTimeView(session.player,clock()).remainingMs<=0){
+            returnHuntingPlayer(session.room,session.player,clock());roster(session.room);
+            const error=new GameError('사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.');error.commitOnError=true;throw error;
+          }
           const result=handler(data);
           const current=socket.data.session;
+          if(save&&current)for(const p of current.room.players.values()){
+            const before=huntingBefore.get(p.id);
+            // Known entry paths check before mutation; this also closes future skill/teleport paths.
+            if(before&&before.mapId!==p.mapId&&isHuntingMap(p.mapId)&&!huntingExempt(p)&&huntingTimeView(p,clock()).remainingMs<=0)returnHuntingPlayer(current.room,p,clock());
+            settleHuntingTime(p,clock());
+            if(before&&p.huntingTime.chargedStations.length>before.charged){
+              deliver(()=>io.to(p.socketId).emit('item:notice',{text:'발전소 학습 완료! 오늘의 사냥 시간 20분을 받았어요.'}));
+              deliver(()=>io.to(p.socketId).emit('hunting:state',huntingTimeView(p,clock())));
+            }
+          }
           if(save&&current?.player.role==='student'&&settleLeoUnclaimed(current.player))roster(current.room);
           if(save&&current?.player.role==='student'&&settleCetusUnclaimed(current.player))roster(current.room);
           if(save&&current&&store.rooms.get(current.room.code)===current.room&&ensureDailyMissions(current.room,clock()))roster(current.room);
@@ -396,6 +421,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     registerCultureLibrary({socket,action,store,roster,clock});
     registerHistoryLibrary({socket,action,store,roster,clock});
     registerScienceLibrary({socket,action,store,roster,clock});
+    registerCozyActivities({socket,action,store,roster,clock});
     action('serena:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonSerena(session.room,session.player,clock());
@@ -980,11 +1006,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('social:summon',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const invitation=requestSummon(s.room,s.player,data.targetId);roster(s.room);return {invitation};
+      const invitation=requestSummon(s.room,s.player,data.targetId,clock());roster(s.room);return {invitation};
     });
     action('social:respond',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const invitation=respondSummon(s.room,s.player,data.requestId,data.accept);
+      const invitation=respondSummon(s.room,s.player,data.requestId,data.accept,clock());
       const host=s.room.players.get(invitation.fromId);
       if(host)whisper(s.room,host,s.player.nickname+(data.accept?' 친구가 내 앞으로 왔어요.':' 친구가 호출을 거절했어요. 24시간 뒤에 다시 요청할 수 있어요.'));
       roster(s.room);return {};
@@ -1343,6 +1369,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('map:fast-travel',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s.player.away,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s,to=data.to;
+      requireHuntingEntry(p,to,clock());
       ensure(typeof to==='string'&&to!==WHALE_STOMACH_ID,'그곳으로 바로 이동할 수 없어요.');
       ensure(!p.avatar.blackStar||to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
       ensure(to!==BLACK_HOLE_ID||p.role==='teacher'||!!p.avatar.blackStar,'검은별 상태일 때만 블랙홀에 들어갈 수 있어요.');
@@ -1357,6 +1384,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('map:travel',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
+      requireHuntingEntry(p,data.to,clock());
       ensure(typeof data.to==='string' && Object.prototype.hasOwnProperty.call(STATIC_MAPS,data.to),'그런 곳은 없어요.');
       ensure(!p.avatar.blackStar || data.to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
       ensure(data.to!==BLACK_HOLE_ID||p.role==='teacher'||!!p.avatar.blackStar,'검은별 상태일 때만 블랙홀에 들어갈 수 있어요.');
@@ -2348,13 +2376,41 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(!Number.isFinite(data.x)||!Number.isFinite(data.y)||Math.abs(data.x)>1||Math.abs(data.y)>1)return;
       p.input={x:data.x,y:data.y,at:Date.now()};
     });
-    socket.on('disconnect',()=>detach(socket,false));
+    socket.on('disconnect',()=>{
+      try{transaction(()=>detach(socket,false));}
+      catch(error){const p=socket.data.session?.player;if(p){settleHuntingTime(p,clock());p.connected=false;if(p.huntingTimer)p.huntingTimer.running=false;}console.error('접속 종료 시간 저장 실패:',error.message);}
+    });
   });
+  function returnHuntingPlayer(room,p,at){
+    Object.assign(p,spawnInside(room,STREET_ID,p),{mapId:STREET_ID,input:{x:0,y:0,at:0},taurusDash:null});
+    settleHuntingTime(p,at);
+    deliver(()=>io.to(p.socketId).emit('item:notice',{text:'사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.'}));
+  }
+  const huntingCheckpoints=new Map(),huntingDirty=new Set();
   let step=0; const previous=new Map();
   const timer=setInterval(()=>{
     const now=Date.now();
     for(const room of store.rooms.values()){
       let changed=false;
+      const huntingNow=clock();
+      const huntingDue=[...room.players.values()].some(p=>p.huntingTime?.cycle!==huntingCycle(huntingNow)||
+        !huntingExempt(p)&&p.connected&&!p.away&&isHuntingMap(p.mapId)&&huntingTimeView(p,huntingNow).remainingMs<=0);
+      try{
+        if(huntingDue)transaction(()=>{
+          for(const p of room.players.values()){
+            settleHuntingTime(p,huntingNow);
+            if(!huntingExempt(p)&&p.connected&&!p.away&&isHuntingMap(p.mapId)&&p.huntingTime.remainingMs<=0)returnHuntingPlayer(room,p,huntingNow);
+          }
+          roster(room);
+        });
+        else for(const p of room.players.values())if(settleHuntingTime(p,huntingNow))huntingDirty.add(room.code);
+        // Disk checkpoints are bounded to one per room per 10 seconds; action/exit saves are immediate.
+        const checkpoint=huntingCheckpoints.get(room.code);
+        if(checkpoint===undefined)huntingCheckpoints.set(room.code,huntingNow+10000);
+        else if(huntingNow>=checkpoint){huntingCheckpoints.set(room.code,huntingNow+10000);if(huntingDirty.has(room.code)){transaction(()=>{});huntingDirty.delete(room.code);}}
+        if(step%Math.max(1,Math.round(1000/RULES.tickMs))===0)for(const p of room.players.values())if(p.connected&&!p.away&&!huntingExempt(p)&&isHuntingMap(p.mapId))
+          deliver(()=>io.to(p.socketId).emit('hunting:state',huntingTimeView(p,huntingNow)));
+      }catch(error){console.error('사냥 시간 저장 실패:',error.message);continue;}
       if(step%20===0&&ariesSleepDue(room,clock())){
         try{transaction(()=>{if(settleAriesSleep(room,clock()))roster(room);});}
         catch(error){console.error('양자리 수면 정산 저장 실패:',error.message);continue;}

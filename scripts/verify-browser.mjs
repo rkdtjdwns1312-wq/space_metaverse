@@ -1,3 +1,4 @@
+import {chargeHuntingStation} from '../server/hunting-time.js';
 import {PLAZA_LAYOUT,departmentSlots,onPlazaFloor} from '../shared/plaza-layout.js';
 import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 const sites=departmentSlots();
@@ -114,7 +115,7 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
       for(const code of need)if(!held.has(code)){await page.keyboard.down(code);held.add(code);}
       for(const code of [...held])if(!need.has(code)){await page.keyboard.up(code);held.delete(code);}
       const distance=Math.hypot(player.x-target.x,player.y-target.y);
-      if(waypoint?distance<45:distance<130&&await page.evaluate(()=>!document.getElementById('interact-prompt').hidden))return;
+      if(waypoint?distance<45:distance<130&&await page.evaluate(name=>{const el=document.getElementById('interact-prompt');return !el.hidden&&(!name||el.textContent.includes(name));},target.name))return;
       await page.waitForTimeout(25);
     }
     throw new Error('걷기 경로를 확인해주세요: '+JSON.stringify({at:{x:player.x,y:player.y,mapId:player.mapId},target}));
@@ -187,6 +188,8 @@ try{
  await dismissTutorial(student);
  await openSocialFromDock(teacher);await teacher.locator('#player-count').filter({hasText:`2 / ${RULES.maxPlayers}`}).waitFor({state:'attached'});check('Allowlist enforced, same-room student appears');
  const room=game.store.rooms.get(code),p=[...room.players.values()].find(p=>p.role==='student'),id=p.id;
+ // General gameplay fixture has earned one station credit; dedicated hunting tests cover eligibility/zero-time denial.
+ chargeHuntingStation(p,'math');
  const initialX=p.x;
  const canvasBefore=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  await student.locator('#world').focus();await student.keyboard.down('ArrowRight');await student.waitForTimeout(450);await student.keyboard.up('ArrowRight');
@@ -590,6 +593,7 @@ await expandTeacherSection(teacher,'자원 지급');
    await Promise.all(images.map(image=>image.decode()));return images.every(image=>image.naturalWidth>0);
  }),true);
  await student.locator('#shop-buy-list li[data-item-id="little-sun-card"] .item-info').click();
+ await student.locator('#item-info-dialog').waitFor({state:'visible'});
  assert.ok((await student.locator('#item-info-text').innerText()).includes('자외선'));
  await student.locator('[data-close="item-info-dialog"]').click();
  check('Lv1 카드 8종 그림과 감성 문구·상점 정보보기의 효과 설명');
@@ -643,7 +647,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#world').focus();
  await clearShopPath(student,p,shopObj);
  // 새 도착 위치에서는 이미 귀환문 근처일 수 있다. 아래에서 실제 목표와 거리를 확인한다.
- await walkNear(student,p,{x:gateBack.x,y:gateBack.y,radius:gateBack.radius});
+ await walkNear(student,p,gateBack);
  await student.locator('#interact-prompt').filter({hasText:'별의 기원으로 가는 문'}).waitFor({timeout:2000});
  await student.keyboard.press('f');
  await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});

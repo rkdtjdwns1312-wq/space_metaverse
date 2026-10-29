@@ -1,3 +1,4 @@
+import {requireHuntingEntry} from './hunting-time.js';
 import { randomUUID } from 'node:crypto';
 import { ensure } from './rooms.js';
 import { planetIdOfMap, STATIC_MAPS, BLACK_HOLE_ID, WHALE_STOMACH_ID } from '../shared/config.js';
@@ -65,7 +66,7 @@ export function respondSummon(room,player,id,accept,now=Date.now()) {
   const host=room.players.get(r.fromId);
   ensure(host?.connected,'요청한 친구가 연결되어 있지 않아요.');
   ensure(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
-  canTravel(room,player,host);
+  canTravel(room,player,host);requireHuntingEntry(player,host.mapId,now);
   // 수락 시점의 서버 위치에서 충돌 없는 빈자리만 선택합니다.
   const pos=arrivePosition(room,host.mapId,host,player);
   Object.assign(player,pos,{mapId:host.mapId,input:{x:0,y:0,at:0}});
