@@ -13,6 +13,7 @@ import {bossVictoryCredits} from './serena-progress.js';
 import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokseraMoonTimeline,nokseraFullMoon,LEOON_ROAR,LEOON_CHARGE} from '../shared/boss-skills.js';
 import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skills.js';
 import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spirit-king-skills.js';
+import {tickSpiritBlueStars} from './spirit-blue-stars.js';
 import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
 
 
@@ -57,7 +58,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
       mp:type.boss?BOSS_MANA.max:0,maxMp:type.boss?BOSS_MANA.max:0,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,
       moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,
       roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,leoonSkill:null,
-      summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,
+      summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,blueStarReadyAt:0,blueStarDecisionAt:now+2000,
       serenaDecisionAt:now+2000,
       targetId:null,attackers:new Map(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,dx:0,dy:0,facingX:1,moving:false,
       patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt,lastMoveAt:now}];
@@ -173,7 +174,8 @@ export function selectMonsterTarget(room,monster){
 export function moveMonsters(room,now=Date.now(),random=Math.random){
   if(!Number.isFinite(now))return [];
   const monsters=monstersOf(room,now);
-  const hits=tickSpiritOrbs(room,now,mapId=>mapOf(mapId,room.planets?.values?.()||[]));
+  const mapFor=mapId=>mapOf(mapId,room.planets?.values?.()||[]);
+  const hits=[...tickSpiritOrbs(room,now,mapFor),...tickSpiritBlueStars(room,now,mapFor)];
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     // 이번 틱에도 실제 추적 이동이 지형에 막힐 때만 누적합니다. 시전/수면/정지는 연속 막힘이 아닙니다.
@@ -187,7 +189,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
       Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,leoonSkill:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
-      if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000});
+      if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,blueStarReadyAt:0,blueStarDecisionAt:now+2000});
     }
     const dt=Math.max(0,Math.min(100,now-m.lastMoveAt))/1000;m.lastMoveAt=now;
     const type=monsterType(m.typeId),rule=type?.combat??MONSTER_COMBAT[m.mapId];

@@ -23,8 +23,9 @@ test('LV2~5 능력치와 다섯 계열 보정은 단계별 반올림·0 하한�
     const p=player(c.id,level),b=base[level],o=offsets[c.type];
     assert.equal(vitalsOf(level,p).hp.max,Math.round(b.hp*o.hp),c.name+' HP LV'+level);
     assert.equal(vitalsOf(level,p).mp.max,b.mp+o.mp,c.name+' MP LV'+level);
-    assert.equal(attackPowerOf(level,c.id,p),Math.max(0,b.attack+o.attack));
-    assert.equal(defensePowerOf(level,c.id,p),Math.max(0,b.defense+o.defense));
+    const meleeBonus=['hercules','capricorn','leo','corona-borealis'].includes(c.id)?1:0;
+    assert.equal(attackPowerOf(level,c.id,p),Math.max(0,b.attack+o.attack)+meleeBonus);
+    assert.equal(defensePowerOf(level,c.id,p),Math.max(0,b.defense+o.defense)+meleeBonus);
   }
 });
 

@@ -1,0 +1,4 @@
+#teacher-ghost-toggle{position:absolute;left:50%;bottom:calc(100% + 7px);transform:translateX(-50%);width:max-content;max-width:100%;min-height:32px;padding:5px 14px;border:1px solid #aa94bf;border-radius:12px;background:#fff9ef;color:#655078;font:700 14px 'Jua','Malgun Gothic',sans-serif;box-shadow:0 3px 8px #30234835;pointer-events:auto;white-space:nowrap}
+#teacher-ghost-toggle[aria-pressed=true]{background:#655782;color:#fff;border-color:#d5c5ee}
+#teacher-ghost-toggle[hidden]{display:none}
+#teacher-ghost-toggle:disabled{opacity:.65}

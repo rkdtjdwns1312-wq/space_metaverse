@@ -1,6 +1,6 @@
 import {CONSTELLATION_ABILITIES, abilityForLevel} from './constellation-abilities.js';
 
-export const CONSTELLATION_LIMIT = 2;
+export const CONSTELLATION_LIMIT = 3;
 export const CONSTELLATION_TYPES = Object.freeze(['제작계','생산계','수호계','공격계','특수계']);
 // 성격은 사용자 지정 분류이며 이후 몬스터 사냥 규칙에서도 이 값을 사용합니다.
 

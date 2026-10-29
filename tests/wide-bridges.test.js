@@ -18,7 +18,8 @@ export const bridgeRoutes=[
   {map:STATIC_MAPS['milky-valley'],a:V.center,b:V.gate,end:.76},
   {map:STREET,a:S.upper,b:S.lower,end:.78},
   {map:STREET,a:S.upper,b:S.north,end:.78},
-  {map:STREET,a:S.upper,b:S.westGate,end:.91},
+  // The enlarged fountain occupies the center; stop inside the clear west landing.
+  {map:STREET,a:S.upper,b:S.westGate,start:.65,end:.91},
 ];
 for(const map of Object.values(STATIC_MAPS)){
   const f=paradiseFloor(map)||originFloor(map);if(!f)continue;
@@ -36,7 +37,7 @@ test('LV5 하반신이 모든 직선·대각선 다리 및 원형 바닥 접합�
 });
 test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 벽은 유지된다',()=>{
   for(const route of bridgeRoutes){
-    const {map,a,b,end}=route,start=point(a,b,.30),finish=point(a,b,end);
+    const {map,a,b,end}=route,start=point(a,b,route.start??.30),finish=point(a,b,end);
     const p={...avatar,avatar:{...avatar.avatar},mapId:map.id,input:{x:0,y:0,at:0}};
     const room={players:new Map([[p.id,p]]),planets:new Map(),monsters:new Map(),unattended:true};
     // 객체가 있는 섬의 한복판까지 가는 검사가 아니라 다리 양끝의 연결부 통행 검사입니다.

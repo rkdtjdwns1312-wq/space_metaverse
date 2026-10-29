@@ -2,6 +2,7 @@ import {drawParadiseFloor} from './paradise-floor.js';
 import {drawValleyGround} from './valley-art.js';
 import {onParadiseArtReady,paradiseArtCacheKey,drawParadiseBackdrop} from './paradise-art.js';
 import {drawOriginArt,originArtCacheKey,onOriginArtReady} from './origin-art.js';
+import {drawSleepingStarsArt,sleepingStarsArtCacheKey,onSleepingStarsArtReady} from './sleeping-stars-art.js';
 // 동화풍 배경은 한 번 그려 보관합니다. 매 프레임 복잡한 성운을 다시 그리지 않아
 // 크롬북에서도 이동·채팅에 쓸 여유를 남깁니다. 외부 이미지로 교체하기 쉬운 모듈입니다.
 const backgrounds=new Map();
@@ -11,6 +12,7 @@ const BACKGROUND_LIMIT=2;
 document.fonts.load('20px Jua').then(()=>backgrounds.clear());
 onParadiseArtReady(()=>backgrounds.clear());
 onOriginArtReady(()=>backgrounds.clear());
+onSleepingStarsArtReady(()=>backgrounds.clear());
 function ellipse(ctx,x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();}
 function star(ctx,x,y,r,color){
   ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,d=i%2?r*.48:r;i?ctx.lineTo(x+Math.cos(a)*d,y+Math.sin(a)*d):ctx.moveTo(x+Math.cos(a)*d,y+Math.sin(a)*d);}ctx.closePath();ctx.fillStyle=color;ctx.fill();
@@ -30,7 +32,7 @@ function sky(ctx,w,h,colors=['#b8b7e3','#d5c3e5','#a9cddf']){
   for(let i=0;i<8;i++){const x=160+i*430,y=230+i%3*670;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+45,y+70);ctx.lineTo(x+125,y+45);ctx.stroke();}
 }
 function cached(map,draw){
-  const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}:${originArtCacheKey()}`;
+  const key=`${map.id}:${map.vista?.bodyRadius??''}:${map.vista?.bodyX??''}:${map.vista?.bodyY??''}:${paradiseArtCacheKey()}:${originArtCacheKey()}:${sleepingStarsArtCacheKey()}`;
   let canvas=backgrounds.get(key);
   if(!canvas){canvas=document.createElement('canvas');canvas.width=map.width;canvas.height=map.height;draw(canvas.getContext('2d'));}
   backgrounds.delete(key);backgrounds.set(key,canvas);
@@ -77,6 +79,7 @@ export function drawRainbowSpace(ctx,map){
   }),0,0);
 }
 export function drawValley(ctx,map,time){drawValleyGround(ctx,map,time);}
+export function drawSleepingStars(ctx,map){ctx.drawImage(cached(map,c=>drawSleepingStarsArt(c,map)),0,0);}
 
 // 별의 시작점은 거의 검은 공간 위에 별을 드문드문 놓습니다. 위치와 색은
 // 맵 이름으로 만든 시드에서 결정해 캐시된 배경이 매번 달라지지 않게 합니다.

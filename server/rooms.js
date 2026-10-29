@@ -22,9 +22,11 @@ import {activeStarCards,starCardShopDiscounts} from './star-cards.js';
 import {EXPLORATION_GOAL} from '../shared/exploration.js';
 import {objectSignals} from './object-signals.js';
 import {missionViews,missionExpired} from './missions.js';
+import {spiritBlueStarViews} from './spirit-blue-stars.js';
 import {journeyView,practiceItems} from './tutorial-journey.js';
 import {partyView,leaveParty} from './party.js';
 import {GameError,pinHash,checkPin} from './pin-auth.js';
+import {playerVisibleTo} from './teacher-ghost.js';
 export {GameError} from './pin-auth.js';
 // planet.rename(내부 투표 상태, votes는 Map)을 화면에 보낼 형태로 계산합니다. 현재 방에 없는 멤버의 표는 세지 않습니다.
 function renameView(room, planetId, rename) {
@@ -166,6 +168,7 @@ export class RoomStore {
     const isTeacher=!!(viewer && viewer.role==='teacher');
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
+      spiritBlueStars:spiritBlueStarViews(room,viewer?.mapId||room.mapId,now),
       monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),
       missions:missionViews(room,viewer,now),
       ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
@@ -185,7 +188,7 @@ export class RoomStore {
         warningStatus:warningSummary(room,pl),templateId:pl.templateId,customDesign:normalizePlanetDesign(pl.customDesign),interiorDecor:structuredClone(pl.interiorDecor||{}),interiorUnlocks:structuredClone(pl.interiorUnlocks||{}),reportPending:pl.work?.report.status==='submitted',rename:renameView(room,pl.id,pl.rename)})),
       proposals:[...room.proposals.values()].map(pr=>({id:pr.id,name:pr.name,description:pr.description,x:pr.x,y:pr.y,
         radius:pr.radius,color:pr.color,playerId:pr.playerId,nickname:pr.nickname,templateId:pr.templateId,customDesign:normalizePlanetDesign(pr.customDesign)})),
-      players:[...room.players.values()].map(p=>{
+      players:[...room.players.values()].filter(p=>playerVisibleTo(p,viewer)).map(p=>{
         const out={id:p.id,nickname:p.nickname,role:p.role,accountKind:p.accountKind==='master'?'master':'student',x:p.x,y:p.y,facingX:p.facingX||1,
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
@@ -196,6 +199,7 @@ export class RoomStore {
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}
+        if(p.role==='teacher'&&isTeacher)out.teacherGhost=p.teacherGhost===true;
         return out;
       }),
       ...(isTeacher ? {itemLog:[...room.itemLog],teacherActivity:{tasks:[...room.players.values()].filter(p=>p.role==='student').flatMap(p=>(p.tasks||[]).map(t=>({id:t.id,playerId:p.id,status:t.status,at:t.at}))),warnings:[...room.planets.values()].flatMap(p=>(p.warnings?.entries||[]).map(w=>({id:w.id,at:w.at}))),items:room.itemLog.map(i=>({id:i.id,at:i.at}))}} : {}),

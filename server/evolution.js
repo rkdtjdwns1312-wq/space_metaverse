@@ -30,21 +30,17 @@ function constellationCount(room, constellationId, exceptId = null) {
   ).length;
 }
 
-function constellationLimit(room) {
-  // 등록 명단을 기준으로 하므로 미접속/아직 입장하지 않은 학생도 포함합니다.
-  const students = room.allowedNames?.size ?? [...room.players.values()].filter(player => player.role === 'student').length;
-  return students >= 33 ? 3 : CONSTELLATION_LIMIT;
-}
+const constellationLimit=()=>CONSTELLATION_LIMIT;
 
-function quotaMessage(room, name) {
-  return name + '는 이미 ' + (constellationLimit(room) === 3 ? '세' : '두') + ' 친구가 선택했어요.';
+function quotaMessage(name) {
+  return name + '는 이미 세 친구가 선택했어요.';
 }
 
 function optionsFor(room, player) {
   const currentLegacy=constellationOf(player.avatar?.constellationId);
   const values=currentLegacy?.legacy?[...CONSTELLATIONS,currentLegacy]:CONSTELLATIONS;
   const teacher=isTeacher(player);
-  const limit=constellationLimit(room);
+  const limit=constellationLimit();
   return values.map(value => {
     const count = constellationCount(room, value.id);
     const current = player.avatar?.constellationId === value.id;
@@ -57,7 +53,7 @@ function baseInfo(room, player) {
   const teacher=isTeacher(player);
   return {
     options: optionsFor(room, player),
-    constellationLimit: constellationLimit(room),
+    constellationLimit: constellationLimit(),
     avatar: structuredClone(player.avatar),
     requiredXp,
     canEvolve: player.avatar.level < PROGRESSION.transcendentLevel && player.avatar.xp >= requiredXp,
@@ -90,8 +86,8 @@ export function changeConstellation(room, player, { constellationId } = {},now=D
   ensure(selected&&!selected.legacy, '현재 선택할 수 있는 별자리를 골라주세요.');
   ensure(player.avatar.level >= 2, 'LV1은 첫 진화를 할 때 별자리를 고를 수 있어요.');
   ensure(player.avatar.constellationId!==selected.id,'지금과 다른 별자리를 골라주세요.');
-  ensure(constellationCount(room, selected.id, player.id) < constellationLimit(room),
-    quotaMessage(room, selected.name));
+  ensure(constellationCount(room, selected.id, player.id) < constellationLimit(),
+    quotaMessage(selected.name));
   const cost=shardCost(player,player.avatar.level*2);
   ensure(Number.isSafeInteger(player.starShards)&&player.starShards>=cost,
     '별자리를 변경하려면 별 파편 '+cost+'개가 필요해요.');
@@ -117,8 +113,8 @@ export function evolveConstellation(room, player, { constellationId } = {}) {
   if (player.avatar.level === 1) {
     const selected = constellationOf(constellationId);
     ensure(selected&&!selected.legacy, '첫 진화에 사용할 별자리를 골라주세요.');
-    ensure(constellationCount(room, selected.id, player.id) < constellationLimit(room),
-      quotaMessage(room, selected.name));
+    ensure(constellationCount(room, selected.id, player.id) < constellationLimit(),
+      quotaMessage(selected.name));
     selectedId = selected.id;
   } else {
     ensure(constellationOf(selectedId), '현재 별자리 계보를 확인해주세요.');

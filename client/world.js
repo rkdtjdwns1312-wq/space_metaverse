@@ -16,6 +16,7 @@ import {constellationWalkFrame,prepareConstellationWalk,locomotionProfile,create
 import {locomotionMode} from './locomotion-gait.js';
 import {createBodyMotion} from './locomotion-body.js';
 import {drawDuelArcade} from './duel-arcade-art.js';
+import {drawHallOfFame} from './hall-of-fame-art.js';
 import {swanFrameAt} from '/shared/swan-skills.js';
 import {preloadOphiuchus,createOphiuchusEffects} from './ophiuchus-effects.js';
 import {preloadGemini} from './gemini-effects.js';
@@ -54,6 +55,7 @@ import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-ar
 import {drawBossMonster,bossMonsterBounds} from './boss-monster-art.js';
 import {drawGuardianMonster} from './guardian-monster-art.js';
 import {drawSpiritOrb} from './spirit-orb-art.js';
+import {drawSpiritBlueStar} from './spirit-blue-star-art.js';
 import {prepareMonsterArt} from './monster-art-ready.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
@@ -73,7 +75,7 @@ import {skillEffectById} from '/shared/skill-effects.js';
 import {drawSkillEffect} from './skill-effects.js';
 import {drawSagittarius,preloadSagittarius} from './sagittarius-effects.js';
 import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap, itemOf } from '/shared/config.js';
-import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin } from './scenery.js';
+import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin, drawSleepingStars } from './scenery.js';
 import {drawOriginStatue} from './origin-art.js';
 import * as config from '/shared/config.js';
 import { createMotionTrack } from './motion.js';
@@ -153,7 +155,7 @@ export function createWorld(canvas) {
   const myEnergyDrops=()=>energyDrops.filter(d=>d.mapId===myMapId&&d.expiresAt>Date.now()&&
     (d.publicAt<=Date.now()?d.remaining>0:d.shares.some(s=>s.playerId===selfId&&s.amount>0)));
   const damageNumbers=createDamageNumbers();
-  let monsters=[],spiritOrbs=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
+  let monsters=[],spiritOrbs=[],spiritBlueStars=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
     for(const m of monsters)if(m.mapId===myMapId)void prepareMonsterArt(monsterType(m.typeId)?.shape);
@@ -353,7 +355,7 @@ export function createWorld(canvas) {
     ctx.fillStyle=o.color||'#fff2c9';ctx.beginPath();ctx.arc(o.x,poleTop,10,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#e8dba0';ctx.lineWidth=2;ctx.stroke();
   }
-  function drawStreet(map){
+  function drawStreet(map,time){
     drawStreetGround(ctx,map);
     for(const o of map.objects){
       // Include the complete roof, sign and glow, even with the foot offscreen.
@@ -367,6 +369,7 @@ export function createWorld(canvas) {
       if(o.kind.endsWith('-station')){drawPaintedProp(ctx,o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
       if(o.kind==='duel-arcade'){drawDuelArcade(ctx,o);continue;}
+      if(o.kind==='hall-of-fame'){drawHallOfFame(ctx,o,time);continue;}
       if(o.kind==='arcade'){
         if(drawPaintedProp(ctx,o))continue;
         ctx.fillStyle=o.color;ctx.beginPath();ctx.roundRect(o.x-33,o.y-58,66,92,12);ctx.fill();ctx.strokeStyle='#ffffffbb';ctx.lineWidth=3;ctx.stroke();
@@ -670,7 +673,7 @@ export function createWorld(canvas) {
       // 모서리에서 막힌 보간을 복구할 때도 한 프레임에 밀린 거리를 뛰지 않습니다.
       const maxDistance=previous?(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)*Math.max(0,t-previous.time)/1000+.1:Infinity;
       points.set(p.id,{...avatarRenderPoint(serenaMap(mapOf(p.mapId,planets),serena),position,{x:p.x,y:p.y},p,monsters,
-        previous?.mapId===p.mapId?previous:null,maxDistance),mapId:p.mapId,time:t});
+        previous?.mapId===p.mapId?previous:null,maxDistance,taurusDashes.some(d=>d.playerId===p.id&&d.mapId===p.mapId&&t-d.startsAt<d.durationMs)),mapId:p.mapId,time:t});
     }
     for(const m of monsters)if(m.mapId===myMapId)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
     // 그림 비율을 유지하며 화면을 가득 채우고 내 위치를 따라갑니다.
@@ -687,9 +690,9 @@ export function createWorld(canvas) {
     interiorBoard.update({map,planet:planets.find(p=>p.id===map.planetId),view,rect,visible:!!selfId&&document.body.classList.contains('joined')});
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
-    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#e5e5f5';ctx.fillRect(0,0,w,h);
+    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle=map.theme==='sleeping-stars'?'#010203':'#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map);else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects)drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
@@ -815,8 +818,10 @@ export function createWorld(canvas) {
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
       const visibleOrbs=spiritOrbs.filter(orb=>orb.mapId===myMapId&&Date.now()>=(orb.startsAt??0)&&Date.now()<(orb.endsAt??Infinity));
+      const visibleBlueStars=spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt);
       const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
+        ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
@@ -929,6 +934,7 @@ export function createWorld(canvas) {
       myMapId=players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       mapArt=selfId?prepareMapArt(currentMap(),planets):null;
       setMonsters(room?.monsters||[]);spiritOrbs=Array.isArray(room?.spiritOrbs)?room.spiritOrbs:[];
+      spiritBlueStars=Array.isArray(room?.spiritBlueStars)?room.spiritBlueStars:[];
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
       const now=performance.now();for(const p of players)recordPosition(p,now);
@@ -938,7 +944,7 @@ export function createWorld(canvas) {
     herculesBurst(data){if(data.mapId===myMapId)herculesBursts.push({...data,startsAt:performance.now(),until:performance.now()+550});},
     coronaFall(data){if(data.mapId===myMapId)coronaFalls.push({...data,startsAt:performance.now(),until:performance.now()+350});},
     leoRoar(data){if(data.mapId===myMapId)leoRoars.push({...data,startsAt:performance.now(),until:performance.now()+data.durationMs});},
-    positions(data){if(data.serena)serena=data.serena;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    positions(data){if(data.spiritBlueStars)spiritBlueStars=data.spiritBlueStars;if(data.serena)serena=data.serena;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
     monsters(data){setMonsters(data.monsters||[]);if(Array.isArray(data.spiritOrbs))spiritOrbs=data.spiritOrbs;},
     energyDrops(data){energyDrops=data.drops||[];},
@@ -1023,7 +1029,8 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind));
+        const candidates=[...currentMap().objects.filter(o=>o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind)),
+          ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance(me,o);

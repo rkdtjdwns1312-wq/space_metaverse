@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+import {chromium} from 'playwright';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+import {monstersOf} from '../server/monsters.js';
+import {summonSpiritBlueStars} from '../server/spirit-blue-stars.js';
+import {ensureVitals} from '../server/vitals.js';
+import {mapOf} from '../shared/config.js';
+const key='isolated-spirit-blue-stars',game=createClassroomServer({teacherKey:key,studentHours:false}),errors=[];
+const {port}=await game.listen(),url=`http://127.0.0.1:${port}`;
+const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{}),args:['--no-proxy-server']});
+mkdirSync('.local/spirit-blue-stars',{recursive:true});
+try{
+ const teacher=await browser.newPage({viewport:{width:800,height:700}});await teacher.goto(url);await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await fillNewClass(teacher,['푸른별검사']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
+ const room=game.store.rooms.get(await teacher.locator('#room-code').textContent());
+ const page=await browser.newPage({viewport:{width:1280,height:900}});page.on('pageerror',e=>errors.push(e.message));page.on('crash',()=>errors.push('browser page crashed'));
+ await page.goto(url+'/?class='+room.code);await page.locator('#student-tab').click();await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill('푸른별검사');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ for(let n=0;n<12&&await page.locator('dialog[open]').count();n++)await page.keyboard.press('Escape');
+ const p=[...room.players.values()].find(p=>p.role==='student'),boss=monstersOf(room).get('spirit-king-boss'),map=mapOf(boss.mapId);
+ p.avatar.level=5;p.avatar.constellationId='hercules';ensureVitals(p);p.battleVitals.hp=90;p.battleVitals.mp=40;
+ Object.assign(p,{mapId:map.id,x:map.spawn.x,y:map.spawn.y,input:{x:0,y:0,at:0}});
+ const publish=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));publish();
+ await page.evaluate(async id=>{const {mapOf}=await import('/shared/config.js'),{prepareMapArt}=await import('/map-art-ready.js');await prepareMapArt(mapOf(id)).promise;},map.id);await page.waitForFunction(()=>document.querySelector('#world').dataset.artStatus==='ready');
+ assert.equal(summonSpiritBlueStars(room,boss,Date.now(),map,()=>.5),true);assert.equal(room.spiritBlueStars.length,3);
+ const move=star=>{Object.assign(p,{x:star.x,y:star.y+72,input:{x:0,y:0,at:0}});publish();};
+ move(room.spiritBlueStars[0]);await page.locator('#interact-object').filter({hasText:'푸른 별 해체하기'}).waitFor();await page.screenshot({path:'.local/spirit-blue-stars/desktop.png'});
+ await page.locator('#world').focus();await page.keyboard.press('f');await page.waitForTimeout(250);assert.equal(room.spiritBlueStars.length,2);
+ await page.setViewportSize({width:390,height:844});move(room.spiritBlueStars[0]);await page.locator('#interact-object').filter({hasText:'푸른 별 해체하기'}).waitFor();await page.screenshot({path:'.local/spirit-blue-stars/mobile.png'});await page.locator('#touch-interact').click();await page.waitForTimeout(250);assert.equal(room.spiritBlueStars.length,1);
+ const remaining=room.spiritBlueStars[0],before=p.battleVitals.hp;Object.assign(p,{x:map.spawn.x,y:map.spawn.y});remaining.endsAt=Date.now()+300;publish();await page.waitForTimeout(550);assert.equal(room.spiritBlueStars.length,0);assert.ok(p.battleVitals.hp<before,'마지막 별의 맵 전체 피해');
+ assert.deepEqual(errors,[]);console.log('PASS three blue stars, countdown artwork, desktop F/mobile touch removal, map-wide expiry hit; JS errors0');
+}finally{await browser.close();await game.close();}

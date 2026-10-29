@@ -30,6 +30,7 @@ import {createCetusUI} from './cetus-ui.js';
 import {createStatusUI} from './status-ui.js';
 import {createStatusDockUI} from './status-dock.js';
 import {createVitalsUI} from './vitals-ui.js';
+import {createTeacherGhostUI} from './teacher-ghost-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
 import {createAudio} from './audio.js';
@@ -49,6 +50,7 @@ import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
 import {createDuelArcadeUI} from './duel-arcade-ui.js';
+import {createHallOfFameUI} from './hall-of-fame-ui.js';
 import {createCultureLibrary} from './culture-library.js';
 import {createHistoryLibrary} from './history-library.js';
 import {createScienceLibrary} from './science-library.js';
@@ -108,6 +110,7 @@ document.addEventListener('pointerdown',unlockLobbyAudio,{once:true});
 document.addEventListener('keydown',unlockLobbyAudio,{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
+let reconnectAttempt=null,sessionResumePromise=null,finishReconnectAttempt=null;
 let mouseAim=null,aimMap=null,customPlanetDesign=null;
 $('world').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouseAim={clientX:e.clientX,clientY:e.clientY};});
 $('world').addEventListener('pointerleave',()=>{mouseAim=null;});
@@ -126,9 +129,49 @@ $('world').addEventListener('contextmenu',e=>{if(selfId)e.preventDefault();});
 window.addEventListener('blur',()=>{mouseAim=null;});
 const classroomHelp=createClassroomHelp({getRoom:()=>room,getSelfId:()=>selfId,stop});
 const helpButton=document.createElement('button');helpButton.id='dock-help';helpButton.type='button';helpButton.className='dock-button';helpButton.setAttribute('aria-label','도우미');helpButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c4-2 6-2 9 0 3-2 5-2 9 0v15c-4-2-6-2-9 0-3-2-5-2-9 0ZM12 5v15"/></svg><span>도우미</span>';$('dock-menu').before(helpButton);helpButton.onclick=()=>classroomHelp.open();
-const reconnectOverlay=document.createElement('div');reconnectOverlay.id='reconnect-overlay';reconnectOverlay.hidden=true;reconnectOverlay.setAttribute('role','status');reconnectOverlay.setAttribute('aria-live','polite');reconnectOverlay.innerHTML='<div><p>연결이 끊겼습니다. 재접속중입니다.</p><small>잠시 기다려 주세요. 연결되면 자동으로 돌아갑니다.</small></div>';document.body.append(reconnectOverlay);
+const reconnectOverlay=document.createElement('div');reconnectOverlay.id='reconnect-overlay';reconnectOverlay.hidden=true;reconnectOverlay.setAttribute('role','status');reconnectOverlay.setAttribute('aria-live','polite');
+const reconnectPanel=document.createElement('div'),reconnectTitle=document.createElement('p'),reconnectStatus=document.createElement('small'),reconnectButton=document.createElement('button');
+reconnectTitle.textContent='연결이 끊겼습니다. 재접속중입니다.';reconnectStatus.textContent='잠시 기다려 주세요. 연결되면 자동으로 돌아갑니다.';
+reconnectButton.type='button';reconnectButton.className='secondary';reconnectButton.textContent='재접속하기';reconnectPanel.append(reconnectTitle,reconnectStatus,reconnectButton);reconnectOverlay.append(reconnectPanel);document.body.append(reconnectOverlay);
 reconnectOverlay.setAttribute('popover','manual');
 function showReconnect(show){reconnectOverlay.hidden=!show;document.body.classList.toggle('reconnecting',show);if(show)reconnectOverlay.showPopover?.();else if(reconnectOverlay.matches(':popover-open'))reconnectOverlay.hidePopover?.();}
+async function resumeExistingSession(){
+  if(!selfId||!sessionToken)return;
+  if(sessionResumePromise)return sessionResumePromise;
+  sessionResumePromise=(async()=>{
+    busy=true;controls();
+    try{enter(await request('session:resume',{token:sessionToken}));}
+    catch(error){
+      if(error.message==='operation has timed out'){
+        showReconnect(true);reconnectStatus.textContent='서버 응답이 늦어 연결을 새로 열고 다시 확인합니다.';
+        if(socket.connected){socket.disconnect();setTimeout(()=>{if(selfId&&sessionToken&&!socket.connected)socket.connect();},150);}
+        else if(!socket.active)socket.connect();
+      }else reset(error.message);
+    }
+    finally{busy=false;controls();finishReconnectAttempt?.();finishReconnectAttempt=null;sessionResumePromise=null;}
+  })();
+  return sessionResumePromise;
+}
+reconnectButton.onclick=()=>{
+  if(reconnectAttempt)return reconnectAttempt;
+  reconnectButton.disabled=true;reconnectButton.textContent='재접속 중…';reconnectStatus.textContent='기존 교실 연결을 다시 시도하고 있어요.';
+  reconnectAttempt=Promise.resolve().then(async()=>{
+    let timeoutId;
+    try{
+      if(!selfId||!sessionToken){reset('교실 연결이 끝났어요. 교실에 다시 입장해 주세요.');return;}
+      if(socket.connected){await resumeExistingSession();return;}
+      const resumed=new Promise(resolve=>{finishReconnectAttempt=resolve;});
+      if(!socket.active)socket.connect();
+      await Promise.race([resumed,new Promise(resolve=>{timeoutId=setTimeout(resolve,10000);})]);
+    }catch(error){reconnectStatus.textContent=error.message||'연결을 다시 시도하고 있어요.';}
+    finally{
+      clearTimeout(timeoutId);finishReconnectAttempt=null;reconnectAttempt=null;
+      reconnectButton.disabled=false;reconnectButton.textContent='재접속하기';
+      if(!reconnectOverlay.hidden&&!socket.connected)reconnectStatus.textContent='자동 재접속을 계속 시도합니다. 버튼을 눌러 다시 연결할 수 있어요.';
+    }
+  });
+  return reconnectAttempt;
+};
 const statuses=createStatusUI($('self-statuses'),$('self-status-empty'));
 const statusDock=createStatusDockUI($('dock-statuses'),$('status-detail-dialog'),{
   title:$('status-detail-title'),description:$('status-detail-description'),
@@ -149,6 +192,7 @@ $('menu-dialog').insertBefore(tutorialButton,$('my-password'));
 tutorialButton.onclick=()=>{$('menu-dialog').close();tutorial.open();};
 const holdings=createHoldingUI({request,toast,onChanged:()=>renderBag(myInventory()),onDraw:async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();}});
 const vitals=createVitalsUI($('bottom-dock'));
+const teacherGhost=createTeacherGhostUI({hud:$('vitals-hud'),request,toast});
 dockResizeObserver.observe($('vitals-hud'));
 const combatControls=createCombatControls({getKey:controlSettings.code,getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>socket.connected&&!placing&&!document.querySelector('dialog:modal'),getAim:()=>{const aim=mouseAim?world.aimAt(mouseAim):null;return aim?{x:aim.dx,y:aim.dy}:null;},toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
 const characterSkills=createCharacterSkillsUI({getKey:controlSettings.label});
@@ -181,6 +225,7 @@ const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;ren
 setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag(myInventory());},30000);
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const duelArcade=createDuelArcadeUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,socket});
+const hallOfFame=createHallOfFameUI({request,stop,toast});
 const cultureLibrary=createCultureLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const historyLibrary=createHistoryLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const scienceLibrary=createScienceLibrary({request,stop});
@@ -405,6 +450,7 @@ function updateRoom(value){
   const previewLv=isTeacher&&me?.avatar?.teacherPreview?me.avatar.level:null;
   const cardLv=previewLv??myLv;
   vitals.update(me?.vitals);
+  teacherGhost.update(me);
   // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
   $('self-form-name').textContent=isTeacher&&!previewLv?'별의수호자':cardLv>=2?(constellationOf(me?.avatar?.constellationId,cardLv)?.name||'별자리'):'소행성';
   const transcendent=cardLv>=PROGRESSION.transcendentLevel;
@@ -513,10 +559,11 @@ function itemUseText(item){
   return item.effect.label+' · '+Math.max(1,Math.round(item.effect.durationMs/60000))+'분 동안';
 }
 // 가방과 상점이 같은 설명을 사용하고, 동일한 본문을 두 번 붙이지 않습니다.
-function openItemInfo(item){
+function openItemInfo(item,hints=[]){
   $('item-info-title').textContent=item.icon+' '+item.name;
   $('item-info-level').textContent='Lv '+item.level+' 아이템';
-  $('item-info-text').textContent=[...new Set([item.description,itemUseText(item),item.special].filter(Boolean).map(text=>text.trim()))].join('\n\n');
+  const description=[...new Set([item.description,itemUseText(item),item.special].filter(Boolean).map(text=>text.trim()))].join('\n\n');
+  $('item-info-text').textContent=description+(hints.length?'\n\n'+hints.map(hint=>'조합 힌트 : '+hint).join('\n'):'');
   $('item-info-dialog').showModal();
   if(item.mode==='journey-practice')tutorial.observe('item-info');
 }
@@ -954,6 +1001,8 @@ function doInteract(){
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='hall-of-fame')hallOfFame.open();
   else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
@@ -1277,7 +1326,7 @@ function applyShopAck(reply){
 function renderShopBuyList(){
   updateShopLevels();
   const me=room?.players.find(p=>p.id===selfId),shards=myShards(),teacher=me?.role==='teacher';
-  const items=SHOP.items.filter(item=>!item.shopHidden&&shopItemLevel(item)===shopLevel&&(item.forSale!==false||(item.pricePending===true&&item.forSale===false)||teacher&&[2,3,4].includes(item.level)));
+  const items=SHOP.items.filter(item=>!item.shopHidden&&shopItemLevel(item)===shopLevel&&(item.forSale!==false||item.pricePending===true||[2,3,4].includes(item.level)));
   $('shop-buy-empty').hidden=$('shop-buy-list').hidden||items.length>0;
   rerenderList($('shop-buy-list'),()=>items.map(item=>{
     const li=document.createElement('li');li.className='item';li.dataset.itemId=item.id;
@@ -1285,14 +1334,17 @@ function renderShopBuyList(){
     const icon=document.createElement('div');icon.className='shop-item-picture';
     const picture=document.createElement('div');picture.className='bag-item-icon';picture.append(itemVisual(item));
     const badge=document.createElement('span');badge.className='bag-item-level';badge.textContent='Lv'+shopItemLevel(item);picture.append(badge);
-    const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보보기';details.onclick=()=>openItemInfo(item);
+    const details=document.createElement('button');details.type='button';details.className='small secondary item-info';details.textContent='정보보기';details.onclick=async()=>{details.disabled=true;try{const {hints=[]}=await request('shop:item-hints',{itemId:item.id});if(details.isConnected&&$('shop-dialog').open)openItemInfo(item,hints);}catch(error){if(details.isConnected&&$('shop-dialog').open){openItemInfo(item);toast('조합 힌트를 불러오지 못했어요. '+error.message);}}finally{details.disabled=false;}};
     icon.append(picture,details);
     const info=document.createElement('div');info.className='info';
     const name=document.createElement('strong');name.textContent=item.name;
     const desc=document.createElement('p');desc.className='bag-flavor';desc.textContent=itemFlavor(item);
     info.append(name,desc);
     const row=document.createElement('div');row.className='item-actions';
-    if(shopItemLevel(item)>=2&&shopItemLevel(item)<=4&&!teacher){li.append(icon,info);return li;}
+    if(shopItemLevel(item)>=2&&shopItemLevel(item)<=4&&!teacher){
+      const obtain=document.createElement('p');obtain.className='muted';obtain.textContent='별빛 조합기로 만들 수 있어요.';
+      info.append(obtain);li.append(icon,info);return li;
+    }
     if(item.pricePending===true&&item.forSale===false&&!teacher){
       const pending=document.createElement('span');pending.className='price';pending.textContent='가격 준비 중';
       const buy=document.createElement('button');buy.type='button';buy.className='small primary buy';buy.dataset.itemId=item.id;buy.textContent='가격 준비 중';buy.disabled=true;
@@ -1407,6 +1459,7 @@ function reset(message){
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();
   vitals.reset();
+  teacherGhost.reset();
   accounts.reset();
   tutorial.reset();tutorialButton.hidden=true;
   clearStudentAccountPins();
@@ -1496,13 +1549,12 @@ $('saved-classes-button').onclick=async()=>{
 socket.on('connect',async()=>{
   $('connection').textContent='우주와 연결되었어요';$('connection').classList.add('is-connected');controls();
   // 새로 연 화면은 먼저 학생/선생님 선택을 보여 주고, 플레이 중 끊긴 연결만 복구합니다.
-  if(selfId&&sessionToken){busy=true;controls();try{enter(await request('session:resume',{token:sessionToken}));}
-    catch(e){reset(e.message);}finally{busy=false;controls();}}
+  if(selfId&&sessionToken)await resumeExistingSession();
 });
-socket.on('connect_error',()=>{if(selfId)showReconnect(true);$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
+socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{if(selfId)showReconnect(true);bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});
 socket.on('combat:damage-numbers',data=>{if(selfId)world.damageNumbers(data);});

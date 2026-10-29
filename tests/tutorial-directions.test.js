@@ -44,6 +44,10 @@ test('random valid starts and moving waypoints produce walkable routes to every 
    for(const goal of destinations){
     const target=journeyDestination(goal);if(target.mapId!==mapId)continue;
     const route=journeyRoute(candidate,goal);assertWalkablePath(candidate,route);
+    if(!target.interact&&target.rx&&target.ry){
+     const end=route.points.at(-1);
+     assert(((end.x-target.x)/target.rx)**2+((end.y-target.y)/target.ry)**2<=1,`${goal} waypoint must complete the visit zone`);
+    }
     let moved=candidate;
     for(const point of route.points.slice(0,1)){
      moved=playerAt(mapId,point.x,point.y);

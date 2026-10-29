@@ -12,6 +12,7 @@ import {EQUIPMENT_ITEMS,equipmentOf} from './equipment.js';
 import {miscItemOf} from './misc-items.js';
 import {journeyItemOf} from './journey-items.js';
 import {DUEL_ARCADES} from './duel-arcade.js';
+import {createSleepingStarsMaps,sleepingStarsId} from './sleeping-stars.js';
 // 화면과 서버가 공유하는 수치. 서버는 클라이언트가 보낸 설정을 신뢰하지 않습니다.
 // speed: 초당 이동 픽셀. 2026-09-15 큰 맵에 맞춰 310 → 620(2배).
 // 한 tick(50ms)에 31px로 아바타 충돌 간격 34px보다 작습니다.
@@ -22,12 +23,18 @@ export const RULES = Object.freeze({ maxStudents: MAX_STUDENTS, maxPlayers: MAX_
 export const INTERACT = Object.freeze({ radius: 40 });
 // 키가 큰 탐사 장치는 발밑 충돌 원과 그림의 몸체가 다릅니다. 조사 판정만 그림 영역에 맞춥니다.
 export function interactionDistance(player, object) {
+  if(object.kind==='shelter-fountain'){
+    const dx=player.x-object.x,dy=player.y-object.y;
+    const normalized=Math.hypot(dx/object.collisionRx,dy/object.collisionRy);
+    return normalized<=1?0:Math.hypot(dx,dy)*(1-1/normalized);
+  }
   const box = object.interactionBox;
   if (!box) return Math.hypot(player.x-object.x, player.y-object.y);
   const left=object.x+box.left,right=object.x+box.right,top=object.y+box.top,bottom=object.y+box.bottom;
   return Math.hypot(Math.max(left-player.x,0,player.x-right),Math.max(top-player.y,0,player.y-bottom));
 }
 export function interactionReach(object) {
+  if(object.kind==='shelter-fountain')return RULES.radius+INTERACT.radius+32;
   return RULES.radius+INTERACT.radius+(object.interactionBox?0:object.radius)+(object.kind==='energy-shop'?80:0);
 }
 // 행성 규칙 편집 한도(소속 친구와 선생님이 내부 규칙판 근처에서 수정).
@@ -71,8 +78,10 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
+    {id:'gate-sleeping-stars',name:'별들이 잠드는 곳 1 ↑',...STREET_LAYOUT.northGate,radius:38,kind:'gate',target:sleepingStarsId(1),
+      arrival:{x:STAR_ORIGIN.baseWidth/2,y:STAR_ORIGIN.baseHeight-160*STAR_ORIGIN.baseWidth/1200},color:'#a6a8b4',passable:true},
     ...STREET_PARK.beds.map((bed,i)=>({id:`shelter-flowerbed-${i+1}`,name:'별빛 화단',x:bed.x,y:bed.y,radius:bed.rx,collisionRx:bed.rx,collisionRy:bed.ry,kind:'shelter-flowerbed'})),
-    {id:'shelter-fountain',name:'별의 수호 분수대',x:STREET_PARK.fountain.x,y:STREET_PARK.fountain.y,radius:STREET_PARK.fountain.rx,collisionRx:STREET_PARK.fountain.rx,collisionRy:STREET_PARK.fountain.ry,kind:'shelter-fountain'},
+    {id:'shelter-fountain',name:'별의 수호 분수대',x:STREET_PARK.fountain.x,y:STREET_PARK.fountain.y,radius:110,collisionRx:STREET_PARK.fountain.rx,collisionRy:STREET_PARK.fountain.ry,kind:'shelter-fountain'},
     { id: 'shop', name: '별 상점', x: 1290, y: 1450, radius: 72, kind: 'shop', color: '#ffe59b' },
     { id: 'energy-shop', name: '우주에너지 상점', x: 1290, y: 1980, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
     {id:'math-station',name:'별 수학 발전소',x:250,y:650,radius:86,kind:'math-station'},
@@ -85,11 +94,12 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
       ['tetris','별 테트리스','#ffdfd5'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
       ['path','별 길 한번에 그리기','#b8e5d6'],['signal','우주 신호 따라하기','#d9c5ff']
     ].map(([gameId,name,color],i)=>({id:'arcade-'+gameId,gameId,name,color,x:300+i*200,y:2900,radius:32,kind:'arcade'})),
-    ...DUEL_ARCADES,
+    ...DUEL_ARCADES.slice(0,1),
+    {id:'hall-of-fame',name:'명예의 전당',x:900,y:STREET_LAYOUT.lower.y-95,radius:48,collisionRx:58,collisionRy:50,kind:'hall-of-fame'},
+    ...DUEL_ARCADES.slice(1),
     {id:'crafting-machine',name:'별빛 조합기',x:1450,y:1730,radius:62,kind:'crafting',color:'#cdb8ef'},
     {id:'playground-sign',name:'놀이터가는길',x:900,y:2350,radius:24,kind:'street-sign',passable:true},
     {id:'station-sign',name:'별 발전소 가는길',x:900,y:1070,radius:24,kind:'street-sign',passable:true},
-    { id: 'lamp-left', name: '별빛 가로등', x: 330, y: 1690, radius: 22, kind: 'lamp', color: '#fff2c9', passable: true },
     { id: 'lamp-right', name: '별빛 가로등', x: 1110, y: 1290, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
 export const STREET_ID = STREET.id;
@@ -155,11 +165,12 @@ export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},
       ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2,radius:58,kind:'goddess-statue'}]:[])
     ]});
 }));
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[WHALE_STOMACH.id]:WHALE_STOMACH,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
+export const SLEEPING_STARS_MAPS=createSleepingStarsMaps(ORIGIN_MAPS,STREET_LAYOUT);
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[WHALE_STOMACH.id]:WHALE_STOMACH,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...SLEEPING_STARS_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
 // 우주 지도 선택 화면의 5열×6행 배치입니다. 각 맵은 서로 다른 칸을 사용합니다.
 export const UNIVERSE_MAP_LAYOUT=Object.freeze([
   ...[...ORIGIN_MAPS.map((map,i)=>({id:map.id,icon:'✧',row:4-i,column:4}))].reverse(),
-  {id:BLACK_HOLE_ID,icon:'◉',row:4,column:5},
+  ...SLEEPING_STARS_MAPS.map((map,i)=>({id:map.id,icon:'·',row:4-i,column:5})).reverse(),
   ...PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☀',row:4,column:3-i})),
   ...MOON_PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☾',row:6,column:3-i})),
   {id:STAR_PARADISE.id,icon:'✵',row:5,column:1},{id:GARDEN_ID,icon:'✧',row:5,column:3},

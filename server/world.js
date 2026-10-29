@@ -6,9 +6,9 @@ import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionRe
 import {isDefeated} from './vitals.js';
 import {equipmentBonus} from '../shared/equipment.js';
 import {serenaMap} from '../shared/serena.js';
-export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId)) {
+export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId), ignoreMonsters=false) {
   const map = serenaMap(mapOf(mapId, room.planets.values()),room.serena);
-  if(!avatarPositionIsClear(map,x,y,boundaryPlayer,monstersOf(room).values(),avoidPlayers?null:boundaryPlayer))return false;
+  if(!avatarPositionIsClear(map,x,y,boundaryPlayer,monstersOf(room).values(),avoidPlayers?null:boundaryPlayer,ignoreMonsters))return false;
   if (!avoidPlayers) return true;
   const foot=avatarFootprint(boundaryPlayer,x,y);
   return ![...room.players.values()].some(p => {

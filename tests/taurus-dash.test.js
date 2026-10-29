@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {advanceTaurusDashes,castTaurus,taurusContactRadius,taurusDashViews} from '../server/taurus-skills.js';
 import {monstersOf} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
+import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
+import {isFree} from '../server/world.js';
 
 test('황소 돌진 도중 다른 맵으로 이동하면 도착 좌표를 유지하고 돌진·면역을 끝낸다',()=>{
   const player={id:'bull',role:'student',connected:true,away:false,mapId:'space-plaza',
@@ -64,4 +66,41 @@ test('황소가 방향키를 놓고 멈춰도 몸에 닿은 새 몬스터를 한
   assert.ok(monster.hp<1000,'멈춘 황소와 닿은 몬스터도 피해를 받아야 해요.');
   const hp=monster.hp;advanceTaurusDashes(room,1300);
   assert.equal(monster.hp,hp,'같은 돌진에서 두 번 맞으면 안 돼요.');
+});
+
+test('황소 돌진 중에만 몬스터 충돌을 통과하고 지형·물체·일반 충돌은 유지한다',()=>{
+  const p={id:'bull',role:'student',connected:true,away:false,mapId:'star-origin-1',x:400,y:400,
+    facing:{x:1,y:0},input:{x:0,y:0,at:0},avatar:{level:4,constellationId:'taurus'}};
+  const room={players:new Map([[p.id,p]]),planets:new Map()};ensureVitals(p);castTaurus(room,p,1000);
+  const map={id:p.mapId,width:1000,height:800,walkable:{x:0,y:0,width:1000,height:800},objects:[]};
+  const monster={id:'blocker',mapId:p.mapId,x:400,y:400,radius:50,hp:100,alive:true};
+  assert.equal(avatarPositionIsClear(map,400,400,p,[monster]),false,'돌진 전 몬스터가 막아야 한다');
+  assert.equal(avatarPositionIsClear(map,400,400,p,[monster],null,true),true,'돌진 중 몬스터만 통과한다');
+  assert.equal(avatarPositionIsClear(map,1001,400,p,[monster],null,true),false,'맵 경계는 계속 막아야 한다');
+  map.objects=[{x:400,y:400,radius:40}];
+  assert.equal(avatarPositionIsClear(map,400,400,p,[monster],null,true),false,'물체 충돌은 계속 막아야 한다');
+  p.taurusDash.endsAt=1000;
+  assert.equal(avatarPositionIsClear(map,400,400,p,[monster]),false,'종료 후 몬스터 충돌을 복구한다');
+});
+
+test('황소 서버 돌진은 몬스터를 통과하고 일반 서버 이동은 몬스터에 막힌다',()=>{
+  const p={id:'bull',role:'student',connected:true,away:false,mapId:'star-origin-1',x:400,y:400,
+    facing:{x:1,y:0},input:{x:0,y:0,at:0},avatar:{level:4,constellationId:'taurus'}};
+  const room={players:new Map([[p.id,p]]),planets:new Map()};ensureVitals(p);
+  const base=[...monstersOf(room,1000).values()][0];
+  const blocker={...base,id:'blocker',mapId:p.mapId,x:430,y:400,hp:1000,maxHp:1000,attackers:new Map(),contributors:new Map()};
+  room.monsters=new Map([[blocker.id,blocker]]);
+  assert.equal(isFree(room,430,400,p.id,p.mapId,false,p),false);
+  castTaurus(room,p,1000);advanceTaurusDashes(room,1800);
+  assert.ok(p.x>430,'황소가 서버 권위 좌표에서 몬스터를 통과해야 한다');
+});
+
+test('황소 스킬은 각 단계에서 지속시간과 재사용 대기시간이 1초 늘어난다',()=>{
+  for(const [level,duration,cooldown] of [[2,2260,5000],[3,2260,4000],[4,2260,3000]]){
+    const p={id:'bull',role:'student',connected:true,away:false,mapId:'star-origin-1',x:400,y:400,
+      facing:{x:1,y:0},avatar:{level,constellationId:'taurus'}};
+    const room={players:new Map([[p.id,p]]),planets:new Map()};ensureVitals(p);castTaurus(room,p,1000);
+    assert.equal(p.taurusDash.endsAt-p.taurusDash.at,duration);
+    assert.equal(p.taurusCooldownUntil-1000,cooldown);
+  }
 });

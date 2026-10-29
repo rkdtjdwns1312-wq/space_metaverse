@@ -49,13 +49,21 @@ test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고
   const shop=STREET.objects.find(o=>o.kind==='shop'),craft=STREET.objects.find(o=>o.kind==='crafting'),energy=STREET.objects.find(o=>o.kind==='energy-shop');
   assert(shop.y<craft.y&&craft.y<energy.y);assert(craft.x>shop.x&&craft.x>energy.x);
   const walker={role:'student',avatar:{level:2,constellationId:'aries'}};
-  for(let y=1160;y<=1280;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`북쪽 접근 ${y}`);
-  for(let x=900;x<=1060;x+=10)assert(avatarPositionIsClear(STREET,x,1280,walker),`위 화단 우회 ${x}`);
-  for(let y=1280;y<=2200;y+=10)assert(avatarPositionIsClear(STREET,1060,y,walker),`분수 오른쪽 열린 통로 ${y}`);
-  for(let x=900;x<=1060;x+=10)assert(avatarPositionIsClear(STREET,x,2200,walker),`아래 화단 우회 ${x}`);
+  for(let x=900;x<=1150;x+=10)assert(avatarPositionIsClear(STREET,x,1160,walker),`북쪽 접근 ${x}`);
+  for(let y=1160;y<=1280;y+=10)assert(avatarPositionIsClear(STREET,1150,y,walker),`북쪽 접근 ${y}`);
+  for(let x=1050;x<=1330;x+=10)assert(avatarPositionIsClear(STREET,x,1280,walker),`위 화단 우회 ${x}`);
+  for(let y=1280;y<=1400;y+=10)assert(avatarPositionIsClear(STREET,1380,y,walker),`분수 오른쪽 열린 통로 ${y}`);
+  for(let x=1380;x<=1550;x+=10)assert(avatarPositionIsClear(STREET,x,1470,walker),`상점 동쪽 우회 ${x}`);
+  for(let y=1470;y<=1850;y+=10)assert(avatarPositionIsClear(STREET,1550,y,walker),`조합기 동쪽 우회 ${y}`);
+  for(let x=1380;x<=1550;x+=10)assert(avatarPositionIsClear(STREET,x,1850,walker),`조합기 남쪽 우회 ${x}`);
+  for(let y=1850;y<=2010;y+=10)assert(avatarPositionIsClear(STREET,1410,y,walker),`에너지 상점 동쪽 우회 ${y}`);
+  for(let x=1390;x<=1410;x+=10)assert(avatarPositionIsClear(STREET,x,2010,walker),`에너지 상점 남쪽 통과 ${x}`);
+  for(let y=2010;y<=2070;y+=10)assert(avatarPositionIsClear(STREET,1390,y,walker),`에너지 상점 남쪽 우회 ${y}`);
+  for(let x=1150;x<=1390;x+=10)assert(avatarPositionIsClear(STREET,x,2070,walker),`아래쪽 분수 우회 ${x}`);
   for(let y=2200;y<=2250;y+=10)assert(avatarPositionIsClear(STREET,900,y,walker),`남쪽 출구 ${y}`);
-  for(let y=1590;y<=1910;y+=10)assert(avatarPositionIsClear(STREET,670,y,walker),`왼쪽 화단과 분수 사이 통로 ${y}`);
+  for(let y=1590;y<=1910;y+=10)assert(avatarPositionIsClear(STREET,440,y,walker),`왼쪽 화단과 분수 사이 통로 ${y}`);
   for(const o of [shop,craft,energy]){
     assert(onStreetFloor(STREET,o.x,o.y+o.radius+45,20),o.id+' 입구');
+    assert(avatarPositionIsClear(STREET,o.x,o.y+o.radius+45,walker),o.id+' 진입로가 열려 있다');
   }
 });

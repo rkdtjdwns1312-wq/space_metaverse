@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {io} from 'socket.io-client';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {RoomStore} from '../server/rooms.js';
+import {fromRecord} from '../server/persistent-rooms.js';
+import {createClassroomServer} from '../server/app.js';
+import {setTeacherGhost,visiblePositions} from '../server/teacher-ghost.js';
+const key='teacher-ghost-test-key',call=(socket,event,data={})=>socket.timeout(3000).emitWithAck(event,data);
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function until(check){for(let i=0;i<100;i++){if(check())return;await pause(20);}assert.ok(check(),'ghost state propagation timeout');}
+
+test('ghost mode defaults off, only teachers set booleans, snapshots and positions share visibility',()=>{
+  const store=new RoomStore(),{room,player:teacher}=store.create({title:'유령 검사',allowedNames:['1']},'t');
+  const {player:student}=store.join({code:room.code,nickname:'1'},'s');
+  assert.equal(store.snapshot(room,teacher).players.find(p=>p.id===teacher.id).teacherGhost,false);
+  assert.throws(()=>setTeacherGhost(student,true),/선생님/);assert.throws(()=>setTeacherGhost(teacher,'true'),/설정/);
+  setTeacherGhost(teacher,true);
+  assert.ok(!store.snapshot(room,student).players.some(p=>p.id===teacher.id));
+  assert.ok(!store.snapshot(room).players.some(p=>p.id===teacher.id));
+  assert.equal(store.snapshot(room,teacher).players.find(p=>p.id===teacher.id).teacherGhost,true);
+  const points=[[teacher.id,1,2],[student.id,3,4]];
+  assert.deepEqual(visiblePositions(room,points,student),[points[1]]);
+  assert.deepEqual(visiblePositions(room,points,teacher),points);
+  student.teacherGhost=true;assert.ok(store.snapshot(room,teacher).players.some(p=>p.id===student.id),'a forged student flag cannot hide them');
+  setTeacherGhost(teacher,false);assert.ok(store.snapshot(room,student).players.some(p=>p.id===teacher.id));
+});
+
+test('real sockets reject spoofing, hide live snapshots/positions, preserve self/reconnect, restore visibility and never persist mode',async t=>{
+  const dir=mkdtempSync(join(tmpdir(),'teacher-ghost-')),sockets=[];
+  const game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,unattended:false,teacherManagedAccounts:false});
+  t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();rmSync(dir,{recursive:true,force:true});});
+  const address=await game.listen();
+  const connect=async()=>{const s=io('http://127.0.0.1:'+address.port,{transports:['websocket'],reconnection:false,forceNew:true});sockets.push(s);await new Promise((res,rej)=>{s.once('connect',res);s.once('connect_error',rej);});return s;};
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'유령 검사',allowedNames:['1']});assert.ok(created.ok,created.error);
+  const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});assert.ok(joined.ok,joined.error);
+  const teacherId=created.selfId;let studentState=joined.room,teacherState=created.room,studentTick,teacherTick;
+  student.on('room:state',state=>studentState=state);teacher.on('room:state',state=>teacherState=state);
+  student.on('world:positions',state=>studentTick=state);teacher.on('world:positions',state=>teacherTick=state);
+  assert.ok(studentState.players.some(p=>p.id===teacherId));
+  assert.equal((await call(student,'teacher:ghost',{enabled:true,role:'teacher',playerId:teacherId})).ok,false);
+  assert.equal((await call(teacher,'teacher:ghost',{enabled:1})).ok,false);
+  assert.deepEqual(await call(teacher,'teacher:ghost',{enabled:true}),{ok:true,teacherGhost:true});
+  await until(()=>!studentState.players.some(p=>p.id===teacherId)&&teacherState.players.find(p=>p.id===teacherId)?.teacherGhost);
+  const room=game.store.rooms.get(created.room.code),tp=room.players.get(teacherId);tp.x+=1;studentTick=null;teacherTick=null;
+  await until(()=>teacherTick?.positions.some(p=>p[0]===teacherId)&&studentTick);
+  assert.ok(!studentTick.positions.some(p=>p[0]===teacherId));
+  assert.equal(tp.connected,true);assert.equal(tp.role,'teacher');assert.equal(tp.away,undefined);
+  game.store.transact(()=>{});
+  const record=JSON.parse(readFileSync(join(dir,room.code+'.json'),'utf8'));
+  assert.ok(!JSON.stringify(record).includes('teacherGhost'));
+  const restored=fromRecord(record);assert.ok([...restored.players.values()].every(p=>p.teacherGhost!==true));
+  teacher.disconnect();await until(()=>!tp.connected);
+  const resumed=await connect(),reply=await call(resumed,'session:resume',{token:created.token});assert.ok(reply.ok,reply.error);
+  assert.equal(reply.room.players.find(p=>p.id===teacherId).teacherGhost,true);
+  assert.equal((await call(resumed,'teacher:ghost',{enabled:false})).ok,true);
+  await until(()=>studentState.players.some(p=>p.id===teacherId));
+  tp.x+=1;studentTick=null;await until(()=>studentTick?.positions.some(p=>p[0]===teacherId));
+});

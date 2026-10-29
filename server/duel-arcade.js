@@ -13,7 +13,7 @@ const online=p=>!!p?.connected&&!p.away;
  * room teardown call closeRoom(code). Optional playerLeft(code,id) is also
  * post-commit; otherwise tick detects removals/map changes. No own timers.
  */
-export function createDuelArcade({getRoom,emitPrivate,clock=Date.now,random=randomInt}){
+export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},clock=Date.now,random=randomInt}){
   const rooms=new Map();
   function bucket(code){
     if(!rooms.has(code))rooms.set(code,{games:new Map(),viewers:new Map()});
@@ -64,9 +64,10 @@ export function createDuelArcade({getRoom,emitPrivate,clock=Date.now,random=rand
     }
   }
   function watch(b,id,objectId){b.viewers.set(id,{objectId,signature:null,socketId:null});}
-  function finish(g,winnerId,reason){
+  function finish(g,winnerId,reason,{recorded=false}={}){
     // Departure/timeout may clean up a completed game, but cannot decide it again.
     if(g.phase==='finished')return;
+    if(!recorded&&g.gameId==='omok'&&winnerId&&reason==='complete')onFinished({roomCode:g.roomCode,matchId:g.id,playerId:winnerId});
     g.phase='finished';g.winnerId=winnerId;g.reason=reason;g.proposal=null;g.flipped=[];g.revealUntil=0;g.revealRemaining=null;g.offline.clear();g.revision++;
   }
   function remove(room,b,g,reason){
@@ -145,7 +146,7 @@ export function createDuelArcade({getRoom,emitPrivate,clock=Date.now,random=rand
       requireThat(player.role==='student'&&target?.role==='student'&&player.id!==target.id,'함께할 학생 친구를 골라주세요. 선생님은 관전만 해요.');
       requireThat(online(target)&&nearDuelMachine(player,machine)&&nearDuelMachine(target,machine),'두 친구 모두 같은 오락기 가까이에 있어야 해요.');
       requireThat(!b.games.has(machine.id)&&!sessionOf(b,player.id)&&!sessionOf(b,target.id),'이미 초대나 놀이를 진행 중이에요.');
-      const g={id:randomUUID(),objectId:machine.id,gameId:machine.gameId,sizeId:machine.gameId==='memory'?data.sizeId:null,phase:'invited',ids:[player.id,target.id],revision:0,
+      const g={id:randomUUID(),roomCode:room.code,objectId:machine.id,gameId:machine.gameId,sizeId:machine.gameId==='memory'?data.sizeId:null,phase:'invited',ids:[player.id,target.id],revision:0,
         turn:0,scores:[0,0],winningLine:[],offline:new Map(),expiresAt:clock()+DUEL_RULES.inviteMs};
       b.games.set(machine.id,g);watch(b,player.id,machine.id);watch(b,target.id,machine.id);
       send(room.code,target.id,'duel:invite',{objectId:machine.id,name:machine.name,sizeId:g.sizeId,invite:{id:g.id,fromId:player.id,fromNickname:player.nickname,expiresAt:g.expiresAt}});
@@ -183,8 +184,10 @@ export function createDuelArcade({getRoom,emitPrivate,clock=Date.now,random=rand
         requireThat(g.board[index]===0,'이미 돌이 놓인 자리예요.');
         const next=[...g.board];next[index]=g.turn+1;
         requireThat(g.turn!==0||!isOmokDoubleThree(next,index),'3·3 자리에는 놓을 수 없어요.');
-        g.board=next;g.winningLine=omokLine(g.board,index);
-        if(g.winningLine.length)finish(g,player.id,'complete');
+        const winningLine=omokLine(next,index);
+        if(winningLine.length)onFinished({roomCode:g.roomCode,matchId:g.id,playerId:player.id});
+        g.board=next;g.winningLine=winningLine;
+        if(g.winningLine.length)finish(g,player.id,'complete',{recorded:true});
         else if(g.board.every(Boolean))finish(g,null,'draw');
         else g.turn=1-g.turn;
       }

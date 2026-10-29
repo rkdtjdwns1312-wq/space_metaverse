@@ -2,11 +2,19 @@ import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {RULES} from '../shared/config.js';
 import {monsterType} from '../shared/monsters.js';
 import {ensureVitals,damagePlayer,playerVitals} from './vitals.js';
-import {damagePlayersInArea,reflectLibraDamage} from './area-combat.js';
+import {damagePlayersInArea} from './area-combat.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const candidates=(room,boss)=>[...room.players.values()].filter(p=>valid(boss,p)&&(p.role==='teacher'||p.avatar?.level>=2));
+const redFriends=(room,boss,carrier,mark)=>new Set([...room.players.values()]
+  .filter(other=>other.id!==carrier.id&&other.role==='student'&&valid(boss,other)&&
+    ((other.x-carrier.x)/mark.radiusX)**2+((other.y-carrier.y)/mark.radiusY)**2<=1+1e-9)
+  .map(other=>other.id));
+function randomFriends(rule,random){
+  const value=random(),roll=Number.isFinite(value)?Math.max(0,Math.min(.999999999,value)):0;
+  return rule.minFriends+Math.floor(roll*(rule.maxFriends-rule.minFriends+1));
+}
 const stateOf=boss=>boss.serenaSkills??={mapId:boss.mapId,sequence:0,marks:[],warnings:[],bursts:[],ready:{},nextDecisionAt:0,nextSkillIndex:0,busyUntil:0};
 // 미처 처리하지 못한 경고도 다음 틱에서 폭발하므로 새 시전을 막습니다.
 const hasPendingEffect=(state,now)=>state.marks.length>0||state.warnings.length>0||state.bursts.some(burst=>now<burst.endsAt);
@@ -33,7 +41,8 @@ export function beginSerenaSkill(room,boss,kind,now,random=Math.random){
   }
   for(const p of targets.slice(0,rule.maxTargets??targets.length))state.marks.push({
     id:nextId(boss,state),kind,playerId:p.id,startsAt:now,endsAt:now+rule.durationMs,nextTickAt:now+(rule.intervalMs||0),
-    ...(kind==='black'?{remaining:rule.contacts,contacts:new Set()}:{}),...(kind==='red'?serenaRedRadii(p):{})
+    ...(kind==='black'?{remaining:rule.contacts,contacts:new Set()}:{}),
+    ...(kind==='red'?{...serenaRedRadii(p),requiredFriends:randomFriends(rule,random),nearbyFriends:0}:{})
   });
   boss.mp-=rule.mana;state.ready[kind]=now+rule.cooldownMs;
   state.busyUntil=now+rule.durationMs+(kind==='yellow'?rule.warningMs+rule.burstMs:0);
@@ -90,6 +99,21 @@ export function tickSerenaSkills(room,boss,now){
       for(const id of contacts)if(!mark.contacts.has(id))mark.remaining=Math.max(0,mark.remaining-1);
       mark.contacts=contacts;return mark.remaining>0;
     }
+    if(mark.kind==='red'){
+      Object.assign(mark,serenaRedRadii(p));
+      // Exact deadline wins over a late gathering. The mark follows its victim,
+      // so running outside an old area cannot evade the one-time explosion.
+      if(now>=mark.endsAt){
+        const damage=power*SERENA_SKILLS.red.damageMultiplier;
+        const result=damagePlayer(p,damage,now,{room,fixedDamage:damage});
+        if(result)hits.push({...visual(boss,'red',p.x,p.y),targetId:p.id,...result});
+        state.bursts.push({id:mark.id,kind:'red',x:p.x,y:p.y,radius:100,startsAt:now,endsAt:now+SERENA_SKILLS.red.burstMs});
+        extendBusyUntil(state,now+SERENA_SKILLS.red.burstMs);return false;
+      }
+      // Count current distinct classmates, not touches accumulated over time.
+      mark.nearbyFriends=redFriends(room,boss,p,mark).size;
+      return mark.nearbyFriends<mark.requiredFriends;
+    }
     const interval=SERENA_SKILLS[mark.kind].intervalMs;
     // 20초 예약 펄스는 한 구간 미만의 틱 지연만 허용하고 바로 종료합니다.
     // 이전에 건너뛴 펄스는 재생하지 않으며, 긴 정지 뒤에는 마지막 피해도 버립니다.
@@ -102,17 +126,6 @@ export function tickSerenaSkills(room,boss,now){
         state.warnings.push({id:nextId(boss,state),playerId:p.id,x:p.x,y:p.y,radius:SERENA_SKILLS.yellow.radius,startsAt:now,endsAt:now+SERENA_SKILLS.yellow.warningMs});
         extendBusyUntil(state,now+SERENA_SKILLS.yellow.warningMs+SERENA_SKILLS.yellow.burstMs);
       }
-      else{
-        Object.assign(mark,serenaRedRadii(p));
-        for(const other of candidates(room,boss)){
-          if(other.id===p.id||((other.x-p.x)/(mark.radiusX+RULES.radius))**2+((other.y-p.y)/(mark.radiusY+RULES.radius))**2>1)continue;
-          const result=damagePlayer(other,power,now,{room});
-          if(!result)continue;
-          if(result.reflectedDamage)reflectLibraDamage(room,other,{sourceMonsterId:boss.id},result.reflectedDamage,now);
-          hits.push({...visual(boss,'red',p.x,p.y),targetId:other.id,...result});
-          if(boss.hp<=0)break;
-        }
-      }
     }
     return now<mark.endsAt&&boss.hp>0&&valid(boss,p);
   });
@@ -124,7 +137,7 @@ export function serenaSkillViews(room,boss,now){
   const state=boss.serenaSkills;
   if(!state||boss.hp<=0||state.mapId!==boss.mapId)return null;
   return {
-    marks:state.marks.filter(m=>m.endsAt>now&&valid(boss,room.players.get(m.playerId))).map(({id,kind,playerId,startsAt,endsAt,remaining,radiusX,radiusY})=>({id,kind,playerId,startsAt,endsAt,...(kind==='black'?{remaining}:{}),...(kind==='red'?{radiusX,radiusY}:{})})),
+    marks:state.marks.filter(m=>m.endsAt>now&&valid(boss,room.players.get(m.playerId))).map(({id,kind,playerId,startsAt,endsAt,remaining,radiusX,radiusY,requiredFriends,nearbyFriends})=>({id,kind,playerId,startsAt,endsAt,...(kind==='black'?{remaining}:{}),...(kind==='red'?{radiusX,radiusY,requiredFriends,nearbyFriends}:{})})),
     warnings:state.warnings.filter(w=>valid(boss,room.players.get(w.playerId))).map(({id,x,y,radius,startsAt,endsAt})=>({id,x,y,radius,startsAt,endsAt})),
     bursts:state.bursts.filter(b=>b.endsAt>now).map(b=>({...b}))
   };

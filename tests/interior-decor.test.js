@@ -14,7 +14,7 @@ test('부서 내부 다섯 오브젝트에는 기본색 포함 7색과 각각 3�
   assert.equal(INTERIOR_DECOR_COLORS.length,7);
   assert.deepEqual(INTERIOR_DECOR_TARGETS,['room','mailbox','board','report-board','warning-rock']);
   assert.deepEqual(INTERIOR_DECOR_OBJECTS.map(object=>object.id),['room','mailbox','board','report-board','warning-rock','door']);
-  assert.deepEqual(INTERIOR_DECOR_OBJECTS.find(object=>object.id==='room').shapes.map(shape=>shape.name),['은빛 석판','별무늬 석판','은빛 격자']);
+  assert.deepEqual(INTERIOR_DECOR_OBJECTS.find(object=>object.id==='room').shapes.map(shape=>shape.name),['달빛 석재 회랑','별빛 목조 서재','달빛 정원']);
   assert.deepEqual(INTERIOR_DECOR_OBJECTS.find(object=>object.id==='mailbox').shapes.map(shape=>shape.name),['우체통','별 장식','달 장식']);
   assert.equal(INTERIOR_DECOR_OBJECTS.find(object=>object.id==='report-board').name,'실적작성표');
   const machine=INTERIOR.objects.find(object=>object.id==='department-control-machine');

@@ -46,6 +46,7 @@ test('deletion cleans mission, assignment, recommendation and pair references an
   const {store,room,teacher,students:[p,q]}=await fixture(t);
   const story=CULTURE_STORIES[0].id;
   store.transact(()=>{
+    room.omokWinRecords=[{id:'p-win',playerId:p.id,nickname:p.nickname,at:now},{id:'q-win',playerId:q.id,nickname:q.nickname,at:now}];
     p.cultureRecommendationVotes=[story];q.cultureRecommendationVotes=[story];room.cultureRecommendations={[story]:2};
     const pair={sourceId:p.id,level:2,startsAt:now,endsAt:now+86400000};
     p.piscesPair={...pair,partnerId:q.id};q.piscesPair={...pair,partnerId:p.id};
@@ -55,6 +56,7 @@ test('deletion cleans mission, assignment, recommendation and pair references an
   });
   store.transact(()=>deleteStudentAccounts(store,room,teacher,[p.id],now));
   assert.equal(q.piscesPair,null);assert.deepEqual(room.cultureRecommendations,{[story]:1});
+  assert.deepEqual(room.omokWinRecords.map(row=>row.playerId),[q.id]);
   for(const m of [...room.missions,...room.dailyMissions.instances]){
     assert.equal(m.acceptedIds.includes(p.id),false);assert.equal(m.claimedIds.includes(p.id),false);assert.equal(p.id in (m.progress||{}),false);
   }

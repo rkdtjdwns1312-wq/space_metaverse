@@ -5,9 +5,10 @@ import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
 import {drawPlazaGround} from './plaza-art.js';
 import {drawValleyGround} from './valley-art.js';
 import {drawOriginArt,ORIGIN_STATUE_RENDER,onOriginArtReady} from './origin-art.js';
+import {drawSleepingStarsArt,onSleepingStarsArtReady} from './sleeping-stars-art.js';
 import {drawStreetGround,onStreetArtReady} from './street-art.js';
 import {drawBlackHoleGround} from './black-hole-art.js';
-import {drawInteriorFloor} from './interior-art.js';
+import {drawInteriorFloor,drawInteriorProp} from './interior-art.js';
 import {DEPARTMENT_ART} from './department-art.js';
 import {drawPlanetDesign} from '/shared/planet-design.js';
 import {prepareMapArt} from './map-art-ready.js';
@@ -56,6 +57,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   onFloatingCliffReady(refreshArt);
   onParadiseArtReady(refreshArt);onOriginArtReady(refreshArt);onStreetArtReady(refreshArt);
+  onSleepingStarsArtReady(refreshArt);
   function close(){dialog.close();}
   $('universe-close').onclick=close;
   $('universe-footer-close').onclick=close;
@@ -126,6 +128,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     if(theme==='plaza')drawPlazaGround(ctx,info);
     else if(theme==='starlight-street'||theme==='rainbow-space')drawStreetGround(ctx,info);
     else if(theme==='star-origin')drawOriginArt(ctx,info);
+    else if(theme==='sleeping-stars')drawSleepingStarsArt(ctx,info);
     else if(theme==='valley')drawValleyGround(ctx,info,0);
     else if(['sun-paradise','moon-paradise','star-paradise','paradise-crossroads'].includes(theme)){
       drawParadiseBackdrop(ctx,info);drawParadiseFloor(ctx,info);
@@ -145,7 +148,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       canvas.dataset.mapId=mapId;return;
     }
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
-    const cacheKey=mapId+':'+w+':'+h+':'+detailed;const cached=backgrounds.get(cacheKey);
+    const interiorPlanet=info.planetId?planets().find(p=>p.id===info.planetId):null;
+    const cacheKey=mapId+':'+w+':'+h+':'+detailed+':'+JSON.stringify(interiorPlanet?.interiorDecor||null);const cached=backgrounds.get(cacheKey);
     ctx.clearRect(0,0,w,h);
     if(cached){ctx.drawImage(cached,0,0);}else{
     ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
@@ -155,7 +159,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     for(const o of info.objects){
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
-      drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
+      let painted=false;
+      if(interiorPlanet){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);painted=drawInteriorProp(ctx,o,interiorPlanet);ctx.restore();}
+      if(!painted)drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
       if(detailed&&o.name)labels.push({text:o.name,x,y,r:Math.max(detailed?5:2.5,o.radius*scale)});
     }
     if(detailed){
@@ -207,7 +213,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     const p=me();if(!p)return;
     $('minimap-title').textContent=map(p.mapId).name;if(minimapOpen)draw($('minimap'),p.mapId);
     if(!dialog.open)return;
-    if(!selected||!([...Object.keys(STATIC_MAPS),...planets().map(p=>interiorIdOf(p.id))].includes(selected)))selected=p.mapId;
+    const selectable=[...UNIVERSE_MAP_LAYOUT.map(item=>item.id),...planets().map(planet=>interiorIdOf(planet.id))];
+    if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:PLAZA_ID;
     const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;

@@ -1,4 +1,5 @@
 import {INTERIOR_DECOR_COLORS,INTERIOR_DECOR_TARGETS,INTERIOR_UPGRADES,interiorDecorObject,interiorDecorStyle,interiorUpgradeUnlocked} from '/shared/interior-decor.js';
+import {interiorVisual} from './interior-visuals.js';
 
 export function createInteriorDecorUI({request,stop,toast,getRoom,getPlayer}){
   const dialog=document.createElement('dialog');dialog.id='interior-decor-dialog';dialog.setAttribute('aria-labelledby','interior-decor-title');
@@ -22,15 +23,14 @@ export function createInteriorDecorUI({request,stop,toast,getRoom,getPlayer}){
     const planet=getRoom()?.planets.find(item=>item.id===selected.planetId),object=interiorDecorObject(selected.objectId);if(!planet||!object)return;
     const style=interiorDecorStyle(planet.interiorDecor,selected.objectId);
     choices($('colors'),'color',INTERIOR_DECOR_COLORS,style.colorId);
-    const basic=object.shapes.find(s=>s.id===style.shapeId&&!s.price)||object.shapes[0];
     const teacher=getPlayer()?.role==='teacher';
-    choices($('shapes'),'shape',teacher?object.shapes:[{...basic,name:'현재 기본 모습'},...INTERIOR_UPGRADES],style.shapeId);
+    choices($('shapes'),'shape',object.shapes,style.shapeId);
     for(const label of $('shapes').children){
-      const input=label.querySelector('input'),tier=INTERIOR_UPGRADES.find(t=>t.id===input.value);if(!tier)continue;
-      if(object.id!=='room'){
-        const name={'report-board':'report','warning-rock':'warning'}[object.id]||object.id,img=document.createElement('img');
-        img.src=`/assets/interior/upgrades/${name}-${tier.id}.png`;img.alt='';img.width=88;img.height=88;img.style.objectFit='contain';label.prepend(img);
-      }
+      const input=label.querySelector('input'),tier=INTERIOR_UPGRADES.find(t=>t.id===input.value);
+      const img=document.createElement('img');img.src=interiorVisual(object.id,input.value);img.alt=object.shapes.find(s=>s.id===input.value).name+' 미리보기';
+      img.width=object.id==='room'?160:112;img.height=100;img.style.cssText='object-fit:contain;max-width:100%';label.prepend(img);
+      img.onerror=()=>{img.hidden=true;const error=document.createElement('small');error.textContent='그림을 불러오지 못했어요.';label.append(error);};
+      if(!tier){const note=document.createElement('span');note.textContent='기본 디자인 · 무료';label.append(note);continue;}
       const locked=!teacher&&!interiorUpgradeUnlocked(planet,object.id,tier.id);input.disabled=locked;
       const note=document.createElement('span');note.textContent=teacher?'교사 자유 선택':locked?`잠김 · 별 파편 ${tier.price}개`:'해금 완료';label.append(note);
       if(locked){const unlock=document.createElement('button');unlock.type='button';unlock.className='secondary small';unlock.textContent='해금하기';unlock.disabled=getPlayer()?.role!=='student';

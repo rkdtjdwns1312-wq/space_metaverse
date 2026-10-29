@@ -61,8 +61,9 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
    p.facing={x:1,y:0};
    p.transformation={active:level===5};
    m.x=p.x+avatarSizeOf(p)*.5; p.x=m.x-avatarSizeOf(p)*.5;now+=1000;
-   const expected=Math.max(1,table[c.type][level-2]-({2:0,3:1,4:2,5:2})[level]);
-   const displayedPower=level===5&&!p.transformation.active?table[c.type][2]:table[c.type][level-2];
+   const meleeBonus=['hercules','capricorn','leo','corona-borealis'].includes(c.id)?1:0;
+   const expected=Math.max(1,table[c.type][level-2]+meleeBonus-({2:0,3:1,4:2,5:2})[level]);
+   const displayedPower=(level===5&&!p.transformation.active?table[c.type][2]:table[c.type][level-2])+meleeBonus;
    p.facing={x:1,y:0};
    const visual=new Promise(r=>student.once('combat:hit',r));
    const result=await call(student,'combat:attack',{power:999,attackPower:999,level:5,constellationId:'sagittarius',type:'공격계'});
@@ -72,7 +73,7 @@ test('16종×LV2~5 실제 공격 피해·타격 표시·내 정보가 계열별 
    }else {
      const target=result.target||result.targets?.[0];
      assert.ok(target,c.id+' LV'+level+' 기본 타격 대상');
-     assert.equal(target.damage,table[c.type][level-2],c.id+' LV'+level);
+     assert.equal(target.damage,table[c.type][level-2]+meleeBonus,c.id+' LV'+level);
    }
    const projectileAttack=['corvus','sagittarius','aquarius','cancer','cetus','pisces','cygnus','ophiuchus','gemini','aries','taurus','libra'].includes(c.id);
    const expectedDamage=projectileAttack?table[c.type][level-2]:expected;

@@ -70,7 +70,7 @@ export function advanceTaurusDashes(room,now){
     while(length&&remaining>0.001){
       const step=Math.min(remaining,8);
       const x=player.x+dx*step,y=player.y+dy*step;
-      if(!isFree(room,x,y,player.id,player.mapId,false,player))break;
+      if(!isFree(room,x,y,player.id,player.mapId,false,player,dash.endsAt>now&&player.avatar.constellationId==='taurus'&&dash.mapId===player.mapId))break;
       player.x=x;player.y=y;dash.progress+=step;remaining-=step;
       player.facing={x:dx,y:dy};if(Math.abs(dx)>1e-6)player.facingX=dx<0?-1:1;
       hitNearby();

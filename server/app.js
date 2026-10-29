@@ -1,4 +1,5 @@
 import {normalizePlanetDesign} from '../shared/planet-design.js';
+import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
 import {advanceProjectiles,projectileViews} from './projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
@@ -25,6 +26,7 @@ import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery,finishLifeRecovery} from './life-star.js';
 import {blessAtShelterFountain} from './shelter-fountain.js';
+import {hallOfFame,recordOmokWin} from './hall-of-fame.js';
 import {advancePassiveRecovery} from './passive-recovery.js';
 import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,updateExplorationCards} from './exploration.js';
 import {registerMarketTrades,pruneMarketTrades} from './market-trades.js';
@@ -52,6 +54,7 @@ import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
 import {observeJourney,journeyPillar,journeyGoal,journeyTickGoals,journeyView,journeyMissions,claimJourney,usePractice,equipPractice} from './tutorial-journey.js';
 import { availableCraftingRecipes,loadCraftingRecipes } from './crafting-recipes.js';
+import {craftingHintViews} from './crafting-hints.js';
 import {sellQuote} from '../shared/item-pricing.js';
 import {awardDrawReward} from './draw-rewards.js';
 import {useStarCard,useTypedStarCard,activeStarCards,removeStarCard,starCardsDue,expireStarCards,
@@ -70,6 +73,7 @@ import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssi
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
 import {spiritOrbViews} from './spirit-king-skills.js';
+import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
 import {summonSerena} from './serena.js';
 import {serenaView,settleBossDeaths,restoreSerenaStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
@@ -208,7 +212,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   // 저장이 끝날 때까지 알림을 보류합니다. 파일 실패 시 화면에도 변경을 보내지 않습니다.
   let pending=null;
   const deliver=fn=>pending?pending.push(fn):fn();
-  const duelArcade=createDuelArcade({getRoom:code=>store.rooms.get(code),clock,emitPrivate(code,id,event,payload){deliver(()=>{
+  const duelArcade=createDuelArcade({getRoom:code=>store.rooms.get(code),clock,onFinished({roomCode,matchId,playerId}){transaction(()=>{
+    const room=store.rooms.get(roomCode),player=room?.players.get(playerId);
+    if(room&&player?.role==='student')recordOmokWin(room,{matchId,playerId,nickname:player.nickname,at:clock()});
+  });},emitPrivate(code,id,event,payload){deliver(()=>{
     const player=store.rooms.get(code)?.players.get(id),sock=player&&io.sockets.sockets.get(player.socketId);
     if(sock?.data.session?.room.code===code&&sock.data.session.player.id===id)sock.emit(event,payload);
   });}});
@@ -401,6 +408,16 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('shelter-fountain:bless',()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const result=blessAtShelterFountain(s.player,clock());roster(s.room);return result;
+    },false);
+    action('spirit-star:disarm',data=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
+      return disarmSpiritBlueStar(s.room,s.player,data?.starId,clock());
+    },false);
+    action('hall-of-fame:read',()=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
+      const altar=STREET.objects.find(o=>o.kind==='hall-of-fame');
+      ensure(s.player.mapId===STREET_ID&&isNear(s.player,altar),'명예의 전당 가까이에서 확인해주세요.');
+      return hallOfFame(s.room,clock());
     },false);
     action('tutorial:complete',()=>{ensure(false,'새 첫 여행 미션의 행동 목표를 완료해 주세요.');},false);
     action('tutorial:observe',data=>{
@@ -919,6 +936,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return enter(store.resume(data.token,socket.id));
     });
     action('room:leave',()=>{detach(socket,true);return {};});
+    action('teacher:ghost',data=>{
+      const s=socket.data.session;
+      ensure(s&&socket.connected&&s.player.connected&&s.player.socketId===socket.id&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'현재 접속에서 교실에 다시 입장해주세요.');
+      const result=setTeacherGhost(s.player,data.enabled);roster(s.room);return result;
+    },false);
     // 교실 종료는 해당 교실에 입장한 선생님만 할 수 있습니다.
     action('room:close',()=>{
       const s=socket.data.session;ensure(s?.player.role==='teacher','선생님만 교실을 종료할 수 있어요.');
@@ -1730,6 +1752,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(!s.player.constellationAbilityState?.coronaTrial,'왕관자리 Lv1 체험이 끝나면 장비를 바꿀 수 있어요.');
       const result=unequip(s.player,data.slot);roster(s.room);return result;
     });
+    action('shop:item-hints',data=>{
+      const s=socket.data.session;ensure(s?.player.connected&&!s.player.away,'먼저 교실에 입장해주세요.');
+      requireShop(s.player);
+      ensure(typeof data.itemId==='string'&&SHOP.items.some(item=>item.id===data.itemId),'별상점 아이템을 확인해주세요.');
+      return {hints:craftingHintViews(data.itemId,availableCraftingRecipes(craftingRecipes))};
+    },false);
     action('shop:buy',data=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
@@ -2597,14 +2625,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         if(effectsChanged) roster(room);
       }
       if(step%2===0){
-        const before=previous.get(room.code)||new Map(),next=new Map(),positions=[];
+        const before=previous.get(room.code)||new Map(),next=new Map(),allPositions=[];
         for(const p of room.players.values()){
           if(p.away)continue;
           // 경계에 접한 안전 좌표를 반올림하면 클라이언트에서 바닥 밖이 될 수 있습니다.
           const point=[p.id,p.x,p.y,p.facingX||1];
           next.set(p.id,point);
           const old=before.get(p.id);
-          if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]||old[3]!==point[3]) positions.push(point);
+          if(step%40===0 || !old || old[1]!==point[1]||old[2]!==point[2]||old[3]!==point[3]) allPositions.push(point);
         }
         // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
@@ -2613,9 +2641,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         const visibleMonsters=monsterViews(room,clock());
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
-        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away)
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
+          const positions=visiblePositions(room,allPositions,viewer);
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
+        }
         previous.set(room.code,next);
       }
     }

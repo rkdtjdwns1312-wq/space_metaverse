@@ -31,7 +31,7 @@ export function avatarMonsterDistance(player,x,y,monster){
   return ((foot.x-wall.x)/(wall.rx+foot.radius))**2+((foot.y-wall.y)/(wall.ry+foot.radius))**2;
 }
 // 서버 이동과 클라이언트 보간이 같은 하반신·물체·몬스터 경계를 사용합니다.
-export function avatarPositionIsClear(map,x,y,player,monsters=[],from=null){
+export function avatarPositionIsClear(map,x,y,player,monsters=[],from=null,ignoreMonsters=false){
   if(!avatarFitsFloor(map,x,y,player))return false;
   for(const object of map.objects){
     if(object.passable||!avatarTouchesObject(player,x,y,object))continue;
@@ -42,6 +42,7 @@ export function avatarPositionIsClear(map,x,y,player,monsters=[],from=null){
     }
     return false;
   }
+  if(ignoreMonsters)return true;
   for(const monster of monsters){
     if(monster.hp<=0||monster.alive===false||monster.mapId!==map.id)continue;
     const next=avatarMonsterDistance(player,x,y,monster);
@@ -54,9 +55,9 @@ export function avatarPositionIsClear(map,x,y,player,monsters=[],from=null){
   }
   return true;
 }
-export function avatarRenderPoint(map,point,fallback,player,monsters=[],previous=null,maxDistance=Infinity){
+export function avatarRenderPoint(map,point,fallback,player,monsters=[],previous=null,maxDistance=Infinity,ignoreMonsters=false){
   if(!previous||Math.hypot(point.x-previous.x,point.y-previous.y)>240){
-    return avatarPositionIsClear(map,point.x,point.y,player,monsters,{...fallback,mapId:map.id})?point:fallback;
+    return avatarPositionIsClear(map,point.x,point.y,player,monsters,{...fallback,mapId:map.id},ignoreMonsters)?point:fallback;
   }
   // 보간점이 모서리를 자르면 최신 서버 좌표로 뛰지 않고 직전 화면 위치에서
   // 서버와 같은 작은 축별 이동으로 경계까지 따라갑니다. 다음 프레임에 과거
@@ -68,13 +69,13 @@ export function avatarRenderPoint(map,point,fallback,player,monsters=[],previous
   const dx=(point.x-result.x)*ratio,dy=(point.y-result.y)*ratio,steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/8));
   for(let i=0;i<steps;i++){
     // 평소에는 한 번만 검사하고, 막힌 경우에만 축별 미끄러짐을 검사합니다.
-    if(avatarPositionIsClear(map,result.x+dx/steps,result.y+dy/steps,player,monsters,result)){
+    if(avatarPositionIsClear(map,result.x+dx/steps,result.y+dy/steps,player,monsters,result,ignoreMonsters)){
       result.x+=dx/steps;result.y+=dy/steps;continue;
     }
     // 진화/서버 재배치로 이전 그림의 하반신이 바닥 밖이 된 경우만 재설정합니다.
     if(!avatarFitsFloor(map,result.x,result.y,player))return fallback;
-    if(avatarPositionIsClear(map,result.x+dx/steps,result.y,player,monsters,result))result.x+=dx/steps;
-    if(avatarPositionIsClear(map,result.x,result.y+dy/steps,player,monsters,result))result.y+=dy/steps;
+    if(avatarPositionIsClear(map,result.x+dx/steps,result.y,player,monsters,result,ignoreMonsters))result.x+=dx/steps;
+    if(avatarPositionIsClear(map,result.x,result.y+dy/steps,player,monsters,result,ignoreMonsters))result.y+=dy/steps;
   }
   return {x:result.x,y:result.y};
 }

@@ -33,7 +33,18 @@ function clear(map,a,b,player){
 }
 function goalCandidates(map,target,player,shape){
  const blocked=target.interact&&!target.passable;
- if(!blocked)return [{x:target.x,y:target.y}];
+ if(!blocked){
+  const center={x:target.x,y:target.y};
+  if(avatarPositionIsClear(map,center.x,center.y,player))return [center];
+  // An area destination may contain a large landmark. Aim at clear ground
+  // inside the same area instead of routing into the landmark's center.
+  const rx=target.rx||target.radius||160,ry=target.ry||target.radius||160,points=[];
+  for(let i=0;i<24;i++){
+   const angle=i*Math.PI*2/24,p={x:target.x+Math.cos(angle)*rx*.65,y:target.y+Math.sin(angle)*ry*.65};
+   if(avatarPositionIsClear(map,p.x,p.y,player))points.push(p);
+  }
+  return points;
+ }
  const radius=(target.radius||0)+shape.radius+12,origin={x:target.x,y:target.y};
  // Sweep around the object so walls or adjacent props cannot leave the route
  // aimed at an unreachable south side. Keep ordering independent of the
@@ -57,11 +68,11 @@ export function journeyRoute(player,goal,planets=[]){
  const hubs=map.id===PLAZA_ID?[PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands]:map.id===STREET_ID?[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower,{x:STREET_LAYOUT.upper.x,y:STREET_LAYOUT.upper.y-300},{x:STREET_LAYOUT.upper.x,y:STREET_LAYOUT.upper.y+300}]:map.id===VALLEY_ID?[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples]:[];
  const nodes=[{x:player.x,y:player.y},...ends,...hubs];
  for(const object of map.objects.filter(o=>!o.passable))for(let i=0;i<8;i++){
-  const a=i*Math.PI/4,r=object.radius+shape.radius+26;
-  const p={x:object.x+Math.cos(a)*r,y:object.y+Math.sin(a)*r-shape.offsetY};
+  const a=i*Math.PI/4,rx=(object.collisionRx??object.radius)+shape.radius+26,ry=(object.collisionRy??object.radius)+shape.radius+26;
+  const p={x:object.x+Math.cos(a)*rx,y:object.y+Math.sin(a)*ry-shape.offsetY};
   if(avatarPositionIsClear(map,p.x,p.y,player))nodes.push(p);
  }
- const graphKey=map.id+':'+shape.radius+':'+shape.offsetY+':'+shape.halfWidth+':'+JSON.stringify(nodes.slice(1))+':'+JSON.stringify(map.objects.map(o=>[o.id,o.x,o.y,o.radius,o.passable]));
+ const graphKey=map.id+':'+shape.radius+':'+shape.offsetY+':'+shape.halfWidth+':'+JSON.stringify(nodes.slice(1))+':'+JSON.stringify(map.objects.map(o=>[o.id,o.x,o.y,o.radius,o.collisionRx,o.collisionRy,o.passable]));
  let edges=routeGraphs.get(graphKey);if(!edges){if(routeGraphs.size>=16)routeGraphs.delete(routeGraphs.keys().next().value);edges=new Map();routeGraphs.set(graphKey,edges);}
  const costs=nodes.map(()=>Infinity),previous=[],visited=new Set();costs[0]=0;
  for(let k=0;k<nodes.length;k++){

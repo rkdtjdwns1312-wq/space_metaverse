@@ -20,6 +20,7 @@ import {validateScienceReading} from './science-library.js';
 import {validateLearningRewards} from './learning-rewards.js';
 import {validateSignalRanking} from './signal-game.js';
 import {validateTetrisRanking} from './tetris-game.js';
+import {validateOmokWinRecords} from './hall-of-fame.js';
 import {validateInteriorDecor,validateInteriorUnlocks} from './interior-decor.js';
 import {validateCardMarkers} from './item-cards.js';
 import {validateRabbitDraw,validateRabbitDrawCounts} from './rabbit-draw.js';
@@ -66,7 +67,7 @@ export function toRecord(room) {
     rabbitDrawCounts:validateRabbitDrawCounts(room.rabbitDrawCounts),
     starRanking:structuredClone(room.starRanking||[]),
     dodgeRanking:structuredClone(room.dodgeRanking||[]),
-    memoryRanking:structuredClone(room.memoryRanking||[]),signalRanking:validateSignalRanking(room.signalRanking),tetrisRanking:validateTetrisRanking(room.tetrisRanking),missions:validateMissions(room.missions),
+    memoryRanking:structuredClone(room.memoryRanking||[]),omokWinRecords:validateOmokWinRecords(room.omokWinRecords),signalRanking:validateSignalRanking(room.signalRanking),tetrisRanking:validateTetrisRanking(room.tetrisRanking),missions:validateMissions(room.missions),
     allowedNames:[...room.allowedNames],chat:structuredClone(room.chat),
     summonCooldowns:[...(room.summonCooldowns||[])].filter(([,until])=>until>Date.now()),
     planets:[...room.planets.values()].map(p=>({...p,customDesign:savedPlanetDesign(p.customDesign),rename:p.rename?{...p.rename,votes:[...p.rename.votes]}:null})),
@@ -121,7 +122,7 @@ export function fromRecord(r,now=Date.now()) {
     rabbitDrawCounts:validateRabbitDrawCounts(r.rabbitDrawCounts),
     starRanking:validateStarRanking(r.starRanking),
     dodgeRanking:validateDodgeRanking(r.dodgeRanking),
-    memoryRanking:validateMemoryRanking(r.memoryRanking),signalRanking:validateSignalRanking(r.signalRanking),tetrisRanking:validateTetrisRanking(r.tetrisRanking),missions:validateMissions(r.missions),
+    memoryRanking:validateMemoryRanking(r.memoryRanking),omokWinRecords:validateOmokWinRecords(r.omokWinRecords),signalRanking:validateSignalRanking(r.signalRanking),tetrisRanking:validateTetrisRanking(r.tetrisRanking),missions:validateMissions(r.missions),
     mapId:PLAZA_ID,chat:structuredClone(r.chat),planets:new Map(),proposals:new Map(),
     itemLog:structuredClone(r.itemLog),tradeLog:structuredClone(r.tradeLog),trades:new Map()};
   for(const pl of r.planets){
@@ -243,7 +244,7 @@ export class PersistentRoomStore extends RoomStore {
     const selected=constellationOf(data.constellationId,MASTER_BASE.level);
     ensure(selected&&!selected.legacy,'마스터 계정의 첫 별자리를 골라주세요.');
     const count=[...room.players.values()].filter(p=>p.role==='student'&&p.avatar.level>=2&&p.avatar.constellationId===selected.id).length;
-    ensure(count<(room.allowedNames.size+1>=33?3:CONSTELLATION_LIMIT),'이 별자리는 이미 정원이 찼어요. 다른 별자리를 골라주세요.');
+    ensure(count<CONSTELLATION_LIMIT,'이 별자리는 이미 정원이 찼어요. 다른 별자리를 골라주세요.');
     const player=this.createStudent(room,data);
     player.accountKind='master';
     player.avatar={...player.avatar,level:MASTER_BASE.level,xp:0,form:'transcendent',constellationId:selected.id};

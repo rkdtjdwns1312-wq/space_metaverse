@@ -134,13 +134,9 @@ async function holdKey(page,code,ms){
   await page.keyboard.up(code);
 }
 async function clearShopPath(page,p,shop){
-  // 이 시나리오는 상점 남쪽에서 들어옵니다. 새 초승달 배치의 동쪽 길에는
-  // 조합기가 있으므로 상점 아래에서 서쪽 중앙 공원(x=900)을 거쳐 돌아갑니다.
+  // 상점 아래로 빠져나온 뒤 확대 분수의 위쪽 통로를 돌아갑니다.
   await walkNear(page,p,{x:p.x,y:shop.y+shop.radius+100},{waypoint:true});
-  await walkNear(page,p,{x:900,y:p.y},{waypoint:true});
-  const corridorY=STREET.objects.find(o=>o.id==='gate-plaza').y;
-  await walkNear(page,p,{x:900,y:corridorY},{waypoint:true});
-  await walkNear(page,p,{x:300,y:corridorY},{waypoint:true});
+  for(const point of [{x:1100,y:1460},{x:430,y:1460},{x:430,y:1690}])await walkNear(page,p,point,{waypoint:true});
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}
 async function openChatFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
@@ -579,8 +575,8 @@ await expandTeacherSection(teacher,'자원 지급');
 
  // Item 4: the star shop.
  const shopObj=STREET.objects.find(o=>o.id==='shop');
- // 중앙 분수와 동쪽 화단 사이의 열린 길을 지나 상점 아래에서 접근합니다.
- await walkNear(student,p,{x:1100,y:1660},{waypoint:true});
+ // 4배 분수 수반 위쪽의 열린 길로 돌아 상점 아래에서 접근합니다.
+ for(const point of [{x:430,y:1690},{x:430,y:1460},{x:1100,y:1460}])await walkNear(student,p,point,{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y+130},{waypoint:true});
  await walkNear(student,p,{x:shopObj.x,y:shopObj.y,radius:shopObj.radius});
  await student.locator('#interact-prompt').filter({hasText:'별상점 구경하기'}).waitFor({timeout:2000});

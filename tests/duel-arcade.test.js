@@ -6,10 +6,10 @@ import {onStreetFloor,STREET_LAYOUT} from '../shared/street-layout.js';
 import {STREET} from '../shared/config.js';
 
 function fixture(){
-  let now=1000;const events=[];
+  let now=1000,failFinish=false;const events=[],finished=[];
   const makeRoom=code=>({code,players:new Map(['a','b','c','t'].map(id=>[id,{id,nickname:id,role:id==='t'?'teacher':'student',connected:true,socketId:code+id,mapId:'star-street',x:DUEL_ARCADES[0].x,y:DUEL_ARCADES[0].y}]))});
   const rooms=new Map(['one','two'].map(code=>[code,makeRoom(code)]));
-  const duel=createDuelArcade({getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,
+  const duel=createDuelArcade({getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,onFinished:value=>{if(failFinish)throw Error('simulated save failure');finished.push(value);},
     emitPrivate:(code,id,event,value)=>events.push({code,id,event,value:structuredClone(value)})});
   const session=(id,code='one')=>({room:rooms.get(code),player:rooms.get(code).players.get(id)});
   const view=(id='a',code='one')=>events.findLast(e=>e.code===code&&e.id===id&&e.event==='duel:state')?.value;
@@ -22,8 +22,31 @@ function fixture(){
   function move(index,id=view().game.turnId,code='one',extra={}){
     const g=view(id,code).game;return duel.move(session(id,code),{sessionId:g.id,revision:g.revision,index,...extra});
   }
-  return {duel,rooms,events,session,view,start,move,advance:ms=>{now+=ms;duel.onTick();}};
+  return {duel,rooms,events,finished,session,view,start,move,setFailFinish:value=>{failFinish=value;},advance:ms=>{now+=ms;duel.onTick();}};
 }
+
+test('only a completed Omok match reports one idempotent winner event with classroom and match identity',()=>{
+  const f=fixture(),game=f.start('omok'),winner=game.turnId,loser=game.players.find(p=>p.id!==winner).id;
+  for(let x=3;x<=7;x++){
+    f.move(7*15+x,winner);
+    if(x<7)f.move(x,loser);
+  }
+  assert.equal(f.view().game.phase,'finished');assert.equal(f.view().game.winnerId,winner);
+  assert.deepEqual(f.finished,[{roomCode:'one',matchId:game.id,playerId:winner}]);
+});
+
+test('failed Omok win persistence leaves the final move retryable and never publishes an unrecorded finish',()=>{
+  const f=fixture(),game=f.start('omok'),winner=game.turnId,loser=game.players.find(p=>p.id!==winner).id;
+  for(let x=3;x<7;x++){f.move(7*15+x,winner);f.move(x,loser);}
+  const finalIndex=7*15+7;f.setFailFinish(true);
+  assert.throws(()=>f.move(finalIndex,winner),/simulated save failure/);
+  const unchanged=f.view().game;
+  assert.equal(unchanged.phase,'playing');assert.equal(unchanged.winnerId,null);assert.equal(unchanged.board[finalIndex],0);
+  assert.deepEqual(f.finished,[]);
+  f.setFailFinish(false);f.move(finalIndex,winner);
+  assert.equal(f.view().game.phase,'finished');assert.equal(f.view().game.winnerId,winner);
+  assert.equal(f.finished.length,1);assert.equal(f.finished[0].matchId,game.id);
+});
 
 test('both machines including radius fit inside the playground floor',()=>{
   assert.deepEqual(DUEL_ARCADES.map(m=>[m.x,m.y]),[

@@ -35,6 +35,23 @@ function placeAtMachine(player){
   const machine=STREET.objects.find(object=>object.kind==='crafting');
   Object.assign(player,{mapId:STREET_ID,x:machine.x,y:machine.y,connected:true,away:false});
 }
+function placeAtShop(player){
+  const shop=STREET.objects.find(object=>object.kind==='shop');
+  Object.assign(player,{mapId:STREET_ID,x:shop.x,y:shop.y,connected:true,away:false});
+}
+
+test('별상점은 조합 재료 이름 대신 레벨·수량 힌트만 제공한다',async t=>{
+  const {game,connect,call}=await fixture(t),{room:created}=await createTeacher(connect,call);
+  const student=await connect(),joined=await call(student,'room:join',{code:created.room.code,nickname:'1'});
+  const player=game.store.rooms.get(created.room.code).players.get(joined.selfId);placeAtShop(player);
+  const hint=await call(student,'shop:item-hints',{itemId:'android-card'});
+  assert.deepEqual(hint,{ok:true,hints:['Lv1 아이템 17개']});
+  const serialized=JSON.stringify(hint);
+  for(const privateValue of ['space-food-card','android-card','space-station-card'])assert.equal(serialized.includes(privateValue),false);
+  assert.deepEqual(await call(student,'shop:item-hints',{itemId:'star-card'}),{ok:true,hints:[]});
+  player.x=0;player.y=0;
+  assert.equal((await call(student,'shop:item-hints',{itemId:'android-card'})).ok,false);
+});
 
 test('교사는 LV2·LV3 조합과 LV4 보스 장비 3종을 조회하며 정확한 수량과 무변경을 보장한다',async t=>{
   const {game,connect,call}=await fixture(t),{socket,room:created}=await createTeacher(connect,call);

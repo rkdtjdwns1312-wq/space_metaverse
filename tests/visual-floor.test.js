@@ -35,5 +35,5 @@ test('낙원·태초 모든 문: 전체 폭 연장, 원본 및 캐시 보존',()
     checkCaps({caps:v.visualCaps,edges:v.points.map((p,i)=>[p,v.points[(i+1)%v.points.length]])},map.objects.filter(o=>o.kind==='gate').length);
     assert.equal(JSON.stringify(floor),before);assert.equal(visualGateFloor(floor,map),v);checked++;
   }
-  assert.equal(checked,12);
+  assert.equal(checked,16);
 });

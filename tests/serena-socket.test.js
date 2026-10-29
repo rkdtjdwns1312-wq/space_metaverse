@@ -73,6 +73,21 @@ test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요
   assert.equal(tick.monsters.filter(m=>m.typeId==='serena').length,1);assert.equal(f.disk().serena.state,'active');
 });
 
+test('빨간별의 숫자·5초 만료·대상 200% 피해가 실제 소켓 스냅샷과 활력에 반영된다',async t=>{
+  const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+  const boss=f.room.monsters.get(SERENA.monsterId),hits=[];let state;
+  f.a.on('world:positions',value=>state=value);f.a.on('combat:monster-hit',value=>hits.push(value));
+  f.pa.accountKind='master';ensureVitals(f.pa).hp=500;f.pa.x+=600;
+  assert(beginSerenaSkill(f.room,boss,'red',f.now,()=>0));boss.stunUntil=f.now+20000;
+  await until(()=>state?.monsters.find(monster=>monster.id===boss.id)?.serenaSkillEffects?.marks[0]?.requiredFriends===1);
+  const mark=state.monsters.find(monster=>monster.id===boss.id).serenaSkillEffects.marks[0];
+  assert.equal(mark.endsAt-mark.startsAt,5000);assert.equal(mark.nearbyFriends,0);
+  f.now+=4999;await pause(100);assert.equal(hits.filter(hit=>hit.skillKind==='serena-red').length,0);
+  f.pa.x+=100;f.now++;await until(()=>hits.some(hit=>hit.skillKind==='serena-red'));
+  assert.deepEqual(hits.filter(hit=>hit.skillKind==='serena-red').map(hit=>[hit.targetId,hit.damage]),[[f.pa.id,60]]);
+  assert.equal(ensureVitals(f.pa).hp,440);await pause(100);assert.equal(hits.filter(hit=>hit.skillKind==='serena-red').length,1);
+});
+
 test('선생님은 학생 자격 기록 없이 석상 앞에서 세레나를 소환한다',async t=>{
   const f=await fixture(t);
   const teacher=[...f.room.players.values()].find(p=>p.role==='teacher');

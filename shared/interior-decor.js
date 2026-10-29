@@ -9,7 +9,7 @@ export const INTERIOR_DECOR_COLORS=Object.freeze([
   {id:'lavender',name:'라벤더빛',hex:'#d5c4f3'}
 ]);
 const SHAPES=Object.freeze({
-  room:[{id:'default',name:'은빛 석판'},{id:'star',name:'별무늬 석판'},{id:'grid',name:'은빛 격자'}],
+  room:[{id:'default',name:'달빛 석재 회랑'},{id:'star',name:'별빛 목조 서재'},{id:'grid',name:'달빛 정원'}],
   mailbox:[{id:'default',name:'우체통'},{id:'star',name:'별 장식'},{id:'moon',name:'달 장식'}],
   board:[{id:'default',name:'둥근 게시판'},{id:'tablet',name:'우주 석판'},{id:'scroll',name:'별빛 두루마리'}],
   'report-board':[{id:'default',name:'작은 문서'},{id:'hex',name:'육각 보드'},{id:'star',name:'별 보드'}],

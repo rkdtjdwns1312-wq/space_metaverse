@@ -19,7 +19,7 @@ export const STATUS_TYPES=Object.freeze({
   'cetus-afterglow':{name:'고래의 선물',icon:'✨',tone:'cool',description:'배 속에서 나온 뒤 별자리 능력을 사용하면 별 파편 1개를 받아요.'},
   'black-star':{name:'검은별 상태',icon:'✦',tone:'dark',description:'검은별이 붙어 있어요. 선생님의 해제가 필요해요.'},
   'capricorn-blessing':{name:'염소의 축복',icon:'♑',tone:'warm',description:'체력과 마나를 회복하고 한 번 부활할 수 있어요.'},
-  'star-guardian':{name:'별의 수호',icon:'✦',tone:'mint',description:'5분 동안 최대 체력과 최대 마나가 각각 1 늘어나요.'},
+  'star-guardian':{name:'별의 수호',icon:'✦',tone:'mint',description:'5분 동안 최대 체력과 최대 마나가 각각 10% 늘어나요.'},
   'leo-courage':{name:'사자의 용기',icon:'♌',tone:'warm',description:'공격력이 잠시 높아져요.'},
   'libra-reflect':{name:'천칭의 보호',icon:'⚖',tone:'warm',description:'받는 피해를 공격자에게 돌려줘요.'},
   'hercules-shield':{name:'헤라클레스 방패',icon:'🛡',tone:'warm',description:'방패가 피해를 대신 받아요.'},

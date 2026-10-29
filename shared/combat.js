@@ -8,13 +8,16 @@ import {isMaster,MASTER_BASE} from './master-account.js';
 // LV5가 최종 초월체입니다. 단계별 기본값에 계열 보정을 적용합니다.
 export const ATTACK_POWER=Object.freeze({2:5,3:7,4:10,5:10});
 export const ATTACK_MODIFIERS=Object.freeze({'수호계':-2,'제작계':-1,'생산계':-1,'공격계':1,'특수계':0});
+// Q uses close-range contact/area hits for these four constellations.
+const MELEE_CONSTELLATIONS=new Set(['hercules','capricorn','leo','corona-borealis']);
+const meleePassive=(level,constellationId,player)=>!isTeacher(player)&&!isMaster(player)&&Number.isInteger(level)&&level>=2&&level<=5&&MELEE_CONSTELLATIONS.has(constellationId)?1:0;
 export function attackPowerOf(level,constellationId,player=null){
   if(isTeacher(player))return TEACHER_AVATAR.attackPower;
   // LV1은 아직 공격을 배우지 않은 상태입니다. 미지원 단계에는 보정을 적용하지 않습니다.
   if(!isMaster(player)&&(!Number.isInteger(level)||!Object.hasOwn(ATTACK_POWER,level)))return null;
   const type=constellationOf(constellationId,level)?.type;
   return Math.max(0,(isMaster(player)?MASTER_BASE.attack:ATTACK_POWER[level]+(ATTACK_MODIFIERS[type]??0))+transformationBonus(player).attackBonus+equipmentBonus(player).attack+statGrowthBonus(player,'attack')+
-    (player?.libraBuff?.bonus||0)+(player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0));
+    (player?.libraBuff?.bonus||0)+(player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0))+meleePassive(level,constellationId,player);
 }
 export const DEFENSE_POWER=Object.freeze({1:0,2:0,3:1,4:2,5:2});
 export const DEFENSE_MODIFIERS=Object.freeze({'생산계':0,'제작계':0,'공격계':-2,'특수계':0,'수호계':2});
@@ -25,7 +28,7 @@ export function defensePowerOf(level,constellationId,player=null){
   // 고래자리 E는 10초간 임시 방어력입니다. 서버 시각으로만 유효성을 판단합니다.
   const cetusBonus=player?.avatar?.constellationId==='cetus'&&player?.waterAura?.kind==='cetus'&&
     player.waterAura.endsAt>Date.now()?player.waterAura.defenseBonus:0;
-  return Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+equipmentBonus(player).defense+cetusBonus)+statGrowthBonus(player,'defense');
+  return Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+equipmentBonus(player).defense+cetusBonus)+meleePassive(level,constellationId,player)+statGrowthBonus(player,'defense');
 }
 export const damageAfterDefense=(power,defense)=>Math.max(1,power-defense);
 

@@ -22,7 +22,7 @@ function fixture(count=3){
 const view=(f,now)=>serenaSkillViews(f.room,f.boss,now);
 
 test('three server-owned spells have requested mana, cooldown, duration and target limits',()=>{
-  for(const [kind,cooldown,duration,count] of [['yellow',30000,20000,35],['black',30000,10000,2],['red',60000,20000,2]]){
+  for(const [kind,cooldown,duration,count] of [['yellow',30000,20000,35],['black',30000,10000,2],['red',60000,5000,2]]){
     const f=fixture(35);
     assert.equal(beginSerenaSkill(f.room,f.boss,kind,1000,()=>0),true);
     const marks=view(f,1000).marks.filter(m=>m.kind===kind);
@@ -109,15 +109,74 @@ test('black deadline kills exactly once despite defenses and leaves normal defea
   assert.deepEqual(p.input,{x:0,y:0,at:0});assert.equal(tickSerenaSkills(f.room,f.boss,12000).length,0);
 });
 
-test('red follows carrier, excludes self, uses ellipse and ticks every two seconds with attack power',()=>{
-  const f=fixture(3),[p,other,outside]=f.players;beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
-  // Keep a single carrier to isolate damage/self exclusion (random selection itself is tested above).
-  f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(m=>m.playerId===p.id);
-  const {radiusX,radiusY}=serenaRedRadii(p);p.x+=100;other.x=p.x+radiusX;outside.x=p.x;outside.y=p.y+radiusY+RULES.radius+1;
-  assert.equal(tickSerenaSkills(f.room,f.boss,2999).length,0);
-  const hits=tickSerenaSkills(f.room,f.boss,3000);assert.deepEqual(hits.map(h=>h.targetId),[other.id]);assert.equal(hits[0].damage,25);
-  assert.equal(p.battleVitals.hp,500);assert.equal(outside.battleVitals.hp,500);assert.equal(tickSerenaSkills(f.room,f.boss,4999).length,0);
-  p.x+=1000;other.x=p.x;assert.equal(tickSerenaSkills(f.room,f.boss,5000).length,1);
+test('red server roll is one or two per mark and its serialized view carries the required number',()=>{
+  const f=fixture(3),rolls=[0,0,0,.999999];
+  beginSerenaSkill(f.room,f.boss,'red',1000,()=>rolls.shift());
+  assert.deepEqual(view(f,1000).marks.map(mark=>mark.requiredFriends),[1,2]);
+  assert.deepEqual(view(f,1000).marks.map(mark=>mark.nearbyFriends),[0,0]);
+  assert.doesNotThrow(()=>JSON.stringify(view(f,1000)));
+});
+
+test('red requires simultaneous distinct other classmates, follows the victim, and never damages nearby allies',()=>{
+  const f=fixture(3),[p,first,second]=f.players;
+  beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
+  f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(mark=>mark.playerId===p.id);
+  const mark=f.boss.serenaSkills.marks[0];mark.requiredFriends=2;
+  const {radiusX,radiusY}=serenaRedRadii(p);
+  first.x=p.x+radiusX;second.x=p.x;second.y=p.y+radiusY+1;
+  for(const now of [2000,3000,4000]){
+    assert.equal(tickSerenaSkills(f.room,f.boss,now).length,0);
+    assert.equal(view(f,now).marks[0].nearbyFriends,1,'same friend cannot count twice');
+  }
+  first.x=p.x+radiusX+1;second.y=p.y;tickSerenaSkills(f.room,f.boss,4500);
+  assert.equal(view(f,4500).marks[0].nearbyFriends,1,'visits are not accumulated');
+  p.x+=500;first.x=p.x+100;second.x=p.x-100;tickSerenaSkills(f.room,f.boss,5999);
+  assert.equal(view(f,5999).marks.length,0);assert.equal(tickSerenaSkills(f.room,f.boss,6000).length,0);
+  assert(f.players.every(player=>player.battleVitals.hp===500));
+});
+
+test('red exact five-second deadline wins, movement and defenses cannot avoid 200% victim-only damage, and late ticks never replay',()=>{
+  const f=fixture(3),[p,other]=f.players;beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
+  f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(mark=>mark.playerId===p.id);
+  p.taurusImmuneUntil=20000;p.herculesShield={endsAt:20000,hp:999,absorbed:0};
+  p.libraAura={endsAt:20000,mapId:p.mapId,size:0,radius:300,skillDamageFactor:1};
+  assert.equal(tickSerenaSkills(f.room,f.boss,5999).length,0);
+  p.x+=1000;other.x=p.x;other.y=p.y;
+  const hits=tickSerenaSkills(f.room,f.boss,6000);
+  assert.deepEqual(hits.map(hit=>[hit.targetId,hit.damage]),[[p.id,60]]);
+  assert.equal(p.battleVitals.hp,440);assert.equal(other.battleVitals.hp,500);
+  assert.equal(p.herculesShield.hp,999);assert.equal(f.boss.hp,10000);
+  assert.equal(view(f,6000).bursts[0].kind,'red');assert.equal(view(f,6000).bursts[0].x,p.x);
+  assert.equal(tickSerenaSkills(f.room,f.boss,90000).length,0);
+  const late=fixture(1);beginSerenaSkill(late.room,late.boss,'red',1000,()=>0);
+  assert.equal(tickSerenaSkills(late.room,late.boss,90000)[0].damage,60);
+  assert.equal(tickSerenaSkills(late.room,late.boss,90001).length,0);
+});
+
+test('red rescue excludes teacher/offline/away/dead/black-star/other-map and includes a living LV1 classmate',()=>{
+  const f=fixture(8),p=f.players[0];beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
+  f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(mark=>mark.playerId===p.id);
+  for(const other of f.players.slice(1))Object.assign(other,{x:p.x+20,y:p.y});
+  f.players[1].role='teacher';f.boss.teacherRetaliation=new Set([f.players[1].id]);
+  f.players[2].connected=false;f.players[3].away=true;f.players[4].battleVitals.hp=0;
+  f.players[5].avatar.blackStar=true;f.players[6].mapId='space-plaza';f.players[7].x=p.x+1000;
+  tickSerenaSkills(f.room,f.boss,2000);assert.equal(view(f,2000).marks[0].nearbyFriends,0);
+  const rescuer=f.players[7];rescuer.avatar.level=1;rescuer.x=p.x+50;tickSerenaSkills(f.room,f.boss,3000);
+  assert.equal(view(f,3000).marks.length,0);assert.equal(p.battleVitals.hp,500);
+});
+
+test('red cleanup handles victim departure/KO and boss defeat/map change without a late blast',()=>{
+  for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.battleVitals.hp=0]){
+    const f=fixture(1);beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);change(f.players[0]);
+    assert.equal(tickSerenaSkills(f.room,f.boss,6000).length,0);assert.equal(view(f,6000).marks.length,0);
+  }
+  for(const change of [boss=>boss.hp=0,boss=>boss.mapId='space-plaza']){
+    const f=fixture(1);beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);change(f.boss);
+    assert.equal(tickSerenaSkills(f.room,f.boss,6000).length,0);assert.equal(f.boss.serenaSkills,null);
+  }
+  const f=fixture(1),p=f.players[0];beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);p.battleVitals.hp=50;
+  assert.equal(tickSerenaSkills(f.room,f.boss,6000)[0].defeated,true);assert.equal(p.battleVitals.defeatedAt,6000);
+  assert.deepEqual(p.input,{x:0,y:0,at:0});
 });
 
 test('eligibility excludes offline/away/dead/other-map/black-star and teacher preview; teacher retaliation opt-in is preserved',()=>{
@@ -160,18 +219,17 @@ test('failed casting never consumes mana, and sleep/stun block new casts without
 });
 
 test('Libra reflection can defeat Serena and cancels remaining marked areas in that same tick',()=>{
-  const f=fixture(3),[p,other]=f.players;
-  beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
-  f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(m=>m.playerId===p.id);
-  other.x=p.x+100;other.libraAura={endsAt:9000,mapId:other.mapId,size:0,radius:300,skillDamageFactor:1};
+  const f=fixture(1),[p]=f.players;
+  beginSerenaSkill(f.room,f.boss,'yellow',1000,()=>0);tickSerenaSkills(f.room,f.boss,3000);
+  p.libraAura={endsAt:9000,mapId:p.mapId,size:0,radius:300,skillDamageFactor:1};
   f.boss.hp=1;
-  const hits=tickSerenaSkills(f.room,f.boss,3000);
+  const hits=tickSerenaSkills(f.room,f.boss,5000);
   assert.equal(hits.length,1);assert.equal(hits[0].damage,0);assert.equal(f.boss.hp,0);assert.equal(f.boss.serenaSkills,null);
-  assert.equal(tickSerenaSkills(f.room,f.boss,5000).length,0);
+  assert.equal(tickSerenaSkills(f.room,f.boss,7000).length,0);
 });
 
-test('jittered server ticks preserve ten scheduled yellow/red pulses without catch-up volleys',()=>{
-  for(const kind of ['yellow','red']){
+test('jittered server ticks preserve ten scheduled yellow pulses without catch-up volleys',()=>{
+  for(const kind of ['yellow']){
     const f=fixture(2),[carrier,other]=f.players;beginSerenaSkill(f.room,f.boss,kind,1000,()=>0);
     f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(m=>m.playerId===carrier.id);
     let hitCount=0;

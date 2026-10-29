@@ -19,17 +19,20 @@ function fixture(id='star-crab'){
 }
 test('16종 모든 단계 기본 방어력+계열 보정·0하한, 피해1하한, 위조된 방어력 무시',()=>{
  for(const c of CONSTELLATIONS)for(const level of [1,2,3,4,5]){
-   const expected=level===1?0:Math.max(0,[0,0,1,2,2][level-1]+({'제작계':0,'생산계':0,'공격계':-2,'수호계':2}[c.type]||0));
+   const expected=(level===1?0:Math.max(0,[0,0,1,2,2][level-1]+({'제작계':0,'생산계':0,'공격계':-2,'수호계':2}[c.type]||0)))+
+     (level>=2&&['hercules','capricorn','leo','corona-borealis'].includes(c.id)?1:0);
    assert.equal(defensePowerOf(level,c.id),expected);
    const p=player('p',c.id,level);p.combat={defensePower:999};
    const result=damagePlayer(p,2,0);assert.equal(result.damage,Math.max(1,2-defensePowerOf(level,c.id,p)));
  }
  assert.equal(damageAfterDefense(5,0),5);assert.equal(damageAfterDefense(5,5),1);assert.equal(damageAfterDefense(5,9),1);
 });
-test('공격계3종의 LV2~5 방어0/0/0/0와 실제 LV1 몬스터 공격3의 피해3/3/3/3',()=>{
- for(const id of ['ophiuchus','sagittarius','corona-borealis'])for(const [level,defense,damage] of [[2,0,3],[3,0,3],[4,0,3],[5,0,3]]){
-   const p=player('p',id,level);assert.equal(defensePowerOf(level,id),defense);
-   const before=playerVitals(p).hp.current;assert.equal(damagePlayer(p,3,0).damage,damage);assert.equal(playerVitals(p).hp.current,before-damage);
+test('공격계 원거리 둘과 코로나자리 근접의 방어력·실제 LV1 몬스터 피해',()=>{
+ for(const id of ['ophiuchus','sagittarius','corona-borealis'])for(const [level,defense] of [[2,0],[3,0],[4,0],[5,0]]){
+   const expectedDefense=defense+(id==='corona-borealis'?1:0),p=player('p',id,level);
+   assert.equal(defensePowerOf(level,id),expectedDefense);
+   const before=playerVitals(p).hp.current,damage=Math.max(1,3-expectedDefense);
+   assert.equal(damagePlayer(p,3,0).damage,damage);assert.equal(playerVitals(p).hp.current,before-damage);
  }
 });
 test('단계별 이동량은1/1.3/1.69배, 일반 공격은 모두 1초 간격이며 산책 주기는4초다',()=>{

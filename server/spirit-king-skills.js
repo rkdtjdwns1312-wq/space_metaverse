@@ -1,8 +1,9 @@
-import {SPIRIT_SUMMON,SPIRIT_ORB} from '../shared/boss-skills.js';
+import {SPIRIT_SUMMON,SPIRIT_ORB,SPIRIT_BLUE_STAR} from '../shared/boss-skills.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
 import {playersInArea,reflectLibraDamage} from './area-combat.js';
 import {damagePlayer} from './vitals.js';
 import {monsterType} from '../shared/monsters.js';
+import {clearSpiritBlueStars,summonSpiritBlueStars} from './spirit-blue-stars.js';
 
 const TAU=Math.PI*2;
 const guardianRadius=monsterType('star-guardian').radius;
@@ -10,6 +11,7 @@ const guardianRadius=monsterType('star-guardian').radius;
 export function clearSpiritKingEffects(room,bossId){
   for(const [id,monster] of room.monsters||[])if(monster.summonerId===bossId)room.monsters.delete(id);
   room.spiritOrbs=room.spiritOrbs?.filter(orb=>orb.bossId!==bossId)||[];
+  clearSpiritBlueStars(room,bossId);
 }
 
 function summonGuardians(room,boss,now,map){
@@ -48,14 +50,17 @@ export function trySpiritKingSkills(room,boss,target,now,random,map){
       room.spiritOrbs.push({id:`${boss.id}-orb-${room.spiritOrbSequence}`,bossId:boss.id,mapId:boss.mapId,
         x:boss.x,y:boss.y,radius:SPIRIT_ORB.radius,dx:Math.cos(angle),dy:Math.sin(angle),
         startsAt:now,endsAt:now+SPIRIT_ORB.durationMs,lastMoveAt:now,lastHitAt:new Map(),power:boss.power||30});
-    }}
+    }},
+    {rule:SPIRIT_BLUE_STAR,ready:'blueStarReadyAt',decision:'blueStarDecisionAt',cast:()=>summonSpiritBlueStars(room,boss,now,map,random)}
   ];
   for(const {rule,ready,decision,cast} of skills){
     if(now<(boss[ready]||0)||now<(boss[decision]??now)||boss.mp<rule.mana)continue;
     boss[decision]=now+rule.decisionMs;
     const roll=random();
     if(!Number.isFinite(roll)||roll<0||roll>=rule.chance)continue;
-    boss.mp-=rule.mana;boss[ready]=now+rule.cooldownMs;cast();
+    const castResult=cast();
+    if(castResult===false){boss[decision]=now+rule.decisionMs;continue;}
+    boss.mp-=rule.mana;boss[ready]=now+rule.cooldownMs;
     return true;
   }
   return false;

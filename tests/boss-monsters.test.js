@@ -20,6 +20,7 @@ function roomFor(typeId){
   const type=monsterType(typeId),player=owner('a',type.mapId);
   const room={players:new Map([[player.id,player]])};
   const boss=monstersOf(room,1000,()=>0).get(typeId+'-boss');
+  boss.blueStarReadyAt=Infinity;
   room.monsters=new Map([[boss.id,boss]]);
   return {room,player,boss};
 }

@@ -42,7 +42,7 @@ export function deleteStudentAccounts(store,room,teacher,playerIds,now=Date.now(
   }
   for(const assignment of room.temple?.assignments||[])assignment.completedIds=assignment.completedIds.filter(id=>!has(id));
   for(const week of room.temple?.weeks||[])week.totals=week.totals.filter(row=>!has(row.playerId));
-  for(const field of ['starRanking','dodgeRanking','memoryRanking','signalRanking','tetrisRanking'])if(room[field])room[field]=room[field].filter(row=>!has(row.playerId));
+  for(const field of ['starRanking','dodgeRanking','memoryRanking','omokWinRecords','signalRanking','tetrisRanking'])if(room[field])room[field]=room[field].filter(row=>!has(row.playerId));
   // An absent card owner must not leave room-wide restrictions (e.g. Pluto).
   // Already awarded balances are never reversed.
   if(room.starCards)room.starCards=room.starCards.filter(row=>!has(row.userId));

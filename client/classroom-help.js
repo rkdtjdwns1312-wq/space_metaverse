@@ -24,10 +24,11 @@ export function mapGuide(mapId,planets=[]){
   let text='주변의 물체 가까이 가서 조사하기로 이곳의 활동을 살펴보세요.';
   if(planetIdOfMap(mapId))text='우리 부서의 규칙·실적을 확인하고 경고 제어돌과 꾸미기 장치를 이용해요.';
   else if(mapId==='space-plaza')text='알림장·시간표·과제·미션을 확인하고 부서행성과 우주 탐사를 이용해요.';
-  else if(mapId==='star-street')text='북쪽에서 배우고, 가운데 공원에서 쇼핑·조합하고, 남쪽 놀이터에서 함께 놀아요. 공원 분수대에서 5분간 별의 수호를 받을 수 있어요.';
+  else if(mapId==='star-street')text='북쪽에서 배우고, 가운데 공원에서 쇼핑·조합하고, 남쪽 놀이터에서 함께 놀아요. 공원 분수대에서 5분간 최대 체력과 최대 마나가 10% 늘어나는 별의 수호를 받을 수 있어요.';
   else if(mapId==='milky-valley')text='성장의 별에서 경험치를 사고, 경험치를 채우면 진화의 별에서 진화해요.';
   else if(mapId==='black-hole')text='검은별을 받은 친구들이 머무는 곳이에요. 상태가 해제되어야 나갈 수 있어요.';
   else if(mapId==='whale-stomach')text='함께 들어온 친구와 대화해요. 탈출하면 고래자리의 혜택은 받지 못해요.';
+  else if(mapId.startsWith('sleeping-stars-'))text='오색별빛 쉼터 북쪽에서 이어지는 조용한 여행길이에요. 위쪽 문을 지날수록 작은 별빛이 줄어들어요. 아래쪽 문으로 돌아갈 수 있어요.';
   else if(mapId==='star-origin-4')text='별의 여신 석상을 조사하고 조건을 갖추어 세레나에게 도전해요.';
   else if(mapId.startsWith('star-origin-'))text='별자리 몬스터를 만나 전투하고 우주에너지·아이템 재료를 모아 보세요.';
   else if(mapId==='moon-garden')text='귀여운 몬스터를 만나고 태양의 낙원과 달의 낙원으로 탐험을 떠나요.';
