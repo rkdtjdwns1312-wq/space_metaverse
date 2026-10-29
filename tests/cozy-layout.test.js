@@ -9,6 +9,6 @@ test('three cozy venues fit the shelter and stay reachable for all student level
  for(let level=1;level<=5;level++){
   const p={role:'student',avatar:{level}};
   assert(avatarPositionIsClear(STREET,STREET.spawn.x,STREET.spawn.y,p));
-  for(const o of props){const point={x:o.x,y:o.y+100};assert(avatarPositionIsClear(STREET,point.x,point.y,p),o.id+' approach '+level);assert(interactionDistance(point,o)<=interactionReach(o),o.id+' interaction');assert(!avatarPositionIsClear(STREET,o.x,o.y,p),o.id+' solid base');}
+  for(const o of props){const point={x:o.x,y:o.y+(o.kind==='cozy-garden'?70:100)};assert(avatarPositionIsClear(STREET,point.x,point.y,p),o.id+' approach '+level);assert(interactionDistance(point,o)<=interactionReach(o),o.id+' interaction');assert(!avatarPositionIsClear(STREET,o.x,o.y,p),o.id+' solid base');}
  }
 });

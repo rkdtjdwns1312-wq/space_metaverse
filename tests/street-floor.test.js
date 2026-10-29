@@ -67,3 +67,13 @@ test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고
     assert(avatarPositionIsClear(STREET,o.x,o.y+o.radius+45,walker),o.id+' 진입로가 열려 있다');
   }
 });
+
+test('밤맵 입구는 과학·교양 사이 위쪽이며 모든 아바타의 왕복 통로가 열린다',()=>{
+ const science=STREET.objects.find(o=>o.kind==='science-station'),culture=STREET.objects.find(o=>o.kind==='culture-station'),gate=STREET.objects.find(o=>o.id==='gate-sleeping-stars');
+ assert.equal(gate.x,(science.x+culture.x)/2);assert(gate.y<science.y&&gate.y<culture.y);
+ assert.deepEqual([gate.x,gate.y],[STREET_LAYOUT.entrance.x,STREET_LAYOUT.entrance.y]);
+ for(const p of [...Array.from({length:5},(_,i)=>({role:'student',avatar:{level:i+1}})),{role:'teacher',avatar:{}}]){
+  for(let y=500;y>=gate.y;y-=5)assert(avatarPositionIsClear(STREET,gate.x,y,p),'입구 세로 통로 '+y);
+  assert(avatarPositionIsClear(STREET,STREET_LAYOUT.northArrival.x,STREET_LAYOUT.northArrival.y,p));
+ }
+});

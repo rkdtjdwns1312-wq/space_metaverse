@@ -46,7 +46,7 @@ import {drawStreetGround,drawStreetFountain} from './street-art.js';
 import {drawCachedStreetProp} from './street-prop-cache.js';
 import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
-import {drawPaintedProp} from './painted-props.js';
+import {drawPaintedProp,PAINTED_PROPS} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
 import {drawPaintedGate,gateVisualBox} from './gate-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
@@ -356,18 +356,19 @@ export function createWorld(canvas) {
     ctx.fillStyle=o.color||'#fff2c9';ctx.beginPath();ctx.arc(o.x,poleTop,10,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#e8dba0';ctx.lineWidth=2;ctx.stroke();
   }
+  const streetPropVisible=o=>!(o.x+300<view.x||o.x-300>view.x+view.width||o.y+150<view.y||o.y-360>view.y+view.height);
   function drawStreet(map,time){
     drawStreetGround(ctx,map,{fountain:false});
     for(const o of map.objects){
       // Include the complete roof, sign and glow, even with the foot offscreen.
       // The old loop repainted every station and arcade at the opposite end.
-      if(o.x+300<view.x||o.x-300>view.x+view.width||o.y+150<view.y||o.y-360>view.y+view.height)continue;
+      // 발전소는 캐릭터와 발밑 깊이를 비교해 아래 레이어 단계에서 한 번만 그립니다.
+      if(o.kind?.endsWith('-station')||!streetPropVisible(o))continue;
       if(drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))continue;
       if(o.kind==='gate'){drawGate(o);continue;}
       if(o.kind==='shop'){drawShop(o);continue;}
       if(o.kind==='energy-shop'){drawEnergyShop(ctx,o);continue;}
       if(o.kind==='crafting'){drawCraftingMachine(ctx,o);continue;}
-      if(o.kind.endsWith('-station')){drawPaintedProp(ctx,o);continue;}
       if(o.kind==='lamp'){drawLamp(o);continue;}
       if(o.kind==='duel-arcade'){drawDuelArcade(ctx,o);continue;}
       if(o.kind==='hall-of-fame'){drawHallOfFame(ctx,o,time);continue;}
@@ -826,6 +827,7 @@ export function createWorld(canvas) {
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
         ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
+        ...map.objects.filter(o=>myMapId===STREET_ID&&o.kind?.endsWith('-station')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }

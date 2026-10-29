@@ -5,10 +5,10 @@ export const STREET_LAYOUT=Object.freeze({
   north:Object.freeze({x:900,y:530,rx:870,ry:490}),
   upper:Object.freeze({x:900,y:1690,rx:760,ry:570}),
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
-  // 발전소 북서쪽에 덧붙인 작은 입구 섬과 짧은 다리. 기존 마당은 유지합니다.
-  entrance:Object.freeze({x:180,y:100,rx:140,ry:85}),
-  entranceBridge:Object.freeze({x:180,top:140,bottom:470,halfWidth:70}),
-  northGate:Object.freeze({x:180,y:100}),northArrival:Object.freeze({x:180,y:210}),
+  // 과학(900)·교양(1370) 발전소 사이 위쪽에 입구와 연결 길을 둡니다.
+  entrance:Object.freeze({x:1135,y:100,rx:140,ry:85}),
+  entranceBridge:Object.freeze({x:1135,top:140,bottom:250,halfWidth:70}),
+  northGate:Object.freeze({x:1135,y:100}),northArrival:Object.freeze({x:1135,y:210}),
   westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})
 });
 // 중앙 쉼터의 장식과 충돌 판정은 같은 좌표를 사용합니다.
