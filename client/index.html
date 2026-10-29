@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/inventory-pages.css">
   <link rel="stylesheet" href="/auxiliary-skills.css">
   <link rel="stylesheet" href="/serena-ui.css">
+  <link rel="stylesheet" href="/dark-star-ui.css">
   <link rel="stylesheet" href="/boss-dialogue.css">
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" type="module"></script>
@@ -228,6 +229,7 @@
   <section id="teacher-black-star-status" hidden><h3>검은별 상태</h3><ul id="black-star-students" class="warning-list"></ul><p id="black-star-empty" class="muted">현재 검은별 학생이 없어요.</p></section>
   <div class="dialog-actions"><button id="black-star-close" class="secondary" type="button">닫기</button></div></dialog>
 <dialog id="black-hole-info-dialog" aria-labelledby="black-hole-info-title"><h2 id="black-hole-info-title">검은별</h2><p>여기는 검은별을 받은 사람들이 머무는 공간입니다. 검은별 상태가 풀리기 전까지 나갈 수 없습니다.</p><div class="dialog-actions"><button id="black-hole-info-close" class="primary" type="button">확인</button></div></dialog>
+<dialog id="dark-star-dialog" aria-labelledby="dark-star-title" aria-describedby="dark-star-message"><h2 id="dark-star-title">태초의 검은별</h2><img src="/assets/maps/dark-star-statue.webp" alt="굳어 있는 별 석상"><p>굳어 있는 별 석상에서 검은 빛이 느껴집니다.</p><p id="dark-star-message" data-message role="status" aria-live="polite">소환합니까?</p><div class="dialog-actions"><button data-cancel class="secondary" type="button">아니오</button><button data-summon class="primary" type="button">예</button></div></dialog>
 <dialog id="serena-dialog" aria-labelledby="serena-title" aria-describedby="serena-message"><h2 id="serena-title">세레나</h2><p id="serena-message" role="status" aria-live="polite">보스를 소환하시겠습니까?</p><div class="dialog-actions"><button id="serena-no" class="secondary" type="button">아니오</button><button id="serena-yes" class="primary" type="button">예</button></div></dialog>
 <dialog id="planet-move-dialog" aria-labelledby="planet-move-title"><h2 id="planet-move-title">행성위치 이동하기</h2><p id="planet-move-name"></p><p id="planet-move-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-move-cancel" class="secondary" type="button">취소</button><button id="planet-move-submit" class="primary" type="button">이 위치로 이동하기</button></div></dialog>
 <dialog id="planet-create-dialog"><h2 id="planet-create-title">새 행성 신청하기</h2><p id="planet-create-hint" class="muted">행성은 우리 반의 역할이에요. 어떤 역할의 행성인지 이름과 소개를 적어요.</p><fieldset id="planet-types"><legend>행성 종류</legend></fieldset><label for="planet-name">행성 이름</label><input id="planet-name" maxlength="10" required placeholder="예: 급식행성"><label for="planet-desc">행성 소개</label><input id="planet-desc" maxlength="40" placeholder="어떤 친구들의 행성인가요? (선택)"><fieldset id="planet-colors"><legend>행성 색</legend></fieldset><p id="planet-create-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-create-cancel" class="secondary" type="button">취소</button><button id="planet-create-submit" class="primary" type="button">신청하기</button></div></dialog>

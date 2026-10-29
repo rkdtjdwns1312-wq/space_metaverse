@@ -77,8 +77,9 @@ import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribut
 import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
+import {summonDarkStar} from './dark-star.js';
 import {summonSerena} from './serena.js';
-import {serenaView,settleBossDeaths,restoreSerenaStatue} from './boss-lifecycle.js';
+import {serenaView,darkStarView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -422,6 +423,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     registerHistoryLibrary({socket,action,store,roster,clock});
     registerScienceLibrary({socket,action,store,roster,clock});
     registerCozyActivities({socket,action,store,roster,clock});
+    action('dark-star:summon',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const result=summonDarkStar(session.room,session.player,clock());
+      roster(session.room);return result;
+    });
     action('serena:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonSerena(session.room,session.player,clock());
@@ -2572,9 +2578,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
       const bossNow=clock();
-      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt)){
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt)){
         try{transaction(()=>{
-          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);roster(room);
+          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);roster(room);
           deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
         });}catch(error){
           const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;
@@ -2699,7 +2705,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
           const positions=visiblePositions(room,allPositions,viewer);
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),darkStar:darkStarView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         }
         previous.set(room.code,next);

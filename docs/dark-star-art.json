@@ -1,0 +1,23 @@
+{
+  "tool": "built-in image_gen",
+  "style": "손으로 그린 한국 판타지 MMORPG/동화풍, 투명 배경",
+  "assets": [
+    {
+      "asset": "client/assets/monsters/dark-star.webp",
+      "source": "exec-f304efdb-f677-4c92-987a-ed14a1bc05ec.png",
+      "designBrief": "검은 빛의 다섯 꼭짓점 별, 대각선 토성 고리, 각 끝에 빨강·보라·남색·초록·파랑 작은 위성. 얼굴/팔다리 없음. 은빛 보라 테두리로 밤맵 가독성 유지."
+    },
+    {
+      "asset": "client/assets/maps/dark-star-statue.webp",
+      "source": "exec-a5d9b005-0615-46b0-a00a-bc44d1b68154.png",
+      "designBrief": "보스 원화를 참조해 고리·다섯 위성까지 굳은 회색 돌 석상으로 변환. 작은 원형 받침. 실제 소환 전 중앙 상호작용 오브젝트."
+    },
+    {
+      "asset": "client/assets/items/black-gem.webp",
+      "source": "exec-3b66b88f-403a-447a-a385-a3ab29ff3360.png",
+      "previousSource": "exec-69ef9cd7-4e71-4b3d-87cb-10d8512fe8dd.png",
+      "designBrief": "검은 별 보석. 사용자 최종 수정에 따라 대각선 고리를 완전히 제거. 보라/은빛 면과 가는 테두리 유지."
+    }
+  ],
+  "note": "designBrief는 제작 의도 요약이며 원문 프롬프트를 그대로 옮긴 것은 아니다. 원본은 이 PC .codex/generated_images/01a0a2bb-a4bd-70c0-b099-77151b42c06c에 보존."
+}

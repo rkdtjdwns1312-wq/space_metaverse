@@ -1,5 +1,6 @@
 import {onFloatingCliffReady} from './floating-island.js';
 import {drawParadiseFloor} from './paradise-floor.js';
+import {darkStarMap} from '/shared/dark-star.js';
 import {serenaMap} from '/shared/serena.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
 import {drawPlazaGround} from './plaza-art.js';
@@ -39,7 +40,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
-  const map=id=>serenaMap(mapOf(id,planets()),getRoom()?.serena);
+  const map=id=>darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar);
   const pictures=new Map();
   const picture=src=>{
     if(!src)return null;
@@ -101,6 +102,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       kind==='mission-board'?'/assets/maps/plaza-mission-board.png':
       kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
       kind==='goddess-statue'?'/assets/maps/star-goddess-statue.png':
+      kind==='dark-star-statue'?'/assets/maps/dark-star-statue.webp':
       kind==='evolution'?'/assets/maps/evolution-altar.png':
       kind==='growth'?'/assets/maps/growth-altar.png':
       kind==='black-star'?'/assets/maps/black-star-sanctuary.png':
@@ -217,7 +219,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     if(!dialog.open)return;
     const selectable=[...UNIVERSE_MAP_LAYOUT.map(item=>item.id),...planets().map(planet=>interiorIdOf(planet.id))];
     if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:PLAZA_ID;
-    const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
+    const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
       $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
@@ -231,7 +233,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   // showModal 직후에도 첫 프레임을 그립니다. 열린 동안에만 큰 지도를 갱신합니다.
   return {
-    update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
+    update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,getRoom()?.darkStar?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
     positions(data){const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};const now=performance.now();if(now-lastDraw>=100&&(minimapOpen||dialog.open)){lastDraw=now;render();}}},
     reset(){if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
   };

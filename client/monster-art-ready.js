@@ -16,7 +16,7 @@ export function prepareMonsterArt(shape){
     const tasks=[preloadWaterMonsterArt(shape),preloadLv2MonsterArt(shape),
       preloadSunMonsterArt(shape),preloadCelestialArt(shape),
       preloadMonsterAttack(shape),preloadOriginWalkArt(shape)];
-    if(['leoon','noksera','spirit-king','serena'].includes(shape))tasks.push(preloadBossArt(shape));
+    if(['leoon','noksera','spirit-king','serena','dark-star'].includes(shape))tasks.push(preloadBossArt(shape));
     if(shape==='star-guardian')tasks.push(preloadGuardianArt());
     prepared.set(shape,Promise.allSettled(tasks));
   }

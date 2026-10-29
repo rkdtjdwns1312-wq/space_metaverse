@@ -7,6 +7,7 @@ import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
+import {DARK_STAR} from '../shared/dark-star.js';
 import {SERENA} from '../shared/serena.js';
 import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
 import {bossVictoryCredits} from './serena-progress.js';
@@ -38,7 +39,8 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
-    const statue=type.id===SERENA.typeId?map.objects.find(o=>o.id===SERENA.statueId):null;
+    const manualBoss=[SERENA,DARK_STAR].find(boss=>boss.typeId===type.id);
+    const statue=manualBoss?map.objects.find(o=>o.id===manualBoss.statueId):null;
     let x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
     // 별의 시작점 3 몬스터는 기존 그림과 충돌 반경을 함께 절반으로 줄입니다.
@@ -67,6 +69,10 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   // 수동 소환 상태만 복구합니다. 휴면/다음 날 07시 대기 중에는 자동 생성하지 않습니다.
   if(room.serena?.state==='active'&&!room.monsters.has(SERENA.monsterId)){
     const [id,m]=create({id:SERENA.monsterId,typeId:SERENA.typeId},0);
+    m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
+  }
+  if(room.darkStar?.state==='active'&&!room.monsters.has(DARK_STAR.monsterId)){
+    const [id,m]=create({id:DARK_STAR.monsterId,typeId:DARK_STAR.typeId},0);
     m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
   }
   return room.monsters;
@@ -184,7 +190,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
-      if(m.typeId===SERENA.typeId||room.pendingBossDeaths?.has(m.id))continue;
+      if(m.typeId===SERENA.typeId||m.typeId===DARK_STAR.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
@@ -300,7 +306,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
     const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
-    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||(m.typeId===SERENA.typeId&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
+    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
     const terrainBlocked=terrainBlockedAt(x,y);
     const blockedAt=(x,y)=>terrainBlockedAt(x,y)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>{
       if(o===m||o.hp<=0||o.mapId!==m.mapId)return false;

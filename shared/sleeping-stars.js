@@ -16,13 +16,13 @@ export function createSleepingStarsMaps(originMaps,streetLayout){
     return Object.freeze({id:sleepingStarsId(stage),name:'별들이 잠드는 곳 '+stage,
       theme:SLEEPING_STARS_THEME,stage,width:origin.width,height:origin.height,
       spawn:Object.freeze({...origin.spawn}),
-      objects:origin.objects.filter(object=>object.kind==='gate').map(gate=>{
+      objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate').map(gate=>{
         const back=gate.id==='gate-back',targetStage=stage+(back?-1:1);
         return Object.freeze({...gate,
           name:(back&&stage===1?'오색별빛 쉼터':'별들이 잠드는 곳 '+targetStage)+(back?' ↓':' ↑'),
           target:back&&stage===1?streetLayout.id:sleepingStarsId(targetStage),
           arrival:Object.freeze(back&&stage===1?{...streetLayout.northArrival}:{...gate.arrival}),
           color:'#a6a8b4'});
-      })});
+      })]});
   }));
 }

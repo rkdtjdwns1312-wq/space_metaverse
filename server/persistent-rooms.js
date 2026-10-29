@@ -47,7 +47,7 @@ import {validateLearnedRecipeIds} from './learned-recipes.js';
 import {validateExploration,validateExplorationChances} from './exploration.js';
 import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 import {validateSerenaProgress} from './serena-progress.js';
-import {validateSerenaState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
+import {validateSerenaState,validateDarkStarState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
 function offline(p) {
@@ -60,7 +60,7 @@ export function toRecord(room) {
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     cultureRecommendations:validateCultureRecommendations(room.cultureRecommendations,cultureVotes),
     dailyMissions:validateDailyMissions(room.dailyMissions),
-    serena:validateSerenaState(room.serena),bossRespawns:validateBossRespawns(room.bossRespawns),
+    serena:validateSerenaState(room.serena),darkStar:validateDarkStarState(room.darkStar),bossRespawns:validateBossRespawns(room.bossRespawns),
     ...(room.adminCreated?{adminCreated:true}:{}),
     ...(room.teacherAccess?{teacherAccess:structuredClone(room.teacherAccess)}:{}),
     temple:structuredClone(room.temple),exploration:validateExploration(room.exploration),
@@ -116,7 +116,7 @@ export function fromRecord(r,now=Date.now()) {
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),ariesInvites:new Map(),cancerInvites:new Map(),
     cultureRecommendations,
     dailyMissions:validateDailyMissions(r.dailyMissions),
-    serena:validateSerenaState(r.serena),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
+    serena:validateSerenaState(r.serena),darkStar:validateDarkStarState(r.darkStar),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
     teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
     temple:validateTemple(r.temple),exploration:validateExploration(r.exploration),
     starCards:validateStarCards(r.starCards),
@@ -208,7 +208,7 @@ export class PersistentRoomStore extends RoomStore {
       const restored=fromRecord(r,this.clock());
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
-      this.records.set(r.code,{...r,serena:restored.serena,bossRespawns:restored.bossRespawns,
+      this.records.set(r.code,{...r,serena:restored.serena,darkStar:restored.darkStar,bossRespawns:restored.bossRespawns,
         students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress}))});
     }}
     catch(error){this.files.close();throw error;}

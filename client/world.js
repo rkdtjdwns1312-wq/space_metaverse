@@ -58,6 +58,8 @@ import {drawGuardianMonster} from './guardian-monster-art.js';
 import {drawSpiritOrb} from './spirit-orb-art.js';
 import {drawSpiritBlueStar} from './spirit-blue-star-art.js';
 import {prepareMonsterArt} from './monster-art-ready.js';
+import {darkStarMap,dormantDarkStar} from '/shared/dark-star.js';
+import {drawDarkStarStatue} from './dark-star-art.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
 import {drawNokseraWarning,drawNokseraBurst} from './noksera-skill.js';
@@ -142,7 +144,7 @@ export function createWorld(canvas) {
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   const poisonZones=createOphiuchusEffects(canvas);
-  let hits=[],starCards=[],campaignSigns=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena();
+  let hits=[],starCards=[],campaignSigns=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena(),darkStar=dormantDarkStar();
   let waterAuras=[],waterPulses=[],swanAuras=[],ariesClouds=[],taurusDashes=[],herculesShields=[],herculesBursts=[],libraAuras=[],coronaAuras=[],coronaFalls=[],capricornBlessings=[],leoRoars=[];
   const lastSwanAura=new Map();
   function swanVisualFor(playerId,live,time){
@@ -170,7 +172,7 @@ export function createWorld(canvas) {
   }
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
-  function currentMap(){return serenaMap(mapOf(myMapId,planets.map(p=>({...p,kind:'planet'}))),serena);}
+  function currentMap(){return darkStarMap(serenaMap(mapOf(myMapId,planets.map(p=>({...p,kind:'planet'}))),serena),darkStar);}
   let placementPlanetId=null;
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
@@ -674,7 +676,7 @@ export function createWorld(canvas) {
       const previous=points.get(p.id);
       // 모서리에서 막힌 보간을 복구할 때도 한 프레임에 밀린 거리를 뛰지 않습니다.
       const maxDistance=previous?(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)*Math.max(0,t-previous.time)/1000+.1:Infinity;
-      points.set(p.id,{...avatarRenderPoint(serenaMap(mapOf(p.mapId,planets),serena),position,{x:p.x,y:p.y},p,monsters,
+      points.set(p.id,{...avatarRenderPoint(darkStarMap(serenaMap(mapOf(p.mapId,planets),serena),darkStar),position,{x:p.x,y:p.y},p,monsters,
         previous?.mapId===p.mapId?previous:null,maxDistance,taurusDashes.some(d=>d.playerId===p.id&&d.mapId===p.mapId&&t-d.startsAt<d.durationMs)),mapId:p.mapId,time:t});
     }
     for(const m of monsters)if(m.mapId===myMapId)monsterPoints.set(m.id,monsterTracks.get(m.id)?.at(t)||m);
@@ -694,7 +696,7 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle=map.theme==='sleeping-stars'?'#010203':'#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects)drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
@@ -826,6 +828,7 @@ export function createWorld(canvas) {
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
+        ...map.objects.filter(o=>o.kind==='dark-star-statue').map(o=>({y:o.y+30,draw:()=>drawDarkStarStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
         ...map.objects.filter(o=>myMapId===STREET_ID&&o.kind?.endsWith('-station')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
@@ -917,7 +920,7 @@ export function createWorld(canvas) {
   return {
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
-      serena=room?.serena||dormantSerena();
+      serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       if(nextMap!==myMapId||id!==selfId){extraLocomotion.clear();bodyMotion.clear();}
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();poisonZones.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
@@ -949,7 +952,7 @@ export function createWorld(canvas) {
     herculesBurst(data){if(data.mapId===myMapId)herculesBursts.push({...data,startsAt:performance.now(),until:performance.now()+550});},
     coronaFall(data){if(data.mapId===myMapId)coronaFalls.push({...data,startsAt:performance.now(),until:performance.now()+350});},
     leoRoar(data){if(data.mapId===myMapId)leoRoars.push({...data,startsAt:performance.now(),until:performance.now()+data.durationMs});},
-    positions(data){if(data.spiritBlueStars)spiritBlueStars=data.spiritBlueStars;if(data.serena)serena=data.serena;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
+    positions(data){if(data.darkStar)darkStar=data.darkStar;if(data.spiritBlueStars)spiritBlueStars=data.spiritBlueStars;if(data.serena)serena=data.serena;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));const now=performance.now();if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));for(const [id,x,y,facingX] of data.positions){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}},
     waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
     monsters(data){setMonsters(data.monsters||[]);if(Array.isArray(data.spiritOrbs))spiritOrbs=data.spiritOrbs;},
     energyDrops(data){energyDrops=data.drops||[];},
@@ -1034,7 +1037,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','shelter-fountain'].includes(o.kind)),
+        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','shelter-fountain'].includes(o.kind)),
           ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];
         let best=null,bestDist=Infinity;
         for(const o of candidates){

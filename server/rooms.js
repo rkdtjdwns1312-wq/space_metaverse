@@ -9,7 +9,7 @@ import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
 import {monsterViews} from './monsters.js';
-import {serenaView} from './boss-lifecycle.js';
+import {serenaView,darkStarView} from './boss-lifecycle.js';
 import {serenaEligible,serenaEligibility} from './serena-progress.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
@@ -170,7 +170,7 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       spiritBlueStars:spiritBlueStarViews(room,viewer?.mapId||room.mapId,now),
-      monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),
+      monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),darkStar:darkStarView(room),
       missions:missionViews(room,viewer,now),
       ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
       cancerInvites:[...(room.cancerInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)).map(invite=>{

@@ -14,6 +14,7 @@ import {preloadBlackHoleArt} from './black-hole-art.js';
 import {preloadWhaleArt} from './map-image.js';
 import {preloadDuelArcades} from './duel-arcade-art.js';
 import {preloadHallOfFame} from './hall-of-fame-art.js';
+import {preloadDarkStarArt} from './dark-star-art.js';
 import {preloadCozyArt} from './cozy-activities-art.js';
 
 // Wait for the actual renderer's Image objects, not duplicate HTTP preloads.
@@ -35,7 +36,7 @@ export function prepareMapArt(map,planets=[]){
   else if(family==='street')work.push(preloadStreetArt(),preloadPaintedProps(),preloadHallOfFame(),preloadCozyArt(),preloadDuelArcades((map.objects||[]).filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
   else if(family==='valley')work.push(preloadValleyArt());
   else if(family==='origin')work.push(preloadOriginArt());
-  else if(family==='sleeping-stars')work.push(preloadSleepingStarsArt(map));
+  else if(family==='sleeping-stars'){work.push(preloadSleepingStarsArt(map));if(map.id==='sleeping-stars-1')work.push(preloadDarkStarArt());}
   else if(family==='paradise')work.push(preloadParadiseArt());
   else if(family==='black-hole')work.push(preloadBlackHoleArt());
   else if(family==='interior')work.push(preloadInteriorArt());
