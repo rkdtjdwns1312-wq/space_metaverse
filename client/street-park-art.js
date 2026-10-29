@@ -1,4 +1,4 @@
-// 쉼터의 왼쪽 반원 화단. 화단·분수의 발밑 좌표는 shared/street-layout.js와 같습니다.
+// 분수의 그림·충돌 좌표는 shared/street-layout.js를 함께 사용합니다.
 import {STREET_PARK} from '/shared/street-layout.js';
 function oval(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}
 function gardenBed(c,x,y,rx,ry,seed){
@@ -28,7 +28,20 @@ function fountain(c,x,y){
   }
   c.save();c.translate(x,y-50);c.fillStyle='#fff2bd';c.strokeStyle='#aa9ac0';c.lineWidth=2;c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?7:16;i?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();c.stroke();c.restore();
 }
-export function drawStreetPark(c,art={}){
+// 원화 위 물줄기 하이라이트와 잔물결만 8프레임으로 움직입니다.
+function flowingWater(c,time,reducedMotion){
+  const frame=reducedMotion?0:Math.floor(time/150)%8,phase=frame/8;
+  c.save();c.translate(-104,-100);c.scale(208/768,208/768);
+  c.strokeStyle='#e9ffffa0';c.lineWidth=2.6;c.lineCap='round';
+  c.setLineDash([7,23]);c.lineDashOffset=-frame*3.75;
+  for(const [sx,sy,cx,cy,ex,ey] of [[265,174,221,202,210,288],[319,194,296,217,289,264],[449,194,474,219,480,264],[503,174,548,202,558,288]]){
+    c.beginPath();c.moveTo(sx,sy);c.quadraticCurveTo(cx,cy,ex,ey);c.stroke();
+  }
+  c.setLineDash([]);c.strokeStyle=`rgba(235,255,255,${.38*(1-phase)+.08})`;c.lineWidth=2;
+  for(const x of [210,384,558]){c.beginPath();c.ellipse(x,x===384?324:293,13+phase*21,3+phase*5,0,0,Math.PI*2);c.stroke();}
+  c.restore();
+}
+export function drawStreetPark(c,art={},time=0,reducedMotion=true){
   c.save();
   for(const bed of STREET_PARK.beds){
     if(art.flowerbed?.complete&&art.flowerbed.naturalWidth)c.drawImage(art.flowerbed,bed.x-112,bed.y-67,224,112);
@@ -36,7 +49,7 @@ export function drawStreetPark(c,art={}){
   }
   const f=STREET_PARK.fountain;
   c.translate(f.x,f.y);c.scale(f.scale,f.scale);
-  if(art.fountain?.complete&&art.fountain.naturalWidth)c.drawImage(art.fountain,-104,-100,208,208*2/3);
+  if(art.fountain?.complete&&art.fountain.naturalWidth){c.drawImage(art.fountain,-104,-100,208,208*2/3);flowingWater(c,time,reducedMotion);}
   else fountain(c,0,0);
   c.restore();
 }

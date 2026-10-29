@@ -8,7 +8,7 @@ import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 test('오색별빛 쉼터의 발전소·상점·놀이터가 하나의 외곽 경계로 이어진다',()=>{
   assert.equal(STREET.width,1800);assert.equal(STREET.height,3300);
   assert.equal(STREET_LAYOUT.upper.rx,760);assert.equal(STREET_LAYOUT.lower.rx,800);
-  assert.equal(isParadise(STREET.id),false);assert.equal(STREET_POLYGONS.length,6);assert.ok(STREET_EDGES.length>0);
+  assert.equal(isParadise(STREET.id),false);assert.equal(STREET_POLYGONS.length,8);assert.ok(STREET_EDGES.length>0);
   for(let x=STREET_LAYOUT.westGate.x;x<=STREET_LAYOUT.upper.x;x+=5)assert.ok(onStreetFloor(STREET,x,STREET_LAYOUT.upper.y,RULES.radius),`서쪽 다리 ${x}`);
   for(let y=STREET_LAYOUT.north.y;y<=STREET_LAYOUT.upper.y;y+=5)assert.ok(onStreetFloor(STREET,STREET_LAYOUT.upper.x,y,RULES.radius),`북쪽 발전소 다리 ${y}`);
   for(let y=STREET_LAYOUT.upper.y;y<=STREET_LAYOUT.lower.y;y+=5)assert.ok(onStreetFloor(STREET,STREET_LAYOUT.upper.x,y,RULES.radius),`중앙·남쪽 다리 ${y}`);

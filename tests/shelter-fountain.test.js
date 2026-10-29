@@ -21,19 +21,16 @@ test('확대한 분수의 상하좌우에서 LV1~5가 충돌 밖에 서서 상�
  assert.ok(interactionDistance({x:f.x+f.collisionRx+200,y:f.y},f)>interactionReach(f));
 });
 
-test('화단과 4배 분수의 바닥 판정은 그림 좌표에 맞고 주변 통로는 열린다',()=>{
+test('분수는 이전 크기의 60%이며 제거한 화단 자리와 주변 통로가 열린다',()=>{
   const p=student(),f=STREET_PARK.fountain;
   assert.equal(avatarPositionIsClear(STREET,f.x,f.y,p),false);
   assert.equal(avatarPositionIsClear(STREET,f.x,f.y+200,p),true);
-  assert.equal(STREET_PARK.beds.length,4);
-  assert.equal(f.scale,4);
-  assert.equal(f.rx,376);assert.equal(f.ry,156);
-  assert(STREET_PARK.beds.every(b=>b.x<=f.x));
+  assert.equal(STREET_PARK.beds.length,0);
+  assert.equal(STREET.objects.some(o=>o.kind==='shelter-flowerbed'),false);
+  assert.equal(f.scale,2.4);
+  assert.equal(f.rx,94*2.4);assert.equal(f.ry,39*2.4);
   for(const [x,y] of [[1270,1590],[1270,1850]])assert.equal(avatarPositionIsClear(STREET,x,y,p),true,'분수 동쪽 통로');
-  for(const bed of STREET_PARK.beds){
-    assert.equal(avatarPositionIsClear(STREET,bed.x,bed.y,p),false);
-    assert.equal(avatarPositionIsClear(STREET,bed.x+(bed.x>850?-1:1)*(bed.rx+80),bed.y,p),true);
-  }
+  for(const [x,y] of [[650,1340],[300,1550],[300,1930],[650,2050]])assert.equal(avatarPositionIsClear(STREET,x,y,p),true);
 });
 
 test('분수대 상호작용은 5분간 최대 체력·마나를 10% 높이고 반복 시 중첩 없이 갱신한다',()=>{

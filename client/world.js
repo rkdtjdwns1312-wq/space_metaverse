@@ -41,7 +41,7 @@ import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask
 import {drawLifeStar} from './life-star-art.js';
 import {drawValleyAltar} from './valley-art.js';
 import {drawInteriorFloor,drawInteriorProp,drawInteriorDecoration} from './interior-art.js';
-import {drawStreetGround} from './street-art.js';
+import {drawStreetGround,drawStreetFountain} from './street-art.js';
 import {drawCachedStreetProp} from './street-prop-cache.js';
 import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
@@ -356,7 +356,7 @@ export function createWorld(canvas) {
     ctx.strokeStyle='#e8dba0';ctx.lineWidth=2;ctx.stroke();
   }
   function drawStreet(map,time){
-    drawStreetGround(ctx,map);
+    drawStreetGround(ctx,map,{fountain:false});
     for(const o of map.objects){
       // Include the complete roof, sign and glow, even with the foot offscreen.
       // The old loop repainted every station and arcade at the opposite end.
@@ -823,7 +823,8 @@ export function createWorld(canvas) {
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
-        ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)}))];
+        ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
+        ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
     for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);

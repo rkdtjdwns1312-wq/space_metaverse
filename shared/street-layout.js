@@ -5,25 +5,24 @@ export const STREET_LAYOUT=Object.freeze({
   north:Object.freeze({x:900,y:530,rx:870,ry:490}),
   upper:Object.freeze({x:900,y:1690,rx:760,ry:570}),
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
-  // 과학·역사 발전소 사이 북쪽 여백: 건물 원화와 출입문이 겹치지 않습니다.
-  northGate:Object.freeze({x:660,y:150}),northArrival:Object.freeze({x:660,y:250}),
+  // 발전소 북서쪽에 덧붙인 작은 입구 섬과 짧은 다리. 기존 마당은 유지합니다.
+  entrance:Object.freeze({x:180,y:100,rx:140,ry:85}),
+  entranceBridge:Object.freeze({x:180,top:140,bottom:470,halfWidth:70}),
+  northGate:Object.freeze({x:180,y:100}),northArrival:Object.freeze({x:180,y:210}),
   westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})
 });
 // 중앙 쉼터의 장식과 충돌 판정은 같은 좌표를 사용합니다.
 export const STREET_PARK=Object.freeze({
-  fountain:Object.freeze({x:850,y:1740,scale:4,rx:94*4,ry:39*4}),
-  beds:Object.freeze([
-    Object.freeze({x:650,y:1340,rx:95,ry:49,seed:1}),
-    Object.freeze({x:300,y:1550,rx:95,ry:49,seed:2}),
-    Object.freeze({x:300,y:1930,rx:95,ry:49,seed:3}),
-    Object.freeze({x:650,y:2050,rx:95,ry:49,seed:4})
-  ])
+  fountain:Object.freeze({x:850,y:1740,scale:2.4,rx:94*2.4,ry:39*2.4}),
+  beds:Object.freeze([])
 });
 export const isStarlightStreet=id=>id===STREET_LAYOUT.id;
 function ellipse(z,steps=160){return Array.from({length:steps},(_,i)=>{const a=i*Math.PI*2/steps;return {x:z.x+z.rx*Math.cos(a),y:z.y+z.ry*Math.sin(a)};});}
 const half=STREET_LAYOUT.bridgeWidth/2;
 const rect=(left,top,right,bottom)=>[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}];
 export const STREET_POLYGONS=Object.freeze([
+  ellipse(STREET_LAYOUT.entrance),
+  rect(STREET_LAYOUT.entranceBridge.x-STREET_LAYOUT.entranceBridge.halfWidth,STREET_LAYOUT.entranceBridge.top,STREET_LAYOUT.entranceBridge.x+STREET_LAYOUT.entranceBridge.halfWidth,STREET_LAYOUT.entranceBridge.bottom),
   ellipse(STREET_LAYOUT.north),
   rect(STREET_LAYOUT.north.x-half,STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry-35,STREET_LAYOUT.north.x+half,STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry+35),
   ellipse(STREET_LAYOUT.upper),
