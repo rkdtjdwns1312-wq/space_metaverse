@@ -25,8 +25,9 @@ export const EQUIPMENT_ITEMS=Object.freeze([
   {id:'moon-earring',name:'달의 귀걸이',description:'차분한 달빛이 마나와 스킬의 흐름을 도와요.',level:4,price:null,craftOnly:true,bonus:{mp:10,cooldownReduction:.30}},
   {id:'burning-ice-necklace',name:'불타는 얼음 목걸이',description:'해와 달의 빛이 하나로 흐릅니다.',level:4,price:null,craftOnly:true,bonus:{attack:1,durationMs:2000,skillDamage:.30}},
   {id:'spirit-king-cloak',name:'성령왕의 망토',description:'성령의 왕이 남긴 푸른 기운이 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{attack:5,defense:3,hp:30,mp:30}},
-  {id:'primordial-star-gem',name:'시초의 별의 보석',description:'태초의 별빛이 생명과 마나를 채우고 주황빛 기운으로 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{hpRegen:10,mpRegen:5,allCooldownReduction:.5}}
-].map(item=>Object.freeze({...item,art:'/assets/equipment/'+item.id+'.png',icon:'✦',type:'equipment',mode:'equipment',currency:'cosmicEnergy',forSale:false,usable:false,targets:'self',secret:false,effect:{label:'장비 능력',icon:'✦',durationMs:0}})));
+  {id:'primordial-star-gem',name:'시초의 별의 보석',description:'태초의 별빛이 생명과 마나를 채우고 주황빛 기운으로 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{hpRegen:10,mpRegen:5,allCooldownReduction:.5}},
+  {id:'primordial-star-sigil',name:'검은별의 인장',description:'검은 보석에 깃든 고요한 별빛이 방어력을 3, 최대 체력을 60, 최대 마나를 40 높여줘요.',art:'/assets/equipment/primordial-star-sigil.webp',level:5,price:null,craftOnly:true,bonus:{defense:3,hp:60,mp:40}}
+].map(item=>Object.freeze({...item,art:item.art||'/assets/equipment/'+item.id+'.png',icon:'✦',type:'equipment',mode:'equipment',currency:'cosmicEnergy',forSale:false,usable:false,targets:'self',secret:false,effect:{label:'장비 능력',icon:'✦',durationMs:0}})));
 
 export const equipmentOf=id=>EQUIPMENT_ITEMS.find(item=>item.id===id)||null;
 export function equipmentAuraOf(player){

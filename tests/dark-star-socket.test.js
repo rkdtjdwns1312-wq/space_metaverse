@@ -9,6 +9,7 @@ import {createClassroomServer} from '../server/app.js';
 import {damageMonster} from '../server/monsters.js';
 import {ensureVitals} from '../server/vitals.js';
 import {summonDarkStar} from '../server/dark-star.js';
+import {beginDarkStarSkill} from '../server/dark-star-skills.js';
 
 import {nextBossRespawnAt} from '../server/boss-lifecycle.js';
 import {DARK_STAR} from '../shared/dark-star.js';
@@ -54,4 +55,24 @@ test('death settlement and next morning restore are propagated through the actua
  await until(()=>f.disk().darkStar.state==='recovering'&&tick?.darkStar.state==='recovering');
  const untilTime=nextBossRespawnAt(f.now);f.now=untilTime;await until(()=>f.disk().darkStar.state==='dormant'&&tick?.darkStar.state==='dormant');
  assert(!f.room.monsters.has(DARK_STAR.monsterId));
+});
+
+test('card reveal validates socket position and broadcasts only temporarily revealed colors, never answer or HP',async t=>{
+ const f=await fixture(t);qualify(f,f.pa);assert((await call(f.a,'dark-star:summon')).ok);
+ const boss=f.room.monsters.get(DARK_STAR.monsterId);assert(beginDarkStarSkill(f.room,boss,'puzzle',f.now,()=>.5));
+ const card=boss.darkStarSkills.cards[0];f.pa.x=boss.x;f.pa.y=boss.y;
+ assert.equal((await call(f.a,'dark-star:reveal',{cardId:card.id,x:card.x,y:card.y})).ok,false);
+ let tick;f.a.on('world:positions',r=>tick=r);
+ await until(()=>tick?.monsters.find(m=>m.id===boss.id)?.darkStarEffects?.cards.length===5);
+ const assertPrivate=()=>{
+   for(const c of tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards)
+     for(const key of ['correct','hp','maxHp'])assert(!Object.hasOwn(c,key));
+   for(const c of tick.monsters.filter(m=>m.typeId==='dark-star-card'))
+     for(const key of ['correct','color','hp','maxHp'])assert(!Object.hasOwn(c,key));
+ };
+ assertPrivate();assert(!Object.hasOwn(tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards[0],'color'));
+ f.pa.x=card.x;f.pa.y=card.y;
+ const result=await call(f.a,'dark-star:reveal',{cardId:card.id});assert(result.ok,result.error);assert(!Object.hasOwn(result,'color'));assert(!Object.hasOwn(result,'correct'));
+ await until(()=>tick?.monsters.find(m=>m.id===boss.id)?.darkStarEffects?.cards[0]?.color===card.color);assertPrivate();
+ f.now+=3000;await until(()=>!Object.hasOwn(tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards[0],'color'));assertPrivate();
 });

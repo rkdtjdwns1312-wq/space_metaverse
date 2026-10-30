@@ -41,12 +41,13 @@ test('statue collision follows state, and defeat returns only the statue next da
  moveMonsters(room,until,()=>0);assert.equal(boss.hp,0);assert.equal(restoreDarkStarStatue(room,until),true);
  assert.equal(monstersOf(room,until).has(DARK_STAR.monsterId),false);chargeHuntingStation(player,'math',until);assert.equal(summonDarkStar(room,player,until).darkStar.state,'active');
 });
-test('basic combat matches Spirit King stats and warning, with no boss special skill',()=>{
+test('basic combat retains Spirit King stats with a dedicated two-second projectile aim',()=>{
  const {room,player}=fixture();summonDarkStar(room,player,now);const boss=room.monsters.get(DARK_STAR.monsterId);room.monsters=new Map([[boss.id,boss]]);
  assert.deepEqual(monsterType('dark-star').combat,monsterType('spirit-king').combat);
  player.x=boss.x+boss.radius+20;player.y=boss.y;boss.attackers.set(player.id,1);boss.targetId=player.id;
- moveMonsters(room,now,()=>0);const warning=monsterViews(room,now)[0].warning;assert.equal(warning.endsAt-now,2000);
- player.x+=500;const hits=moveMonsters(room,now+2000,()=>0);assert(hits.some(h=>h.attackOnly&&h.warningRadius===90));
+ boss.mp=0;boss.nextManaRegenAt=now+100000;
+ moveMonsters(room,now,()=>0);const view=monsterViews(room,now)[0];assert.equal(view.darkStarEffects.aim.endsAt-now,2000);assert.equal(view.warning,undefined);
+ player.x+=500;const hits=moveMonsters(room,now+2000,()=>0);assert(hits.some(h=>h.attackOnly&&h.skillKind==='dark-star-basic'));
  assert.equal(room.spiritOrbs?.size||0,0);assert.equal(room.monsters.size,1);assert.equal(boss.serenaSkill,undefined);
 });
 test('dark star state validation and cooldown remain independent of Serena',()=>{
@@ -56,11 +57,13 @@ test('dark star state validation and cooldown remain independent of Serena',()=>
  const {room,player}=fixture();const serena={state:'active',monsterId:'serena-boss',respawnAt:null};room.serena=serena;summonDarkStar(room,player,now);assert.equal(room.serena,serena);
 });
 
-test('basic warning deals power 30 only after two seconds and patrol stays on the sleeping-star floor',()=>{
+test('basic projectile deals power 30 after aiming and travel; patrol stays on the sleeping-star floor',()=>{
  const {room,player}=fixture();summonDarkStar(room,player,now);const boss=room.monsters.get(DARK_STAR.monsterId);room.monsters=new Map([[boss.id,boss]]);
  player.x=boss.x+boss.radius+20;player.y=boss.y;boss.attackers.set(player.id,1);boss.targetId=player.id;
+ boss.mp=0;boss.nextManaRegenAt=now+100000;
  const hp=ensureVitals(player).hp;moveMonsters(room,now,()=>0);assert.equal(moveMonsters(room,now+1999,()=>0).length,0);assert.equal(ensureVitals(player).hp,hp);
- const hits=moveMonsters(room,now+2000,()=>0);assert(hits.some(h=>h.targetId===player.id&&h.damage===30));assert.equal(ensureVitals(player).hp,Math.max(0,hp-30));
+ moveMonsters(room,now+2000,()=>0);assert.equal(ensureVitals(player).hp,hp);
+ const hits=moveMonsters(room,now+2500,()=>0);assert(hits.some(h=>h.targetId===player.id&&h.damage===30));assert.equal(ensureVitals(player).hp,Math.max(0,hp-30));
  for(const angle of [0,Math.PI/4,Math.PI/2,Math.PI,Math.PI*1.25,Math.PI*1.5]){
   const f=fixture();summonDarkStar(f.room,f.player,now);const m=f.room.monsters.get(DARK_STAR.monsterId);f.room.monsters=new Map([[m.id,m]]);m.patrolStartedAt=now;m.lastMoveAt=now;
   for(let tick=now+100;tick<now+60000;tick+=100){moveMonsters(f.room,tick,()=>angle/(Math.PI*2));assert(onOriginFloor(mapOf(DARK_STAR.mapId),m.x,m.y,m.radius));}

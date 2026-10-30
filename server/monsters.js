@@ -16,6 +16,7 @@ import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skill
 import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spirit-king-skills.js';
 import {tickSpiritBlueStars} from './spirit-blue-stars.js';
 import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
+import {clearDarkStarSkills,tryDarkStarSkills,tickDarkStarSkills,darkStarSkillViews,aimDarkStar,damageDarkStarCard,recordDarkStarDamage} from './dark-star-skills.js';
 
 
 export const MONSTER_RULES=Object.freeze({walkMs:2000,restMs:2000,directionMs:2000,speed:36,radius:24,respawnMs:10000,hitRadius:18,attackMs:1000,bossMeleeDwellMs:2000,mapExitHealCount:3,blockedChaseMs:3000});
@@ -78,13 +79,16 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
   return room.monsters;
 }
 export function monsterViews(room,now=Date.now()){
-  return [...monstersOf(room,now).values()].map(m=>({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
+  return [...monstersOf(room,now).values()].filter(m=>m.typeId!=='dark-star-card'||m.hp>0&&now<m.endsAt&&room.monsters.get(m.bossId)?.hp>0).map(m=>m.typeId==='dark-star-card'?{
+    id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,alive:true,hideHealth:true,hideName:true
+  }:({id:m.id,typeId:m.typeId,mapId:m.mapId,x:m.x,y:m.y,radius:m.radius,
     facingX:m.facingX||1,moving:!!m.moving,hp:m.hp,maxHp:m.maxHp,mp:m.mp??0,maxMp:m.maxMp??0,alive:m.hp>0,busy:false,targetId:m.targetId,
     ...(m.pendingAttack&&m.hp>0?{warning:{...(m.pendingAttack.kind?{kind:m.pendingAttack.kind}:{}),x:m.pendingAttack.x,y:m.pendingAttack.y,radius:m.pendingAttack.radius,startsAt:m.pendingAttack.startsAt,endsAt:m.pendingAttack.endsAt}}:{}),
     ...(m.hp>0&&m.moonCast?.mapId===m.mapId&&m.moonCast.endsAt>now?{moonCast:{...m.moonCast}}:{}),
     ...(m.hp>0&&m.moonAura?.mapId===m.mapId&&m.moonAura.endsAt>now?{moonAura:{...m.moonAura}}:{}),
     ...(m.hp>0&&m.leoonSkill?.mapId===m.mapId?{leoonSkill:{...m.leoonSkill}}:{}),
     ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
+    ...(m.typeId==='dark-star'?{darkStarEffects:darkStarSkillViews(room,m,now)}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.
@@ -103,6 +107,7 @@ export function strikeMonsters(room,player,power,now=Date.now()){
 // Q와 스킬 모두 이 경로를 거쳐 기여도·추격·드랍을 한 번만 처리합니다.
 export function damageMonster(room,target,player,power,now=Date.now(),{energyRoll,recipeRoll,bossRoll,ignoreSleep=false,fixedDamage=null,silent=false,retaliateTeacher=false,reflected=false}={}){
   if(target.hp<=0||power<0||!Number.isFinite(power))return null;
+  if(target.typeId==='dark-star-card')return damageDarkStarCard(room,target,player,fixedDamage??power,now);
   const raw=(target.sleepUntil||0)>now&&!ignoreSleep?power*2:power;
   const type=monsterType(target.typeId),level=type?.level??target.level;
   const defense=type?.defense??MONSTER_LEVEL_STATS[level]?.defense??MONSTER_COMBAT[target.mapId]?.defense??0;
@@ -124,9 +129,11 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   target.contributors??=new Map();
   target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(dealt,target.hp));
   target.hp=Math.max(0,target.hp-dealt);
+  recordDarkStarDamage(target);
   if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
     if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
+    if(target.typeId==='dark-star')clearDarkStarSkills(room,target);
     if(target.typeId==='serena')clearSerenaSkills(target);
     if(target.typeId==='spirit-king')clearSpiritKingEffects(room,target.id);
     if(type?.boss){
@@ -171,6 +178,7 @@ export function selectMonsterTarget(room,monster){
   candidates.sort((a,b)=>a.priority-b.priority||b.order-a.order);
   const selected=candidates[0]?.player||null;
   if(monster.hp>0&&((hadAttackers&&!selected)||monster.mapExitCount>=MONSTER_RULES.mapExitHealCount)){
+    if(monster.typeId==='dark-star')clearDarkStarSkills(room,monster);
     monster.hp=monster.maxHp;monster.mapExitCount=0;monster.contributors?.clear();
     // 3회 이탈 후에도 남은 학생은 계속 추적하며 공격 간격은 유지합니다.
     if(!selected)monster.nextAttackAt=0;
@@ -184,9 +192,11 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const hits=[...tickSpiritOrbs(room,now,mapFor),...tickSpiritBlueStars(room,now,mapFor)];
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
+    if(m.typeId==='dark-star-card')continue;
     // 이번 틱에도 실제 추적 이동이 지형에 막힐 때만 누적합니다. 시전/수면/정지는 연속 막힘이 아닙니다.
     const previousBlockedChase=m.blockedChase;m.blockedChase=null;
     if(m.hp<=0){
+      if(m.typeId==='dark-star')clearDarkStarSkills(room,m);
       if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
@@ -203,6 +213,10 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       hits.push(...tickSerenaSkills(room,m,now));
       if(m.hp<=0){m.moving=false;continue;}
     }
+    if(type?.id==='dark-star'){
+      hits.push(...tickDarkStarSkills(room,m,now,random));
+      if(m.hp<=0){m.moving=false;continue;}
+    }
     if(!type||!rule||mapOf(m.mapId,room.planets?.values?.()||[]).id!==m.mapId){m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.moving=false;continue;}
     if(m.moonAura&&(now>=m.moonAura.endsAt||m.moonAura.mapId!==m.mapId))m.moonAura=null;
     const factor=rule.speedFactor;
@@ -210,7 +224,12 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(delayedMeleeBoss(type)&&(!target||m.pendingAttack||m.moonCast||m.leoonSkill||(m.sleepUntil||0)>now||(m.stunUntil||0)>now))m.meleePresence?.clear();
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
-    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;}
+    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){if(m.darkStarSkills)m.darkStarSkills.aim=null;m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;}
+    if(type.id==='dark-star'){
+      if(m.darkStarSkills?.absorption){m.moving=false;continue;}
+      tryDarkStarSkills(room,m,target,now,random);
+      hits.push(...aimDarkStar(room,m,target,now));
+    }
     if(m.leoonSkill){
       const map=mapOf(m.mapId,room.planets?.values?.()||[]);
       const results=tickLeoonSkill(room,m,target,now,{width:map.width,height:map.height,onFloor:(x,y,radius)=>onParadiseFloor(map,x,y,radius)},random);
@@ -332,6 +351,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       const elapsedMs=(previousBlockedChase?.targetId===target.id?previousBlockedChase.elapsedMs:0)+dt*1000;
       m.blockedChase={targetId:target.id,elapsedMs};
       if(elapsedMs>=MONSTER_RULES.blockedChaseMs){
+        if(m.typeId==='dark-star')clearDarkStarSkills(room,m);
         m.hp=m.maxHp;m.attackers.clear();m.teacherRetaliation?.clear();m.contributors?.clear();m.meleePresence?.clear();
         // 지난 전투의 독/저주 틱만으로 곧바로 다시 추적하지 않게 제거합니다. 새 공격은 정상 등록됩니다.
         m.combatPoison=null;m.capricornCurses?.clear();
@@ -343,7 +363,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
-    if(target){
+    if(target&&type.id!=='dark-star'){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
       // 초근접에서도 몸을 뚫고 지나가거나 후방을 원격 공격하지 않도록 몸 앞 근접 거리만 판정합니다.
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){

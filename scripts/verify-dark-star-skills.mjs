@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+import {chromium} from 'playwright';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+import {mapOf} from '../shared/config.js';
+import {beginDarkStarSkill,recordDarkStarDamage} from '../server/dark-star-skills.js';
+import {damageMonster} from '../server/monsters.js';
+import {DARK_STAR} from '../shared/dark-star.js';
+const key='isolated-dark-star',game=createClassroomServer({teacherKey:key,studentHours:false}),errors=[];
+const {port}=await game.listen(),browser=await chromium.launch({headless:true,channel:'msedge',args:['--no-proxy-server']});mkdirSync('.local/dark-star',{recursive:true});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:900}});page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:'+port);await page.locator('#teacher-tab').click();await page.locator('#teacher-key').fill(key);await fillNewClass(page,['검사']);await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ for(let n=0;n<12&&await page.locator('dialog[open]').count();n++)await page.keyboard.press('Escape');
+ const room=game.store.rooms.get(await page.locator('#room-code').textContent()),p=[...room.players.values()].find(p=>p.role==='teacher'),statue=mapOf(DARK_STAR.mapId).objects.find(o=>o.id===DARK_STAR.statueId);
+ const move=async(x,y)=>{Object.assign(p,{mapId:DARK_STAR.mapId,x,y,input:{x:0,y:0,at:0}});game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));await page.waitForTimeout(500);};
+ await move(statue.x,statue.y+110);await page.waitForFunction(()=>document.querySelector('#world').dataset.artStatus==='ready');assert(!room.monsters?.has(DARK_STAR.monsterId));
+ await page.screenshot({path:'.local/dark-star/statue.png'});await page.locator('#touch-interact').click();await page.locator('#dark-star-dialog[open]').waitFor();assert.equal(await page.locator('#dark-star-message').innerText(),'소환합니까?');await page.locator('#dark-star-dialog [data-cancel]').click();assert(!room.monsters?.has(DARK_STAR.monsterId));
+ await page.locator('#touch-interact').click();await page.locator('#dark-star-dialog [data-summon]').click();await page.locator('#dark-star-dialog').waitFor({state:'hidden'});await page.waitForTimeout(1000);
+ const boss=room.monsters.get(DARK_STAR.monsterId);assert(boss?.hp===10000);assert.equal(room.darkStar.state,'active');assert.equal(await page.locator('#touch-interact').isEnabled(),false);
+ await move(boss.x-230,boss.y);await page.screenshot({path:'.local/dark-star/boss-desktop.png'});
+ (boss.teacherRetaliation??=new Set()).add(p.id);boss.targetId=p.id;boss.attackers.set(p.id,1);
+ assert(beginDarkStarSkill(room,boss,'puzzle',Date.now(),()=>.5));assert(beginDarkStarSkill(room,boss,'rainbow',Date.now(),()=>.3));
+ boss.sleepUntil=Date.now()+60000;
+ const card=boss.darkStarSkills.cards[0];await move(card.x,card.y+65);
+ await page.waitForFunction(()=>document.querySelector('#world').dataset.darkStarCardCount==='5');
+ await page.locator('#touch-interact').click();await page.waitForTimeout(250);assert(card.revealUntil>Date.now());
+ await page.screenshot({path:'.local/dark-star/puzzle-reveal.png'});
+ assert.equal(boss.darkStarSkills.cards.length,5);
+ const odd=boss.darkStarSkills.cards.find(c=>c.correct);damageMonster(room,odd,p,100,Date.now());await page.waitForFunction(()=>document.querySelector('#world').dataset.darkStarCardCount==='0');
+ boss.hp=8000;recordDarkStarDamage(boss);await move(boss.x,boss.y+250);
+ await page.waitForFunction(()=>document.querySelector('#world').dataset.darkStarSatelliteCount==='1');
+ await page.screenshot({path:'.local/dark-star/absorption-warning.png'});
+ // Inspect all art layers at a stable injected snapshot without modifying live classroom data.
+ const painted=await page.evaluate(async()=>{const {preloadDarkStarArt,drawDarkStar}=await import('/dark-star-art.js');const {preloadDarkStarSkillsArt,drawDarkStarGround,darkStarObjectLayers,drawDarkStarPuzzleHint}=await import('/dark-star-skills-art.js');await Promise.all([preloadDarkStarArt(),preloadDarkStarSkillsArt()]);const c=document.createElement('canvas');c.width=1100;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#17131f';ctx.fillRect(0,0,1100,800);const now=Date.now(),e={paths:[{x1:100,y1:600,x2:465,y2:600,width:36,endsAt:now+30000}],cards:[{x:500,y:600,color:'red',revealUntil:now+3000,endsAt:now+30000},{x:560,y:600,color:'blue',revealUntil:now+3000,endsAt:now+30000}],satellites:[{color:'red',x:800,y:570,radius:96}],projectiles:[{x:200,y:450,radius:14,endsAt:now+1000}]};drawDarkStarGround(ctx,e,now);drawDarkStar(ctx,{shape:'dark-star',x:300,y:300,radius:150,darkStarEffects:{absorbedColors:['red','purple'],satellites:[]}},0);drawDarkStar(ctx,{shape:'dark-star',x:750,y:300,radius:150},0);for(const layer of darkStarObjectLayers(ctx,e,now,true))layer.draw();drawDarkStarPuzzleHint(ctx,e,0,0,now);return c.toDataURL();});
+ await import('node:fs/promises').then(fs=>fs.writeFile('.local/dark-star/skill-art.png',Buffer.from(painted.split(',')[1],'base64')));
+ boss.teacherRetaliation.clear();
+ await page.setViewportSize({width:390,height:844});await move(boss.x,boss.y);await page.screenshot({path:'.local/dark-star/boss-mobile.png'});
+ const art=await page.evaluate(async()=>{const {drawDarkStar,preloadDarkStarArt}=await import('/dark-star-art.js');await preloadDarkStarArt();const c=document.createElement('canvas');c.width=500;c.height=500;const ctx=c.getContext('2d'),m={shape:'dark-star',x:250,y:300,radius:150};const capture=t=>{ctx.clearRect(0,0,500,500);drawDarkStar(ctx,m,t);return c.toDataURL();};return {a:capture(0),b:capture(700)};});assert.notEqual(art.a,art.b,'floating movement');
+ await page.emulateMedia({reducedMotion:'reduce'});const quiet=await page.evaluate(async()=>{const {drawDarkStar}=await import('/dark-star-art.js');const c=document.createElement('canvas');c.width=500;c.height=500;const ctx=c.getContext('2d'),m={shape:'dark-star',x:250,y:300,radius:150};const capture=t=>{ctx.clearRect(0,0,500,500);drawDarkStar(ctx,m,t);return c.toDataURL();};return capture(0)===capture(700);});assert(quiet);
+ const gem=await page.evaluate(async()=>{const img=new Image();img.src='/assets/items/black-gem.webp';await img.decode();return img.naturalWidth;});assert.equal(gem,320);assert.deepEqual(errors,[]);console.log('PASS card interaction/reveal, puzzle destruction, absorption map objects, generated art layers, dormant statue, cancel, confirmed summon, 10000 HP, live statue removal, PC/mobile, floating/reduced motion, final gem decode, errors0');
+}finally{await browser.close();await game.close();}

@@ -17,6 +17,56 @@
       "source": "exec-3b66b88f-403a-447a-a385-a3ab29ff3360.png",
       "previousSource": "exec-69ef9cd7-4e71-4b3d-87cb-10d8512fe8dd.png",
       "designBrief": "검은 별 보석. 사용자 최종 수정에 따라 대각선 고리를 완전히 제거. 보라/은빛 면과 가는 테두리 유지."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-body.webp",
+      "source": "exec-9169aa59-75b2-4586-be69-aa724c4c4e8e.png",
+      "designBrief": "위성을 제거한 보스 몸체. 남은 위성을 별도 합성해 체력 단계에 맞춤."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-orb.webp",
+      "source": "exec-22988cb2-e117-4969-bb9c-1c1f7f21a8ab.png",
+      "designBrief": "검은 둥근 마법 구체, 보랏빛 은은한 외곽."
+    },
+    {
+      "asset": "client/assets/cards/dark-star-card-back.webp",
+      "source": "exec-72f64eb4-c30d-4baa-89d8-9b28c169c8c4.png",
+      "designBrief": "기존 별 카드의 회색 변형. 33×45로 렌더."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-rainbow.webp",
+      "source": "exec-b6d83fe8-2eac-4180-9ffa-7aa08ce0fc20.png",
+      "designBrief": "칠색 바닥 리본, 금빛 가장자리, 실제 피해 폭과 길이에 맞춰 렌더."
+    },
+    {
+      "asset": "client/assets/equipment/primordial-star-sigil.webp",
+      "source": "exec-173ab7fd-5ac4-4d0d-b5a3-b679dd190fdd.png",
+      "designBrief": "고리 없는 검은 별 보석을 은금 장식의 수호 인장으로 제작."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-satellite-red.webp",
+      "source": "exec-3cdfcc2a-2feb-437f-906d-aee9b59a020f.png",
+      "designBrief": "분리 위성 5종 가로 시트에서 red 셀을 분리·여백 정리. 원본 유지."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-satellite-purple.webp",
+      "source": "exec-3cdfcc2a-2feb-437f-906d-aee9b59a020f.png",
+      "designBrief": "분리 위성 5종 가로 시트에서 purple 셀을 분리·여백 정리. 원본 유지."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-satellite-indigo.webp",
+      "source": "exec-3cdfcc2a-2feb-437f-906d-aee9b59a020f.png",
+      "designBrief": "분리 위성 5종 가로 시트에서 indigo 셀을 분리·여백 정리. 원본 유지."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-satellite-green.webp",
+      "source": "exec-3cdfcc2a-2feb-437f-906d-aee9b59a020f.png",
+      "designBrief": "분리 위성 5종 가로 시트에서 green 셀을 분리·여백 정리. 원본 유지."
+    },
+    {
+      "asset": "client/assets/monsters/dark-star-satellite-blue.webp",
+      "source": "exec-3cdfcc2a-2feb-437f-906d-aee9b59a020f.png",
+      "designBrief": "분리 위성 5종 가로 시트에서 blue 셀을 분리·여백 정리. 원본 유지."
     }
   ],
   "note": "designBrief는 제작 의도 요약이며 원문 프롬프트를 그대로 옮긴 것은 아니다. 원본은 이 PC .codex/generated_images/01a0a2bb-a4bd-70c0-b099-77151b42c06c에 보존."

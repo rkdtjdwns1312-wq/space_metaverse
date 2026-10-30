@@ -80,7 +80,7 @@ test('public Lv5 learned recipes retain their shard and energy costs in the stud
   const view=learnedRecipesView(player,PUBLIC_CRAFTING_RECIPES);
   assert.deepEqual(view.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000]
   ]);
   assert.deepEqual(validateLearnedRecipeIds(player.learnedRecipeIds),player.learnedRecipeIds);
 });
@@ -172,13 +172,13 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   assert.equal(teacherAll.length,recipes.length+PUBLIC_CRAFTING_RECIPES.length);
   const teacherLv5=ok(await call(f.teacher,'crafting:recipes',{level:5})).recipes;
   assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000]
   ]);
   await f.mutate(p=>{p.learnedRecipeIds=publicItemRecipes.map(recipe=>recipe.output.id);});
   const learnedLv5=ok(await call(f.student,'recipes:learned')).recipes;
   assert.deepEqual(learnedLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000]
   ]);
   const publicState=f.game.store.snapshot(f.room,f.q);
   assert.equal(JSON.stringify(publicState).includes('ingredients'),false);assert.equal(JSON.stringify(publicState).includes('learnedRecipeIds'),false);
@@ -269,21 +269,22 @@ test('sixty-kind inventory does not expand teacher single-grant batch beyond for
   adjustTeacherInventory(room,teacher,{playerId:student.id,itemIds:ids.slice(40)},'give');assert.equal(student.inventory.length,41);
 });
 
-test('primordial gem crafting rolls back material and energy together and survives cold restart',async t=>{
-  const f=await fixture(t),ingredients=[{id:'radiant-star-origin',quantity:1}];
+for(const [material,output] of [['radiant-star-origin','primordial-star-gem'],['black-gem','primordial-star-sigil']])
+test(output+' crafting rolls back material and energy together and survives cold restart',async t=>{
+  const f=await fixture(t),ingredients=[{id:material,quantity:1}];
   f.mutate(p=>Object.assign(p,{inventory:structuredClone(ingredients),starShards:0,cosmicEnergy:10000}));f.atMachine();
   const save=f.game.store.files.save.bind(f.game.store.files);
   f.game.store.files.save=()=>{throw Error('gem disk failure');};
   try{assert.equal((await call(f.student,'crafting:combine',{ingredients})).ok,false);}
   finally{f.game.store.files.save=save;}
   assert.deepEqual(f.p.inventory,ingredients);assert.equal(f.p.cosmicEnergy,10000);assert.equal(f.p.starShards,0);
-  assert.equal((f.p.learnedRecipeIds||[]).includes('primordial-star-gem'),false);
+  assert.equal((f.p.learnedRecipeIds||[]).includes(output),false);
   f.atMachine();ok(await call(f.student,'crafting:combine',{ingredients}));
-  assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.inventory.find(i=>i.id==='primordial-star-gem')?.quantity,1);
+  assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.inventory.find(i=>i.id===output)?.quantity,1);
   await f.restart();
   assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.starShards,0);
-  assert.equal(f.p.inventory.find(i=>i.id==='primordial-star-gem')?.quantity,1);
-  assert.equal(f.p.inventory.some(i=>i.id==='radiant-star-origin'),false);
-  const recipe=ok(await call(f.student,'recipes:learned')).recipes.find(r=>r.output.id==='primordial-star-gem');
+  assert.equal(f.p.inventory.find(i=>i.id===output)?.quantity,1);
+  assert.equal(f.p.inventory.some(i=>i.id===material),false);
+  const recipe=ok(await call(f.student,'recipes:learned')).recipes.find(r=>r.output.id===output);
   assert.equal(recipe.cosmicEnergy,10000);assert.equal(recipe.starShards,0);
 });

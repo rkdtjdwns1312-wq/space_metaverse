@@ -78,6 +78,7 @@ import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './m
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
+import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
 import {serenaView,darkStarView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
@@ -428,6 +429,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=summonDarkStar(session.room,session.player,clock());
       roster(session.room);return result;
     });
+    action('dark-star:reveal',data=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
+      return revealDarkStarCard(s.room,s.player,data?.cardId,clock());
+    },false);
     action('serena:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonSerena(session.room,session.player,clock());

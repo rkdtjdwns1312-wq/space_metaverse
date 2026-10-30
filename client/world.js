@@ -56,6 +56,7 @@ import {drawCelestialMonster,CELESTIAL_MONSTER_ART} from './celestial-monster-ar
 import {drawBossMonster,bossMonsterBounds} from './boss-monster-art.js';
 import {drawGuardianMonster} from './guardian-monster-art.js';
 import {drawSpiritOrb} from './spirit-orb-art.js';
+import {drawDarkStarGround,darkStarObjectLayers,drawDarkStarPuzzleHint} from './dark-star-skills-art.js';
 import {drawSpiritBlueStar} from './spirit-blue-star-art.js';
 import {prepareMonsterArt} from './monster-art-ready.js';
 import {darkStarMap,dormantDarkStar} from '/shared/dark-star.js';
@@ -708,7 +709,12 @@ export function createWorld(canvas) {
     const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
     canvas.dataset.monsterRenderX=firstMonsterPoint?.x??'';
     canvas.dataset.monsterRenderY=firstMonsterPoint?.y??'';
+    const darkEffects=visibleMonsters.filter(m=>m.darkStarEffects).map(m=>({boss:m,e:m.darkStarEffects})),darkNow=Date.now();
+    canvas.dataset.darkStarCardCount=String(darkEffects.reduce((n,{e})=>n+(e.cards?.length||0),0));
+    canvas.dataset.darkStarSatelliteCount=String(darkEffects.reduce((n,{e})=>n+(e.satellites?.length||0),0));
+    for(const {e} of darkEffects)drawDarkStarGround(ctx,e,darkNow);
     const drawMonsterLayer=m=>{
+      if(m.typeId==='dark-star-card')return;
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)return;
       const attack=monsterAttacks.get(m.id);
       if(attack&&t-attack.startedAt>attack.durationMs)monsterAttacks.delete(m.id);
@@ -826,6 +832,7 @@ export function createWorld(canvas) {
       const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
+        ...darkEffects.flatMap(({e})=>darkStarObjectLayers(ctx,e,darkNow,reducedMotion.matches)),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
         ...map.objects.filter(o=>o.kind==='dark-star-statue').map(o=>({y:o.y+30,draw:()=>drawDarkStarStatue(ctx,o)})),
@@ -834,6 +841,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
+    for(const {boss,e} of darkEffects)drawDarkStarPuzzleHint(ctx,e,boss.x,boss.y+boss.radius+70,darkNow);
     for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
     for(const roll of lootRolls)if(roll.mapId===myMapId&&roll.expiresAt>Date.now())
@@ -1038,6 +1046,7 @@ export function createWorld(canvas) {
       }
       if(!planetIdOfMap(myMapId)){
         const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','shelter-fountain'].includes(o.kind)),
+          ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.darkStarEffects).flatMap(m=>(m.darkStarEffects.cards||[]).filter(c=>Date.now()<c.endsAt).map(c=>({...c,kind:'dark-star-card',name:'위성 확인하기'}))),
           ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
