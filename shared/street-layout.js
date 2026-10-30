@@ -7,7 +7,7 @@ export const STREET_LAYOUT=Object.freeze({
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
   // 과학(900)·교양(1370) 발전소 사이 위쪽에 입구와 연결 길을 둡니다.
   entrance:Object.freeze({x:1135,y:100,rx:140,ry:85}),
-  entranceBridge:Object.freeze({x:1135,top:140,bottom:250,halfWidth:70}),
+  entranceBridge:Object.freeze({x:1135,top:0,bottom:250,halfWidth:70}),
   northGate:Object.freeze({x:1135,y:100}),northArrival:Object.freeze({x:1135,y:210}),
   westGate:Object.freeze({x:80,y:1690}),spawn:Object.freeze({x:260,y:1690})
 });
