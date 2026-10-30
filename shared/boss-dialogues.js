@@ -14,6 +14,11 @@ export const BOSS_DIALOGUES=Object.freeze({
     lines:Object.freeze(['놀랍군.. 이렇게 뛰어난 아이들이 있을줄이야','한계를 모르는 아이들이여 앞길을 응원하지','끝없는 새로운 세계에서 또 만나길 기도하지']),
     portrait:Object.freeze({src:'/assets/monsters/spirit-king-walk-v3.png',columns:4,rows:2})
   }),
+  'dark-star':Object.freeze({
+    name:'태초의 검은별',
+    lines:Object.freeze(['얼마나 오랜시간동안 잠들어 있었을까','이제는 새로운 시대의 아이들이 세상을 이끌어 갈때군..']),
+    portrait:Object.freeze({src:'/assets/monsters/dark-star.webp',columns:1,rows:1})
+  }),
   serena:Object.freeze({
     name:'별의 시초신 세레나',
     lines:Object.freeze(['선택받은 아이들이 그대군요','이 세계에 중심이 된 그대는 정말 대단해요','얼마나 많은 것들을 해낼지 앞으로도 그대의 세계에서 보여주세요']),
