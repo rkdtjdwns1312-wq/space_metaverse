@@ -58,7 +58,8 @@ export function resolveWaterHit(room,player,selected,power,now,cast){
     }else{
       const friend=target.entity,value=ensureVitals(friend),before=value.hp;
       const maximum=playerVitals(friend).hp.max;
-      const healing=Math.round(Math.max(0,maximum-value.hp)*.1);
+      // 회복은 명중 시점 시전자의 실제 공격력 100%이며 강화 Q 피해 배율과 별개입니다.
+      const healing=Math.max(0,attackPowerOf(player.avatar.level,player.avatar.constellationId,player)||0);
       value.hp=Math.min(maximum,value.hp+healing);
       if(value.hp>before)healed.push({targetId:friend.id,amount:value.hp-before,vitals:playerVitals(friend)});
     }

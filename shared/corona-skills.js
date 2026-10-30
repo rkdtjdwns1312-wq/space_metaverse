@@ -7,5 +7,6 @@ export const CORONA_NAMES=Object.freeze({attack:'붉은 검의 잔상',2:'왕관
 export function coronaSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return sustainedSkill(player,{level:2,stage,mana:10,durationMs:({2:5000,3:8000,4:12000})[stage],
-    cooldownMs:({2:10000,3:15000,4:20000})[stage],finaleRangeWidths:4,enhancedReachWidths:2});
+    cooldownMs:({2:10000,3:15000,4:20000})[stage],finaleRangeWidths:4,enhancedReachWidths:2,
+    hitHealing:Math.max(2,Math.min(5,player?.avatar?.level||2))});
 }

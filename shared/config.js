@@ -79,7 +79,7 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
     {id:'gate-sleeping-stars',name:'별들이 잠드는 곳 1 ↑',...STREET_LAYOUT.northGate,radius:38,kind:'gate',target:sleepingStarsId(1),
-      arrival:{x:STAR_ORIGIN.baseWidth/2,y:STAR_ORIGIN.baseHeight-160*STAR_ORIGIN.baseWidth/1200},color:'#a6a8b4',passable:true},
+      arrival:{x:STAR_ORIGIN.baseWidth*STAR_ORIGIN.scale**2/2,y:(STAR_ORIGIN.baseHeight-160*STAR_ORIGIN.baseWidth/1200)*STAR_ORIGIN.scale**2},color:'#a6a8b4',passable:true},
     ...STREET_PARK.beds.map((bed,i)=>({id:`shelter-flowerbed-${i+1}`,name:'별빛 화단',x:bed.x,y:bed.y,radius:bed.rx,collisionRx:bed.rx,collisionRy:bed.ry,kind:'shelter-flowerbed'})),
     {id:'cozy-pet',name:'아기별 돌보기',x:696,y:1312,radius:90,collisionRx:72,collisionRy:40,kind:'cozy-pet'},
     {id:'cozy-room',name:'별방 꾸미기',x:406,y:1416,radius:90,collisionRx:78,collisionRy:45,kind:'cozy-room'},

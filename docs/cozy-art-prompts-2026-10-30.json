@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-30",
+  "tool": "image_gen.imagegen",
+  "note": "Room moon entry preserves the available prompt record; other entries use final tool prompts. Source PNG files are private .local/cozy-art-source. Runtime images converted to WebP; furniture transparency preserved.",
+  "assets": [
+    {
+      "id": "room-moon",
+      "prompt": "Empty moonlight room: 4:3 elevated frontal view, ivory gold lilac, walls upper35% floorlower65%, handpainted Korean fantasy RPG, no furniture text characters.",
+      "path": "client/assets/cozy/room-moon.webp"
+    },
+    {
+      "id": "room-cloud",
+      "prompt": "One empty small room game background. cream white and pale skyblue cloud-themed walls, soft sunlit arched windows showing floating clouds, whitewashed floor with discreet gold stars. Polished handpainted 2D Korean fantasy RPG storybook illustration, delicate warm gold details, painterly material texture like TalesWeaver/Trickster spirit. Landscape4:3, frontal elevated3/4 view, walls upper35% and unobstructed empty floor lower65%. No furniture or loose props on floor, no characters, no words or UI. Entire image a room, not a floating cutout.",
+      "path": "client/assets/cozy/room-cloud.webp"
+    },
+    {
+      "id": "room-study",
+      "prompt": "One empty small room game background. warm ivory walnut and sage reading-room walls, carved bookshelves embedded only in back wall, large window soft daylight, empty warm parquet floor. Polished handpainted 2D Korean fantasy RPG storybook illustration, delicate warm gold details, painterly material texture like TalesWeaver/Trickster spirit. Landscape4:3, frontal elevated3/4 view, walls upper35% and unobstructed empty floor lower65%. No furniture or loose props on floor, no characters, no words or UI. Entire image a room, not a floating cutout.",
+      "path": "client/assets/cozy/room-study.webp"
+    },
+    {
+      "id": "furniture-table",
+      "prompt": "One isolated furniture sprite: a small elegant round star tea table, ivory wood, goldrim, lilac tablecloth. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-table.webp"
+    },
+    {
+      "id": "furniture-wardrobe",
+      "prompt": "One isolated furniture sprite: a tall moonlight wardrobe, ivory wood gold trim, crescent moon carved doors. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-wardrobe.webp"
+    },
+    {
+      "id": "furniture-mirror",
+      "prompt": "One isolated furniture sprite: a freestanding cloud-shaped ornate mirror, pale blue pearl frame gold feet. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-mirror.webp"
+    },
+    {
+      "id": "furniture-beanbag",
+      "prompt": "One isolated furniture sprite: a cozy plump lavender beanbag chair with one small embroidered goldstar. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-beanbag.webp"
+    },
+    {
+      "id": "furniture-aquarium",
+      "prompt": "One isolated furniture sprite: an ornate small glass aquarium on ivory gold pedestal, tiny luminous fish and sea plants. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-aquarium.webp"
+    },
+    {
+      "id": "furniture-globe",
+      "prompt": "One isolated furniture sprite: a small blue terrestrial globe on elegant golden crescent stand. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-globe.webp"
+    },
+    {
+      "id": "furniture-piano",
+      "prompt": "One isolated furniture sprite: a small ivory and lavender upright piano, gold stars, little bench. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-piano.webp"
+    },
+    {
+      "id": "furniture-easel",
+      "prompt": "One isolated furniture sprite: a wooden drawing easel with canvas of small colorful star painting, paint palette. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-easel.webp"
+    },
+    {
+      "id": "furniture-computer",
+      "prompt": "One isolated furniture sprite: a compact magical space computer on a small ivory desk, blue screen star emblem. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-computer.webp"
+    },
+    {
+      "id": "furniture-toybox",
+      "prompt": "One isolated furniture sprite: an open ivory gold toy chest holding a plush star, wooden rocket, soft ball. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-toybox.webp"
+    },
+    {
+      "id": "furniture-bookcart",
+      "prompt": "One isolated furniture sprite: a small ivory gold rolling cart filled with colorful storybooks. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-bookcart.webp"
+    },
+    {
+      "id": "furniture-pendant",
+      "prompt": "One isolated furniture sprite: a standing arched support holding a hanging golden star lantern, crescent ornaments, selfcontained. Three-quarter elevated front view, whole object centered with padding, transparent background. Beautiful handpainted 2D ornate cozy Korean storybook fantasy RPG item, delicate outlines, dimensional shading, ivory lavender warm gold palette. Match elegant children's star classroom. No text, no characters, no floor/background, no checkerboard. Square asset.",
+      "path": "client/assets/cozy/furniture-pendant.webp"
+    }
+  ]
+}

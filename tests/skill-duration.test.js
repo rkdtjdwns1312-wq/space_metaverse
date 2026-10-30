@@ -147,16 +147,16 @@ test('물병: 2초 성장·11초 유지(물방울 구간)·2초 소멸, 14틱과
   advanceAquarius(plain.room,now+14000);assert.equal(plain.room.aquariusCasts.size,0,'발동 후 장착은 연장하지 않음');
 });
 
-test('양: 수면과 구름/마지막 타격이 6초 경계까지 유지되며 발동 뒤 장비 변경 무관',()=>{
+test('양: 수면과 구름/마지막 타격이 11초 경계까지 유지되며 발동 뒤 장비 변경 무관',()=>{
   for(const equipped of [false,true]){
-    const {room,player,monster}=setup('aries',4,equipped),now=Date.now(),duration=equipped?6000:5000;
+    const {room,player,monster}=setup('aries',4,equipped),now=Date.now(),duration=equipped?11000:10000;
     castAries(room,player,now);player.equipmentSlots=equipped?[]:[...badge];
     assert.equal(monster.sleepUntil,now+duration);
     assert.deepEqual(advanceAriesClouds(room,now+duration-1),[]);assert.equal(monster.hp,100000);
     assert.equal(ariesCloudViews(room,player.mapId,now+duration-1)[0].durationMs,duration);
     assert.equal(advanceAriesClouds(room,now+duration).length,1);assert.ok(monster.hp<100000);
     assert.equal(room.ariesClouds.size,0);assert.equal(ariesCloudViews(room,player.mapId,now+duration).length,0);
-    assert.equal(player.ariesCooldownUntil,now+20000);
+    assert.equal(player.ariesCooldownUntil,now+30000);
   }
 });
 

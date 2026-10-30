@@ -38,10 +38,10 @@ test('보름 시작 포함/종료 제외: 노크 피해0·공격자 동일 고�
   for(const [offset,reflect] of [[8999,false],[9000,true],[14999,true],[15000,false],[21999,false],[22000,false]]){
     const f=fixture();full(f);const hp=ensureVitals(f.player).hp,bhp=f.boss.hp;
     const hit=damageMonster(f.room,f.boss,f.player,25,START+offset);
-    assert.equal(hit.damage,reflect?0:20);assert.equal(f.boss.hp,bhp-(reflect?0:20));
-    assert.equal(ensureVitals(f.player).hp,hp-(reflect?20:0));
-    assert.equal(f.boss.contributors.get(f.player.id)||0,reflect?0:20);assert.equal(f.room.energyDrops,undefined);
-    if(reflect){assert.equal(hit.reflectedDamage,20);assert.equal(f.room.reflectedVitals.length,1);}
+    assert.equal(hit.damage,reflect?0:25);assert.equal(f.boss.hp,bhp-(reflect?0:25));
+    assert.equal(ensureVitals(f.player).hp,hp-(reflect?25:0));
+    assert.equal(f.boss.contributors.get(f.player.id)||0,reflect?0:25);assert.equal(f.room.energyDrops,undefined);
+    if(reflect){assert.equal(hit.reflectedDamage,25);assert.equal(f.room.reflectedVitals.length,1);}
   }
 });
 
@@ -50,7 +50,7 @@ test('보스HP1에서도 방어 후 예정피해 전체 반환·보스사망 없
     const f=fixture(),now=full(f);f.boss.hp=1;ensureVitals(f.player).hp=10;
     if(bless)f.player.capricornBlessing={endsAt:now+5000};
     const hit=damageMonster(f.room,f.boss,f.player,5000,now);
-    assert.equal(hit.reflectedDamage,4995);assert.equal(f.boss.hp,1);assert.equal(hit.defeated,false);
+    assert.equal(hit.reflectedDamage,5000);assert.equal(f.boss.hp,1);assert.equal(hit.defeated,false);
     assert.equal(f.boss.contributors.size,0);assert.equal(f.room.energyDrops,undefined);
     assert.equal(ensureVitals(f.player).hp>0,bless);if(!bless)assert.equal(ensureVitals(f.player).defeatedAt,now);
   }
@@ -59,12 +59,12 @@ test('보스HP1에서도 방어 후 예정피해 전체 반환·보스사망 없
 test('천칭 반사와 달 반사가 서로 재귀하지 않고 공격자 방어를 이중 적용하지 않음',()=>{
   const f=fixture(),now=full(f);f.player.avatar.constellationId='libra';castLibra(f.room,f.player,now);
   const hp=ensureVitals(f.player).hp,bhp=f.boss.hp;
-  const hit=damageMonster(f.room,f.boss,f.player,15,now);assert.equal(hit.reflectedDamage,10);
-  assert.equal(ensureVitals(f.player).hp,hp-10);assert.equal(f.boss.hp,bhp);
+  const hit=damageMonster(f.room,f.boss,f.player,15,now);assert.equal(hit.reflectedDamage,15);
+  assert.equal(ensureVitals(f.player).hp,hp-15);assert.equal(f.boss.hp,bhp);
   reflectLibraDamage(f.room,f.player,{sourceMonsterId:f.boss.id},20,now);
-  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-10);assert.equal(f.room.reflectedVitals.length,1);
+  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-15);assert.equal(f.room.reflectedVitals.length,1);
   damagePlayersInArea(f.room,{mapId:f.boss.mapId,x:f.player.x,y:f.player.y,radius:10,sourceMonsterId:f.boss.id},20,now);
-  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-10);
+  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-15);
 });
 
 test('달 반사에도 황소면역·헤라클레스방패·염소부활 유지 및 정확한 만료 경계',()=>{
@@ -73,22 +73,24 @@ test('달 반사에도 황소면역·헤라클레스방패·염소부활 유지 
   f.player.herculesShield={hp:12,absorbed:0,endsAt:now+5000};
   assert.equal(damageMonster(f.room,f.boss,f.player,25,now).reflectedDamage,0);
   assert.equal(ensureVitals(f.player).hp,hp);assert.equal(f.player.herculesShield.hp,12);
-  // 면역 만료 후 예정피해20 중 방패12 흡수, HP8 감소 (공격자 방어4를 다시 빼지 않음).
-  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+1).reflectedDamage,8);
-  assert.equal(ensureVitals(f.player).hp,hp-8);assert.equal(f.player.herculesShield.hp,0);
+  // 면역 만료 후 예정피해25 중 방패12 흡수, HP13 감소 (공격자 방어4를 다시 빼지 않음).
+  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+1).reflectedDamage,13);
+  assert.equal(ensureVitals(f.player).hp,hp-13);assert.equal(f.player.herculesShield.hp,0);
   assert.equal(f.player.herculesShield.absorbed,12);assert.equal(f.player.herculesShield.endsAt,now+1);
   f.player.herculesShield={hp:50,absorbed:0,endsAt:now+2};
-  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+2).reflectedDamage,20);
+  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+2).reflectedDamage,25);
   assert.equal(f.player.herculesShield.hp,50);
   ensureVitals(f.player).hp=5;f.player.herculesShield={hp:15,absorbed:0,endsAt:now+5000};
   f.player.capricornBlessing={endsAt:now+5000};
-  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+3).reflectedDamage,5);
+  assert.equal(damageMonster(f.room,f.boss,f.player,25,now+3).reflectedDamage,10);
   assert.ok(ensureVitals(f.player).hp>0);assert.equal(ensureVitals(f.player).defeatedAt,null);
-  assert.equal(f.player.capricornBlessing,null);assert.equal(f.boss.hp,2000);
+  assert.equal(f.player.capricornBlessing,null);assert.equal(f.boss.hp,5000);
 });
 
 test('독 공통피해 경로: 보름 중 직접/지속피해 반환·다른맵/접속종료 시 전송/반환 없음',()=>{
   const f=fixture(),now=full(f);f.player.avatar.constellationId='ophiuchus';f.player.x=f.boss.x;f.player.y=f.boss.y;
+  // 방어0 보스의 직접 반사 뒤에도 살아 있어야 지속 독 반사 경로를 검사할 수 있습니다.
+  f.player.statGrowth={bonuses:{hp:100}};delete f.player.battleVitals;
   const hp=ensureVitals(f.player).hp,bhp=f.boss.hp;
   castOphiuchus(f.room,f.player,now);const direct=advanceOphiuchusVenoms(f.room,now+1000);
   assert.equal(direct[0].targets[0].damage,0);assert.ok(direct[0].targets[0].reflectedDamage>0);

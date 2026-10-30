@@ -29,9 +29,14 @@ test('cozy socket state persists, stays private, and failure rolls back energy p
  assert.deepEqual(f.p.cozyActivities,beforeRoom);assert.equal(f.p.cosmicEnergy,roomEnergy);
  await act(f,'room','save',{theme:'study',layout:cozyPreset('study')});at(f,'garden');await act(f,'garden','plant',{pot:1,seed:'moonbell'});
  const saved=structuredClone(f.p.cozyActivities);for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).cozyActivities,undefined);
- await f.restart();at(f,'garden');assert.deepEqual(f.p.cozyActivities,saved);f.advance(600000);assert.equal(ok(await call(f.student,'cozy:read',{kind:'garden'})).state.pots[1].ready,true);
- await f.fail(async()=>assert.equal((await call(f.student,'cozy:act',{kind:'garden',action:'harvest',pot:1})).ok,false));assert.deepEqual(f.p.cozyActivities,saved);
- assert((await act(f,'garden','harvest',{pot:1})).amount>0);
+ await f.restart();at(f,'garden');assert.deepEqual(f.p.cozyActivities,saved);f.advance(600000);assert.equal(ok(await call(f.student,'cozy:read',{kind:'garden'})).state.pots[1].ready,false);
+ const garden=async(action,extra={},ms=200)=>{f.advance(ms);const g=f.p.cozyActivities.garden.pots[1].game;return act(f,'garden',action,{pot:1,generation:g.generation,revision:g.revision,...extra});};
+ for(const x of [20,50,80])await garden('seed-place',{x,y:50});
+ for(let i=0;i<8;i++)await garden('sunlight',{arrow:f.p.cozyActivities.garden.pots[1].game.arrows[i]});
+ await garden('water-start');await f.restart();at(f,'garden');await garden('water-release',{duration:0,score:0},3500);
+ const readySaved=structuredClone(f.p.cozyActivities),readyGame=f.p.cozyActivities.garden.pots[1].game,harvest={kind:'garden',action:'harvest',pot:1,generation:readyGame.generation,revision:readyGame.revision};
+ await f.fail(async()=>assert.equal((await call(f.student,'cozy:act',harvest)).ok,false));assert.deepEqual(f.p.cozyActivities,readySaved);
+ const gardenResults=await Promise.all(Array.from({length:4},()=>call(f.student,'cozy:act',harvest)));assert.equal(gardenResults.filter(r=>r.ok&&r.amount>0).length,1);assert.equal(gardenResults.filter(r=>r.ok).length,1);assert.equal(f.p.cozyActivities.garden.collection.moonbell,1);
  const record=toRecord(f.room),student=record.students.find(p=>p.id===f.p.id);delete student.cozyActivities;assert.deepEqual(fromRecord(record).players.get(f.p.id).cozyActivities,validateCozyActivities());
  student.cozyActivities={};assert.throws(()=>fromRecord(record));
 });

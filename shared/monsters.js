@@ -23,8 +23,8 @@ export const MONSTER_COMBAT=Object.freeze({
   'sun-paradise-2':combatFor(4,1.3*1.3),
   'moon-paradise-1':combatFor(3,1.3),
   'moon-paradise-2':combatFor(4,1.3*1.3),
-  'moon-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3}),
-  'sun-paradise-3':Object.freeze({power:20,defense:5,speedFactor:1.3*1.3})
+  'moon-paradise-3':Object.freeze({power:20,defense:0,speedFactor:1.3*1.3}),
+  'sun-paradise-3':Object.freeze({power:20,defense:0,speedFactor:1.3*1.3})
 });
 export const MONSTER_TYPES = Object.freeze([
   { id:'baby-energy-star', name:'Lv2 기운을 품은 아기별', description:'따뜻한 빛과 서늘한 빛 사이에서 자신의 힘을 찾아가는 아기별. 반짝이며 몸을 굴려 가까이 다가와요.', mapId:'moon-garden', shape:'baby-energy-star', color:'#d7c8ff', level:2 },
@@ -38,14 +38,14 @@ export const MONSTER_TYPES = Object.freeze([
   { id: 'chameleon-star', name: 'Lv2 카멜레별', description: '파스텔 초록빛으로 반짝이는 카멜레별', mapId: 'star-origin-2', shape: 'chameleon-star', color: '#b8e6a1', level: 2 },
   { id: 'star-dragon', name: 'Lv3 별용이', description: '별빛 비늘을 두른 용이', mapId: 'star-origin-3', shape: 'star-dragon', color: '#67c8ff', level: 3 },
   { id: 'star-phoenix', name: 'Lv3 별사조', description: '별의 불꽃을 품은 사조', mapId: 'star-origin-3', shape: 'star-phoenix', color: '#ff9f45', level: 3 },
-  {id:'noksera',name:'노크세라',description:'달빛의 뿔로 별의 꿈을 지키는 보스',mapId:'moon-paradise-3',shape:'noksera',color:'#e3d9ff',level:1,boss:true,hp:2000,defense:5,power:20},
-  {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:2000,defense:5,power:20},
+  {id:'noksera',name:'노크세라',description:'달빛의 뿔로 별의 꿈을 지키는 보스',mapId:'moon-paradise-3',shape:'noksera',color:'#e3d9ff',level:1,boss:true,hp:5000,defense:0,power:20},
+  {id:'leoon',name:'레오온',description:'태양의 갈퀴로 낙원을 지키는 보스',mapId:'sun-paradise-3',shape:'leoon',color:'#ffce6f',level:1,boss:true,hp:5000,defense:0,power:20},
   {id:'spirit-king',name:'성령의 왕',description:'별들의 낙원을 지키는 Lv6 성령왕',mapId:'star-paradise',shape:'spirit-king',color:'#d6c9ff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
   {id:'dark-star',name:'태초의 검은별',description:'돌이 된 별 석상에서 깨어난 검은 별',mapId:'sleeping-stars-1',shape:'dark-star',color:'#29243f',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
-  {id:'star-guardian',name:'Lv4 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 별무늬 방패를 들고 가까이 다가와 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:4,radius:30,hp:1000,power:15,defense:4,
-    combat:Object.freeze({power:15,defense:4,speedFactor:3.38})},
+  {id:'star-guardian',name:'Lv3 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 가까운 대상을 따라가 먼저 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:3,radius:30,hp:300,power:10,defense:2,
+    combat:Object.freeze({power:10,defense:2,speedFactor:3.38})},
   {id:'serena',name:'별의 시초신 세레나',description:'별의 여신 석상에서 깨어난 별의 시초신',mapId:'star-origin-4',shape:'serena',color:'#e4dcff',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})}
 ]);

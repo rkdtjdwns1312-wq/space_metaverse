@@ -2513,6 +2513,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         if(burst.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
       }
       const corona=advanceCorona(room,now);
+      for(const healed of corona.healed)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===healed.mapId)
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:healed.playerId,vitals:healed.vitals});
       let combatEffectEnded=combatEffectsBefore.some(({player,dash,shield,crown})=>
         dash&&!player.taurusDash||shield&&!player.herculesShield||crown&&!player.coronaAura);
       for(const p of room.players.values())if(p.taurusImmuneUntil&&p.taurusImmuneUntil<=now){

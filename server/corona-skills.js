@@ -10,6 +10,14 @@ import {ensureVitals,playerVitals} from './vitals.js';
 import {ensure} from './rooms.js';
 
 export const coronaCooldowns=p=>({0:p.coronaCooldownUntil||0});
+function healCoronaHits(player,hits,now){
+  if(!player?.connected||player.away||player.avatar?.blackStar||player.avatar?.constellationId!=='corona-borealis'||
+    !(player.coronaAura?.endsAt>now)||player.coronaAura.mapId!==player.mapId)return null;
+  const value=ensureVitals(player);if(!value||value.hp<=0)return null;
+  const count=hits.filter(hit=>hit?.damage>0).length,before=value.hp;
+  value.hp=Math.min(playerVitals(player).hp.max,value.hp+count*coronaSkillOf(player).hitHealing);
+  return value.hp>before?{playerId:player.id,mapId:player.mapId,amount:value.hp-before,vitals:playerVitals(player)}:null;
+}
 export function castCorona(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='corona-borealis'&&player.avatar.level>=2,'LV2 왕관자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
@@ -36,6 +44,7 @@ export function castCorona(room,player,now,{basic=false}={}){
         room.coronaFalls.set(fall.id,fall);falls.push(fall);
       }
     }
+    healCoronaHits(player,targets,now);
     return {ready:true,targets,playerTargets,falls,vitals:playerVitals(player),hit:{playerId:player.id,mapId:player.mapId,
       x:player.x,y:player.y,dx,dy,reach,radius:width,kind:'corona-attack',vfxId:'attack',durationMs:500,size}};
   }
@@ -52,12 +61,12 @@ export function coronaAuraViews(room,mapId,now){
       elapsedMs:now-p.coronaAura.at,durationMs:p.coronaAura.endsAt-p.coronaAura.at,successfulHits:p.coronaAura.successfulHits}));
 }
 export function advanceCorona(room,now){
-  const hits=[],finals=[];
+  const hits=[],finals=[],healed=[];
   for(const [id,fall] of room.coronaFalls||[]){
     if(fall.dueAt>now)continue;room.coronaFalls.delete(id);
     const player=room.players.get(fall.playerId),monster=monstersOf(room,now).get(fall.monsterId);
     if(player?.connected&&player.mapId===fall.mapId&&monster?.hp>0){const hit=damageMonster(room,monster,player,fall.power,now);
-      if(hit)hits.push({mapId:fall.mapId,...hit});}
+      if(hit){hits.push({mapId:fall.mapId,...hit});const healing=healCoronaHits(player,[hit],now);if(healing)healed.push(healing);}}
   }
   for(const player of room.players.values()){
     const aura=player.coronaAura;if(!aura||aura.endsAt>now)continue;player.coronaAura=null;
@@ -73,5 +82,5 @@ export function advanceCorona(room,now){
     const projectiles=launchProjectiles(room,player,base,now);
     finals.push({playerId:player.id,mapId:player.mapId,projectiles,successfulHits:aura.successfulHits});
   }
-  return {hits,finals};
+  return {hits,finals,healed};
 }

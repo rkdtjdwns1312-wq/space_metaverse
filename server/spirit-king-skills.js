@@ -6,7 +6,7 @@ import {monsterType} from '../shared/monsters.js';
 import {clearSpiritBlueStars,summonSpiritBlueStars} from './spirit-blue-stars.js';
 
 const TAU=Math.PI*2;
-const guardianRadius=monsterType('star-guardian').radius;
+const guardianType=monsterType('star-guardian'),guardianRadius=guardianType.radius;
 
 export function clearSpiritKingEffects(room,bossId){
   for(const [id,monster] of room.monsters||[])if(monster.summonerId===bossId)room.monsters.delete(id);
@@ -17,26 +17,25 @@ export function clearSpiritKingEffects(room,bossId){
 function summonGuardians(room,boss,now,map){
   const existing=[...room.monsters.values()].filter(m=>m.summonerId===boss.id&&m.hp>0);
   let created=0;
-  for(let i=existing.length;i<SPIRIT_SUMMON.count;i++){
-    const angle=TAU*i/SPIRIT_SUMMON.count;
+  for(let i=0;i<SPIRIT_SUMMON.count*4&&existing.length+created<SPIRIT_SUMMON.count;i++){
+    const angle=TAU*(i% (SPIRIT_SUMMON.count*2))/(SPIRIT_SUMMON.count*2);
     const offset=boss.radius+guardianRadius+32;
-    let x=boss.x+Math.cos(angle)*offset,y=boss.y+Math.sin(angle)*offset;
-    if(!onParadiseFloor(map,x,y,guardianRadius)){
-      x=boss.x+Math.cos(angle)*offset*.6;y=boss.y+Math.sin(angle)*offset*.6;
-    }
+    const ring=offset+Math.floor(i/(SPIRIT_SUMMON.count*2))*(guardianRadius*2+12);
+    const x=boss.x+Math.cos(angle)*ring,y=boss.y+Math.sin(angle)*ring;
     if(!onParadiseFloor(map,x,y,guardianRadius))continue;
+    if([...room.monsters.values()].some(m=>m.hp>0&&m.mapId===boss.mapId&&Math.hypot(x-m.x,y-m.y)<guardianRadius+m.radius+10))continue;
     room.spiritGuardianSequence=(room.spiritGuardianSequence||0)+1;
     const id=`${boss.id}-guardian-${room.spiritGuardianSequence}`;
     const targetEntries=[...boss.attackers];
     room.monsters.set(id,{id,typeId:'star-guardian',mapId:boss.mapId,x,y,radius:guardianRadius,
-      hp:1000,maxHp:1000,respawnAt:null,spawnX:x,spawnY:y,summonerId:boss.id,
+      hp:guardianType.hp,maxHp:guardianType.hp,respawnAt:null,spawnX:x,spawnY:y,summonerId:boss.id,
       mp:0,maxMp:0,targetId:boss.targetId,attackers:new Map(targetEntries),contributors:new Map(),
       meleePresence:new Map(),attackOrder:boss.attackOrder||targetEntries.length,mapExitCount:0,nextAttackAt:now+1000,
       dx:0,dy:0,facingX:boss.facingX||1,moving:false,
       patrolStartedAt:now,patrolPhaseOffset:0,patrolCycle:-1,nextDirectionAt:now,lastMoveAt:now});
     created++;
   }
-  return created;
+  return created||false;
 }
 
 export function trySpiritKingSkills(room,boss,target,now,random,map){

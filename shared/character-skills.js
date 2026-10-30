@@ -61,7 +61,7 @@ export function characterAbilities(player){
     const damage=id==='cancer'?'직접 피해 없음':
       id==='cetus'?`주변 최대 ${spec.maxTargets}마리에게 초당 현재 공격력의 100%`:
         `현재 공격력의 ${spec.multiplier*100}% × ${spec.hits}회`;
-    const effect=id==='cancer'?`${spec.durationMs/1000}초 동안 Q 물방울 강화(${spec.multiplier*100}% 피해·폭 3배·관통), 닿은 아군의 잃은 체력 10% 회복`:
+    const effect=id==='cancer'?`${spec.durationMs/1000}초 동안 Q 물방울 강화(${spec.multiplier*100}% 피해·폭 3배·관통), 닿은 아군을 자신의 현재 공격력 100%만큼 회복`:
       id==='cetus'?`${spec.durationMs/1000}초 동안 방어력 +${spec.defenseBonus}`:'관통';
     Object.assign(skill,{name:names[level],iconUrl:WATER_VFX[id][`skill-lv${level}`].iconUrl,ready:true,
       description:`공격력: ${damage}\n특수효과: ${effect}\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
@@ -99,7 +99,7 @@ export function characterAbilities(player){
     Object.assign(attack,{name:TAURUS_NAMES.attack,iconUrl:TAURUS_VFX.attack.iconUrl,
       description:'황금 코인을 던져 멀리 있는 대상에게 피해를 줍니다.'});
     Object.assign(skill,{name:TAURUS_NAMES[level],iconUrl:TAURUS_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 현재 공격력의 ${spec.multiplier*100}%\n특수효과: 부딪힌 몬스터 1초 기절 · 돌진 중과 종료 후 1초 피해 면역\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 현재 공격력의 ${spec.multiplier*100}%\n특수효과: ${spec.durationMs/1000}초간 돌진 · 부딪힌 몬스터 1초 기절 · 돌진 중과 종료 후 1초 피해 면역\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='hercules'){
     const spec=herculesSkillOf(player);
@@ -120,7 +120,7 @@ export function characterAbilities(player){
     Object.assign(attack,{name:CORONA_NAMES.attack,iconUrl:CORONA_VFX.attack.iconUrl,
       description:'검의 환영을 소환하여 가까이 있는 대상에게 피해를 줍니다.'});
     Object.assign(skill,{name:CORONA_NAMES[level],iconUrl:CORONA_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 직접 피해 없음\n특수효과: ${spec.durationMs/1000}초간 Q 사거리 2배 · Q 명중마다 현재 공격력의 100% 추가 피해 · 종료 시 명중 횟수 × 현재 공격력의 100% 붉은 검기\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 직접 피해 없음\n특수효과: ${spec.durationMs/1000}초간 Q 사거리 2배 · Q 명중마다 현재 공격력의 100% 추가 피해 · 지속 중 Q·낙검이 몬스터에게 피해를 줄 때마다 자신의 체력 ${spec.hitHealing} 회복 · 종료 시 명중 횟수 × 현재 공격력의 100% 붉은 검기\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='capricorn'){
     const spec=capricornSkillOf(player);

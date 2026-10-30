@@ -161,8 +161,20 @@ function registerMonsterAttacker(room,target,player,now,retaliateTeacher){
 }
 // 이전 서버 테스트/연동의 단수 응답 호환. 실제 적용은 항상 모든 대상입니다.
 export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
-// 같은 순위 안에서는 마지막 공격자가 우선. 공격하지 않은 학생은 후보가 되지 않습니다.
+// 일반 몬스터는 같은 순위 안에서 마지막 공격자가 우선입니다.
 export function selectMonsterTarget(room,monster){
+  // 소환 지킴이는 반격 이력과 무관하게 같은 맵에서 가장 가까운 대상을 추적합니다.
+  // 일반 교사는 기존 E 반격 허용을 받은 개체만 대상이 되며 유령은 제외합니다.
+  if(monster.typeId==='star-guardian'){
+    let selected=null,distance=Infinity;
+    for(const player of room.players?.values()||[]){
+      if(!player.connected||player.away||player.avatar?.blackStar||player.mapId!==monster.mapId||
+        !['student','teacher'].includes(player.role)||(player.role==='teacher'&&(player.avatar?.teacherPreview||!monster.teacherRetaliation?.has(player.id)))||!(ensureVitals(player)?.hp>0))continue;
+      const next=Math.hypot(player.x-monster.x,player.y-monster.y);
+      if(next<distance){selected=player;distance=next;}
+    }
+    monster.targetId=selected?.id||null;return selected;
+  }
   const candidates=[],hadAttackers=monster.attackers.size>0;
   for(const [id,order] of monster.attackers){
     const player=room.players?.get(id);

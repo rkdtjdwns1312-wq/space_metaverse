@@ -95,12 +95,15 @@ test('황소 서버 돌진은 몬스터를 통과하고 일반 서버 이동은 
   assert.ok(p.x>430,'황소가 서버 권위 좌표에서 몬스터를 통과해야 한다');
 });
 
-test('황소 스킬은 각 단계에서 지속시간과 재사용 대기시간이 1초 늘어난다',()=>{
-  for(const [level,duration,cooldown] of [[2,2260,5000],[3,2260,4000],[4,2260,3000]]){
+test('황소 스킬은 기존 속도로2초 유지하며 단계별 재사용은5/4/3초를 보존한다',()=>{
+  for(const [level,duration,cooldown] of [[2,2000,5000],[3,2000,4000],[4,2000,3000],[5,2000,3000]]){
     const p={id:'bull',role:'student',connected:true,away:false,mapId:'star-origin-1',x:400,y:400,
       facing:{x:1,y:0},avatar:{level,constellationId:'taurus'}};
     const room={players:new Map([[p.id,p]]),planets:new Map()};ensureVitals(p);castTaurus(room,p,1000);
     assert.equal(p.taurusDash.endsAt-p.taurusDash.at,duration);
     assert.equal(p.taurusCooldownUntil-1000,cooldown);
+    assert.ok(Math.abs(p.taurusDash.distance/duration/p.taurusDash.size-5.25/2260)<1e-12);
+    assert.equal(taurusDashViews(room,p.mapId,2999).length,1);assert.equal(taurusDashViews(room,p.mapId,3000).length,0);
+    advanceTaurusDashes(room,2999);assert.ok(p.taurusDash);advanceTaurusDashes(room,3000);assert.equal(p.taurusDash,null);
   }
 });

@@ -32,18 +32,29 @@ test('두 낙원 3에 보스가 한 마리씩, LV3 몬스터 2배 크기와 전�
     assert.equal(type.boss,true);
     assert.equal(boss.mapId,type.mapId);
     assert.equal(boss.radius,192);
-    assert.equal(boss.hp,2000);
+    assert.equal(boss.hp,5000);assert.equal(boss.maxHp,5000);assert.equal(type.defense,0);assert.equal(boss.maxMp,100);
     assert.equal(monsterViews(room)[0].attackPower,20);
     assert.equal(monsterViews(room)[0].typeId,id);
     assert.equal(monsterViews(room).length,1);
   }
 });
 
-test('보스 방어력 5, 우주에너지 400~600, 전용재료 100%, LV4 완제품 1%를 각각 적용한다',()=>{
+test('보스 새 HP 기준이 처치 대기나 실행 중 남은 HP를 되돌리지 않는다',()=>{
+  const now=Date.parse('2026-10-30T03:00:00Z'),due=now+86400000;
+  const room={players:new Map(),bossRespawns:{'noksera-boss':due,'leoon-boss':due}};
+  for(const id of ['noksera','leoon']){
+    const boss=monstersOf(room,now).get(`${id}-boss`);
+    assert.equal(boss.hp,0);assert.equal(boss.maxHp,5000);assert.equal(boss.respawnAt,due);
+    boss.hp=123;boss.respawnAt=null;
+    assert.equal(monstersOf(room,now+1).get(boss.id).hp,123);
+  }
+});
+
+test('보스 방어력 0, 우주에너지 400~600, 전용재료 100%, LV4 완제품 1%를 각각 적용한다',()=>{
   for(const id of ['noksera','leoon']){
     const {room,player,boss}=roomFor(id);
-    assert.equal(damageMonster(room,boss,player,5,1100).damage,1);
-    const result=damageMonster(room,boss,player,2004,1200,{
+    assert.equal(damageMonster(room,boss,player,5,1100).damage,5);
+    const result=damageMonster(room,boss,player,4995,1200,{
       energyRoll:(min,max)=>{assert.deepEqual([min,max],[400,601]);return 400;},
       bossRoll:(min,max)=>min
     });

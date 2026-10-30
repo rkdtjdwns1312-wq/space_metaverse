@@ -16,7 +16,7 @@ function fixture(type){
 
 test('성령왕은 소환한 지킴이 뒤에 갇히지 않고 우회하여 기본공격을 재개한다',()=>{
   const {room,boss,player,map}=fixture('spirit-king');player.x=boss.x+650;boss.summonDecisionAt=START;boss.orbReadyAt=Infinity;
-  moveMonsters(room,START,()=>0);assert.equal(room.monsters.size,4);
+  moveMonsters(room,START,()=>0);assert.equal(room.monsters.size,6);
   let bossAttacks=0;
   for(let now=START+50;now<START+60000;now+=50){
     ensureVitals(player).hp=60;

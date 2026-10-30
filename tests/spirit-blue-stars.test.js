@@ -22,17 +22,17 @@ function fixture(){
   return {room,boss,map,player};
 }
 
-test('blue star summon makes three separated floor-safe points and charges MP/cooldown only after success',()=>{
+test('blue star summon makes five separated floor-safe points and charges MP/cooldown only after success',()=>{
   const f=fixture();
   assert.equal(trySpiritKingSkills(f.room,f.boss,{x:0,y:0},START,()=>0,f.map),true);
   const stars=f.room.spiritBlueStars;
   assert.equal(stars.length,SPIRIT_BLUE_STAR.count);assert.equal(f.boss.mp,90);
   assert.equal(f.boss.blueStarReadyAt,START+SPIRIT_BLUE_STAR.cooldownMs);
-  assert.equal(new Set(stars.map(star=>star.id)).size,3);
+  assert.equal(new Set(stars.map(star=>star.id)).size,5);
   assert.ok(stars.every(star=>star.bossId===f.boss.id&&star.mapId===f.boss.mapId&&star.endsAt===START+SPIRIT_BLUE_STAR.durationMs));
   assert.ok(stars.every(star=>onParadiseFloor(f.map,star.x,star.y,star.radius)));
   assert.ok(stars.every((star,i)=>stars.slice(i+1).every(other=>Math.hypot(star.x-other.x,star.y-other.y)>=SPIRIT_BLUE_STAR.minSeparation)));
-  assert.equal(spiritBlueStarViews(f.room,f.boss.mapId,START).length,3);
+  assert.equal(spiritBlueStarViews(f.room,f.boss.mapId,START).length,5);
   for(const star of stars){
     assert.ok(Math.hypot(star.x-f.map.spawn.x,star.y-f.map.spawn.y)>=190+star.radius);
     for(const object of f.map.objects.filter(o=>o.kind==='gate'||!o.passable))
@@ -69,7 +69,7 @@ test('at exact expiry each star hits same-map students including distant student
   const otherHp=otherHeroes.map(player=>ensureVitals(player).hp);
   const expectedDamage=Math.max(1,60-defensePowerOf(hero.avatar.level,hero.avatar.constellationId,hero));
   const hits=tickSpiritBlueStars(f.room,START+SPIRIT_BLUE_STAR.durationMs,mapId=>mapOf(mapId));
-  assert.equal(hits.length,7);
+  assert.equal(hits.length,11);
   const directHits=hits.filter(hit=>hit.targetId!=='far');
   assert.ok(directHits.every(hit=>hit.damage===expectedDamage));
   assert.ok(ensureVitals(hero).hp<hp);
@@ -124,6 +124,6 @@ test('boss defeat cleanup removes blue stars alongside guardians and orbs',()=>{
   assert.equal(f.room.spiritBlueStars.length,0);assert.equal(f.room.spiritOrbs.length,0);
 });
 
-test('Spirit King skill specification is 10 MP, one minute cooldown, three stars, twenty seconds',()=>{
-  assert.deepEqual([SPIRIT_BLUE_STAR.mana,SPIRIT_BLUE_STAR.cooldownMs,SPIRIT_BLUE_STAR.count,SPIRIT_BLUE_STAR.durationMs,SPIRIT_BLUE_STAR.damageMultiplier],[10,60000,3,20000,2]);
+test('Spirit King skill specification is 10 MP, one minute cooldown, five stars, twenty seconds',()=>{
+  assert.deepEqual([SPIRIT_BLUE_STAR.mana,SPIRIT_BLUE_STAR.cooldownMs,SPIRIT_BLUE_STAR.count,SPIRIT_BLUE_STAR.durationMs,SPIRIT_BLUE_STAR.damageMultiplier],[10,60000,5,20000,2]);
 });

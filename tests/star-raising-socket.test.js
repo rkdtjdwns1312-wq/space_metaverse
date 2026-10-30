@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {STREET} from '../shared/config.js';
+import {readingFixture,call,ok} from './helpers/reading-fixture.js';
+const at=f=>{const o=STREET.objects.find(o=>o.kind==='cozy-pet');Object.assign(f.p,{mapId:STREET.id,x:o.x,y:o.y+100,input:{x:0,y:0,at:0}});};
+const act=(f,action,data={})=>call(f.student,'cozy:act',{kind:'pet',action,...data});
+test('star socket concurrency, failed final persistence, restart resume and private album',async t=>{
+ const f=await readingFixture(t);at(f);ok(await act(f,'adopt',{species:'flower'}));
+ const starts=await Promise.all([act(f,'raising:start',{runId:null}),act(f,'raising:start',{runId:null})]);assert.equal(starts.filter(r=>r.ok).length,1);
+ const id=starts.find(r=>r.ok).state.raising.runId;
+ const choose=step=>({runId:id,step,activityId:'care',choiceId:'1',amount:999999,type:'ISFP',playerId:f.q.id});
+ const concurrent=await Promise.all([act(f,'raising:choose',choose(0)),act(f,'raising:choose',choose(0))]);assert.equal(concurrent.filter(r=>r.ok).length,1);
+ for(let i=1;i<5;i++)ok(await act(f,'raising:choose',choose(i)));
+ const saved=structuredClone(f.p.cozyActivities);await f.restart();at(f);assert.deepEqual(f.p.cozyActivities,saved);
+ for(let i=5;i<11;i++)ok(await act(f,'raising:choose',choose(i)));
+ const before=structuredClone(f.p.cozyActivities),energy=f.p.cosmicEnergy;
+ await f.fail(async()=>assert.equal((await act(f,'raising:choose',choose(11))).ok,false));assert.deepEqual(f.p.cozyActivities,before);assert.equal(f.p.cosmicEnergy,energy);
+ const done=ok(await act(f,'raising:choose',choose(11)));assert.equal(done.state.raising.ending.type,'ENTJ');assert.equal(done.state.raising.album.length,1);assert(done.amount>0);
+ assert.equal((await act(f,'raising:choose',choose(11))).ok,false);assert.equal(f.q.cozyActivities.pet.species,null);assert.equal(f.q.cozyActivities.pet.raising.run,null);
+ for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).cozyActivities,undefined);
+ await f.restart();at(f);assert.equal(ok(await call(f.student,'cozy:read',{kind:'pet'})).state.raising.album.length,1);
+});

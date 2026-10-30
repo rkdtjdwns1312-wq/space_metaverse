@@ -37,25 +37,40 @@ test('게자리 Q는 평소 첫 몬스터에서 멈추고, E 후 10초간 폭3�
   assert.equal(enhanced.hit.range,size*6);
   advance(room,now+1800);
   assert.equal(near.hp,1000-base-base*3);assert.equal(far.hp,1000-base*3);
-  assert.equal(ensureVitals(friend).hp,friendBefore+Math.round((playerVitals(friend).hp.max-friendBefore)*.1));
+  assert.equal(ensureVitals(friend).hp,Math.min(playerVitals(friend).hp.max,friendBefore+base));
   assert.throws(()=>castWater(room,player,now+2000),/기다려/);
   advanceWaterAuras(room,now+11000);assert.equal(player.waterAura,null);
   castWater(room,player,now+11100,{basic:true});advance(room,now+11800);
   assert.equal(far.hp,1000-base*3);
 });
 
-test('게 물방울 회복은 매 명중 시 잃은 체력의 10%를 반올림하며 공격력과 무관하다',()=>{
+test('게 물방울 회복은 Lv2~5 매 명중 시 공격력100%, 강화 Q 피해값과 무관하며 최대HP를 넘지 않는다',()=>{
   for(const level of [2,3,4,5]){
     const {room,player}=setup('cancer',level),friend={id:'ally',connected:true,role:'student',avatar:{level:4,constellationId:'aquarius'}};
     const vitals=ensureVitals(friend),maximum=playerVitals(friend).hp.max;
     vitals.hp=maximum-35;
     let result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,Date.now(),{healing:true});
-    assert.equal(vitals.hp,maximum-31);assert.equal(result.healed[0].amount,4);
+    const healing=attackPowerOf(level,'cancer',player);
+    assert.equal(vitals.hp,maximum-35+healing);assert.equal(result.healed[0].amount,healing);
     result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],1,Date.now(),{healing:true});
-    assert.equal(vitals.hp,maximum-28);assert.equal(result.healed[0].amount,3);
+    assert.equal(vitals.hp,maximum-35+healing*2);assert.equal(result.healed[0].amount,healing);
+    vitals.hp=maximum-1;result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,Date.now(),{healing:true});
+    assert.equal(vitals.hp,maximum);assert.equal(result.healed[0].amount,1);
     vitals.hp=maximum;result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,Date.now(),{healing:true});
     assert.equal(vitals.hp,maximum);assert.deepEqual(result.healed,[]);
   }
+});
+
+test('게 회복은 발사 후 바뀐 장비·성장·공격 버프·초월 공격력도 명중 시 반영한다',()=>{
+ const {room,player}=setup('cancer',5),now=Date.now();castWater(room,player,now);const cast=castWater(room,player,now+1,{basic:true}).hit;
+ const friend={id:'ally',connected:true,role:'student',avatar:{level:4,constellationId:'aquarius'}};const v=ensureVitals(friend);v.hp=1;
+ player.equipmentSlots=['aurora-scabbard','star-pattern-gloves'];player.statGrowth={bonuses:{attack:4}};
+ player.libraBuff={bonus:3};player.leoCourage={bonus:2,endsAt:Date.now()+60000};player.transformation={active:true};
+ let result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,now+100,cast);
+ assert.equal(result.healed[0].amount,22);assert.equal(v.hp,23);
+ player.equipmentSlots=[];player.libraBuff=null;player.leoCourage.endsAt=0;player.transformation.active=false;
+ result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,now+200,cast);
+ assert.equal(result.healed[0].amount,14);assert.equal(v.hp,37);
 });
 
 test('고래자리 E는 10초·마나10·방어력 단계별 상승, 매초 가까운 최대 3마리만 한 번씩',()=>{

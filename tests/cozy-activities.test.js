@@ -28,9 +28,11 @@ test('room rejects overlaps, duplicates, bounds, palette and rotation; preset ne
  act(p,'room','preset',{theme:'study'});assert.equal(act(p,'room','save',{theme:'study',layout:l}).amount,0);
  assert(act(p,'room','save',{theme:'study',layout:l},now+1000).amount>0);
 });
-test('garden server timestamps, water reduction, ready boundary, collection after daily cap and offline growth',()=>{
+// Timer-only pots emulate records saved before the interactive garden upgrade.
+const legacyPot=(p,pot)=>{delete p.cozyActivities.garden.pots[pot].game;};
+test('legacy garden server timestamps, water reduction, ready boundary, collection after daily cap and offline growth',()=>{
  const p=player(),time=now+1000;let total=0;
- for(let i=0;i<4;i++){const start=time+i*300000;act(p,'garden','plant',{pot:0,seed:'stardaisy',plantedAt:0,readyAt:0},start);
+ for(let i=0;i<4;i++){const start=time+i*300000;act(p,'garden','plant',{pot:0,seed:'stardaisy',plantedAt:0,readyAt:0},start);legacyPot(p,0);
   assert.equal(p.cozyActivities.garden.pots[0].plantedAt,start);assert.throws(()=>act(p,'garden','harvest',{pot:0},start));
   act(p,'garden','water',{pot:0},start);assert.throws(()=>act(p,'garden','water',{pot:0},start));
   assert.throws(()=>act(p,'garden','harvest',{pot:0},start+239999));assert.equal(cozyView(p,'garden',start+240000).state.pots[0].ready,true);
@@ -38,7 +40,7 @@ test('garden server timestamps, water reduction, ready boundary, collection afte
  }
  assert.equal(p.cosmicEnergy,total);assert.equal(p.cozyActivities.garden.collection.stardaisy,4);assert.equal(p.cozyActivities.garden.harvestsToday,3);
  assert.throws(()=>act(p,'garden','plant',{pot:3,seed:'stardaisy'},time));assert.throws(()=>act(p,'garden','plant',{pot:0,seed:'fake'},time));
- for(const seed of COZY_SEEDS){const q=player();act(q,'garden','plant',{pot:2,seed:seed.id},time);assert.equal(cozyView(q,'garden',time+seed.minutes*60000-1).state.pots[2].ready,false);assert(act(q,'garden','harvest',{pot:2},time+seed.minutes*60000).amount>0);}
+ for(const seed of COZY_SEEDS){const q=player();act(q,'garden','plant',{pot:2,seed:seed.id},time);legacyPot(q,2);assert.equal(cozyView(q,'garden',time+seed.minutes*60000-1).state.pots[2].ready,false);assert(act(q,'garden','harvest',{pot:2},time+seed.minutes*60000).amount>0);}
 });
 test('teacher/master preview is free, no energy, and overflow rejects entire mutation',()=>{
  for(const p of [{...player(),role:'teacher'},{...player(),accountKind:'master'}]){act(p,'pet','adopt',{species:'cloud'});assert.equal(act(p,'pet','care',{care:'feed'}).amount,0);assert.equal(p.cosmicEnergy,0);assert.equal(cozyView(p,'pet',now).preview,true);}
@@ -50,7 +52,7 @@ test('actual avatar levels scale each independent quota; caller level and level 
   assert.equal(cozyRewardUnit(level),unit);const p=player();p.avatar.level=level;const time=now+1000;
   act(p,'pet','adopt',{species:'moon'},time);for(const care of ['feed','pet','play'])assert.equal(act(p,'pet','care',{care,level:5,amount:9999},time).amount,unit);
   assert.equal(act(p,'room','save',{theme:'moon',layout:cozyPreset()},time).amount,unit*3);
-  for(let pot=0;pot<3;pot++){act(p,'garden','plant',{pot,seed:'stardaisy'},time);assert.equal(act(p,'garden','harvest',{pot},time+300000).amount,unit);}
+  for(let pot=0;pot<3;pot++){act(p,'garden','plant',{pot,seed:'stardaisy'},time);legacyPot(p,pot);assert.equal(act(p,'garden','harvest',{pot},time+300000).amount,unit);}
   assert.equal(p.cosmicEnergy,unit*9);p.avatar.level=5;assert.equal(act(p,'pet','care',{care:'feed'},time+300000).amount,0);assert.equal(act(p,'room','save',{theme:'cloud',layout:cozyPreset()},time+300000).amount,0);
  }
  for(const level of [0,6,2.5,'5',null])assert.equal(cozyRewardUnit(level),0);

@@ -9,13 +9,17 @@ import {originFloor} from '../shared/origin-floor.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 import {MONSTER_TYPES} from '../shared/monsters.js';
 
-test('sleeping stars reuse all four origin dimensions/outlines with gates and only the first map summon statue',()=>{
+test('sleeping stars share stage-three dimensions and central floor with only the first map summon statue',()=>{
   assert.equal(SLEEPING_STARS_MAPS.length,4);
   for(const [index,map] of SLEEPING_STARS_MAPS.entries()){
-    const origin=ORIGIN_MAPS[index];
+    const origin=ORIGIN_MAPS[2];
     assert.equal(map.name,'별들이 잠드는 곳 '+(index+1));
     assert.deepEqual([map.width,map.height,map.spawn],[origin.width,origin.height,origin.spawn]);
-    assert.deepEqual(originFloor(map),originFloor(origin));
+    const floor=originFloor(map),base=originFloor(origin);
+    for(const key of ['cx','cy','rx','ry','half'])assert.equal(floor[key],base[key]);
+    if(index<3)assert.deepEqual(floor,base);
+    assert.equal(map.objects.filter(o=>o.kind==='gate').length,index===3?1:2);
+    const statue=map.objects.find(o=>o.kind==='dark-star-statue');if(statue)assert.deepEqual([statue.x,statue.y],[map.width/2,map.height/2]);
     assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'));
     assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===0?1:0);
     assert.equal(STATIC_MAPS[map.id],map);
