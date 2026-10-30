@@ -14,7 +14,8 @@ export function vitalsOf(level,player=null){
   if(isTeacher(player))return {hp:{current:boosted(TEACHER_AVATAR.hp),max:boosted(TEACHER_AVATAR.hp)},mp:{current:boosted(TEACHER_AVATAR.mp),max:boosted(TEACHER_AVATAR.mp)}};
   const base=VITAL_LIMITS[level],bonus=transformationBonus(player),gear=equipmentBonus(player);
   const type=level>=2?constellationOf(player?.avatar?.constellationId,level)?.type:null;
-  const hpFactor=type==='수호계'?1.5:type==='공격계'?.5:1;
+  // 근접 공격계인 왕관자리는 염소자리와 같은 기본 체력을 사용합니다.
+  const hpFactor=player?.avatar?.constellationId==='corona-borealis'?1:type==='수호계'?1.5:type==='공격계'?.5:1;
   const hpBase=(isMaster(player)?MASTER_BASE.hp:Math.round((base?.hp||0)*hpFactor))+bonus.hpBonus+gear.hp+statGrowthBonus(player,'hp');
   const mpBase=(isMaster(player)?MASTER_BASE.mp:(base?.mp||0)+(type==='생산계'||type==='제작계'?10:0))+bonus.mpBonus+gear.mp+statGrowthBonus(player,'mp');
   const hp=Math.max(1,boosted(hpBase)),mp=Math.max(1,boosted(mpBase));

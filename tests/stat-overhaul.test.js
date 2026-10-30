@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {CONSTELLATIONS} from '../shared/constellations.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {vitalsOf} from '../shared/vitals.js';
+import {ensureVitals,playerVitals} from '../server/vitals.js';
 import {MONSTER_LEVEL_STATS,MONSTER_TYPES} from '../shared/monsters.js';
 import {damageMonster} from '../server/monsters.js';
 import {addRecipeDrop} from '../server/energy-drops.js';
@@ -21,11 +22,26 @@ test('LV2~5 능력치와 다섯 계열 보정은 단계별 반올림·0 하한�
     '제작계':{hp:1,mp:10,attack:-1,defense:0}};
   for(const c of CONSTELLATIONS)for(const level of [2,3,4,5]){
     const p=player(c.id,level),b=base[level],o=offsets[c.type];
-    assert.equal(vitalsOf(level,p).hp.max,Math.round(b.hp*o.hp),c.name+' HP LV'+level);
+    assert.equal(vitalsOf(level,p).hp.max,c.id==='corona-borealis'?b.hp:Math.round(b.hp*o.hp),c.name+' HP LV'+level);
     assert.equal(vitalsOf(level,p).mp.max,b.mp+o.mp,c.name+' MP LV'+level);
     const meleeBonus=['hercules','capricorn','leo','corona-borealis'].includes(c.id)?1:0;
     assert.equal(attackPowerOf(level,c.id,p),Math.max(0,b.attack+o.attack)+meleeBonus);
     assert.equal(defensePowerOf(level,c.id,p),Math.max(0,b.defense+o.defense)+meleeBonus);
+  }
+});
+
+test('왕관 체력은 염소와 같고 성장·분수 보정 및 현재 체력 보존을 유지한다',()=>{
+  for(const [level,hp] of [[2,20],[3,40],[4,60],[5,60]]){
+    const crown=player('corona-borealis',level),goat=player('capricorn',level);
+    assert.equal(vitalsOf(level,crown).hp.max,hp);
+    assert.equal(vitalsOf(level,crown).hp.max,vitalsOf(level,goat).hp.max);
+    ensureVitals(crown).hp=3;
+    for(const p of [crown,goat]){
+      p.statGrowth={bonuses:{hp:7}};
+      p.effects=[{statusId:'star-guardian',maxPercent:.1,until:Date.now()+60000}];
+    }
+    assert.equal(playerVitals(crown).hp.max,vitalsOf(level,goat).hp.max);
+    assert.equal(playerVitals(crown).hp.current,3,'능력치 조회가 현재 체력을 회복시키지 않는다');
   }
 });
 
