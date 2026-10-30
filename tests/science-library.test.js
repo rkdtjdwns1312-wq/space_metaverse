@@ -78,9 +78,12 @@ test('all 100 facts are unique per cycle; completion resets history without rese
  const f=await readingFixture(t);f.at('science');const seen=new Set();let lastId;
  for(let i=0;i<ids.length;i++){
   if(i&&i%2===0)f.advance();const book=await open(f);assert(!seen.has(book.factId));seen.add(book.factId);
-  assert.equal(book.remaining,ids.length-1-i);assert.equal(book.canOpen,true);const done=await claim(f,book.factId);assert.equal(done.amount,1);lastId=book.factId;
+  assert.equal(book.remaining,ids.length-1-i);assert.equal(book.canOpen,true);
+  // Windows에서 직전 원자 저장의 파일 핸들이 해제될 시간을 줍니다. 검증 횟수/내용은 동일합니다.
+  if(process.platform==='win32')await wait(100);
+  const done=await claim(f,book.factId);assert.equal(done.amount,1);lastId=book.factId;
   if(i===ids.length-1){assert.equal(done.exhausted,false);assert.equal(done.remaining,100);assert.equal(done.cyclesCompleted,1);assert.equal(done.canOpen,false);assert.match(done.message,/초기화/);}
-  await wait(35);
+  await wait(process.platform==='win32'?200:35);
  }
  assert.equal(seen.size,100);assert.equal((await claim(f,lastId)).awarded,false);assert.equal(f.p.cosmicEnergy,100);
  assert.equal((await call(f.student,'science:open')).ok,false);await f.restart();f.at('science');assert.equal((await status(f)).count,2);assert.equal((await status(f)).cyclesCompleted,1);

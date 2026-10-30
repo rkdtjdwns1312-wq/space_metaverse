@@ -1,8 +1,9 @@
+import {activeHazardView} from './boss-map-hazards.js';
 import {huntingTimeView} from './hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {warningSummary} from './warnings.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
-import {playerVitals} from './vitals.js';
+import {playerVitals,libraProtectors} from './vitals.js';
 import {equipmentAuraOf} from '../shared/equipment.js';
 import {knownStatus} from '../shared/statuses.js';
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
@@ -50,14 +51,13 @@ export function effectsView(effects, viewerIsTeacher) {
     return v;
   });
 }
-export function playerEffectsView(player,viewerIsTeacher,now=Date.now()){
+export function playerEffectsView(player,viewerIsTeacher,now=Date.now(),room=null){
   const poison=player.combatPoison?.expiresAt>now?[{statusId:'poison',label:'중독 상태',icon:'🧪',style:'poison',until:player.combatPoison.expiresAt}]:[];
-  const combat=[];
+  const combat=room?activeHazardView(room,player,now).map(effect=>({...effect,label:effect.statusId==='burn'?'화상':'동상',icon:effect.statusId==='burn'?'🔥':'❄',style:'combat'})):[];
   const add=(id,label,icon,until)=>{if(until>now)combat.push({statusId:id,label,icon,style:'combat',until});};
   add('capricorn-blessing','염소의 축복','♑',player.capricornBlessing?.endsAt);
   add('leo-courage','사자의 용기','♌',player.leoCourage?.endsAt);
-  add('libra-reflect','천칭의 보호','⚖',player.libraAura?.endsAt);
-  if(player.libraBuff?.bonus)combat.push({statusId:'libra-reflect',label:'천칭의 공격력',icon:'⚖',style:'combat',until:now+1000});
+  add('libra-reflect','천칭의 무적','⚖',Math.max(0,...libraProtectors(room,player,now).map(p=>p.libraAura.endsAt)));
   add('hercules-shield','헤라클레스 방패','🛡',player.herculesShield?.endsAt);
   add('taurus-immunity','황소의 무적','♉',player.taurusImmuneUntil);
   if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 방어','🐋',player.waterAura.endsAt);
@@ -194,9 +194,9 @@ export class RoomStore {
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
           ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,
-          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
+          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now,room),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0;out.statGrowth=structuredClone(p.statGrowth||{bonuses:{hp:0,mp:0,attack:0,defense:0},lastPurchaseDay:null}); out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
-        if(viewer && viewer.id===p.id){out.huntingTime=huntingTimeView(p,now);out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
+        if(viewer && viewer.id===p.id){out.herculesNextStance=p.herculesNextStance==='attack'?'attack':'shield';out.huntingTime=huntingTimeView(p,now);out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}

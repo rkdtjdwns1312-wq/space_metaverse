@@ -1,0 +1,20 @@
+{
+  "tool": "image_gen.imagegen",
+  "date": "2026-10-30",
+  "assets": [
+    {
+      "path": "client/assets/skills/hercules/slam-club.webp",
+      "prompt": "Single isolated enormous magical wooden club weapon for a gentle children's Korean fantasy MMORPG, painterly storybook 2D art in classic TalesWeaver/Trickster spirit, delicate amber gold metal bands, warm honey-brown wood grain, ivory-gold five-point star inset near the broad heavy rounded head, short wrapped handle and golden rounded pommel. No spikes, no blood. Vertical upright silhouette, club head at top center, handle at bottom center, entire object visible with modest transparent padding, centered portrait object within square image. No character, no hand, no background, no text, no motion trail or ground or shadow. Soft dimensional hand-painted shading, polished luminous rim details, elegant fantasy game inventory illustration, readable large head and narrow handle. Transparent background."
+    },
+    {
+      "path": "client/assets/skills/hercules/slam-frames.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12,
+      "impactFrame": 7,
+      "durationMs": 900,
+      "prompt": "Create a production 2D game VFX sprite sheet using the referenced golden wooden star club exactly as the weapon identity. 12 animation frames in an exact regular 4-column by 3-row grid, reading left to right then top to bottom. Transparent background everywhere, no labels, no cell borders, no character or hand. Each cell is independent with identical dimensions, same scale and fixed ground strike point at 65% cell width and 72% cell height; ample transparent margin prevents touching adjacent cells. Side view attack faces RIGHT. Frames1-3: huge club lifts upward and back left with subtle golden anticipation glow. Frames4-6: club arcs fast downward toward right, short warm painted trailing arc, never stretches or changes design. Frame7: club head hits the ground strike point, handle angled up left, strong golden impact starburst. Frames8-9: head rests at same strike point, a broad low oval golden shockwave spreads with small decorative stones and star dust. Frames10-12: club fades and the shockwave/star dust dissipate. Club must remain one recognizable ornate wooden club with rounded gold bands and star inset, no swords. Gentle polished Korean fantasy MMORPG handpainted storybook style, rich amber/ivory/gold material shading, not flat geometric drawing, not 3D render. No background or scene. Keep all twelve cells aligned and separated by transparent padding. One landscape sprite sheet only."
+    }
+  ],
+  "processing": "PNG to WebP preserving alpha; runtime cells fade at their edges. Source PNG files remain private .local."
+}

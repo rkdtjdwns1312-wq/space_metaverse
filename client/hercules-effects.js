@@ -1,5 +1,15 @@
 import {HERCULES_VFX} from '/shared/hercules-skills.js';
 
+const slamSheet=new Image();slamSheet.src='/assets/skills/hercules/slam-frames.webp';
+const slamCells=new Map();
+function slamCell(index){
+ if(slamCells.has(index))return slamCells.get(index);
+ const w=slamSheet.naturalWidth/4,h=slamSheet.naturalHeight/3,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
+ g.drawImage(slamSheet,index%4*w,Math.floor(index/4)*h,w,h,0,0,w,h);
+ g.globalCompositeOperation='destination-in';
+ for(const vertical of [false,true]){const fade=g.createLinearGradient(0,0,vertical?0:w,vertical?h:0);fade.addColorStop(0,'#0000');fade.addColorStop(.035,'#000');fade.addColorStop(.965,'#000');fade.addColorStop(1,'#0000');g.fillStyle=fade;g.fillRect(0,0,w,h);}
+ slamCells.set(index,c);return c;
+}
 const images=new Map();
 const softened=new Map(),shields=new Map();
 function imageOf(id){const spec=HERCULES_VFX[id];if(!spec)return null;
@@ -41,6 +51,18 @@ function shieldArt(stage){
   const art={image:c,effects,centerY:(top+bottom)/2,height:bottom-top};shields.set(stage,art);return art;
 }
 export function drawHerculesAttack(ctx,hit,elapsedMs,reducedMotion=false){
+  if(hit.kind==='hercules-slam'){
+    if(!slamSheet.complete||!slamSheet.naturalWidth)return true;
+    const duration=hit.durationMs||900,impact=hit.impactMs||450;
+    const index=reducedMotion?6:Math.min(11,Math.max(0,Math.floor(elapsedMs/(duration/12))));
+    const cellW=slamSheet.naturalWidth/4,cellH=slamSheet.naturalHeight/3;
+    const width=hit.radius*2.6,height=width*cellH/cellW;
+    ctx.save();ctx.translate(hit.x+hit.dx*hit.reach,hit.y+hit.dy*hit.reach);
+    if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}else ctx.rotate(Math.atan2(hit.dy,hit.dx));
+    if(reducedMotion)ctx.globalAlpha*=elapsedMs<impact?.4:Math.max(0,1-(elapsedMs-impact)/(duration-impact));
+    ctx.drawImage(slamCell(index),-width*.65,-height*.92,width,height);
+    ctx.restore();return true;
+  }
   if(hit.kind!=='hercules-attack')return false;
   ctx.save();ctx.translate(hit.x+hit.dx*hit.reach,hit.y+hit.dy*hit.reach);
   if(hit.dx<0){ctx.scale(-1,1);ctx.rotate(Math.atan2(hit.dy,-hit.dx));}

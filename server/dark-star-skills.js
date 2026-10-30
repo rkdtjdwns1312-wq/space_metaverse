@@ -2,7 +2,7 @@ import {DARK_STAR_SKILLS as RULE,DARK_STAR_COLOR_PAIRS} from '../shared/dark-sta
 import {RULES,mapOf,interactionDistance,interactionReach} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {monsterType} from '../shared/monsters.js';
-import {ensureVitals,damagePlayer,playerVitals} from './vitals.js';
+import {ensureVitals,damagePlayer,playerVitals,libraProtectors} from './vitals.js';
 import {reflectLibraDamage} from './area-combat.js';
 import {ensure} from './rooms.js';
 
@@ -99,7 +99,8 @@ export function recordDarkStarDamage(boss){
   }
   if(state.absorptionQueue.length)state.aim=null;
 }
-function instantDefeat(boss,p,now,kind){
+function instantDefeat(room,boss,p,now,kind){
+  if(libraProtectors(room,p,now).length)return {...visual(boss,kind,p.x,p.y),targetId:p.id,damage:0,vitals:playerVitals(p),defeated:false,immune:true};
   const vitals=ensureVitals(p),damage=vitals.hp;vitals.hp=0;vitals.defeatedAt=now;p.input={x:0,y:0,at:0};
   (p.damageNumbers??=[]).push({targetId:p.id,targetKind:'player',mapId:p.mapId,x:p.x,y:p.y,damage});
   if(p.damageNumbers.length>40)p.damageNumbers.shift();
@@ -110,7 +111,7 @@ function tickAbsorption(room,boss,state,now,hits,random){
   if(state.absorption&&now>=state.absorption.endsAt){
     const cast=state.absorption;state.absorption=null;
     for(const p of room.players.values())if(valid(boss,p)&&Math.hypot(p.x-cast.x,p.y-cast.y)<=cast.radius+RULES.radius)
-      hits.push(instantDefeat(boss,p,now,'absorption'));
+      hits.push(instantDefeat(room,boss,p,now,'absorption'));
   }
   if(!state.absorption&&state.absorptionQueue.length){
     const color=state.absorptionQueue.shift(),map=mapOf(boss.mapId,room.planets?.values?.()||[]);
@@ -142,7 +143,7 @@ export function tickDarkStarSkills(room,boss,now,random=Math.random){
   if(state.puzzleEndsAt!==null&&now>=state.puzzleEndsAt){
     clearPuzzle(room,state);
     for(const p of room.players.values())if(valid(boss,p)){
-      hits.push(instantDefeat(boss,p,now,'puzzle'));
+      hits.push(instantDefeat(room,boss,p,now,'puzzle'));
     }
   }
   tickAbsorption(room,boss,state,now,hits,random);

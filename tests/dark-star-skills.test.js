@@ -158,3 +158,17 @@ test('boss death, map change and combat reset remove all effects and card target
   assert.equal(boss.darkStarSkills,null);assert.equal(room.monsters.size,1);assert.equal(darkStarSkillViews(room,boss,NOW+1),null);
  }
 });
+
+
+test('천칭의 살아 있는 영역은 퍼즐 실패와 흡수 즉사도 막고 종료 시에는 막지 않는다',()=>{
+  for(const kind of ['puzzle','absorption'])for(const active of [true,false]){
+    const {room,boss,p}=fixture();p.avatar.constellationId='libra';
+    if(kind==='puzzle')beginDarkStarSkill(room,boss,'puzzle',NOW,random);
+    else {damageMonster(room,boss,p,2000,NOW);tickDarkStarSkills(room,boss,NOW,random);p.x=boss.x;p.y=boss.y;}
+    const at=NOW+(kind==='puzzle'?30000:3000),hp=ensureVitals(p).hp;
+    p.libraAura={endsAt:at+(active?1:0),mapId:p.mapId,size:0,radius:300};
+    const hits=tickDarkStarSkills(room,boss,at,random),hit=hits.find(h=>h.targetId===p.id);
+    assert.ok(hit);assert.equal(hit.defeated,!active);assert.equal(ensureVitals(p).hp,active?hp:0);
+    if(kind==='puzzle')assert.equal(boss.darkStarSkills.cards.length,0);
+  }
+});

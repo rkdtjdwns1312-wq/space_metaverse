@@ -3,6 +3,8 @@
 export const STATUS_TYPES=Object.freeze({
   uv:{name:'자외선 상태',icon:'☀️',tone:'warm',description:'아이템을 사용할 수 없어요. 꼬마 달로 해제할 수 있어요.'},
   sleep:{name:'수면 상태',icon:'💤',tone:'cool',description:'잠든 동안 이동하거나 행동할 수 없어요.'},
+  burn:{name:'화상',icon:'🔥',tone:'warm',description:'레오온이 살아 있는 맵에서는 5초마다 방어력을 무시한 체력 2 피해를 받아요. 맵을 나가거나 보스를 처치하면 해제돼요.'},
+  frost:{name:'동상',icon:'❄',tone:'cool',description:'노크세라가 살아 있는 맵에서는 5초마다 방어력을 무시한 체력 2 피해를 받아요. 맵을 나가거나 보스를 처치하면 해제돼요.'},
   poison:{name:'중독 상태',icon:'🧪',tone:'violet',description:'연결된 능력이나 아이템의 중독 효과가 적용 중이에요.'},
   pair:{name:'짝 상태',icon:'🤝',tone:'mint',description:'짝과 함께하는 능력이 적용 중이에요.'},
   moon:{name:'달빛 보호',icon:'🌙',tone:'cool',description:'꼬마 달의 보호를 받고 있어요.'},
@@ -21,7 +23,7 @@ export const STATUS_TYPES=Object.freeze({
   'capricorn-blessing':{name:'염소의 축복',icon:'♑',tone:'warm',description:'체력과 마나를 회복하고 한 번 부활할 수 있어요.'},
   'star-guardian':{name:'별의 수호',icon:'✦',tone:'mint',description:'5분 동안 최대 체력과 최대 마나가 각각 10% 늘어나요.'},
   'leo-courage':{name:'사자의 용기',icon:'♌',tone:'warm',description:'공격력이 잠시 높아져요.'},
-  'libra-reflect':{name:'천칭의 보호',icon:'⚖',tone:'warm',description:'받는 피해를 공격자에게 돌려줘요.'},
+  'libra-reflect':{name:'천칭의 무적',icon:'⚖',tone:'warm',description:'살아 있는 천칭 영역 안에서는 고정 피해를 포함한 모든 피해를 막아요.'},
   'hercules-shield':{name:'헤라클레스 방패',icon:'🛡',tone:'warm',description:'방패가 피해를 대신 받아요.'},
   'taurus-immunity':{name:'황소의 무적',icon:'♉',tone:'warm',description:'돌진 중에는 피해를 받지 않아요.'},
   'whale-defense':{name:'고래의 방어',icon:'🐋',tone:'cool',description:'푸른 기운으로 방어력이 높아져요.'},

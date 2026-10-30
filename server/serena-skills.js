@@ -1,7 +1,7 @@
 import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {RULES} from '../shared/config.js';
 import {monsterType} from '../shared/monsters.js';
-import {ensureVitals,damagePlayer,playerVitals} from './vitals.js';
+import {ensureVitals,damagePlayer,playerVitals,libraProtectors} from './vitals.js';
 import {damagePlayersInArea} from './area-combat.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
@@ -64,8 +64,9 @@ export function trySerenaSkills(room,boss,target,now,random=Math.random){
   return Number.isFinite(roll)&&roll>=0&&roll<rule.chance&&beginSerenaSkill(room,boss,kind,now,random);
 }
 
-// 즉사는 방어·면역·반사·자동 부활로 회피하지 않으며 일반 사망 상태를 기록합니다.
-function instantDefeat(player,now){
+// 천칭 무적 외의 기존 방어·자동 부활 예외는 유지합니다.
+function instantDefeat(room,player,now){
+  if(libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const value=ensureVitals(player),damage=value.hp;
   value.hp=0;value.defeatedAt=now;player.input={x:0,y:0,at:0};
   (player.damageNumbers??=[]).push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage});
@@ -94,7 +95,7 @@ export function tickSerenaSkills(room,boss,now){
     const p=room.players.get(mark.playerId);
     if(boss.hp<=0||!valid(boss,p))return false;
     if(mark.kind==='black'){
-      if(now>=mark.endsAt){hits.push({...visual(boss,'black',p.x,p.y),targetId:p.id,...instantDefeat(p,now)});return false;}
+      if(now>=mark.endsAt){hits.push({...visual(boss,'black',p.x,p.y),targetId:p.id,...instantDefeat(room,p,now)});return false;}
       const contacts=new Set(candidates(room,boss).filter(other=>other.id!==p.id&&Math.hypot(other.x-p.x,other.y-p.y)<=RULES.radius*2).map(other=>other.id));
       for(const id of contacts)if(!mark.contacts.has(id))mark.remaining=Math.max(0,mark.remaining-1);
       mark.contacts=contacts;return mark.remaining>0;

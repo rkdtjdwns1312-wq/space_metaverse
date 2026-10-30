@@ -17,7 +17,7 @@ export function attackPowerOf(level,constellationId,player=null){
   if(!isMaster(player)&&(!Number.isInteger(level)||!Object.hasOwn(ATTACK_POWER,level)))return null;
   const type=constellationOf(constellationId,level)?.type;
   return Math.max(0,(isMaster(player)?MASTER_BASE.attack:ATTACK_POWER[level]+(ATTACK_MODIFIERS[type]??0))+transformationBonus(player).attackBonus+equipmentBonus(player).attack+statGrowthBonus(player,'attack')+
-    (player?.libraBuff?.bonus||0)+(player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0))+meleePassive(level,constellationId,player);
+    (player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0))+meleePassive(level,constellationId,player);
 }
 export const DEFENSE_POWER=Object.freeze({1:0,2:0,3:1,4:2,5:2});
 export const DEFENSE_MODIFIERS=Object.freeze({'생산계':0,'제작계':0,'공격계':-2,'특수계':0,'수호계':2});

@@ -1,3 +1,6 @@
+import {attackPowerOf} from '../shared/combat.js';
+import {avatarSizeOf} from '../shared/avatar-size.js';
+import {playerEffectsView} from '../server/rooms.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {castLibra,advanceLibraAuras} from '../server/libra-skills.js';
@@ -20,15 +23,15 @@ function fixture(level=4){
 const hitArea=(room,target,source,now=NOW+1)=>damagePlayersInArea(room,
   {mapId:target.mapId,x:target.x,y:target.y,radius:0,...source},10,now).find(hit=>hit.targetId===target.id);
 
-test('천칭 LV2~4: 자신과 파티가 다른/없는 아군에게 반사와 공격력 버프 적용',()=>{
+test('천칭 LV2~4: 자신과 파티가 다른/없는 아군에게 무적와 보호 적용',()=>{
   for(const level of [2,3,4])for(const parties of [false,true]){
     const {room,caster,ally,attacker}=fixture(level);
     if(parties)room.parties=new Map([['a',{memberIds:[caster.id]}],['b',{memberIds:[ally.id]}]]);
     const hp=ensureVitals(ally).hp,enemyHp=ensureVitals(attacker).hp;
     const hit=hitArea(room,ally,{sourceId:attacker.id});
-    assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,10);
-    assert.equal(ensureVitals(ally).hp,hp);assert.equal(ensureVitals(attacker).hp,enemyHp-10);
-    assert.equal(ally.libraBuff.bonus,level-1);
+    assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,undefined);
+    assert.equal(ensureVitals(ally).hp,hp);assert.equal(ensureVitals(attacker).hp,enemyHp);
+    assert.equal(ally.libraBuff,null);
     assert.equal(damagePlayer(caster,10,NOW+1,{room}).damage,0);
   }
 });
@@ -63,7 +66,7 @@ test('시전자 맵 이탈·접속 종료·자리비움·검은별·사망·오�
   }
 });
 
-test('다른 맵·방 및 비활동 아군은 보호/공격력 버프에서 제외',()=>{
+test('다른 맵·방 및 비활동 아군은 보호/보호에서 제외',()=>{
   for(const mutate of [p=>p.mapId='space-plaza',p=>p.connected=false,p=>p.away=true,p=>p.avatar.blackStar=true]){
     const {room,ally}=fixture();mutate(ally);
     assert.equal(damagePlayer(ally,10,NOW+1,{room}).damage,10);
@@ -76,60 +79,77 @@ test('다른 맵·방 및 비활동 아군은 보호/공격력 버프에서 제�
   assert.equal(damagePlayer(outside,10,NOW+1,{room:{players:new Map([[outside.id,outside]])}}).damage,10);
 });
 
-test('겹친 천칭: 최고 반사 배율 한 번·시전 장비 스냅샷·강한 영역 종료 후 약한 영역 유지',()=>{
-  const {room,caster,ally,attacker}=fixture(),strong=player('strong','libra',2);
-  strong.equipmentSlots=['star-pattern-gloves'];room.players.set(strong.id,strong);castLibra(room,strong,NOW);
-  strong.equipmentSlots=[];ally.equipmentSlots=['star-pattern-gloves'];
-  const enemyHp=ensureVitals(attacker).hp;
-  assert.equal(hitArea(room,ally,{sourceId:attacker.id}).reflectedDamage,12);
-  assert.equal(ensureVitals(attacker).hp,enemyHp-12);
-  assert.equal(room.reflectedVitals.length,1);assert.equal(ally.libraBuff.bonus,3);
-  // 아군 자신의 천칭도 다른 영역과 합산하지 않습니다.
-  ally.libraAura={...caster.libraAura};
-  assert.equal(damagePlayer(ally,10,NOW+1,{room}).reflectedDamage,12);
-  strong.libraAura.endsAt=NOW+2;
-  assert.equal(damagePlayer(ally,10,NOW+2,{room}).reflectedDamage,10);
-});
 
-test('공격자도 천칭 보호 중일 때 한 번만 반사하고 무한 왕복하지 않는다',()=>{
-  const {room,ally,attacker}=fixture();attacker.avatar.constellationId='libra';castLibra(room,attacker,NOW);
-  const hp=ensureVitals(attacker).hp;
-  const hit=hitArea(room,ally,{sourceId:attacker.id});
-  assert.equal(hit.reflectedDamage,10);assert.equal(ensureVitals(attacker).hp,hp-6);
-  assert.equal(room.reflectedVitals.length,1);assert.equal(ensureVitals(ally).hp,30);
-});
 
-test('까마귀 투사체 공통 피해 경로도 아군 반사·범위 밖 피해 처리',()=>{
+
+
+test('까마귀 투사체 공통 피해 경로도 아군 무적·범위 밖 피해 처리',()=>{
   const {room,caster,ally,attacker}=fixture();
   attacker.avatar.constellationId='corvus';
   const hit=damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+1).playerTargets[0];
-  assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,10);
+  assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,undefined);
   caster.x-=2000;
   assert.equal(damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+2).playerTargets[0].damage,10);
 });
 
-test('실제 몬스터 근접 공격은 범위 내 아군 대신 몬스터에 반사한다',()=>{
+test('실제 몬스터 근접 공격은 범위 내 아군 대신 몬스터에 무적한다',()=>{
   const {room,ally}=fixture();
   const monster=monstersOf({players:room.players,planets:new Map()},NOW).get('star-crab');
   Object.assign(monster,{x:ally.x-62,y:ally.y,spawnX:ally.x-62,spawnY:ally.y,hp:50,maxHp:50,
     lastMoveAt:NOW,nextAttackAt:NOW,attackers:new Map([[ally.id,NOW]])});
   room.monsters=new Map([[monster.id,monster]]);
   const hits=moveMonsters(room,NOW+1,()=>0),hit=hits.find(h=>h.targetId===ally.id);
-  assert.ok(hit);assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,3);
-  assert.equal(ensureVitals(ally).hp,30);assert.equal(monster.hp,47);
+  assert.ok(hit);assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,undefined);
+  assert.equal(ensureVitals(ally).hp,30);assert.equal(monster.hp,50);
 });
 
 test('기존 무적·교사 고정피해 예외 및 방패 우선순위 유지',()=>{
   const {room,ally}=fixture();ally.herculesShield={endsAt:NOW+5000,hp:20,absorbed:0};
-  assert.equal(damagePlayer(ally,10,NOW+1,{room}).reflectedDamage,10);
+  assert.equal(damagePlayer(ally,10,NOW+1,{room}).damage,0);
   assert.equal(ally.herculesShield.hp,20);
   ally.taurusImmuneUntil=NOW+5000;
   const hit=damagePlayer(ally,10,NOW+1,{room});assert.equal(hit.immune,true);assert.equal(hit.reflectedDamage,undefined);
-  assert.equal(damagePlayer(ally,10,NOW+1,{room,fixedDamage:1}).damage,1);
+  assert.equal(damagePlayer(ally,10,NOW+1,{room,fixedDamage:1}).damage,0);
 });
 
-test('천칭 설명은 아군 반사·중복 없음과 기존 4줄 형식을 안내',()=>{
+test('천칭 설명은 아군 무적·중복 없음과 기존 4줄 형식을 안내',()=>{
   const {caster}=fixture(),description=characterAbilities(caster)[1].description;
-  assert.match(description,/자신과 범위 안 아군이 받을 피해/);assert.match(description,/중복 없음/);
+  assert.match(description,/자신과 범위 안 아군 무적/);assert.match(description,/고정 피해도 차단/);
   assert.equal(description.split('\n').length,4);
+});
+
+
+test('LV2~5 매초 50/100/150/200%: 첫 1초부터 종료 10초까지 10회, 중복 틱 없음',()=>{
+  for(const level of [2,3,4,5]){
+    const {room,caster,ally}=fixture(level),monster=monstersOf({players:room.players,planets:new Map()},NOW).get('star-crab');
+    Object.assign(monster,{x:caster.x,y:caster.y,hp:10000,maxHp:10000});room.monsters.set(monster.id,monster);
+    const power=attackPowerOf(level,'libra',caster),perTick=Math.round(power*(level-1)*.5),hp=ensureVitals(ally).hp;
+    assert.equal(caster.libraAura.radius,avatarSizeOf(caster)*6);assert.equal(caster.libraAura.endsAt,NOW+10000);
+    advanceLibraAuras(room,NOW+999);assert.equal(monster.hp,10000);
+    advanceLibraAuras(room,NOW+1000);assert.equal(monster.hp,10000-perTick);
+    advanceLibraAuras(room,NOW+1000);assert.equal(monster.hp,10000-perTick);
+    advanceLibraAuras(room,NOW+9999);assert.equal(monster.hp,10000-perTick*9);
+    advanceLibraAuras(room,NOW+10000);assert.equal(monster.hp,10000-perTick*10);assert.equal(caster.libraAura,null);
+    assert.equal(ensureVitals(ally).hp,hp);assert.equal(room.libraHits.length,10);
+  }
+});
+
+test('실시간 공격력과 범위/맵만 반영하며 제거된 공격 버프는 적용하지 않는다',()=>{
+  const {room,caster}=fixture(5),monster=monstersOf({players:room.players,planets:new Map()},NOW).get('star-crab');
+  Object.assign(monster,{x:caster.x,y:caster.y,hp:10000,maxHp:10000});room.monsters.set(monster.id,monster);
+  caster.libraBuff={bonus:999};const base=attackPowerOf(5,'libra',caster);
+  caster.statGrowth={bonuses:{attack:4}};advanceLibraAuras(room,NOW+1000);
+  assert.equal(monster.hp,10000-(base+4)*2);assert.equal(caster.libraBuff,null);
+  monster.x=10000;advanceLibraAuras(room,NOW+2000);const hp=monster.hp;
+  monster.x=caster.x;monster.mapId='space-plaza';advanceLibraAuras(room,NOW+3000);assert.equal(monster.hp,hp);
+  caster.connected=false;advanceLibraAuras(room,NOW+4000);assert.equal(caster.libraAura,null);
+});
+
+test('20초 쿨타임 경계와 MP5, 겹친 영역은 반사 없이 살아 있는 영역으로 보호',()=>{
+  const {room,caster,ally}=fixture(),mp=ensureVitals(caster).mp;
+  assert.throws(()=>castLibra(room,caster,NOW+19999));assert.equal(ensureVitals(caster).mp,mp);
+  castLibra(room,caster,NOW+20000);assert.equal(ensureVitals(caster).mp,mp-5);
+  const second=player('second','libra',2);room.players.set(second.id,second);castLibra(room,second,NOW+20000);
+  caster.libraAura=null;assert.equal(damagePlayer(ally,999,NOW+20001,{room,fixedDamage:999}).damage,0);
+  assert.ok(playerEffectsView(ally,false,NOW+20001,room).some(e=>e.statusId==='libra-reflect'&&e.label==='천칭의 무적'));
 });

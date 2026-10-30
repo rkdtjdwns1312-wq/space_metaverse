@@ -107,10 +107,10 @@ test('대상 이탈/사망/접속해제·맵 변경/삭제 시 폭발 없음',()
  }
 });
 
-test('천칭 반사는 기존 피해 경로로 한 번만 반환하며 보스 마나를 재차 소비하지 않음',()=>{
+test('천칭 무적은 피해를 차단하며 보스 마나를 재차 소비하지 않음',()=>{
  const f=fixture();f.player.avatar.constellationId='libra';castLibra(f.room,f.player,START);const hp=ensureVitals(f.player).hp;
  tick(f,START);const before=f.boss.hp,hits=tick(f,START+3000);assert.equal(hits.length,1);assert.equal(hits[0].damage,0);
- assert.ok(hits[0].reflectedDamage>0);assert.equal(f.boss.hp,before-hits[0].reflectedDamage);assert.equal(ensureVitals(f.player).hp,hp);assert.equal(f.boss.mp,85);
+ assert.equal(hits[0].reflectedDamage,undefined);assert.equal(f.boss.hp,before);assert.equal(ensureVitals(f.player).hp,hp);assert.equal(f.boss.mp,85);
 });
 
 test('성령왕·세레나 경고2초/공격력30/타격 후 간격1초를 유지하고 마나는 소비하지 않음',()=>{

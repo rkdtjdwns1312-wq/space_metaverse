@@ -1,3 +1,4 @@
+import {monstersOf} from '../server/monsters.js';
 import {chargeHuntingStation} from '../server/hunting-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ import {ensureVitals} from '../server/vitals.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {damagePlayersInArea} from '../server/area-combat.js';
 
-test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/만료 후 피해 재개',async t=>{
+test('실제 소켓: 천칭 E 후 아군 피격은 차단하고 영역 이탈/만료 후 피해 재개',async t=>{
   // The room timer uses wall time for animation expiry, so keep this fixture on the same epoch.
   let now=Date.now();
   const key='libra-isolated-test-key',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now,dataDir:null});
@@ -32,6 +33,9 @@ test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/�
   caster.avatar.constellationId='libra';ally.avatar.constellationId='sagittarius';attacker.avatar.constellationId='hercules';
   attacker.x=850;attacker.facing={x:-1,y:0};ally.x=attacker.x-avatarSizeOf(attacker)*.75;
   room.monsters=new Map();
+  const monster=monstersOf({players:room.players,planets:new Map()},now).get('star-crab');
+  Object.assign(monster,{x:caster.x,y:caster.y,spawnX:caster.x,spawnY:caster.y,hp:1,maxHp:1,sleepUntil:now+60000});room.monsters.set(monster.id,monster);
+  let drops=0;clients[0].on('energy:drops',()=>drops++);
   const cast=await call(clients[0],'combat:skill',{slot:0});assert.equal(cast.ok,true);
   const hp=ensureVitals(ally).hp,attackerHp=ensureVitals(attacker).hp;
   const basic=await call(clients[2],'combat:attack');assert.equal(basic.ok,true);
@@ -42,8 +46,10 @@ test('실제 소켓: 천칭 E 후 아군 피격은 반사하고 영역 이탈/�
     const hits=damagePlayersInArea(room,{sourceId:attacker.id,mapId:ally.mapId,x:ally.x,y:ally.y,radius:1},10,now);
     const hit=hits.find(h=>h.targetId===ally.id);assert.ok(hit);return hit;
   };
-  const protectedHit=await attack();assert.equal(protectedHit.damage,0);assert.ok(protectedHit.reflectedDamage>0);
-  assert.equal(ensureVitals(ally).hp,hp);assert.ok(ensureVitals(attacker).hp<attackerHp);
+  const protectedHit=await attack();assert.equal(protectedHit.damage,0);assert.equal(protectedHit.reflectedDamage,undefined);
+  assert.equal(ensureVitals(ally).hp,hp);assert.equal(ensureVitals(attacker).hp,attackerHp);
+  await new Promise((resolve,reject)=>{const deadline=Date.now()+3000;const timer=setInterval(()=>{if(monster.hp===0&&drops>0){clearInterval(timer);resolve();}else if(Date.now()>deadline){clearInterval(timer);reject(new Error('Libra server tick did not defeat monster and emit drops'));}},25);});
+  assert.equal(monster.hp,0);assert.ok(drops>0);assert.equal(ensureVitals(ally).hp,hp);
   caster.x+=2000;now+=1000;
   assert.ok((await attack()).damage>0);
   caster.x-=2000;now+=1000;

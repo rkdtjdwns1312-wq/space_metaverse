@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {castAquarius,advanceAquarius,aquariusViews,inAquariusArea} from '../server/aquarius-skills.js';
 import {aquariusSkillOf,aquariusFrameAt,aquariusAreaAt} from '../shared/aquarius-skills.js';
 import {monstersOf} from '../server/monsters.js';
-import {ensureVitals} from '../server/vitals.js';
+import {ensureVitals,playerVitals} from '../server/vitals.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
+import {skillDamageFactor} from '../shared/skill-damage.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {advanceProjectiles} from '../server/projectiles.js';
 import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
@@ -17,7 +18,7 @@ function setup(level=4){
   room.players.set(ally.id,ally);ensureVitals(ally).hp=1;
   return {room,p,monster,ally};
 }
-for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 5초 기준 피해/회복·MP10·20초 쿨타임`,()=>{
+for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 피해·초당 공격력100% 회복·MP10·20초 쿨타임`,()=>{
   const {room,p,monster,ally}=setup(level),stage=Math.min(4,level),spec=aquariusSkillOf(p),mp=ensureVitals(p).mp;
   castAquarius(room,p,1000);assert.equal(ensureVitals(p).mp,mp-10);
   const [view]=aquariusViews(room,p.mapId,1000);
@@ -27,22 +28,22 @@ for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 5초 
   assert.deepEqual(advanceAquarius(room,1999),[]);
   for(let second=1;second<=5;second++)advanceAquarius(room,1000+second*1000);
   assert.equal(monster.hp,1000-Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier));
-  assert.equal(ensureVitals(ally).hp,1+spec.healingAmount);
+  assert.equal(ensureVitals(ally).hp,Math.min(playerVitals(ally).hp.max,1+attackPowerOf(level,'aquarius',p)*5));
   assert.equal(room.aquariusCasts.size,1);
   advanceAquarius(room,14999);
   assert.equal(monster.hp,1000-Math.floor(Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier)*13/5));
-  assert.equal(ensureVitals(ally).hp,1+Math.floor(spec.healingAmount*13/5));
+  assert.equal(ensureVitals(ally).hp,Math.min(playerVitals(ally).hp.max,1+attackPowerOf(level,'aquarius',p)*13));
   assert.equal(room.aquariusCasts.size,1);assert.equal(aquariusViews(room,p.mapId,14999).length,1);
   assert.deepEqual(advanceAquarius(room,15000),[]);assert.equal(room.aquariusCasts.size,0);assert.deepEqual(aquariusViews(room,p.mapId,15000),[]);
   assert.throws(()=>castAquarius(room,p,20999),/기다려/);
   ensureVitals(p).mp=10;castAquarius(room,p,21000);
 });
-test('회복은 대상 최대HP50%, 죽은 학생 부활·PvP 피해 없음, 범위 이탈시 중단',()=>{
+test('회복은 공격력100%, 최대HP 상한·죽은 학생 부활/PvP 없음·범위 이탈시 중단',()=>{
   const {room,p,monster,ally}=setup(4);ally.avatar={level:2,constellationId:'leo'};ally.transformation=null;ensureVitals(ally).hp=1;
   const dead={...ally,id:'dead',avatar:{...ally.avatar},battleVitals:undefined};ensureVitals(dead).hp=0;room.players.set(dead.id,dead);
-  castAquarius(room,p,0);advanceAquarius(room,1000);assert.equal(ensureVitals(ally).hp,4);
-  ally.x=0;advanceAquarius(room,2000);assert.equal(ensureVitals(ally).hp,4);
-  ally.x=monster.x;advanceAquarius(room,5000);assert.equal(ensureVitals(ally).hp,13);assert.equal(ensureVitals(dead).hp,0);
+  castAquarius(room,p,0);advanceAquarius(room,1000);assert.equal(ensureVitals(ally).hp,10);
+  ally.x=0;advanceAquarius(room,2000);assert.equal(ensureVitals(ally).hp,10);
+  ally.x=monster.x;advanceAquarius(room,5000);assert.equal(ensureVitals(ally).hp,playerVitals(ally).hp.max);assert.equal(ensureVitals(dead).hp,0);
 });
 test('시전자 사망·맵변경·접속종료·별자리변경은 지대를 취소',()=>{
   for(const change of [p=>p.mapId='other',p=>p.connected=false,p=>ensureVitals(p).hp=0,p=>p.avatar.constellationId='leo']){
@@ -101,4 +102,14 @@ test('지연 처리도 각 틱 시점 반경으로 판단하고 종료 뒤 중�
   for(let now=1000;now<=14000;now+=1000)advanceAquarius(a.room,now);
   advanceAquarius(b.room,20000);assert.equal(a.monster.hp,b.monster.hp);assert.equal(ensureVitals(a.ally).hp,ensureVitals(b.ally).hp);
   assert.deepEqual(advanceAquarius(b.room,21000),[]);
+});
+
+ test('매초 현재 공격력으로 자신·아군 회복, 장비 피해 배율은 회복량에 추가 곱하지 않는다',()=>{
+ const {room,p,ally}=setup(4);ensureVitals(p).hp=1;p.equipmentSlots=['star-pattern-gloves',null,null];
+ assert.equal(skillDamageFactor(p),1.2);castAquarius(room,p,0);const power=attackPowerOf(4,'aquarius',p);advanceAquarius(room,1000);
+ assert.equal(ensureVitals(p).hp,1+power);assert.equal(ensureVitals(ally).hp,1+power);
+ p.statGrowth={bonuses:{attack:3}};const stronger=attackPowerOf(4,'aquarius',p);advanceAquarius(room,2000);
+ assert.equal(ensureVitals(p).hp,1+power+stronger);assert.equal(ensureVitals(ally).hp,1+power+stronger);
+ const hp=ensureVitals(ally).hp;assert.deepEqual(advanceAquarius(room,2000),[]);assert.equal(ensureVitals(ally).hp,hp);
+ ensureVitals(ally).hp=playerVitals(ally).hp.max-1;advanceAquarius(room,3000);assert.equal(ensureVitals(ally).hp,playerVitals(ally).hp.max);
 });

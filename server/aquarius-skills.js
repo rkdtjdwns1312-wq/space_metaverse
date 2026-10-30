@@ -39,7 +39,7 @@ export function castAquarius(room,player,now,{basic=false}={}){
   const x=player.x,y=player.y+size*spec.centerOffset;
   const cast={id:randomUUID(),playerId:player.id,mapId:player.mapId,constellationId:'aquarius',level:player.avatar.level,
     kind:'aquarius-fountain',vfxId:`skill-lv${spec.stage}`,x,y,dx,dy,size,rx:size*spec.radiusWidths,ry:size*spec.radiusWidths*spec.verticalRatio,
-    at:now,durationMs:spec.durationMs,tick:0,power:skillDamage(power*spec.multiplier,skillDamageFactor(player)),healCap:spec.healingAmount,healRatio:spec.effectAmount,healBudgets:new Map()};
+    at:now,durationMs:spec.durationMs,tick:0,power:skillDamage(power*spec.multiplier,skillDamageFactor(player))};
   vitals.mp-=spec.mana;player.aquariusCooldownUntil=now+spec.cooldownMs;
   room.aquariusCasts??=new Map();room.aquariusCasts.set(cast.id,cast);
   return {ready:true,vitals:playerVitals(player),cooldowns:aquariusCooldowns(player),serverNow:now};
@@ -55,18 +55,17 @@ export function advanceAquarius(room,now){
   for(const [id,cast] of room.aquariusCasts||[]){
     const player=room.players.get(cast.playerId);
     if(!valid(player)||player.mapId!==cast.mapId||player.avatar.constellationId!=='aquarius'||player.avatar.level!==cast.level){room.aquariusCasts.delete(id);continue;}
-    // 기존 5초 기준 총량/1초 주기를 유지하고, 각 틱 당시의 확장·축소 범위로 판정합니다.
+    // 피해는 기존 5초 기준 총량을 유지합니다. 회복은 매초 시전자의 현재 공격력 100%입니다.
     const {tickMs,amountTicks}=AQUARIUS_TIMING;
     while((cast.tick+1)*tickMs<cast.durationMs&&now>=cast.at+(cast.tick+1)*tickMs){
       const tick=++cast.tick,elapsedMs=tick*tickMs,amount=total=>Math.floor(total*tick/amountTicks)-Math.floor(total*(tick-1)/amountTicks),targets=[],healed=[];
-      const damage=amount(cast.power);
+      const damage=amount(cast.power),healing=Math.max(0,attackPowerOf(player.avatar.level,'aquarius',player)||0);
       if(damage>0)for(const monster of monstersOf(room).values())if(monster.hp>0&&monster.mapId===cast.mapId&&inAquariusArea(cast,monster,elapsedMs)){
         const hit=damageMonster(room,monster,player,damage,cast.at+elapsedMs);if(hit)targets.push(hit);
       }
       for(const target of room.players.values())if(valid(target)&&target.mapId===cast.mapId&&inAquariusArea(cast,target,elapsedMs)){
         const state=playerVitals(target),value=ensureVitals(target);
-        if(!cast.healBudgets.has(target.id))cast.healBudgets.set(target.id,Math.floor(Math.min(state.hp.max*cast.healRatio,cast.healCap)));
-        const gain=Math.min(state.hp.max-value.hp,amount(cast.healBudgets.get(target.id)));
+        const gain=Math.min(state.hp.max-value.hp,healing);
         if(gain>0){value.hp+=gain;healed.push({playerId:target.id,amount:gain,vitals:playerVitals(target)});}
       }
       results.push({mapId:cast.mapId,targets,healed});

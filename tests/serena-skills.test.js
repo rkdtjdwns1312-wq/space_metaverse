@@ -218,14 +218,14 @@ test('failed casting never consumes mana, and sleep/stun block new casts without
   assert.equal(SERENA_SKILLS.yellow.mana,10);
 });
 
-test('Libra reflection can defeat Serena and cancels remaining marked areas in that same tick',()=>{
+test('Libra immunity blocks yellow damage without reflecting or canceling boss skills',()=>{
   const f=fixture(1),[p]=f.players;
   beginSerenaSkill(f.room,f.boss,'yellow',1000,()=>0);tickSerenaSkills(f.room,f.boss,3000);
-  p.libraAura={endsAt:9000,mapId:p.mapId,size:0,radius:300,skillDamageFactor:1};
+  p.avatar.constellationId='libra';p.libraAura={endsAt:9000,mapId:p.mapId,size:0,radius:300,skillDamageFactor:1};
   f.boss.hp=1;
   const hits=tickSerenaSkills(f.room,f.boss,5000);
-  assert.equal(hits.length,1);assert.equal(hits[0].damage,0);assert.equal(f.boss.hp,0);assert.equal(f.boss.serenaSkills,null);
-  assert.equal(tickSerenaSkills(f.room,f.boss,7000).length,0);
+  assert.equal(hits.length,1);assert.equal(hits[0].damage,0);assert.equal(f.boss.hp,1);assert.ok(f.boss.serenaSkills);
+  assert.equal(tickSerenaSkills(f.room,f.boss,7000)[0].damage,0);
 });
 
 test('jittered server ticks preserve ten scheduled yellow pulses without catch-up volleys',()=>{
@@ -252,4 +252,16 @@ test('jittered server ticks preserve ten scheduled yellow pulses without catch-u
   for(let now=3000;now<=19000;now+=2000){f.players[0].x+=300;tickSerenaSkills(f.room,f.boss,now);}
   const sequence=f.boss.serenaSkills.sequence;f.players[0].x+=300;
   tickSerenaSkills(f.room,f.boss,23000);assert.equal(f.boss.serenaSkills.sequence,sequence);assert.equal(f.boss.serenaSkills.marks.length,0);
+});
+
+
+test('천칭 무적은 빨간별 고정 피해와 검은별 즉사를 막되 정확한 만료에는 피해를 받는다',()=>{
+  for(const kind of ['red','black'])for(const active of [true,false]){
+    const f=fixture(1),[p]=f.players;p.avatar.constellationId='libra';
+    beginSerenaSkill(f.room,f.boss,kind,1000,()=>0);
+    const at=1000+SERENA_SKILLS[kind].durationMs,hp=ensureVitals(p).hp;
+    p.libraAura={endsAt:at+(active?1:0),mapId:p.mapId,size:0,radius:300};
+    const hits=tickSerenaSkills(f.room,f.boss,at),hit=hits.find(h=>h.targetId===p.id);
+    assert.ok(hit);assert.equal(hit.damage===0,active);assert.equal(ensureVitals(p).hp===hp,active);
+  }
 });

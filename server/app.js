@@ -1,3 +1,4 @@
+import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
 import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
 import {huntingCycle} from '../shared/hunting-time.js';
@@ -19,7 +20,7 @@ import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusCoo
 import {castGemini,geminiCooldowns} from './gemini-skills.js';
 import {castAries,advanceAriesClouds,ariesCloudViews,ariesCooldowns} from './aries-skills.js';
 import {castTaurus,advanceTaurusDashes,taurusDashViews,taurusCooldowns} from './taurus-skills.js';
-import {castHercules,advanceHerculesShields,herculesShieldViews,herculesCooldowns} from './hercules-skills.js';
+import {castHercules,advanceHerculesShields,advanceHerculesSlams,herculesShieldViews,herculesCooldowns} from './hercules-skills.js';
 import {castLibra,advanceLibraAuras,libraAuraViews,libraCooldowns} from './libra-skills.js';
 import {castCorona,advanceCorona,coronaAuraViews,coronaCooldowns} from './corona-skills.js';
 import {castCapricorn,advanceCapricorn,capricornBlessingViews,capricornCooldowns} from './capricorn-skills.js';
@@ -330,6 +331,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   };
   const detach=(socket,immediate)=>{
     const s=socket.data.session;if(!s)return;
+    clearBossMapHazard(s.room,s.player.id);s.player.herculesSlam=null;
     settleHuntingTime(s.player,clock());
     deliver(()=>socket.leave(s.room.code));socket.data.session=null;
     if(immediate){
@@ -400,6 +402,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           const current=socket.data.session;
           if(save&&current)for(const p of current.room.players.values()){
             const before=huntingBefore.get(p.id);
+            if(before&&before.mapId!==p.mapId){clearBossMapHazard(current.room,p.id);p.herculesSlam=null;}
             // Known entry paths check before mutation; this also closes future skill/teleport paths.
             if(before&&before.mapId!==p.mapId&&isHuntingMap(p.mapId)&&!huntingExempt(p)&&huntingTimeView(p,clock()).remainingMs<=0)returnHuntingPlayer(current.room,p,clock());
             settleHuntingTime(p,clock());
@@ -722,6 +725,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       if(player.avatar.constellationId==='hercules'){
         const result=castHercules(room,player,now);
+        if(result.hit)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',result.hit);
         roster(room);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
           io.to(viewer.socketId).emit('combat:vitals',{playerId:player.id,vitals:result.vitals});
@@ -2389,10 +2393,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     socket.on('disconnect',()=>{
       try{transaction(()=>detach(socket,false));}
-      catch(error){const p=socket.data.session?.player;if(p){settleHuntingTime(p,clock());p.connected=false;if(p.huntingTimer)p.huntingTimer.running=false;}console.error('접속 종료 시간 저장 실패:',error.message);}
+      catch(error){const p=socket.data.session?.player;if(p){clearBossMapHazard(socket.data.session.room,p.id);p.herculesSlam=null;settleHuntingTime(p,clock());p.connected=false;if(p.huntingTimer)p.huntingTimer.running=false;}console.error('접속 종료 시간 저장 실패:',error.message);}
     });
   });
   function returnHuntingPlayer(room,p,at){
+    clearBossMapHazard(room,p.id);p.herculesSlam=null;
     Object.assign(p,spawnInside(room,STREET_ID,p),{mapId:STREET_ID,input:{x:0,y:0,at:0},taurusDash:null});
     settleHuntingTime(p,at);
     deliver(()=>io.to(p.socketId).emit('item:notice',{text:'사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.'}));
@@ -2495,6 +2500,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         catch(error){const restored=store.rooms.get(room.code);if(restored)restored.journeyRetryAt=now+1000;console.error('첫 여행 진행 저장 실패:',error.message);continue;}
       }
       if(advanceLibraAuras(room,now))roster(room);
+      const libraHits=room.libraHits?.splice(0)||[];
+      if(libraHits.some(hit=>hit.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
       if(pruneMarketTrades(room,clock(),whisper))roster(room);
       for(const p of recoverDefeated(room,clock())){
         io.to(p.socketId).emit('combat:recovered',{message:'체력과 마나를 회복했어요. 다시 출발해요!'});roster(room);
@@ -2505,6 +2512,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           if(!hit.attackOnly)io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
         }
       }
+      const hazards=advanceBossMapHazards(room,clock());
+      for(const hit of hazards.hits)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
+      if(hazards.changed)roster(room);
+      for(const slam of advanceHerculesSlams(room,now))if(slam.targets.some(t=>t.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
       for(const burst of advanceHerculesShields(room,now)){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===burst.mapId){
           io.to(viewer.socketId).emit('combat:hercules-burst',burst);

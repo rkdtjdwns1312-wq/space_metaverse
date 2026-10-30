@@ -120,8 +120,8 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
     const amount=Math.max(0,dealt);
     const eligible=!reflected&&amount>0&&player.connected&&!player.away&&player.mapId===target.mapId;
     // 노크 방어 후 예정 피해 전체를 반환합니다. 공격자 방어는 재계산하지 않고
-    // 면역·방패·부활은 유지하며, 천칭만 건너뛰어 반사 연쇄를 차단합니다.
-    const hit=eligible?damagePlayer(player,amount,now,{skipDefense:true,skipLibra:true}):null;
+    // 천칭 무적을 포함한 면역·방패·부활은 일반 피해 규칙대로 적용합니다.
+    const hit=eligible?damagePlayer(player,amount,now,{room,skipDefense:true}):null;
     if(hit)(room.reflectedVitals??=[]).push({playerId:player.id,vitals:hit.vitals});
     return {monsterId:target.id,damage:0,reflectedDamage:hit?.damage??0,hp:target.hp,maxHp:target.maxHp,defeated:false};
   }

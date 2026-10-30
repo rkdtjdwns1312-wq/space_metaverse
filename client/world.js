@@ -888,7 +888,7 @@ export function createWorld(canvas) {
       if(hit.kind==='monster'&&hit.shape==='serena'){drawSerenaExplosion(ctx,hit,1-(hit.until-t)/800);continue;}
       if(hit.kind==='monster'&&['star-crab','water-star'].includes(monsterType(monsters.find(m=>m.id===hit.monsterId)?.typeId)?.shape))continue;
       const effect=hit.kind==='skill'&&skillEffectById(hit.effectId);
-      const progress=1-(hit.until-t)/(['hercules-attack','corona-attack','capricorn-attack','leo-attack'].includes(hit.kind)?hit.durationMs:CORVUS_VFX[hit.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs);
+      const progress=1-(hit.until-t)/(['hercules-attack','hercules-slam','corona-attack','capricorn-attack','leo-attack'].includes(hit.kind)?hit.durationMs:CORVUS_VFX[hit.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs);
       if(drawHerculesAttack(ctx,hit,progress*(hit.durationMs||550),reducedMotion.matches))continue;
       if(drawCoronaAttack(ctx,hit,progress*(hit.durationMs||500),reducedMotion.matches))continue;
       if(drawCapricornAttack(ctx,hit,progress*(hit.durationMs||500),reducedMotion.matches))continue;
@@ -981,7 +981,7 @@ export function createWorld(canvas) {
       if(data.mapId!==myMapId||!players.some(p=>p.id===data.playerId))return;
       const effect=data.kind==='skill'&&skillEffectById(data.effectId);
       if(data.projectiles)data.projectiles.forEach(projectiles.add);
-      if(!data.projectiles&&data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(['hercules-attack','corona-attack','capricorn-attack','leo-attack'].includes(data.kind)?data.durationMs:CORVUS_VFX[data.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
+      if(!data.projectiles&&data.kind!=='sagittarius-arrow')hits.push({...data,until:performance.now()+(['hercules-attack','hercules-slam','corona-attack','capricorn-attack','leo-attack'].includes(data.kind)?data.durationMs:CORVUS_VFX[data.vfxId]?.durationMs??effect?.durationMs??ATTACK_VISUAL.durationMs)});if(hits.length>60)hits.shift();
       if(data.vfxId)canvas.dataset.lastCorvusVfx=data.vfxId;
       canvas.dataset.lastAttackReach=String(data.reach??ATTACK_VISUAL.reach);canvas.dataset.lastSkillOrigin=String(data.originOffset||0);canvas.dataset.lastAttackPlayer=data.playerId;canvas.dataset.lastAttackDx=String(data.dx);canvas.dataset.lastAttackDy=String(data.dy);
       if(data.kind!=='skill')canvas.dataset.lastAttackRadius=String(data.radius??ATTACK_VISUAL.hitRadius);

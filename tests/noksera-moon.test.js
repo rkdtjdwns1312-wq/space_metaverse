@@ -56,15 +56,15 @@ test('보스HP1에서도 방어 후 예정피해 전체 반환·보스사망 없
   }
 });
 
-test('천칭 반사와 달 반사가 서로 재귀하지 않고 공격자 방어를 이중 적용하지 않음',()=>{
+test('천칭 무적은 달의 반환 피해도 차단한다',()=>{
   const f=fixture(),now=full(f);f.player.avatar.constellationId='libra';castLibra(f.room,f.player,now);
   const hp=ensureVitals(f.player).hp,bhp=f.boss.hp;
-  const hit=damageMonster(f.room,f.boss,f.player,15,now);assert.equal(hit.reflectedDamage,15);
-  assert.equal(ensureVitals(f.player).hp,hp-15);assert.equal(f.boss.hp,bhp);
+  const hit=damageMonster(f.room,f.boss,f.player,15,now);assert.equal(hit.reflectedDamage,0);
+  assert.equal(ensureVitals(f.player).hp,hp);assert.equal(f.boss.hp,bhp);
   reflectLibraDamage(f.room,f.player,{sourceMonsterId:f.boss.id},20,now);
-  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-15);assert.equal(f.room.reflectedVitals.length,1);
+  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp);assert.equal(f.room.reflectedVitals.length,1);
   damagePlayersInArea(f.room,{mapId:f.boss.mapId,x:f.player.x,y:f.player.y,radius:10,sourceMonsterId:f.boss.id},20,now);
-  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp-15);
+  assert.equal(f.boss.hp,bhp);assert.equal(ensureVitals(f.player).hp,hp);
 });
 
 test('달 반사에도 황소면역·헤라클레스방패·염소부활 유지 및 정확한 만료 경계',()=>{

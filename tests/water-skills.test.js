@@ -65,12 +65,12 @@ test('게 회복은 발사 후 바뀐 장비·성장·공격 버프·초월 공�
  const {room,player}=setup('cancer',5),now=Date.now();castWater(room,player,now);const cast=castWater(room,player,now+1,{basic:true}).hit;
  const friend={id:'ally',connected:true,role:'student',avatar:{level:4,constellationId:'aquarius'}};const v=ensureVitals(friend);v.hp=1;
  player.equipmentSlots=['aurora-scabbard','star-pattern-gloves'];player.statGrowth={bonuses:{attack:4}};
- player.libraBuff={bonus:3};player.leoCourage={bonus:2,endsAt:Date.now()+60000};player.transformation={active:true};
+ player.leoCourage={bonus:2,endsAt:Date.now()+60000};player.transformation={active:true};
  let result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,now+100,cast);
- assert.equal(result.healed[0].amount,22);assert.equal(v.hp,23);
- player.equipmentSlots=[];player.libraBuff=null;player.leoCourage.endsAt=0;player.transformation.active=false;
+ assert.equal(result.healed[0].amount,19);assert.equal(v.hp,20);
+ player.equipmentSlots=[];player.leoCourage.endsAt=0;player.transformation.active=false;
  result=resolveWaterHit(room,player,[{kind:'player',entity:friend}],999,now+200,cast);
- assert.equal(result.healed[0].amount,14);assert.equal(v.hp,37);
+ assert.equal(result.healed[0].amount,14);assert.equal(v.hp,34);
 });
 
 test('고래자리 E는 10초·마나10·방어력 단계별 상승, 매초 가까운 최대 3마리만 한 번씩',()=>{

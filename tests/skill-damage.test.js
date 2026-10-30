@@ -21,7 +21,7 @@ import {castHercules,advanceHerculesShields} from '../server/hercules-skills.js'
 import {castCorona,advanceCorona} from '../server/corona-skills.js';
 import {castCapricorn,advanceCapricorn} from '../server/capricorn-skills.js';
 import {castLeo,advanceLeoRoars} from '../server/leo-skills.js';
-import {castLibra} from '../server/libra-skills.js';
+import {castLibra,advanceLibraAuras} from '../server/libra-skills.js';
 import {reflectLibraDamage} from '../server/area-combat.js';
 
 const gloves=['star-pattern-gloves',null,null];
@@ -154,14 +154,12 @@ test('왕관: 원Q 제외, 추가 낙검과 종료 검기만 시전 시 배율 �
     advanceProjectiles(room,end+650,combatEnemies,damageTargets);assert.equal(100000-monster.hp,power+boosted*2);
   }
 });
-test('천칭 반사만20% 증가하고 천칭·사자 공격력 버프 증가는 그대로',()=>{
+test('천칭 영역 피해는 시전 장비 배율을 유지하고 사자 공격력 버프는 그대로',()=>{
   for(const equipped of [false,true]){
     const {room,player,monster}=setup('libra',{equipped}),now=Date.now();castLibra(room,player,now);
-    assert.equal(player.libraAura.attackBonus,3);const base={...player,libraAura:{...player.libraAura,skillDamageFactor:1}};
-    const original=damagePlayer(base,20,now+1).reflectedDamage;toggle(player,equipped);
-    const reflected=damagePlayer(player,20,now+1).reflectedDamage;
-    assert.equal(reflected,Math.round(original*(equipped?1.2:1)));
-    reflectLibraDamage(room,player,{sourceMonsterId:monster.id},reflected,now+1);assert.equal(100000-monster.hp,reflected);
+    assert.equal(player.libraAura.attackBonus,undefined);toggle(player,equipped);
+    const expected=Math.round(attackPowerOf(4,'libra',player)*1.5*(equipped?1.2:1));
+    advanceLibraAuras(room,now+1000);assert.equal(100000-monster.hp,expected);
     const lion=setup('leo',{equipped});castLeo(lion.room,lion.player,now);toggle(lion.player,equipped);
     advanceLeoRoars(lion.room,now+1600);assert.equal(lion.player.leoCourage.bonus,4);
   }

@@ -51,7 +51,7 @@ export function characterAbilities(player){
     const spec=aquariusSkillOf(player);
     Object.assign(attack,{name:'물방울 투사체',iconUrl:AQUARIUS_VFX.attack.iconUrl,description:'물의 기운을 쏘아 멀리 있는 대상에게 피해를 줍니다.'});
     Object.assign(skill,{name:AQUARIUS_NAMES[level],iconUrl:AQUARIUS_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 5초 기준 현재 공격력의 ${spec.multiplier*100}% (1초마다 적용)\n특수효과: 범위 안 아군 체력 5초간 ${spec.effectAmount*100}% 회복(최대 ${spec.healingAmount}, 1초마다 적용)\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 5초 기준 현재 공격력의 ${spec.multiplier*100}% (1초마다 적용)\n특수효과: 범위 안 자신과 아군 체력을 초당 시전자의 현재 공격력 100%만큼 회복\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(isWaterConstellation(player)){
     const spec=waterSkillOf(player),names=WATER_NAMES[id];
@@ -105,15 +105,17 @@ export function characterAbilities(player){
     const spec=herculesSkillOf(player);
     Object.assign(attack,{name:HERCULES_NAMES.attack,iconUrl:HERCULES_VFX.attack.iconUrl,
       description:'빛의 몽둥이로 가까이 있는 대상을 타격해 피해를 줍니다.'});
-    Object.assign(skill,{name:HERCULES_NAMES[level],iconUrl:HERCULES_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 방패가 막은 피해 + 현재 공격력의 ${spec.multiplier*100}%\n특수효과: ${spec.durationMs/1000}초 방패 · 지속 종료 또는 파괴 시 주변 폭발\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+    if(player?.herculesNextStance==='attack')Object.assign(skill,{name:'천신의 곤봉',iconUrl:'/assets/skills/hercules/slam-club.webp',ready:true,
+      description:`공격력: 현재 공격력의 1600%\n특수효과: 전방 넓은 범위를 거대 곤봉으로 내려쳐 몬스터에게 한 번 피해 · 다음 E는 방패\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+    else Object.assign(skill,{name:HERCULES_NAMES[level],iconUrl:HERCULES_VFX[`skill-lv${level}`].iconUrl,ready:true,
+      description:`공격력: 방패가 막은 피해 + 현재 공격력의 ${spec.multiplier*100}%\n특수효과: ${spec.durationMs/1000}초 방패 · 지속 종료 또는 파괴 시 주변 폭발 · 다음 E는 곤봉\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='libra'){
     const spec=libraSkillOf(player);
     Object.assign(attack,{name:LIBRA_NAMES.attack,iconUrl:LIBRA_VFX.attack.iconUrl,
       description:'빛의 균형구를 날려 멀리 있는 대상에게 피해를 줍니다.'});
     Object.assign(skill,{name:LIBRA_NAMES[level],iconUrl:LIBRA_VFX[`skill-lv${level}`].iconUrl,ready:true,
-      description:`공격력: 직접 피해 없음\n특수효과: ${spec.durationMs/1000}초간 자신과 범위 안 아군 공격력 +${spec.attackBonus} · 자신과 범위 안 아군이 받을 피해를 공격자에게 반사(중복 없음)\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
+      description:`공격력: 범위 안 몬스터에게 매초 현재 공격력의 ${spec.multiplier*100}%\n특수효과: ${spec.durationMs/1000}초간 자신과 범위 안 아군 무적 · 고정 피해도 차단\n쿨타임: ${spec.cooldownMs/1000}초\n마나소모: ${spec.mana}`});
   }
   if(id==='corona-borealis'){
     const spec=coronaSkillOf(player);
@@ -138,7 +140,7 @@ export function characterAbilities(player){
   }
   const damageFactor=skillDamageFactor(player);
   if(skill.ready&&damageFactor>1&&!['cancer','cygnus'].includes(id)){
-    const source={libra:'반사',capricorn:'저주','corona-borealis':'낙검·종료 검기'}[id]||'스킬';
+    const source={libra:'영역',capricorn:'저주','corona-borealis':'낙검·종료 검기'}[id]||'스킬';
     skill.description=skill.description.replace('\n',` · 장비 ${source} 피해 ×${Number(damageFactor.toFixed(2))}\n`);
   }
   const transform={slot:'transform',key:'1',level:5,name:'별자리초월',ready:TRANSFORMATION.ready,

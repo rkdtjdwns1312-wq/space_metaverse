@@ -12,7 +12,7 @@ export function createCharacterSkillsUI({getKey=action=>action==='attack'?'Q':'E
   let signature='',openSlot=null;
   dialog.addEventListener('close',()=>{openSlot=null;});
   return {update(player){
-    const next=[player?.avatar?.constellationId,player?.avatar?.level,player?.transformation?.active,getKey('attack'),getKey('skill'),...(player?.equipmentSlots||[])].join(':');
+    const next=[player?.avatar?.constellationId,player?.avatar?.level,player?.transformation?.active,player?.herculesNextStance,getKey('attack'),getKey('skill'),...(player?.equipmentSlots||[])].join(':');
     if(next===signature)return;signature=next;
     const specs=characterAbilities(player);
     if(dialog.open){

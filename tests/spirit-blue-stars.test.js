@@ -104,7 +104,7 @@ test('dead or map-mismatched boss clears all remaining blue stars',()=>{
   f.boss.hp=0;tickSpiritBlueStars(f.room,START+100,mapId=>mapOf(mapId));assert.equal(f.room.spiritBlueStars.length,0);
 });
 
-test('a reflected blast that defeats the boss prevents later stars from detonating',()=>{
+test('Libra blocks its blast without reflecting or canceling later stars',()=>{
   const f=fixture(),positions=spiritBlueStarPositions(f.map,()=>0);
   f.room.spiritBlueStars=positions.map((point,index)=>({id:'reflect-'+index,bossId:f.boss.id,mapId:f.boss.mapId,...point,
     radius:SPIRIT_BLUE_STAR.radius,startsAt:START,endsAt:START+20000,power:60}));
@@ -112,9 +112,9 @@ test('a reflected blast that defeats the boss prevents later stars from detonati
     libraAura:{endsAt:START+30000,mapId:f.boss.mapId,radius:100,skillDamageFactor:1}});
   const later=f.player('later',4,'taurus');Object.assign(later,{x:positions[1].x,y:positions[1].y});
   f.room.players.set(reflector.id,reflector);f.room.players.set(later.id,later);f.boss.hp=1;
-  const laterHp=ensureVitals(later).hp;
+  const laterHp=ensureVitals(later).hp,reflectorHp=ensureVitals(reflector).hp;
   tickSpiritBlueStars(f.room,START+20000,mapId=>mapOf(mapId));
-  assert.equal(f.boss.hp,0);assert.equal(ensureVitals(later).hp,laterHp);
+  assert.equal(f.boss.hp,1);assert.ok(ensureVitals(later).hp<laterHp);assert.equal(ensureVitals(reflector).hp,reflectorHp);
   assert.equal(f.room.spiritBlueStars.length,0);
 });
 

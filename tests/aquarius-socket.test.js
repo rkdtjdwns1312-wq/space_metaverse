@@ -5,6 +5,7 @@ import {createClassroomServer} from '../server/app.js';
 import {ensureVitals} from '../server/vitals.js';
 import {toRecord} from '../server/persistent-rooms.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
+import {attackPowerOf} from '../shared/combat.js';
 import {aquariusAreaAt} from '../shared/aquarius-skills.js';
 
 for(const bonusMs of [0,1000])test(`물병 소켓: 지속 장비 +${bonusMs}ms 스냅샷·위조 무시·맵격리·쿨타임·저장 제외`,async t=>{
@@ -28,10 +29,10 @@ for(const bonusMs of [0,1000])test(`물병 소켓: 지속 장비 +${bonusMs}ms �
   await until(()=>view);assert.ok(view);assert.equal(view.x,1800);assert.equal(view.y,centerY);assert.equal(view.durationMs,14000+bonusMs);assert.equal(view.rx/view.ry,2);assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,0);
   assert.equal((await call(a,'combat:skill')).ok,false);assert.equal(ensureVitals(p).mp,40);
   for(const slot of [1,2,3])assert.equal((await call(a,'combat:skill',{slot})).ok,false);
-  now+=1000;await until(()=>view?.elapsedMs===1000);assert.equal(ensureVitals(friend).hp,7);assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,.5);
+  now+=1000;await until(()=>view?.elapsedMs===1000);assert.equal(ensureVitals(friend).hp,1+attackPowerOf(4,'aquarius',p));assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,.5);
   p.x+=500;
   now+=1000;await until(()=>view?.elapsedMs===2000);assert.equal(view.x,1800);assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,1);
-  now+=3000;await until(()=>view?.elapsedMs===5000);assert.equal(ensureVitals(friend).hp,31);assert.ok(heals>0);assert.equal(outsideViews,0);assert.equal(room.aquariusCasts.size,1);
+  now+=3000;await until(()=>view?.elapsedMs===5000);assert.equal(ensureVitals(friend).hp,1+attackPowerOf(4,'aquarius',p)*5);assert.ok(heals>0);assert.equal(outsideViews,0);assert.equal(room.aquariusCasts.size,1);
   const saved=JSON.stringify(toRecord(room));for(const name of ['aquariusCasts','aquariusCooldownUntil','healBudgets'])assert.ok(!saved.includes(name));
   now+=7000+bonusMs;await until(()=>view?.elapsedMs===12000+bonusMs);assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,1);assert.equal(room.aquariusCasts.size,1);
   now+=1000;await until(()=>view?.elapsedMs===13000+bonusMs);assert.equal(aquariusAreaAt(view,view.elapsedMs).scale,.5);

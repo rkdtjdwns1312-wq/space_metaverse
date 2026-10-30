@@ -1,5 +1,5 @@
 import {chargeHuntingStation} from '../server/hunting-time.js';
-import {PLAZA_LAYOUT,departmentSlots,onPlazaFloor} from '../shared/plaza-layout.js';
+import {PLAZA_LAYOUT,DEPARTMENT_ZONE,departmentSlots,onPlazaFloor} from '../shared/plaza-layout.js';
 import {avatarFitsFloor} from '../shared/avatar-boundary.js';
 const sites=departmentSlots();
 import {MARKET} from '../shared/market.js';
@@ -60,6 +60,13 @@ async function worldClick(page,mx,my){
   // A cold map can still be preparing its painted background after two frames.
   // Do not send NaN coordinates to Playwright before the camera has rendered.
   await page.waitForFunction(()=>{const d=document.getElementById('world')?.dataset;return d&&Number.isFinite(Number(d.viewX))&&Number.isFinite(Number(d.viewY))&&Number(d.viewScale)>0;});
+  // A previously rendered normal/overview camera can still be present after opening placement.
+  // Wait for the actual department camera, rather than assuming two animation frames were enough.
+  if(await page.evaluate(()=>document.body.classList.contains('placing')))await page.waitForFunction(({zone,width,height})=>{
+    const c=document.getElementById('world'),r=c.getBoundingClientRect(),scale=Math.min(r.width/(zone.rx*2+300),r.height/(zone.ry*2+300));
+    const cw=r.width/scale,ch=r.height/scale,x=cw>=width?(width-cw)/2:Math.max(0,Math.min(width-cw,zone.x-cw/2)),y=ch>=height?(height-ch)/2:Math.max(0,Math.min(height-ch,zone.y-ch/2));
+    return Math.abs(+c.dataset.viewScale-scale)<.000001&&Math.abs(+c.dataset.viewX-x)<.01&&Math.abs(+c.dataset.viewY-y)<.01;
+  },{zone:DEPARTMENT_ZONE,width:MAP.width,height:MAP.height});
   let view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
   let box=await page.locator('#world').boundingBox();
   const placing=await page.evaluate(()=>document.body.classList.contains('placing'));
@@ -81,6 +88,7 @@ async function worldClick(page,mx,my){
 // since earlier movement/touch/mouse checks may have already nudged it), until the interact
 // prompt appears or the timeout elapses.
 async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
+  await page.bringToFront();await page.waitForFunction(()=>!document.hidden);
   await closeOpenDialogs(page);await page.locator("#world").focus();
   // 새 광장의 원형 구역 사이에서는 허공을 가로지르지 않고 실제 다리로 걷습니다.
   const route=[];
@@ -129,6 +137,7 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
 // fire immediately without the player ever having moved toward the real target.
 // 주의: 아래 holdKey의 시간(600ms·1500ms)은 이동 속도 RULES.speed=310 기준입니다. 속도를 바꾸면 이 값도 다시 맞추세요.
 async function holdKey(page,code,ms){
+  await page.bringToFront();await page.waitForFunction(()=>!document.hidden);
   await closeOpenDialogs(page);await page.locator('#world').focus();
   await page.keyboard.down(code);
   await page.waitForTimeout(ms*310/RULES.speed);
