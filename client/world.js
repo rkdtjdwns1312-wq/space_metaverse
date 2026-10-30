@@ -36,7 +36,7 @@ import {avatarRenderPoint} from '/shared/avatar-boundary.js';
 import {equipmentBonus} from '/shared/equipment.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {inMarket} from '/shared/market.js';
-import {drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
+import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
 import {drawLifeStar} from './life-star-art.js';
@@ -282,7 +282,7 @@ export function createWorld(canvas) {
         drawMissionBoard(ctx,o);continue;
       } else if(o.kind==='market'){
         drawBazaar(ctx,o);continue;
-      } else if(o.kind==='pillar'){
+      } else if(o.kind==='pillar'||o.kind==='starlight-archive'){
         // 기둥은 아래에서 아바타와 발 위치 순서로 함께 그립니다.
         continue;
       } else {
@@ -824,7 +824,8 @@ export function createWorld(canvas) {
     }
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
-        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)}))];
+        ...map.objects.filter(o=>o.kind==='pillar').map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)})),
+        ...map.objects.filter(o=>o.kind==='starlight-archive').map(o=>({y:o.y,draw:()=>drawStarlightArchive(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
       const visibleOrbs=spiritOrbs.filter(orb=>orb.mapId===myMapId&&Date.now()>=(orb.startsAt??0)&&Date.now()<(orb.endsAt??Infinity));
@@ -1034,7 +1035,7 @@ export function createWorld(canvas) {
         const market=MAP.objects.find(o=>o.kind==='market');
         if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...campaignSigns,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
+        const candidates=[...cards,...campaignSigns,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='starlight-archive'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance?config.interactionDistance(me,o):Math.hypot(me.x-o.x,me.y-o.y);

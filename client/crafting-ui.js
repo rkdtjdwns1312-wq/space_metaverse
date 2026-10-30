@@ -23,7 +23,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     <p>가방의 아이템을 누르면 재료 칸에 하나씩 들어가요. 재료 칸을 누르면 하나씩 빼요.</p>
     <div class="crafting-columns"><section><h3>조합 재료 <small>4 × 4</small></h3><div id="crafting-grid" aria-label="조합 재료 16칸"></div></section>
     <section><h3>내 인벤토리</h3><div id="crafting-bag" aria-label="조합에 넣을 아이템"></div><p id="crafting-bag-empty" hidden>가방이 비었어요.</p></section></div>
-    <p id="crafting-wallet"></p><p id="crafting-note" role="status"></p><footer><button id="crafting-clear" type="button" class="secondary">재료 모두 빼기</button><button id="crafting-submit" type="button" class="primary">조합</button></footer>`;
+    <p id="crafting-wallet"></p><p id="crafting-requirements" role="status" hidden></p><p id="crafting-note" role="status"></p><footer><button id="crafting-clear" type="button" class="secondary">재료 모두 빼기</button><button id="crafting-submit" type="button" class="primary">조합</button></footer>`;
   document.body.append(dialog);const $=id=>dialog.querySelector('#'+id);
   let selected=new Map(),busy=false,enabled=false,configured=true,fee=0;
   let recipeRequest=0;
@@ -85,6 +85,9 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     const publicRecipe=PUBLIC_CRAFTING_RECIPES.find(recipe=>recipe.ingredients.length===selected.size&&recipe.ingredients.every(part=>selected.get(part.id)===part.quantity));
     const cost=publicRecipe?(isMaster(player)?0:publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
+    const blackSelected=selected.has('black-gem'),energyNeeded=isMaster(player)?0:10000;
+    $('crafting-requirements').hidden=!blackSelected;
+    $('crafting-requirements').textContent=!blackSelected?'':!publicRecipe?'검은별의 인장은 검은 보석 1개만 재료 칸에 넣어주세요. 우주에너지는 조합할 때 자동으로 사용돼요.':(player.cosmicEnergy||0)<energyNeeded?'우주에너지가 '+(energyNeeded-(player.cosmicEnergy||0)).toLocaleString()+'개 부족해요. 검은 보석 1개와 우주에너지 '+energyNeeded.toLocaleString()+'개가 필요해요.':'검은 보석 1개와 우주에너지 '+energyNeeded.toLocaleString()+'개로 만들어요. 별 파편과 사전 조합법 학습은 필요 없어요.';
     $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+(isMaster(player)?0:(publicRecipe.cosmicEnergy??0)).toLocaleString():teacher?'조합 · 재화 비용 없음':'조합 · 별 파편 '+cost+'개';
     $('crafting-submit').disabled=busy||!enabled||(!configured&&!publicRecipe)||!selected.size||(player.starShards||0)<cost||(publicRecipe&&!isMaster(player)&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&!isMaster(player)&&(player.starShards||0)>=SHARDS.max);
     $('crafting-clear').disabled=busy||!selected.size;

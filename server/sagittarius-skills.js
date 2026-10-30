@@ -14,7 +14,7 @@ import {ensure} from './rooms.js';
 // 실행 중 전투 정보만 room/player에 보관합니다. 영구 저장 허용 목록에는 넣지 않습니다.
 const valid=p=>p?.connected&&!p.away&&!p.avatar?.blackStar&&ensureVitals(p)?.hp>0;
 function enemies(room,player){
-  return [...monstersOf(room).values()].filter(m=>m.hp>0&&m.mapId===player.mapId).map(m=>({entity:m,kind:'monster',radius:m.radius}))
+  return [...monstersOf(room).values()].filter(m=>m.hp>0&&m.typeId!=='dark-star-card'&&m.mapId===player.mapId).map(m=>({entity:m,kind:'monster',radius:m.radius}))
     .concat(isSagittarius(player)?[]:[...room.players.values()].filter(p=>p.id!==player.id&&p.mapId===player.mapId&&valid(p)).map(p=>({entity:p,kind:'player',radius:RULES.radius})));
 }
 function nearest(list,x,y){return list.sort((a,b)=>Math.hypot(a.entity.x-x,a.entity.y-y)-Math.hypot(b.entity.x-x,b.entity.y-y))[0];}

@@ -97,7 +97,7 @@ export function monstersInAttackArea(room,player,now=Date.now()){
   const hx=player.x+facing.x*geometry.reach,hy=player.y+facing.y*geometry.reach;
   return [...monstersOf(room,now).values()].filter(m=>{
     const dx=m.x-player.x,dy=m.y-player.y;
-    return m.hp>0&&m.mapId===player.mapId&&dx*facing.x+dy*facing.y>0&&
+    return m.hp>0&&m.typeId!=='dark-star-card'&&m.mapId===player.mapId&&dx*facing.x+dy*facing.y>0&&
       Math.hypot(m.x-hx,m.y-hy)<=m.radius+geometry.radius;
   }).sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y));
 }

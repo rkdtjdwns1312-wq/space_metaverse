@@ -1,3 +1,4 @@
+import {registerStarlightArchive} from './starlight-archive.js';
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
 import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
@@ -427,6 +428,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     registerHistoryLibrary({socket,action,store,roster,clock});
     registerScienceLibrary({socket,action,store,roster,clock});
     registerCozyActivities({socket,action,store,roster,clock});
+    registerStarlightArchive({socket,action,store,clock});
     action('dark-star:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonDarkStar(session.room,session.player,clock());
@@ -434,7 +436,13 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('dark-star:reveal',data=>{
       const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
-      return revealDarkStarCard(s.room,s.player,data?.cardId,clock());
+      const result=revealDarkStarCard(s.room,s.player,data?.cardId,clock(),data?.removeToken);
+      if(result.hit)for(const viewer of s.room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===s.player.mapId){
+        io.to(viewer.socketId).emit('combat:monster-hit',result.hit);
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:s.player.id,vitals:result.hit.vitals});
+      }
+      if(result.removed)roster(s.room);
+      return result;
     },false);
     action('serena:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');

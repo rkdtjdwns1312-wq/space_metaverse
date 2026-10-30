@@ -64,7 +64,7 @@ export function advanceProjectiles(room,now,enemies,damage){
     // 입구에서 나온 머리의 실제 전진 구간과 피해 판정을 맞춥니다.
     const elapsed=Math.max(0,now-cast.at);
     const end=cast.piscesPortal?piscesPortalGeometry(cast,elapsed/cast.durationMs).nose:Math.min(cast.range,elapsed/cast.durationMs*cast.range);
-    const contacts=enemies(room,player).filter(t=>!cast.seen.has(`${t.kind}:${t.entity.id}`)&&!(cast.basic&&!cast.healing&&cast.kind!=='corona-finale'&&player.role==='student'&&t.kind==='player'&&t.entity.role==='student'))
+    const contacts=enemies(room,player).filter(t=>t.entity.typeId!=='dark-star-card'&&!cast.seen.has(`${t.kind}:${t.entity.id}`)&&!(cast.basic&&!cast.healing&&cast.kind!=='corona-finale'&&player.role==='student'&&t.kind==='player'&&t.entity.role==='student'))
       .map(t=>({target:t,distance:contact(cast,t,end)})).filter(t=>t.distance!==null).sort((a,b)=>a.distance-b.distance);
     // Q는 첫 몬스터에서 소멸. 같은 위치에 겹친 몬스터들은 기존 범위 규칙대로 함께 맞습니다.
     // 학생 기본 공격은 친구를 통과하며, E 스킬과 강화 Q의 회복 효과는 유지합니다.

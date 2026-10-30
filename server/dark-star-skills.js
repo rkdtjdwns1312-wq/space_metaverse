@@ -5,6 +5,7 @@ import {monsterType} from '../shared/monsters.js';
 import {ensureVitals,damagePlayer,playerVitals,libraProtectors} from './vitals.js';
 import {reflectLibraDamage} from './area-combat.js';
 import {ensure} from './rooms.js';
+import {randomUUID} from 'node:crypto';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
@@ -51,7 +52,7 @@ export function beginDarkStarSkill(room,boss,kind,now,random=Math.random){
     if(!center)return false;
     const angle=roll(random)*Math.PI*2,dx=Math.cos(angle)*rule.length/2,dy=Math.sin(angle)*rule.length/2;
     state.paths.push({id:nextId(boss,state,'rainbow'),x1:center.x-dx,y1:center.y-dy,x2:center.x+dx,y2:center.y+dy,
-      width:rule.width,startsAt:now,endsAt:now+rule.durationMs,hitIds:new Set()});
+      width:rule.width,startsAt:now,endsAt:now+rule.durationMs,contacts:new Map()});
   }else{
     if(state.puzzleEndsAt!==null)return false;
     // The artwork extends well above the ground center. Keep cards clear of its
@@ -59,13 +60,14 @@ export function beginDarkStarSkill(room,boss,kind,now,random=Math.random){
     const bodyHalf=boss.radius*1.2+rule.radius+12,bodyY=boss.y-boss.radius*.3-8;
     const points=positions(map,rule.count,rule.radius,random,(x,y)=>
       Math.hypot(x-boss.x,y-boss.y)>boss.radius+80&&
-      (Math.abs(x-boss.x)>bodyHalf||Math.abs(y-bodyY)>bodyHalf));if(!points)return false;
+      (Math.abs(x-boss.x)>bodyHalf||Math.abs(y-bodyY)>bodyHalf)&&
+      state.satellites.every(s=>Math.hypot(x-s.x,y-s.y)>s.radius+rule.radius+32));if(!points)return false;
     const pair=[...DARK_STAR_COLOR_PAIRS[Math.floor(roll(random)*DARK_STAR_COLOR_PAIRS.length)]];
     if(roll(random)<.5)pair.reverse();
     const oddIndex=Math.floor(roll(random)*rule.count);
     state.puzzleEndsAt=now+rule.durationMs;
     state.cards=points.map((point,index)=>({id:nextId(boss,state,'card'),typeId:'dark-star-card',bossId:boss.id,mapId:boss.mapId,...point,
-      radius:rule.radius,hp:rule.hp,maxHp:rule.hp,startsAt:now,endsAt:state.puzzleEndsAt,revealUntil:0,
+      radius:rule.radius,hp:1,startsAt:now,endsAt:state.puzzleEndsAt,revealUntil:0,confirmations:new Map(),
       color:pair[index===oddIndex?1:0],correct:index===oddIndex,attackers:new Map(),contributors:new Map(),attackOrder:0}));
     for(const card of state.cards)room.monsters.set(card.id,card);
   }
@@ -121,8 +123,9 @@ function tickAbsorption(room,boss,state,now,hits,random){
     const color=state.absorptionQueue.shift(),map=mapOf(boss.mapId,room.planets?.values?.()||[]);
     state.absorbedColors.push(color);state.aim=null;
     state.absorption={color,x:boss.x,y:boss.y,radius:rule.radius,startsAt:now,endsAt:now+rule.warningMs};
-    const point=positions(map,1,rule.satelliteRadius,random)?.[0]||{x:map.width/2,y:map.height/2};
-    state.satellites.push({id:nextId(boss,state,'satellite'),color,...point,radius:rule.satelliteRadius,startsAt:now,contacts:new Map()});
+    const point=positions(map,1,rule.satelliteRadius,random,(x,y)=>state.cards.every(c=>
+      Math.hypot(x-c.x,y-c.y)>rule.satelliteRadius+c.radius+32))?.[0];
+    if(point)state.satellites.push({id:nextId(boss,state,'satellite'),color,...point,radius:rule.satelliteRadius,startsAt:now,contacts:new Map()});
   }
   for(const satellite of state.satellites){
     const present=new Set();
@@ -152,11 +155,21 @@ export function tickDarkStarSkills(room,boss,now,random=Math.random){
   }
   tickAbsorption(room,boss,state,now,hits,random);
   state.paths=state.paths.filter(path=>now<path.endsAt);
-  for(const path of state.paths)for(const p of room.players.values()){
-    if(boss.hp<=0)break;
-    if(valid(boss,p)&&!path.hitIds.has(p.id)&&segmentDistance(p.x,p.y,path.x1,path.y1,path.x2,path.y2)<=path.width/2+RULES.radius){
-      path.hitIds.add(p.id);hits.push(hitPlayer(room,boss,p,now,'rainbow',p.x,p.y));
+  for(const path of state.paths){
+    const present=new Set();
+    for(const p of room.players.values()){
+      if(boss.hp<=0)break;
+      if(!valid(boss,p)||segmentDistance(p.x,p.y,path.x1,path.y1,path.x2,path.y2)>path.width/2+RULES.radius)continue;
+      present.add(p.id);
+      const contact=path.contacts.get(p.id);
+      // A fresh touch hits immediately; staying on the path ticks once per second.
+      // Never replay missed damage after a delayed server tick.
+      if(!contact||contact.player!==p||contact.socketId!==p.socketId||now>=contact.nextAt){
+        path.contacts.set(p.id,{player:p,socketId:p.socketId,nextAt:now+RULE.rainbow.contactMs});
+        hits.push(hitPlayer(room,boss,p,now,'rainbow',p.x,p.y));
+      }
     }
+    for(const id of path.contacts.keys())if(!present.has(id))path.contacts.delete(id);
   }
   state.projectiles=state.projectiles.filter(shot=>{
     if(boss.hp<=0||now>=shot.endsAt)return false;
@@ -170,27 +183,32 @@ export function tickDarkStarSkills(room,boss,now,random=Math.random){
   if(boss.hp<=0)clearDarkStarSkills(room,boss);
   return hits;
 }
-export function revealDarkStarCard(room,player,cardId,now=Date.now()){
+export function revealDarkStarCard(room,player,cardId,now=Date.now(),removeToken=null){
   const card=room.monsters?.get(cardId),boss=room.monsters?.get(card?.bossId);
   ensure(card?.typeId==='dark-star-card'&&card.hp>0&&boss?.hp>0&&card.mapId===boss.mapId&&now<card.endsAt&&
-    player?.connected&&!player.away&&!player.avatar?.blackStar&&ensureVitals(player)?.hp>0&&player.mapId===card.mapId&&
+    player?.connected&&room.players.get(player.id)===player&&!player.away&&!player.avatar?.blackStar&&ensureVitals(player)?.hp>0&&player.mapId===card.mapId&&
     interactionDistance(player,card)<=interactionReach(card),'별 카드 가까이에서 확인해 주세요.');
-  card.revealUntil=now+RULE.puzzle.revealMs;
-  return {message:'위성의 색을 확인해 주세요.',cardId:card.id,revealUntil:card.revealUntil};
-}
-export function damageDarkStarCard(room,card,player,power,now){
-  const boss=room.monsters?.get(card.bossId),state=boss?.darkStarSkills;
-  if(!state||boss.hp<=0||card.hp<=0||card.mapId!==boss.mapId||now>=card.endsAt||!player||player.mapId!==card.mapId)return null;
-  const damage=Math.max(0,Math.round(power));card.hp=Math.max(0,card.hp-damage);
-  const defeated=card.hp===0;
-  if(defeated){
-    room.monsters.delete(card.id);
-    if(card.correct)clearPuzzle(room,state);
-    else state.cards=state.cards.filter(c=>c!==card);
+  const state=boss.darkStarSkills;
+  ensure(state?.cards.includes(card)&&now<state.puzzleEndsAt,'카드 확인 시간이 끝났어요.');
+  card.confirmations??=new Map();
+  for(const [id,c] of card.confirmations)if(c.until<=now)card.confirmations.delete(id);
+  const confirmation=card.confirmations.get(player.id);
+  if(removeToken&&confirmation?.token===removeToken&&confirmation.player===player&&confirmation.socketId===player.socketId&&now<confirmation.until){
+    ensure(now>=confirmation.removeAfter,'색을 확인한 뒤 F를 한 번 더 눌러주세요.');
+    card.confirmations.clear();card.hp=0;room.monsters.delete(card.id);
+    if(card.correct)clearPuzzle(room,state);else state.cards=state.cards.filter(c=>c!==card);
+    const hit=card.correct?null:instantDefeat(room,boss,player,now,'wrong-card');
+    return {message:card.correct?'다른 색 카드를 찾아냈어요!':'다른 색 카드가 아니었어요.',cardId:card.id,removed:true,correct:card.correct,...(hit?{hit}:{})};
   }
-  // Do not expose hidden HP, answer flags, or unrevealed colors through attack acknowledgements.
-  return {monsterId:card.id,damage,defeated,hideHealth:true};
+  // A first request can be replayed safely: only a player-owned returned token
+  // makes a later deliberate confirmation destructive. Expired tokens reveal anew.
+  card.revealUntil=now+RULE.puzzle.revealMs;
+  const next={token:randomUUID(),player,socketId:player.socketId,until:card.revealUntil,removeAfter:now+300};
+  card.confirmations.set(player.id,next);
+  return {message:'F를 한 번 더 누르면 제거합니다.',cardId:card.id,revealUntil:next.until,canRemove:true,removeToken:next.token,removeAfter:next.removeAfter};
 }
+// Cards are interaction-only objects. Every attack/skill shares this final guard.
+export function damageDarkStarCard(){return null;}
 export function darkStarSkillViews(room,boss,now){
   const state=boss.darkStarSkills;
   if(!state||boss.hp<=0||state.mapId!==boss.mapId)return null;

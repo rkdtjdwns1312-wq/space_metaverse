@@ -1,3 +1,4 @@
+import {createStarArchiveUI} from './star-archive-ui.js';
 import {createHuntingTimeUI} from './hunting-time-ui.js';
 import {appearanceLevelOf} from '/shared/character-skills.js';
 import {RULES} from '/shared/config.js';
@@ -231,6 +232,7 @@ setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag
 const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const duelArcade=createDuelArcadeUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,socket});
 const hallOfFame=createHallOfFameUI({request,stop,toast});
+const starArchive=createStarArchiveUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const cozyActivities=createCozyActivitiesUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const cultureLibrary=createCultureLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const historyLibrary=createHistoryLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
@@ -1003,6 +1005,20 @@ $('planet-rules-save').onclick=async()=>{
 async function exitPlanet(){try{await request('planet:exit',{});}catch(e){toast(e.message);}}
 $('planet-exit').onclick=exitPlanet;
 async function travelTo(to){try{await request('map:travel',{to});}catch(e){toast(e.message);}}
+const darkCardReads=new Map();let darkCardBusy=false;
+async function interactDarkCard(card){
+  if(darkCardBusy)return;
+  const prior=darkCardReads.get(card.id),now=Date.now(),ready=prior&&now<prior.expiresAt;
+  if(ready&&now<prior.removeAfter)return;
+  darkCardBusy=true;
+  try{
+    const result=await request('dark-star:reveal',{cardId:card.id,...(ready?{removeToken:prior.token}:{})});
+    if(result.removed)darkCardReads.delete(card.id);
+    else if(result.canRemove)darkCardReads.set(card.id,{token:result.removeToken,expiresAt:Date.now()+3000,removeAfter:Date.now()+300});
+    for(const [id,read]of darkCardReads)if(read.expiresAt<Date.now())darkCardReads.delete(id);
+    toast(result.message+(result.canRemove?' 잘못된 카드를 제거하면 자신이 쓰러져요.':''));
+  }catch(e){toast(e.message);}finally{darkCardBusy=false;}
+}
 function doInteract(){
   if(!selfId||placing||document.querySelector('dialog:modal'))return;
   const n=world.nearby();if(!n)return;
@@ -1010,10 +1026,11 @@ function doInteract(){
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
-  else if(n.kind==='dark-star-card')request('dark-star:reveal',{cardId:n.id}).catch(e=>toast(e.message));
+  else if(n.kind==='dark-star-card')interactDarkCard(n);
   else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='hall-of-fame')hallOfFame.open();
   else if(n.kind?.startsWith('cozy-'))cozyActivities.open(n.kind.slice(5));
+  else if(n.kind==='starlight-archive'){stop();starArchive.open();}
   else if(n.kind==='exploration')explorationUI.open();
   else if(n.kind==='market')marketUI.open();
   else if(n.kind==='planet')openPlanetDialog(n.id);
@@ -1053,7 +1070,8 @@ function updateInteractPrompt(){
   if(!selfId||placing||document.querySelector('dialog:modal')){hide();return;}
   const n=world.nearby();
   if(!n){hide();return;}
-  const label=n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
+  const cardRead=n.kind==='dark-star-card'&&darkCardReads.get(n.id);
+  const label=cardRead&&Date.now()<cardRead.expiresAt?controlSettings.label('interact')+' 한 번 더 누르면 제거합니다':n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
   const caption=$('interact-object');
   if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · '+controlSettings.label('interact')+' 상호작용하기');}
   if(prompt.hidden)prompt.hidden=false;
@@ -1073,7 +1091,7 @@ function updateInteractPrompt(){
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
 window.addEventListener('keydown',e=>{
-  if(e.code!==controlSettings.code('interact')||e.repeat||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)||e.target.isContentEditable)return;
+  if(e.code!==controlSettings.code('interact')||e.repeat||!selfId||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.target.isContentEditable)return;
   e.preventDefault();doInteract();
 });
 let movingPlanetId=null,movePoint=null;
@@ -1208,7 +1226,8 @@ async function loadTeacherActiveItems(){
     if(revision!==activeItemsRevision||sessionToken!==originToken||selfId!==originSelfId||room?.code!==originRoomCode)return;
     for(const row of rows){
       const item=itemOf(row.itemId),li=document.createElement('li');
-      const remain=row.until==null?'종료 전까지':`${Math.max(0,Math.ceil((row.until-Date.now())/1000))}초 남음`;
+      const minutes=Math.max(0,Math.ceil((Number(row.until)-Date.now())/60000));
+      const remain=row.until==null?'종료 전까지':`${Math.floor(minutes/1440)}일 : ${String(Math.floor(minutes/60)%24).padStart(2,'0')}시 : ${String(minutes%60).padStart(2,'0')}분 남음`;
       li.textContent=`${row.icon||item?.icon||'✦'} ${row.nickname} · ${item?.name||row.label||row.itemId} · ${remain}`;
       list.append(li);
     }
@@ -1468,7 +1487,7 @@ function reset(message){
   holdings.reset();
   characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();cetusUI.reset();
   craftingUI.reset();
-  cozyActivities.reset();
+  cozyActivities.reset();starArchive.reset();darkCardReads.clear();
   huntingTime.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();

@@ -40,7 +40,7 @@ test('projectile sweeps between ticks, deals power 30 once, and never adds a mel
  assert.equal(hits.filter(h=>h.targetId===p.id).length,1);assert.equal(hits.find(h=>h.targetId===p.id).damage,30);
  assert.equal(boss.darkStarSkills.projectiles.length,0);
 });
-test('rainbow exact mana/cooldown/length/lifetime, one contact per player per path including reconnect',()=>{
+test('rainbow exact mana/cooldown/length/lifetime, repeated contact and reconnect',()=>{
  const {room,boss,p}=fixture();
  assert(beginDarkStarSkill(room,boss,'rainbow',NOW,random));assert.equal(boss.mp,95);
  const path=boss.darkStarSkills.paths[0];assert(Math.abs(Math.hypot(path.x2-path.x1,path.y2-path.y1)-365.01)<.01);
@@ -48,17 +48,17 @@ test('rainbow exact mana/cooldown/length/lifetime, one contact per player per pa
  p.x=(path.x1+path.x2)/2;p.y=(path.y1+path.y2)/2;
  assert.equal(tickDarkStarSkills(room,boss,NOW+1).length,1);assert.equal(tickDarkStarSkills(room,boss,NOW+500).length,0);
  p.connected=false;tickDarkStarSkills(room,boss,NOW+600);p.connected=true;p.socketId='new';
- assert.equal(tickDarkStarSkills(room,boss,NOW+700).length,0);
+ assert.equal(tickDarkStarSkills(room,boss,NOW+700).length,1);
  assert(!beginDarkStarSkill(room,boss,'rainbow',NOW+10000,random));assert.equal(boss.mp,95);
  tickDarkStarSkills(room,boss,NOW+30000);assert.equal(boss.darkStarSkills.paths.length,0);
  assert(beginDarkStarSkill(room,boss,'rainbow',NOW+30000,random));assert.equal(boss.mp,90);
  assert.equal(tickDarkStarSkills(room,boss,NOW+30001).length,1);
  boss.mp=4;assert(!beginDarkStarSkill(room,boss,'rainbow',NOW+40000,random));
 });
-test('puzzle has five 100-HP gray cards, allowed distinct colors, secret answer and three-second reveal',()=>{
+test('puzzle has five interaction-only gray cards, allowed distinct colors, secret answer and three-second reveal',()=>{
  for(let sample=0;sample<12;sample++){
   const {room,boss,p}=fixture();assert(beginDarkStarSkill(room,boss,'puzzle',NOW,()=>sample/12));assert.equal(boss.mp,80);
-  const cards=boss.darkStarSkills.cards;assert.equal(cards.length,5);assert(cards.every(c=>c.hp===100));
+  const cards=boss.darkStarSkills.cards;assert.equal(cards.length,5);assert(cards.every(c=>c.hp===1));
   for(const card of cards){
    assert(Math.hypot(card.x-boss.x,card.y-boss.y)>boss.radius+80);
    const padding=boss.radius*1.2+RULE.puzzle.radius+12;
@@ -75,13 +75,17 @@ test('puzzle has five 100-HP gray cards, allowed distinct colors, secret answer 
   assert(onOriginFloor(mapOf(boss.mapId),card.x,card.y,card.radius));
  }
 });
-test('wrong card destruction has no penalty; correct card destruction clears puzzle without rewards or HP leaks',()=>{
+test('wrong second interaction defeats only remover; correct second interaction clears puzzle without rewards',()=>{
  const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);
  const wrong=boss.darkStarSkills.cards.find(c=>!c.correct),correct=boss.darkStarSkills.cards.find(c=>c.correct);
- const hp=ensureVitals(p).hp;let hit=damageMonster(room,wrong,p,100,NOW+1);
- assert(hit.defeated);assert(!Object.hasOwn(hit,'hp'));assert.equal(boss.darkStarSkills.cards.length,4);assert.equal(ensureVitals(p).hp,hp);
- hit=damageMonster(room,correct,p,99,NOW+2);assert.equal(hit.defeated,false);assert.equal(correct.hp,1);
- damageMonster(room,correct,p,1,NOW+3);assert.equal(boss.darkStarSkills.cards.length,0);assert.equal(boss.darkStarSkills.puzzleEndsAt,null);
+ const friend=player(room,'friend',{x:wrong.x,y:wrong.y});Object.assign(p,{x:wrong.x,y:wrong.y});
+ const first=revealDarkStarCard(room,p,wrong.id,NOW+1);
+ const result=revealDarkStarCard(room,p,wrong.id,NOW+301,first.removeToken);
+ assert(result.hit.defeated);assert.equal(boss.darkStarSkills.cards.length,4);assert.equal(ensureVitals(p).hp,0);assert(ensureVitals(friend).hp>0);
+ ensureVitals(p).hp=10;Object.assign(p,{x:correct.x,y:correct.y});
+ const confirmation=revealDarkStarCard(room,p,correct.id,NOW+302);
+ assert(revealDarkStarCard(room,p,correct.id,NOW+602,confirmation.removeToken).correct);
+ assert.equal(boss.darkStarSkills.cards.length,0);assert.equal(boss.darkStarSkills.puzzleEndsAt,null);
  assert.equal(room.monsters.size,1);assert.equal(room.energyDrops,undefined);
  assert(!beginDarkStarSkill(room,boss,'puzzle',NOW+59999,random));assert(beginDarkStarSkill(room,boss,'puzzle',NOW+60000,random));
 });
@@ -102,7 +106,7 @@ test('card interaction validates authoritative distance, map, life and expiratio
  p.x=card.x;p.y=card.y;p.mapId='space-plaza';assert.throws(()=>revealDarkStarCard(room,p,card.id,NOW));p.mapId=card.mapId;
  assert.throws(()=>revealDarkStarCard(room,p,card.id,NOW+30000));ensureVitals(p).hp=0;assert.throws(()=>revealDarkStarCard(room,p,card.id,NOW));
 });
-test('normal melee, teacher E and ranged class Q/E share damageable card targets',()=>{
+test('normal melee, teacher E and ranged class Q/E cannot damage interaction-only cards',()=>{
  for(const mode of ['melee','teacher','q','e']){
   const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);const card=boss.darkStarSkills.cards.find(c=>!c.correct);
   p.x=card.x-120;p.y=card.y;p.facing={x:1,y:0};boss.x=0;boss.y=0;
@@ -114,7 +118,7 @@ test('normal melee, teacher E and ranged class Q/E share damageable card targets
    if(mode==='e')castWater(room,p,NOW+1);
    castWater(room,p,NOW+2,{basic:true});advanceProjectiles(room,NOW+1000,combatEnemies,resolveWaterHit);
   }
-  assert(card.hp<100,mode);
+  assert.equal(card.hp,1,mode);assert.equal(damageMonster(room,card,p,99999,NOW+1001),null);
  }
 });
 test('active combat selects one major skill, waits for its end and alternates when both are ready',()=>{
@@ -192,7 +196,8 @@ test('direct casts cannot overlap majors; selection respects mana and cooldown w
   assert.equal(boss.mp,mana-(mana>=20?20:mana>=5?5:0));
  }
  const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);
- damageMonster(room,boss.darkStarSkills.cards.find(c=>c.correct),p,100,NOW+1);
+ const correct=boss.darkStarSkills.cards.find(c=>c.correct);Object.assign(p,{x:correct.x,y:correct.y});
+ const read=revealDarkStarCard(room,p,correct.id,NOW+1);revealDarkStarCard(room,p,correct.id,NOW+301,read.removeToken);
  assert(!beginDarkStarSkill(room,boss,'puzzle',NOW+59999,random));
  assert(beginDarkStarSkill(room,boss,'puzzle',NOW+60000,random));
 });
@@ -220,8 +225,9 @@ test('puzzle completion and failure release queued absorption only after cards c
   const {room,boss,p}=fixture();p.avatar.constellationId='libra';p.libraAura={endsAt:NOW+100000,mapId:p.mapId,size:0,radius:300};
   beginDarkStarSkill(room,boss,'puzzle',NOW,random);damageMonster(room,boss,p,2000,NOW+1);
   tickDarkStarSkills(room,boss,NOW+2,random);assert.equal(boss.darkStarSkills.absorption,null);
-  const at=success?NOW+3:NOW+30000;
-  if(success)damageMonster(room,boss.darkStarSkills.cards.find(c=>c.correct),p,100,at);
+  const at=success?NOW+303:NOW+30000;
+  if(success){const correct=boss.darkStarSkills.cards.find(c=>c.correct);Object.assign(p,{x:correct.x,y:correct.y});
+    const read=revealDarkStarCard(room,p,correct.id,NOW+3);revealDarkStarCard(room,p,correct.id,at,read.removeToken);}
   tickDarkStarSkills(room,boss,at,random);
   assert.equal(boss.darkStarSkills.cards.length,0);assert.equal(boss.darkStarSkills.puzzleEndsAt,null);
   assert.equal(boss.darkStarSkills.absorption.startsAt,at);assert.equal(boss.darkStarSkills.absorption.endsAt,at+3000);

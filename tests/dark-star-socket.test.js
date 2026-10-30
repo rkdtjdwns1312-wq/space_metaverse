@@ -76,3 +76,24 @@ test('card reveal validates socket position and broadcasts only temporarily reve
  await until(()=>tick?.monsters.find(m=>m.id===boss.id)?.darkStarEffects?.cards[0]?.color===card.color);assertPrivate();
  f.now+=3000;await until(()=>!Object.hasOwn(tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards[0],'color'));assertPrivate();
 });
+
+test('two-step card socket confirmation is personal, broadcasts wrong-choice death and lets another player solve',async t=>{
+ const f=await fixture(t);qualify(f,f.pa);qualify(f,f.pb);assert((await call(f.a,'dark-star:summon')).ok);
+ const boss=f.room.monsters.get(DARK_STAR.monsterId);assert(beginDarkStarSkill(f.room,boss,'puzzle',f.now,()=>.5));boss.sleepUntil=f.now+60000;
+ const wrong=boss.darkStarSkills.cards.find(c=>!c.correct),correct=boss.darkStarSkills.cards.find(c=>c.correct);
+ Object.assign(f.pa,{x:wrong.x,y:wrong.y});Object.assign(f.pb,{x:wrong.x,y:wrong.y});
+ const hpB=ensureVitals(f.pb).hp,vitals=[],hits=[];let tick;
+ f.b.on('combat:vitals',v=>vitals.push(v));f.b.on('combat:monster-hit',v=>hits.push(v));f.b.on('world:positions',v=>tick=v);
+ const first=await call(f.a,'dark-star:reveal',{cardId:wrong.id});assert(first.ok);assert(first.canRemove);assert.equal(first.message,'F를 한 번 더 누르면 제거합니다.');
+ const rapid=await call(f.a,'dark-star:reveal',{cardId:wrong.id,removeToken:first.removeToken});assert.equal(rapid.ok,false);assert.equal(wrong.hp,1);
+ f.now+=300;
+ const other=await call(f.b,'dark-star:reveal',{cardId:wrong.id,removeToken:first.removeToken});assert(other.ok&&other.canRemove);assert.equal(wrong.hp,1);
+ const removed=await call(f.a,'dark-star:reveal',{cardId:wrong.id,removeToken:first.removeToken});assert(removed.ok&&removed.removed);assert.equal(removed.correct,false);
+ await until(()=>vitals.some(v=>v.playerId===f.pa.id&&v.vitals.defeated)&&hits.some(v=>v.targetId===f.pa.id&&v.skillKind==='dark-star-wrong-card'));
+ assert.equal(ensureVitals(f.pa).hp,0);assert.equal(ensureVitals(f.pb).hp,hpB);assert.equal(boss.darkStarSkills.cards.length,4);
+ Object.assign(f.pb,{x:correct.x,y:correct.y});
+ const read=await call(f.b,'dark-star:reveal',{cardId:correct.id});assert(read.ok&&read.canRemove);f.now+=300;
+ const solved=await call(f.b,'dark-star:reveal',{cardId:correct.id,removeToken:read.removeToken});assert(solved.ok&&solved.removed&&solved.correct);
+ await until(()=>tick?.monsters.find(m=>m.id===boss.id)?.darkStarEffects?.cards.length===0);
+ assert.equal(boss.darkStarSkills.puzzleEndsAt,null);assert(!JSON.stringify(f.disk()).includes('removeToken'));
+});

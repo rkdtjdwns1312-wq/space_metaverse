@@ -56,6 +56,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
   objects: [
     {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
     {id:'exploration-flask',name:'우주 탐사 장치',x:2280,y:1320,radius:56,kind:'exploration',color:'#dbb5ff',interactionBox:{left:-36,right:36,top:-160,bottom:20}},
+    {id:'starlight-archive',name:'별빛 기록소',x:1320,y:1320,radius:56,kind:'starlight-archive',color:'#d7c6ee',passable:true,interactionBox:{left:-90,right:90,top:-170,bottom:30}},
     {id:'pillar-notice',name:'오늘의 알림장',x:1580,y:1210,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
     {id:'pillar-effects',name:'사용 중인 아이템',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
@@ -192,7 +193,7 @@ export const BAG = Object.freeze({ columns: 5, rows: 4 });
 // 기존 상품의 구매/판매 통화는 별 파편입니다. 우주에너지로 자동 대체하지 않습니다.
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
   {id:'spirit-king-soul',name:'성령왕의 영혼',description:'성령의 왕이 남긴 영혼의 결정입니다.',special:'성령왕의 영혼 1개와 우주에너지 10,000개, 별 파편 10개를 가지고 별빛 조합기에서 성령왕의 망토(Lv5 장비)를 만들 수 있습니다.',art:'/assets/items/spirit-king-soul.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
-  {id:'black-gem',name:'검은 보석',description:'태초의 검은별이 남긴 검은 보석입니다.',special:'태초의 검은별을 처치하면 얻는 재료입니다.',art:'/assets/items/black-gem.webp',icon:'◆',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'black-gem',name:'검은 보석',description:'태초의 검은별이 남긴 검은 보석입니다.',special:'검은 보석 1개와 우주에너지 10,000개를 가지고 별빛 조합기에서 검은별의 인장(Lv5 장비)을 만들 수 있습니다. 조합법을 미리 배우거나 별 파편을 준비할 필요는 없습니다.',art:'/assets/items/black-gem.webp',icon:'◆',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'radiant-star-origin',name:'찬란한 별의 근원',description:'별의 시초신 세레나가 남긴 찬란한 별의 근원입니다.',special:'찬란한 별의 근원 1개와 우주에너지 10,000개를 가지고 별빛 조합기에서 시초의 별의 보석(Lv5 장비)을 만들 수 있습니다.',art:'/assets/items/radiant-star-origin.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},

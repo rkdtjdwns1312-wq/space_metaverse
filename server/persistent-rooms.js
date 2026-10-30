@@ -1,3 +1,4 @@
+import {validateArchive} from './starlight-archive.js';
 import {validateHuntingTime} from './hunting-time.js';
 import {validateCozyActivities} from './cozy-activities.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
@@ -81,6 +82,7 @@ export function toRecord(room) {
       muted:p.muted,notes:p.notes,tasks:p.tasks||[],tutorialCompleted:!!p.tutorialCompleted,tutorialRewardClaimed:!!p.tutorialRewardClaimed,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
+      starlightArchive:validateArchive(p.starlightArchive),
       cultureReading:validateCultureReading(p.cultureReading),
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
@@ -179,6 +181,7 @@ export function fromRecord(r,now=Date.now()) {
     room.players.set(p.id,offline({...structuredClone(p),huntingTimer:null,tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
+      starlightArchive:validateArchive(p.starlightArchive),
       cultureReading:validateCultureReading(p.cultureReading),
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),

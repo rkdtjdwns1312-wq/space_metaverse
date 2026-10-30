@@ -4,11 +4,16 @@ import {drawPaintedProp} from './painted-props.js';
 export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
+art.archive=mapImage('/assets/maps/starlight-archive.png');
 for(const name of ['market','bazaar','andromeda','mission-board','black-hole']){
   art[name]=mapImage('/assets/maps/plaza-'+name+'.png');
 }
 const ready=name=>mapImageReady(art[name]);
 export async function preloadPlazaProps(){await decodeMapImages(Object.values(art));}
+export function drawStarlightArchive(ctx,o){
+  if(ready('archive')){const w=235,h=w*art.archive.naturalHeight/art.archive.naturalWidth;sprite(ctx,'archive',o.x,o.y+36,w,h);}
+  label(ctx,o.name,o.x,o.y+60,18);
+}
 function sprite(ctx,name,x,y,w,h){if(!ready(name))return false;ctx.drawImage(art[name],x-w/2,y-h,w,h);return true;}
 function label(ctx,text,x,y,size=18){ctx.save();ctx.font=`${size}px "Jua","Malgun Gothic",sans-serif`;ctx.textAlign='center';ctx.lineJoin='round';ctx.strokeStyle='#fffaf4';ctx.lineWidth=5;ctx.strokeText(text,x,y);ctx.fillStyle='#67537f';ctx.fillText(text,x,y);ctx.restore();}
 
