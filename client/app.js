@@ -1059,7 +1059,7 @@ function updateInteractPrompt(){
   if(touchButton.disabled)touchButton.disabled=false;
   const point=world.screenPoint(n),width=prompt.offsetWidth,height=prompt.offsetHeight,gap=12;
   let x=Math.max(8,Math.min(innerWidth-width-8,point.x-width/2));
-  const objectTop=n.kind==='star-card'?(n.height||90)+20:(n.radius||0);
+  const objectTop=n.kind==='dark-star-card'?90:n.kind==='star-card'?(n.height||90)+20:(n.radius||0);
   let y=point.y-objectTop*point.scale-height-gap;
   const navigation=$('world-navigation').getBoundingClientRect();
   // 맵 상단과 미니맵에 가려지는 경우에는 같은 물체 바로 아래에 붙입니다.
