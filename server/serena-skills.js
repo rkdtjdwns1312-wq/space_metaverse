@@ -1,8 +1,7 @@
 import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {RULES} from '../shared/config.js';
-import {monsterType} from '../shared/monsters.js';
-import {ensureVitals,damagePlayer,playerVitals,libraProtectors} from './vitals.js';
-import {damagePlayersInArea} from './area-combat.js';
+import {ensureVitals,playerVitals,libraProtectors} from './vitals.js';
+import {playersInArea} from './area-combat.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
@@ -64,7 +63,7 @@ export function trySerenaSkills(room,boss,target,now,random=Math.random){
   return Number.isFinite(roll)&&roll>=0&&roll<rule.chance&&beginSerenaSkill(room,boss,kind,now,random);
 }
 
-// 천칭 무적 외의 기존 방어·자동 부활 예외는 유지합니다.
+// 천칭 무적은 유지하며, 패턴 실패는 방어·방패·황소 면역·자동 부활을 무시합니다.
 function instantDefeat(room,player,now){
   if(libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const value=ensureVitals(player),damage=value.hp;
@@ -78,13 +77,13 @@ export function tickSerenaSkills(room,boss,now){
   const state=boss.serenaSkills,hits=[];
   if(!state)return hits;
   if(boss.hp<=0||state.mapId!==boss.mapId){clearSerenaSkills(boss);return hits;}
-  const power=monsterType(boss.typeId)?.power??30;
   state.bursts=state.bursts.filter(b=>b.endsAt>now);
   // 위치가 고정된 경고만 폭발하며, 출처 캐릭터가 사망·이탈하면 함께 제거합니다.
   state.warnings=state.warnings.filter(w=>{
     if(boss.hp<=0||!valid(boss,room.players.get(w.playerId)))return false;
     if(now<w.endsAt)return true;
-    const results=damagePlayersInArea(room,{mapId:boss.mapId,x:w.x,y:w.y,radius:w.radius,excludeTeachers:true,teacherTargetIds:boss.teacherRetaliation,sourceMonsterId:boss.id},power,now);
+    const results=playersInArea(room,{mapId:boss.mapId,x:w.x,y:w.y,radius:w.radius,excludeTeachers:true,teacherTargetIds:boss.teacherRetaliation,sourceMonsterId:boss.id})
+      .map(player=>({targetId:player.id,...instantDefeat(room,player,now)}));
     for(const result of results)hits.push({...visual(boss,'yellow',w.x,w.y),...result});
     state.bursts.push({id:w.id,x:w.x,y:w.y,radius:w.radius,startsAt:now,endsAt:now+SERENA_SKILLS.yellow.burstMs});
     extendBusyUntil(state,now+SERENA_SKILLS.yellow.burstMs);
@@ -105,8 +104,7 @@ export function tickSerenaSkills(room,boss,now){
       // Exact deadline wins over a late gathering. The mark follows its victim,
       // so running outside an old area cannot evade the one-time explosion.
       if(now>=mark.endsAt){
-        const damage=power*SERENA_SKILLS.red.damageMultiplier;
-        const result=damagePlayer(p,damage,now,{room,fixedDamage:damage});
+        const result=instantDefeat(room,p,now);
         if(result)hits.push({...visual(boss,'red',p.x,p.y),targetId:p.id,...result});
         state.bursts.push({id:mark.id,kind:'red',x:p.x,y:p.y,radius:100,startsAt:now,endsAt:now+SERENA_SKILLS.red.burstMs});
         extendBusyUntil(state,now+SERENA_SKILLS.red.burstMs);return false;

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {SERENA} from '../shared/serena.js';
 import {RULES} from '../shared/config.js';
-import {damageAfterDefense,defensePowerOf} from '../shared/combat.js';
 import {monstersOf,monsterViews,moveMonsters,damageMonster} from '../server/monsters.js';
 import {beginSerenaSkill,tickSerenaSkills,trySerenaSkills,serenaSkillViews} from '../server/serena-skills.js';
 import {ensureVitals} from '../server/vitals.js';
@@ -40,6 +39,7 @@ test('세레나는 세 스킬을 겹치지 않고 한 번의 확률 판단 후 �
   assert.equal(beginSerenaSkill(f.room,f.boss,'black',11000,()=>0),false);
   assert.equal(beginSerenaSkill(f.room,f.boss,'red',23000,()=>0),false,'마지막 경고의 폭발까지 시전 잠금');
   tickSerenaSkills(f.room,f.boss,21000);
+  for(const player of f.players)player.x+=300;
   tickSerenaSkills(f.room,f.boss,23000);
   assert.equal(trySerenaSkills(f.room,f.boss,p,23650,()=>0),false,'폭발 후 판단 휴식');
   tickSerenaSkills(f.room,f.boss,25650);
@@ -55,7 +55,7 @@ test('지연된 노란 경고 폭발이 끝날 때까지 다른 스킬을 시작
   assert.equal(beginSerenaSkill(f.room,f.boss,'yellow',1000),true);
   tickSerenaSkills(f.room,f.boss,21000);
   assert.equal(trySerenaSkills(f.room,f.boss,p,26000,()=>0),false,'미처 처리되지 않은 경고를 우선 완료');
-  tickSerenaSkills(f.room,f.boss,26000);
+  p.x+=300;tickSerenaSkills(f.room,f.boss,26000);
   assert.equal(f.boss.serenaSkills.bursts[0].endsAt,26650);
   assert.equal(beginSerenaSkill(f.room,f.boss,'black',26000),false);
   tickSerenaSkills(f.room,f.boss,26650);
@@ -63,7 +63,7 @@ test('지연된 노란 경고 폭발이 끝날 때까지 다른 스킬을 시작
   assert.equal(trySerenaSkills(f.room,f.boss,p,28650,()=>0),true);
 });
 
-test('yellow follows carrier for warning placement, locks coordinates and explodes after two seconds at 100% attack',()=>{
+test('yellow follows carrier for warning placement, locks coordinates and explodes after two seconds with instant defeat',()=>{
   const f=fixture(1),p=f.players[0];
   beginSerenaSkill(f.room,f.boss,'yellow',1000);
   assert.equal(tickSerenaSkills(f.room,f.boss,2999).length,0);assert.equal(view(f,2999).warnings.length,0);
@@ -73,7 +73,7 @@ test('yellow follows carrier for warning placement, locks coordinates and explod
   assert.equal(tickSerenaSkills(f.room,f.boss,5000).length,0);
   assert.equal(view(f,5000).bursts[0].x,w.x);assert.equal(view(f,5000).warnings[0].x,p.x);
   const hp=p.battleVitals.hp,hits=tickSerenaSkills(f.room,f.boss,7000);
-  assert.equal(hits.length,1);assert.equal(hits[0].damage,damageAfterDefense(30,defensePowerOf(5,'taurus',p)));
+  assert.equal(hits.length,1);assert.equal(hits[0].damage,hp);
   assert.equal(p.battleVitals.hp,hp-hits[0].damage);
 });
 
@@ -135,7 +135,7 @@ test('red requires simultaneous distinct other classmates, follows the victim, a
   assert(f.players.every(player=>player.battleVitals.hp===500));
 });
 
-test('red exact five-second deadline wins, movement and defenses cannot avoid 200% victim-only damage, and late ticks never replay',()=>{
+test('red exact five-second deadline wins, movement and defenses cannot avoid victim-only instant defeat, and late ticks never replay',()=>{
   const f=fixture(3),[p,other]=f.players;beginSerenaSkill(f.room,f.boss,'red',1000,()=>0);
   f.boss.serenaSkills.marks=f.boss.serenaSkills.marks.filter(mark=>mark.playerId===p.id);
   p.taurusImmuneUntil=20000;p.herculesShield={endsAt:20000,hp:999,absorbed:0};
@@ -143,13 +143,13 @@ test('red exact five-second deadline wins, movement and defenses cannot avoid 20
   assert.equal(tickSerenaSkills(f.room,f.boss,5999).length,0);
   p.x+=1000;other.x=p.x;other.y=p.y;
   const hits=tickSerenaSkills(f.room,f.boss,6000);
-  assert.deepEqual(hits.map(hit=>[hit.targetId,hit.damage]),[[p.id,60]]);
-  assert.equal(p.battleVitals.hp,440);assert.equal(other.battleVitals.hp,500);
+  assert.deepEqual(hits.map(hit=>[hit.targetId,hit.damage]),[[p.id,500]]);
+  assert.equal(p.battleVitals.hp,0);assert.equal(other.battleVitals.hp,500);
   assert.equal(p.herculesShield.hp,999);assert.equal(f.boss.hp,10000);
   assert.equal(view(f,6000).bursts[0].kind,'red');assert.equal(view(f,6000).bursts[0].x,p.x);
   assert.equal(tickSerenaSkills(f.room,f.boss,90000).length,0);
   const late=fixture(1);beginSerenaSkill(late.room,late.boss,'red',1000,()=>0);
-  assert.equal(tickSerenaSkills(late.room,late.boss,90000)[0].damage,60);
+  assert.equal(tickSerenaSkills(late.room,late.boss,90000)[0].damage,500);
   assert.equal(tickSerenaSkills(late.room,late.boss,90001).length,0);
 });
 
@@ -255,7 +255,7 @@ test('jittered server ticks preserve ten scheduled yellow pulses without catch-u
 });
 
 
-test('천칭 무적은 빨간별 고정 피해와 검은별 즉사를 막되 정확한 만료에는 피해를 받는다',()=>{
+test('천칭 무적은 빨간별·검은별 즉사를 막되 정확한 만료에는 피해를 받는다',()=>{
   for(const kind of ['red','black'])for(const active of [true,false]){
     const f=fixture(1),[p]=f.players;p.avatar.constellationId='libra';
     beginSerenaSkill(f.room,f.boss,kind,1000,()=>0);
@@ -264,4 +264,30 @@ test('천칭 무적은 빨간별 고정 피해와 검은별 즉사를 막되 정
     const hits=tickSerenaSkills(f.room,f.boss,at),hit=hits.find(h=>h.targetId===p.id);
     assert.ok(hit);assert.equal(hit.damage===0,active);assert.equal(ensureVitals(p).hp===hp,active);
   }
+});
+
+
+test('all three failed patterns defeat high-HP players through shield, defense, Taurus and revival; Libra alone protects',()=>{
+ for(const kind of ['yellow','red','black'])for(const immune of [false,true]){
+  const f=fixture(1),p=f.players[0];beginSerenaSkill(f.room,f.boss,kind,1000,()=>0);
+  p.taurusImmuneUntil=30000;p.herculesShield={hp:999,endsAt:30000,absorbed:0};p.capricornBlessing={endsAt:30000};
+  if(immune){p.avatar.constellationId='libra';p.libraAura={endsAt:30000,mapId:p.mapId,size:0,radius:300};}
+  if(kind==='yellow')tickSerenaSkills(f.room,f.boss,3000);
+  const at=kind==='yellow'?5000:kind==='red'?6000:11000,hits=tickSerenaSkills(f.room,f.boss,at);
+  assert.equal(hits.length,1);assert.equal(hits[0].damage,immune?0:500);assert.equal(hits[0].defeated,!immune);
+  assert.equal(p.battleVitals.hp,immune?500:0);assert.equal(p.herculesShield.hp,999);assert.ok(p.capricornBlessing);
+  if(!immune){assert.equal(p.battleVitals.defeatedAt,at);assert.deepEqual(p.input,{x:0,y:0,at:0});}
+ }
+});
+
+test('yellow lethal area preserves shared target eligibility and radius edge, excludes absent players and uninvolved teachers',()=>{
+ const f=fixture(9),[carrier,edge,outside,offline,away,ghost,teacher,preview,fighting]=f.players;
+ beginSerenaSkill(f.room,f.boss,'yellow',1000);tickSerenaSkills(f.room,f.boss,3000);
+ const warning=f.boss.serenaSkills.warnings.find(w=>w.playerId===carrier.id);f.boss.serenaSkills.warnings=[warning];
+ for(const p of f.players){p.x=warning.x;p.y=warning.y;}
+ carrier.x+=500;edge.x+=warning.radius+RULES.radius;outside.x+=warning.radius+RULES.radius+.01;
+ offline.connected=false;away.away=true;ghost.avatar.blackStar=true;teacher.role='teacher';preview.role='teacher';preview.avatar.teacherPreview=true;fighting.role='teacher';
+ f.boss.teacherRetaliation=new Set([preview.id,fighting.id]);
+ const hits=tickSerenaSkills(f.room,f.boss,5000);assert.deepEqual(hits.map(h=>h.targetId),[edge.id,fighting.id]);
+ assert.ok(hits.every(h=>h.defeated));assert.equal(carrier.battleVitals.hp,500);assert.equal(outside.battleVitals.hp,500);
 });

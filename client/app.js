@@ -99,11 +99,12 @@ const huntingTime=createHuntingTimeUI({clock:$('classroom-clock'),stop});
 const audio=createAudio();
 const cetusUI=createCetusUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
+const mobileAudioMute=document.createElement('button');mobileAudioMute.id='mobile-audio-mute';mobileAudioMute.type='button';mobileAudioMute.className='secondary';$('mobile-hunting-row').append(mobileAudioMute);mobileAudioMute.onclick=()=>audioMute.click();
 function syncAudioControls(){
   audioVolume.value=Math.round(audio.volume*100);
   audioToggle.textContent=audio.muted||audio.volume===0?'🔇':'🔊';
   audioToggle.setAttribute('aria-label',audio.muted?'소리 꺼짐 · 소리 설정':'소리 켜짐 · 소리 설정');
-  audioMute.textContent=audio.muted?'소리 켜기':'음소거';
+  audioMute.textContent=audio.muted?'소리 켜기':'음소거';mobileAudioMute.textContent=audioMute.textContent;mobileAudioMute.setAttribute('aria-pressed',String(audio.muted));
 }
 syncAudioControls();
 audioToggle.addEventListener('click',()=>{audio.resume();audioPanel.hidden=!audioPanel.hidden;audioToggle.setAttribute('aria-expanded',String(!audioPanel.hidden));});

@@ -74,7 +74,7 @@ test('소켓은 클라이언트 자격 위조를 무시하고 동시 예 두 요
   assert.equal(tick.monsters.filter(m=>m.typeId==='serena').length,1);assert.equal(f.disk().serena.state,'active');
 });
 
-test('빨간별의 숫자·5초 만료·대상 200% 피해가 실제 소켓 스냅샷과 활력에 반영된다',async t=>{
+test('빨간별의 숫자·5초 만료·대상 즉사가 실제 소켓 스냅샷과 활력에 반영된다',async t=>{
   const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
   const boss=f.room.monsters.get(SERENA.monsterId),hits=[];let state;
   f.a.on('world:positions',value=>state=value);f.a.on('combat:monster-hit',value=>hits.push(value));
@@ -85,8 +85,8 @@ test('빨간별의 숫자·5초 만료·대상 200% 피해가 실제 소켓 스�
   assert.equal(mark.endsAt-mark.startsAt,5000);assert.equal(mark.nearbyFriends,0);
   f.now+=4999;await pause(100);assert.equal(hits.filter(hit=>hit.skillKind==='serena-red').length,0);
   f.pa.x+=100;f.now++;await until(()=>hits.some(hit=>hit.skillKind==='serena-red'));
-  assert.deepEqual(hits.filter(hit=>hit.skillKind==='serena-red').map(hit=>[hit.targetId,hit.damage]),[[f.pa.id,60]]);
-  assert.equal(ensureVitals(f.pa).hp,440);await pause(100);assert.equal(hits.filter(hit=>hit.skillKind==='serena-red').length,1);
+  assert.deepEqual(hits.filter(hit=>hit.skillKind==='serena-red').map(hit=>[hit.targetId,hit.damage]),[[f.pa.id,500]]);
+  assert.equal(ensureVitals(f.pa).hp,0);await pause(100);assert.equal(hits.filter(hit=>hit.skillKind==='serena-red').length,1);
 });
 
 test('선생님은 학생 자격 기록 없이 석상 앞에서 세레나를 소환한다',async t=>{
@@ -169,4 +169,18 @@ test('첫 교실 보스 저장 롤백 뒤 다음 교실은 교체된 Map의 참�
     assert.equal([...current.energyDrops.values()].filter(d=>d.itemId==='radiant-star-origin').length,1);
     assert.equal(f.game.store.records.get(code2).serena.state,'recovering');
   }finally{f.game.store.files.save=save;}
+});
+
+
+test('yellow explosion sends immediate defeat and matching zero-HP vitals through actual server tick',async t=>{
+ const f=await fixture(t);qualify(f,f.pa);assert.ok((await call(f.a,'serena:summon')).ok);
+ const boss=f.room.monsters.get(SERENA.monsterId),hits=[],vitals=[];let state;
+ f.a.on('world:positions',v=>state=v);f.a.on('combat:monster-hit',h=>hits.push(h));f.a.on('combat:vitals',v=>vitals.push(v));
+ f.pa.accountKind='master';ensureVitals(f.pa).hp=500;f.pa.x+=600;
+ assert(beginSerenaSkill(f.room,boss,'yellow',f.now,()=>0));boss.stunUntil=f.now+30000;
+ f.now+=2000;await until(()=>state?.monsters.find(m=>m.id===boss.id)?.serenaSkillEffects?.warnings.length);
+ f.now+=1999;await pause(100);assert.equal(hits.filter(h=>h.skillKind==='serena-yellow').length,0);
+ f.now++;await until(()=>hits.some(h=>h.skillKind==='serena-yellow'&&h.targetId===f.pa.id));
+ const hit=hits.find(h=>h.skillKind==='serena-yellow'&&h.targetId===f.pa.id);assert.equal(hit.damage,500);assert.equal(hit.defeated,true);
+ await until(()=>vitals.some(v=>v.playerId===f.pa.id&&v.vitals.hp.current===0));assert.equal(ensureVitals(f.pa).hp,0);
 });
