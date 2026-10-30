@@ -10,6 +10,8 @@ const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===bos
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const stateOf=boss=>boss.darkStarSkills??={mapId:boss.mapId,sequence:0,ready:{},aim:null,projectiles:[],paths:[],cards:[],puzzleEndsAt:null,
   triggered:0,absorptionQueue:[],absorbedColors:[],absorption:null,satellites:[]};
+// A puzzle keeps its slot until success/deadline resolution; persistent satellites do not occupy it.
+const majorActive=(state,now)=>state.puzzleEndsAt!==null||state.paths.some(path=>path.endsAt>now);
 const roll=random=>Math.max(0,Math.min(.999999999,Number(random())||0));
 const nextId=(boss,state,kind)=>`${boss.id}-${kind}-${++state.sequence}`;
 export function segmentDistance(x,y,x1,y1,x2,y2){
@@ -41,7 +43,7 @@ export function beginDarkStarSkill(room,boss,kind,now,random=Math.random){
   if(!['rainbow','puzzle'].includes(kind)||boss.typeId!=='dark-star'||boss.hp<=0||!Number.isFinite(now)||
     (boss.sleepUntil||0)>now||(boss.stunUntil||0)>now)return false;
   const state=stateOf(boss);
-  if(state.absorption||state.absorptionQueue.length||state.mapId!==boss.mapId||now<(state.ready[kind]||0)||boss.mp<rule.mana||
+  if(majorActive(state,now)||state.absorption||state.absorptionQueue.length||state.mapId!==boss.mapId||now<(state.ready[kind]||0)||boss.mp<rule.mana||
     ![...room.players.values()].some(p=>valid(boss,p)))return false;
   const map=mapOf(boss.mapId,room.planets?.values?.()||[]);
   if(kind==='rainbow'){
@@ -67,12 +69,15 @@ export function beginDarkStarSkill(room,boss,kind,now,random=Math.random){
       color:pair[index===oddIndex?1:0],correct:index===oddIndex,attackers:new Map(),contributors:new Map(),attackOrder:0}));
     for(const card of state.cards)room.monsters.set(card.id,card);
   }
-  boss.mp-=rule.mana;state.ready[kind]=now+rule.cooldownMs;return true;
+  boss.mp-=rule.mana;state.ready[kind]=now+rule.cooldownMs;state.lastMajor=kind;return true;
 }
 export function tryDarkStarSkills(room,boss,target,now,random=Math.random){
   if(!target||!valid(boss,target))return;
-  beginDarkStarSkill(room,boss,'rainbow',now,random);
-  beginDarkStarSkill(room,boss,'puzzle',now,random);
+  const state=stateOf(boss);
+  if(majorActive(state,now)||state.absorption||state.absorptionQueue.length)return;
+  let choices=['rainbow','puzzle'].filter(kind=>now>=(state.ready[kind]||0)&&boss.mp>=RULE[kind].mana);
+  if(choices.length>1&&state.lastMajor)choices=choices.filter(kind=>kind!==state.lastMajor);
+  if(choices.length)beginDarkStarSkill(room,boss,choices[Math.floor(roll(random)*choices.length)],now,random);
 }
 const visual=(boss,kind,x,y)=>({monsterId:boss.id,mapId:boss.mapId,x,y,dx:0,dy:0,reach:0,skillKind:`dark-star-${kind}`,durationMs:450,noEffect:true});
 function hitPlayer(room,boss,player,now,kind,x,y){
@@ -82,7 +87,7 @@ function hitPlayer(room,boss,player,now,kind,x,y){
 }
 export function aimDarkStar(room,boss,target,now){
   const state=stateOf(boss);
-  if(state.absorption||state.absorptionQueue.length||!target||!valid(boss,target)||(boss.sleepUntil||0)>now||(boss.stunUntil||0)>now){state.aim=null;return [];}
+  if(state.absorption||!target||!valid(boss,target)||(boss.sleepUntil||0)>now||(boss.stunUntil||0)>now){state.aim=null;return [];}
   const distance=Math.hypot(target.x-boss.x,target.y-boss.y),dx=distance?(target.x-boss.x)/distance:1,dy=distance?(target.y-boss.y)/distance:0;
   state.aim??={startsAt:now,endsAt:now+RULE.basic.aimMs};
   Object.assign(state.aim,{x:boss.x,y:boss.y,dx,dy});
@@ -97,7 +102,6 @@ export function recordDarkStarDamage(boss){
   while(state.triggered<rule.thresholds.length&&boss.hp<=rule.thresholds[state.triggered]){
     state.absorptionQueue.push(rule.colors[state.triggered++]);
   }
-  if(state.absorptionQueue.length)state.aim=null;
 }
 function instantDefeat(room,boss,p,now,kind){
   if(libraProtectors(room,p,now).length)return {...visual(boss,kind,p.x,p.y),targetId:p.id,damage:0,vitals:playerVitals(p),defeated:false,immune:true};
@@ -113,7 +117,7 @@ function tickAbsorption(room,boss,state,now,hits,random){
     for(const p of room.players.values())if(valid(boss,p)&&Math.hypot(p.x-cast.x,p.y-cast.y)<=cast.radius+RULES.radius)
       hits.push(instantDefeat(room,boss,p,now,'absorption'));
   }
-  if(!state.absorption&&state.absorptionQueue.length){
+  if(!state.absorption&&state.absorptionQueue.length&&!majorActive(state,now)){
     const color=state.absorptionQueue.shift(),map=mapOf(boss.mapId,room.planets?.values?.()||[]);
     state.absorbedColors.push(color);state.aim=null;
     state.absorption={color,x:boss.x,y:boss.y,radius:rule.radius,startsAt:now,endsAt:now+rule.warningMs};

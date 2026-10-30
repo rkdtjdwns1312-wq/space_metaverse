@@ -27,8 +27,10 @@ function layout(raw){
  const coordinate=(v,max)=>Number.isFinite(v)&&v>=0&&v<=max;
  return raw.map(p=>{
   const scale=p?.scale===undefined?1:p.scale;
-  need(p&&has(COZY_FURNITURE,p.id)&&coordinate(p.x,5)&&coordinate(p.y,3)&&int(p.rotation,3)&&int(p.palette,3)&&COZY_GRID.scales.includes(scale)&&!ids.has(p.id)&&!cells.has(`${p.x},${p.y}`));
-  ids.add(p.id);cells.add(`${p.x},${p.y}`);return {id:p.id,x:p.x,y:p.y,rotation:p.rotation,palette:p.palette,scale};
+  need(p?.space===undefined||p.space==='room');
+  const cell=p?.space==='room'?`${p.x/5*100},${p.y/3*100}`:`${8+p?.x/5*84},${49+p?.y/3*41}`;
+  need(p&&has(COZY_FURNITURE,p.id)&&coordinate(p.x,5)&&coordinate(p.y,3)&&int(p.rotation,3)&&int(p.palette,3)&&COZY_GRID.scales.includes(scale)&&!ids.has(p.id)&&!cells.has(cell));
+  ids.add(p.id);cells.add(cell);return {id:p.id,x:p.x,y:p.y,rotation:p.rotation,palette:p.palette,scale,...(p.space==='room'?{space:'room'}:{})};
  });
 }
 export function validateCozyActivities(raw){

@@ -57,3 +57,10 @@ test('actual avatar levels scale each independent quota; caller level and level 
  }
  for(const level of [0,6,2.5,'5',null])assert.equal(cozyRewardUnit(level),0);
 });
+
+test('room full-scene coordinates persist without changing legacy furniture or rewards',()=>{
+ const p=player(),old=cozyPreset();act(p,'room','save',{theme:'moon',layout:old});const energy=p.cosmicEnergy;
+ const layout=[old[0],{id:'pendant',x:2.5,y:.6,rotation:0,palette:0,scale:.75,space:'room'},{id:'rug',x:4.3,y:2.9,rotation:0,palette:2,scale:1,space:'room'}];
+ act(p,'room','save',{theme:'moon',layout});assert.deepEqual(p.cozyActivities.room.layout,layout);assert.equal(p.cosmicEnergy,energy);assert.deepEqual(validateCozyActivities(JSON.parse(JSON.stringify(p.cozyActivities))).room.layout,layout);
+ for(const patch of [{space:'invalid'},{x:-.1},{y:3.1},{x:NaN}])assert.throws(()=>act(p,'room','save',{theme:'moon',layout:[{...layout[1],...patch}]}));
+});

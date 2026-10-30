@@ -27,7 +27,7 @@ try{
  await at('room');await page.locator('.room-background').waitFor();await page.waitForFunction(()=>[...document.querySelectorAll('.room-theme-list img,.room-furniture-tray img')].every(i=>i.complete&&i.naturalWidth>0));assert.equal(await page.locator('[data-room-tray]').count(),24);
  const sc=()=>page.locator('.room-decor-scene');
  async function drag(id,rx,ry){const from=page.locator('[data-room-tray="'+id+'"]');await from.scrollIntoViewIfNeeded();let b=await from.boundingBox();await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await sc().scrollIntoViewIfNeeded();b=await sc().boundingBox();await page.mouse.move(b.x+b.width*rx,b.y+b.height*ry,{steps:8});await page.mouse.up();await page.waitForTimeout(400);await page.locator('[data-room-piece="'+id+'"]').waitFor();}
- await drag('bed',.27,.72);await drag('piano',.65,.63);await drag('table',.55,.86);
+ await drag('bed',.27,.25);assert(parseFloat(await page.locator('[data-room-piece=bed]').evaluate(el=>el.style.top))<40,'new tray drop must remain in upper room');await drag('piano',.65,.63);await drag('table',.55,.86);
  await page.locator('[data-room-color="1"]').click();await page.locator('[data-room-scale="1.25"]').click();await page.locator('[data-room-rotate]').click();
  const piece=page.locator('[data-room-piece="table"]');let bb=await piece.boundingBox();await page.mouse.move(bb.x+bb.width/2,bb.y+bb.height/2);await page.mouse.down();let target=await sc().boundingBox();await page.mouse.move(target.x+target.width*.72,target.y+target.height*.88,{steps:8});await page.mouse.up();await page.waitForTimeout(400);await sc().focus();await page.keyboard.press('ArrowLeft');
  await page.locator('[data-room-save]').click();await page.waitForFunction(()=>document.querySelector('.room-save-state')?.textContent==='저장된 방');assert.equal(player.cosmicEnergy,startEnergy+unit*3);assert.equal(player.cozyActivities.room.layout.length,3);const table=player.cozyActivities.room.layout.find(p=>p.id==='table');assert.equal(table.palette,1);assert.equal(table.scale,1.25);assert.equal(table.rotation,1);assert(table.x>2.5);assert(player.cozyActivities.room.layout.some(p=>!Number.isInteger(p.x)));
@@ -41,5 +41,26 @@ try{
  let held=false;game.io.sockets.sockets.get(player.socketId).use((packet,next)=>{if(!held&&packet[0]==='cozy:act'){held=true;const ack=packet[packet.length-1];assert.equal(typeof ack,'function');packet[packet.length-1]=(...args)=>setTimeout(()=>ack(...args),650);}next();});
  await page.locator('[data-room-save]').click();await sc().focus();await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('.room-save-state')?.textContent==='저장된 방');
  assert.equal(player.cozyActivities.room.layout.length,6);const anchors=player.cozyActivities.room.layout.map(p=>p.x+','+p.y);assert.equal(new Set(anchors).size,6);const last=player.cozyActivities.room.layout.find(p=>p.id==='pendant');assert(last.x<3);await capture(page,'.local/cozy-activities/room-last-item-mobile.png');
+ // Exercise the area above the old 49% floor limit and all four room edges.
+ for(const viewport of [{width:1280,height:900},{width:390,height:844},{width:844,height:390}]){
+  await page.setViewportSize(viewport);await page.locator('[data-room-tray=globe]').click();await sc().scrollIntoViewIfNeeded();
+  for(const [rx,ry] of [[.12,.13],[.88,.13],[.88,.88],[.12,.88]]){
+   await page.locator('[data-room-piece="globe"]').scrollIntoViewIfNeeded();const pieceBox=await page.locator('[data-room-piece="globe"]').boundingBox();
+   await page.mouse.move(pieceBox.x+pieceBox.width/2,pieceBox.y+pieceBox.height/2);await page.mouse.down();await sc().scrollIntoViewIfNeeded();const sceneBox=await sc().boundingBox();
+   await page.mouse.move(sceneBox.x+sceneBox.width*rx,sceneBox.y+sceneBox.height*ry,{steps:10});await page.mouse.up();await page.waitForTimeout(380);
+   const position=await page.locator('[data-room-piece="globe"]').evaluate(el=>({left:parseFloat(el.style.left),top:parseFloat(el.style.top)}));
+   assert(rx<.5?position.left<25:position.left>75,JSON.stringify(position));assert(ry<.5?position.top<40:position.top>80,JSON.stringify(position));
+  }
+ }
+ await page.setViewportSize({width:390,height:844});await sc().scrollIntoViewIfNeeded();const touchBox=await page.locator('[data-room-piece="globe"]').boundingBox(),touchScene=await sc().boundingBox(),cdp=await studentContext.newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchBox.x+touchBox.width/2,y:touchBox.y+touchBox.height/2}]});
+ for(let step=1;step<=8;step++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touchBox.x+touchBox.width/2+(touchScene.x+touchScene.width*.8-touchBox.x-touchBox.width/2)*step/8,y:touchBox.y+touchBox.height/2+(touchScene.y+touchScene.height*.15-touchBox.y-touchBox.height/2)*step/8}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(380);
+ const touched=await page.locator('[data-room-piece="globe"]').evaluate(el=>({left:parseFloat(el.style.left),top:parseFloat(el.style.top)}));assert(touched.left>70&&touched.top<40,JSON.stringify(touched));
+ await page.locator('[data-room-save]').click();await page.waitForFunction(()=>document.querySelector('.room-save-state')?.textContent==='저장된 방');
+ assert.equal(player.cozyActivities.room.layout.find(p=>p.id==='globe').space,'room');
+ await page.setViewportSize({width:1280,height:900});
+ await page.keyboard.press('Escape');await at('room');const savedGlobe=player.cozyActivities.room.layout.find(p=>p.id==='globe');assert.equal(savedGlobe.space,'room');
+ await capture(page,'.local/cozy-activities/room-full-surface.png');
  assert.deepEqual(errors,[]);console.log('PASS room 3backgrounds/24assets, traydrag/reposition, fractionalcoordinates, colors/scales/rotation, keyboardplacement, save/reopen/cap, mobilewidth, JS/CSP errors0');
 }finally{await browser.close();await game.close();}

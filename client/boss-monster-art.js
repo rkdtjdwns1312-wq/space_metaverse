@@ -11,7 +11,16 @@ const ART=Object.freeze({
   leoon:{src:'/assets/monsters/leoon.png',walkSrc:'/assets/monsters/leoon-walk.png',color:'#ffd47a',face:1,width:2,aspect:1254/1254,walkAspect:1145/1374},
   'spirit-king':{src:'/assets/monsters/spirit-king-walk-v3.png',walkSrc:'/assets/monsters/spirit-king-walk-v3.png',color:'#bcb3ff',face:1,width:2.2,aspect:512/384,walkAspect:512/384,frames:8}
 });
-const images=new Map();
+const images=new Map(),nokseraWalkFrames=new Map();
+function nokseraWalkFrame(image,index){
+  if(nokseraWalkFrames.has(index))return nokseraWalkFrames.get(index);
+  const sw=image.naturalWidth/2,sh=image.naturalHeight/2,frame=document.createElement('canvas');frame.width=sw;frame.height=sh;
+  // The left pose's tail crosses the 2×2 cell boundary. Only the right-column
+  // gutter contains that neighbour fragment; the actual pose starts beyond4%.
+  const gutter=index%2?Math.ceil(sw*.04):0;
+  frame.getContext('2d').drawImage(image,index%2*sw+gutter,Math.floor(index/2)*sh,sw-gutter,sh,gutter,0,sw-gutter,sh);
+  nokseraWalkFrames.set(index,frame);return frame;
+}
 function sprite(shape,walking=false){
   const art=ART[shape],key=walking&&art.walkSrc?`${shape}:walk`:shape;
   if(!images.has(key)&&typeof Image!=='undefined'){
@@ -63,7 +72,8 @@ export function drawBossMonster(ctx,m,time=0,attack){
     const index=m.leoonSkill?.stage==='stomp'?
       Math.floor(Math.max(0,Date.now()-m.leoonSkill.startsAt)/75)%4:Math.floor(time/180)%4;
     const sw=image.naturalWidth/2,sh=image.naturalHeight/2;
-    ctx.drawImage(image,(index%2)*sw,Math.floor(index/2)*sh,sw,sh,-w/2,-h,w,h);
+    if(m.shape==='noksera')ctx.drawImage(nokseraWalkFrame(image,index),-w/2,-h,w,h);
+    else ctx.drawImage(image,(index%2)*sw,Math.floor(index/2)*sh,sw,sh,-w/2,-h,w,h);
   }else ctx.drawImage(image,-w/2,-h,w,h);
   ctx.restore();
   if(m.shape==='leoon')drawLeoonAura(ctx,m,Date.now());

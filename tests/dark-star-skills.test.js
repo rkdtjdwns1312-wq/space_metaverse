@@ -49,9 +49,10 @@ test('rainbow exact mana/cooldown/length/lifetime, one contact per player per pa
  assert.equal(tickDarkStarSkills(room,boss,NOW+1).length,1);assert.equal(tickDarkStarSkills(room,boss,NOW+500).length,0);
  p.connected=false;tickDarkStarSkills(room,boss,NOW+600);p.connected=true;p.socketId='new';
  assert.equal(tickDarkStarSkills(room,boss,NOW+700).length,0);
- assert(beginDarkStarSkill(room,boss,'rainbow',NOW+10000,random));assert.equal(boss.mp,90);
- assert.equal(tickDarkStarSkills(room,boss,NOW+10001).length,1);
- tickDarkStarSkills(room,boss,NOW+30000);assert.equal(boss.darkStarSkills.paths.length,1);
+ assert(!beginDarkStarSkill(room,boss,'rainbow',NOW+10000,random));assert.equal(boss.mp,95);
+ tickDarkStarSkills(room,boss,NOW+30000);assert.equal(boss.darkStarSkills.paths.length,0);
+ assert(beginDarkStarSkill(room,boss,'rainbow',NOW+30000,random));assert.equal(boss.mp,90);
+ assert.equal(tickDarkStarSkills(room,boss,NOW+30001).length,1);
  boss.mp=4;assert(!beginDarkStarSkill(room,boss,'rainbow',NOW+40000,random));
 });
 test('puzzle has five 100-HP gray cards, allowed distinct colors, secret answer and three-second reveal',()=>{
@@ -116,10 +117,13 @@ test('normal melee, teacher E and ranged class Q/E share damageable card targets
   assert(card.hp<100,mode);
  }
 });
-test('active combat casts exactly at cooldowns independently of ongoing basic aim',()=>{
- const {room,boss}=fixture();moveMonsters(room,NOW,random);assert.equal(boss.mp,75);
- assert.equal(boss.darkStarSkills.paths.length,1);assert.equal(boss.darkStarSkills.cards.length,5);
- moveMonsters(room,NOW+10000,random);assert.equal(boss.darkStarSkills.paths.length,2);
+test('active combat selects one major skill, waits for its end and alternates when both are ready',()=>{
+ const {room,boss,p}=fixture();moveMonsters(room,NOW,()=>0);assert.equal(boss.mp,95);
+ assert.equal(boss.darkStarSkills.paths.length,1);assert.equal(boss.darkStarSkills.cards.length,0);
+ p.taurusImmuneUntil=NOW+100000;
+ moveMonsters(room,NOW+10000,()=>0);assert.equal(boss.darkStarSkills.paths.length,1);assert.equal(boss.darkStarSkills.cards.length,0);
+ moveMonsters(room,NOW+29999,()=>0);assert.equal(boss.darkStarSkills.cards.length,0);
+ moveMonsters(room,NOW+30000,()=>0);assert.equal(boss.darkStarSkills.paths.length,0);assert.equal(boss.darkStarSkills.cards.length,5);
 });
 test('each nonlethal 2000 HP threshold queues one sequential three-second absorption, final death never casts',()=>{
  const {room,boss,p}=fixture();damageMonster(room,boss,p,6500,NOW);
@@ -151,7 +155,8 @@ test('detached satellite requires continuous one-second proximity and repeats on
 });
 test('boss death, map change and combat reset remove all effects and card targets',()=>{
  for(const kind of ['death','map','reset']){
-  const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);beginDarkStarSkill(room,boss,'rainbow',NOW,random);aimDarkStar(room,boss,p,NOW);
+  const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);assert.equal(beginDarkStarSkill(room,boss,'rainbow',NOW,random),false);aimDarkStar(room,boss,p,NOW);
+  damageMonster(room,boss,p,2000,NOW);assert.equal(boss.darkStarSkills.absorptionQueue.length,1);
   if(kind==='death')damageMonster(room,boss,p,10000,NOW+1);
   if(kind==='map'){boss.mapId='space-plaza';tickDarkStarSkills(room,boss,NOW+1);}
   if(kind==='reset'){p.connected=false;selectMonsterTarget(room,boss);}
@@ -171,4 +176,54 @@ test('천칭의 살아 있는 영역은 퍼즐 실패와 흡수 즉사도 막고
     assert.ok(hit);assert.equal(hit.defeated,!active);assert.equal(ensureVitals(p).hp,active?hp:0);
     if(kind==='puzzle')assert.equal(boss.darkStarSkills.cards.length,0);
   }
+});
+
+
+test('direct casts cannot overlap majors; selection respects mana and cooldown without spending on failure',()=>{
+ for(const kind of ['rainbow','puzzle']){
+  const {room,boss}=fixture();assert(beginDarkStarSkill(room,boss,kind,NOW,random));const mp=boss.mp;
+  for(const other of ['rainbow','puzzle'])assert.equal(beginDarkStarSkill(room,boss,other,NOW+1,random),false);
+  assert.equal(boss.mp,mp);
+ }
+ for(const mana of [4,5,19,20]){
+  const {room,boss}=fixture();boss.mp=mana;boss.nextManaRegenAt=NOW+100000;
+  moveMonsters(room,NOW,()=>.99);const state=boss.darkStarSkills;
+  assert.equal(state.paths.length,mana>=5&&mana<20?1:0);assert.equal(state.cards.length,mana>=20?5:0);
+  assert.equal(boss.mp,mana-(mana>=20?20:mana>=5?5:0));
+ }
+ const {room,boss,p}=fixture();beginDarkStarSkill(room,boss,'puzzle',NOW,random);
+ damageMonster(room,boss.darkStarSkills.cards.find(c=>c.correct),p,100,NOW+1);
+ assert(!beginDarkStarSkill(room,boss,'puzzle',NOW+59999,random));
+ assert(beginDarkStarSkill(room,boss,'puzzle',NOW+60000,random));
+});
+
+test('queued absorptions wait for rainbow end, then run alone in order before any new major; basic aim continues while queued',()=>{
+ const {room,boss,p}=fixture();p.taurusImmuneUntil=NOW+100000;
+ moveMonsters(room,NOW,()=>0);damageMonster(room,boss,p,4500,NOW+1);
+ const state=boss.darkStarSkills;assert.deepEqual(state.absorptionQueue,['red','purple']);
+ assert.ok(state.aim);moveMonsters(room,NOW+2000,()=>0);
+ assert.equal(state.absorption,null);assert.ok(state.projectiles.length);assert.equal(state.paths.length,1);
+ moveMonsters(room,NOW+29999,()=>0);assert.equal(state.absorption,null);
+ // Stay outside the instant-defeat radius while retaining the boss target.
+ p.x=boss.x+700;p.y=boss.y;
+ moveMonsters(room,NOW+30000,()=>0);assert.equal(state.paths.length,0);assert.equal(state.cards.length,0);
+ assert.equal(state.absorption.color,'red');assert.equal(state.aim,null);
+ const mp=boss.mp;assert(!beginDarkStarSkill(room,boss,'puzzle',NOW+30001,random));assert.equal(boss.mp,mp);
+ moveMonsters(room,NOW+32999,()=>0);assert.equal(state.absorption.color,'red');
+ moveMonsters(room,NOW+33000,()=>0);assert.equal(state.absorption.color,'purple');assert.equal(state.cards.length,0);
+ moveMonsters(room,NOW+36000,()=>0);assert.equal(state.absorption,null);assert.equal(state.satellites.length,2);
+ assert.equal(state.cards.length,5);assert.equal(state.paths.length,0);
+});
+
+test('puzzle completion and failure release queued absorption only after cards clear',()=>{
+ for(const success of [true,false]){
+  const {room,boss,p}=fixture();p.avatar.constellationId='libra';p.libraAura={endsAt:NOW+100000,mapId:p.mapId,size:0,radius:300};
+  beginDarkStarSkill(room,boss,'puzzle',NOW,random);damageMonster(room,boss,p,2000,NOW+1);
+  tickDarkStarSkills(room,boss,NOW+2,random);assert.equal(boss.darkStarSkills.absorption,null);
+  const at=success?NOW+3:NOW+30000;
+  if(success)damageMonster(room,boss.darkStarSkills.cards.find(c=>c.correct),p,100,at);
+  tickDarkStarSkills(room,boss,at,random);
+  assert.equal(boss.darkStarSkills.cards.length,0);assert.equal(boss.darkStarSkills.puzzleEndsAt,null);
+  assert.equal(boss.darkStarSkills.absorption.startsAt,at);assert.equal(boss.darkStarSkills.absorption.endsAt,at+3000);
+ }
 });
