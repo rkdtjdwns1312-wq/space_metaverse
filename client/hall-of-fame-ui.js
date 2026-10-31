@@ -7,6 +7,15 @@ export function createHallOfFameUI({request,stop,toast}){
   const close=document.createElement('button');close.type='button';close.textContent='닫기';close.style.cssText='display:block;margin:16px auto 0;min-height:44px;padding:8px 22px;border:2px solid #d4c5e8;border-radius:14px;background:#f1eaff;color:#514271;font-weight:800;';
   close.addEventListener('click',()=>dialog.close());dialog.append(heading,list,close);document.body.append(dialog);
   dialog.addEventListener('close',()=>{$('world')?.focus?.();});
+  const scoreText=(game,score)=>{
+    if(!Number.isFinite(score))return '';
+    if(game.id==='memory')return `남은 시간 ${(score/1000).toFixed(1).replace(/\.0$/,'')}초`;
+    if(game.id==='dodge')return `${(score/1000).toFixed(1).replace(/\.0$/,'')}초`;
+    if(game.id==='tetris')return `${score}줄`;
+    if(game.id==='signal')return `${score}단계`;
+    if(game.id==='omok')return `${score}승`;
+    return '';
+  };
   function render(data){
     list.replaceChildren();
     for(const game of (Array.isArray(data?.games)?data.games:[data?.memory,data?.omok])){
@@ -14,8 +23,9 @@ export function createHallOfFameUI({request,stop,toast}){
       const section=document.createElement('section');Object.assign(section.style,{padding:'12px 14px',border:'2px solid #e6d9b9',borderRadius:'16px',background:'#fffaf0'});
       const title=document.createElement('h3');title.textContent=game.title;Object.assign(title.style,{margin:'0 0 8px',fontSize:'17px',textAlign:'center'});section.append(title);
       if(game.winners?.length){
-        const names=document.createElement('ol');names.style.cssText='display:flex;flex-direction:column;align-items:center;gap:5px;margin:0;padding:0;list-style:none;font-weight:800;font-size:19px;';
-        for(const nickname of game.winners){const row=document.createElement('li');row.textContent=nickname;names.append(row);}section.append(names);
+        const names=document.createElement('ol');names.style.cssText='display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none;font-weight:800;font-size:19px;';
+        const leaders=game.leaders?.length?game.leaders:game.winners.map(nickname=>({nickname}));
+        for(const leader of leaders){const row=document.createElement('li');row.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:12px;';const name=document.createElement('span');name.textContent=leader.nickname;row.append(name);const record=scoreText(game,leader.score);if(record){const score=document.createElement('span');score.textContent=record;score.style.cssText='flex:none;color:#715884;font-size:16px;';row.append(score);}names.append(row);}section.append(names);
       }else{const empty=document.createElement('p');empty.textContent='아직 이번 주 1등 기록이 없어요.';empty.style.cssText='margin:0;text-align:center;color:#766b80;';section.append(empty);}
       list.append(section);
     }

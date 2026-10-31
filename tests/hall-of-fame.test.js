@@ -13,8 +13,6 @@ test('hall shows tied first places across existing weekly arcade rankings and Om
     {id:'m1',playerId:'a',nickname:'별이',remainingMs:50000,at:week+1},
     {id:'m2',playerId:'b',nickname:'달이',remainingMs:50000,at:week+2},
     {id:'old',playerId:'c',nickname:'옛별',remainingMs:60000,at:week-1}],
-    starRanking:[{id:'s1',playerId:'a',nickname:'별이',elapsedMs:1000,at:week+1},{id:'s2',playerId:'b',nickname:'달이',elapsedMs:1000,at:week+2},
-      {id:'s3',playerId:'a',nickname:'별이',elapsedMs:1200,at:week+3}],
     dodgeRanking:[{id:'d1',playerId:'a',nickname:'별이',elapsedMs:5000,at:week+1},{id:'d2',playerId:'b',nickname:'달이',elapsedMs:5000,at:week+2}],
     tetrisRanking:[{id:'t1',playerId:'a',nickname:'별이',lines:10,at:week+1},{id:'t2',playerId:'b',nickname:'달이',lines:10,at:week+2}],
     signalRanking:[{id:'n1',playerId:'a',nickname:'별이',stage:5,at:week+1},{id:'n2',playerId:'b',nickname:'달이',stage:5,at:week+2}],
@@ -22,8 +20,9 @@ test('hall shows tied first places across existing weekly arcade rankings and Om
       {id:'o3',playerId:'a',nickname:'별이',at:week+3},{id:'o4',playerId:'b',nickname:'달이',at:week+4},
       {id:'o5',playerId:'c',nickname:'해',at:week+5},{id:'past',playerId:'d',nickname:'옛달',at:week-1}]};
   const result=hallOfFame(room,now);
-  assert.deepEqual(result.games.map(game=>game.id),['stars','memory','dodge','tetris','signal','omok']);
-  assert.deepEqual(result.games.map(game=>game.winners),Array.from({length:6},()=>['달이','별이']));
+  assert.deepEqual(result.games.map(game=>game.id),['memory','dodge','tetris','signal','omok']);
+  assert.deepEqual(result.games.map(game=>game.winners),Array.from({length:5},()=>['달이','별이']));
+  assert.deepEqual(result.games.map(game=>game.leaders.map(row=>row.score)),[[50000,50000],[5000,5000],[10,10],[5,5],[2,2]]);
   assert.equal(result.memory.title,'별 그림 짝 맞추기 · 상 난이도 · 이번 주');assert.equal(result.omok.title,'별 오목 · 이번 주 승리');
   const empty=hallOfFame({},now);assert(empty.games.every(game=>game.winners.length===0));
 });

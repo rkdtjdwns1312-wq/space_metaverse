@@ -23,7 +23,7 @@ export function validateArchive(raw){
 }
 const view=e=>{const {requestId,...safe}=e;return structuredClone(safe);};
 function entries(player,kind){need(ARCHIVE_KINDS.includes(kind));return player.starlightArchive?.[kind]??[];}
-export function archiveRoster(room){const order=[...room.allowedNames];return [...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,number:order.indexOf(p.nickname)+1,nickname:p.nickname})).sort((a,b)=>a.number-b.number||a.nickname.localeCompare(b.nickname));}
+export function archiveRoster(room){const order=[...room.allowedNames];return [...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,number:order.indexOf(p.nickname)+1,nickname:p.nickname,hasNew:['diary','reading'].some(kind=>p.starlightArchive?.[kind]?.some(e=>!e.stamp))})).sort((a,b)=>a.number-b.number||a.nickname.localeCompare(b.nickname));}
 function target(room,player,studentId){
  if(player.role==='student'){need(studentId===undefined||studentId===player.id,'본인의 기록만 볼 수 있어요.');return player;}
  need(player.role==='teacher','교실에 다시 입장해주세요.');const id=studentId??archiveRoster(room)[0]?.id;if(id===undefined)return null;

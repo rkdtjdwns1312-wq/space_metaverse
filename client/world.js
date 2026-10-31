@@ -342,7 +342,7 @@ export function createWorld(canvas) {
     drawPaintedGate(ctx,o);
     ctx.font='600 19.5px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
-    const labelX=o.x,labelY=gateVisualBox(o).y-34;
+    const box=gateVisualBox(o),labelX=o.x,labelY=o.id==='gate-sleeping-stars'?box.y+box.height+30:box.y-34;
     const width=Math.max(78,Math.min(345,2*Math.min(o.x,bounds.width-o.x)-12));
     const label=destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
     ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);

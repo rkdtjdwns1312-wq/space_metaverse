@@ -20,18 +20,18 @@ export function recordOmokWin(room,{matchId,playerId,nickname,at=Date.now()}){
   return true;
 }
 
-const winnersAt=(rows,valueOf,{bestMode=false}={})=>{
+const leadersAt=(rows,valueOf,{bestMode=false}={})=>{
   if(!rows.length)return [];
   const scores=new Map();
   for(const row of rows){const current=scores.get(row.playerId)||{playerId:row.playerId,nickname:row.nickname,score:bestMode?-Infinity:0};
     current.score=bestMode?Math.max(current.score,valueOf(row)):current.score+valueOf(row);scores.set(row.playerId,current);}
   const all=[...scores.values()],best=Math.max(...all.map(row=>row.score));
-  return all.filter(row=>row.score===best).map(({nickname})=>nickname).sort((a,b)=>a.localeCompare(b,'ko'));
+  return all.filter(row=>row.score===best).map(({nickname,score})=>({nickname,score})).sort((a,b)=>a.nickname.localeCompare(b.nickname,'ko'));
 };
+const game=(id,title,rows,valueOf,options)=>{const leaders=leadersAt(rows,valueOf,options);return {id,title,winners:leaders.map(row=>row.nickname),leaders};};
 
 export function hallOfFame(room,now=Date.now()){
   const records={
-    stars:currentWeekRecords(room?.starRanking||[],now),
     memory:currentWeekRecords(room?.memoryRanking||[],now),
     dodge:currentWeekRecords(room?.dodgeRanking||[],now),
     tetris:currentWeekRecords(room?.tetrisRanking||[],now),
@@ -39,12 +39,11 @@ export function hallOfFame(room,now=Date.now()){
     omok:currentWeekRecords(room?.omokWinRecords||[],now)
   };
   const games=[
-    {id:'stars',title:'별 10개 찾기 · 이번 주',winners:winnersAt(records.stars,row=>-row.elapsedMs,{bestMode:true})},
-    {id:'memory',title:'별 그림 짝 맞추기 · 상 난이도 · 이번 주',winners:winnersAt(records.memory,row=>row.remainingMs,{bestMode:true})},
-    {id:'dodge',title:'별 피하기 · 이번 주',winners:winnersAt(records.dodge,row=>row.elapsedMs,{bestMode:true})},
-    {id:'tetris',title:'별 테트리스 · 이번 주',winners:winnersAt(records.tetris,row=>row.lines,{bestMode:true})},
-    {id:'signal',title:'우주 신호 따라하기 · 이번 주',winners:winnersAt(records.signal,row=>row.stage,{bestMode:true})},
-    {id:'omok',title:'별 오목 · 이번 주 승리',winners:winnersAt(records.omok,()=>1)}
+    game('memory','별 그림 짝 맞추기 · 상 난이도 · 이번 주',records.memory,row=>row.remainingMs,{bestMode:true}),
+    game('dodge','별 피하기 · 이번 주',records.dodge,row=>row.elapsedMs,{bestMode:true}),
+    game('tetris','별 테트리스 · 이번 주',records.tetris,row=>row.lines,{bestMode:true}),
+    game('signal','우주 신호 따라하기 · 이번 주',records.signal,row=>row.stage,{bestMode:true}),
+    game('omok','별 오목 · 이번 주 승리',records.omok,()=>1)
   ];
-  return {games,memory:games[1],omok:games.at(-1)};
+  return {games,memory:games[0],omok:games.at(-1)};
 }

@@ -11,11 +11,14 @@ test('archive entries are private, ordered, paginated, and teacher roster follow
 });
 test('archive creation retries are idempotent; revision protects signs/edits and edits invalidate stamp only when content changes',()=>{
  const {p,q,t,room}=setup(),first=saveArchive(p,data(),100).entry;assert.deepEqual(saveArchive(p,data(),200).entry,first);assert.equal(p.starlightArchive.diary.length,1);
+ assert.equal(readArchive(room,t,{kind:'diary'}).roster.find(student=>student.id===p.id).hasNew,true);
  assert.throws(()=>saveArchive(t,data(),200));assert.throws(()=>signArchive(room,q,{kind:'diary',studentId:p.id,id:first.id,revision:1},200));
  const signed=signArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1},200).entry;assert.equal(signed.revision,2);assert.equal(signed.stamp.text,'참 잘했어요');
+ assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,false);
  assert.throws(()=>saveArchive(p,data({id:first.id,revision:1}),201));assert.throws(()=>signArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1},201));
  const unchanged=saveArchive(p,data({id:first.id,revision:2,requestId:undefined}),202).entry;assert.deepEqual(unchanged,signed);
  const edited=saveArchive(p,data({id:first.id,revision:2,body:'새 내용',requestId:undefined}),203).entry;assert.equal(edited.revision,3);assert.equal(edited.stamp,null);assert.equal(edited.createdAt,100);assert.equal(edited.updatedAt,203);
+ assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,true);
  p.accountKind='master';assert.equal(saveArchive(p,data({kind:'reading',bookTitle:'별 이야기',author:'글쓴이'}),204).entry.bookTitle,'별 이야기');
 });
 test('archive validates dates, limits, corrupt persisted records, controls, and retains all valid history',()=>{
