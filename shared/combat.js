@@ -28,7 +28,8 @@ export function defensePowerOf(level,constellationId,player=null){
   // 고래자리 E는 10초간 임시 방어력입니다. 서버 시각으로만 유효성을 판단합니다.
   const cetusBonus=player?.avatar?.constellationId==='cetus'&&player?.waterAura?.kind==='cetus'&&
     player.waterAura.endsAt>Date.now()?player.waterAura.defenseBonus:0;
-  return Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+equipmentBonus(player).defense+cetusBonus)+meleePassive(level,constellationId,player)+statGrowthBonus(player,'defense');
+  const natural=Math.max(0,(isMaster(player)?MASTER_BASE.defense:base+(DEFENSE_MODIFIERS[type]??0))+transformationBonus(player).defenseBonus+cetusBonus);
+  return Math.max(0,natural+meleePassive(level,constellationId,player)+statGrowthBonus(player,'defense')+equipmentBonus(player).defense);
 }
 export const damageAfterDefense=(power,defense)=>Math.max(1,power-defense);
 

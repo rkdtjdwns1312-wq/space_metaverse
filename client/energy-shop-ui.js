@@ -36,7 +36,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
   dialog.addEventListener('close',()=>{revision++;if(catalogDialog.open)catalogDialog.close();document.getElementById('world')?.focus();});
   catalogDialog.addEventListener('close',()=>{if(dialog.open)dialog.querySelector('#energy-shop-catalog-open').focus();});
   const bonusText=bonus=>[
-    bonus.attack&&'공격력 +'+bonus.attack,bonus.defense&&'방어력 +'+bonus.defense,
+    bonus.attack&&'공격력 +'+bonus.attack,bonus.defense&&'방어력 '+(bonus.defense>0?'+':'')+bonus.defense,
     bonus.hp&&'최대 체력 +'+bonus.hp,bonus.mp&&'최대 마나 +'+bonus.mp,
     bonus.speed&&'이동속도 +'+Math.round(bonus.speed*100)+'%',
     bonus.regen&&'10초 회복 비율 +'+Math.round(bonus.regen*100)+'%',
@@ -66,7 +66,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=bonusText(item.bonus);
+      const bonus=document.createElement('small');bonus.textContent=item.effectText||bonusText(item.bonus);
       details.append(title,flavor,bonus);
       const actions=document.createElement('div');actions.className='energy-shop-actions';
       if(item.craftOnly){
@@ -90,7 +90,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=bonusText(item.bonus);
+      const bonus=document.createElement('small');bonus.textContent=item.effectText||bonusText(item.bonus);
       details.append(title,flavor,bonus);row.append(picture,details);return row;
     }));
   }

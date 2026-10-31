@@ -28,11 +28,30 @@ test('구매·세 칸 장착·교체·해제는 장비를 가방과 한 곳에�
   assert.equal(p.cosmicEnergy,200);assert.equal(p.inventory.length,2);
   equip(p,'azure-starblade',1);equip(p,'silver-shield',2);
   assert.equal(p.inventory.length,0);assert.deepEqual(p.equipmentSlots,['azure-starblade','silver-shield',null]);
-  assert.equal(attackPowerOf(3,'aquarius',p),7);assert.equal(defensePowerOf(3,'aquarius',p),2);
+  assert.equal(attackPowerOf(3,'aquarius',p),8);assert.equal(defensePowerOf(3,'aquarius',p),2);
   assert.throws(()=>equip(p,'azure-starblade',3),/가방|같은/);
   unequip(p,1);assert.equal(p.inventory.find(i=>i.id==='azure-starblade').quantity,1);
   assert.equal(attackPowerOf(3,'aquarius',p),6);
   assert.deepEqual(validateEquipmentSlots(undefined),[null,null,null]);
+});
+test('푸른 별칼의 방어력 감소는 영구 성장 방어력에도 적용하고 총 방어력은 0 아래로 내리지 않는다',()=>{
+  const p=player();p.avatar.level=2;p.statGrowth={bonuses:{defense:5}};
+  assert.equal(defensePowerOf(2,'aquarius',p),5);
+  p.equipmentSlots=['azure-starblade',null,null];
+  assert.equal(defensePowerOf(2,'aquarius',p),4);
+  p.statGrowth={bonuses:{defense:0}};
+  assert.equal(defensePowerOf(2,'aquarius',p),0);
+});
+test('공격계의 기본 방어력 0에서도 은빛 별방패 +2가 온전히 적용된다',()=>{
+  const p=player();p.avatar.constellationId='sagittarius';
+  for(const level of [2,3]){
+    p.avatar.level=level;p.equipmentSlots=[null,null,null];
+    assert.equal(defensePowerOf(level,'sagittarius',p),0);
+    p.equipmentSlots=['silver-shield',null,null];
+    assert.equal(defensePowerOf(level,'sagittarius',p),2);
+    p.equipmentSlots=['silver-shield','azure-starblade',null];
+    assert.equal(defensePowerOf(level,'sagittarius',p),1);
+  }
 });
 test('부족한 재화·레벨·칸·가방 상한은 구매·장착·해제 상태를 바꾸지 않는다',()=>{
   const p=player();p.cosmicEnergy=1;
@@ -68,7 +87,7 @@ test('추가 장비는 단계별 수량·구매 가능 여부를 지키고 성�
 
 test('LV1 장비 6종은 새 가격과 장착 능력치를 가지며 합계에는 장착 효과만 반영한다',()=>{
   const expected={
-    'comet-compass':[100,{speed:.10}], 'starlight-flask':[120,{mp:5}],
+    'comet-compass':[100,{attack:1}], 'starlight-flask':[120,{mp:5}],
     'crescent-charm':[120,{hp:5}], 'dawn-ribbon':[100,{hpRegen:1}],
     'stardew-ring':[100,{mpRegen:1}], 'asteroid-badge':[100,{durationMs:1000}]
   };
@@ -84,9 +103,9 @@ test('LV1 장비 6종은 새 가격과 장착 능력치를 가지며 합계에�
 
 test('LV2 장비 6종은 요청한 가격과 장착 bonus만 가진다',()=>{
   const expected={
-    'azure-starblade':[400,{attack:1}], 'silver-shield':[400,{defense:1}],
+    'azure-starblade':[400,{attack:2,defense:-1}], 'silver-shield':[400,{defense:2}],
     'healing-crystal':[500,{hpRegen:1,mpRegen:1}], 'star-pattern-gloves':[500,{skillDamage:.20}],
-    'lake-brooch':[500,{hp:10}], 'breeze-anklet':[800,{mp:10,speed:.10}]
+    'lake-brooch':[500,{hp:10,hpRegen:1}], 'breeze-anklet':[800,{mp:10,speed:.10}]
   };
   for(const [id,[price,bonus]] of Object.entries(expected)){
     const item=EQUIPMENT_ITEMS.find(entry=>entry.id===id);
@@ -98,9 +117,9 @@ test('LV2 장비 6종은 요청한 가격과 장착 bonus만 가진다',()=>{
 
 test('LV3 장비 5종은 ID와 레벨을 유지하며 지정 가격·bonus만 가진다',()=>{
   const expected={
-    'galaxy-pendant':[1000,{mp:10,mpRegen:2}], 'star-heart':[1000,{hp:10,hpRegen:2}],
+    'galaxy-pendant':[1000,{mp:20,mpRegen:1}], 'star-heart':[1000,{hp:10,hpRegen:2}],
     'meteor-boots':[1200,{speed:.20,cooldownReduction:.10}], 'galaxy-compass':[1500,{attack:1,skillDamage:.20}],
-    'dream-guardian-cloak':[1500,{defense:1,hp:10}]
+    'dream-guardian-cloak':[1500,{}]
   };
   for(const [id,[price,bonus]] of Object.entries(expected)){
     const item=EQUIPMENT_ITEMS.find(entry=>entry.id===id);

@@ -35,6 +35,10 @@ export function damagePlayer(player,power,now,{room=null,skipLibra=false,skipDef
   if(fixedDamage===null&&(player.taurusImmuneUntil||0)>now)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   // 이미 방어 계산을 마친 반환 피해도 면역·방패·부활은 일반 피해 규칙을 따릅니다.
   const damage=fixedDamage??(skipDefense?power:damageAfterDefense(power,defensePowerOf(player.avatar.level,player.avatar.constellationId,player)));
+  if(damage>0&&player.equipmentSlots?.includes('dream-guardian-cloak')&&now>=(player.dreamGuardianNextAt||0)){
+    player.dreamGuardianNextAt=now+30000;
+    return {damage:0,vitals:playerVitals(player),defeated:false,immune:true,guardian:true};
+  }
   let remaining=damage;
   if(fixedDamage===null&&player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
     const absorbed=Math.min(remaining,player.herculesShield.hp);

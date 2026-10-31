@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {advancePassiveRecovery,PASSIVE_RECOVERY_MS} from '../server/passive-recovery.js';
-import {ensureVitals} from '../server/vitals.js';
+import {ensureVitals,playerVitals} from '../server/vitals.js';
 
 function fixture(level=4){
   const p={id:'p',connected:true,role:'student',avatar:{level,constellationId:'leo'},mapId:'star-plaza'};
@@ -69,15 +69,23 @@ test('회복의 수정은 비율 회복 장비와 더하지 않고 고정 체력
   assert.deepEqual([value.hp,value.mp],[29,15]);
 });
 
-test('별하트와 은하수 목걸이는 장착 중 10초마다 체력·마나를 각각 2 추가 회복한다',()=>{
+test('호수의 브로치는 최대 체력 10과 10초마다 체력 회복 1을 함께 적용한다',()=>{
+  const {p,room,value}=fixture();value.hp=10;
+  p.equipmentSlots=['lake-brooch',null,null];
+  advancePassiveRecovery(room,0);advancePassiveRecovery(room,10000);
+  assert.equal(value.hp,21);
+  assert.equal(playerVitals(p).hp.max,100);
+});
+
+test('별하트와 은하수 목걸이는 장착 중 10초마다 체력 2·마나 1을 추가 회복한다',()=>{
   const {p,room,value}=fixture();value.hp=10;value.mp=10;
   advancePassiveRecovery(room,0);
   p.equipmentSlots=['star-heart','galaxy-pendant',null];
   advancePassiveRecovery(room,10000);
-  assert.deepEqual([value.hp,value.mp],[22,14]);
+  assert.deepEqual([value.hp,value.mp],[22,13]);
   p.equipmentSlots=[null,null,null];
   advancePassiveRecovery(room,20000);
-  assert.deepEqual([value.hp,value.mp],[31,16]);
+  assert.deepEqual([value.hp,value.mp],[31,15]);
 });
 
 test('접속 중 학생의 자동 회복은 서버가 같은 맵 화면에 전송한다',async t=>{

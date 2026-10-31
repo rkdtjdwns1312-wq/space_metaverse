@@ -59,6 +59,8 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now(),room=nul
   add('leo-courage','사자의 용기','♌',player.leoCourage?.endsAt);
   add('libra-reflect','천칭의 무적','⚖',Math.max(0,...libraProtectors(room,player,now).map(p=>p.libraAura.endsAt)));
   add('hercules-shield','헤라클레스 방패','🛡',player.herculesShield?.endsAt);
+  if(player.equipmentSlots?.includes('dream-guardian-cloak')&&now>=(player.dreamGuardianNextAt||0))
+    combat.push({statusId:'dream-guardian',label:'수호',icon:'🛡',style:'combat',until:null});
   add('taurus-immunity','황소의 무적','♉',player.taurusImmuneUntil);
   if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 방어','🐋',player.waterAura.endsAt);
   if(player.waterAura?.kind==='cancer')add('crab-empowerment','게의 힘','♋',player.waterAura.endsAt);

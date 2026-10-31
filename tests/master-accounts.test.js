@@ -69,7 +69,7 @@ test('master buys energy equipment and converts virtual crumbs without granting 
   const boss=PUBLIC_CRAFTING_RECIPES.find(recipe=>recipe!==STAR_CRUMB_RECIPE);assert.ok(boss);
   assert.equal(attemptCraft(p,boss.ingredients).error,'insufficient-ingredients');
   p.inventory=boss.ingredients.map(part=>({...part}));assert.equal(attemptCraft(p,boss.ingredients).success,true);assert.equal(p.cosmicEnergy,0);assert.equal(p.starShards,0);
-  p.equipmentSlots=['azure-starblade','silver-shield','crescent-charm'];assert.equal(attackPowerOf(5,'leo',p),21);assert.equal(defensePowerOf(5,'leo',p),6);assert.equal(vitalsOf(5,p).hp.max,505);
+  p.equipmentSlots=['azure-starblade','silver-shield','crescent-charm'];assert.equal(attackPowerOf(5,'leo',p),22);assert.equal(defensePowerOf(5,'leo',p),6);assert.equal(vitalsOf(5,p).hp.max,505);
 });
 test('master cannot enter a different classroom using its room-scoped credentials',async t=>{
   const f=await fixture(t);await f.master();const other=await call(await f.connect(),'room:create',{teacherKey:key,title:'다른교실',studentAccounts:[{nickname:'다른학생',pin:'1234'}]});assert.ok(other.ok);
