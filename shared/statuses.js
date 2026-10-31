@@ -27,9 +27,9 @@ export const STATUS_TYPES=Object.freeze({
   'hercules-shield':{name:'헤라클레스 방패',icon:'🛡',tone:'warm',description:'방패가 피해를 대신 받아요.'},
   'dream-guardian':{name:'수호',icon:'🛡',tone:'cool',description:'다음 즉사 외 피해를 한 번 막아요. 막은 뒤 30초가 지나면 다시 생겨요.'},
   'taurus-immunity':{name:'황소의 무적',icon:'♉',tone:'warm',description:'돌진 중에는 피해를 받지 않아요.'},
-  'whale-defense':{name:'고래의 방어',icon:'🐋',tone:'cool',description:'푸른 기운으로 방어력이 높아져요.'},
+  'whale-defense':{name:'고래의 기운',icon:'🐋',tone:'cool',description:'10초 동안 공격력과 방어력이 함께 높아져요.'},
   'crab-empowerment':{name:'게의 힘',icon:'♋',tone:'cool',description:'일반 공격이 강화돼요.'},
-  'crown-aura':{name:'왕관의 힘',icon:'♛',tone:'warm',description:'검이 길어지고 붉은 칼이 떨어져요.'},
+  'crown-aura':{name:'왕관의 힘',icon:'♛',tone:'warm',description:'다음 일반공격 5회가 강화되고, 다 쓰면 큰 검기를 발사해요.'},
   'swan-wings':{name:'백조의 날개',icon:'🪽',tone:'cool',description:'깃털을 더 많이 날려요.'},
   stun:{name:'기절',icon:'✦',tone:'violet',description:'잠시 움직일 수 없어요.'},
   curse:{name:'염소의 저주',icon:'♑',tone:'violet',description:'주기적으로 피해를 받아요.'}

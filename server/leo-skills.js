@@ -25,33 +25,36 @@ export function castLeo(room,player,now,{basic=false}={}){
   ensure(now>=(player.leoCooldownUntil||0),'사자의 포효를 다시 쓰려면 조금 기다려주세요.');
   ensure(vitals.mp>=spec.mana,'마나가 부족해요.');
   vitals.mp-=spec.mana;player.leoCooldownUntil=now+spec.cooldownMs;
-  // 가장 크게 펼쳐지는 13프레임에서 피해와 용기를 동시에 적용합니다.
-  const rx=size*2,ry=size,durationMs=3000;
+  // 기존 사자 이미지를 1초 더 유지하고, 입가 파동에 맞춰 1초 간격으로 두 번 타격합니다.
+  const rx=size*2,ry=size,durationMs=4000;
   room.leoRoars??=[];
   room.leoRoars.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,stage:spec.stage,size,rx,ry,
     power:skillDamage(power*spec.multiplier,skillDamageFactor(player)),attackBonus:spec.attackBonus,buffMs:spec.durationMs,
-    hitAt:now+durationMs*12/23,endsAt:now+durationMs});
+    nextHitAt:now+3000*12/23,hitsDone:0,endsAt:now+durationMs});
   return {ready:true,targets:[],buffed:[],vitals:playerVitals(player),cooldowns:leoCooldowns(player),serverNow:now,
     visual:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,stage:spec.stage,size,rx,ry,durationMs}};
 }
 export function advanceLeoRoars(room,now){
   const hits=[],keep=[];let changed=false;
   for(const roar of room.leoRoars||[]){
-    if(now<roar.hitAt){keep.push(roar);continue;}
+    if(now<roar.nextHitAt){keep.push(roar);continue;}
     const caster=room.players.get(roar.playerId);
     if(caster?.connected&&!caster.away&&caster.mapId===roar.mapId&&ensureVitals(caster).hp>0){
       // 소환된 사자가 시전자 뒤를 따라가므로 타격도 현재 시전자 위치를 중심으로 판정합니다.
       roar.x=caster.x;roar.y=caster.y;
       const inside=(x,y,r=0)=>((x-roar.x)/(roar.rx+r))**2+((y-roar.y)/(roar.ry+r))**2<=1;
-      const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===roar.mapId&&inside(m.x,m.y,m.radius))
-        .map(m=>damageMonster(room,m,caster,roar.power,now)).filter(Boolean);
-      for(const ally of room.players.values())if(ally.connected&&!ally.away&&ally.mapId===roar.mapId&&ensureVitals(ally).hp>0&&inside(ally.x,ally.y)){
-        if(!ally.leoCourage||ally.leoCourage.endsAt<=now||ally.leoCourage.bonus<roar.attackBonus)
-          ally.leoCourage={bonus:roar.attackBonus,endsAt:now+roar.buffMs,stage:roar.stage};
-        else ally.leoCourage.endsAt=Math.max(ally.leoCourage.endsAt,now+roar.buffMs);
-        changed=true;
+      while(roar.hitsDone<2&&now>=roar.nextHitAt){
+        const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===roar.mapId&&inside(m.x,m.y,m.radius))
+          .map(m=>damageMonster(room,m,caster,roar.power,now)).filter(Boolean);
+        if(roar.hitsDone===0)for(const ally of room.players.values())if(ally.connected&&!ally.away&&ally.mapId===roar.mapId&&ensureVitals(ally).hp>0&&inside(ally.x,ally.y)){
+          if(!ally.leoCourage||ally.leoCourage.endsAt<=now||ally.leoCourage.bonus<roar.attackBonus)
+            ally.leoCourage={bonus:roar.attackBonus,endsAt:now+roar.buffMs,stage:roar.stage};
+          else ally.leoCourage.endsAt=Math.max(ally.leoCourage.endsAt,now+roar.buffMs);
+          changed=true;
+        }
+        hits.push({mapId:roar.mapId,targets});roar.hitsDone++;roar.nextHitAt+=1000;
       }
-      hits.push({mapId:roar.mapId,targets});
+      if(roar.hitsDone<2)keep.push(roar);
     }
   }
   room.leoRoars=keep;return {hits,changed};

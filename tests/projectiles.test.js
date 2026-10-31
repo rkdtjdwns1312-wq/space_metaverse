@@ -10,7 +10,7 @@ function setup(id){
  const room={players:new Map([[p.id,p]]),planets:new Map()},template=[...monstersOf(room).values()][0];
  const monster=(id,x,y=450)=>({...template,id,x,y,hp:1000,maxHp:1000,radius:20,attackers:new Map(),contributors:new Map()});
  const near=monster('near',650),far=monster('far',800);room.monsters=new Map([[far.id,far],[near.id,near]]);
- const fire=basic=>id==='corvus'?castCorvus(room,p,1000,{basic}):basic?attackSagittarius(room,p,1000):castSagittarius(room,p,0,1000);
+ const fire=basic=>id==='corvus'?castCorvus(room,p,1000,{basic}):basic?attackSagittarius(room,p,1000,()=>1):castSagittarius(room,p,0,1000);
  return{room,p,near,far,fire,advance:now=>advanceProjectiles(room,now,combatEnemies,damageTargets)};
 }
 for(const id of ['corvus','sagittarius']){

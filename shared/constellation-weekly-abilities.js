@@ -49,7 +49,7 @@ export function weeklyAbilityFor(id,level){
     configured:true,available:true,corona:true,passive:level===5,maxReward:0,minBalance:0,
     description:level===2?'유효기간 1일의 왕관 전용 우주 식량 1개를 만들어요. 조합에는 쓸 수 없어요.':
       level===3?'같은 날 유효기간이 끝나는 왕관 전용 우주 식량과 우주복을 각각 1개 만들어요.':
-      level===4?'두 효과 중 하나를 골라요. ① 다음 주 월요일까지 Lv1로 지내고 복귀할 때 별 파편 5개·경험치 5를 받아요. ② 기간제 우주 식량과 우주복 2개씩 받아요(5일 또는 이번 주 일요일 0시 중 먼저 오는 때 만료).':
+      level===4?'두 효과 중 하나를 골라요.\n① 다음 주 월요일까지 Lv1로 지내고 복귀할 때 별 파편 5개·경험치 5를 받아요.\n② 기간제 우주 식량과 우주복 2개씩 받아요(5일 또는 이번 주 일요일 0시 중 먼저 오는 때 만료).':
       '항상 자리 바꾸기와 급식 자리 선택의 우선권이 있어요. 선생님이 현실 교실에서 확인해 주세요.'
   };
   if(id==='cygnus'&&Number.isInteger(level)&&level>=2&&level<=5)return level===2?

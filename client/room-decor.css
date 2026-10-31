@@ -6,3 +6,7 @@
 .room-scene-tools{position:absolute;z-index:902;display:flex;gap:3px;transform:translateX(-50%);padding:3px;border:1px solid #d6cae0;border-radius:12px;background:#fffef2ef;box-shadow:0 3px 10px #35284655}
 .room-decor .room-scene-tools button{width:31px;height:31px;padding:0;border:0;border-radius:8px;background:transparent;color:#58467f;font-size:19px;line-height:1;touch-action:manipulation}
 .room-decor .room-scene-tools button:hover,.room-decor .room-scene-tools button:focus-visible{background:#e9ddf8}
+.room-theme-list span,.room-furniture-tray span{font-size:14px}
+.room-furniture-tray small,.room-tray-heading small,.room-floor-hint{font-size:12px}
+.room-save-actions button{font-size:15px;min-height:44px}
+@media(max-width:600px){.room-theme-list span,.room-furniture-tray span{font-size:12px}.room-floor-hint{font-size:11px}}

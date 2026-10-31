@@ -4,6 +4,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {SLEEPING_STARS_MAPS,ORIGIN_MAPS,STREET,STATIC_MAPS,MAP,BLACK_HOLE,UNIVERSE_MAP_LAYOUT} from '../shared/config.js';
 import {darkStarMap} from '../shared/dark-star.js';
+import {starRecordMap} from '../shared/star-record.js';
 import {SLEEPING_STARS_SKY} from '../shared/sleeping-stars.js';
 import {originFloor} from '../shared/origin-floor.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
@@ -20,8 +21,8 @@ test('sleeping stars share stage-three dimensions and central floor with only th
     if(index<3)assert.deepEqual(floor,base);
     assert.equal(map.objects.filter(o=>o.kind==='gate').length,index===3?1:2);
     const statue=map.objects.find(o=>o.kind==='dark-star-statue');if(statue)assert.deepEqual([statue.x,statue.y],[map.width/2,map.height/2]);
-    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'));
-    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===0?1:0);
+    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'));
+    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index<2?1:0);
     assert.equal(STATIC_MAPS[map.id],map);
   }
 });
@@ -42,7 +43,7 @@ test('all sleeping-star arrivals and north shelter path fit every avatar without
   assert(gate.y<Math.min(...STREET.objects.filter(object=>object.kind.endsWith('-station')).map(object=>object.y)));
   for(let y=gate.y;y<=480;y+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,gate.x,y,avatar),'north approach '+y);
   for(let x=gate.x;x<=660;x+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,x,480,avatar),'north approach turn '+x);
-  for(const original of SLEEPING_STARS_MAPS)for(const map of [darkStarMap(original,{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
+  for(const original of SLEEPING_STARS_MAPS)for(const map of [starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
     const t=step/40,x=map.width/2+(gate.x-map.width/2)*t,y=map.height/2+(gate.y-map.height/2)*t;
     for(const avatar of avatars)assert(avatarPositionIsClear(map,x,y,avatar),map.id+' bridge '+step);
   }

@@ -6,12 +6,12 @@ import {STREET} from '../shared/config.js';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
 const now=Date.parse('2026-10-30T03:00:00Z');
 const player=()=>({role:'student',avatar:{level:2},cosmicEnergy:0});
-const all=()=>COZY_FURNITURE.map((f,i)=>({id:f.id,x:i%6,y:Math.floor(i/6),rotation:i%4,palette:i%4,scale:[.75,1,1.25][i%3]}));
+const all=()=>COZY_FURNITURE.slice(0,COZY_GRID.maxItems).map((f,i)=>({id:f.id,x:i%6,y:Math.floor(i/6),rotation:i%4,palette:i%4,scale:[.75,1,1.25][i%3]}));
 const save=(p,layout,theme='moon',time=now)=>actCozy(p,{kind:'room',action:'save',theme,layout},time);
-test('room preserves old integer layouts with default size and roundtrips all24 pieces with fractional drag positions',()=>{
+test('room preserves old integer layouts and roundtrips 24 placed pieces from 30 choices',()=>{
  const state=validateCozyActivities();state.room.layout=cozyPreset().map(({scale,...p})=>p);
  const restored=validateCozyActivities(JSON.parse(JSON.stringify(state)));
- assert.deepEqual(restored.room.layout,cozyPreset());assert.equal(COZY_FURNITURE.length,24);assert.equal(new Set(COZY_FURNITURE.map(f=>f.id)).size,24);
+ assert.deepEqual(restored.room.layout,cozyPreset());assert.equal(COZY_FURNITURE.length,30);assert.equal(new Set(COZY_FURNITURE.map(f=>f.id)).size,30);
  const p=player(),layout=all();layout[0].x=.123456;layout[0].y=2.71828;layout[0].scale=1.137;layout[1].scale=.83;save(p,layout,'study');
  assert.deepEqual(p.cozyActivities.room.layout,layout);assert.deepEqual(validateCozyActivities(JSON.parse(JSON.stringify(p.cozyActivities))),p.cozyActivities);
  assert.equal(cozyView(p,'room',now).catalog.grid.maxItems,24);

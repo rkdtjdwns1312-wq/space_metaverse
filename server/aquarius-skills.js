@@ -55,11 +55,11 @@ export function advanceAquarius(room,now){
   for(const [id,cast] of room.aquariusCasts||[]){
     const player=room.players.get(cast.playerId);
     if(!valid(player)||player.mapId!==cast.mapId||player.avatar.constellationId!=='aquarius'||player.avatar.level!==cast.level){room.aquariusCasts.delete(id);continue;}
-    // 피해는 기존 5초 기준 총량을 유지합니다. 회복은 매초 시전자의 현재 공격력 100%입니다.
-    const {tickMs,amountTicks}=AQUARIUS_TIMING;
+    // 영역 안의 몬스터는 단계별 공격력 100/150/200%를 매초 받습니다.
+    const {tickMs}=AQUARIUS_TIMING;
     while((cast.tick+1)*tickMs<cast.durationMs&&now>=cast.at+(cast.tick+1)*tickMs){
-      const tick=++cast.tick,elapsedMs=tick*tickMs,amount=total=>Math.floor(total*tick/amountTicks)-Math.floor(total*(tick-1)/amountTicks),targets=[],healed=[];
-      const damage=amount(cast.power),healing=Math.max(0,attackPowerOf(player.avatar.level,'aquarius',player)||0);
+      const tick=++cast.tick,elapsedMs=tick*tickMs,targets=[],healed=[];
+      const damage=cast.power,healing=Math.max(0,attackPowerOf(player.avatar.level,'aquarius',player)||0);
       if(damage>0)for(const monster of monstersOf(room).values())if(monster.hp>0&&monster.mapId===cast.mapId&&inAquariusArea(cast,monster,elapsedMs)){
         const hit=damageMonster(room,monster,player,damage,cast.at+elapsedMs);if(hit)targets.push(hit);
       }

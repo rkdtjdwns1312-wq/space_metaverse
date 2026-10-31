@@ -23,7 +23,7 @@ export function castWater(room,player,now,{basic=false}={}){
     vitals.mp-=spec.mana;player.waterCooldownUntil=now+spec.cooldownMs;
     if(id==='cancer'||id==='cetus'){
       player.waterAura={kind:id,stage:spec.stage,at:now,endsAt:now+spec.durationMs,nextPulseAt:now+1000,
-        mapId:player.mapId,skillDamageFactor:skillDamageFactor(player),defenseBonus:id==='cetus'?spec.defenseBonus:0};
+        mapId:player.mapId,skillDamageFactor:skillDamageFactor(player),attackBonus:id==='cetus'?spec.attackBonus:0,defenseBonus:id==='cetus'?spec.defenseBonus:0};
       return {ready:true,vitals:playerVitals(player),cooldowns:waterCooldowns(player),serverNow:now};
     }
   }

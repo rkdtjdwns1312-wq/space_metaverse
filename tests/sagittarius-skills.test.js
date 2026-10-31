@@ -23,13 +23,27 @@ function setup(level=5){
 }
 test('Q 빛의 화살은 현재 공격력100%·MP0·가로6배, MP가 0이어도 공격',()=>{
   const {room,player,monster,power,size}=setup(2);ensureVitals(player).mp=0;
-  const hit=attackSagittarius(room,player,now);
+  const hit=attackSagittarius(room,player,now,()=>1);
   assert.equal(monster.hp,1000);fly(room,now+650);assert.equal(monster.hp,1000-power);assert.equal(ensureVitals(player).mp,0);
   assert.equal(hit.effects[0].range,size*6);assert.equal(hit.effects[0].basic,true);
   assert.equal(player.sagittariusCooldowns,undefined);
 });
-test('큰 관통 화살은 LV2/3/4 피해500/400/500%, 쿨5/4/3초, 가로6배·MP2',()=>{
-  for(const [level,multiplier,cooldown] of [[2,5,5000],[3,4,4000],[4,5,3000]]){
+test('Q는 레벨별 10/15/20% 확률로 천궁의 화살을 대신 쏘며 E 마나·쿨타임을 쓰지 않는다',()=>{
+  for(const [level,chance] of [[2,.1],[3,.15],[4,.2]]){
+    const {room,player,monster,power}=setup(level);
+    const hit=attackSagittarius(room,player,now,()=>chance-.001);
+    assert.equal(hit.effects[0].vfxId,'skill-lv4');
+    assert.equal(room.projectiles[0].piercing,true);
+    assert.equal(ensureVitals(player).mp,level===2?20:level===3?30:40);
+    assert.equal(player.sagittariusCooldowns,undefined);
+    fly(room,now+650);
+    assert.equal(monster.hp,1000-power*4);
+    const missed=attackSagittarius(room,player,now+1000,()=>chance);
+    assert.equal(missed.effects[0].vfxId,'attack');
+  }
+});
+test('큰 관통 화살은 LV2/3/4 피해400%, 쿨4/3/2초, 가로6배·MP2',()=>{
+  for(const [level,multiplier,cooldown] of [[2,4,4000],[3,4,3000],[4,4,2000]]){
     const {room,player,monster,power,size}=setup(level),mp=ensureVitals(player).mp;
     const hit=castSagittarius(room,player,0,now);assert.equal(room.projectiles[0].piercing,true);
     assert.equal(monster.hp,1000);fly(room,now+900);
@@ -71,7 +85,7 @@ test('Q는 앞에 선 학생·교사를 통과해 몬스터를 맞히고 공통 
   const peers=['student','teacher'].map((role,i)=>({id:role,role,connected:true,mapId:player.mapId,x:560+i*40,y:500,avatar:{level:4,constellationId:'aries'}}));
   for(const peer of peers)room.players.set(peer.id,peer);
   const hp=peers.map(p=>ensureVitals(p).hp);
-  attackSagittarius(room,player,now);const hit=fly(room,now+650)[0];
+  attackSagittarius(room,player,now,()=>1);const hit=fly(room,now+650)[0];
   assert.equal(monster.hp,1000-power);assert.deepEqual(hit.playerTargets,[]);
   assert.deepEqual(damageTargets(room,player,peers.map(entity=>({entity,kind:'player'})),999,now+700).playerTargets,[]);
   assert.deepEqual(peers.map(p=>ensureVitals(p).hp),hp);
@@ -193,14 +207,15 @@ test('실제 소켓 Q/E는 친구를 보호하고 몬스터에 정상 피해, �
   Object.assign(monster,{x:700,y:500,hp:1000,maxHp:1000,radius:24,stunUntil:time+1000000});room.monsters=new Map([[monster.id,monster]]);
   const hp=ensureVitals(peer).hp,peerHits=[];
   peerSocket.on('combat:player-hit',hit=>peerHits.push(hit));
-  for(const [event,slot,duration,multiplier] of [['combat:attack',undefined,650,1],['combat:skill',0,900,5]]){
+  for(const [event,slot,duration,multiplier] of [['combat:attack',undefined,650,1],['combat:skill',0,900,4]]){
     time+=20000;monster.hp=1000;ensureVitals(player).mp=40;
     const response=await call(student,event,{slot,targetId:peer.id,power:999999});assert.ok(response.ok,response.error);
     const power=attackPowerOf(5,'sagittarius',player);time+=duration;
     // 실제 서버 틱이 투사체를 처리할 때까지 제한된 시간만 기다립니다.
     const deadline=Date.now()+2000;
     while(monster.hp===1000&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));
-    assert.equal(monster.hp,1000-power*multiplier,`${event}:${slot} monster damage`);
+    const allowed=event==='combat:attack'?[1000-power,1000-power*4]:[1000-power*multiplier];
+    assert.ok(allowed.includes(monster.hp),`${event}:${slot} monster damage: ${monster.hp}`);
     assert.equal(ensureVitals(peer).hp,hp,`${event}:${slot} peer HP`);
   }
   const mp=ensureVitals(player).mp;

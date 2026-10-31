@@ -84,7 +84,7 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     ...STREET_PARK.beds.map((bed,i)=>({id:`shelter-flowerbed-${i+1}`,name:'별빛 화단',x:bed.x,y:bed.y,radius:bed.rx,collisionRx:bed.rx,collisionRy:bed.ry,kind:'shelter-flowerbed'})),
     {id:'cozy-pet',name:'아기별 돌보기',x:696,y:1312,radius:90,collisionRx:72,collisionRy:40,kind:'cozy-pet'},
     {id:'cozy-room',name:'별방 꾸미기',x:406,y:1416,radius:90,collisionRx:78,collisionRy:45,kind:'cozy-room'},
-    {id:'cozy-garden',name:'우주 식물 기르기',x:554,y:2050,radius:105,collisionRx:100,collisionRy:50,kind:'cozy-garden'},
+    {id:'cozy-garden',name:'우주 식물 가꾸기',x:554,y:2050,radius:105,collisionRx:100,collisionRy:50,kind:'cozy-garden'},
     {id:'shelter-fountain',name:'별의 수호 분수대',x:STREET_PARK.fountain.x,y:STREET_PARK.fountain.y,radius:110,collisionRx:STREET_PARK.fountain.rx,collisionRy:STREET_PARK.fountain.ry,kind:'shelter-fountain'},
     { id: 'shop', name: '별 상점', x: 1290, y: 1450, radius: 72, kind: 'shop', color: '#ffe59b' },
     { id: 'energy-shop', name: '우주에너지 상점', x: 1290, y: 1980, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
@@ -194,6 +194,7 @@ export const BAG = Object.freeze({ columns: 5, rows: 4 });
 export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxStack: 99, maxKinds: 60, items: [
   {id:'spirit-king-soul',name:'성령왕의 영혼',description:'성령의 왕이 남긴 영혼의 결정입니다.',special:'성령왕의 영혼 1개와 우주에너지 10,000개, 별 파편 10개를 가지고 별빛 조합기에서 성령왕의 망토(Lv5 장비)를 만들 수 있습니다.',art:'/assets/items/spirit-king-soul.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'black-gem',name:'검은 보석',description:'태초의 검은별이 남긴 검은 보석입니다.',special:'검은 보석 1개와 우주에너지 10,000개를 가지고 별빛 조합기에서 검은별의 인장(Lv5 장비)을 만들 수 있습니다. 조합법을 미리 배우거나 별 파편을 준비할 필요는 없습니다.',art:'/assets/items/black-gem.webp',icon:'◆',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'origin-star-record',name:'근원의 별 기록지',description:'별 기록의 근원이 남긴 오래된 별빛 기록지입니다.',special:'근원의 별 기록지 1개와 우주에너지 10,000개를 별빛 조합기에 넣으면 진리의 기록을 만들 수 있습니다.',art:'/assets/items/origin-star-record.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'radiant-star-origin',name:'찬란한 별의 근원',description:'별의 시초신 세레나가 남긴 찬란한 별의 근원입니다.',special:'찬란한 별의 근원 1개와 우주에너지 10,000개를 가지고 별빛 조합기에서 시초의 별의 보석(Lv5 장비)을 만들 수 있습니다.',art:'/assets/items/radiant-star-origin.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},

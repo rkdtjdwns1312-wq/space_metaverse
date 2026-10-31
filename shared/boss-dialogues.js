@@ -19,6 +19,11 @@ export const BOSS_DIALOGUES=Object.freeze({
     lines:Object.freeze(['얼마나 오랜시간동안 잠들어 있었을까','이제는 새로운 시대의 아이들이 세상을 이끌어 갈때군..']),
     portrait:Object.freeze({src:'/assets/monsters/dark-star.webp',columns:1,rows:1})
   }),
+  'star-record':Object.freeze({
+    name:'별 기록의 근원',
+    lines:Object.freeze(['점점 근원의 진리에 다가가는 아이들이여','목표를 이루기 위해 무엇을 깨달아야 하는가','끝에서 진리를 찾아낼 수 있기를 응원하지']),
+    portrait:Object.freeze({src:'/assets/monsters/star-record-origin.png',columns:1,rows:1})
+  }),
   serena:Object.freeze({
     name:'별의 시초신 세레나',
     lines:Object.freeze(['선택받은 아이들이 그대군요','이 세계에 중심이 된 그대는 정말 대단해요','얼마나 많은 것들을 해낼지 앞으로도 그대의 세계에서 보여주세요']),

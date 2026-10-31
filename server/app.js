@@ -15,6 +15,7 @@ import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
 import {teacherCardCatalog} from './teacher-card-catalog.js';
 import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
 import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aquarius-skills.js';
+import {refreshTruthRecord} from './truth-record.js';
 import {castCorvus,corvusCooldowns} from './corvus-skills.js';
 import {castWater,advanceWaterAuras,waterAuraViews,waterCooldowns,resolveWaterHit} from './water-skills.js';
 import {castSwan,advanceSwanAuras,swanAuraViews,swanCooldowns} from './swan-skills.js';
@@ -81,9 +82,13 @@ import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './m
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
+import {summonStarRecord} from './star-record.js';
+import {answerStarRecordChallenge} from './star-record-challenge.js';
+import {answerStarRecordMath} from './star-record-math.js';
+import {recordStarRecordMovement} from './star-record-flow.js';
 import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
-import {serenaView,darkStarView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue} from './boss-lifecycle.js';
+import {serenaView,darkStarView,starRecordView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -400,8 +405,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             returnHuntingPlayer(session.room,session.player,clock());roster(session.room);
             const error=new GameError('사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.');error.commitOnError=true;throw error;
           }
-          const result=handler(data);
+          let result=handler(data);
           const current=socket.data.session;
+          if(current?.player.role==='student'&&name==='combat:skill')result=refreshTruthRecord(current.player,result,'skill',clock());
           if(save&&current)for(const p of current.room.players.values()){
             const before=huntingBefore.get(p.id);
             if(before&&before.mapId!==p.mapId){clearBossMapHazard(current.room,p.id);p.herculesSlam=null;}
@@ -434,6 +440,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonDarkStar(session.room,session.player,clock());
       roster(session.room);return result;
+    });
+    action('star-record:summon',()=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const result=summonStarRecord(session.room,session.player,clock());
+      roster(session.room);return result;
+    });
+    action('star-record:math',data=>{
+      const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
+      const result=answerStarRecordMath(session.room,session.player,data?.starId,data?.operator,clock());
+      if(result.hit)for(const viewer of session.room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===session.player.mapId){
+        io.to(viewer.socketId).emit('combat:monster-hit',result.hit);
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:session.player.id,vitals:result.hit.vitals});
+      }
+      return {correct:result.correct,remaining:result.remaining};
     });
     action('dark-star:reveal',data=>{
       const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
@@ -664,7 +684,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const candidate={...session.player,transformation:{active:true}};
       const safe=arrivePosition(session.room,session.player.mapId,session.player,candidate);
-      const result=startTransformation(session.player,clock());Object.assign(session.player,safe);roster(session.room);return result;
+      const result=refreshTruthRecord(session.player,startTransformation(session.player,clock()),'transform',clock());
+      Object.assign(session.player,safe);roster(session.room);return result;
     },false);
     action('combat:skill',data=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
@@ -1005,6 +1026,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const hasControl=[...trimmed].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;});
       ensure(typeof raw==='string' && trimmed.length>=1 && [...trimmed].length<=CHAT.maxLength && !hasControl,'채팅은 1~100자로 입력해주세요.');
       const text=trimmed.replace(/ {2,}/g,' ');
+      // 행성 이름은 채팅 입력창으로 답하지만 대화 기록에는 남기지 않습니다.
+      // 선생님이 일반 채팅을 잠시 꺼도 전투 중 정답 입력은 가능합니다.
+      if(answerStarRecordChallenge(room,p,text,clock()))return {starRecordAnswer:true};
       if(p.role==='student'){
         ensure(room.unattended||[...room.players.values()].some(t=>t.role==='teacher'&&t.connected),'선생님이 다시 연결할 때까지 기다려주세요.');
         ensure(room.chat.enabled,'선생님이 채팅을 껐어요.');
@@ -2399,6 +2423,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(activeCetusStomach(p,clock())){p.input={x:0,y:0,at:0};return;}
       if(!Number.isFinite(data.x)||!Number.isFinite(data.y)||Math.abs(data.x)>1||Math.abs(data.y)>1)return;
       p.input={x:data.x,y:data.y,at:Date.now()};
+      const session=socket.data.session,flow=recordStarRecordMovement(session.room,p,data.x,data.y,clock());
+      if(flow?.hit)for(const viewer of session.room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===p.mapId){
+        io.to(viewer.socketId).emit('combat:monster-hit',flow.hit);
+        io.to(viewer.socketId).emit('combat:vitals',{playerId:p.id,vitals:flow.hit.vitals});
+      }
     });
     socket.on('disconnect',()=>{
       try{transaction(()=>detach(socket,false));}
@@ -2607,9 +2636,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
       const bossNow=clock();
-      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt)){
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt)){
         try{transaction(()=>{
-          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);roster(room);
+          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);roster(room);
           deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
         });}catch(error){
           const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;
@@ -2715,6 +2744,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         }
         if(effectsChanged) roster(room);
       }
+      for(const id of room.ariesManaRestores||[]){
+        const restored=room.players.get(id);
+        if(restored?.connected)io.to(restored.socketId).emit('combat:vitals',{playerId:id,vitals:playerVitals(restored)});
+      }
+      room.ariesManaRestores?.clear();
       if(step%2===0){
         const before=previous.get(room.code)||new Map(),next=new Map(),allPositions=[];
         for(const p of room.players.values()){
@@ -2734,7 +2768,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
           const positions=visiblePositions(room,allPositions,viewer);
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),darkStar:darkStarView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
+          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
             sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
         }
         previous.set(room.code,next);

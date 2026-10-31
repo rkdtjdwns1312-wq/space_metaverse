@@ -1,4 +1,5 @@
 import {DARK_STAR,dormantDarkStar} from '../shared/dark-star.js';
+import {STAR_RECORD,dormantStarRecord} from '../shared/star-record.js';
 import {SERENA,dormantSerena} from '../shared/serena.js';
 import {addRecipeDrop,addEnergyDrop,addBossDrops} from './energy-drops.js';
 import {recordBossVictory} from './serena-progress.js';
@@ -10,7 +11,7 @@ export function nextBossRespawnAt(deathAt){
   if(!validTime(deathAt)||deathAt>8640000000000000-DAY_MS)throw new Error('보스 처치 시각이 올바르지 않습니다.');
   return openingOnDate(deathAt+DAY_MS);
 }
-const BOSS_IDS=['noksera-boss','leoon-boss','spirit-king-boss','serena-boss',DARK_STAR.monsterId];
+const BOSS_IDS=['noksera-boss','leoon-boss','spirit-king-boss','serena-boss',DARK_STAR.monsterId,STAR_RECORD.monsterId];
 export function validateBossRespawns(value={}){
   if(!value||typeof value!=='object'||Array.isArray(value)||Object.entries(value).some(([id,time])=>!BOSS_IDS.includes(id)||!validTime(time)))
     throw new Error('보스 복원 시각 저장 데이터가 올바르지 않습니다.');
@@ -31,6 +32,7 @@ export function finishBossDefeat(room,monster,contributors,deathAt,rolls={},cred
   room.bossRespawns[monster.id]=respawnAt;
   recordBossVictory(room,monster,contributors,credits);
   if(monster.typeId===DARK_STAR.typeId)room.darkStar={state:'recovering',respawnAt,monsterId:null};
+  if(monster.typeId===STAR_RECORD.typeId)room.starRecord={state:'recovering',respawnAt,monsterId:null};
   if(monster.typeId===SERENA.typeId)room.serena={state:'recovering',respawnAt,monsterId:null};
   // 리젠은 처치 다음 날 07시, 바닥 보상의 공개/만료는 저장 정산 시점부터 셉니다.
   addRecipeDrop(room,monster,contributors,settledAt,rolls.recipeRoll);
@@ -64,4 +66,16 @@ export const darkStarView=room=>validateDarkStarState(room.darkStar);
 export function restoreDarkStarStatue(room,now){
   if(room.darkStar?.state!=='recovering'||now<room.darkStar.respawnAt)return false;
   room.darkStar=dormantDarkStar();room.monsters?.delete(DARK_STAR.monsterId);return true;
+}
+export function validateStarRecordState(value){
+  if(value===undefined)return dormantStarRecord();
+  if(!value||!['dormant','active','recovering'].includes(value.state)||
+    (value.state==='recovering'?!validTime(value.respawnAt):value.respawnAt!==null)||
+    value.monsterId!==(value.state==='active'?STAR_RECORD.monsterId:null))throw new Error('별 기록의 근원 상태 저장 데이터가 올바르지 않습니다.');
+  return {state:value.state,respawnAt:value.state==='recovering'?openingOnDate(value.respawnAt):null,monsterId:value.monsterId};
+}
+export const starRecordView=room=>validateStarRecordState(room.starRecord);
+export function restoreStarRecordStatue(room,now){
+  if(room.starRecord?.state!=='recovering'||now<room.starRecord.respawnAt)return false;
+  room.starRecord=dormantStarRecord();room.monsters?.delete(STAR_RECORD.monsterId);return true;
 }

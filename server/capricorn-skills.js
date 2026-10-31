@@ -39,12 +39,12 @@ export function castCapricorn(room,player,now,{basic=false}={}){
   if(recipients.every(p=>p.id===player.id)){
     vitals.mp=Math.min(vitalsOf(player.avatar.level,player).mp.max,vitals.mp+Math.round(spec.mana/2));
     player.capricornCooldownUntil=now+Math.round(spec.cooldownMs/2);
-    const nearest=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId)
-      .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,2);
-    for(const monster of nearest){monster.capricornCurses??=new Map();
-      monster.capricornCurses.set(player.id,{ownerId:player.id,endsAt:now+spec.durationMs,nextTickAt:now+spec.curseTickMs,power:skillDamage(power,skillDamageFactor(player))});
-      cursed.push(monster.id);}
   }
+  const monster=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId)
+    .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0];
+  if(monster){monster.capricornCurses??=new Map();
+    monster.capricornCurses.set(player.id,{ownerId:player.id,endsAt:now+spec.durationMs,nextTickAt:now+spec.curseTickMs,power:skillDamage(power,skillDamageFactor(player))});
+    cursed.push(monster.id);}
   return {ready:true,recipientIds:recipients.map(p=>p.id),cursed,vitals:playerVitals(player),
     cooldowns:capricornCooldowns(player),serverNow:now};
 }

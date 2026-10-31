@@ -7,8 +7,8 @@ test('quality collection persists on successful harvest only, restores after fai
  const f=await readingFixture(t),at=()=>{const o=STREET.objects.find(o=>o.kind==='cozy-garden');Object.assign(f.p,{mapId:STREET.id,x:o.x,y:o.y+100,input:{x:0,y:0,at:0}});};at();
  const act=(action,data={})=>{const game=f.p.cozyActivities?.garden.pots[0]?.game;return call(f.student,'cozy:act',{kind:'garden',action,pot:0,generation:game?.generation,revision:game?.revision,...data});};
  ok(await act('plant',{seed:'moonbell'}));
- for(const point of GARDEN_RULES.seedTargets){f.advance(200);ok(await act('seed-place',point));}
- for(let i=0;i<8;i++){f.advance(200);ok(await act('sunlight',{arrow:f.p.cozyActivities.garden.pots[0].game.arrows[i]}));}
+ for(const ms of [600,900,900]){f.advance(ms);ok(await act('seed-place'));}
+ for(let i=0;i<GARDEN_RULES.sunlightCount;i++){f.advance(200);ok(await act('sunlight',{arrow:f.p.cozyActivities.garden.pots[0].game.arrows[i]}));}
  f.advance(200);ok(await act('water-start'));f.advance(3500);ok(await act('water-release'));
  const before=structuredClone(f.p.cozyActivities),energy=f.p.cosmicEnergy;
  await f.fail(async()=>assert.equal((await act('harvest')).ok,false));assert.deepEqual(f.p.cozyActivities,before);assert.equal(f.p.cosmicEnergy,energy);

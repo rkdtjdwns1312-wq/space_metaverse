@@ -24,7 +24,7 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     <section id="evolution-menu"><button id="evolution-change" class="primary" type="button">별자리 아바타 변경하기</button><button id="evolution-evolve" class="primary" type="button">별자리 아바타 진화하기</button><button id="evolution-teacher" class="primary" type="button" hidden>별자리와 단계 자유 선택</button><button id="evolution-close" class="secondary evolution-close-allowed" type="button">닫기</button></section>
     <section id="evolution-panel" hidden><h3 id="evolution-panel-title"></h3><p id="evolution-help"></p><div id="evolution-levels" hidden></div><div id="evolution-types" hidden></div><div id="evolution-grid" class="constellation-grid"></div><div class="dialog-actions"><button id="evolution-refresh" class="secondary" type="button">새로고침</button><button id="evolution-back" class="secondary" type="button">처음으로</button></div></section>
     <section id="evolution-confirm" hidden><p id="evolution-confirm-text"></p><div class="dialog-actions"><button id="evolution-no" class="secondary" type="button">아니오</button><button id="evolution-yes" class="primary" type="button">예</button></div></section>
-    <section id="evolution-details" hidden><h3 id="evolution-details-title"></h3><div class="evolution-detail-sections"><section><h4>별자리 능력</h4><p id="evolution-ability-description"></p></section><section><h4>캐릭터 스킬</h4><p id="evolution-skill-name"></p><p id="evolution-skill-description"></p></section></div><button id="evolution-details-back" class="secondary" type="button">카드로 돌아가기</button></section>`;
+    <section id="evolution-details" hidden><h3 id="evolution-details-title"></h3><div class="evolution-detail-sections"><section><h4>별자리 능력</h4><p id="evolution-ability-description"></p></section><section><div class="evolution-skill-heading"><h4>캐릭터 스킬</h4><div id="evolution-hercules-stances" hidden><button id="evolution-hercules-attack" class="secondary" type="button">공격 자세</button><button id="evolution-hercules-shield" class="secondary" type="button">수호 자세</button></div></div><p id="evolution-skill-name"></p><p id="evolution-skill-description"></p></section></div><button id="evolution-details-back" class="secondary" type="button">카드로 돌아가기</button></section>`;
   document.body.append(dialog);
   const $ = id => dialog.querySelector('#evolution-' + id);
   let info = null, mode = 'menu', selectedId = null, selectedType = null, selectedLevel = null, selectedAction = 'evolve', detailReturnMode = 'change', busy = false, revision = 0;
@@ -83,11 +83,20 @@ export function createEvolutionUI({ request, stop, toast, isJoined }) {
     detailReturnMode=mode;
     const level=info.teacherMode?selectedLevel:mode==='evolve'?Math.min(5,info.avatar.level+1):info.avatar.level;
     const ability=weeklyAbilityFor(option.id,level);
-    const skill=characterAbilities({avatar:{level,constellationId:option.id},role:'student'}).find(value=>value.slot==='skill');
     $('details-title').textContent=option.name+' · Lv'+level;
     $('ability-description').textContent=ability?.description||'이 단계의 별자리 능력 설명이 없습니다.';
-    $('skill-name').textContent=skill?.name||'일반 스킬';
-    $('skill-description').textContent=(skill?.description||'이 단계의 스킬 설명이 없습니다.').replaceAll('Q ','기본공격 ');
+    $('hercules-stances').hidden=option.id!=='hercules';
+    const showSkill=stance=>{
+      const skill=characterAbilities({avatar:{level,constellationId:option.id},role:'student',herculesNextStance:stance}).find(value=>value.slot==='skill');
+      $('skill-name').textContent=skill?.name||'일반 스킬';
+      $('skill-description').textContent=(skill?.description||'이 단계의 스킬 설명이 없습니다.').replaceAll('Q ','기본공격 ');
+      for(const [key,button] of [['attack',$('hercules-attack')],['shield',$('hercules-shield')]]){
+        button.classList.toggle('is-selected',key===stance);button.setAttribute('aria-pressed',String(key===stance));
+      }
+    };
+    $('hercules-attack').onclick=()=>showSkill('attack');
+    $('hercules-shield').onclick=()=>showSkill('shield');
+    showSkill('shield');
     mode='details';render();
   }
   function renderGrid(onChoose) {

@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+import {STAR_RECORD} from '../shared/star-record.js';
+import {monstersOf,monsterViews} from '../server/monsters.js';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+
+let now=Date.now();
+const teacherKey='isolated-star-record-chat',game=createClassroomServer({teacherKey,studentHours:false,clock:()=>now});
+const {port}=await game.listen(),browser=await chromium.launch({headless:true,channel:'msedge',args:['--no-proxy-server']});
+const errors=[];
+try{
+ const teacher=await browser.newPage(),student=await browser.newPage();
+ student.on('pageerror',error=>errors.push(error.message));
+ await teacher.goto(`http://127.0.0.1:${port}`);
+ await teacher.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
+ await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(teacherKey);
+ await fillNewClass(teacher,['학생1']);await teacher.locator('#teacher-form .submit').click();
+ await teacher.locator('#lobby').waitFor({state:'hidden'});
+ const code=await teacher.locator('#room-code').textContent(),room=game.store.rooms.get(code);
+ await student.goto(`http://127.0.0.1:${port}`);
+ await student.locator('#connection').filter({hasText:'연결되었어요'}).waitFor({state:'attached'});
+ await student.locator('#student-tab').click();await student.locator('#join-code').fill(code);
+ await student.locator('#nickname').fill('학생1');await student.locator('#student-pin').fill('1234');
+ await student.locator('#student-form .submit').click();await student.locator('#lobby').waitFor({state:'hidden'});
+ for(let i=0;i<12&&await student.locator('dialog[open]').count();i++)await student.keyboard.press('Escape');
+ const player=[...room.players.values()].find(p=>p.role==='student');
+ chargeHuntingStation(player,'math',now);room.chat.enabled=false;player.muted=true;player.mapId=STAR_RECORD.mapId;
+ room.starRecord={state:'active',respawnAt:null,monsterId:STAR_RECORD.monsterId};
+ const boss=monstersOf(room,now).get(STAR_RECORD.monsterId);
+ boss.recordChallenge={startsAt:now,endsAt:now+10000,participants:new Map([[player.id,{planets:['금성','목성'],round:0,done:false}]])};
+ game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player,now));
+ game.io.to(player.socketId).emit('world:positions',{positions:[],monsters:monsterViews(room,now),starRecord:room.starRecord});
+ await student.locator('#chat-dialog[open]').waitFor();
+ assert.equal(await student.locator('#chat-input').isEnabled(),true);
+ assert.match(await student.locator('#chat-input').getAttribute('placeholder'),/금성/);
+ await student.locator('#chat-input').fill('금성');
+ await student.locator('#chat-send').click({timeout:5000});
+ await student.waitForFunction(()=>document.querySelector('#chat-input').value==='');
+ assert.equal(boss.recordChallenge.participants.get(player.id).round,1);
+ assert.deepEqual(errors,[]);
+ console.log('PASS muted and chat-disabled student answered star-record challenge in auto-open chat; browser errors0');
+}finally{await browser.close();await game.close();}

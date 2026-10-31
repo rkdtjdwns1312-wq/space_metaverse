@@ -15,7 +15,7 @@ function setup(level){
  Object.assign(monster,{x:650,y:500,hp:1000,maxHp:1000,radius:24});room.monsters=new Map([[monster.id,monster]]);
  return{room,player,monster};
 }
-for(const [level,count,multiplier] of [[2,2,1],[3,3,1.5],[4,4,2],[5,4,2]])test(`까마귀 LV${level}: ${multiplier*100}%×${count}, MP5·쿨10초·사거리5배`,()=>{
+for(const [level,count,multiplier] of [[2,2,2],[3,3,2.5],[4,4,3],[5,4,3]])test(`까마귀 LV${level}: ${multiplier*100}%×${count}, MP5·쿨10초·사거리5배`,()=>{
  const {room,player,monster}=setup(level),mp=ensureVitals(player).mp;
  const result=castCorvus(room,player,1000);assert.equal(result.hit.range,avatarSizeOf(player)*5);assert.equal(ensureVitals(player).mp,mp-5);assert.equal(monster.hp,1000);
  assert.equal(advanceCorvus(room,1001).length,0);advanceCorvus(room,1400);

@@ -41,6 +41,11 @@
 .evolution-detail-sections { display: grid; gap: 12px; margin: 12px 0; }
 .evolution-detail-sections section { padding: 12px 14px; border: 1px solid #d8c4ee; border-radius: 12px; background: #faf6ff; }
 .evolution-detail-sections h4 { margin: 0 0 6px; color: #603992; font-size: 1rem; }
+.evolution-skill-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#evolution-hercules-stances{display:flex;gap:5px}
+#evolution-hercules-stances[hidden]{display:none}
+#evolution-hercules-stances button{min-height:26px;padding:3px 7px;font-size:12px;line-height:1.1}
+#evolution-hercules-stances button.is-selected{border-color:#724aa5;background:#eee2fc;color:#4f2881}
 .evolution-detail-sections p { margin: 0; line-height: 1.55; white-space: pre-line; }
 #evolution-skill-name { margin-bottom: 6px; font-weight: 800; }
 #evolution-details-back { width: 100%; }

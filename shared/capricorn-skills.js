@@ -7,5 +7,5 @@ export function capricornSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return sustainedSkill(player,{level:2,stage,mana:({2:10,3:15,4:20})[stage],
     durationMs:({2:10000,3:15000,4:20000})[stage],
-    cooldownMs:({2:20000,3:30000,4:40000})[stage],radiusWidths:3,curseTickMs:2000,healTickMs:5000});
+    cooldownMs:({2:20000,3:25000,4:30000})[stage],radiusWidths:3,curseTickMs:2000,healTickMs:5000});
 }

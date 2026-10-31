@@ -30,12 +30,12 @@ test('양털뭉치 Q는 가로4배에서 첫 몬스터에 멈춘다',()=>{
   assert.equal(targets[1].hp,1000);
 });
 
-test('E는 가까운 최대3마리를 잠재워 10초 정지·피해 2배 후 LV별 200/400/600% 종료 피해',()=>{
+test('E는 최대 3마리를 4/5/6초 재우고 피해 2배·종료 200/300/400%도 2배 적용한다',()=>{
   for(const level of [2,3,4,5]){
     const {room,player,size,targets}=setup(level),now=Date.now(),mp=ensureVitals(player).mp;
     const power=attackPowerOf(level,'aries',player),spec=ariesSkillOf(player);
     const result=castAries(room,player,now);
-    assert.equal(spec.durationMs,10000);assert.equal(result.cooldowns[0],now+30000);
+    assert.equal(spec.durationMs,level===2?4000:level===3?5000:6000);assert.equal(result.cooldowns[0],now+20000);
     assert.equal(mp-ensureVitals(player).mp,10);
     assert.deepEqual(result.targetIds,targets.slice(0,3).map(m=>m.id));
     assert.equal(ariesCloudViews(room,player.mapId,now).length,3);
@@ -45,14 +45,29 @@ test('E는 가까운 최대3마리를 잠재워 10초 정지·피해 2배 후 LV
     assert.equal(targets[0].x,x);assert.equal(targets[0].moving,false);
     const hit=damageMonster(room,targets[0],player,power,now+1000);
     assert.equal(hit.damage,power*2);
-    assert.equal(advanceAriesClouds(room,now+9999).length,0);
-    const ends=advanceAriesClouds(room,now+10000);
+    assert.equal(ensureVitals(player).mp,mp-9,'시전자가 잠든 몬스터를 때리면 마나 1 회복');
+    assert.equal(advanceAriesClouds(room,now+spec.durationMs-1).length,0);
+    const ends=advanceAriesClouds(room,now+spec.durationMs);
     assert.equal(ends.length,3);
-    assert.equal(ends[0].damage,power*spec.finishMultiplier);
-    assert.equal(targets[0].hp,1000-power*2-power*spec.finishMultiplier);
+    assert.equal(ends[0].damage,power*spec.finishMultiplier*2);
+    assert.equal(targets[0].hp,1000-power*2-power*spec.finishMultiplier*2);
     assert.equal(targets[3].hp,1000);
-    assert.equal(monsterViews(room,now+10000)[0].sleeping,false);
+    assert.equal(monsterViews(room,now+spec.durationMs)[0].sleeping,false);
   }
+});
+test('양자리 수면 대상의 직접 명중만 시전자 마나 1 회복하며 타인 공격·종료 폭발은 회복하지 않는다',()=>{
+  const {room,player,targets}=setup(4),now=Date.now();
+  const ally={...player,id:'ally',avatar:{level:4,constellationId:'taurus'},battleVitals:undefined};
+  room.players.set(ally.id,ally);
+  castAries(room,player,now);
+  const before=ensureVitals(player).mp;
+  damageMonster(room,targets[0],ally,1,now+1);
+  assert.equal(ensureVitals(player).mp,before);
+  damageMonster(room,targets[0],player,1,now+2);
+  assert.equal(ensureVitals(player).mp,before+1);
+  assert.ok(room.ariesManaRestores.has(player.id));
+  advanceAriesClouds(room,now+ariesSkillOf(player).durationMs);
+  assert.equal(ensureVitals(player).mp,before+1);
 });
 
 test('대상 없음·마나 부족·쿨타임·LV1·사망은 소비 없이 거부한다',()=>{
@@ -65,9 +80,9 @@ test('대상 없음·마나 부족·쿨타임·LV1·사망은 소비 없이 거�
   assert.throws(()=>castAries(room,player,now),/몬스터/);
   assert.equal(ensureVitals(player).mp,30);
   const restored=setup().room.monsters;room.monsters=restored;
-  castAries(room,player,now);assert.throws(()=>castAries(room,player,now+29999),/기다려/);
-  assert.equal(castAries(room,player,now+30000).ready,true);
-  ensureVitals(player).hp=0;assert.throws(()=>castAries(room,player,now+60000),/지금/);
+  castAries(room,player,now);assert.throws(()=>castAries(room,player,now+19999),/기다려/);
+  assert.equal(castAries(room,player,now+20000).ready,true);
+  ensureVitals(player).hp=0;assert.throws(()=>castAries(room,player,now+40000),/지금/);
 });
 
 test('공격·LV2·LV3·LV4의 24F 시트와 구름 유지 프레임',()=>{
@@ -75,5 +90,5 @@ test('공격·LV2·LV3·LV4의 24F 시트와 구름 유지 프레임',()=>{
   assert.ok(Object.values(ARIES_VFX).every(spec=>spec.frames===24&&spec.frameSize===256));
   assert.equal(ARIES_NAMES[4],'영원의 꿈');
   assert.equal(ariesFrameAt(0),0);assert.equal(ariesFrameAt(600),6);
-  assert.equal(ariesFrameAt(9500),18);assert.equal(ariesFrameAt(9999),23);
+  assert.equal(ariesFrameAt(3500),18);assert.equal(ariesFrameAt(3999),23);
 });

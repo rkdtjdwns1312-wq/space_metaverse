@@ -57,7 +57,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const bonus=document.createElement('small');bonus.textContent=equipmentStatText(item);
       details.append(title,flavor,bonus);
       const actions=document.createElement('div');actions.className='energy-shop-actions';
-      if(item.craftOnly){
+      if(item.craftOnly&&player.role!=='teacher'){
         const notice=document.createElement('span');notice.className='energy-shop-craft-notice';
         notice.textContent='이 아이템은 조합을 통해서만\n획득할 수 있습니다';
         const unavailable=document.createElement('button');unavailable.type='button';unavailable.className='small secondary';unavailable.textContent='구입 불가';unavailable.disabled=true;

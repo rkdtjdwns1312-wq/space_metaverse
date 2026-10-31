@@ -5,7 +5,7 @@ const bodyAuras=new WeakMap();
 const clamp=value=>Math.max(0,Math.min(1,value));
 const smooth=value=>{const t=clamp(value);return t*t*(3-2*t);};
 export function coronaOpacity(aura,elapsedMs){
-  return Math.min(smooth(elapsedMs/1000),smooth((aura.durationMs-elapsedMs)/1000));
+  return Number.isFinite(aura.durationMs)?Math.min(smooth(elapsedMs/1000),smooth((aura.durationMs-elapsedMs)/1000)):smooth(elapsedMs/1000);
 }
 function frame(ctx,id,index,size){let image=images.get(id);
   if(!image){image=new Image();image.src=CORONA_VFX[id].url;images.set(id,image);}

@@ -22,7 +22,7 @@ export function waterSkillOf(player){
   if(id==='cancer')return sustainedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
     rangeWidths:4,multiplier:stage-1});
   if(id==='cetus')return sustainedSkill(player,{level:2,stage,mana:10,cooldownMs:20000,durationMs:10000,
-    rangeWidths:2,defenseBonus:stage-1,maxTargets:3,areaDiameterWidths:4});
+    rangeWidths:2,attackBonus:stage-1,defenseBonus:stage-1,maxTargets:3,areaDiameterWidths:4});
   if(id==='pisces')return transformedSkill(player,{level:2,stage,mana:5,cooldownMs:10000,
     rangeWidths:4,hits:stage===2?4:stage===3?2:1,multiplier:stage===2?1:stage===3?3:8});
   return null;

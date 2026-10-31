@@ -21,11 +21,12 @@ export const transformationCooldownMs=(player,base=TRANSFORMATION.cooldownMs)=>M
 export function transformedSkill(player,spec){
   if(!spec)return spec;
   const bonus=transformationBonus(player),result={...spec};
+  const gear=equipmentBonus(player);
+  if(Number.isFinite(result.mana)&&result.mana>0)result.mana=Math.round(result.mana*(1+gear.manaCostIncrease));
   if(Number.isFinite(result.cooldownMs)){
     // 일반 E(공용 정의는 slot 생략, 사수 E는 0)만 장비 재사용 감소를 받습니다.
     // 보석의 모든 스킬 감소는 별도 슬롯에도 적용, 서버는 시전 때 종료 시각을 저장합니다.
     const ordinaryE=result.slot===undefined||result.slot===0;
-    const gear=equipmentBonus(player);
     const equipmentFactor=1-Math.min(1,Math.max(0,gear.allCooldownReduction+(ordinaryE?gear.cooldownReduction:0)));
     result.cooldownMs=Math.round(result.cooldownMs*bonus.skillCooldownFactor*equipmentFactor);
   }

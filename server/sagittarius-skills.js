@@ -2,7 +2,7 @@ import {skillDamage,skillDamageFactor} from '../shared/skill-damage.js';
 import {transformedSkill} from '../shared/transformation.js';
 import {launchProjectiles} from './projectiles.js';
 import {randomUUID} from 'node:crypto';
-import {isSagittarius,sagittariusSkill,sagittariusSkillOf,SAGITTARIUS_ATTACK} from '../shared/sagittarius-skills.js';
+import {isSagittarius,sagittariusSkill,sagittariusSkillOf,SAGITTARIUS_ATTACK,sagittariusCelestialChance} from '../shared/sagittarius-skills.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 import {attackPowerOf} from '../shared/combat.js';
 import {RULES} from '../shared/config.js';
@@ -30,14 +30,14 @@ function damage(room,player,list,power,now){
 const inCircle=(list,x,y,r)=>list.filter(t=>Math.hypot(t.entity.x-x,t.entity.y-y)<=r+t.radius);
 export function skillCooldowns(player){return {...player.sagittariusCooldowns};}
 // Q의 1초 공격 제한은 combat:attack의 공통 서버 경계에서 적용합니다.
-export function attackSagittarius(room,player,now=Date.now()){
-  return execute(room,player,SAGITTARIUS_ATTACK,now,true);
+export function attackSagittarius(room,player,now=Date.now(),random=Math.random){
+  return execute(room,player,SAGITTARIUS_ATTACK,now,true,random);
 }
 export function castSagittarius(room,player,slot,now=Date.now()){
   const skill=slot===0?sagittariusSkillOf(player):transformedSkill(player,sagittariusSkill(slot)&&{...sagittariusSkill(slot),multiplier:3});
   return execute(room,player,skill,now,false);
 }
-function execute(room,player,skill,now,basic){
+function execute(room,player,skill,now,basic,random=Math.random){
   const slot=skill?.slot;
   ensure(isSagittarius(player)&&skill,'사용할 수 없는 스킬이에요.');
   ensure(valid(player),'지금은 스킬을 사용할 수 없어요.');
@@ -58,9 +58,10 @@ function execute(room,player,skill,now,basic){
   const base={id:randomUUID(),playerId:player.id,mapId:player.mapId,slot,dx,dy,size,x:player.x,y:player.y,at:now};
   let result={targets:[],playerTargets:[]},effects=[];
   if(basic||slot===0){
+    const celestial=basic&&random()<sagittariusCelestialChance(player.avatar.level);
     const range=size*skill.rangeWidths,width=size*.13;
-    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?power:skillDamage(power*skill.multiplier,skillDamageFactor(player)),
-      piercing:!basic,vfxId:basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
+    effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?(celestial?skillDamage(power*4,skillDamageFactor(player)):power):skillDamage(power*skill.multiplier,skillDamageFactor(player)),
+      piercing:!basic||celestial,vfxId:celestial?'skill-lv4':basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();
     const cast={...base,kind:slot===1?'hunter':'rain',x:slot===1?player.x+dx*size/2:target.entity.x,y:slot===1?player.y+dy*size/2:target.entity.y,lastMoveAt:now,

@@ -8,5 +8,5 @@ export const LEO_NAMES=Object.freeze({attack:'황금의 갈퀴',2:'사자의 포
 export function leoSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return sustainedSkill(player,{level:2,stage,mana:5,cooldownMs:10000,durationMs:10000,
-    multiplier:stage*2,attackBonus:stage,rangeWidths:4});
+    multiplier:stage,attackBonus:stage-1,rangeWidths:4});
 }

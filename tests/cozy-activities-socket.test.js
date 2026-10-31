@@ -31,8 +31,8 @@ test('cozy socket state persists, stays private, and failure rolls back energy p
  const saved=structuredClone(f.p.cozyActivities);for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).cozyActivities,undefined);
  await f.restart();at(f,'garden');assert.deepEqual(f.p.cozyActivities,saved);f.advance(600000);assert.equal(ok(await call(f.student,'cozy:read',{kind:'garden'})).state.pots[1].ready,false);
  const garden=async(action,extra={},ms=200)=>{f.advance(ms);const g=f.p.cozyActivities.garden.pots[1].game;return act(f,'garden',action,{pot:1,generation:g.generation,revision:g.revision,...extra});};
- for(const x of [20,50,80])await garden('seed-place',{x,y:50});
- for(let i=0;i<8;i++)await garden('sunlight',{arrow:f.p.cozyActivities.garden.pots[1].game.arrows[i]});
+ for(const ms of [600,900,900])await garden('seed-place',{},ms);
+ for(let i=0;i<30;i++)await garden('sunlight',{arrow:f.p.cozyActivities.garden.pots[1].game.arrows[i]});
  await garden('water-start');await f.restart();at(f,'garden');await garden('water-release',{duration:0,score:0},3500);
  const readySaved=structuredClone(f.p.cozyActivities),readyGame=f.p.cozyActivities.garden.pots[1].game,harvest={kind:'garden',action:'harvest',pot:1,generation:readyGame.generation,revision:readyGame.revision};
  await f.fail(async()=>assert.equal((await call(f.student,'cozy:act',harvest)).ok,false));assert.deepEqual(f.p.cozyActivities,readySaved);

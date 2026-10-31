@@ -8,6 +8,7 @@ import {ensureVitals,damagePlayer} from '../server/vitals.js';
 import {toRecord} from '../server/persistent-rooms.js';
 import {advanceProjectiles} from '../server/projectiles.js';
 import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
+import {attackPowerOf} from '../shared/combat.js';
 
 test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, 위조 변신 수치 무시·저장 제외',async t=>{
  let now=1000000;const key='corvus-private-test-key',game=createClassroomServer({teacherKey:key,studentHours:false,clock:()=>now}),{port}=await game.listen(),sockets=[];
@@ -20,14 +21,13 @@ test('실제 소켓: 까마귀 다중 타격·피해 숫자는 같은 맵만, �
  const room=game.store.rooms.get(made.room.code),p=room.players.get(joined.selfId),friend=room.players.get(peer.selfId);chargeHuntingStation(p,'math',now);chargeHuntingStation(friend,'math',now);
  Object.assign(p,{x:500,y:450,mapId:'star-origin-1',facing:{x:1,y:0}});Object.assign(p.avatar,{level:4,constellationId:'corvus'});
  Object.assign(friend,{x:700,y:450,mapId:p.mapId});Object.assign(friend.avatar,{level:4,constellationId:'taurus'});
- const monster=[...monstersOf(room).values()][0];Object.assign(monster,{x:690,y:450,hp:100,maxHp:100,nextAttackAt:Infinity,lastMoveAt:now});room.monsters=new Map([[monster.id,monster]]);
+ const monster=[...monstersOf(room).values()][0];Object.assign(monster,{x:690,y:450,hp:1000,maxHp:1000,nextAttackAt:Infinity,lastMoveAt:now});room.monsters=new Map([[monster.id,monster]]);
  let leaks=0;teacher.on('combat:damage-numbers',()=>leaks++);outsider.on('combat:damage-numbers',()=>leaks++);
  const result=await call(a,'combat:skill',{slot:0,power:99999,mana:0,hits:100,dx:-1});assert.equal(result.ok,true);assert.equal(result.vitals.mp.current,45);assert.equal(result.hit.dx,1);
  for(const slot of [1,2,3])assert.equal((await call(a,'combat:skill',{slot})).ok,false);
  monster.x=570;advanceProjectiles(room,now+700,combatEnemies,damageTargets);
  p.transformation={active:false};const batch=advanceProjectiles(room,now+1400,combatEnemies,damageTargets);
- assert.ok(batch.length>=1);assert.equal(monster.hp,28);
- assert.equal(monster.hp,28);
+ assert.ok(batch.length>=1);assert.equal(monster.hp,1000-attackPowerOf(4,'corvus',p)*3*4);
  await new Promise(r=>setTimeout(r,80));assert.equal(leaks,0);
  assert.equal((await call(a,'combat:transform',{level:5})).ok,false);
  p.avatar.level=5;ensureVitals(p).hp=1;ensureVitals(p).mp=0;

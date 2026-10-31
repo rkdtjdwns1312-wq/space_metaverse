@@ -73,22 +73,22 @@ test('E 투사체는 서버 시전 시 피해 스냅샷, 이후 장착/해제는
     assert.equal(100000-monster.hp,expected,id);
   }
 });
-test('일반 및 E로 강화된 게·고래·백조·왕관 Q 원타격은 장갑 보정 없음',()=>{
+test('일반 및 E로 강화된 게·고래·백조 Q 원타격은 장갑 보정 없음',()=>{
   const basicCasts={corvus:castCorvus,gemini:castGemini,aquarius:castAquarius,aries:castAries,ophiuchus:castOphiuchus,
     taurus:castTaurus,hercules:castHercules,libra:castLibra,capricorn:castCapricorn,leo:castLeo,
-    cancer:castWater,cetus:castWater,cygnus:castSwan,'corona-borealis':castCorona};
+    cancer:castWater,cetus:castWater,cygnus:castSwan};
   for(const [id,cast] of Object.entries(basicCasts)){
     const outcomes=[];
     for(const equipped of [false,true]){
       const {room,player,monster}=setup(id,{equipped}),now=Date.now();
-      if(['cancer','cetus','cygnus','corona-borealis'].includes(id))cast(room,player,now);
+      if(['cancer','cetus','cygnus'].includes(id))cast(room,player,now);
       const hit=cast(room,player,now+100,{basic:true});
       outcomes.push(room.projectiles?.length?room.projectiles.map(p=>p.power):hit.targets.map(t=>t.damage));
     }
     assert.deepEqual(outcomes[1],outcomes[0],id);
   }
   for(const equipped of [false,true]){
-    const {room,player}=setup('sagittarius',{equipped});attackSagittarius(room,player,Date.now());
+    const {room,player}=setup('sagittarius',{equipped});attackSagittarius(room,player,Date.now(),()=>1);
     assert.equal(room.projectiles[0].power,attackPowerOf(4,'sagittarius',player));
   }
 });
@@ -98,7 +98,7 @@ test('물병 피해만 증가하고 기존 회복 총량·주기는 그대로',(
     const {room,player,monster}=setup('aquarius',{equipped}),now=Date.now();monster.x=player.x;monster.y=player.y+avatarSizeOf(player)*.25;
     ensureVitals(player).hp=1;castAquarius(room,player,now);const cast=[...room.aquariusCasts.values()][0];
     toggle(player,equipped);advanceAquarius(room,now+5000);
-    assert.equal(100000-monster.hp,cast.power);healed.push(ensureVitals(player).hp);
+    assert.equal(100000-monster.hp,cast.power*5);healed.push(ensureVitals(player).hp);
   }
   assert.equal(healed[1],healed[0]);
 });
@@ -117,7 +117,7 @@ test('고래 자동 E는 발동 당시 피해 배율, 방어력은 동일',()=>{
     const {room,player,monster}=setup('cetus',{equipped}),now=Date.now();
     const power=attackPowerOf(4,'cetus',player);castWater(room,player,now);toggle(player,equipped);
     assert.equal(player.waterAura.defenseBonus,3);advanceWaterAuras(room,now+1000);
-    assert.equal(100000-monster.hp,Math.round(power*(equipped?1.2:1)));
+    assert.equal(100000-monster.hp,Math.round((power+3)*(equipped?1.2:1)));
   }
 });
 test('뱀 직접 피해와 독틱 모두 시전 스냅샷, 염소 저주만 증가하고 축복 회복 유지',()=>{
@@ -143,15 +143,17 @@ test('헤라클레스: 흡수한 피해를 포함한 폭발 전체에 1회만 �
     advanceHerculesShields(room,shield.endsAt);assert.equal(100000-monster.hp,expected);
   }
 });
-test('왕관: 원Q 제외, 추가 낙검과 종료 검기만 시전 시 배율 적용',()=>{
+test('왕관: 강화 Q 5회와 관통 검기는 시전 시 장비 피해 배율을 유지한다',()=>{
   for(const equipped of [false,true]){
     const {room,player,monster}=setup('corona-borealis',{equipped}),now=Date.now();castCorona(room,player,now);
-    const end=player.coronaAura.endsAt;toggle(player,equipped);
-    const power=attackPowerOf(4,'corona-borealis',player),boosted=Math.round(power*(equipped?1.2:1));
-    castCorona(room,player,now+1,{basic:true});assert.equal(100000-monster.hp,power);
-    advanceCorona(room,now+301);assert.equal(100000-monster.hp,power+boosted);
-    advanceCorona(room,end);assert.equal(room.projectiles[0].power,boosted);
-    advanceProjectiles(room,end+650,combatEnemies,damageTargets);assert.equal(100000-monster.hp,power+boosted*2);
+    toggle(player,equipped);
+    const power=attackPowerOf(4,'corona-borealis',player),boosted=Math.round(power*3*(equipped?1.2:1));
+    for(let i=1;i<=5;i++)castCorona(room,player,now+i,{basic:true});
+    assert.equal(100000-monster.hp,boosted*5);
+    const finale=Math.round(power*10*(equipped?1.2:1));
+    assert.equal(room.projectiles[0].power,finale);
+    advanceProjectiles(room,now+655,combatEnemies,damageTargets);
+    assert.equal(100000-monster.hp,boosted*5+finale);
   }
 });
 test('천칭 영역 피해는 시전 장비 배율을 유지하고 사자 공격력 버프는 그대로',()=>{
@@ -161,6 +163,6 @@ test('천칭 영역 피해는 시전 장비 배율을 유지하고 사자 공격
     const expected=Math.round(attackPowerOf(4,'libra',player)*1.5*(equipped?1.2:1));
     advanceLibraAuras(room,now+1000);assert.equal(100000-monster.hp,expected);
     const lion=setup('leo',{equipped});castLeo(lion.room,lion.player,now);toggle(lion.player,equipped);
-    advanceLeoRoars(lion.room,now+1600);assert.equal(lion.player.leoCourage.bonus,4);
+    advanceLeoRoars(lion.room,now+1600);assert.equal(lion.player.leoCourage.bonus,3);
   }
 });

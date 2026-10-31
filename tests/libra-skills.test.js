@@ -119,18 +119,18 @@ test('천칭 설명은 아군 무적·중복 없음과 기존 4줄 형식을 안
 });
 
 
-test('LV2~5 매초 50/100/150/200%: 첫 1초부터 종료 10초까지 10회, 중복 틱 없음',()=>{
+test('LV2~5 매초 50/100/150/200%: 첫 1초부터 종료 8초까지 8회, 중복 틱 없음',()=>{
   for(const level of [2,3,4,5]){
     const {room,caster,ally}=fixture(level),monster=monstersOf({players:room.players,planets:new Map()},NOW).get('star-crab');
     Object.assign(monster,{x:caster.x,y:caster.y,hp:10000,maxHp:10000});room.monsters.set(monster.id,monster);
     const power=attackPowerOf(level,'libra',caster),perTick=Math.round(power*(level-1)*.5),hp=ensureVitals(ally).hp;
-    assert.equal(caster.libraAura.radius,avatarSizeOf(caster)*6);assert.equal(caster.libraAura.endsAt,NOW+10000);
+    assert.equal(caster.libraAura.radius,avatarSizeOf(caster)*6);assert.equal(caster.libraAura.endsAt,NOW+8000);
     advanceLibraAuras(room,NOW+999);assert.equal(monster.hp,10000);
     advanceLibraAuras(room,NOW+1000);assert.equal(monster.hp,10000-perTick);
     advanceLibraAuras(room,NOW+1000);assert.equal(monster.hp,10000-perTick);
-    advanceLibraAuras(room,NOW+9999);assert.equal(monster.hp,10000-perTick*9);
-    advanceLibraAuras(room,NOW+10000);assert.equal(monster.hp,10000-perTick*10);assert.equal(caster.libraAura,null);
-    assert.equal(ensureVitals(ally).hp,hp);assert.equal(room.libraHits.length,10);
+    advanceLibraAuras(room,NOW+7999);assert.equal(monster.hp,10000-perTick*7);
+    advanceLibraAuras(room,NOW+8000);assert.equal(monster.hp,10000-perTick*8);assert.equal(caster.libraAura,null);
+    assert.equal(ensureVitals(ally).hp,hp);assert.equal(room.libraHits.length,8);
   }
 });
 

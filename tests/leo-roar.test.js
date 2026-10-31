@@ -4,7 +4,7 @@ import {castLeo,advanceLeoRoars} from '../server/leo-skills.js';
 import {monstersOf} from '../server/monsters.js';
 import {avatarSizeOf} from '../shared/avatar-size.js';
 
-test('사자 포효는 3초 연출 중 가장 큰 프레임에서 한 번만 타격하고 그때 용기를 준다',()=>{
+test('사자 포효는 4초 연출 중 1초 간격 두 번 타격하고 첫 타격에 용기를 준다',()=>{
   const now=100000;
   const caster={id:'lion',role:'student',connected:true,away:false,mapId:'star-origin-1',x:500,y:450,
     facing:{x:1,y:0},avatar:{level:4,constellationId:'leo'}};
@@ -17,14 +17,16 @@ test('사자 포효는 3초 연출 중 가장 큰 프레임에서 한 번만 타
     attackers:new Map(),contributors:new Map()};
   room.monsters=new Map([[target.id,target]]);
   const result=castLeo(room,caster,now);
-  assert.equal(result.visual.durationMs,3000);
+  assert.equal(result.visual.durationMs,4000);
   assert.equal(result.targets.length,0);assert.equal(target.hp,1000);assert.equal(ally.leoCourage,undefined);
   assert.equal(advanceLeoRoars(room,now+1500).hits.length,0);
   assert.equal(target.hp,1000);
   const peak=advanceLeoRoars(room,now+1600);
   assert.equal(peak.hits.length,1);assert.ok(peak.hits[0].targets[0].damage>0);
-  assert.equal(ally.leoCourage.bonus,4);assert.equal(ally.leoCourage.endsAt,now+11600);
-  const hp=target.hp;assert.equal(advanceLeoRoars(room,now+3000).hits.length,0);assert.equal(target.hp,hp);
+  assert.equal(ally.leoCourage.bonus,3);assert.equal(ally.leoCourage.endsAt,now+11600);
+  const hp=target.hp;assert.equal(advanceLeoRoars(room,now+2500).hits.length,0);
+  assert.equal(advanceLeoRoars(room,now+2600).hits.length,1);assert.ok(target.hp<hp);
+  const after=target.hp;assert.equal(advanceLeoRoars(room,now+3000).hits.length,0);assert.equal(target.hp,after);
 });
 
 test('이동 중 포효의 타격·용기 중심은 시전 위치가 아닌 현재 사자자리 위치를 따른다',()=>{
@@ -34,6 +36,6 @@ test('이동 중 포효의 타격·용기 중심은 시전 위치가 아닌 현�
   const old={...original,id:'old',mapId:caster.mapId,x:500,y:450,hp:1000,maxHp:1000,radius:20,attackers:new Map(),contributors:new Map()};
   const moved={...old,id:'new',x:1100,attackers:new Map(),contributors:new Map()};room.monsters=new Map([[old.id,old],[moved.id,moved]]);
   castLeo(room,caster,now);caster.x=1100;
-  const result=advanceLeoRoars(room,now+1600);assert.equal(old.hp,1000);assert(moved.hp<1000);assert.equal(result.hits.length,1);assert.equal(caster.leoCourage.bonus,4);
+  const result=advanceLeoRoars(room,now+1600);assert.equal(old.hp,1000);assert(moved.hp<1000);assert.equal(result.hits.length,1);assert.equal(caster.leoCourage.bonus,3);
   const hp=moved.hp;advanceLeoRoars(room,now+2000);assert.equal(moved.hp,hp);
 });

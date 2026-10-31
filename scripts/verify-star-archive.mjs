@@ -18,7 +18,12 @@ try{
  const player=[...room.players.values()].find(p=>p.role==='student'),object=MAP.objects.find(o=>o.kind==='starlight-archive');assert(object);
  async function move(who,tab){Object.assign(who,{mapId:MAP.id,x:object.x,y:object.y+70,input:{x:0,y:0,at:0}});game.io.to(who.socketId).emit('room:state',game.store.snapshot(room,who,Date.now()));await tab.waitForFunction(()=>!document.querySelector('#interact-prompt').hidden);}
  async function open(who,tab){await move(who,tab);await tab.locator('#interact-prompt').click();await tab.locator('.star-archive[open]').waitFor();await tab.locator('[data-archive-kind=diary]').waitFor({state:'visible'});await tab.waitForFunction(()=>!document.querySelector('[data-archive-kind=diary]').disabled);}
- await open(player,page);await page.locator('[data-archive-new]').click();const title='별빛 아래에서 <img src=x onerror=alert(1)>',body='오늘은 친구와 따뜻한 이야기를 나누었다.\n내일도 이 마음을 기억하고 싶다.\n<script>window.archiveInjected=true</script>';
+ await open(player,page);
+ assert.equal(await page.locator('.archive-blank-page').innerText(),'✧\n작은 이야기들을 만나 보세요\n이 기록은 본인과 선생님만 볼 수 있어요.');
+ assert.equal(await page.locator('.archive-paper.is-blank').count(),1);
+ await page.locator('.star-archive').evaluate(e=>e.scrollTop=0);await page.screenshot({path:'.local/star-archive/student-blank-desktop.png'});
+ await page.setViewportSize({width:390,height:844});await page.locator('.archive-blank-page').scrollIntoViewIfNeeded();await page.screenshot({path:'.local/star-archive/student-blank-mobile.png'});await page.setViewportSize({width:1280,height:1000});
+ await page.locator('[data-archive-new]').click();const title='별빛 아래에서 <img src=x onerror=alert(1)>',body='오늘은 친구와 따뜻한 이야기를 나누었다.\n내일도 이 마음을 기억하고 싶다.\n<script>window.archiveInjected=true</script>';
  await page.locator('[name=title]').fill(title);await page.locator('[name=body]').fill(body);
  page.once('dialog',d=>d.dismiss());await page.locator('[data-archive-kind=reading]').click();assert.equal(await page.locator('[name=title]').inputValue(),title);
  const savedPosition={x:player.x,y:player.y};player.x=0;player.y=0;await page.locator('.archive-save').click();await page.waitForFunction(()=>document.querySelector('.archive-status')?.textContent.includes('가까이'));assert.equal(await page.locator('[name=body]').inputValue(),body);Object.assign(player,savedPosition);

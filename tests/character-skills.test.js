@@ -20,8 +20,8 @@ test('Q/E는 LV2 해금, 일반 스킬은 2/3/4 강화 후 고정, 변신만 LV5
 });
 test('일반 스킬 설명은 공격력·특수효과·쿨타임·마나소모 네 줄로 표시',()=>{
   const expected={
-    corvus:{2:['공격력: 현재 공격력의 100% × 2회','특수효과: 없음','쿨타임: 10초','마나소모: 5'],3:['공격력: 현재 공격력의 150% × 3회','특수효과: 없음','쿨타임: 10초','마나소모: 5'],4:['공격력: 현재 공격력의 200% × 4회','특수효과: 없음','쿨타임: 10초','마나소모: 5']},
-    sagittarius:['공격력: 현재 공격력의 500%','특수효과: 관통 화살','쿨타임: 5초','마나소모: 2'],
+    corvus:{2:['공격력: 현재 공격력의 200% × 2회','특수효과: 없음','쿨타임: 10초','마나소모: 5'],3:['공격력: 현재 공격력의 250% × 3회','특수효과: 없음','쿨타임: 10초','마나소모: 5'],4:['공격력: 현재 공격력의 300% × 4회','특수효과: 없음','쿨타임: 10초','마나소모: 5']},
+    sagittarius:['공격력: 현재 공격력의 400%','특수효과: 관통 화살','쿨타임: 4초','마나소모: 2'],
   };
   for(const [level,lines] of Object.entries(expected.corvus)){
     const description=characterAbilities(player(Number(level)))[1].description;
@@ -30,6 +30,22 @@ test('일반 스킬 설명은 공격력·특수효과·쿨타임·마나소모 �
   const sagitt=characterAbilities({...player(2),avatar:{level:2,constellationId:'sagittarius'}})[1];
   assert.deepEqual(sagitt.description.split('\n'),expected.sagittarius);
   assert.equal(sagitt.name,'별빛 화살 LV2');
+  const sagittLv3=characterAbilities({...player(3),avatar:{level:3,constellationId:'sagittarius'}})[1];
+  assert.equal(sagittLv3.description.split('\n')[0],'공격력: 현재 공격력의 400%');
+  assert.equal(sagittLv3.description.split('\n')[2],'쿨타임: 3초');
+  const sagittLv4=characterAbilities({...player(4),avatar:{level:4,constellationId:'sagittarius'}})[1];
+  assert.equal(sagittLv4.description.split('\n')[0],'공격력: 현재 공격력의 400%');
+  assert.equal(sagittLv4.description.split('\n')[2],'쿨타임: 2초');
+  for(const [level,chance] of [[2,10],[3,15],[4,20],[5,20]]){
+    const attack=characterAbilities({...player(level),avatar:{level,constellationId:'sagittarius'}})[0];
+    assert.equal(attack.description.split('\n')[1],`${chance}% 확률로 천궁의 화살을 대신 발사합니다.`);
+  }
+  const aquariusLv3=characterAbilities({...player(3),avatar:{level:3,constellationId:'aquarius'}})[1];
+  assert.equal(aquariusLv3.description.split('\n')[0],'공격력: 매초 현재 공격력의 150%');
+  for(const [level,stage,seconds] of [[2,1,3],[3,2,5],[4,3,8]]){
+    const poison=characterAbilities({...player(level),avatar:{level,constellationId:'ophiuchus'}})[1];
+    assert.ok(poison.description.includes(`중독 ${stage}단계 ${seconds}초 부여`));
+  }
   const unknown=characterAbilities({...player(2),avatar:{level:2,constellationId:'unreleased'}})[1];
   assert.deepEqual(unknown.description.split('\n'),['공격력: 준비 중','특수효과: 준비 중','쿨타임: 준비 중','마나소모: 준비 중']);
 });

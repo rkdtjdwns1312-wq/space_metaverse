@@ -10,7 +10,7 @@ import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
 import {monsterViews} from './monsters.js';
-import {serenaView,darkStarView} from './boss-lifecycle.js';
+import {serenaView,darkStarView,starRecordView} from './boss-lifecycle.js';
 import {serenaEligible,serenaEligibility} from './serena-progress.js';
 import {cardMarkerViews} from './item-cards.js';
 import {freshAbilityState,abilityBlockViews} from './constellation-abilities.js';
@@ -62,9 +62,9 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now(),room=nul
   if(player.equipmentSlots?.includes('dream-guardian-cloak')&&now>=(player.dreamGuardianNextAt||0))
     combat.push({statusId:'dream-guardian',label:'수호',icon:'🛡',style:'combat',until:null});
   add('taurus-immunity','황소의 무적','♉',player.taurusImmuneUntil);
-  if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 방어','🐋',player.waterAura.endsAt);
+  if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 기운','🐋',player.waterAura.endsAt);
   if(player.waterAura?.kind==='cancer')add('crab-empowerment','게의 힘','♋',player.waterAura.endsAt);
-  add('crown-aura','왕관의 힘','♛',player.coronaAura?.endsAt);
+  if(player.coronaAura?.remaining>0)combat.push({statusId:'crown-aura',label:`왕관의 힘 · 남은 공격 ${player.coronaAura.remaining}회`,icon:'♛',style:'combat',until:null});
   add('swan-wings','백조의 날개','🪽',player.swanAura?.endsAt);
   add('pair','물고기자리 짝','🤝',player.piscesPair?.endsAt);
   add('sleep','양자리 수면','💤',player.constellationAbilityState?.ariesSleep?.endsAt);
@@ -172,7 +172,7 @@ export class RoomStore {
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       spiritBlueStars:spiritBlueStarViews(room,viewer?.mapId||room.mapId,now),
-      monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),darkStar:darkStarView(room),
+      monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),
       missions:missionViews(room,viewer,now),
       ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
       cancerInvites:[...(room.cancerInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)).map(invite=>{

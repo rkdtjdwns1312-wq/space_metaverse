@@ -54,7 +54,7 @@ try {
     window.evolutionInfo = {
       options: CONSTELLATIONS.map((value, index) => ({ ...value, count: index === 0 ? 2 : 0, available: index !== 0, current: false })),
       avatar: { form: 'asteroid', level: 1, xp: 15, constellationId: null, equipment: {}, departmentId: null },
-      requiredXp: 15, canEvolve: true,starShards:20,changeCost:2
+      requiredXp: 15, canEvolve: true,starShards:20,changeCost:2,constellationLimit:2
     };
     window.growthInfo = {
       avatar: { form: 'asteroid', level: 1, xp: 10, constellationId: null, equipment: {}, departmentId: null },
@@ -211,6 +211,19 @@ try {
     await page.screenshot({path:`.local/evolution-lv${level}.png`});
   }
   check('LV3·LV4에서도 게임에 쓰는 단계별 아바타 그림 표시');
+
+  await page.getByRole('button',{name:'왕관자리 정보보기'}).click();
+  assert.match(await page.locator('#evolution-ability-description').textContent(),/^두 효과 중 하나를 골라요\.\n① .+\n② .+$/u);
+  assert.equal(await page.locator('#evolution-ability-description').evaluate(node=>getComputedStyle(node).whiteSpace),'pre-line');
+  await page.locator('#evolution-details-back').click();
+  await page.getByRole('button',{name:'헤라클레스자리 정보보기'}).click();
+  assert.equal(await page.locator('#evolution-hercules-stances').isVisible(),true);
+  await page.locator('#evolution-hercules-attack').click();
+  assert.match(await page.locator('#evolution-skill-name').textContent(),/곤봉/);
+  await page.locator('#evolution-hercules-shield').click();
+  assert.match(await page.locator('#evolution-skill-name').textContent(),/방패|수호/);
+  await page.locator('#evolution-details-back').click();
+  check('왕관자리 ①·② 줄바꿈과 헤라클레스 공격·수호 자세 설명 전환');
 
   await page.locator('#evolution-header-close').click();
   await page.evaluate(() => { window.deferEvolutionInfo = true; window.evolutionUI.open(); });

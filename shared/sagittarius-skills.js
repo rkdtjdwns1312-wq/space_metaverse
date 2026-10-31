@@ -6,6 +6,7 @@ export const SAGITTARIUS_VFX=Object.freeze(Object.fromEntries(['attack','skill-l
     columns:6,rows:4,frames:24,frameSize:256,anchor:{x:.5,y:.5}})
 ])));
 export const SAGITTARIUS_NAMES=Object.freeze({2:'별빛 화살',3:'유성의 화살',4:'천궁의 화살'});
+export const sagittariusCelestialChance=level=>({2:.10,3:.15,4:.20})[Math.max(2,Math.min(4,level||2))];
 export const SAGITTARIUS_ATTACK=define({slot:'attack',key:'Q',level:2,name:'빛의 화살',iconUrl:SAGITTARIUS_VFX.attack.iconUrl,mana:0,cooldownMs:1000,rangeWidths:6,
   description:'최근 이동한 방향으로 빛의 화살을 쏩니다. 사거리: 캐릭터 가로 크기의 6배 · 피해: 현재 공격력의 100% · 마나 소모 없음 · 1초에 한 번 공격'});
 export const SAGITTARIUS_SKILLS=Object.freeze([
@@ -23,5 +24,5 @@ export function sagittariusSkillOf(player){
   const stage=Math.max(2,Math.min(4,player?.avatar?.level||2));
   return transformedSkill(player,{...SAGITTARIUS_SKILLS[0],stage,name:SAGITTARIUS_NAMES[stage],
     iconUrl:SAGITTARIUS_VFX[`skill-lv${stage}`].iconUrl,
-    multiplier:stage===2?5:stage===3?4:5,cooldownMs:stage===2?5000:stage===3?4000:3000});
+    multiplier:4,cooldownMs:stage===2?4000:stage===3?3000:2000});
 }

@@ -73,23 +73,24 @@ test('게 회복은 발사 후 바뀐 장비·성장·공격 버프·초월 공�
  assert.equal(result.healed[0].amount,14);assert.equal(v.hp,34);
 });
 
-test('고래자리 E는 10초·마나10·방어력 단계별 상승, 매초 가까운 최대 3마리만 한 번씩',()=>{
+test('고래자리 E는 10초·마나10·공격력·방어력 단계별 상승, 매초 가까운 최대 3마리만 한 번씩',()=>{
   for(const level of [2,3,4,5]){
     const {room,player,size,near,far,monster}=setup('cetus',level),now=Date.now();
     const third=monster('third',1.8,player.y+size*.2),fourth=monster('fourth',1.9,player.y-size*.2);
     room.monsters.set(third.id,third);room.monsters.set(fourth.id,fourth);
-    const baseDefense=defensePowerOf(level,'cetus',player),mp=ensureVitals(player).mp;
+    const baseAttack=attackPowerOf(level,'cetus',player),baseDefense=defensePowerOf(level,'cetus',player),mp=ensureVitals(player).mp;
     const result=castWater(room,player,now);assert.equal(result.cooldowns[0],now+20000);
     assert.equal(ensureVitals(player).mp,mp-10);
     assert.equal(defensePowerOf(level,'cetus',player),baseDefense+Math.min(level,4)-1);
+    assert.equal(attackPowerOf(level,'cetus',player),baseAttack+Math.min(level,4)-1);
     assert.deepEqual(advanceWaterAuras(room,now+999),[]);
     const once=advanceWaterAuras(room,now+1000);assert.equal(once.length,1);assert.equal(once[0].targets.length,3);
     assert.equal([near,far,third,fourth].filter(m=>m.hp<1000).length,3);
     const hp=[near.hp,far.hp,third.hp,fourth.hp];advanceWaterAuras(room,now+1999);
     assert.deepEqual([near.hp,far.hp,third.hp,fourth.hp],hp);
     advanceWaterAuras(room,now+10000);
-    assert.equal([near,far,third,fourth].reduce((sum,m)=>sum+(1000-m.hp),0),30*attackPowerOf(level,'cetus',player));
-    assert.equal(player.waterAura,null);assert.equal(defensePowerOf(level,'cetus',player),baseDefense);
+    assert.equal([near,far,third,fourth].reduce((sum,m)=>sum+(1000-m.hp),0),30*(baseAttack+Math.min(level,4)-1));
+    assert.equal(player.waterAura,null);assert.equal(defensePowerOf(level,'cetus',player),baseDefense);assert.equal(attackPowerOf(level,'cetus',player),baseAttack);
   }
 });
 

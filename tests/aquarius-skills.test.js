@@ -18,7 +18,7 @@ function setup(level=4){
   room.players.set(ally.id,ally);ensureVitals(ally).hp=1;
   return {room,p,monster,ally};
 }
-for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 피해·초당 공격력100% 회복·MP10·20초 쿨타임`,()=>{
+for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·단계별 초당 피해·초당 공격력100% 회복·MP10·20초 쿨타임`,()=>{
   const {room,p,monster,ally}=setup(level),stage=Math.min(4,level),spec=aquariusSkillOf(p),mp=ensureVitals(p).mp;
   castAquarius(room,p,1000);assert.equal(ensureVitals(p).mp,mp-10);
   const [view]=aquariusViews(room,p.mapId,1000);
@@ -27,11 +27,11 @@ for(const level of [2,3,4,5])test(`물병 LV${level}: 14초 지대·기존 피�
   assert.equal('power'in view,false);assert.equal(monster.hp,1000);
   assert.deepEqual(advanceAquarius(room,1999),[]);
   for(let second=1;second<=5;second++)advanceAquarius(room,1000+second*1000);
-  assert.equal(monster.hp,1000-Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier));
+  assert.equal(monster.hp,1000-Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier)*5);
   assert.equal(ensureVitals(ally).hp,Math.min(playerVitals(ally).hp.max,1+attackPowerOf(level,'aquarius',p)*5));
   assert.equal(room.aquariusCasts.size,1);
   advanceAquarius(room,14999);
-  assert.equal(monster.hp,1000-Math.floor(Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier)*13/5));
+  assert.equal(monster.hp,1000-Math.round(attackPowerOf(level,'aquarius',p)*spec.multiplier)*13);
   assert.equal(ensureVitals(ally).hp,Math.min(playerVitals(ally).hp.max,1+attackPowerOf(level,'aquarius',p)*13));
   assert.equal(room.aquariusCasts.size,1);assert.equal(aquariusViews(room,p.mapId,14999).length,1);
   assert.deepEqual(advanceAquarius(room,15000),[]);assert.equal(room.aquariusCasts.size,0);assert.deepEqual(aquariusViews(room,p.mapId,15000),[]);

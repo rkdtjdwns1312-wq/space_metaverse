@@ -36,7 +36,9 @@ try{
   for(const level of [1,2,3,4]){
     for(const page of [teacher,student])await page.locator(`[data-shop-level="${level}"]`).click();
     const ids=page=>page.locator('#shop-buy-list > li').evaluateAll(rows=>rows.map(row=>row.dataset.itemId));
-    assert.deepEqual(await ids(student),await ids(teacher),`LV${level} 교사·학생 목록 일치`);
+    const studentIds=await ids(student),teacherIds=await ids(teacher);
+    assert(studentIds.every(id=>teacherIds.includes(id)),`LV${level} 교사 목록은 학생 목록을 포함`);
+    for(const item of SHOP.items.filter(item=>!item.shopHidden&&item.level===level))assert(teacherIds.includes(item.id),`LV${level} 교사 전체 구매 ${item.id}`);
     assert(!(await ids(student)).some(id=>['rainbow-tail','mini-satellite','starlight-cape','meteor-board'].includes(id)));
     if(level>1){assert.equal(await student.locator('#shop-buy-list .buy,#shop-buy-list .qty,#shop-buy-list .price').count(),0);assert.ok(await teacher.locator('#shop-buy-list .buy').count()>0);}
   }
@@ -53,5 +55,5 @@ try{
   const actor=room.players.get(joined.selfId),shop=STREET.objects.find(o=>o.kind==='shop');Object.assign(actor,{mapId:STREET.id,x:shop.x,y:shop.y+80,starShards:100});actor.avatar.level=4;
   const before=JSON.stringify(actor.inventory),reply=await probe.timeout(5000).emitWithAck('shop:buy',{itemId:'android-card',quantity:1});
   assert.equal(reply.ok,false);assert.match(reply.error,/조합/);assert.equal(actor.starShards,100);assert.equal(JSON.stringify(actor.inventory),before);
-  assert.deepEqual(errors,[]);console.log('PASS teacher/student LV1–4 catalog parity, mixed-level hint with blank line and no names, level locks, craft-only purchase rejection, desktop/mobile; JS errors 0');
+  assert.deepEqual(errors,[]);console.log('PASS teacher LV1–4 full catalog, student locks, craft-only purchase rejection, desktop/mobile; JS errors 0');
 }finally{probe?.disconnect();await browser.close();await game.close();}

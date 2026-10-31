@@ -50,8 +50,8 @@ export function drawLeoAttack(ctx,hit,elapsedMs,reducedMotion=false){
   ctx.restore();return true;
 }
 export function drawLeoRoar(ctx,roar,elapsedMs,reducedMotion=false){
-  const duration=roar.durationMs||3000,elapsed=Math.max(0,Math.min(duration,elapsedMs));
-  const appear=duration*.42,fade=duration*.75;
+  const duration=roar.durationMs||4000,elapsed=Math.max(0,Math.min(duration,elapsedMs));
+  const appear=1260,fade=3000;
   const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
   // 한 장의 완성된 사자만 사용: 얼굴 프레임 교체·흔들림 없이 소환/소멸.
   const opacity=smooth(elapsed/appear)*(1-smooth((elapsed-fade)/(duration-fade)));
@@ -60,11 +60,11 @@ export function drawLeoRoar(ctx,roar,elapsedMs,reducedMotion=false){
   frame(ctx,`skill-lv${roar.stage}`,14,roar.size*2.8);
   if(!reducedMotion&&elapsed>=appear&&elapsed<fade){
     const mouthX=roar.size*.12,mouthY=-roar.size*.14;
-    const waveStart=appear,travel=duration*12/23-waveStart;
+    const waveStart=appear,travel=3000*12/23-waveStart;
     ctx.save();ctx.translate(mouthX,mouthY);
     ctx.shadowColor='#ffcd65';ctx.shadowBlur=12;
-    for(let i=0;i<3;i++){
-      const phase=(elapsed-waveStart-i*310)/travel;
+    for(let pulse=0;pulse<2;pulse++)for(let i=0;i<3;i++){
+      const phase=(elapsed-waveStart-pulse*1000-i*90)/travel;
       if(phase<0||phase>1.3)continue;
       const wave=Math.min(1,phase),tail=phase>1?(1.3-phase)/.3:1;
       ctx.strokeStyle=`rgba(255,229,140,${(.7-i*.13)*tail*(1-wave*.35)})`;

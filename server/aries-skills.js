@@ -60,7 +60,7 @@ export function advanceAriesClouds(room,now){
     if(now<cloud.endsAt)continue;
     room.ariesClouds.delete(id);
     const player=room.players.get(cloud.playerId);
-    if(player){const hit=damageMonster(room,monster,player,cloud.power,now,{ignoreSleep:true});
+    if(player){const hit=damageMonster(room,monster,player,cloud.power*2,now,{ignoreSleep:true});
       if(hit)hits.push({mapId:cloud.mapId,...hit});}
   }
   return hits;
