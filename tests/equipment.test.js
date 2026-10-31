@@ -91,10 +91,10 @@ test('추가 장비는 단계별 수량·구매 가능 여부를 지키고 성�
   assert.throws(()=>buyEquipment(p,'spirit-king-cloak'),/상점의 물건/);
   p.inventory.push({id:'spirit-king-cloak',quantity:1});
   equip(p,'spirit-king-cloak',1);
-  assert.equal(equipmentBonus(p).hp,30);
-  assert.equal(equipmentBonus(p).attack,5);
-  assert.equal(equipmentBonus(p).defense,3);
-  assert.equal(equipmentBonus(p).mp,30);
+  assert.equal(equipmentBonus(p).hp,20);
+  assert.equal(equipmentBonus(p).attack,3);
+  assert.equal(equipmentBonus(p).defense,2);
+  assert.equal(equipmentBonus(p).mp,20);
   assert.equal(equipmentBonus(p).speed,0);
   assert.equal(equipmentBonus(p).regen,0);
 });

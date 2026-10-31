@@ -7,6 +7,7 @@ import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
 import {advanceProjectiles,projectileViews} from './projectiles.js';
+import {advanceSigilProjectiles} from './sigil-projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
 import {teacherInventoryView,adjustTeacherInventory,teacherResourcesCatalog,grantTeacherResources} from './teacher-inventory.js';
@@ -2556,6 +2557,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       let transformationChanged=false;
       for(const player of room.players.values())transformationChanged=expireTransformation(player,clock())||transformationChanged;
       if(transformationChanged)roster(room);
+      advanceSigilProjectiles(room,clock());
       for(const hit of advanceProjectiles(room,clock(),combatEnemies,(room,player,selected,power,now,cast)=>
         isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now))){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){

@@ -12,6 +12,7 @@ import {drawSagittarius} from './sagittarius-effects.js';
 import {waterProjectilePoint} from '/shared/water-skills.js';
 import {swanProjectilePoint} from '/shared/swan-skills.js';
 import {drawPiscesPortalPair} from './pisces-portals.js';
+import {drawDarkStarOrb} from './dark-star-skills-art.js';
 
 export function createProjectileEffects(canvas){
   const active=new Map();
@@ -34,7 +35,8 @@ export function createProjectileEffects(canvas){
         const progress=age/p.durationMs;
         const point=p.kind==='cygnus-attack'?swanProjectilePoint(p,progress):waterProjectilePoint(p,progress);
         const visual={...p,...point,sourceX:p.x,sourceY:p.y,projectile:true};
-        if(p.visible!==false&&!drawCoronaProjectile(ctx,visual,age,reducedMotion)&&!drawLibraProjectile(ctx,visual,age,reducedMotion)&&!drawTaurusProjectile(ctx,visual,age,reducedMotion)&&!drawAriesProjectile(ctx,visual,age,reducedMotion)&&!drawGeminiProjectile(ctx,visual,age,reducedMotion)&&!drawOphiuchusProjectile(ctx,visual,age,reducedMotion)&&!drawSwanProjectile(ctx,visual,age,reducedMotion)&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
+        if(p.kind==='sigil-black-star')drawDarkStarOrb(ctx,visual.x,visual.y,p.size/2);
+        else if(p.visible!==false&&!drawCoronaProjectile(ctx,visual,age,reducedMotion)&&!drawLibraProjectile(ctx,visual,age,reducedMotion)&&!drawTaurusProjectile(ctx,visual,age,reducedMotion)&&!drawAriesProjectile(ctx,visual,age,reducedMotion)&&!drawGeminiProjectile(ctx,visual,age,reducedMotion)&&!drawOphiuchusProjectile(ctx,visual,age,reducedMotion)&&!drawSwanProjectile(ctx,visual,age,reducedMotion)&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
           !drawAquarius(ctx,visual,age,reducedMotion)&&!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
         count++;
         if(p.visible!==false){canvas.dataset.projectileX=String(visual.x);canvas.dataset.projectileY=String(visual.y);}

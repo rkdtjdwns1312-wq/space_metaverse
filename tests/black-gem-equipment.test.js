@@ -41,7 +41,7 @@ test('black gem crafting preserves all resources on insufficient energy/material
   }
 });
 
-test('sigil grants defensive Lv5 bonuses only while equipped and cannot be purchased or equipped below Lv5',()=>{
+test('sigil grants Lv5 defense and health only while equipped and cannot be purchased or equipped below Lv5',()=>{
   const p=player();assert.equal(attemptCraft(p,recipe.ingredients).success,true);
   const item=itemOf(id);assert.equal(item.name,'검은별의 인장');assert.equal(item.art,'/assets/equipment/primordial-star-sigil.webp');
   assert.equal(item.craftOnly,true);assert.equal(item.level,5);assert.throws(()=>buyEquipment(p,id),/상점의 물건/);
@@ -49,8 +49,8 @@ test('sigil grants defensive Lv5 bonuses only while equipped and cannot be purch
   assert.equal(equipmentBonus(p).hp,0);
   p.avatar.level=4;assert.throws(()=>equip(p,id,1),/LV5/);p.avatar.level=5;
   equip(p,id,1);
-  assert.equal(vitalsOf(5,p).hp.max,vitals.hp.max+60);assert.equal(vitalsOf(5,p).mp.max,vitals.mp.max+40);
-  assert.equal(defensePowerOf(5,'aquarius',p),defense+3);assert.equal(attackPowerOf(5,'aquarius',p),attack);
+  assert.equal(vitalsOf(5,p).hp.max,vitals.hp.max+50);assert.equal(vitalsOf(5,p).mp.max,vitals.mp.max);
+  assert.equal(defensePowerOf(5,'aquarius',p),defense+2);assert.equal(attackPowerOf(5,'aquarius',p),attack);
   unequip(p,1);assert.deepEqual(vitalsOf(5,p),vitals);assert.equal(equipmentBonus(p).defense,0);
 });
 

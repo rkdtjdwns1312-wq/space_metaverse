@@ -3,6 +3,10 @@ import {drawDarkStarSatellite} from './dark-star-art.js';
 const orb=mapImage('/assets/monsters/dark-star-orb.webp'),road=mapImage('/assets/monsters/dark-star-rainbow.webp'),cardArt=mapImage('/assets/cards/dark-star-card-back.webp');
 const names={red:'빨강',purple:'보라',indigo:'남색',green:'초록',blue:'파랑'};
 export const preloadDarkStarSkillsArt=()=>decodeMapImages([orb,road,cardArt]);
+export function drawDarkStarOrb(ctx,x,y,radius){
+ if(!mapImageReady(orb))return false;
+ ctx.drawImage(orb,x-radius,y-radius,radius*2,radius*2);return true;
+}
 function label(ctx,text,x,y,size=16){ctx.save();ctx.font=size+'px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#211629';ctx.fillStyle='#fff3d7';ctx.strokeText(text,x,y);ctx.fillText(text,x,y);ctx.restore();}
 export function drawDarkStarGround(ctx,e,now){
  for(const p of e.paths||[])if(now<p.endsAt){
@@ -27,7 +31,7 @@ export function darkStarObjectLayers(ctx,e,now,quiet){
 
  }})),
  ...(e.satellites||[]).map(s=>({y:s.y+s.radius,draw:()=>drawDarkStarSatellite(ctx,s.color,s.x,s.y,s.radius*2)})),
- ...(e.projectiles||[]).filter(s=>now<s.endsAt).map(s=>({y:s.y,draw:()=>{if(mapImageReady(orb))ctx.drawImage(orb,s.x-s.radius,s.y-s.radius,s.radius*2,s.radius*2);}}))
+ ...(e.projectiles||[]).filter(s=>now<s.endsAt).map(s=>({y:s.y,draw:()=>drawDarkStarOrb(ctx,s.x,s.y,s.radius)}))
  ];
 }
 export function drawDarkStarPuzzleHint(ctx,e,x,y,now){
