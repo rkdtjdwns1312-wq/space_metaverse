@@ -1,5 +1,5 @@
 import {renderWallet} from './wallet-ui.js';
-import {EQUIPMENT_ITEMS} from '/shared/equipment.js';
+import {EQUIPMENT_ITEMS,equipmentStatText} from '/shared/equipment.js';
 import {hasUnlimitedShards} from '/shared/economy.js';
 
 // 원화는 프레임·배경 없이 보여 줍니다. 가격과 능력치는 서버/공유 목록의 한 값만 사용합니다.
@@ -35,18 +35,6 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
   catalogDialog.querySelector('#teacher-equipment-catalog-close').onclick=()=>catalogDialog.close();
   dialog.addEventListener('close',()=>{revision++;if(catalogDialog.open)catalogDialog.close();document.getElementById('world')?.focus();});
   catalogDialog.addEventListener('close',()=>{if(dialog.open)dialog.querySelector('#energy-shop-catalog-open').focus();});
-  const bonusText=bonus=>[
-    bonus.attack&&'공격력 +'+bonus.attack,bonus.defense&&'방어력 '+(bonus.defense>0?'+':'')+bonus.defense,
-    bonus.hp&&'최대 체력 +'+bonus.hp,bonus.mp&&'최대 마나 +'+bonus.mp,
-    bonus.speed&&'이동속도 +'+Math.round(bonus.speed*100)+'%',
-    bonus.regen&&'10초 회복 비율 +'+Math.round(bonus.regen*100)+'%',
-    bonus.hpRegen&&'10초마다 체력 회복 +'+bonus.hpRegen,
-    bonus.mpRegen&&'10초마다 마나 회복 +'+bonus.mpRegen,
-    bonus.durationMs&&'지속형 스킬 지속시간 +'+bonus.durationMs/1000+'초',
-    bonus.skillDamage&&'스킬 피해량 +'+Math.round(bonus.skillDamage*100)+'%',
-    bonus.cooldownReduction&&'일반 스킬 쿨타임 -'+Math.round(bonus.cooldownReduction*100)+'%',
-    bonus.allCooldownReduction&&'모든 스킬 쿨타임 -'+Math.round(bonus.allCooldownReduction*100)+'%'
-  ].filter(Boolean).join(' · ');
   function render(){
     const player=getPlayer();if(!player)return;
     renderStat();
@@ -66,7 +54,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=item.effectText||bonusText(item.bonus);
+      const bonus=document.createElement('small');bonus.textContent=equipmentStatText(item);
       details.append(title,flavor,bonus);
       const actions=document.createElement('div');actions.className='energy-shop-actions';
       if(item.craftOnly){
@@ -90,7 +78,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=item.effectText||bonusText(item.bonus);
+      const bonus=document.createElement('small');bonus.textContent=equipmentStatText(item);
       details.append(title,flavor,bonus);row.append(picture,details);return row;
     }));
   }

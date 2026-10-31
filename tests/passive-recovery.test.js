@@ -77,6 +77,14 @@ test('호수의 브로치는 최대 체력 10과 10초마다 체력 회복 1을 
   assert.equal(playerVitals(p).hp.max,100);
 });
 
+test('별빛 수호석은 장착 중 10초마다 체력을 1 추가 회복한다',()=>{
+  const {p,room,value}=fixture();value.hp=10;
+  p.equipmentSlots=['starlight-guardian-stone',null,null];
+  advancePassiveRecovery(room,0);advancePassiveRecovery(room,10000);
+  assert.equal(value.hp,22);
+  assert.equal(playerVitals(p).hp.max,110);
+});
+
 test('별하트와 은하수 목걸이는 장착 중 10초마다 체력 2·마나 1을 추가 회복한다',()=>{
   const {p,room,value}=fixture();value.hp=10;value.mp=10;
   advancePassiveRecovery(room,0);

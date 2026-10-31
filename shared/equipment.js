@@ -20,9 +20,9 @@ export const EQUIPMENT_ITEMS=Object.freeze([
   {id:'dream-guardian-cloak',name:'꿈의 파수꾼 망토',description:'꿈결 같은 수호가 위험한 타격을 막아줘요.',level:3,price:1500,bonus:{},effectText:'30초마다 즉사 외 피해 1회 막기 · 수호 상태'},
   {id:'celestial-crown',name:'천공의 왕관',description:'은은한 별빛이 몸과 마음을 지켜요.',level:4,price:5000,bonus:{attack:1,hp:20}},
   {id:'aurora-scabbard',name:'오로라 검집',description:'오로라의 선명한 빛이 힘을 깨워요.',level:4,price:5000,bonus:{attack:2,mp:10}},
-  {id:'starlight-guardian-stone',name:'별빛 수호석',description:'단단한 별빛이 하루를 지켜줘요.',level:4,price:5000,bonus:{defense:1,hp:20}},
-  {id:'sun-ring',name:'따뜻한 반지',description:'따뜻한 태양빛이 힘을 깨워요.',level:4,price:null,craftOnly:true,bonus:{attack:3}},
-  {id:'moon-earring',name:'달의 귀걸이',description:'차분한 달빛이 마나와 스킬의 흐름을 도와요.',level:4,price:null,craftOnly:true,bonus:{mp:10,cooldownReduction:.30}},
+  {id:'starlight-guardian-stone',name:'별빛 수호석',description:'단단한 별빛이 몸을 지키고 체력을 회복시켜 줘요.',level:4,price:5000,bonus:{defense:1,hp:20,hpRegen:1}},
+  {id:'sun-ring',name:'따뜻한 해의 반지',description:'따뜻한 태양빛이 힘을 깨워요.',level:4,price:null,craftOnly:true,bonus:{attack:3}},
+  {id:'moon-earring',name:'차가운 달의 귀걸이',description:'차분한 달빛이 마나와 스킬의 흐름을 도와요.',level:4,price:null,craftOnly:true,bonus:{mp:10,cooldownReduction:.30}},
   {id:'burning-ice-necklace',name:'불타는 얼음 목걸이',description:'해와 달의 빛이 하나로 흐릅니다.',level:4,price:null,craftOnly:true,bonus:{attack:1,durationMs:2000,skillDamage:.30}},
   {id:'spirit-king-cloak',name:'성령왕의 망토',description:'성령의 왕이 남긴 푸른 기운이 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{attack:5,defense:3,hp:30,mp:30}},
   {id:'primordial-star-gem',name:'시초의 별의 보석',description:'태초의 별빛이 생명과 마나를 채우고 주황빛 기운으로 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{hpRegen:10,mpRegen:5,allCooldownReduction:.5}},
@@ -30,6 +30,23 @@ export const EQUIPMENT_ITEMS=Object.freeze([
 ].map(item=>Object.freeze({...item,art:item.art||'/assets/equipment/'+item.id+'.png',icon:'✦',type:'equipment',mode:'equipment',currency:'cosmicEnergy',forSale:false,usable:false,targets:'self',secret:false,effect:{label:'장비 능력',icon:'✦',durationMs:0}})));
 
 export const equipmentOf=id=>EQUIPMENT_ITEMS.find(item=>item.id===id)||null;
+const STAT_ORDER=Object.freeze([
+  ['attack','공격력'],['defense','방어력'],['hp','최대 체력'],['mp','최대 마나'],
+  ['hpRegen','10초마다 체력 회복'],['mpRegen','10초마다 마나 회복'],['regen','10초 회복 비율'],
+  ['speed','이동속도'],['skillDamage','스킬 피해량'],['durationMs','지속형 스킬 지속시간'],
+  ['cooldownReduction','일반 스킬 쿨타임'],['allCooldownReduction','모든 스킬 쿨타임']
+]);
+const PERCENT_STATS=new Set(['regen','speed','skillDamage','cooldownReduction','allCooldownReduction']);
+const REDUCTION_STATS=new Set(['cooldownReduction','allCooldownReduction']);
+export function equipmentStatText(item){
+  if(item.effectText)return item.effectText;
+  const bonus=item.bonus||{};
+  return STAT_ORDER.filter(([key])=>bonus[key]).map(([key,label])=>{
+    const value=bonus[key],sign=REDUCTION_STATS.has(key)||value<0?'-':'+';
+    const amount=PERCENT_STATS.has(key)?Math.round(Math.abs(value)*100)+'%':key==='durationMs'?Math.abs(value)/1000+'초':Math.abs(value);
+    return `${label} ${sign}${amount}`;
+  }).join(' · ');
+}
 export function equipmentAuraOf(player){
   const slots=player?.equipmentSlots||[],blue=slots.includes('spirit-king-cloak'),orange=slots.includes('primordial-star-gem');
   return blue&&orange?'rainbow':blue?'blue':orange?'orange':null;

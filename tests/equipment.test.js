@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buyEquipment,equip,unequip} from '../server/equipment.js';
-import {EQUIPMENT_ITEMS,equipmentBonus,validateEquipmentSlots} from '../shared/equipment.js';
+import {EQUIPMENT_ITEMS,equipmentBonus,equipmentStatText,validateEquipmentSlots} from '../shared/equipment.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {vitalsOf} from '../shared/vitals.js';
 
@@ -19,9 +19,22 @@ test('LV4 구매는 5000 경계를 지키고 조합 전용 장비는 기존 보�
   }
   equip(p,'sun-ring',1);equip(p,'moon-earring',2);equip(p,'burning-ice-necklace',3);
   const bonus=equipmentBonus(p);
-  assert.equal(EQUIPMENT_ITEMS.find(i=>i.id==='sun-ring').name,'따뜻한 반지');
+  assert.equal(EQUIPMENT_ITEMS.find(i=>i.id==='sun-ring').name,'따뜻한 해의 반지');
+  assert.equal(EQUIPMENT_ITEMS.find(i=>i.id==='moon-earring').name,'차가운 달의 귀걸이');
   assert.equal(bonus.attack,4);assert.equal(bonus.mp,10);assert.equal(bonus.hp,0);assert.equal(bonus.defense,0);
   assert.equal(bonus.durationMs,2000);assert.equal(bonus.skillDamage,.3);assert.equal(bonus.cooldownReduction,.3);
+});
+test('Lv4 별빛 수호석은 체력·방어력·10초 회복을 적용하고 모든 장비 효과는 같은 순서로 표시한다',()=>{
+  for(const item of EQUIPMENT_ITEMS)assert.ok(equipmentStatText(item),`${item.name} 효과 문구 없음`);
+  const stone=EQUIPMENT_ITEMS.find(item=>item.id==='starlight-guardian-stone');
+  assert.deepEqual(stone.bonus,{defense:1,hp:20,hpRegen:1});
+  assert.equal(equipmentStatText(stone),'방어력 +1 · 최대 체력 +20 · 10초마다 체력 회복 +1');
+  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(item=>item.id==='moon-earring')),'최대 마나 +10 · 일반 스킬 쿨타임 -30%');
+  assert.equal(equipmentStatText({bonus:{speed:.1,hpRegen:2,defense:-1,attack:3,mp:5}}),
+    '공격력 +3 · 방어력 -1 · 최대 마나 +5 · 10초마다 체력 회복 +2 · 이동속도 +10%');
+  const p=player();p.avatar.level=4;p.equipmentSlots=['starlight-guardian-stone',null,null];
+  assert.equal(equipmentBonus(p).hpRegen,1);
+  assert.equal(vitalsOf(4,p).hp.max,vitalsOf(4,{...p,equipmentSlots:[null,null,null]}).hp.max+20);
 });
 test('구매·세 칸 장착·교체·해제는 장비를 가방과 한 곳에만 보관한다',()=>{
   const p=player();buyEquipment(p,'azure-starblade');buyEquipment(p,'silver-shield');
