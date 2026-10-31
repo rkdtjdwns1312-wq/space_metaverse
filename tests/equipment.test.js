@@ -21,8 +21,9 @@ test('LV4 구매는 5000 경계를 지키고 조합 전용 장비는 기존 보�
   const bonus=equipmentBonus(p);
   assert.equal(EQUIPMENT_ITEMS.find(i=>i.id==='sun-ring').name,'따뜻한 해의 반지');
   assert.equal(EQUIPMENT_ITEMS.find(i=>i.id==='moon-earring').name,'차가운 달의 귀걸이');
-  assert.equal(bonus.attack,4);assert.equal(bonus.mp,10);assert.equal(bonus.hp,0);assert.equal(bonus.defense,0);
-  assert.equal(bonus.durationMs,2000);assert.equal(bonus.skillDamage,.3);assert.equal(bonus.cooldownReduction,.3);
+  assert.equal(bonus.attack,5);assert.equal(bonus.mp,10);assert.equal(bonus.hp,0);assert.equal(bonus.defense,0);
+  assert.equal(bonus.durationMs,0);assert.equal(bonus.skillDamage,.2);assert.equal(bonus.cooldownReduction,.3);
+  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(i=>i.id==='burning-ice-necklace')),'공격력 +2 · 스킬 피해량 +20%');
 });
 test('Lv4 별빛 수호석은 체력·방어력·10초 회복을 적용하고 모든 장비 효과는 같은 순서로 표시한다',()=>{
   for(const item of EQUIPMENT_ITEMS)assert.ok(equipmentStatText(item),`${item.name} 효과 문구 없음`);

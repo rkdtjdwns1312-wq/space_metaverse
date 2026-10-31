@@ -31,7 +31,7 @@ const casts={aquarius:castAquarius,cancer:castWater,cetus:castWater,pisces:castW
   leo:castLeo,ophiuchus:castOphiuchus,taurus:castTaurus,corvus:castCorvus,gemini:castGemini,
   sagittarius:(room,player,now)=>castSagittarius(room,player,0,now)};
 const cooldownOf=player=>Number(characterAbilities(player)[1].description.match(/쿨타임: (?:종료 후 )?([\d.]+)초/)[1])*1000;
-test('달 귀걸이 30%와 장화10%는 합산, 얼음 목걸이의 피해·지속은 독립하며 시전 뒤 해제해도 유지',()=>{
+test('달 귀걸이 30%와 장화10%는 합산, 얼음 목걸이는 공격·스킬 피해만 올리고 지속시간은 늘리지 않는다',()=>{
   for(const id of Object.keys(casts)){
     const {player}=setup(id),base=cooldownOf(player);
     player.equipmentSlots=['moon-earring'];assert.equal(cooldownOf(player),Math.round(base*.7));
@@ -41,12 +41,12 @@ test('달 귀걸이 30%와 장화10%는 합산, 얼음 목걸이의 피해·지�
   const {room,player}=setup('aquarius'),now=Date.now();
   player.equipmentSlots=['moon-earring','meteor-boots','burning-ice-necklace'];
   const spec=aquariusSkillOf(player),power=attackPowerOf(4,'aquarius',player);
-  assert.equal(spec.holdMs,12000);assert.equal(spec.cooldownMs,12000);
+  assert.equal(spec.holdMs,10000);assert.equal(spec.cooldownMs,12000);
   castAquarius(room,player,now);player.equipmentSlots=[];
   const cast=[...room.aquariusCasts.values()][0];
-  assert.equal(cast.durationMs,16000);assert.equal(cast.power,Math.round(power*spec.multiplier*1.3));
+  assert.equal(cast.durationMs,14000);assert.equal(cast.power,Math.round(power*spec.multiplier*1.2));
   assert.equal(player.aquariusCooldownUntil,now+12000);
-  player.equipmentSlots=['asteroid-badge','burning-ice-necklace'];assert.equal(aquariusSkillOf(player).holdMs,13000);
+  player.equipmentSlots=['asteroid-badge','burning-ice-necklace'];assert.equal(aquariusSkillOf(player).holdMs,11000);
   assert.equal(characterAbilities(player)[2].description.includes('120초'),true);
 });
 function setup(id,level=4,equipped=false){
