@@ -8,7 +8,7 @@ import {STAR_RECORD,starRecordMap} from '../shared/star-record.js';
 import {mapOf} from '../shared/config.js';
 import {monsterType} from '../shared/monsters.js';
 import {summonStarRecord} from '../server/star-record.js';
-import {monsterViews,damageMonster,advanceStarRecordAttack} from '../server/monsters.js';
+import {monsterViews,damageMonster,advanceStarRecordAttack,moveMonsters,selectMonsterTarget} from '../server/monsters.js';
 import {starRecordView,restoreStarRecordStatue,nextBossRespawnAt} from '../server/boss-lifecycle.js';
 import {chargeHuntingStation} from '../server/hunting-time.js';
 import {BOSS_DIALOGUES} from '../shared/boss-dialogues.js';
@@ -21,6 +21,18 @@ const make=()=>{
   const room={players:new Map([[player.id,player]]),monsters:new Map([[boss.id,boss]])};
   return {room,player,boss};
 };
+test('보스의 마지막 공격자가 이탈해도 남은 참가자의 패턴은 유지된다',()=>{
+  for(const start of [tryStarRecordChallenge,tryStarRecordMath,tryStarRecordFlow]){
+    const {room,player,boss}=make(),now=100000;
+    const friend={...player,id:'friend',nickname:'친구',battleVitals:undefined};ensureVitals(friend);room.players.set(friend.id,friend);
+    Object.assign(boss,{maxHp:10000,attackers:new Map([[player.id,1]]),contributors:new Map(),mapExitCount:0});
+    assert.equal(start(room,boss,now,()=>0),true);
+    player.mapId='plaza';
+    selectMonsterTarget(room,boss);
+    assert.ok(boss.recordChallenge||boss.recordMath||boss.recordFlow,'남은 참가자 패턴 유지');
+    assert.equal(advanceStarRecordAttack(room,boss,now+1000,()=>0).busy,true);
+  }
+});
 test('행성 두 문제는 서로 다르고 총 10초, 마나 10, 쿨타임 40초',()=>{
   const {room,player,boss}=make(),now=100000;
   assert.equal(tryStarRecordChallenge(room,boss,now,()=>0),true);
@@ -138,4 +150,48 @@ test('기본 공격은 대상 쪽 3개 직선 예고 뒤 1초에 100% 피해를 
   const hits=advanceStarRecordAttack(room,boss,now+1000,()=>.25).hits;
   assert.equal(hits.length,1);assert.equal(hits[0].targetId,player.id);
   assert(ensureVitals(player).hp<before);
+});
+
+test('세 패턴이 미완료인 동안 기본 공격이 패턴을 끝내지 못한다',()=>{
+  for(const [name,start,answerOne] of [
+    ['받아쓰기',tryStarRecordChallenge,(room,player,boss,now)=>{
+      const first=boss.recordChallenge.participants.get(player.id).planets[0];
+      answerStarRecordChallenge(room,player,first,now+1000);
+      assert.equal(boss.recordChallenge.participants.get(player.id).round,1);
+    }],
+    ['숫자 별',tryStarRecordMath,(room,player,boss,now)=>{
+      const star=boss.recordMath.stars[0];player.x=star.x;player.y=star.y;
+      answerStarRecordMath(room,player,star.id,star.operator,now+1000);
+      assert.equal(boss.recordMath.stars.filter(item=>item.solved).length,1);
+    }],
+    ['동서남북',tryStarRecordFlow,(room,player,boss,now)=>{
+      const first=boss.recordFlow.participants.get(player.id).sequence[0];
+      const [x,y]={동:[1,0],서:[-1,0],남:[0,1],북:[0,-1]}[first];
+      recordStarRecordMovement(room,player,x,y,now+1000);
+      assert.equal(boss.recordFlow.participants.get(player.id).index,1);
+    }]
+  ]){
+    const {room,player,boss}=make(),now=100000;
+    assert.equal(start(room,boss,now,()=>0),true,name);
+    answerOne(room,player,boss,now);
+    const before=ensureVitals(player).hp;
+    assert.equal(advanceStarRecordAttack(room,boss,now+2000,()=>0).busy,true,name);
+    assert.equal(boss.starRecordCast,undefined,name);
+    assert.equal(ensureVitals(player).hp,before,name);
+    assert(boss.recordChallenge||boss.recordMath||boss.recordFlow,name);
+  }
+});
+
+test('별 기록의 근원이 기절해도 진행 중인 받아쓰기는 유지되고 시간 초과가 적용된다',()=>{
+  const now=100000,{room,player,boss}=make();
+  Object.assign(boss,{lastMoveAt:now,attackers:new Map([[player.id,1]]),teacherRetaliation:new Set(),
+    contributors:new Map(),meleePresence:new Map(),targetId:player.id,moving:false});
+  assert.equal(tryStarRecordChallenge(room,boss,now,()=>0),true);
+  boss.stunUntil=now+12000;
+  moveMonsters(room,now+1000,()=>1);
+  assert(boss.recordChallenge,'기절 중에도 두 번째 문제는 남아야 함');
+  assert.equal(boss.starRecordCast,null);
+  const hits=moveMonsters(room,now+10000,()=>1);
+  assert.equal(hits.filter(hit=>hit.skillKind==='star-record-challenge').length,1);
+  assert.equal(ensureVitals(player).hp,0);
 });

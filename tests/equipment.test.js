@@ -4,6 +4,7 @@ import {buyEquipment,equip,unequip} from '../server/equipment.js';
 import {EQUIPMENT_ITEMS,equipmentBonus,equipmentStatText,validateEquipmentSlots} from '../shared/equipment.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {vitalsOf} from '../shared/vitals.js';
+import {ensureVitals,playerVitals} from '../server/vitals.js';
 
 const player=()=>({role:'student',avatar:{level:3,constellationId:'aquarius'},inventory:[],equipmentSlots:[null,null,null],cosmicEnergy:1000});
 test('LV4 구매는 5000 경계를 지키고 조합 전용 장비는 기존 보유 ID로 새 능력을 적용한다',()=>{
@@ -97,6 +98,31 @@ test('추가 장비는 단계별 수량·구매 가능 여부를 지키고 성�
   assert.equal(equipmentBonus(p).mp,20);
   assert.equal(equipmentBonus(p).speed,0);
   assert.equal(equipmentBonus(p).regen,0);
+});
+
+test('성령왕 망토와 검은별 인장을 함께 장착해도 현재 마나가 줄지 않는다',()=>{
+  const p=player();p.avatar.level=5;
+  p.inventory=[{id:'spirit-king-cloak',quantity:1},{id:'primordial-star-sigil',quantity:1}];
+  const base=playerVitals(p);assert.equal(base.mp.current,base.mp.max);
+  equip(p,'spirit-king-cloak',1);
+  assert.deepEqual(playerVitals(p).mp,{current:base.mp.max,max:base.mp.max+20});
+  equip(p,'primordial-star-sigil',2);
+  assert.deepEqual(playerVitals(p).mp,{current:base.mp.max,max:base.mp.max+20});
+  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(item=>item.id==='primordial-star-sigil')).includes('마나'),false);
+  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(item=>item.id==='spirit-king-cloak')).includes('최대 마나 +20'),true);
+  unequip(p,1);assert.deepEqual(playerVitals(p).mp,{current:base.mp.max,max:base.mp.max});
+  ensureVitals(p).mp=0;ensureVitals(p).hp=1;
+  equip(p,'spirit-king-cloak',1);
+  assert.equal(playerVitals(p).mp.current,0,'장비를 다시 입어 빈 마나를 채울 수 없음');
+  assert.equal(playerVitals(p).hp.current,1,'피해를 받은 체력은 장비를 다시 입어도 회복하지 않음');
+  unequip(p,1);ensureVitals(p).hp=0;ensureVitals(p).defeatedAt=1000;
+  equip(p,'spirit-king-cloak',1);
+  assert.equal(playerVitals(p).hp.current,0,'장비를 입어 쓰러진 캐릭터를 되살릴 수 없음');
+  unequip(p,1);ensureVitals(p).hp=base.hp.max-10;ensureVitals(p).mp=base.mp.max-10;
+  equip(p,'spirit-king-cloak',1);assert.equal(playerVitals(p).hp.current,base.hp.max-10);assert.equal(playerVitals(p).mp.current,base.mp.max-10);
+  unequip(p,1);equip(p,'spirit-king-cloak',1);
+  assert.equal(playerVitals(p).hp.current,base.hp.max-10,'장비 왕복으로 체력을 회복하지 않음');
+  assert.equal(playerVitals(p).mp.current,base.mp.max-10,'장비 왕복으로 마나를 회복하지 않음');
 });
 
 test('LV1 장비 6종은 새 가격과 장착 능력치를 가지며 합계에는 장착 효과만 반영한다',()=>{

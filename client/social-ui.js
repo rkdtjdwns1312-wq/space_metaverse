@@ -9,6 +9,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
     $('unread-count').textContent=unread>99?'99+':unread;
     $('unread-count').hidden=unread===0;
     $('chat-new-badge').hidden=unread===0;
+    $('chat-window-new').hidden=unread===0;
   }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const closeRoots=()=>{for(const id of ['social-dialog','menu-dialog','friend-dialog'])if($(id).open)$(id).close();};

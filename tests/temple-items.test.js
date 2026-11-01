@@ -25,6 +25,23 @@ test('횟수형 카드 기록은 저장 검사와 기둥 표시를 통과하고 
   assert.equal(row.remainingUses,2);assert.equal(row.until,null);assert.equal(row.fromNickname,'별이');assert.equal(row.markerId,undefined);
 });
 
+test('아이템과 별 능력은 분류하고 황소 무적·장비 수호는 표시하지 않는다',()=>{
+  const now=Date.now(),p={id:'b',nickname:'달이',avatar:{level:5,constellationId:'taurus'},
+    equipmentSlots:['dream-guardian-cloak'],taurusImmuneUntil:now+5000,
+    constellationAbilityState:{abilitySeal:{sourceId:'a',endsAt:now+60000},
+      paralysis:{sourceId:'a',level:4,endsAt:now+60000},cetusPraise:{sourceId:'a',endsAt:now+60000}},
+    cardMarkers:[],abilityState:{markers:[],blocks:[]},effects:[{itemId:'star-sticker',until:now+60000,fromNickname:'별이'}]};
+  const source={id:'a',nickname:'별이'},room={players:new Map([[p.id,p],[source.id,source]])};
+  const teacher=templeItemRows(room,{role:'teacher'},now);
+  assert.deepEqual(teacher.map(row=>[row.category,row.itemId||row.statusId]).sort(),[
+    ['item','star-sticker'],['ability','paralysis-high'],['ability','cetus-praise'],['ability','ability-seal']].sort());
+  for(const row of teacher.filter(row=>row.category==='ability'))assert.equal(row.fromNickname,'별이');
+  const student=templeItemRows(room,{role:'student'},now);
+  assert.equal(student.find(row=>row.statusId==='ability-seal').fromNickname,undefined);
+  assert.equal(student.find(row=>row.statusId==='paralysis-high').fromNickname,undefined);
+  assert.equal(student.find(row=>row.statusId==='cetus-praise').fromNickname,'별이');
+});
+
 test('게시판은 아이템명, 공개 사용자, 대상 순으로 정렬하며 원본 기록을 바꾸지 않는다',()=>{
  const now=Date.now(),players=new Map();
  for(const [id,nickname] of [['b','나래'],['a','가람']])players.set(id,{id,nickname,cardMarkers:[],effects:[

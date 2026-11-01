@@ -10,7 +10,7 @@ import {advanceProjectiles,projectileViews} from './projectiles.js';
 import {advanceSigilProjectiles} from './sigil-projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
-import {teacherInventoryView,adjustTeacherInventory,teacherResourcesCatalog,grantTeacherResources} from './teacher-inventory.js';
+import {teacherInventoryView,adjustTeacherInventory,setTeacherInventoryCurrency,teacherResourcesCatalog,grantTeacherResources} from './teacher-inventory.js';
 import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
 import {teacherCardCatalog} from './teacher-card-catalog.js';
 import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
@@ -980,6 +980,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {target,message}=adjustTeacherInventory(s.room,s.player,data,mode);
       whisper(s.room,target,'선생님이 가방을 조정했어요. '+message);roster(s.room);
+      return {...teacherInventoryView(s.room,s.player,target.id),message};
+    });
+    action('teacher:inventory:currency:set',data=>{
+      const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
+      const {target,message}=setTeacherInventoryCurrency(s.room,s.player,data);
+      whisper(s.room,target,message);roster(s.room);
       return {...teacherInventoryView(s.room,s.player,target.id),message};
     });
     action('student:password',data=>{
@@ -2423,11 +2429,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(activeCetusStomach(p,clock())){p.input={x:0,y:0,at:0};return;}
       if(!Number.isFinite(data.x)||!Number.isFinite(data.y)||Math.abs(data.x)>1||Math.abs(data.y)>1)return;
       p.input={x:data.x,y:data.y,at:Date.now()};
-      const session=socket.data.session,flow=recordStarRecordMovement(session.room,p,data.x,data.y,clock());
-      if(flow?.hit)for(const viewer of session.room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===p.mapId){
-        io.to(viewer.socketId).emit('combat:monster-hit',flow.hit);
-        io.to(viewer.socketId).emit('combat:vitals',{playerId:p.id,vitals:flow.hit.vitals});
-      }
+      // 방향 패턴은 키 입력 자체가 아니라 아래 월드 틱의 실제 이동량으로 판정합니다.
+      if(data.x===0&&data.y===0)recordStarRecordMovement(socket.data.session.room,p,0,0,clock());
     });
     socket.on('disconnect',()=>{
       try{transaction(()=>detach(socket,false));}
@@ -2529,7 +2532,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         dash:!!p.taurusDash,shield:!!p.herculesShield,crown:!!p.coronaAura}));
       for(const hit of advanceTaurusDashes(room,now))if(hit.defeated)
         io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
+      const flowBoss=room.monsters?.get('star-record-boss');
+      const flowBefore=flowBoss?.recordFlow?new Map([...flowBoss.recordFlow.participants.keys()].map(id=>{
+        const p=room.players.get(id);return [id,p?{x:p.x,y:p.y}:null];
+      })):null;
       const movedIds=advance(room,now)||[];
+      if(flowBefore)for(const id of movedIds){
+        const p=room.players.get(id),before=flowBefore.get(id);if(!p||!before)continue;
+        const flow=recordStarRecordMovement(room,p,p.x-before.x,p.y-before.y,clock());
+        if(flow?.hit)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===p.mapId){
+          io.to(viewer.socketId).emit('combat:monster-hit',flow.hit);
+          io.to(viewer.socketId).emit('combat:vitals',{playerId:p.id,vitals:flow.hit.vitals});
+        }
+      }
       for(const id of movedIds){const p=room.players.get(id);if(p?.role==='student'&&(p.journey?.stage??1)===1&&!p.journey?.goals.includes('moved'))p.journeyMoved=true;}
       // Save only newly acquired goals, never every movement tick. Retry failed writes without leaking a roster.
       if(studentOpen()&&(room.unattended||[...room.players.values()].some(p=>p.role==='teacher'&&p.connected))&&now>=(room.journeyRetryAt||0)){

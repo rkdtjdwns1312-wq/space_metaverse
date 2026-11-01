@@ -39,6 +39,7 @@ import {inMarket} from '/shared/market.js';
 import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
+import {drawExplorationAura} from './exploration-aura.js';
 import {drawLifeStar} from './life-star-art.js';
 import {drawValleyAltar} from './valley-art.js';
 import {drawInteriorFloor,drawInteriorProp,drawInteriorDecoration} from './interior-art.js';
@@ -270,6 +271,7 @@ export function createWorld(canvas) {
       if(o.kind==='life-star'){
         drawLifeStar(ctx,o,time,reducedMotion.matches);
       } else if(o.kind==='exploration'){
+        if(exploration?.festival)drawExplorationAura(ctx,o,time,reducedMotion.matches);
         drawExplorationFlask(ctx,o,time);
       } else if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');

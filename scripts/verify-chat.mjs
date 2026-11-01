@@ -42,10 +42,12 @@ try{
   await open();await one.locator('[data-chat-tab="direct"]').click();await one.locator('#chat-recipient').selectOption(p2.id);await one.locator('#chat-input').fill('우리둘만의말풍선');p1.lastChatAt=0;await one.locator('#chat-send').click();await one.keyboard.press('Escape');
   await one.waitForFunction(()=>window.bubbleTexts.join('')==='우리둘만의말풍선');await two.waitForFunction(()=>window.bubbleTexts.join('')==='우리둘만의말풍선');assert.equal(await teacher.evaluate(()=>window.bubbleTexts.length),0);console.log('귓속말 말풍선은 발신자·수신자에게만 표시');
   await two.locator('#unread-count').waitFor({state:'visible'});
+  await two.locator('#chat-window-new').waitFor({state:'visible'});
   await two.locator('#dock-chat').click();
   await two.locator('#chat-new-badge').waitFor({state:'visible'});
   await two.locator('#open-chat').click();
   assert.equal(await two.locator('#chat-new-badge').evaluate(element=>element.hidden),true);
+  assert.equal(await two.locator('#chat-window-new').evaluate(element=>element.hidden),true);
   assert.equal(await two.locator('#unread-count').evaluate(element=>element.hidden),true);
   console.log('새 채팅 NEW 표시·채팅 열기 후 읽음 처리');
   await one.setViewportSize({width:390,height:844});await one.screenshot({path:'.local/099-mobile-bubble.png'});assert.deepEqual(errors,[]);console.log('채팅 브라우저 검사 완료, 오류 없음');

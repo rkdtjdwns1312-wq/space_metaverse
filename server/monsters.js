@@ -34,6 +34,8 @@ function starRecordTargets(room,boss){
 }
 export function advanceStarRecordAttack(room,boss,now=Date.now(),random=Math.random){
   if(boss.typeId!=='star-record'||boss.hp<=0)return {busy:false,hits:[]};
+  // 받아쓰기·숫자 별·방향 순서가 남아 있는 동안에는 일반 공격으로 넘어가지 않습니다.
+  if(boss.recordChallenge||boss.recordMath||boss.recordFlow)return {busy:true,hits:[]};
   const rule=STAR_RECORD_ATTACK,cast=boss.starRecordCast;
   if(cast){
     boss.moving=false;
@@ -244,7 +246,13 @@ export function selectMonsterTarget(room,monster){
   const selected=candidates[0]?.player||null;
   if(monster.hp>0&&((hadAttackers&&!selected)||monster.mapExitCount>=MONSTER_RULES.mapExitHealCount)){
     if(monster.typeId==='dark-star')clearDarkStarSkills(room,monster);
-    if(monster.typeId==='star-record'){monster.starRecordCast=null;monster.starRecordBurst=null;monster.recordChallenge=null;monster.recordMath=null;monster.recordFlow=null;}
+    if(monster.typeId==='star-record'){
+      const active=[...room.players.values()].some(player=>player.connected&&!player.away&&player.mapId===monster.mapId&&
+        ensureVitals(player)?.hp>0&&(monster.recordMath||
+          monster.recordChallenge?.participants.get(player.id)?.done===false||
+          monster.recordFlow?.participants.get(player.id)?.done===false));
+      if(!active){monster.starRecordCast=null;monster.starRecordBurst=null;monster.recordChallenge=null;monster.recordMath=null;monster.recordFlow=null;}
+    }
     monster.hp=monster.maxHp;monster.mapExitCount=0;monster.contributors?.clear();
     // 3회 이탈 후에도 남은 학생은 계속 추적하며 공격 간격은 유지합니다.
     if(!selected)monster.nextAttackAt=0;
@@ -290,7 +298,16 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(delayedMeleeBoss(type)&&(!target||m.pendingAttack||m.moonCast||m.leoonSkill||(m.sleepUntil||0)>now||(m.stunUntil||0)>now))m.meleePresence?.clear();
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
-    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){if(m.darkStarSkills)m.darkStarSkills.aim=null;if(type.id==='star-record'){m.starRecordCast=null;m.recordChallenge=null;m.recordMath=null;m.recordFlow=null;}m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;}
+    if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){
+      if(m.darkStarSkills)m.darkStarSkills.aim=null;
+      if(type.id==='star-record'){
+        m.starRecordCast=null;
+        // 보스가 잠시 행동 불능이어도 진행 중인 패턴과 제한 시간은 유지합니다.
+        // 각 패턴은 모든 정답 또는 시간 초과로만 마무리합니다.
+        hits.push(...tickStarRecordChallenge(room,m,now).hits,...tickStarRecordMath(room,m,now).hits,...tickStarRecordFlow(room,m,now).hits);
+      }
+      m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;
+    }
     if(type.id==='star-record'){
       if(!m.recordChallenge&&!m.recordMath&&!m.recordFlow&&target){
         if(!tryStarRecordChallenge(room,m,now,random)&&!tryStarRecordMath(room,m,now,random))tryStarRecordFlow(room,m,now,random);

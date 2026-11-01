@@ -58,7 +58,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
     {id:'exploration-flask',name:'우주 탐사 장치',x:2280,y:1320,radius:56,kind:'exploration',color:'#dbb5ff',interactionBox:{left:-36,right:36,top:-160,bottom:20}},
     {id:'starlight-archive',name:'별빛 기록소',x:1320,y:1320,radius:56,kind:'starlight-archive',color:'#d7c6ee',passable:true,interactionBox:{left:-90,right:90,top:-170,bottom:30}},
     {id:'pillar-notice',name:'오늘의 알림장',x:1580,y:1210,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
-    {id:'pillar-effects',name:'사용 중인 아이템',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
+    {id:'pillar-effects',name:'사용 중인 아이템 · 능력',x:2020,y:1210,radius:30,kind:'pillar',service:'effects',color:'#dacff6'},
     {id:'pillar-timetable',name:'오늘의 시간표',x:1580,y:1430,radius:30,kind:'pillar',service:'timetable',color:'#c9e8e0'},
     {id:'pillar-weekly',name:'이번 주 받은 별',x:2020,y:1430,radius:30,kind:'pillar',service:'weekly',color:'#ffedbb'},
     { id: 'gate-street', name: '오색별빛 쉼터로 가는 문', x:3642,y:1320,radius: 38, kind: 'gate', target: 'star-street',

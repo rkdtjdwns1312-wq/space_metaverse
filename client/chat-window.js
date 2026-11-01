@@ -11,7 +11,7 @@ export function createChatWindow({stop}) {
     if(follow)requestAnimationFrame(latest);
   }
   function sync(){
-    $('chat-window-toggle').textContent=dialog.open?'채팅창 닫기':'채팅창 열기';
+    $('chat-window-label').textContent=dialog.open?'채팅창 닫기':'채팅창 열기';
     $('chat-window-toggle').setAttribute('aria-expanded',String(dialog.open));
   }
   $('chat-shrink').onclick=()=>resize(size-1);$('chat-grow').onclick=()=>resize(size+1);

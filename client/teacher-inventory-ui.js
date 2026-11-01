@@ -6,6 +6,8 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
     <label for="teacher-inventory-student">학생 선택</label><select id="teacher-inventory-student" aria-label="인벤토리를 조정할 학생"></select>
     <p id="teacher-inventory-status" role="status" aria-live="polite"></p>
     <h3 id="teacher-inventory-owner">보유 아이템</h3><div id="teacher-inventory-grid" role="group" aria-label="학생 보유 아이템"></div>
+    <div id="teacher-inventory-balances"><button id="teacher-inventory-shards" type="button" class="secondary"></button><button id="teacher-inventory-energy" type="button" class="secondary"></button></div>
+    <div id="teacher-inventory-currency-editor" hidden><label id="teacher-inventory-currency-label" for="teacher-inventory-currency-amount"></label><input id="teacher-inventory-currency-amount" type="number" min="0" step="1" inputmode="numeric"><button id="teacher-inventory-currency-save" type="button" class="primary">저장</button><button id="teacher-inventory-currency-cancel" type="button" class="secondary">취소</button></div>
     <p id="teacher-inventory-selection" class="muted">제거할 아이템을 선택하세요.</p>
     <div class="teacher-inventory-actions"><button id="teacher-inventory-remove" class="danger" type="button">선택 아이템 1개 제거</button><button id="teacher-inventory-add" class="secondary" type="button" aria-expanded="false" aria-controls="teacher-inventory-picker">아이템 추가</button></div>
     <section id="teacher-inventory-picker" hidden><h3>추가할 아이템 선택</h3><div id="teacher-inventory-tabs" role="tablist" aria-label="아이템 레벨"></div>
@@ -13,7 +15,7 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
       <p id="teacher-inventory-count" class="muted" aria-live="polite"></p><button id="teacher-inventory-give" class="primary" type="button">선택한 아이템 각 1개 주기</button></section>
     <div class="dialog-actions"><button id="teacher-inventory-refresh" class="secondary" type="button">새로 보기</button><button id="teacher-inventory-close" class="secondary" type="button">닫기</button></div>`;
   document.body.append(dialog);const $=id=>dialog.querySelector('#teacher-inventory-'+id);
-  let state={students:[],inventory:[],catalog:[],playerId:null},selected=null,level=1,busy=false,revision=0,loaded=false;
+  let state={students:[],inventory:[],catalog:[],playerId:null,starShards:0,cosmicEnergy:0},selected=null,level=1,busy=false,revision=0,loaded=false,currency=null;
   const gifts=new Set(),teacher=()=>getPlayer()?.role==='teacher';
   function visual(item){
     const node=document.createElement(item.art?'img':'span');node.className='teacher-inventory-art';
@@ -23,6 +25,7 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
     $('student').disabled=busy||!state.students.length;$('refresh').disabled=busy;
     $('remove').disabled=busy||!state.playerId||!selected;
     $('add').disabled=busy||!state.playerId;$('give').disabled=busy||!state.playerId||!gifts.size;
+    for(const id of ['shards','energy','currency-amount','currency-save','currency-cancel'])$(id).disabled=busy||!state.playerId;
     $('count').textContent=`선택한 ${gifts.size}/40종 · 레벨 탭을 바꿔도 선택은 유지돼요. 각 1개씩 지급해요.`;
     for(const control of dialog.querySelectorAll('#teacher-inventory-grid button,#teacher-inventory-tabs button,#teacher-inventory-catalog input'))control.disabled=busy||(control.type==='checkbox'&&!control.checked&&gifts.size>=40);
   }
@@ -37,10 +40,10 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
     }
     if(!items.length){const empty=document.createElement('p');empty.textContent='이 레벨의 아이템이 없어요.';$('catalog').append(empty);}availability();
   }
-  for(let value=1;value<=4;value++){
+  for(let value=1;value<=5;value++){
     const tab=document.createElement('button');tab.type='button';tab.id=`teacher-inventory-level-${value}`;tab.dataset.level=String(value);tab.textContent='LV'+value;tab.setAttribute('role','tab');tab.setAttribute('aria-controls','teacher-inventory-catalog');
     tab.onclick=()=>{if(busy)return;level=value;renderCatalog();};
-    tab.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)||busy)return;event.preventDefault();level=event.key==='Home'?1:event.key==='End'?4:((value-1+(event.key==='ArrowRight'?1:3))%4)+1;renderCatalog();$('tabs').children[level-1].focus();};$('tabs').append(tab);
+    tab.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)||busy)return;event.preventDefault();level=event.key==='Home'?1:event.key==='End'?5:((value-1+(event.key==='ArrowRight'?1:4))%5)+1;renderCatalog();$('tabs').children[level-1].focus();};$('tabs').append(tab);
   }
   function render(){
     $('student').replaceChildren(...state.students.map(student=>{const option=document.createElement('option');option.value=student.id;option.textContent=student.nickname+(student.connected?'':' (미접속)');return option;}));
@@ -56,6 +59,8 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
       button.onclick=()=>{if(busy)return;selected=selected===entry.id?null:entry.id;render();};$('grid').append(button);
     }
     if(!state.inventory.length){const empty=document.createElement('p');empty.className='teacher-inventory-empty';empty.textContent=loaded?'보유한 아이템이 없어요.':'학생 인벤토리를 불러와 주세요.';$('grid').append(empty);}
+    $('shards').textContent=`별 파편 ${state.starShards.toLocaleString()}개 · 조정`;
+    $('energy').textContent=`우주에너지 ${state.cosmicEnergy.toLocaleString()}개 · 조정`;
     $('selection').textContent=selected?`${byId.get(selected)?.name||itemOf(selected)?.name||selected} · 1개를 제거해요.`:'제거할 아이템을 선택하세요.';
     for(const id of gifts)if(!byId.has(id))gifts.delete(id);
     renderCatalog();
@@ -65,14 +70,18 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
     const rev=++revision;busy=true;$('status').textContent='불러오는 중…';availability();
     try{
       const response=await request(event,data);if(rev!==revision||!dialog.open||!teacher())return;
-      state={students:response.students||[],playerId:response.playerId||null,inventory:response.inventory||[],catalog:response.catalog||[]};loaded=true;
+      state={students:response.students||[],playerId:response.playerId||null,inventory:response.inventory||[],catalog:response.catalog||[],starShards:response.starShards??0,cosmicEnergy:response.cosmicEnergy??0};loaded=true;
       if(event==='teacher:inventory:give')gifts.clear();
       const notice=response.message||message||'';$('status').textContent=notice;render();if(message)toast(notice);
     }catch(error){if(rev===revision&&dialog.open){$('status').textContent=error.message;$('student').value=state.playerId||'';}}
     finally{if(rev===revision){busy=false;availability();}}
   }
   function picker(open){$('picker').hidden=!open;$('add').setAttribute('aria-expanded',String(open));$('add').textContent=open?'추가 목록 닫기':'아이템 추가';}
-  $('student').onchange=()=>{selected=null;gifts.clear();picker(false);perform('teacher:inventory:read',{playerId:$('student').value});};
+  $('student').onchange=()=>{selected=null;currency=null;$('currency-editor').hidden=true;gifts.clear();picker(false);perform('teacher:inventory:read',{playerId:$('student').value});};
+  function editCurrency(kind){if(busy||!state.playerId)return;currency=kind;$('currency-label').textContent=kind==='starShards'?'별 파편 수량':'우주에너지 수량';$('currency-amount').max=kind==='starShards'?'9999':String(Number.MAX_SAFE_INTEGER);$('currency-amount').value=String(state[kind]);$('currency-editor').hidden=false;$('currency-amount').focus();$('currency-amount').select();}
+  $('shards').onclick=()=>editCurrency('starShards');$('energy').onclick=()=>editCurrency('cosmicEnergy');
+  $('currency-cancel').onclick=()=>{currency=null;$('currency-editor').hidden=true;};
+  $('currency-save').onclick=()=>{const amount=Number($('currency-amount').value);if(!currency||!$('currency-amount').value.trim()||!Number.isSafeInteger(amount)||amount<0||amount>Number($('currency-amount').max)){$('status').textContent='재화 수량을 확인해주세요.';return;}const kind=currency;currency=null;$('currency-editor').hidden=true;perform('teacher:inventory:currency:set',{playerId:state.playerId,currency:kind,amount});};
   $('refresh').onclick=()=>perform('teacher:inventory:read',state.playerId?{playerId:state.playerId}:{});
   $('remove').onclick=()=>{if(selected)perform('teacher:inventory:remove',{playerId:state.playerId,itemId:selected},'선택한 아이템 1개를 제거했어요.');};
   $('add').onclick=()=>{if(!busy)picker($('picker').hidden);};
@@ -80,7 +89,7 @@ export function createTeacherInventoryUI({request,getPlayer,stop=()=>{},toast=()
   function close(){revision++;busy=false;if(dialog.open)dialog.close();stop();}
   $('close').onclick=close;dialog.addEventListener('cancel',event=>{event.preventDefault();close();});dialog.addEventListener('close',()=>{revision++;busy=false;});
   const trigger=document.getElementById('teacher-inventory-open');trigger.onclick=()=>{
-    if(!teacher())return;stop();state={students:[],inventory:[],catalog:[],playerId:null};selected=null;gifts.clear();level=1;loaded=false;picker(false);render();dialog.showModal();perform('teacher:inventory:read',{});
+    if(!teacher())return;stop();state={students:[],inventory:[],catalog:[],playerId:null,starShards:0,cosmicEnergy:0};selected=null;currency=null;$('currency-editor').hidden=true;gifts.clear();level=1;loaded=false;picker(false);render();dialog.showModal();perform('teacher:inventory:read',{});
   };
   return {update(){const allowed=teacher();trigger.hidden=!allowed;document.getElementById('teacher-inventory-tools').hidden=!allowed;if(!allowed&&(dialog.open||busy))close();}};
 }

@@ -20,7 +20,13 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   const dialog=document.createElement('dialog');dialog.id='temple-dialog';dialog.setAttribute('aria-labelledby','temple-title');
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
-  document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0;const selectedXp=new Map();
+  document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0,effectTab='item';const selectedXp=new Map();
+  const effectTabs=document.createElement('div');effectTabs.id='temple-effect-tabs';effectTabs.hidden=true;
+  for(const [kind,label] of [['item','사용 중인 아이템'],['ability','사용 중인 별 능력']]){
+    const button=document.createElement('button');button.type='button';button.className='secondary';button.dataset.effectTab=kind;button.textContent=label;
+    button.onclick=()=>{effectTab=kind;renderEffects();};effectTabs.append(button);
+  }
+  $('description').after(effectTabs);
   const devour=document.createElement('dialog');devour.className='temple-devour-dialog';
   const devourTitle=document.createElement('h3'),devourLabel=document.createElement('label'),devourSelect=document.createElement('select'),devourMessage=document.createElement('p');
   const devourConfirm=document.createElement('button'),devourClose=document.createElement('button');
@@ -46,13 +52,15 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   reset.onclick=()=>{if(result?.kind==='weekly'&&result.canReset)resetConfirm.open();};
   $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(devour.open)devour.close();selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();});
   function usableEffectRows(now=Date.now()){
-    return (result?.rows||[]).filter(e=>(e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
+    return (result?.rows||[]).filter(e=>(e.category||'item')===effectTab&&
+      (e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
   }
   function renderEffects(){
+    for(const button of effectTabs.children)button.setAttribute('aria-pressed',String(button.dataset.effectTab===effectTab));
     const rows=usableEffectRows();
     const wrap=document.createElement('div');wrap.className='effects-grid-wrap';
     const header=document.createElement('div');header.className='effects-grid effects-grid-header';
-    for(const text of ['아이템명','사용자','사용 대상','횟수/기간']){const cell=document.createElement('span');cell.textContent=text;header.append(cell);}wrap.append(header);
+    for(const text of [effectTab==='item'?'아이템명':'능력명','사용자','사용 대상','횟수/기간']){const cell=document.createElement('span');cell.textContent=text;header.append(cell);}wrap.append(header);
     const ul=document.createElement('ul');ul.className='effects-grid-list';
     for(const r of rows){
       const li=document.createElement('li');li.className='active-item-row';
@@ -82,7 +90,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       }
       ul.append(li);
     }
-    if(rows.length){wrap.append(ul);$('content').replaceChildren(wrap);}else $('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
+    if(rows.length){wrap.append(ul);$('content').replaceChildren(wrap);}else $('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:effectTab==='item'?'지금 사용 중인 아이템이 없어요.':'지금 사용 중인 별 능력이 없어요.'}));
   }
   function tickEffects(){
     if(!dialog.open||result?.kind!=='effects')return;
@@ -94,7 +102,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       cell.textContent=formatRemaining(until?Number(until):null,cell.dataset.remainingUses?Number(cell.dataset.remainingUses):undefined,now,startsAt);
       const eat=row.querySelector('[data-devour-at]');if(eat)eat.disabled=Number(eat.dataset.devourAt)>now;
     }
-    if(expired&&!$('content').querySelector('[data-effect-row]'))$('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:'지금 사용 중인 아이템이 없어요.'}));
+    if(expired&&!$('content').querySelector('[data-effect-row]'))$('content').replaceChildren(Object.assign(document.createElement('p'),{textContent:effectTab==='item'?'지금 사용 중인 아이템이 없어요.':'지금 사용 중인 별 능력이 없어요.'}));
   }
   function renumberNoticeRows(){[...$('notice-rows').children].forEach((row,index)=>{row.querySelector('.notice-line').setAttribute('aria-label',`${index+1}번째 알림 내용`);row.querySelector('.notice-task input').setAttribute('aria-label',`${index+1}번째 줄 과제`);row.querySelector('.notice-remove-line').setAttribute('aria-label',`${index+1}번째 줄 삭제`);});}
   function addNoticeRow(value='',checked=false,focus=false){const rows=$('notice-rows'),index=rows.children.length,row=document.createElement('div');row.className='notice-editor-row';
@@ -145,6 +153,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   function render(){
     reset.hidden=result.kind!=='weekly'||!result.canReset;
     $('error').textContent='';const daily=['notice','timetable'].includes(result.kind);
+    effectTabs.hidden=result.kind!=='effects';
     $('save').hidden=!result.canEdit;$('content').hidden=result.kind==='notice'&&result.canEdit;$('notice-rows').hidden=result.kind!=='notice'||!result.canEdit;$('add-line').hidden=result.kind!=='notice'||!result.canEdit;$('refresh').hidden=daily;
     if(result.kind==='timetable'){$('description').textContent='';renderTimetable();}
     else if(daily){$('description').textContent=result.date+' · 오늘';if(result.canEdit)renderNoticeRows();else renderNotice();}
@@ -152,11 +161,11 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
       $('description').textContent=result.week+' 월요일부터 이번 주에 받은 별 파편 · 잔액과 달라요';const ul=document.createElement('ul');
       for(const r of result.rows){const li=document.createElement('li');li.textContent=r.nickname+' · ★ '+r.total+'개';ul.append(li);}
       $('content').replaceChildren(result.rows.length?ul:Object.assign(document.createElement('p'),{textContent:'아직 등록된 친구가 없어요.'}));
-    }else{$('description').textContent='아이템 이름순으로 사용자와 사용 대상을 확인해요.';renderEffects();}
+    }else{$('description').textContent='';renderEffects();}
   }
   async function load(){const rev=++revision;try{const data=await request('temple:read',{objectId:selected.id});if(rev!==revision||!dialog.open)return;result=data;render();}catch(e){if(rev===revision)$('error').textContent=e.message;}}
   $('refresh').onclick=load;
   $('save').onclick=async()=>{if(!selected)return;const rev=revision;$('save').disabled=true;try{let data;if(result?.kind==='timetable'){const cells=[...$('content').querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(input=>input.value));data=await request('temple:timetable:save',{objectId:selected.id,cells});}else{const rows=[...$('notice-rows').children].map(row=>({text:row.querySelector('.notice-line').value.trim(),task:row.querySelector('.notice-task input').checked})).filter(row=>row.text);const text=rows.map(row=>row.text).join('\n');if(text.length>2000)throw new Error('알림장은 2000자 이내로 적어주세요.');const taskLineIndexes=rows.flatMap((row,index)=>row.task?[index]:[]);data=await request('temple:save',{objectId:selected.id,text,taskLineIndexes});}if(rev===revision&&dialog.open){result=data;render();toast(result.kind==='timetable'?'시간표를 저장했어요.':'오늘의 내용을 저장했어요.');}}catch(e){if(rev===revision)$('error').textContent=e.message;}finally{$('save').disabled=false;}};
   setInterval(tickEffects,1000);
-  return {open(pillar){stop();selected=pillar;result=null;reset.hidden=true;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
+  return {open(pillar){stop();selected=pillar;result=null;effectTab='item';reset.hidden=true;effectTabs.hidden=true;$('title').textContent=pillar.name;$('description').textContent='불러오는 중…';$('content').replaceChildren();$('error').textContent='';for(const id of ['notice-rows','add-line','save','refresh'])$(id).hidden=true;if(!dialog.open)dialog.showModal();load();}};
 }

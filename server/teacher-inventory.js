@@ -8,8 +8,8 @@ const retired=new Set(['star-sticker','space-snack','asteroid-helmet','firefly-l
 const catalog=SHOP.items.filter(item=>item.level>=1&&item.level<=4&&!item.temporaryCrown&&!retired.has(item.id));
 function teacherCatalog(room){
   const recipes=(room.recipeDropOutputIds||[]).map(outputId=>recipeItemOf(recipeItemId(outputId),SHOP.items))
-    .filter(item=>item&&item.level>=2&&item.level<=4);
-  return [...catalog,...recipes];
+    .filter(item=>item&&item.level>=2&&item.level<=5);
+  return [...new Map([...catalog,...EQUIPMENT_ITEMS,...recipes].map(item=>[item.id,item])).values()];
 }
 function teacherOnly(room,teacher){
   ensure(teacher?.role==='teacher'&&teacher.connected&&room.players.get(teacher.id)===teacher,'선생님만 학생 가방을 조정할 수 있어요.');
@@ -22,7 +22,16 @@ export function teacherInventoryView(room,teacher,playerId){
   const students=[...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,nickname:p.nickname,connected:!!p.connected&&!p.away}));
   const id=playerId??students[0]?.id;
   const target=id===undefined?null:studentOf(room,id);
-  return {students,playerId:target?.id??null,inventory:structuredClone(target?.inventory||[]),catalog:structuredClone(teacherCatalog(room))};
+  return {students,playerId:target?.id??null,inventory:structuredClone(target?.inventory||[]),
+    starShards:target?.starShards??0,cosmicEnergy:target?.cosmicEnergy??0,catalog:structuredClone(teacherCatalog(room))};
+}
+export function setTeacherInventoryCurrency(room,teacher,data){
+  teacherOnly(room,teacher);
+  const target=studentOf(room,data.playerId),{currency,amount}=data;
+  ensure(currency==='starShards'||currency==='cosmicEnergy','조정할 재화를 선택해주세요.');
+  ensure(Number.isSafeInteger(amount)&&amount>=0&&amount<=(currency==='starShards'?SHARDS.max:Number.MAX_SAFE_INTEGER),'재화 수량을 확인해주세요.');
+  target[currency]=amount;
+  return {target,message:`${target.nickname}의 ${currency==='starShards'?'별 파편':'우주에너지'}를 ${amount}개로 조정했어요.`};
 }
 // 변경할 가방 사본을 완전히 검사한 뒤 한 번에 교체합니다. 저장은 action의 공통 트랜잭션이 담당합니다.
 export function adjustTeacherInventory(room,teacher,data,mode){
@@ -37,7 +46,7 @@ export function adjustTeacherInventory(room,teacher,data,mode){
     ensure(Array.isArray(ids)&&ids.length>0&&ids.length<=40&&new Set(ids).size===ids.length&&ids.every(id=>typeof id==='string'),'서로 다른 아이템을 1~40종 선택해주세요.');
     const available=teacherCatalog(room);
     for(const id of ids){
-      const item=available.find(i=>i.id===id);ensure(item,'LV1~LV4 아이템을 선택해주세요.');
+      const item=available.find(i=>i.id===id);ensure(item,'LV1~LV5 아이템을 선택해주세요.');
       const entry=bag.find(i=>i.id===id),limit=Math.min(SHOP.maxStack,item.maxOwned??SHOP.maxStack);
       ensure((entry?.quantity||0)<limit,`${item.name}은 ${limit}개까지만 가질 수 있어요.`);
       if(entry)entry.quantity++;else bag.push({id,quantity:1});

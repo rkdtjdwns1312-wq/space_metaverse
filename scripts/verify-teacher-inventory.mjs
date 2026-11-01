@@ -1,0 +1,40 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {createClassroomServer} from '../server/app.js';
+import {fillNewClass} from './class-setup.mjs';
+
+const key=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey:key,studentHours:false});
+const address=await game.listen();
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
+try{
+  const page=await browser.newPage({viewport:{width:1280,height:900}});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`http://127.0.0.1:${address.port}`);
+  await page.getByRole('button',{name:'선생님 입장하기'}).click();
+  await page.locator('#teacher-key').fill(key);await fillNewClass(page,['1','2']);
+  await page.locator('#teacher-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+  const code=[...game.store.rooms.values()][0].code;
+  const studentPage=await browser.newPage();await studentPage.goto(`http://127.0.0.1:${address.port}`);
+  await studentPage.getByRole('button',{name:'학생 입장하기'}).click();
+  await studentPage.locator('#join-code').fill(code);await studentPage.locator('#nickname').fill('1');await studentPage.locator('#student-pin').fill('1234');
+  await studentPage.locator('#student-form .submit').click();await studentPage.locator('#lobby').waitFor({state:'hidden'});
+  await page.locator('#dock-menu').click();await page.locator('#teacher-tools').click();
+  await page.locator('#teacher-dialog').getByRole('button',{name:'인벤토리 조정',exact:true}).click();
+  await page.locator('#teacher-inventory-open').click();
+  await page.waitForFunction(()=>!!document.querySelector('#teacher-inventory-student option[value]:not([value=""])'));
+  await page.locator('#teacher-inventory-add').click();
+  await page.locator('#teacher-inventory-tabs button').filter({hasText:'LV5'}).click();
+  assert.ok(await page.locator('#teacher-inventory-catalog').getByText('성령왕의 망토').count());
+  await page.locator('#teacher-inventory-shards').click();
+  await page.locator('#teacher-inventory-currency-amount').fill('7');
+  await page.locator('#teacher-inventory-currency-save').click();
+  await page.locator('#teacher-inventory-shards').getByText('별 파편 7개').waitFor();
+  await page.locator('#teacher-inventory-energy').click();
+  await page.locator('#teacher-inventory-currency-amount').fill('1234');
+  await page.locator('#teacher-inventory-currency-save').click();
+  await page.locator('#teacher-inventory-energy').getByText('우주에너지 1,234개').waitFor();
+  const student=[...game.store.rooms.values()][0].players.values().find(p=>p.role==='student');
+  assert.equal(student.starShards,7);assert.equal(student.cosmicEnergy,1234);assert.deepEqual(errors,[]);
+  console.log('Teacher inventory: Lv5 catalog, star shards, cosmic energy, browser errors 0');
+}finally{await browser.close();await game.close();}
