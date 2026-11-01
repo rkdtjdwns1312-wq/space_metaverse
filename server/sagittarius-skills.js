@@ -61,7 +61,7 @@ function execute(room,player,skill,now,basic,random=Math.random){
     const celestial=basic&&random()<sagittariusCelestialChance(player.avatar.level);
     const range=size*skill.rangeWidths,width=size*.13;
     effects=launchProjectiles(room,player,{...base,kind:'arrow',basic,range,width,power:basic?(celestial?skillDamage(power*4,skillDamageFactor(player)):power):skillDamage(power*skill.multiplier,skillDamageFactor(player)),
-      piercing:!basic||celestial,vfxId:celestial?'skill-lv4':basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
+      piercing:!basic||celestial,vfxId:celestial?`skill-lv${Math.max(2,Math.min(4,player.avatar.level))}`:basic?'attack':`skill-lv${skill.stage}`,durationMs:basic?650:900},now);
   }else{
     room.sagittariusCasts??=new Map();
     const cast={...base,kind:slot===1?'hunter':'rain',x:slot===1?player.x+dx*size/2:target.entity.x,y:slot===1?player.y+dy*size/2:target.entity.y,lastMoveAt:now,

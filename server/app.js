@@ -88,7 +88,7 @@ import {answerStarRecordMath} from './star-record-math.js';
 import {recordStarRecordMovement} from './star-record-flow.js';
 import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
-import {serenaView,darkStarView,starRecordView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue} from './boss-lifecycle.js';
+import {serenaView,darkStarView,starRecordView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -2636,9 +2636,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
       const bossNow=clock();
-      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt)){
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||needsTemporaryBossRespawnShortening(room,bossNow)||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt)){
         try{transaction(()=>{
-          settleBossDeaths(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);roster(room);
+          settleBossDeaths(room,bossNow);shortenTemporaryBossRespawns(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);roster(room);
           deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
         });}catch(error){
           const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;

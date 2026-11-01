@@ -5,7 +5,7 @@ import {createClassroomServer} from '../server/app.js';
 import {fillNewClass} from './class-setup.mjs';
 import {mkdir} from 'node:fs/promises';
 const key='chat-browser-test-only-key',game=createClassroomServer({teacherKey:key,studentHours:false});
-const address=await game.listen(),browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const address=await game.listen(),browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'chrome'}:{})});
 const url='http://127.0.0.1:'+address.port,errors=[];
 await mkdir('.local',{recursive:true});
 try{
@@ -24,7 +24,7 @@ try{
   const [teacher,one,two]=pages;
   await teacher.locator('#teacher-tab').click();await teacher.locator('#teacher-key').fill(key);await fillNewClass(teacher,['1','2']);await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   const room=[...game.store.rooms.values()][0];
-  for(const [page,nickname] of [[one,'1'],[two,'2']]){await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(nickname);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});}
+  for(const [page,nickname] of [[one,'1'],[two,'2']]){await page.locator('#student-tab').click();await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill(nickname);await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});if(await page.locator('#tutorial-dialog').evaluate(dialog=>dialog.open))await page.locator('#tutorial-later').click();}
   const p1=[...room.players.values()].find(p=>p.nickname==='1'),p2=[...room.players.values()].find(p=>p.nickname==='2');
   const open=async()=>{await one.locator('#dock-chat').click();await one.locator('#open-chat').click();};
   const long='별'.repeat(99)+'끝';await open();await one.locator('#chat-input').fill(long+'더');assert.equal(await one.locator('#chat-input').inputValue(),long);assert.equal(await one.locator('#chat-count').innerText(),'100 / 100자');
@@ -39,7 +39,7 @@ try{
   await one.evaluate(()=>window.timeOffset=0);await open();await one.locator('#chat-input').fill('또 보내기');p1.lastChatAt=Date.now();await one.locator('#chat-send').click();await one.locator('#chat-feedback').filter({hasText:'천천히'}).waitFor();assert.equal(await one.locator('#chat-input').inputValue(),'또 보내기');console.log('도배 거부 안내·전송 실패 시 입력 보존');
   for(const page of pages)await page.evaluate(()=>window.timeOffset=15000);
   await teacher.waitForFunction(()=>window.bubbleTexts.length===0);await two.waitForFunction(()=>window.bubbleTexts.length===0);
-  await one.locator('#chat-channel').selectOption('direct');await one.locator('#chat-recipient').selectOption(p2.id);await one.locator('#chat-input').fill('우리둘만의말풍선');p1.lastChatAt=0;await one.locator('#chat-send').click();await one.keyboard.press('Escape');
+  await open();await one.locator('[data-chat-tab="direct"]').click();await one.locator('#chat-recipient').selectOption(p2.id);await one.locator('#chat-input').fill('우리둘만의말풍선');p1.lastChatAt=0;await one.locator('#chat-send').click();await one.keyboard.press('Escape');
   await one.waitForFunction(()=>window.bubbleTexts.join('')==='우리둘만의말풍선');await two.waitForFunction(()=>window.bubbleTexts.join('')==='우리둘만의말풍선');assert.equal(await teacher.evaluate(()=>window.bubbleTexts.length),0);console.log('귓속말 말풍선은 발신자·수신자에게만 표시');
   await two.locator('#unread-count').waitFor({state:'visible'});
   await two.locator('#dock-chat').click();

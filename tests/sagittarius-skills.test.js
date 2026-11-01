@@ -28,11 +28,11 @@ test('Q 빛의 화살은 현재 공격력100%·MP0·가로6배, MP가 0이어도
   assert.equal(hit.effects[0].range,size*6);assert.equal(hit.effects[0].basic,true);
   assert.equal(player.sagittariusCooldowns,undefined);
 });
-test('Q는 레벨별 10/15/20% 확률로 천궁의 화살을 대신 쏘며 E 마나·쿨타임을 쓰지 않는다',()=>{
-  for(const [level,chance] of [[2,.1],[3,.15],[4,.2]]){
+test('Q는 레벨별 확률로 해당 레벨의 강화 화살을 대신 쏘며 E 마나·쿨타임을 쓰지 않는다',()=>{
+  for(const [level,chance] of [[2,.1],[3,.15],[4,.2],[5,.2]]){
     const {room,player,monster,power}=setup(level);
     const hit=attackSagittarius(room,player,now,()=>chance-.001);
-    assert.equal(hit.effects[0].vfxId,'skill-lv4');
+    assert.equal(hit.effects[0].vfxId,`skill-lv${Math.min(4,level)}`);
     assert.equal(room.projectiles[0].piercing,true);
     assert.equal(ensureVitals(player).mp,level===2?20:level===3?30:40);
     assert.equal(player.sagittariusCooldowns,undefined);
@@ -46,6 +46,7 @@ test('큰 관통 화살은 LV2/3/4 피해400%, 쿨4/3/2초, 가로6배·MP2',()=
   for(const [level,multiplier,cooldown] of [[2,4,4000],[3,4,3000],[4,4,2000]]){
     const {room,player,monster,power,size}=setup(level),mp=ensureVitals(player).mp;
     const hit=castSagittarius(room,player,0,now);assert.equal(room.projectiles[0].piercing,true);
+    assert.equal(hit.effects[0].vfxId,`skill-lv${level}`);
     assert.equal(monster.hp,1000);fly(room,now+900);
     assert.equal(monster.hp,1000-power*multiplier);
     assert.equal(hit.effects[0].range,size*6);assert.equal(hit.effects[0].piercing,undefined);
