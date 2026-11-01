@@ -5,6 +5,11 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   let messages=[],context='',revision=0,friendId=null,invitationId=null,unread=0;
   const chatWindow=createChatWindow({stop});
   let renderedIds='';
+  function syncUnread(){
+    $('unread-count').textContent=unread>99?'99+':unread;
+    $('unread-count').hidden=unread===0;
+    $('chat-new-badge').hidden=unread===0;
+  }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const closeRoots=()=>{for(const id of ['social-dialog','menu-dialog','friend-dialog'])if($(id).open)$(id).close();};
   function open(id){stop();closeRoots();if(!$(id).open)$(id).showModal();}
@@ -48,7 +53,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   }
   function openChat(targetId){
     if(targetId){$('chat-channel').value='direct';$('chat-recipient').value=targetId;}
-    routing();closeRoots();chatWindow.open();unread=0;$('unread-count').hidden=true;$('chat-input').focus();refresh();
+    routing();closeRoots();chatWindow.open();unread=0;syncUnread();$('chat-input').focus();refresh();
   }
   $('chat-channel').onchange=routing;$('chat-recipient').onchange=routing;
   for(const tab of document.querySelectorAll('[data-chat-tab]'))tab.onclick=()=>{$('chat-channel').value=tab.dataset.chatTab;routing();};
@@ -97,9 +102,9 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
       context=next;routing();friendState();invitations();
     },
     seed(list){messages=list||[];render();},
-    receive(msg){messages.push(msg);if(messages.length>200)messages.shift();render();if(!$('chat-dialog').open&&msg.playerId!==getSelfId()){unread++;$('unread-count').textContent=unread>99?'99+':unread;$('unread-count').hidden=false;}},
-    clear(){messages=[];render();},
-    reset(){chatWindow.reset();renderedIds='';messages=[];context='';revision++;friendId=null;invitationId=null;unread=0;$('unread-count').hidden=true;$('chat-channel').value='map';for(const d of document.querySelectorAll('dialog[open]'))d.close();},
+    receive(msg){messages.push(msg);if(messages.length>200)messages.shift();render();if(!$('chat-dialog').open&&msg.playerId!==getSelfId()){unread++;syncUnread();}},
+    clear(){messages=[];unread=0;syncUnread();render();},
+    reset(){chatWindow.reset();renderedIds='';messages=[];context='';revision++;friendId=null;invitationId=null;unread=0;syncUnread();$('chat-channel').value='map';for(const d of document.querySelectorAll('dialog[open]'))d.close();},
     scope(){return {channel:$('chat-channel').value,targetId:$('chat-recipient').value};}
   };
 }
