@@ -21,3 +21,15 @@
 .archive-blank-page h3{margin:0;color:#59416e;font-size:clamp(26px,3vw,34px);line-height:1.4;font-weight:700;letter-spacing:.015em}
 .archive-blank-page small{margin:7px 0 0;padding:10px 17px;border:1px solid #e0d2e8;border-radius:12px;background:#f6eff9;color:#5e4c69;font-size:17px;line-height:1.5}
 @media(max-width:600px){.archive-blank-page{min-height:390px;gap:14px;padding:25px 10px}.archive-blank-page>span{width:92px;height:92px;font-size:70px}.archive-blank-page h3{font-size:25px}.archive-blank-page small{font-size:15px;padding:9px 12px}}
+
+.archive-teacher-reply{align-self:flex-start;max-width:100%;margin-top:24px;padding:15px 18px;border:1px solid #d8c5e4;border-left:5px solid #9a75b5;border-radius:12px;background:#f7effa;color:#463655;overflow-wrap:anywhere}
+.archive-teacher-reply strong{display:block;margin-bottom:8px;font-size:16px}
+.archive-teacher-reply p{margin:0;white-space:pre-wrap;font-size:16px;line-height:1.7}
+.archive-reply-button,.archive-reply-actions button{border:1px solid #9b80ad;border-radius:10px;background:#fff;color:#664580;padding:12px 16px;font-size:16px;font-weight:700;cursor:pointer}
+.archive-reply-button{align-self:end;white-space:nowrap}
+.archive-reply-editor{margin-top:18px;padding:16px;border:1px solid #d8c5e4;border-radius:12px;background:#fbf6ff}
+.archive-reply-editor label{display:block;color:#4f3a60;font-size:16px;font-weight:700}
+.archive-reply-editor textarea{display:block;box-sizing:border-box;width:100%;min-height:100px;margin-top:10px;padding:12px;border:1px solid #aa95b9;border-radius:9px;background:#fff;color:#342841;font:inherit;font-size:17px;line-height:1.6;resize:vertical}
+.archive-reply-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+.archive-reply-actions [data-archive-reply-action=save]{background:#8f73a6;color:#fff}
+@media(max-width:600px){.archive-page-footer .archive-reply-button{width:100%;order:2}.archive-page-footer .archive-sign,.archive-page-footer .archive-stamp{order:3}}

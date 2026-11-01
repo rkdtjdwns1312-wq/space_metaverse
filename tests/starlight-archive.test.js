@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateArchive,saveArchive,signArchive,getArchive,readArchive} from '../server/starlight-archive.js';
+import {validateArchive,saveArchive,signArchive,replyArchive,getArchive,readArchive} from '../server/starlight-archive.js';
 const setup=()=>{const p={id:'student-one',role:'student',nickname:'하나'},q={id:'student-two',role:'student',nickname:'둘'},t={id:'teacher-one',role:'teacher',nickname:'선생님'};return {p,q,t,room:{allowedNames:new Set(['둘','하나']),players:new Map([p,q,t].map(p=>[p.id,p]))}};};
 const data=(extra={})=>({kind:'diary',requestId:'request-001',date:'2026-10-30',title:'오늘의 발견',body:'<script>평문으로 보관</script>\n즐거웠어요.',...extra});
 test('archive entries are private, ordered, paginated, and teacher roster follows roster order',()=>{
@@ -12,14 +12,32 @@ test('archive entries are private, ordered, paginated, and teacher roster follow
 test('archive creation retries are idempotent; revision protects signs/edits and edits invalidate stamp only when content changes',()=>{
  const {p,q,t,room}=setup(),first=saveArchive(p,data(),100).entry;assert.deepEqual(saveArchive(p,data(),200).entry,first);assert.equal(p.starlightArchive.diary.length,1);
  assert.equal(readArchive(room,t,{kind:'diary'}).roster.find(student=>student.id===p.id).hasNew,true);
+ assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,false);
  assert.throws(()=>saveArchive(t,data(),200));assert.throws(()=>signArchive(room,q,{kind:'diary',studentId:p.id,id:first.id,revision:1},200));
  const signed=signArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1},200).entry;assert.equal(signed.revision,2);assert.equal(signed.stamp.text,'참 잘했어요');
  assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,false);
  assert.throws(()=>saveArchive(p,data({id:first.id,revision:1}),201));assert.throws(()=>signArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1},201));
  const unchanged=saveArchive(p,data({id:first.id,revision:2,requestId:undefined}),202).entry;assert.deepEqual(unchanged,signed);
  const edited=saveArchive(p,data({id:first.id,revision:2,body:'새 내용',requestId:undefined}),203).entry;assert.equal(edited.revision,3);assert.equal(edited.stamp,null);assert.equal(edited.createdAt,100);assert.equal(edited.updatedAt,203);
- assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,true);
+ assert.equal(readArchive(room,t,{kind:'diary'}).roster.find(student=>student.id===p.id).hasNew,true);
+ assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,false);
  p.accountKind='master';assert.equal(saveArchive(p,data({kind:'reading',bookTitle:'별 이야기',author:'글쓴이'}),204).entry.bookTitle,'별 이야기');
+ assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,true);
+});
+test('teacher reply stays private, survives student edits, and rejects student, stale, reading, and oversized submissions',()=>{
+ const {p,q,t,room}=setup(),first=saveArchive(p,data(),100).entry;
+ assert.throws(()=>replyArchive(room,p,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'위조'},110));
+ assert.throws(()=>replyArchive(room,q,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'위조'},110));
+ assert.throws(()=>replyArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'x'.repeat(501)},110));
+ assert.throws(()=>replyArchive(room,t,{kind:'reading',studentId:p.id,id:first.id,revision:1,text:'답글'},110));
+ const replied=replyArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'  오늘도 멋졌어요!  '},110).entry;
+ assert.equal(replied.reply.text,'오늘도 멋졌어요!');assert.equal(replied.reply.teacherName,'선생님');assert.equal(replied.revision,2);
+ assert.equal(getArchive(room,p,{kind:'diary',id:first.id}).entry.reply.text,'오늘도 멋졌어요!');
+ assert.throws(()=>replyArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'오래된 답글'},111));
+ const same=replyArchive(room,t,{kind:'diary',studentId:p.id,id:first.id,revision:2,text:'오늘도 멋졌어요!'},111).entry;assert.equal(same.revision,2);
+ const edited=saveArchive(p,data({id:first.id,revision:2,requestId:undefined,body:'새로운 이야기',reply:{text:'학생 답글 위조'}}),120).entry;
+ assert.equal(edited.reply.text,'오늘도 멋졌어요!');assert.equal(edited.revision,3);
+ const legacy=structuredClone(p.starlightArchive);delete legacy.diary[0].reply;assert.equal(validateArchive(legacy).diary[0].reply,null);
 });
 test('archive validates dates, limits, corrupt persisted records, controls, and retains all valid history',()=>{
  const {p}=setup();for(const extra of [{date:'2026-02-30'},{title:''},{body:'a'.repeat(10001)},{kind:'reading',bookTitle:''},{kind:'other'},{requestId:'x'}])assert.throws(()=>saveArchive(p,data(extra),100));

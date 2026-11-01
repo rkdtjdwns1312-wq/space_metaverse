@@ -7,7 +7,7 @@ const at=(f,p=f.p)=>{const o=MAP.objects.find(o=>o.kind==='starlight-archive');a
 const draft=(extra={})=>({kind:'diary',requestId:'request-socket-001',date:'2026-10-30',title:'나의 하루',body:'비밀 기록 <b>평문</b>',...extra});
 test('archive sockets reject guests, other students/classes, stale and distant sessions; teacher access stays private',async t=>{
  const f=await readingFixture(t),guest=await f.connect();at(f);at(f,f.q);at(f,f.teacherPlayer);
- for(const event of ['archive:read','archive:get','archive:save','archive:sign'])assert.equal((await call(guest,event,draft())).ok,false);
+ for(const event of ['archive:read','archive:get','archive:save','archive:sign','archive:reply'])assert.equal((await call(guest,event,draft())).ok,false);
  const e=ok(await call(f.student,'archive:save',draft())).entry;
  assert.equal((await call(f.other,'archive:read',{kind:'diary',studentId:f.p.id})).ok,false);
  assert.equal((await call(f.other,'archive:get',{kind:'diary',studentId:f.p.id,id:e.id})).ok,false);
@@ -34,6 +34,13 @@ test('archive saves and teacher stamps persist, reject stale races, and rollback
  assert.deepEqual(ok(await call(f.student,'archive:save',draft({id:e.id,revision:2}))).entry,signed);
  const edited=ok(await call(f.student,'archive:save',draft({id:e.id,revision:2,body:'수정한 글'}))).entry;assert.equal(edited.stamp,null);assert.equal(edited.revision,3);
  assert.equal((await call(f.teacher,'archive:sign',{kind:'diary',studentId:f.p.id,id:e.id,revision:2})).ok,false);
+ const replyData={kind:'diary',studentId:f.p.id,id:e.id,revision:3,text:'오늘도 잘했어요!'};
+ assert.equal((await call(f.student,'archive:reply',replyData)).ok,false);
+ assert.equal((await call(f.teacher,'archive:reply',{...replyData,kind:'reading'})).ok,false);
+ await f.fail(async()=>assert.equal((await call(f.teacher,'archive:reply',replyData)).ok,false));assert.equal(f.p.starlightArchive.diary[0].reply,null);
+ const replied=ok(await call(f.teacher,'archive:reply',replyData)).entry;assert.equal(replied.revision,4);assert.equal(replied.reply.text,replyData.text);
+ assert.equal((await call(f.teacher,'archive:reply',replyData)).ok,false);
+ assert.equal(ok(await call(f.student,'archive:get',{kind:'diary',id:e.id})).entry.reply.text,replyData.text);
  f.p.accountKind='master';const book=ok(await call(f.student,'archive:save',draft({kind:'reading',bookTitle:'작은 별',author:'작가'}))).entry;ok(await call(f.teacher,'archive:sign',{kind:'reading',studentId:f.p.id,id:book.id,revision:1}));
  const saved=structuredClone(f.p.starlightArchive);await f.restart();at(f);at(f,f.teacherPlayer);assert.deepEqual(f.p.starlightArchive,saved);assert.equal(ok(await call(f.student,'archive:save',draft())).entry.id,e.id);assert.equal(f.p.starlightArchive.diary.length,1);
  const record=toRecord(f.room),student=record.students.find(p=>p.id===f.p.id);delete student.starlightArchive;assert.deepEqual(fromRecord(record).players.get(f.p.id).starlightArchive,{diary:[],reading:[]});student.starlightArchive={diary:'bad',reading:[]};assert.throws(()=>fromRecord(record));
