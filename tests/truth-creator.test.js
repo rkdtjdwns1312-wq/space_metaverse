@@ -61,11 +61,12 @@ test('summon validates presence, life and hunting time, then Lv7 50000HP 40attac
   assert(moveMonsters(room,now+3500,()=>0).some(hit=>hit.damage===40));
   assert.equal(boss.serenaSkill,undefined);assert.equal(boss.darkStarSkills,undefined);assert.equal(boss.recordChallenge,undefined);
 });
-test('defeat grants baseline rewards without another boss material and restores only the statue next day',()=>{
+test('defeat grants one truth gem with baseline rewards and restores only the statue next day',()=>{
   const {room,player}=fixture();summonTruthCreator(room,player,now);const boss=room.monsters.get(TRUTH_CREATOR.monsterId);
   damageMonster(room,boss,player,50000,now,{energyRoll:()=>1500});const drops=[...room.energyDrops.values()];
   assert.equal(drops.find(d=>!d.kind).total,1500);assert(drops.some(d=>d.itemId==='gold-big-bang-card'));
-  assert(drops.filter(d=>d.kind).every(d=>['gold-big-bang-card','exploration-ticket'].includes(d.itemId)));
+  assert.equal(drops.filter(d=>d.itemId==='truth-gem').length,1);assert.equal(drops.find(d=>d.itemId==='truth-gem').total,1);
+  assert(drops.filter(d=>d.kind).every(d=>['truth-gem','gold-big-bang-card','exploration-ticket'].includes(d.itemId)));
   const due=nextBossRespawnAt(now);assert.equal(room.truthCreator.respawnAt,due);
   assert.equal(restoreTruthCreatorStatue(room,due-1),false);moveMonsters(room,due,()=>0);assert.equal(boss.hp,0);
   assert.equal(restoreTruthCreatorStatue(room,due),true);assert(!monstersOf(room,due).has(boss.id));

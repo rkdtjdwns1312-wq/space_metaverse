@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {STREET} from '../shared/config.js';
+import {readingFixture,call,ok} from './helpers/reading-fixture.js';
+import {addBossDrops} from '../server/energy-drops.js';
+const ingredients=[{id:'truth-gem',quantity:1}],output='truth-convergence';
+
+test('truth loot and public crafting enforce ownership/location, roll back failed saves, reject duplicate spend, and survive restart',async t=>{
+ const f=await readingFixture(t,{craftingRecipes:[]}),machine=STREET.objects.find(o=>o.kind==='crafting');
+ const at=p=>Object.assign(p,{mapId:STREET.id,x:machine.x,y:machine.y+80,input:{x:0,y:0,at:0}});
+ f.mutate(p=>Object.assign(p,{inventory:[],starShards:0,cosmicEnergy:30000}));at(f.p);at(f.q);
+ const boss={typeId:'truth-creator',mapId:f.p.mapId,x:f.p.x,y:f.p.y};
+ const drops=addBossDrops(f.room,boss,new Map([[f.p.id,1]]),f.now,()=>1),gem=drops.find(d=>d.itemId==='truth-gem');
+ assert.equal(drops.filter(d=>d.itemId==='truth-gem').length,1);assert.equal(gem.total,1);
+ assert.equal((await call(f.other,'energy:collect',{dropId:gem.id})).ok,false);
+ await f.fail(async()=>assert.equal((await call(f.student,'energy:collect',{dropId:gem.id})).ok,false));
+ assert.deepEqual(f.p.inventory,[]);assert(f.room.energyDrops.has(gem.id));
+ const pickup=await Promise.all([call(f.student,'energy:collect',{dropId:gem.id}),call(f.student,'energy:collect',{dropId:gem.id})]);
+ assert.equal(pickup.filter(r=>r.ok).length,1);assert.deepEqual(f.p.inventory,ingredients);
+ assert.deepEqual(ok(await call(f.student,'recipes:learned')).recipes,[]);
+ Object.assign(f.p,{mapId:'space-plaza',x:0,y:0});assert.equal((await call(f.student,'crafting:combine',{ingredients})).ok,false);at(f.p);
+ const before=structuredClone(f.p.inventory);
+ await f.fail(async()=>assert.equal((await call(f.student,'crafting:combine',{ingredients})).ok,false));
+ assert.deepEqual(f.p.inventory,before);assert.equal(f.p.cosmicEnergy,30000);assert.deepEqual(f.p.learnedRecipeIds||[],[]);
+ const crafted=await Promise.all([call(f.student,'crafting:combine',{ingredients,cosmicEnergy:0,starShards:0}),call(f.student,'crafting:combine',{ingredients})]);
+ assert.equal(crafted.filter(r=>r.ok&&r.success).length,1);assert.equal(f.p.cosmicEnergy,0);assert.equal(f.p.starShards,0);assert.deepEqual(f.p.inventory,[{id:output,quantity:1}]);
+ assert.equal(ok(await call(f.student,'recipes:learned')).recipes.filter(r=>r.output.id===output).length,1);
+ assert.equal((await call(f.student,'shop:energy:buy',{itemId:output})).ok,false);
+ await f.restart();assert.deepEqual(f.p.inventory,[{id:output,quantity:1}]);assert.equal(f.p.cosmicEnergy,0);assert.deepEqual(f.p.learnedRecipeIds,[output]);
+});

@@ -48,6 +48,7 @@ import {openPlanetDesigner} from './planet-designer.js';
 import {drawPlanetDesign} from '/shared/planet-design.js';
 import {createDarkStarUI} from './dark-star-ui.js';
 import {createTruthCreatorUI} from './truth-creator-ui.js';
+import {createTruthCreatorBlueUI} from './truth-creator-blue-ui.js';
 import {createStarRecordUI,createStarRecordMathUI} from './star-record-ui.js';
 import {createSerenaUI} from './serena-ui.js';
 import {createBossDialogueUI} from './boss-dialogue-ui.js';
@@ -396,6 +397,7 @@ async function request(event,data){
 let serenaWorldState=null;
 const darkStarUI=createDarkStarUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const truthCreatorUI=createTruthCreatorUI({request,onClose:()=>$('world').focus({preventScroll:true})});
+const truthCreatorBlueUI=createTruthCreatorBlueUI({request,getKey:controlSettings.code,getKeyLabel:controlSettings.label,toast,onClose:()=>$('world').focus({preventScroll:true})});
 const starRecordUI=createStarRecordUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const starRecordMathUI=createStarRecordMathUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
@@ -408,6 +410,7 @@ function updateBgm(mapId,serenaOverride){
 }
 function updateRoom(value){
   room=value;world.setRoom(room,selfId);starCardUI.update();
+  truthCreatorBlueUI.sync(room.monsters,room.players.find(p=>p.id===selfId));
   classroomHelp.update();teacherUpdates.update(room,selfId);
   const currentAimMap=room.players.find(p=>p.id===selfId)?.mapId;if(aimMap!==currentAimMap){mouseAim=null;aimMap=currentAimMap;}
   bossDialogueUI.update();
@@ -1036,6 +1039,7 @@ function doInteract(){
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='dark-star-card')interactDarkCard(n);
+  else if(n.kind==='truth-creator-blue'){stop();truthCreatorBlueUI.open(n,room?.players.find(p=>p.id===selfId));}
   else if(n.kind==='star-record-number'){stop();starRecordMathUI.open(n);}
   else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='hall-of-fame')hallOfFame.open();
@@ -1495,6 +1499,7 @@ function reset(message){
   clearTeacherActiveItems();
   resourceCatalogRevision++;$('resource-kind').value='starShards';$('resource-kind').onchange();
   bossDialogueUI.reset();
+  truthCreatorBlueUI.reset();
   recipeBook.reset();
   holdings.reset();
   characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();cetusUI.reset();
@@ -1599,7 +1604,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('hunting:state',data=>{if(selfId)huntingTime.update(data);});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});
@@ -1621,7 +1626,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

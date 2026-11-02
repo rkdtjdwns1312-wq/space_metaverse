@@ -82,6 +82,7 @@ import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './m
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
+import {openTruthCreatorBlue,inputTruthCreatorBlue} from './truth-creator-blue.js';
 import {summonTruthCreator,requireTruthCreatorEntry} from './truth-creator.js';
 import {summonStarRecord} from './star-record.js';
 import {answerStarRecordChallenge} from './star-record-challenge.js';
@@ -442,6 +443,15 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=summonDarkStar(session.room,session.player,clock());
       roster(session.room);return result;
     });
+    action('truth-creator:blue-open',data=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room,'먼저 교실에 입장해주세요.');
+      return openTruthCreatorBlue(s.room,s.player,data?.orbId,clock());
+    },false);
+    action('truth-creator:blue-input',data=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room,'먼저 교실에 입장해주세요.');
+      const result=inputTruthCreatorBlue(s.room,s.player,data,clock());
+      if(result.disarmed)roster(s.room);return result;
+    },false);
     action('truth-creator:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonTruthCreator(session.room,session.player,clock());

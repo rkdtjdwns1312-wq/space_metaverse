@@ -55,7 +55,7 @@ export function addBossDrops(room,monster,contributions,now=Date.now(),roll=rand
     pruneEnergyDrops(room,now);room.energyDrops??=new Map();
     const drops=[];
     const count=roll(1,3);
-    for(const itemId of [...(monster.typeId==='truth-creator'?[]:[monster.typeId==='dark-star'?'black-gem':monster.typeId==='serena'?'radiant-star-origin':monster.typeId==='star-record'?'origin-star-record':'spirit-king-soul']),'gold-big-bang-card',...Array.from({length:count},()=> 'exploration-ticket')]){
+    for(const itemId of [monster.typeId==='truth-creator'?'truth-gem':monster.typeId==='dark-star'?'black-gem':monster.typeId==='serena'?'radiant-star-origin':monster.typeId==='star-record'?'origin-star-record':'spirit-king-soul','gold-big-bang-card',...Array.from({length:count},()=> 'exploration-ticket')]){
       const drop={id:randomUUID(),kind:'item',itemId,mapId:monster.mapId,
         x:monster.x+(drops.length-1)*30,y:monster.y,total:1,
         shares:new Map(ids.map(playerId=>[playerId,1])),partyRollEligible:ids.length>1?[...ids]:null,

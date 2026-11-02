@@ -1,3 +1,5 @@
+import {clearTruthCreatorGalaxy,truthCreatorGalaxyViews} from './truth-creator-galaxy.js';
+import {clearTruthCreatorBlue,truthCreatorBlueViews} from './truth-creator-blue.js';
 import {clearTruthCreatorSentries} from './truth-creator-sentries.js';
 import {clearTruthCreatorChasers,truthCreatorChaserViews} from './truth-creator-chasers.js';
 import {RULES} from '../shared/config.js';
@@ -9,7 +11,7 @@ export const TRUTH_CREATOR_ATTACK=Object.freeze({aimMs:3000,speed:420,radius:22,
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const stateOf=boss=>boss.truthCreatorAttack??={mapId:boss.mapId,sequence:0,aim:null,shots:[],trails:[],contacts:new Map()};
-export function clearTruthCreatorAttack(boss,room){boss.truthCreatorAttack=null;clearTruthCreatorChasers(boss);clearTruthCreatorSentries(room,boss);}
+export function clearTruthCreatorAttack(boss,room){boss.truthCreatorAttack=null;clearTruthCreatorGalaxy(boss);clearTruthCreatorBlue(boss);clearTruthCreatorChasers(boss);clearTruthCreatorSentries(room,boss);}
 const visual=(boss,kind,x,y)=>({monsterId:boss.id,mapId:boss.mapId,x,y,dx:0,dy:0,reach:0,skillKind:`truth-creator-${kind}`,durationMs:450,noEffect:true});
 function hitPlayer(room,boss,player,now,kind){
   const hit=damagePlayer(player,monsterType(boss.typeId).power,now,{room});
@@ -82,6 +84,6 @@ export function tickTruthCreatorAttack(room,boss,now){
 export function truthCreatorAttackView(boss,now){
   const state=boss.truthCreatorAttack;if(!state||boss.hp<=0||state.mapId!==boss.mapId)return null;
   // Aiming stays strictly server-side. No target coordinates or warning line are sent.
-  return {serverNow:now,chasers:truthCreatorChaserViews(boss,now),projectiles:state.shots.filter(shot=>now<shot.endsAt).map(({id,x,y,dx,dy,radius,startsAt,endsAt})=>({id,x,y,dx,dy,radius,startsAt,endsAt})),
+  return {serverNow:now,galaxies:truthCreatorGalaxyViews(boss,now),blueOrbs:truthCreatorBlueViews(boss,now),chasers:truthCreatorChaserViews(boss,now),projectiles:state.shots.filter(shot=>now<shot.endsAt).map(({id,x,y,dx,dy,radius,startsAt,endsAt})=>({id,x,y,dx,dy,radius,startsAt,endsAt})),
     paths:state.trails.map(trail=>trailView(trail,now)).filter(Boolean)};
 }

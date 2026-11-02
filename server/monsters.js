@@ -8,6 +8,8 @@ import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {DARK_STAR} from '../shared/dark-star.js';
+import {tryTruthCreatorGalaxy,tickTruthCreatorGalaxy} from './truth-creator-galaxy.js';
+import {tryTruthCreatorBlue,tickTruthCreatorBlue} from './truth-creator-blue.js';
 import {tryTruthCreatorSentry,tickTruthCreatorSentries} from './truth-creator-sentries.js';
 import {tryTruthCreatorChasers,tickTruthCreatorChasers} from './truth-creator-chasers.js';
 import {aimTruthCreator,tickTruthCreatorAttack,truthCreatorAttackView,clearTruthCreatorAttack} from './truth-creator-attack.js';
@@ -306,7 +308,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(m.hp<=0){m.moving=false;continue;}
     }
     if(type?.id==='truth-creator'){
-      hits.push(...tickTruthCreatorAttack(room,m,now),...tickTruthCreatorChasers(room,m,now),...tickTruthCreatorSentries(room,m,now));
+      hits.push(...tickTruthCreatorAttack(room,m,now),...tickTruthCreatorChasers(room,m,now),...tickTruthCreatorSentries(room,m,now),...tickTruthCreatorBlue(room,m,now),...tickTruthCreatorGalaxy(room,m,now));
       if(m.hp<=0){m.moving=false;continue;}
     }
     if(type?.id==='dark-star'){
@@ -344,7 +346,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       const attack=advanceStarRecordAttack(room,m,now,random);hits.push(...attack.hits);
       if(attack.busy)continue;
     }
-    if(type.id==='truth-creator'){hits.push(...aimTruthCreator(room,m,target,now));tryTruthCreatorChasers(room,m,target,now);tryTruthCreatorSentry(room,m,target,now);}
+    if(type.id==='truth-creator'){hits.push(...aimTruthCreator(room,m,target,now));tryTruthCreatorChasers(room,m,target,now);tryTruthCreatorSentry(room,m,target,now);tryTruthCreatorBlue(room,m,target,now,random);tryTruthCreatorGalaxy(room,m,target,now,random);}
     if(type.id==='dark-star'){
       if(m.darkStarSkills?.absorption){m.moving=false;continue;}
       tryDarkStarSkills(room,m,target,now,random);

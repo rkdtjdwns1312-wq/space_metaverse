@@ -1,0 +1,29 @@
+#truth-creator-blue-dialog{box-sizing:border-box;width:min(560px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:calc(100dvh - 20px);padding:20px 24px;border:2px solid #7ec9ef;background:linear-gradient(145deg,#fcfeff,#e7f3ff);color:#213f63;overflow:auto}
+#truth-creator-blue-dialog::backdrop{background:#071b39b8}
+#truth-creator-blue-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#truth-creator-blue-dialog h2{margin:0;font-size:24px}
+#truth-creator-blue-dialog [data-close]{min-height:42px;flex:none;padding:8px 15px}
+.truth-blue-timer{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0 8px;padding:8px;border:1px solid #8fbfe0;border-radius:12px;background:#fff;font-size:17px}
+.truth-blue-timer strong{font-size:30px;font-variant-numeric:tabular-nums;color:#155a9c}
+.is-urgent .truth-blue-timer strong{color:#b62546}
+.truth-blue-instruction{margin:8px 0;text-align:center;word-break:keep-all;font-size:17px;line-height:1.5}
+.truth-blue-sequence{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0;margin:14px 0}
+.truth-blue-sequence li{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:80px;border:2px solid #bdcfe2;border-radius:12px;background:#fafdff;font-size:16px}
+.truth-blue-number{position:absolute;left:7px;top:4px;font-size:13px;color:#49678c}
+.truth-blue-icon{display:block;font-family:"Segoe UI Symbol",sans-serif;font-size:30px;line-height:1.1;color:#2c72bd}
+.truth-blue-sequence .is-current{border-color:#2674c1;box-shadow:0 0 0 2px #b6dcff;background:#e0f0ff}
+.truth-blue-sequence .is-done{background:#d8efeb;border-color:#71ab9b;color:#286454}
+.truth-blue-sequence .is-done::after{content:'✓';position:absolute;right:5px;top:3px;font-size:17px;color:#286454}
+.truth-blue-status{text-align:center;min-height:66px}
+.truth-blue-status strong{font-size:18px;font-variant-numeric:tabular-nums}
+.truth-blue-status p{margin:4px 0 10px;line-height:1.45;font-size:15px;word-break:keep-all;overflow-wrap:break-word}
+.truth-blue-actions{display:flex;justify-content:center;gap:22px}
+.truth-blue-actions button{width:90px;height:90px;display:grid;grid-template-columns:1fr auto;grid-template-rows:1fr auto;align-items:center;justify-items:center;padding:8px;border:2px solid #7eacd9;border-radius:12px;background:#fff;color:#224f7e;font-size:16px;touch-action:manipulation}
+.truth-blue-actions .truth-blue-icon{grid-column:1 / -1;font-size:34px}
+.truth-blue-actions kbd{font:inherit;font-size:13px;border:1px solid #a6bed9;border-radius:4px;padding:1px 4px;background:#eaf3fc}
+.truth-blue-actions button:disabled{opacity:.55}
+#truth-creator-blue-dialog button:focus-visible{outline:3px solid #1d70bd;outline-offset:3px}
+.truth-blue-hint{margin:12px 0 0;font-size:14px;line-height:1.5;text-align:center;color:#4d6782;word-break:keep-all}
+@media(max-width:420px){#truth-creator-blue-dialog{padding:16px 12px}.truth-blue-sequence{gap:6px}.truth-blue-sequence li{min-height:72px}.truth-blue-instruction{font-size:16px}}
+@media(max-height:700px) and (max-width:519px){#truth-creator-blue-dialog{padding:12px}#truth-creator-blue-dialog h2{font-size:21px}.truth-blue-timer{margin:8px 0 5px;padding:5px}.truth-blue-timer strong{font-size:25px}.truth-blue-instruction{margin:5px 0;font-size:14px}.truth-blue-sequence{margin:8px 0}.truth-blue-sequence li{min-height:57px;font-size:14px}.truth-blue-icon{font-size:25px}.truth-blue-status{min-height:56px}.truth-blue-status p{font-size:13px;margin-bottom:6px}.truth-blue-actions button{width:76px;height:76px}.truth-blue-actions .truth-blue-icon{font-size:29px}.truth-blue-hint{font-size:12px;margin-top:8px}}
+@media(max-height:520px) and (min-width:520px){#truth-creator-blue-dialog{width:min(760px,calc(100vw - 20px));padding:10px 16px;display:none;grid-template-columns:minmax(0,1fr) 190px;gap:5px 18px}#truth-creator-blue-dialog[open]{display:grid}#truth-creator-blue-dialog header{grid-column:1 / -1}#truth-creator-blue-dialog h2{font-size:21px}.truth-blue-timer{grid-column:2;grid-row:2;margin:0;padding:4px}.truth-blue-timer strong{font-size:25px}.truth-blue-instruction{grid-column:1;grid-row:2;margin:0;align-self:center;font-size:15px}.truth-blue-sequence{grid-column:1;grid-row:3 / 5;margin:3px 0;gap:6px}.truth-blue-sequence li{min-height:64px;font-size:14px}.truth-blue-actions{grid-column:2;grid-row:3;gap:10px;align-self:center}.truth-blue-actions button{width:80px;height:78px}.truth-blue-status{grid-column:2;grid-row:4;min-height:0}.truth-blue-status p{font-size:12px;margin-bottom:0}.truth-blue-hint{grid-column:1 / -1;margin:0;font-size:12px}.truth-blue-icon{font-size:26px}}

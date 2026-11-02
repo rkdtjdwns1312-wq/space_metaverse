@@ -1,0 +1,7 @@
+{
+  "mode": "built-in image_gen",
+  "asset": "truth-creator-blue.png",
+  "reference": "truth-creator-orb.png",
+  "prompt": "Edit target: the attached transparent celestial projectile orb. Preserve exactly the sphere made of many little five-pointed crystal stars, its central star, engraved delicate rims, intricate layout and complete silhouette. Change its palette and aura to radiant sapphire blue and luminous icy cyan, with cobalt-blue shadows between stars and white-blue pinpoints. The entire orb must read distinctly BLUE at small game size, unlike the existing golden and crimson orbs. Tiny refined gold edges may remain but blue must dominate. Same hand-painted 2D storybook fantasy RPG graphic style, TalesWeaver/Trickster-like detailed celestial crystal ornamentation. Keep generous transparent margins and complete uncropped glow. One isolated blue orb; no background, no scenery, no floor, no text, no numbers, no countdown, no UI, no watermark. Preserve genuine transparency.",
+  "transparent": true
+}

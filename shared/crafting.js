@@ -40,6 +40,13 @@ export const TRUTH_RECORD_RECIPE = Object.freeze({
   cosmicEnergy:10000
 });
 
+export const TRUTH_CONVERGENCE_RECIPE = Object.freeze({
+  ingredients: Object.freeze([{id:'truth-gem',quantity:1}]),
+  output: Object.freeze({id:'truth-convergence',quantity:1}),
+  starShards:0,
+  cosmicEnergy:30000
+});
+
 // 보스 재료 조합은 어느 서버에서도 누락되지 않도록 공통 규칙으로 둡니다.
 export const BOSS_EQUIPMENT_RECIPES=Object.freeze([
   Object.freeze({ingredients:Object.freeze([{id:'leoon-claw',quantity:2}]),output:Object.freeze({id:'sun-ring',quantity:1})}),
@@ -53,5 +60,6 @@ export const PUBLIC_CRAFTING_RECIPES = Object.freeze([
   PRIMORDIAL_STAR_GEM_RECIPE,
   PRIMORDIAL_STAR_SIGIL_RECIPE,
   TRUTH_RECORD_RECIPE,
+  TRUTH_CONVERGENCE_RECIPE,
   STAR_CRUMB_RECIPE
 ]);

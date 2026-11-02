@@ -1,0 +1,7 @@
+{
+  "mode": "built-in image_gen",
+  "asset": "truth-convergence.png",
+  "reference": "../items/truth-gem.png",
+  "prompt": "Use case: identity-preserve\nAsset type: one finished necklace equipment icon for a 2D fantasy RPG.\nUse the attached star-shaped crystal gemstone as the exact pendant jewel: preserve its pearly faceted five-pointed silhouette, gold corner accents, lavender-blue interior and tiny golden constellation within. Turn it into an elegant wearable necklace by placing a smaller version of this gemstone pendant in the lower-middle, with a delicate ornate gold bail at its top and an oval fine golden linked chain looping up above it. Chain should read clearly at inventory icon scale. Add only subtle celestial filigree around the bail and a few tiny attached star details; keep central gemstone unmistakable.\nSame detailed hand-painted storybook Korean fantasy RPG art, beautiful warm gold and sapphire-lavender pearl crystal highlights, restrained shimmering accents. Single necklace centered with full chain and pendant visible, generous transparent margins, square canvas. No neck or person, no jewelry stand, no box, no ground, no background, no text, no UI, no watermark. Genuine transparency. Pendant and chain form one cohesive item.",
+  "transparent": true
+}

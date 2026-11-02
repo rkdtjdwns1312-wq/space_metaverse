@@ -5,7 +5,9 @@ const art=mapImage('/assets/monsters/truth-creator.png');
 const floating=mapImage('/assets/monsters/truth-creator-float.png');
 const chaser=mapImage('/assets/monsters/truth-creator-chaser.png');
 const orb=mapImage('/assets/monsters/truth-creator-orb.png');
-export const preloadTruthCreatorArt=()=>decodeMapImages([art,floating,orb,chaser]);
+const blue=mapImage('/assets/monsters/truth-creator-blue.png');
+const galaxy=mapImage('/assets/monsters/truth-creator-galaxy.png');
+export const preloadTruthCreatorArt=()=>decodeMapImages([art,floating,orb,chaser,blue,galaxy]);
 export function truthCreatorBounds(monster){
   const width=monster.radius*2.4,height=width,bottom=monster.y+monster.radius*.9;
   return {width,height,top:bottom-height-8,bottom};
@@ -58,6 +60,19 @@ export function truthCreatorObjectLayers(ctx,effects,now){
     for(const shot of shots||[])if(now<shot.endsAt)layers.push({y:shot.y,draw:()=>{
       const size=shot.radius*2.5;ctx.drawImage(art,shot.x-size/2,shot.y-size/2,size,size);
     }});
+  for(const shot of effects?.blueOrbs||[])if(now<shot.endsAt)layers.push({y:shot.y,draw:()=>{
+    const size=shot.radius*2.5;ctx.save();
+    if(mapImageReady(blue))ctx.drawImage(blue,shot.x-size/2,shot.y-size/2,size,size);
+    else{ctx.fillStyle='#5ba9ef';ctx.beginPath();ctx.arc(shot.x,shot.y,shot.radius,0,Math.PI*2);ctx.fill();}
+    if(shot.phase==='landed'){
+      ctx.font='bold 20px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='#102d58';ctx.fillStyle='#e4f7ff';
+      const label=Math.max(0,Math.ceil((shot.endsAt-now)/1000))+'초';ctx.strokeText(label,shot.x,shot.y+size/2+17);ctx.fillText(label,shot.x,shot.y+size/2+17);
+    }
+    ctx.restore();
+  }});
+  if(mapImageReady(galaxy))for(const shot of effects?.galaxies||[])if(now<shot.endsAt)layers.push({y:shot.y,draw:()=>{
+    const size=shot.radius*2.75;ctx.save();ctx.translate(shot.x,shot.y);ctx.rotate(Math.atan2(shot.dy,shot.dx));ctx.drawImage(galaxy,-size/2,-size/2,size,size);ctx.restore();
+  }});
   return layers;
 }
 export function drawTruthCreatorSentry(ctx,monster,time=0){
