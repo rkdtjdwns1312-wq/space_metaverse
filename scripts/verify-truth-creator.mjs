@@ -31,7 +31,10 @@ try{
   await move(boss.x-260,boss.y+70);await page.screenshot({path:'.local/truth-creator/boss-desktop.png'});
   await page.locator('#map-overview').click();
   await page.locator('[data-map-id="sleeping-stars-4"] .universe-node-select').dblclick();
-  assert.equal(await page.locator('#map-travel-confirm').isVisible(),false);
+  assert.equal(await page.locator('#map-travel-confirm').isVisible(),true);
+  assert.match(await page.locator('#map-travel-question').innerText(),/별들이 잠드는 곳 3/);
+  await page.locator('#map-travel-yes').click();await page.waitForFunction(()=>!document.querySelector('#map-travel-confirm').open);assert.equal(player.mapId,'sleeping-stars-3');
+  await move(boss.x-260,boss.y+70);
   for(let i=0;i<4&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');
   (boss.teacherRetaliation??=new Set()).add(player.id);boss.attackers.set(player.id,1);boss.targetId=player.id;
   boss.mp=100;player.x=boss.x-650;player.y=boss.y;
@@ -58,5 +61,5 @@ try{
   assert.equal(new Set(art.frames).size,8);writeFileSync('.local/truth-creator/art-review.png',Buffer.from(art.sheet.split(',')[1],'base64'));
   await page.emulateMedia({reducedMotion:'reduce'});
   const quiet=await page.evaluate(async()=>{const {drawTruthCreator}=await import('/truth-creator-art.js');const c=document.createElement('canvas');c.width=500;c.height=500;const ctx=c.getContext('2d'),m={shape:'truth-creator',x:250,y:300,radius:150,moving:true};const capture=t=>{ctx.clearRect(0,0,500,500);drawTruthCreator(ctx,m,t);return c.toDataURL();};return capture(0)===capture(800);});assert(quiet);
-  assert.deepEqual(errors,[]);console.log('PASS actual statue/cancel/summon, HP50000/MP100, map shortcut blocked, desktop/mobile combat, eight moving frames/reduced motion, golden orb/light trail/red chaser/yellow sentry art, errors0');
+  assert.deepEqual(errors,[]);console.log('PASS actual statue/cancel/summon, HP50000/MP100, map shortcut detours to stage3, desktop/mobile combat, eight moving frames/reduced motion, golden orb/light trail/red chaser/yellow sentry art, errors0');
 }finally{await browser.close();await game.close();}

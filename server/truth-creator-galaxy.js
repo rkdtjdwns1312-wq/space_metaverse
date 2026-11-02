@@ -1,29 +1,19 @@
 import {RULES,mapOf} from '../shared/config.js';
-import {originFloor,onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals} from './vitals.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
 import {randomUUID} from 'node:crypto';
 
-export const TRUTH_CREATOR_GALAXY=Object.freeze({mana:30,cooldownMs:60000,count:8,minIntervalMs:1000,maxIntervalMs:3000,radius:96,speed:420});
+export const TRUTH_CREATOR_GALAXY=Object.freeze({mana:30,cooldownMs:60000,count:8,minIntervalMs:1000,maxIntervalMs:3000,radius:96,speed:210});
 const eligible=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const roll=random=>Math.max(0,Math.min(.999999999,Number(random())||0));
 const stateOf=boss=>boss.truthCreatorGalaxy??={mapId:boss.mapId,readyAt:0,nextSpawnAt:null,queue:[],orbs:[]};
 export function clearTruthCreatorGalaxy(boss){boss.truthCreatorGalaxy=null;}
 export function truthCreatorGalaxyRoute(map,angle){
-  const floor=originFloor(map);if(!floor)return null;
-  const dx=Math.cos(angle),dy=Math.sin(angle),radius=TRUTH_CREATOR_GALAXY.radius;
-  const edge=1/Math.sqrt(dx*dx/(floor.rx*floor.rx)+dy*dy/(floor.ry*floor.ry));
-  const extent=sign=>{
-    let lo=0,hi=edge;
-    for(let i=0;i<28;i++){const mid=(lo+hi)/2;
-      if(onOriginFloor(map,floor.cx+dx*mid*sign,floor.cy+dy*mid*sign,radius))lo=mid;else hi=mid;}
-    return lo;
-  };
-  // Use the tighter side for both ends so a southern doorway does not stretch a circular-floor route.
-  const start=Math.min(extent(-1),extent(1)),finish=start,distance=start+finish;
-  if(distance<radius*4)return null;
-  return {x:floor.cx-dx*start,y:floor.cy-dy*start,toX:floor.cx+dx*finish,toY:floor.cy+dy*finish,dx,dy,distance};
+  if(!map||!Number.isFinite(map.width)||!Number.isFinite(map.height)||map.width<=0||map.height<=0||!Number.isFinite(angle))return null;
+  const dx=Math.cos(angle),dy=Math.sin(angle),cx=map.width/2,cy=map.height/2;
+  const extent=Math.min(Math.abs(dx)>1e-12?cx/Math.abs(dx):Infinity,Math.abs(dy)>1e-12?cy/Math.abs(dy):Infinity);
+  return {x:cx-dx*extent,y:cy-dy*extent,toX:cx+dx*extent,toY:cy+dy*extent,dx,dy,distance:extent*2};
 }
 function launch(state,route,now){
   state.orbs.push({id:`truth-creator-galaxy-${randomUUID()}`,x:route.x,y:route.y,dx:route.dx,dy:route.dy,radius:TRUTH_CREATOR_GALAXY.radius,
@@ -32,6 +22,7 @@ function launch(state,route,now){
 export function tryTruthCreatorGalaxy(room,boss,target,now=Date.now(),random=Math.random){
   const rule=TRUTH_CREATOR_GALAXY;
   if(boss.typeId!=='truth-creator'||boss.hp<=0||!eligible(boss,target)||(boss.sleepUntil||0)>now||(boss.stunUntil||0)>now)return false;
+  if(boss.truthCreatorBlue?.orbs?.length)return false;
   const state=stateOf(boss);if(now<state.readyAt||state.queue.length||boss.mp<rule.mana)return false;
   const map=mapOf(boss.mapId),planned=Array.from({length:rule.count},()=>({route:truthCreatorGalaxyRoute(map,roll(random)*Math.PI*2),
     delayMs:rule.minIntervalMs+Math.floor(roll(random)*(rule.maxIntervalMs-rule.minIntervalMs+1))}));

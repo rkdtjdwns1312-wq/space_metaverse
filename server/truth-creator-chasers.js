@@ -3,7 +3,7 @@ import {onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals} from './vitals.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
 
-export const TRUTH_CREATOR_CHASERS=Object.freeze({mana:10,cooldownMs:30000,durationMs:20000,speed:RULES.speed*.6,radius:30,spawnDistance:300});
+export const TRUTH_CREATOR_CHASERS=Object.freeze({mana:10,cooldownMs:30000,durationMs:20000,speed:RULES.speed*.3,radius:30,spawnDistance:300});
 const eligible=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const stateOf=boss=>boss.truthCreatorChasers??={mapId:boss.mapId,sequence:0,readyAt:0,orbs:[]};
@@ -11,6 +11,7 @@ export function clearTruthCreatorChasers(boss){boss.truthCreatorChasers=null;}
 export function tryTruthCreatorChasers(room,boss,target,now){
   const rule=TRUTH_CREATOR_CHASERS;
   if(boss.typeId!=='truth-creator'||boss.hp<=0||!eligible(boss,target)||(boss.sleepUntil||0)>now||(boss.stunUntil||0)>now)return false;
+  if(boss.truthCreatorBlue?.orbs?.length)return false;
   const state=stateOf(boss);
   if(now<state.readyAt||state.orbs.length||boss.mp<rule.mana)return false;
   const players=[...room.players.values()].filter(p=>eligible(boss,p)),map=mapOf(boss.mapId),points=[];

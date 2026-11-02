@@ -41,6 +41,7 @@ function landingPoints(room,boss,random){
 export function tryTruthCreatorBlue(room,boss,target,now=Date.now(),random=Math.random){
   if(boss.typeId!==TRUTH_CREATOR.typeId||boss.hp<=0||!targetable(boss,target)||!Number.isFinite(now)||
     (boss.sleepUntil||0)>now||(boss.stunUntil||0)>now)return false;
+  if(boss.truthCreatorChasers?.orbs?.length||boss.truthCreatorGalaxy?.orbs?.length||boss.truthCreatorGalaxy?.queue?.length)return false;
   const state=stateOf(boss);if(state.orbs.length||now<state.readyAt||boss.mp<RULE.mana)return false;
   const points=landingPoints(room,boss,random);if(!points){state.readyAt=now+1000;return false;}
   const landsAt=now+RULE.flightMs,endsAt=landsAt+RULE.durationMs;

@@ -53,7 +53,7 @@ test('chaser cast snapshots one safe orb per eligible character, spends ten mana
   const f=fixture();f.player.x=f.boss.x;f.player.y=f.boss.y;
   const b={...f.player,id:'b',x:f.player.x+100,battleVitals:{...f.player.battleVitals},avatar:{level:1}};f.room.players.set(b.id,b);
   for(const [id,change] of [['teacher',{role:'teacher'}],['offline',{connected:false}],['away',{away:true}],['other',{mapId:'space-plaza'}],['black',{avatar:{level:1,blackStar:true}}],['ghost',{role:'teacher',avatar:{level:6,teacherPreview:true}}]])f.room.players.set(id,{...b,id,...change});
-  assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),true);assert.equal(f.boss.mp,90);assert.equal(CHASER.speed,RULES.speed*.6);
+  assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),true);assert.equal(f.boss.mp,90);assert.equal(CHASER.speed,RULES.speed*.3);
   assert.equal(f.boss.truthCreatorChasers.orbs.length,2);
   for(const orb of f.boss.truthCreatorChasers.orbs){assert.equal(orb.endsAt-now,20000);for(const p of [f.player,b])assert(Math.hypot(orb.x-p.x,orb.y-p.y)>orb.radius+RULES.radius+80);}
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+1),false);assert.equal(f.boss.mp,90);
@@ -68,7 +68,7 @@ test('red orb kills a bystander while pursuing its assigned target, respects Lib
   assert(Math.abs(x-orb.x-CHASER.speed*.1)<.001);assert.equal(orb.targetId,'a');
   const g=fixture();g.player.x=g.boss.x;tryTruthCreatorChasers(g.room,g.boss,g.player,now);
   g.player.avatar.constellationId='libra';g.player.libraAura={mapId:g.player.mapId,endsAt:now+10000,size:100,radius:200};
-  const immune=tickTruthCreatorChasers(g.room,g.boss,now+1000);assert(immune.some(hit=>hit.immune));assert(g.player.battleVitals.hp>0);
+  const immune=tickTruthCreatorChasers(g.room,g.boss,now+3000);assert(immune.some(hit=>hit.immune));assert(g.player.battleVitals.hp>0);
   for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.battleVitals.hp=0,p=>p.avatar.blackStar=true,p=>{p.role='teacher';p.avatar.teacherPreview=true;},p=>{p.role='teacher';p.teacherGhost=true;}]){
     const h=fixture();tryTruthCreatorChasers(h.room,h.boss,h.player,now);change(h.player);assert.deepEqual(tickTruthCreatorChasers(h.room,h.boss,now+100),[]);assert.equal(h.boss.truthCreatorChasers.orbs.length,0);
   }

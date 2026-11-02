@@ -5,6 +5,8 @@ import {mapOf} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals} from '../server/vitals.js';
 import {tryTruthCreatorBlue,tickTruthCreatorBlue,truthCreatorBlueViews,openTruthCreatorBlue,inputTruthCreatorBlue} from '../server/truth-creator-blue.js';
+import {tryTruthCreatorChasers,tickTruthCreatorChasers} from '../server/truth-creator-chasers.js';
+import {tryTruthCreatorGalaxy,tickTruthCreatorGalaxy} from '../server/truth-creator-galaxy.js';
 import {clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
 const now=100000;
 function fixture(){
@@ -68,4 +70,34 @@ test('one unresolved deadline defeats the whole eligible map once, respects Libr
   assert.equal(f.player.battleVitals.hp,0);assert(f.room.players.get('teacher').battleVitals.hp>0);assert.deepEqual(tickTruthCreatorBlue(f.room,f.boss,orb.endsAt+1),[]);
   for(const change of [g=>g.boss.hp=0,g=>g.boss.mapId='space-plaza',g=>g.player.mapId='space-plaza',g=>g.player.connected=false,g=>g.player.battleVitals.hp=0]){const g=fixture();cast(g);change(g);assert.deepEqual(tickTruthCreatorBlue(g.room,g.boss,now+1),[]);assert.equal(g.boss.truthCreatorBlue,null);}
   const g=fixture();cast(g);clearTruthCreatorAttack(g.boss,g.room);assert.equal(g.boss.truthCreatorBlue,null);
+});
+
+test('red chasers and blue puzzles never overlap and a blocked cast spends no mana or cooldown',()=>{
+  const f=fixture();assert(tryTruthCreatorChasers(f.room,f.boss,f.player,now));
+  assert.equal(tryTruthCreatorBlue(f.room,f.boss,f.player,now,()=>.25),false);
+  assert.equal(f.boss.mp,90);assert.equal(f.boss.truthCreatorBlue,undefined);
+  tickTruthCreatorChasers(f.room,f.boss,now+20000);
+  const orbs=cast(f,now+20000);assert.equal(f.boss.mp,85);
+  const readyAt=f.boss.truthCreatorChasers.readyAt;
+  assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+30000),false);
+  assert.equal(f.boss.mp,85);assert.equal(f.boss.truthCreatorChasers.readyAt,readyAt);
+  for(const orb of [...orbs]){let opened=open(f,orb,now+30000);
+    for(let i=0;i<8;i++){const result=inputTruthCreatorBlue(f.room,f.player,payload(opened),now+30000+i);opened={...result,interactionToken:opened.interactionToken};}}
+  assert(tryTruthCreatorChasers(f.room,f.boss,f.player,now+30010));assert.equal(f.boss.mp,75);
+  const g=fixture();cast(g);assert.equal(tryTruthCreatorChasers(g.room,g.boss,g.player,now),false);
+  assert.equal(g.boss.truthCreatorChasers,undefined);assert.equal(g.boss.mp,95);
+});
+
+test('blue puzzles exclude every queued and flying galaxy, in either casting order',()=>{
+  const f=fixture();cast(f);assert.equal(tryTruthCreatorGalaxy(f.room,f.boss,f.player,now,()=>0),false);
+  assert.equal(f.boss.mp,95);assert.equal(f.boss.truthCreatorGalaxy,undefined);
+  const g=fixture();g.player.y=g.boss.y+350;assert(tryTruthCreatorGalaxy(g.room,g.boss,g.player,now,()=>0));
+  assert.equal(tryTruthCreatorBlue(g.room,g.boss,g.player,now),false);assert.equal(g.boss.mp,70);
+  assert.equal(g.boss.truthCreatorBlue,undefined);
+  const state=g.boss.truthCreatorGalaxy;
+  // The entire spawn queue must finish, then the last projectile must leave the map.
+  for(let i=0;i<7;i++){tickTruthCreatorGalaxy(g.room,g.boss,state.nextSpawnAt);assert.equal(tryTruthCreatorBlue(g.room,g.boss,g.player,state.nextSpawnAt||now+8000),false);}
+  assert.equal(state.queue.length,0);assert(state.orbs.length);
+  const lastEnd=Math.max(...state.orbs.map(orb=>orb.endsAt));tickTruthCreatorGalaxy(g.room,g.boss,lastEnd);
+  assert.equal(state.orbs.length,0);assert(tryTruthCreatorBlue(g.room,g.boss,g.player,lastEnd,()=>.25));assert.equal(g.boss.mp,65);
 });
