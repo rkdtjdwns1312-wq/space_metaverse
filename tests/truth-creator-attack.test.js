@@ -4,6 +4,7 @@ import {mapOf,RULES} from '../shared/config.js';
 import {ensureVitals} from '../server/vitals.js';
 import {TRUTH_CREATOR_ATTACK as RULE,aimTruthCreator,tickTruthCreatorAttack,truthCreatorAttackView,clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
 import {TRUTH_CREATOR_CHASERS as CHASER,tryTruthCreatorChasers,tickTruthCreatorChasers,truthCreatorChaserViews} from '../server/truth-creator-chasers.js';
+import {tryTruthCreatorBlue} from '../server/truth-creator-blue.js';
 import {tryTruthCreatorSentry} from '../server/truth-creator-sentries.js';
 const now=100000;
 function fixture(){
@@ -87,4 +88,21 @@ test('visual teacher ghost never changes retaliation: ordinary teachers are exem
     aimTruthCreator(f.room,f.boss,f.player,now);assert.equal(f.boss.truthCreatorAttack.aim,null);
     assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),false);assert.equal(tryTruthCreatorSentry(f.room,f.boss,f.player,now),false);
   }
+});
+
+test('blue pattern blocks basic orb and light-trail damage only until its last orb is gone',()=>{
+  const f=fixture();fire(f);assert(tryTruthCreatorBlue(f.room,f.boss,f.player,now+3000,()=>.25));
+  const hp=f.player.battleVitals.hp;
+  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5000),[]);assert.equal(f.player.battleVitals.hp,hp);
+  assert.equal(f.boss.truthCreatorAttack.shots.length,0,'contact still consumes the ordinary projectile');
+  f.player.x=f.boss.x+100;
+  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5001),[]);assert.equal(f.player.battleVitals.hp,hp);
+  f.boss.truthCreatorBlue.orbs.splice(0,2);
+  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5002),[],'last remaining blue orb still protects');
+  f.boss.truthCreatorBlue.orbs=[];
+  assert.equal(tickTruthCreatorAttack(f.room,f.boss,now+5003)[0].damage,40);assert.equal(f.player.battleVitals.hp,hp-40);
+  for(const state of [
+    {mapId:'space-plaza',orbs:[{startsAt:now,endsAt:now+10000}]},
+    {mapId:'sleeping-stars-4',orbs:[{startsAt:now,endsAt:now+5000}]}
+  ]){const g=fixture();fire(g);g.boss.truthCreatorBlue=state;assert.equal(tickTruthCreatorAttack(g.room,g.boss,now+5000)[0].damage,40);}
 });
