@@ -211,7 +211,7 @@ test('teacher can preview all stages and constellations without xp or quota, whi
     assert.deepEqual({level:result.avatar.level,id:result.avatar.constellationId,xp:result.avatar.xp,teacherPreview:result.avatar.teacherPreview},
       {level,id:'taurus',xp:0,teacherPreview:true});
     assert.equal(avatarLabel(teacher).detail.includes('LV'+level+' 황소자리'),true);
-    assert.equal(attackPowerOf(level,'taurus',teacher),99999,'선생님 운영 권한과 능력치는 유지');
+    assert.equal(attackPowerOf(level,'taurus',teacher),100,'선생님 운영 권한과 능력치는 유지');
     assert.ok(avatarSizeOf(teacher)>32);
   }
   selectTeacherEvolution(classroom,teacher,{level:1});

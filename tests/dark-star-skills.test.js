@@ -112,7 +112,14 @@ test('normal melee, teacher E and ranged class Q/E cannot damage interaction-onl
   p.x=card.x-120;p.y=card.y;p.facing={x:1,y:0};boss.x=0;boss.y=0;
   for(const other of boss.darkStarSkills.cards)if(other!==card){other.x=5000;other.y=5000;}
   if(mode==='melee'){p.x=card.x-50;strikeMonsters(room,p,10,NOW+1);}
-  else if(mode==='teacher'){p.role='teacher';p.x=card.x-90;castTeacherSkill(room,p,NOW+1);}
+  else if(mode==='teacher'){
+   // Preserve the active student encounter: changing its only attacker into a teacher
+   // would correctly reset the puzzle when the map-wide E now also reaches the boss.
+   const teacher=player(room,'teacher-card-check',{role:'teacher',avatar:{level:6},x:card.x-90,y:card.y,facing:{x:1,y:0}});
+   const result=castTeacherSkill(room,teacher,NOW+1);
+   assert(result.targets.some(target=>target.monsterId===boss.id));
+   assert(!result.targets.some(target=>target.monsterId===card.id));
+  }
   else{
    p.avatar={level:5,constellationId:'cancer'};
    if(mode==='e')castWater(room,p,NOW+1);

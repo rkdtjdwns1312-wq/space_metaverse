@@ -9,6 +9,12 @@ export function preloadSagittarius(ids=Object.keys(SAGITTARIUS_VFX)){
 function star(ctx,x,y,r){
   ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,s=i%2?r*.48:r;ctx.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s);}ctx.closePath();ctx.fill();ctx.stroke();
 }
+// Reuse the existing five-point star, as one small teacher projectile without extra stars.
+export function drawTeacherStar(ctx,effect,reducedMotion=false){
+  ctx.save();ctx.fillStyle='#fff0b0';ctx.strokeStyle='#b58a4c';ctx.lineWidth=1.5;ctx.lineJoin='round';
+  ctx.shadowColor='#fff3be';ctx.shadowBlur=reducedMotion?0:9;
+  star(ctx,effect.x,effect.y,12);ctx.restore();
+}
 function circle(ctx,x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();}
 // 별 모양 화살촉과 크림색 중심, 연보라 가장자리로 작은 화면에서도 구분합니다.
 function arrow(ctx,x,y,length,scale=1){

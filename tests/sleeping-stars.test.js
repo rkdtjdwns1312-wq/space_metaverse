@@ -4,13 +4,14 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {SLEEPING_STARS_MAPS,ORIGIN_MAPS,STREET,STATIC_MAPS,MAP,BLACK_HOLE,UNIVERSE_MAP_LAYOUT} from '../shared/config.js';
 import {darkStarMap} from '../shared/dark-star.js';
+import {truthCreatorMap} from '../shared/truth-creator.js';
 import {starRecordMap} from '../shared/star-record.js';
 import {SLEEPING_STARS_SKY} from '../shared/sleeping-stars.js';
 import {originFloor} from '../shared/origin-floor.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 import {MONSTER_TYPES} from '../shared/monsters.js';
 
-test('sleeping stars share stage-three dimensions and central floor with only the first map summon statue',()=>{
+test('sleeping stars share stage-three dimensions and central floor with summon statues on stages one, two and four',()=>{
   assert.equal(SLEEPING_STARS_MAPS.length,4);
   for(const [index,map] of SLEEPING_STARS_MAPS.entries()){
     const origin=ORIGIN_MAPS[2];
@@ -21,8 +22,8 @@ test('sleeping stars share stage-three dimensions and central floor with only th
     if(index<3)assert.deepEqual(floor,base);
     assert.equal(map.objects.filter(o=>o.kind==='gate').length,index===3?1:2);
     const statue=map.objects.find(o=>o.kind==='dark-star-statue');if(statue)assert.deepEqual([statue.x,statue.y],[map.width/2,map.height/2]);
-    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'));
-    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index<2?1:0);
+    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'||index===3&&object.kind==='truth-creator-statue'));
+    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===2?0:index===3?2:1);
     assert.equal(STATIC_MAPS[map.id],map);
   }
 });
@@ -43,7 +44,7 @@ test('all sleeping-star arrivals and north shelter path fit every avatar without
   assert(gate.y<Math.min(...STREET.objects.filter(object=>object.kind.endsWith('-station')).map(object=>object.y)));
   for(let y=gate.y;y<=480;y+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,gate.x,y,avatar),'north approach '+y);
   for(let x=gate.x;x<=660;x+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,x,480,avatar),'north approach turn '+x);
-  for(const original of SLEEPING_STARS_MAPS)for(const map of [starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
+  for(const original of SLEEPING_STARS_MAPS)for(const map of [truthCreatorMap(starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
     const t=step/40,x=map.width/2+(gate.x-map.width/2)*t,y=map.height/2+(gate.y-map.height/2)*t;
     for(const avatar of avatars)assert(avatarPositionIsClear(map,x,y,avatar),map.id+' bridge '+step);
   }
@@ -85,7 +86,7 @@ test('server gates travel shelter → 1 → 2 → 3 → 4 and back, rejects remo
     const reply=await call('map:travel',{to});assert(reply.ok,reply.error);assert.equal(player.mapId,to);
     assert(avatarPositionIsClear(STATIC_MAPS[to],player.x,player.y,player));
   }
-  const fast=await call('map:fast-travel',{to:SLEEPING_STARS_MAPS[3].id});assert(fast.ok,fast.error);
+  const fast=await call('map:fast-travel',{to:SLEEPING_STARS_MAPS[3].id});assert.equal(fast.ok,false);assert.match(fast.error,/3의 문/);
   const portal=MAP.objects.find(object=>object.kind==='black-hole');Object.assign(player,{mapId:MAP.id,x:portal.x,y:portal.y});
   const inside=await call('map:travel',{to:BLACK_HOLE.id});assert(inside.ok,inside.error);assert.equal(player.mapId,BLACK_HOLE.id);
   const exit=BLACK_HOLE.objects.find(object=>object.kind==='gate');Object.assign(player,{x:exit.x,y:exit.y});

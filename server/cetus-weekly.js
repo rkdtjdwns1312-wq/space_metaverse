@@ -1,3 +1,4 @@
+import {TRUTH_CREATOR} from '../shared/truth-creator.js';
 import {huntingTimeView,huntingExempt,isHuntingMap} from './hunting-time.js';
 import {randomUUID} from 'node:crypto';
 import {SHARDS,WHALE_STOMACH_ID,PLAZA_ID,STATIC_MAPS} from '../shared/config.js';
@@ -121,6 +122,7 @@ function release(room,target,now,escaped){
   }else{state.cetusPraise=null;state.cetusAfterglow=null;}
   if(target.mapId===WHALE_STOMACH_ID){
     let destination=STATIC_MAPS[stomach.returnMapId]?stomach.returnMapId:PLAZA_ID;
+    if(destination===TRUTH_CREATOR.mapId)destination='sleeping-stars-3';
     if(isHuntingMap(destination)&&!huntingExempt(target)&&huntingTimeView(target,now).remainingMs<=0)destination='star-street';
     const pos=destination!==stomach.returnMapId?spawnInside(room,destination,target):arrivePosition(room,destination,{x:stomach.returnX,y:stomach.returnY},target);
     Object.assign(target,pos,

@@ -1,6 +1,7 @@
 import {onFloatingCliffReady} from './floating-island.js';
 import {drawParadiseFloor} from './paradise-floor.js';
 import {darkStarMap} from '/shared/dark-star.js';
+import {truthCreatorMap,TRUTH_CREATOR,TRUTH_CREATOR_GATE_MESSAGE} from '/shared/truth-creator.js';
 import {starRecordMap} from '/shared/star-record.js';
 import {serenaMap} from '/shared/serena.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
@@ -25,7 +26,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   let lastTap=null,lastDraw=0,artSignature='';const backgrounds=new Map(),watchedArt=new WeakSet();
   const confirm=document.createElement('dialog');confirm.id='map-travel-confirm';confirm.setAttribute('aria-labelledby','map-travel-question');confirm.innerHTML='<h2 id="map-travel-question">이동하겠습니까?</h2><p id="map-travel-destination"></p><p id="map-travel-error" role="alert"></p><div class="dialog-actions"><button id="map-travel-no" type="button" class="secondary">아니오</button><button id="map-travel-yes" type="button" class="primary">예</button></div>';document.body.append(confirm);let target=null,travelling=false,travelRevision=0;
   $('map-travel-no').onclick=()=>confirm.close();confirm.addEventListener('close',()=>{target=null;travelRevision++;});
-  function askTravel(id){if(!me()||travelling||confirm.open)return;if(id===me().mapId){toast('지금 이 맵에 있어요.');return;}target=id;$('map-travel-destination').textContent=map(id).name+'으로 이동해요.';$('map-travel-error').textContent='';$('map-travel-yes').disabled=false;stop();confirm.showModal();}
+  function askTravel(id){if(id===TRUTH_CREATOR.mapId){toast(TRUTH_CREATOR_GATE_MESSAGE);return;}if(!me()||travelling||confirm.open)return;if(id===me().mapId){toast('지금 이 맵에 있어요.');return;}target=id;$('map-travel-destination').textContent=map(id).name+'으로 이동해요.';$('map-travel-error').textContent='';$('map-travel-yes').disabled=false;stop();confirm.showModal();}
   $('map-travel-yes').onclick=async()=>{if(travelling||!target||!request)return;const revision=travelRevision;travelling=true;$('map-travel-yes').disabled=true;try{await request('map:fast-travel',{to:target});if(revision!==travelRevision)return;confirm.close();dialog.close();toast('맵으로 이동했어요.');}catch(e){if(revision===travelRevision)$('map-travel-error').textContent=e.message;}finally{travelling=false;$('map-travel-yes').disabled=false;}};
   const guide=document.createElement('p');guide.className='muted';guide.textContent='지도를 빠르게 두 번 클릭하거나 터치하면 이동할 수 있어요. 상태·레벨에 따라 이동이 제한될 수 있어요.';
   $('universe-preview').nextElementSibling.replaceWith(guide);
@@ -41,7 +42,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
-  const map=id=>starRecordMap(darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar),getRoom()?.starRecord);
+  const map=id=>truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar),getRoom()?.starRecord),getRoom()?.truthCreator);
   const pictures=new Map();
   const picture=src=>{
     if(!src)return null;

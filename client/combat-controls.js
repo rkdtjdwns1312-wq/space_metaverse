@@ -12,6 +12,7 @@ import {coronaSkillOf} from '/shared/corona-skills.js';
 import {capricornSkillOf} from '/shared/capricorn-skills.js';
 import {leoSkillOf} from '/shared/leo-skills.js';
 import {ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '/shared/combat.js';
+import {usesTeacherCombat,TEACHER_SKILL} from '/shared/teacher-avatar.js';
 import {isSagittarius,sagittariusSkillOf} from '/shared/sagittarius-skills.js';
 // 버튼·키보드 모두 같은 요청 경로를 사용하며 서버 응답이 최종 기준입니다.
 export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=>{},getAim=()=>null,getKey=action=>action==='attack'?'KeyQ':'KeyE'}){
@@ -25,7 +26,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     const player=getPlayer();if(!player||!canAct())return;
     if(slot!==0){toast('기존 보조 스킬은 더 이상 사용하지 않아요.');return;}
     if(player.vitals?.defeated){toast('체력을 회복하는 중이에요.');return;}
-    const spec=player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):player.avatar.constellationId==='cygnus'?swanSkillOf(player):player.avatar.constellationId==='ophiuchus'?ophiuchusSkillOf(player):player.avatar.constellationId==='gemini'?geminiSkillOf(player):player.avatar.constellationId==='aries'?ariesSkillOf(player):player.avatar.constellationId==='taurus'?taurusSkillOf(player):player.avatar.constellationId==='hercules'?herculesSkillOf(player):player.avatar.constellationId==='libra'?libraSkillOf(player):player.avatar.constellationId==='corona-borealis'?coronaSkillOf(player):player.avatar.constellationId==='capricorn'?capricornSkillOf(player):player.avatar.constellationId==='leo'?leoSkillOf(player):isWaterConstellation(player)?waterSkillOf(player):isSagittarius(player)&&sagittariusSkillOf(player);
+    const spec=usesTeacherCombat(player)?TEACHER_SKILL:player.avatar.constellationId==='aquarius'?aquariusSkillOf(player):player.avatar.constellationId==='corvus'?corvusSkillOf(player):player.avatar.constellationId==='cygnus'?swanSkillOf(player):player.avatar.constellationId==='ophiuchus'?ophiuchusSkillOf(player):player.avatar.constellationId==='gemini'?geminiSkillOf(player):player.avatar.constellationId==='aries'?ariesSkillOf(player):player.avatar.constellationId==='taurus'?taurusSkillOf(player):player.avatar.constellationId==='hercules'?herculesSkillOf(player):player.avatar.constellationId==='libra'?libraSkillOf(player):player.avatar.constellationId==='corona-borealis'?coronaSkillOf(player):player.avatar.constellationId==='capricorn'?capricornSkillOf(player):player.avatar.constellationId==='leo'?leoSkillOf(player):isWaterConstellation(player)?waterSkillOf(player):isSagittarius(player)&&sagittariusSkillOf(player);
     if(spec){
       if(player.avatar.level<spec.level){toast(`LV${spec.level}부터 사용할 수 있어요.`);return;}
       const remaining=owner===player.id?(cooldowns[slot]||0)-Date.now()-serverOffset:0;
@@ -62,7 +63,7 @@ export function createCombatControls({getPlayer,canAct,toast,request,onSound=()=
     [skill].forEach((button,slot)=>{
       let badge=button.querySelector('.skill-cooldown');
       if(!badge){badge=document.createElement('span');badge.className='skill-cooldown';button.append(badge);}
-      const left=owner===player?.id&&['aquarius','corvus','sagittarius','cancer','cetus','pisces','cygnus','ophiuchus','gemini','aries','taurus','hercules','libra','corona-borealis','capricorn','leo'].includes(player?.avatar?.constellationId)?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
+      const left=owner===player?.id&&(usesTeacherCombat(player)||['aquarius','corvus','sagittarius','cancer','cetus','pisces','cygnus','ophiuchus','gemini','aries','taurus','hercules','libra','corona-borealis','capricorn','leo'].includes(player?.avatar?.constellationId))?Math.ceil(((cooldowns[slot]||0)-Date.now()-serverOffset)/1000):0;
       badge.hidden=left<=0;badge.textContent=left>0?String(left):'';
     });
   },100);

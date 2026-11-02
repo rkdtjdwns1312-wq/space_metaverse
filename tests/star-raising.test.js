@@ -50,3 +50,20 @@ test('album bounds, recent bounds, legacy save migration and crossday JSON resto
  const bad=structuredClone(p.cozyActivities.pet.raising);bad.album.push(bad.album[0]);assert.throws(()=>validateStarRaising(bad));
  for(const edit of [r=>r.run.turns.push({activityId:'science',choiceId:'0'}),r=>r.run.turns[0].choiceId='x',r=>r.run.id='old',r=>r.run.completedAt=-1]){const b=structuredClone(p.cozyActivities.pet.raising);edit(b);assert.throws(()=>validateStarRaising(b));}
 });
+
+test('setup atomically adopts and starts, validates locks, resumes and preserves legacy progress',()=>{
+ const p={role:'student',avatar:{level:2},cosmicEnergy:0};
+ const begin=(data={})=>act(p,'raising:begin',{runId:cozyView(p,'pet',now).state.raising.runId,step:cozyView(p,'pet',now).state.raising.step,species:'cloud',name:'나의 별',accessory:'none',...data});
+ const blank=structuredClone(p);assert.throws(()=>begin({accessory:'ribbon'}));assert.deepEqual(p,blank);
+ const first=begin();assert.equal(first.state.raising.status,'playing');assert.equal(first.state.species,'cloud');assert.equal(first.state.name,'나의 별');assert.equal(first.amount,0);
+ const id=first.state.raising.runId;turn(p);turn(p);
+ const before=structuredClone(p);assert.throws(()=>begin({species:'moon'}));assert.deepEqual(p,before);
+ assert.throws(()=>begin({runId:null,step:0}));assert.deepEqual(p,before);
+ const resumed=begin({name:'다시 별'});assert.equal(resumed.state.raising.runId,id);assert.equal(resumed.state.raising.step,2);assert.deepEqual(p.cozyActivities.pet.raising,before.cozyActivities.pet.raising);
+ for(let i=2;i<12;i++)turn(p);
+ const finished=structuredClone(p),next=begin({species:'flower',accessory:'ribbon',name:''});
+ assert.notEqual(next.state.raising.runId,id);assert.equal(next.state.raising.step,0);assert.equal(next.state.species,'flower');assert.equal(next.state.accessory,'ribbon');assert.equal(next.state.name,'다시 별');assert.equal(next.state.careCount,3);
+ assert.deepEqual(p.cozyActivities.pet.raising.album,finished.cozyActivities.pet.raising.album);assert.deepEqual(p.cozyActivities.pet.raising.recent,finished.cozyActivities.pet.raising.recent);assert.deepEqual(p.cozyActivities.pet.careToday,finished.cozyActivities.pet.careToday);assert.equal(p.cosmicEnergy,finished.cosmicEnergy);
+ const legacy=player();delete legacy.cozyActivities.pet.raising;legacy.cozyActivities.pet.careCount=18;legacy.cozyActivities.pet.accessory='halo';
+ const migrated=act(legacy,'raising:begin',{runId:null,step:0,species:'moon',name:'반짝',accessory:'halo'});assert.equal(migrated.state.careCount,18);assert.equal(migrated.state.accessory,'halo');assert.equal(migrated.state.raising.status,'playing');
+});

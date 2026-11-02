@@ -57,7 +57,16 @@ export function cozyView(player,kind,now=Date.now()){
 export function actCozy(player,data,now=Date.now()){
  const {kind,action}=data;need(['pet','room','garden'].includes(kind));const state=current(player,now),s=state[kind],unit=cozyRewardUnit(player.avatar?.level);need(unit>0||player.role==='teacher'||player.accountKind==='master','현재 레벨을 확인해주세요.');let amount=0;
  if(kind==='pet'){
-  if(action==='adopt'){need(s.species===null,'이미 함께하는 아기별이 있어요.');need(has(COZY_SPECIES,data.species));s.species=data.species;s.name=name(data.name)||COZY_SPECIES.find(p=>p.id===data.species).name;}
+  if(action==='raising:begin'){
+   // Configure and start/resume on the validated copy, committed in one saved action.
+   const run=s.raising.run,playing=run&&run.turns.length<12;
+   need(data.runId===(run?.id??null)&&data.step===(run?.turns.length??0),'이야기가 바뀌었어요. 다시 열어 이어가 주세요.');
+   need(has(COZY_SPECIES,data.species)&&(!playing||data.species===s.species),'진행 중인 아기별과 계속 함께해 주세요.');
+   need(has(COZY_ACCESSORIES,data.accessory)&&COZY_ACCESSORIES.find(a=>a.id===data.accessory).care<=s.careCount,'아기별을 더 돌보면 열려요.');
+   s.species=data.species;s.name=name(data.name)||s.name||COZY_SPECIES.find(p=>p.id===data.species).name;s.accessory=data.accessory;
+   if(!playing)actStarRaising(s,{action:'raising:start',runId:data.runId},now);
+  }
+  else if(action==='adopt'){need(s.species===null,'이미 함께하는 아기별이 있어요.');need(has(COZY_SPECIES,data.species));s.species=data.species;s.name=name(data.name)||COZY_SPECIES.find(p=>p.id===data.species).name;}
   else {need(s.species!==null,'먼저 아기별을 만나주세요.');if(action==='rename'){need(!!name(data.name));s.name=name(data.name);}
    else if(action==='care'){need(COZY_CARE.includes(data.care));if(!s.careToday.includes(data.care)){need(s.careCount<Number.MAX_SAFE_INTEGER);s.careToday.push(data.care);s.careCount++;amount=unit;}}
    else if(action==='raising:start'||action==='raising:choose'){if(actStarRaising(s,data,now)){amount=unit*(3-s.careToday.length);s.careToday=[...COZY_CARE];}}

@@ -20,3 +20,14 @@ test('star socket concurrency, failed final persistence, restart resume and priv
  for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).cozyActivities,undefined);
  await f.restart();at(f);assert.equal(ok(await call(f.student,'cozy:read',{kind:'pet'})).state.raising.album.length,1);
 });
+
+test('setup socket failed save leaves adoption and run untouched, duplicate start pays nothing and resume persists',async t=>{
+ const f=await readingFixture(t);at(f);const before=structuredClone(f.p.cozyActivities),energy=f.p.cosmicEnergy;
+ const setup={runId:null,step:0,species:'moon',name:'이어가는 별',accessory:'none'};
+ await f.fail(async()=>assert.equal((await act(f,'raising:begin',setup)).ok,false));assert.deepEqual(f.p.cozyActivities,before);assert.equal(f.p.cosmicEnergy,energy);
+ const starts=await Promise.all([act(f,'raising:begin',setup),act(f,'raising:begin',setup)]);assert.equal(starts.filter(r=>r.ok).length,1);const id=starts.find(r=>r.ok).state.raising.runId;
+ ok(await act(f,'raising:choose',{runId:id,step:0,activityId:'science',choiceId:'0'}));
+ const saved=structuredClone(f.p.cozyActivities);await f.fail(async()=>assert.equal((await act(f,'raising:begin',{...setup,runId:id,step:1,name:'바뀐 이름'})).ok,false));assert.deepEqual(f.p.cozyActivities,saved);
+ const resumed=ok(await act(f,'raising:begin',{...setup,runId:id,step:1}));assert.equal(resumed.state.raising.step,1);assert.equal(resumed.state.raising.runId,id);assert.equal(f.p.cosmicEnergy,energy);
+ await f.restart();at(f);assert.equal(ok(await call(f.student,'cozy:read',{kind:'pet'})).state.raising.step,1);
+});

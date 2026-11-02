@@ -47,6 +47,7 @@ import {createTeacherUpdates} from './teacher-updates.js';
 import {openPlanetDesigner} from './planet-designer.js';
 import {drawPlanetDesign} from '/shared/planet-design.js';
 import {createDarkStarUI} from './dark-star-ui.js';
+import {createTruthCreatorUI} from './truth-creator-ui.js';
 import {createStarRecordUI,createStarRecordMathUI} from './star-record-ui.js';
 import {createSerenaUI} from './serena-ui.js';
 import {createBossDialogueUI} from './boss-dialogue-ui.js';
@@ -394,6 +395,7 @@ async function request(event,data){
 }
 let serenaWorldState=null;
 const darkStarUI=createDarkStarUI({request,onClose:()=>$('world').focus({preventScroll:true})});
+const truthCreatorUI=createTruthCreatorUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const starRecordUI=createStarRecordUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const starRecordMathUI=createStarRecordMathUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
@@ -411,6 +413,7 @@ function updateRoom(value){
   bossDialogueUI.update();
   if(room.serena)serenaWorldState=room.serena;
   if(room.darkStar)darkStarUI.update(room.darkStar);
+  if(room.truthCreator)truthCreatorUI.update(room.truthCreator);
   if(room.starRecord)starRecordUI.update(room.starRecord);
   world.setObjectUpdates(objectUpdates.update(room,selfId));
   universe.update();
@@ -1046,6 +1049,7 @@ function doInteract(){
   else if(n.kind==='black-hole')travelTo(n.target);
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
   else if(n.kind==='dark-star-statue'){stop();darkStarUI.open();}
+  else if(n.kind==='truth-creator-statue'){stop();truthCreatorUI.open();}
   else if(n.kind==='star-record-statue'){stop();starRecordUI.open();}
   else if(n.kind==='goddess-statue'){stop();serenaUI.open();}
   else if(n.kind==='shop')openShopDialog();
@@ -1617,7 +1621,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

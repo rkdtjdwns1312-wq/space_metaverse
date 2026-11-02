@@ -3,7 +3,7 @@ import {STUDENT_QUESTIONS,POPULAR_QUESTIONS} from './student-help-data.js';
 import {searchHelp} from './help-search.js';
 
 export const HELP_TOPICS=[
-  {id:'cozy',title:'돌보기와 꾸미기',entries:[['아기별 돌보기','쉼터의 별 침대에서 친구를 골라 이름을 지어요. 12번의 교육·놀이와 이야기 선택으로 아기별을 키우면 16가지 성향과 48가지 직업 결말 중 하나를 만나요. 약 5~10분이며 닫았다 다시 이어갈 수 있어요. 결말을 모으고 장식을 열어보세요. 실제 나의 성격 검사나 진로 추천은 아니에요.'],['별방 꾸미기','달빛·구름·책 읽는 방의 그림을 고른 뒤, 30가지 가구를 누르면 방 가운데 놓여요. 끌어서 원하는 곳에 놓을 수도 있어요. 가구 위 단추로 색·방향을 바꾸고 모서리를 끌어 크기를 조절해요. 저장 버튼을 누르면 다음에도 이어 꾸며요. 서로 다른 가구 3개 이상을 저장하면 하루 한 번 보상을 받아요.'],['우주 식물 가꾸기','씨앗 3개를 표시된 자리에 간격을 맞춰 심고, 화살표 8번으로 햇빛을 주세요. 물 주기를 꾹 눌렀다가 3.5초 표시선에서 손을 떼세요. 세 과정의 점수로 아주 좋음·좋음·보통·나쁨·아주 나쁨 등급이 정해져요. 하루 첫 세 수확은 등급·레벨에 따른 우주에너지를 주고, 등급별 꽃은 계속 모을 수 있어요.'],['각자 즐기는 세 가지 활동','세 활동은 서로 연결된 재료나 진행 조건이 없어요. 원하는 것만 해도 돼요. 레벨에 따라 각 활동의 하루 최대 보상은 Lv1 30, Lv2 90, Lv3 300, Lv4 750, Lv5 1200이에요. 한국시간 자정에 보상 기회가 다시 열려요. 선생님·마스터 계정은 보상 없는 체험이에요.']]},
+  {id:'cozy',title:'돌보기와 꾸미기',entries:[['아기별 돌보기','쉼터의 별 침대에서 시작하기를 누르고 아기별 종류·이름·장식을 골라요. 마을 위 성장 이야기를 읽고 확인을 누른 뒤, 원하는 시설을 눌러 두 방법 중 하나를 선택해요. 12번의 교육·놀이와 이야기 선택으로 아기별을 키우면 16가지 성향과 48가지 직업 결말 중 하나를 만나요. 약 5~10분이며 닫았다 다시 이어갈 수 있어요. 결말을 모으고 장식을 열어보세요. 실제 나의 성격 검사나 진로 추천은 아니에요.'],['별방 꾸미기','달빛·구름·책 읽는 방의 그림을 고른 뒤, 30가지 가구를 누르면 방 가운데 놓여요. 끌어서 원하는 곳에 놓을 수도 있어요. 가구 위 단추로 색·방향을 바꾸고 모서리를 끌어 크기를 조절해요. 저장 버튼을 누르면 다음에도 이어 꾸며요. 서로 다른 가구 3개 이상을 저장하면 하루 한 번 보상을 받아요.'],['우주 식물 가꾸기','씨앗 3개를 표시된 자리에 간격을 맞춰 심고, 화살표 8번으로 햇빛을 주세요. 물 주기를 꾹 눌렀다가 3.5초 표시선에서 손을 떼세요. 세 과정의 점수로 아주 좋음·좋음·보통·나쁨·아주 나쁨 등급이 정해져요. 하루 첫 세 수확은 등급·레벨에 따른 우주에너지를 주고, 등급별 꽃은 계속 모을 수 있어요.'],['각자 즐기는 세 가지 활동','세 활동은 서로 연결된 재료나 진행 조건이 없어요. 원하는 것만 해도 돼요. 레벨에 따라 각 활동의 하루 최대 보상은 Lv1 30, Lv2 90, Lv3 300, Lv4 750, Lv5 1200이에요. 한국시간 자정에 보상 기회가 다시 열려요. 선생님·마스터 계정은 보상 없는 체험이에요.']]},
 
   {id:'start',title:'이동과 조작',entries:[['우주 교실 시작하기','키보드 WASD·방향키 또는 화면 조이스틱으로 움직여요. 물체 가까이 가서 화면에 표시된 상호작용 키나 조사하기 버튼을 누르면 이용할 수 있어요.'],['지도와 빠른 이동','오른쪽 위 지도에서 전체 우주 지도를 열어요. 가고 싶은 맵을 빠르게 두 번 누른 뒤 이동 확인에서 예를 선택해요. 레벨·상태에 따라 갈 수 없는 곳도 있어요.'],['첫 여행 미션','메뉴의 첫 여행 안내 다시 보기에서 사용 방법을 차례로 연습할 수 있어요. 안내만 닫아도 진행 내용은 유지돼요.']]},
   {id:'class',title:'알림장·시간표·과제',entries:[['오늘의 알림장','별의 기원에서 알림장 기둥을 조사해요. 선생님이 과제로 표시한 항목의 과제로 가져오기를 누르면 내 과제에 추가돼요.'],['과제 완료하기','아래 과제 버튼에서 할 일을 확인해요. 과제별서고에서 해당 주와 과제를 골라 제출을 눌러요. 선생님이 확인하면 완료돼요. 과제별서고에서는 최근 3주의 과제와 완료한 친구들을 볼 수 있어요.'],['오늘의 시간표','시간표 기둥에는 월요일부터 금요일, 1~6교시가 있어요. 과목은 선생님이 적어요.']]},
@@ -30,6 +30,8 @@ export function mapGuide(mapId,planets=[]){
   else if(mapId==='milky-valley')text='성장의 별에서 경험치를 사고, 경험치를 채우면 진화의 별에서 진화해요.';
   else if(mapId==='black-hole')text='검은별을 받은 친구들이 머무는 곳이에요. 상태가 해제되어야 나갈 수 있어요.';
   else if(mapId==='whale-stomach')text='함께 들어온 친구와 대화해요. 탈출하면 고래자리의 혜택은 받지 못해요.';
+  else if(mapId==='sleeping-stars-4')text='진리의 별 석상을 조사하면 진리의 창조자에게 도전해요. 남겨진 빛의 선과 붉은 추적 구체를 피하고, 노란 구체는 공격해 없애세요.';
+  else if(mapId==='sleeping-stars-3')text='위쪽 문으로 별들이 잠드는 곳 4에 갈 수 있어요. 기존 보스 여섯 종류를 직접 전투에 참여해 처치한 기록이 필요해요. 4번 맵은 지도에서 바로 이동할 수 없어요.';
   else if(mapId.startsWith('sleeping-stars-'))text='오색별빛 쉼터 북쪽에서 이어지는 조용한 여행길이에요. 위쪽 문을 지날수록 작은 별빛이 줄어들어요. 아래쪽 문으로 돌아갈 수 있어요.';
   else if(mapId==='star-origin-4')text='별의 여신 석상을 조사하고 조건을 갖추어 세레나에게 도전해요.';
   else if(mapId.startsWith('star-origin-'))text='별자리 몬스터를 만나 전투하고 우주에너지·아이템 재료를 모아 보세요.';
@@ -41,38 +43,49 @@ export function mapGuide(mapId,planets=[]){
 
 export function createClassroomHelp({getRoom,getSelfId,stop}){
   const dialog=document.createElement('dialog');dialog.id='classroom-help-dialog';dialog.setAttribute('aria-labelledby','classroom-help-title');
-  dialog.innerHTML='<header><div><small>우리 반 우주 탐험 안내서</small><h2 id="classroom-help-title">별빛 도우미</h2></div><button type="button" class="secondary" id="classroom-help-close">닫기</button></header><label for="classroom-help-search">무엇이 궁금한가요?</label><div class="help-search-row"><input id="classroom-help-search" type="search" maxlength="160" placeholder="예: 숙제는 어떻게 내요? · 장비 끼기" autocomplete="off"><button id="classroom-help-clear" class="secondary" type="button" hidden>검색 지우기</button></div><div id="help-suggestions" aria-label="검색 예시"></div><p id="help-result-status" role="status" aria-live="polite"></p><div class="classroom-help-layout"><nav id="classroom-help-tabs" aria-label="도움말 주제"></nav><section id="classroom-help-content" tabindex="0" aria-label="도움말 답변"></section></div>';
+  dialog.innerHTML='<header><h2 id="classroom-help-title" tabindex="-1">별빛 도우미</h2><button type="button" class="secondary" id="classroom-help-find">검색</button></header><div id="help-search-panel" hidden><label for="classroom-help-search">궁금한 내용을 입력해요</label><div class="help-search-row"><input id="classroom-help-search" type="search" maxlength="160" placeholder="예: 숙제는 어떻게 내요?" autocomplete="off"><button id="classroom-help-clear" class="secondary" type="button" hidden>지우기</button></div></div><p id="help-result-status" role="status" aria-live="polite" hidden></p><div id="help-page-body"><nav id="classroom-help-tabs" aria-label="가나다순 도움말 주제"></nav><section id="classroom-help-content" aria-label="도움말" hidden></section></div><footer class="help-page-actions"><button type="button" class="secondary" id="classroom-help-back">돌아가기</button><button type="button" class="secondary" id="classroom-help-close">닫기</button></footer>';
   document.body.append(dialog);
-  const tabs=dialog.querySelector('#classroom-help-tabs'),content=dialog.querySelector('#classroom-help-content'),search=dialog.querySelector('input');
+  const tabs=dialog.querySelector('#classroom-help-tabs'),content=dialog.querySelector('#classroom-help-content'),search=dialog.querySelector('input'),body=dialog.querySelector('#help-page-body');
+  const heading=dialog.querySelector('h2'),searchPanel=dialog.querySelector('#help-search-panel'),find=dialog.querySelector('#classroom-help-find');
   const answers=[...STUDENT_QUESTIONS,...HELP_TOPICS.flatMap(t=>t.entries.map(([title,text],i)=>({id:`guide-${t.id}-${i}`,topic:t.id,title,text})))];
-  const categories=[{id:'popular',title:'자주 묻는 질문'},...HELP_TOPICS];
+  const categories=[{id:'popular',title:'자주 묻는 질문'},...HELP_TOPICS].sort((a,b)=>a.title.localeCompare(b.title,'ko'));
+  const icons={items:'🎒',play:'🎮',cozy:'🌱',battle:'⚔️',mission:'⭐',learning:'📚',department:'🪐',shop:'🛍️',avatar:'🌟',class:'📝',safety:'🛟',start:'🧭',popular:'💬',craft:'🔮',friends:'🤝',special:'🌌'};
   const status=dialog.querySelector('#help-result-status'),clear=dialog.querySelector('#classroom-help-clear');
-  let selected='popular',returnFocus=null;
-  function chooseTopic(id){selected=id;search.value='';render();}
-  for(const word of ['진화','과제 제출','미션 보상','조합','장비','렉']){
-    const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=word;button.onclick=()=>{search.value=word;render();};dialog.querySelector('#help-suggestions').append(button);
-  }
-  function showAnswer(answer,index,query){
-    const card=document.createElement('details');card.className='help-answer';card.dataset.answerId=answer.id;card.open=!!query&&index===0;
-    const summary=document.createElement('summary'),title=document.createElement('span'),tag=document.createElement('small');
-    title.textContent=answer.title;tag.textContent=HELP_TOPICS.find(t=>t.id===answer.topic)?.title||'도움말';summary.append(title,tag);
-    const body=document.createElement('div');body.className='help-answer-body';const intro=document.createElement('p');intro.textContent=answer.text;body.append(intro);
-    if(answer.steps){const steps=document.createElement('ol');for(const step of answer.steps){const li=document.createElement('li');li.textContent=step;steps.append(li);}body.append(steps);}
-    if(answer.note){const note=document.createElement('p');note.className='help-note';note.textContent=answer.note;body.append(note);}
-    card.append(summary,body);content.append(card);
+  let page={kind:'topics'},history=[],returnFocus=null;
+  function navigate(next){history.push({...page,scroll:body.scrollTop,focus:document.activeElement?.id});page=next;render();body.scrollTop=0;heading.focus({preventScroll:true});}
+  function goBack(){const previous=history.pop();if(!previous){dialog.close();return;}page=previous;render();body.scrollTop=page.scroll||0;const target=document.getElementById(page.focus);(target&&dialog.contains(target)?target:heading).focus({preventScroll:true});}
+  function showAnswer(answer){
+    const article=document.createElement('article');article.className='help-answer-body';article.dataset.answerId=answer.id;
+    const title=document.createElement('h3');title.textContent=answer.title;
+    const intro=document.createElement('p');intro.textContent=answer.text;article.append(title,intro);
+    if(answer.steps){const steps=document.createElement('ol');for(const step of answer.steps){const li=document.createElement('li');li.textContent=step;steps.append(li);}article.append(steps);}
+    if(answer.note){const note=document.createElement('p');note.className='help-note';note.textContent=answer.note;article.append(note);}
+    content.append(article);
   }
   function render(){
-    const query=search.value.trim();
-    const results=query?searchHelp(answers,query):selected==='popular'?POPULAR_QUESTIONS.map(id=>answers.find(a=>a.id===id)):answers.filter(a=>a.topic===selected);
+    dialog.dataset.page=page.kind;
+    const home=page.kind==='topics',searching=page.kind==='search',answering=page.kind==='answer';
+    tabs.hidden=!home;content.hidden=home;searchPanel.hidden=!searching;status.hidden=!searching;find.hidden=searching||answering;
     tabs.replaceChildren();content.replaceChildren();
-    for(const topic of categories){const button=document.createElement('button');button.id='help-tab-'+topic.id;button.type='button';button.className='secondary';button.setAttribute('aria-controls',content.id);button.setAttribute('aria-pressed',String(!query&&selected===topic.id));button.textContent=topic.title;button.onclick=()=>{chooseTopic(topic.id);document.getElementById(button.id)?.focus();};tabs.append(button);}
-    clear.hidden=!query;status.textContent=query?`관련 도움말 ${results.length}개 · 질문을 누르면 방법을 볼 수 있어요.`:selected==='popular'?'궁금한 질문을 누르거나 위에서 검색해 보세요.':`${categories.find(t=>t.id===selected)?.title} · 질문을 눌러 펼쳐요.`;
-    if(!results.length){const message=document.createElement('p');message.className='help-empty';message.textContent='아직 맞는 답을 찾지 못했어요. “레벨”, “숙제”, “장비”처럼 짧게 써 보세요. 그래도 모르겠으면 어떤 화면인지 선생님께 알려 주세요.';const reset=document.createElement('button');reset.type='button';reset.className='secondary';reset.textContent='자주 묻는 질문 보기';reset.onclick=()=>{chooseTopic('popular');search.focus();};content.append(message,reset);}
-    else results.forEach((answer,index)=>showAnswer(answer,index,query));
-    content.scrollTop=0;
+    if(home){heading.textContent='별빛 도우미';for(const topic of categories){
+      const button=document.createElement('button');button.id='help-tab-'+topic.id;button.type='button';button.className='secondary help-topic';button.setAttribute('aria-label',topic.title);
+      const icon=document.createElement('span');icon.className='help-topic-icon';icon.setAttribute('aria-hidden','true');icon.textContent=icons[topic.id]||'✦';
+      const title=document.createElement('span');title.textContent=topic.title;button.append(icon,title);button.onclick=()=>navigate({kind:'questions',topic:topic.id});tabs.append(button);
+    }return;}
+    if(answering){heading.textContent='질문과 답변';showAnswer(answers.find(a=>a.id===page.answerId));return;}
+    heading.textContent=searching?'도움말 검색':categories.find(t=>t.id===page.topic)?.title||'질문 목록';
+    if(searching){search.value=page.query||'';clear.hidden=!search.value;}
+    const results=searching?searchHelp(answers,page.query||''):page.topic==='popular'?POPULAR_QUESTIONS.map(id=>answers.find(a=>a.id===id)).filter(Boolean):answers.filter(a=>a.topic===page.topic);
+    status.textContent=searching?(page.query?.trim()?`관련 질문 ${results.length}개`:'단어나 짧은 질문으로 찾아보세요.'):'';
+    if(!results.length){const message=document.createElement('p');message.className='help-empty';message.textContent=searching&&!page.query?.trim()?'예: 레벨업, 숙제, 장비 끼기': '맞는 질문을 찾지 못했어요. 다른 단어로 검색해 보세요.';content.append(message);return;}
+    const list=document.createElement('div');list.className='help-question-list';
+    for(const answer of results){const button=document.createElement('button');button.type='button';button.className='secondary help-question';button.id='help-question-'+answer.id;button.dataset.answerId=answer.id;button.textContent=answer.title;button.onclick=()=>navigate({kind:'answer',answerId:answer.id});list.append(button);}content.append(list);
   }
-  search.oninput=render;clear.onclick=()=>{chooseTopic('popular');search.focus();};dialog.querySelector('#classroom-help-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{const target=returnFocus?.isConnected?returnFocus:document.getElementById('world');target?.focus();});
-  function open(topic='popular',opener=document.activeElement){if(!getSelfId())return;stop();returnFocus=opener;selected=categories.some(t=>t.id===topic)?topic:'popular';search.value='';render();if(!dialog.open)dialog.showModal();dialog.querySelector('#classroom-help-close').focus();}
+  search.oninput=()=>{page.query=search.value;render();body.scrollTop=0;};clear.onclick=()=>{page.query='';render();body.scrollTop=0;search.focus();};
+  find.onclick=()=>{navigate({kind:'search',query:''});search.focus();};
+  dialog.querySelector('#classroom-help-back').onclick=goBack;
+  dialog.querySelector('#classroom-help-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{const target=returnFocus?.isConnected?returnFocus:document.getElementById('world');target?.focus();});
+  function open(topic=null,opener=document.activeElement){if(!getSelfId())return;stop();returnFocus=opener;page={kind:'topics'};history=[];if(categories.some(t=>t.id===topic)){history.push({kind:'topics',focus:'help-tab-'+topic});page={kind:'questions',topic};}search.value='';render();body.scrollTop=0;if(!dialog.open)dialog.showModal();heading.focus({preventScroll:true});}
   // Help opens above the source dialog; close returns to the same screen without losing its inputs.
   const contextTopics={'inventory-dialog':'items','tasks-dialog':'class','student-missions-dialog':'mission','crafting-dialog':'craft','energy-shop-dialog':'shop','shop-dialog':'shop','assignment-dialog':'class','evolution-dialog':'avatar'};
   document.addEventListener('click',event=>{const button=event.target.closest('[data-student-help]');if(button)open(button.dataset.studentHelp,button);});

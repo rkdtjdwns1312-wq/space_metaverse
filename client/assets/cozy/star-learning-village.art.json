@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-11-02",
+  "mode": "built-in image_gen",
+  "useCase": "illustration-story",
+  "asset": "star-learning-village.png",
+  "prompt": "Use case: illustration-story\nAsset type: actual clickable village map background for a Korean children's space classroom RPG, not a UI screenshot.\nPrimary request: create one beautiful cohesive learning village map for raising a baby star, with exactly six clearly recognizable places linked by little cobblestone paths. Soft hand-painted 2D isometric Korean fantasy RPG art reminiscent of TalesWeaver and Trickster, storybook charm, detailed cream stone, gold star ornaments, lavender and teal roofs, luminous gentle starlight, warm welcoming atmosphere. Match our existing elegant cream/gold star-themed classroom architecture.\nComposition: landscape 3:2, full village visible without cropping, three columns and two rows. Buildings centered at normalized positions: upper left (0.18,0.27) scientific observatory/laboratory with telescope and little flasks; upper middle (0.50,0.27) arts studio with paint palette and musical ornament; upper right (0.82,0.27) nature greenhouse with leafy plants. Lower left (0.18,0.72) cozy care house with a heart and small cradle motif; lower middle (0.50,0.72) crafting workshop with woodwork tools and workbench; lower right (0.82,0.72) exploration gateway with map scroll, globe, and a small hot-air balloon. Exactly these six main landmarks, similar visual prominence and size; open pathways and a small decorative star plaza between them. Keep a modest clear patch directly below every building for text labels added by code. Mild isometric view, clear silhouettes legible at small sizes. Village floats amid gentle pastel cosmic clouds, with small flowers and scattered gold stars. All six places part of one scene, no panels, no borders dividing buildings.\nText: none. No letters, no numbers, no captions, no signage text. No UI buttons. No people. No watermark. Opaque background. Polished bitmap illustration, not flat vectors, not photorealistic, not 3D plastic.",
+  "dimensions": {
+    "width": 1536,
+    "height": 1024
+  },
+  "places": [
+    [
+      "science",
+      0.2,
+      0.24
+    ],
+    [
+      "art",
+      0.5,
+      0.24
+    ],
+    [
+      "nature",
+      0.82,
+      0.24
+    ],
+    [
+      "care",
+      0.2,
+      0.65
+    ],
+    [
+      "build",
+      0.5,
+      0.65
+    ],
+    [
+      "explore",
+      0.81,
+      0.65
+    ]
+  ]
+}

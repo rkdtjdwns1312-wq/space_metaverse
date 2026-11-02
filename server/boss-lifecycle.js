@@ -1,4 +1,5 @@
 import {DARK_STAR,dormantDarkStar} from '../shared/dark-star.js';
+import {TRUTH_CREATOR,dormantTruthCreator} from '../shared/truth-creator.js';
 import {STAR_RECORD,dormantStarRecord} from '../shared/star-record.js';
 import {SERENA,dormantSerena} from '../shared/serena.js';
 import {addRecipeDrop,addEnergyDrop,addBossDrops} from './energy-drops.js';
@@ -16,7 +17,7 @@ export function nextBossRespawnAt(deathAt){
   if(!validTime(deathAt)||deathAt>8640000000000000-DAY_MS)throw new Error('보스 처치 시각이 올바르지 않습니다.');
   return duringEvent(deathAt)?deathAt+HOUR_MS:openingOnDate(deathAt+DAY_MS);
 }
-const BOSS_IDS=['noksera-boss','leoon-boss','spirit-king-boss','serena-boss',DARK_STAR.monsterId,STAR_RECORD.monsterId];
+const BOSS_IDS=['noksera-boss','leoon-boss','spirit-king-boss','serena-boss',DARK_STAR.monsterId,STAR_RECORD.monsterId,TRUTH_CREATOR.monsterId];
 export function validateBossRespawns(value={}){
   if(!value||typeof value!=='object'||Array.isArray(value)||Object.entries(value).some(([id,time])=>!BOSS_IDS.includes(id)||!validTime(time)))
     throw new Error('보스 복원 시각 저장 데이터가 올바르지 않습니다.');
@@ -36,7 +37,7 @@ export function needsTemporaryBossRespawnShortening(room,now){
   if(!duringEvent(now))return false;
   const latest=now+HOUR_MS;
   return BOSS_IDS.some(id=>room.bossRespawns?.[id]>latest)||
-    [room.serena,room.darkStar,room.starRecord].some(state=>state?.state==='recovering'&&state.respawnAt>latest);
+    [room.serena,room.darkStar,room.starRecord,room.truthCreator].some(state=>state?.state==='recovering'&&state.respawnAt>latest);
 }
 export function shortenTemporaryBossRespawns(room,now){
   if(!needsTemporaryBossRespawnShortening(room,now))return false;
@@ -44,7 +45,7 @@ export function shortenTemporaryBossRespawns(room,now){
   for(const id of BOSS_IDS){
     if(room.bossRespawns?.[id]>due){room.bossRespawns[id]=due;const monster=room.monsters?.get(id);if(monster?.hp===0)monster.respawnAt=due;}
   }
-  for(const [key,id] of [['serena',SERENA.monsterId],['darkStar',DARK_STAR.monsterId],['starRecord',STAR_RECORD.monsterId]]){
+  for(const [key,id] of [['serena',SERENA.monsterId],['darkStar',DARK_STAR.monsterId],['starRecord',STAR_RECORD.monsterId],['truthCreator',TRUTH_CREATOR.monsterId]]){
     const state=room[key];if(state?.state!=='recovering'||state.respawnAt<=due)continue;
     state.respawnAt=due;room.bossRespawns??={};room.bossRespawns[id]=due;
     const monster=room.monsters?.get(id);if(monster?.hp===0)monster.respawnAt=due;
@@ -57,6 +58,7 @@ export function finishBossDefeat(room,monster,contributors,deathAt,rolls={},cred
   room.bossRespawns[monster.id]=respawnAt;
   recordBossVictory(room,monster,contributors,credits);
   if(monster.typeId===DARK_STAR.typeId)room.darkStar={state:'recovering',respawnAt,monsterId:null};
+  if(monster.typeId===TRUTH_CREATOR.typeId)room.truthCreator={state:'recovering',respawnAt,monsterId:null};
   if(monster.typeId===STAR_RECORD.typeId)room.starRecord={state:'recovering',respawnAt,monsterId:null};
   if(monster.typeId===SERENA.typeId)room.serena={state:'recovering',respawnAt,monsterId:null};
   // 평소에는 다음 날 07시, 이벤트 날에는 1시간 뒤 복원합니다. 보상 시간은 저장 정산 시점부터 셉니다.
@@ -103,4 +105,17 @@ export const starRecordView=room=>validateStarRecordState(room.starRecord);
 export function restoreStarRecordStatue(room,now){
   if(room.starRecord?.state!=='recovering'||now<room.starRecord.respawnAt)return false;
   room.starRecord=dormantStarRecord();room.monsters?.delete(STAR_RECORD.monsterId);return true;
+}
+
+export function validateTruthCreatorState(value){
+  if(value===undefined)return dormantTruthCreator();
+  if(!value||!['dormant','active','recovering'].includes(value.state)||
+    (value.state==='recovering'?!validTime(value.respawnAt):value.respawnAt!==null)||
+    value.monsterId!==(value.state==='active'?TRUTH_CREATOR.monsterId:null))throw new Error('진리의 창조자 상태 저장 데이터가 올바르지 않습니다.');
+  return {state:value.state,respawnAt:value.state==='recovering'?restoredRespawnAt(value.respawnAt):null,monsterId:value.monsterId};
+}
+export const truthCreatorView=room=>validateTruthCreatorState(room.truthCreator);
+export function restoreTruthCreatorStatue(room,now){
+  if(room.truthCreator?.state!=='recovering'||now<room.truthCreator.respawnAt)return false;
+  room.truthCreator=dormantTruthCreator();room.monsters?.delete(TRUTH_CREATOR.monsterId);return true;
 }

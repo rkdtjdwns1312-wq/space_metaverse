@@ -14,7 +14,7 @@ const fixture=()=>{
   const p=player(),m={id:'m',typeId:'star-crab',mapId:p.mapId,x:600,y:450,radius:24,hp:50,facingX:1};
   return {p,m,room:{players:new Map([[p.id,p]]),planets:new Map(),monsters:new Map([[m.id,m]]),unattended:true}};
 };
-test('14종 몸체 가로폭은 투명 셀보다 좁고 기존 발벽보다 넓으며 세로 40% 확장',()=>{
+test('모든 몬스터의 몸체 가로폭은 투명 셀보다 좁고 기존 발벽보다 넓으며 세로 40% 확장',()=>{
   for(const type of MONSTER_TYPES){
     const m={...type,typeId:type.id,x:500,y:500,radius:100,facingX:1},art=MONSTER_BODY_GEOMETRY[type.id];
     assert.ok(art,type.id);const wall=monsterFootprint(m);

@@ -1,0 +1,6 @@
+{
+  "mode": "built-in image_gen",
+  "asset": "truth-creator-orb.png",
+  "prompt": "Use case: stylized-concept\nAsset type: isolated transparent projectile sprite for a 2D storybook celestial boss.\nA single beautiful round luminous orb made of a dense cluster of many tiny five-pointed stars, with one modest larger ivory star visible near its center. Not a planet and not a solid glass marble: its spherical silhouette is built from interlocking little stars and delicate star-dust filaments. Warm white-gold with pale lavender and cyan highlights, elegant engraved tiny gold rims matching a majestic crystal star boss. Several tiny restrained glints around the spherical edge, soft controlled glow; stars remain legible on both light and dark floors. Hand-painted Korean fantasy RPG art reminiscent of TalesWeaver and Trickster, polished storybook 2D rendering, delicate dimensional shading, charming yet powerful.\nCentered round shape occupying about 65% of square canvas, generous transparent margins. One orb only. No ring, no tail or beam baked into this image, no background, no scenery, no floor, no words, no interface, no watermark. Genuine transparent background. Game scale must read clearly.",
+  "transparent": true
+}

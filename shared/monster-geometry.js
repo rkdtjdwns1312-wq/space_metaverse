@@ -22,6 +22,8 @@ export const MONSTER_BODY_GEOMETRY=Object.freeze({
   'spirit-king':body(384,13,372,192,2.2),
   'dark-star':body(640,24,612,320,2.4),
   'star-record':body(512,24,488,256,2.4),
+  'truth-creator':body(1254,63,1191,627,2.4),
+  'truth-creator-star':body(1254,124,1154,627,2.75),
   'star-guardian':body(443,25,424,224,2.85),
   serena:body(256,14,242,128,1.35)
 });

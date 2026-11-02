@@ -8,6 +8,10 @@ import {addEnergyDrop,addRecipeDrop} from './energy-drops.js';
 import {isParadise,onParadiseFloor} from '../shared/paradise-floor.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {DARK_STAR} from '../shared/dark-star.js';
+import {tryTruthCreatorSentry,tickTruthCreatorSentries} from './truth-creator-sentries.js';
+import {tryTruthCreatorChasers,tickTruthCreatorChasers} from './truth-creator-chasers.js';
+import {aimTruthCreator,tickTruthCreatorAttack,truthCreatorAttackView,clearTruthCreatorAttack} from './truth-creator-attack.js';
+import {TRUTH_CREATOR} from '../shared/truth-creator.js';
 import {STAR_RECORD} from '../shared/star-record.js';
 import {SERENA} from '../shared/serena.js';
 import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
@@ -83,7 +87,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
-    const manualBoss=[SERENA,DARK_STAR,STAR_RECORD].find(boss=>boss.typeId===type.id);
+    const manualBoss=[SERENA,DARK_STAR,STAR_RECORD,TRUTH_CREATOR].find(boss=>boss.typeId===type.id);
     const statue=manualBoss?map.objects.find(o=>o.id===manualBoss.statueId):null;
     let x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
@@ -123,6 +127,10 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const [id,m]=create({id:STAR_RECORD.monsterId,typeId:STAR_RECORD.typeId},0);
     m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
   }
+  if(room.truthCreator?.state==='active'&&!room.monsters.has(TRUTH_CREATOR.monsterId)){
+    const [id,m]=create({id:TRUTH_CREATOR.monsterId,typeId:TRUTH_CREATOR.typeId},0);
+    m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
+  }
   return room.monsters;
 }
 export function monsterViews(room,now=Date.now()){
@@ -136,6 +144,7 @@ export function monsterViews(room,now=Date.now()){
     ...(m.hp>0&&m.leoonSkill?.mapId===m.mapId?{leoonSkill:{...m.leoonSkill}}:{}),
     ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
     ...(m.typeId==='dark-star'?{darkStarEffects:darkStarSkillViews(room,m,now)}:{}),
+    ...(m.typeId==='truth-creator'?{truthCreatorEffects:truthCreatorAttackView(m,now)}:{}),
     ...(m.typeId==='star-record'?{starRecordEffects:{serverNow:now,warning:m.starRecordCast??null,burst:m.starRecordBurst?.endsAt>now?m.starRecordBurst:null,challenge:starRecordChallengeView(m,now),math:starRecordMathView(m,now),flow:starRecordFlowView(m,now)}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
@@ -187,6 +196,8 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
     if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
+    if(target.typeId==='truth-creator-star')room.monsters.delete(target.id);
+    if(target.typeId==='truth-creator')clearTruthCreatorAttack(target,room);
     if(target.typeId==='dark-star')clearDarkStarSkills(room,target);
     if(target.typeId==='star-record'){target.starRecordCast=null;target.starRecordBurst=null;target.recordChallenge=null;target.recordMath=null;target.recordFlow=null;}
     if(target.typeId==='serena')clearSerenaSkills(target);
@@ -218,6 +229,7 @@ function registerMonsterAttacker(room,target,player,now,retaliateTeacher){
 export const strikeMonster=(...args)=>strikeMonsters(...args)[0]||null;
 // 일반 몬스터는 같은 순위 안에서 마지막 공격자가 우선입니다.
 export function selectMonsterTarget(room,monster){
+  if(monster.typeId==='truth-creator-star'){monster.targetId=null;return null;}
   // 소환 지킴이는 반격 이력과 무관하게 같은 맵에서 가장 가까운 대상을 추적합니다.
   // 일반 교사는 기존 E 반격 허용을 받은 개체만 대상이 되며 유령은 제외합니다.
   if(monster.typeId==='star-guardian'){
@@ -245,6 +257,7 @@ export function selectMonsterTarget(room,monster){
   candidates.sort((a,b)=>a.priority-b.priority||b.order-a.order);
   const selected=candidates[0]?.player||null;
   if(monster.hp>0&&((hadAttackers&&!selected)||monster.mapExitCount>=MONSTER_RULES.mapExitHealCount)){
+    if(monster.typeId==='truth-creator')clearTruthCreatorAttack(monster,room);
     if(monster.typeId==='dark-star')clearDarkStarSkills(room,monster);
     if(monster.typeId==='star-record'){
       const active=[...room.players.values()].some(player=>player.connected&&!player.away&&player.mapId===monster.mapId&&
@@ -267,14 +280,19 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
     if(m.typeId==='dark-star-card')continue;
+    if(m.typeId==='truth-creator-star'){
+      const boss=monsters.get(m.summonerId);if(m.hp<=0||!boss||boss.hp<=0||boss.mapId!==m.mapId)monsters.delete(m.id);
+      m.moving=false;continue;
+    }
     // 이번 틱에도 실제 추적 이동이 지형에 막힐 때만 누적합니다. 시전/수면/정지는 연속 막힘이 아닙니다.
     const previousBlockedChase=m.blockedChase;m.blockedChase=null;
     if(m.hp<=0){
+      if(m.typeId==='truth-creator')clearTruthCreatorAttack(m,room);
       if(m.typeId==='dark-star')clearDarkStarSkills(room,m);
       if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
-      if(m.typeId===SERENA.typeId||m.typeId===DARK_STAR.typeId||m.typeId===STAR_RECORD.typeId||room.pendingBossDeaths?.has(m.id))continue;
+      if(m.typeId===SERENA.typeId||m.typeId===DARK_STAR.typeId||m.typeId===STAR_RECORD.typeId||m.typeId===TRUTH_CREATOR.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
@@ -285,6 +303,10 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const type=monsterType(m.typeId),rule=type?.combat??MONSTER_COMBAT[m.mapId];
     if(type?.id==='serena'){
       hits.push(...tickSerenaSkills(room,m,now));
+      if(m.hp<=0){m.moving=false;continue;}
+    }
+    if(type?.id==='truth-creator'){
+      hits.push(...tickTruthCreatorAttack(room,m,now),...tickTruthCreatorChasers(room,m,now),...tickTruthCreatorSentries(room,m,now));
       if(m.hp<=0){m.moving=false;continue;}
     }
     if(type?.id==='dark-star'){
@@ -300,6 +322,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
     if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){
       if(m.darkStarSkills)m.darkStarSkills.aim=null;
+      if(m.truthCreatorAttack)m.truthCreatorAttack.aim=null;
       if(type.id==='star-record'){
         m.starRecordCast=null;
         // 보스가 잠시 행동 불능이어도 진행 중인 패턴과 제한 시간은 유지합니다.
@@ -321,6 +344,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       const attack=advanceStarRecordAttack(room,m,now,random);hits.push(...attack.hits);
       if(attack.busy)continue;
     }
+    if(type.id==='truth-creator'){hits.push(...aimTruthCreator(room,m,target,now));tryTruthCreatorChasers(room,m,target,now);tryTruthCreatorSentry(room,m,target,now);}
     if(type.id==='dark-star'){
       if(m.darkStarSkills?.absorption){m.moving=false;continue;}
       tryDarkStarSkills(room,m,target,now,random);
@@ -447,7 +471,9 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       const elapsedMs=(previousBlockedChase?.targetId===target.id?previousBlockedChase.elapsedMs:0)+dt*1000;
       m.blockedChase={targetId:target.id,elapsedMs};
       if(elapsedMs>=MONSTER_RULES.blockedChaseMs){
-        if(m.typeId==='dark-star')clearDarkStarSkills(room,m);
+        if(m.typeId==='truth-creator')clearTruthCreatorAttack(m,room);
+      if(m.typeId==='dark-star')clearDarkStarSkills(room,m);
+        if(type.id==='truth-creator')clearTruthCreatorAttack(m,room);
         m.hp=m.maxHp;m.attackers.clear();m.teacherRetaliation?.clear();m.contributors?.clear();m.meleePresence?.clear();
         // 지난 전투의 독/저주 틱만으로 곧바로 다시 추적하지 않게 제거합니다. 새 공격은 정상 등록됩니다.
         m.combatPoison=null;m.capricornCurses?.clear();
@@ -459,7 +485,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
-    if(target&&type.id!=='dark-star'&&type.id!=='star-record'){
+    if(target&&type.id!=='dark-star'&&type.id!=='star-record'&&type.id!=='truth-creator'){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
       // 초근접에서도 몸을 뚫고 지나가거나 후방을 원격 공격하지 않도록 몸 앞 근접 거리만 판정합니다.
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){

@@ -4,6 +4,7 @@ import {preloadStreetArt} from './street-art.js';
 import {preloadPaintedProps} from './painted-props.js';
 import {preloadParadiseArt} from './paradise-art.js';
 import {preloadOriginArt} from './origin-art.js';
+import {preloadTruthCreatorArt} from './truth-creator-art.js';
 import {preloadSleepingStarsArt} from './sleeping-stars-art.js';
 import {preloadValleyArt} from './valley-art.js';
 import {preloadFloatingCliff} from './floating-island.js';
@@ -37,7 +38,7 @@ export function prepareMapArt(map,planets=[]){
   else if(family==='street')work.push(preloadStreetArt(),preloadPaintedProps(),preloadHallOfFame(),preloadCozyArt(),preloadDuelArcades((map.objects||[]).filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
   else if(family==='valley')work.push(preloadValleyArt());
   else if(family==='origin')work.push(preloadOriginArt());
-  else if(family==='sleeping-stars'){work.push(preloadSleepingStarsArt(map));if(map.id==='sleeping-stars-1')work.push(preloadDarkStarArt(),preloadDarkStarSkillsArt());}
+  else if(family==='sleeping-stars'){work.push(preloadSleepingStarsArt(map));if(map.id==='sleeping-stars-4')work.push(preloadTruthCreatorArt());if(map.id==='sleeping-stars-1')work.push(preloadDarkStarArt(),preloadDarkStarSkillsArt());}
   else if(family==='paradise')work.push(preloadParadiseArt());
   else if(family==='black-hole')work.push(preloadBlackHoleArt());
   else if(family==='interior')work.push(preloadInteriorArt());

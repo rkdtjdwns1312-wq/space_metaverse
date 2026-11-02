@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {ensureVitals} from './vitals.js';
 import {swanProjectilePoint} from '../shared/swan-skills.js';
 import {piscesPortalGeometry} from '../shared/pisces-portals.js';
+import {usesTeacherCombat} from '../shared/teacher-avatar.js';
 
 // 실제 이동 구간과 원형 피격 범위의 교차를 검사합니다. 낮은 tick에서도 적을 건너뛰지 않습니다.
 function contact(cast,target,end){
@@ -59,6 +60,7 @@ export function advanceProjectiles(room,now,enemies,damage){
     const player=room.players.get(cast.playerId);
     const valid=player?.connected&&!player.away&&!player.avatar.blackStar&&player.mapId===cast.mapId&&
       (cast.kind!=='sigil-black-star'||player.equipmentSlots?.includes('primordial-star-sigil'))&&
+      (cast.kind!=='teacher-star'||usesTeacherCombat(player))&&
       player.avatar.constellationId===cast.constellationId&&player.avatar.level===cast.level&&ensureVitals(player).hp>0;
     if(!valid){results.push({mapId:cast.mapId,end:{id:cast.id,mapId:cast.mapId,distance:cast.distance},targets:[],playerTargets:[]});continue;}
     if(now<cast.at){keep.push(cast);continue;}
@@ -66,7 +68,7 @@ export function advanceProjectiles(room,now,enemies,damage){
     const elapsed=Math.max(0,now-cast.at);
     const end=cast.piscesPortal?piscesPortalGeometry(cast,elapsed/cast.durationMs).nose:Math.min(cast.range,elapsed/cast.durationMs*cast.range);
     const contacts=enemies(room,player).filter(t=>t.entity.typeId!=='dark-star-card'&&
-      (cast.kind!=='sigil-black-star'||t.kind==='monster')&&!cast.seen.has(`${t.kind}:${t.entity.id}`)&&
+      (!['sigil-black-star','teacher-star'].includes(cast.kind)||t.kind==='monster')&&!cast.seen.has(`${t.kind}:${t.entity.id}`)&&
       !(cast.basic&&!cast.healing&&cast.kind!=='corona-finale'&&player.role==='student'&&t.kind==='player'&&t.entity.role==='student'))
       .map(t=>({target:t,distance:contact(cast,t,end)})).filter(t=>t.distance!==null).sort((a,b)=>a.distance-b.distance);
     // Q는 첫 몬스터에서 소멸. 같은 위치에 겹친 몬스터들은 기존 범위 규칙대로 함께 맞습니다.

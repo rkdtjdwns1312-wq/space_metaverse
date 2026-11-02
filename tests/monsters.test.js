@@ -19,8 +19,10 @@ function singleMonster(id){
 
 test('각 맵 5마리·별의기원3 3용이+2사조·방별 독립 몬스터 상태',()=>{
   const a={},b={};assert.equal(monstersOf(a).size,43);
-  assert.equal(MONSTER_TYPES.length,18);
-  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,18);
+  assert.equal(MONSTER_TYPES.length,20);
+  assert.equal(new Set(MONSTER_TYPES.map(m=>m.shape)).size,20);
+  assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='sleeping-stars-4').map(m=>[m.id,m.level]),[['truth-creator',7],['truth-creator-star',2]]);
+  assert.equal(MONSTER_SPAWNS.some(m=>['truth-creator','truth-creator-star'].includes(m.typeId)),false,'진리 보스와 부속 구체는 자동 스폰 목록에 포함하지 않는다');
   assert.deepEqual(MONSTER_TYPES.filter(m=>m.mapId==='star-origin-4').map(m=>[m.id,m.level,m.boss]),[['serena',6,true]]);
   assert.equal(MONSTER_SPAWNS.some(m=>m.typeId==='serena'),false,'세레나는 자동 스폰 목록에 포함하지 않는다');
   assert.equal(monsterViews(a).some(m=>m.mapId==='star-origin-4'),false,'휴면 교실에는 세레나가 자동 생성되지 않는다');

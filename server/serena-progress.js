@@ -1,8 +1,9 @@
-const REQUIRED=['leoon','noksera'];
+import {MONSTER_TYPES} from '../shared/monsters.js';
+const RECORDED_BOSSES=MONSTER_TYPES.filter(type=>type.boss).map(type=>type.id);
 export function validateSerenaProgress(value,avatar,role='student'){
   if(value===undefined)return {highestLevel:role==='student'?Math.min(5,Math.max(1,avatar?.level||1)):1,bossKills:[]};
   if(!value||!Number.isInteger(value.highestLevel)||value.highestLevel<1||value.highestLevel>5||
-    !Array.isArray(value.bossKills)||value.bossKills.some(id=>!REQUIRED.includes(id))||new Set(value.bossKills).size!==value.bossKills.length)
+    !Array.isArray(value.bossKills)||value.bossKills.some(id=>!RECORDED_BOSSES.includes(id))||new Set(value.bossKills).size!==value.bossKills.length)
     throw new Error('세레나 자격 저장 데이터가 올바르지 않습니다.');
   return {highestLevel:Math.max(value.highestLevel,role==='student'?Math.min(5,avatar?.level||1):1),bossKills:[...value.bossKills]};
 }
@@ -22,7 +23,7 @@ export function bossVictoryCredits(room,monster,contributors){
   }).map(([id])=>{const p=room.players.get(id);return {id,highestLevel:validateSerenaProgress(p.serenaProgress,p.avatar,p.role).highestLevel};});
 }
 export function recordBossVictory(room,monster,contributors,credits=bossVictoryCredits(room,monster,contributors)){
-  if(!REQUIRED.includes(monster.typeId))return;
+  if(!RECORDED_BOSSES.includes(monster.typeId))return;
   for(const {id,highestLevel} of credits){
     const p=room.players?.get(id);
     // 보상 파티 분배와 별개: 처치 순간 같은 맵에서 접속 중인 실제 피해 기여자만 인정.

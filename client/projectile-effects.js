@@ -8,7 +8,7 @@ import {drawAriesProjectile} from './aries-effects.js';
 import {drawTaurusProjectile} from './taurus-effects.js';
 import {drawLibraProjectile} from './libra-effects.js';
 import {drawCoronaProjectile} from './corona-effects.js';
-import {drawSagittarius} from './sagittarius-effects.js';
+import {drawSagittarius,drawTeacherStar} from './sagittarius-effects.js';
 import {waterProjectilePoint} from '/shared/water-skills.js';
 import {swanProjectilePoint} from '/shared/swan-skills.js';
 import {drawPiscesPortalPair} from './pisces-portals.js';
@@ -35,7 +35,8 @@ export function createProjectileEffects(canvas){
         const progress=age/p.durationMs;
         const point=p.kind==='cygnus-attack'?swanProjectilePoint(p,progress):waterProjectilePoint(p,progress);
         const visual={...p,...point,sourceX:p.x,sourceY:p.y,projectile:true};
-        if(p.kind==='sigil-black-star')drawDarkStarOrb(ctx,visual.x,visual.y,p.size/2);
+        if(p.kind==='teacher-star')drawTeacherStar(ctx,visual,reducedMotion);
+        else if(p.kind==='sigil-black-star')drawDarkStarOrb(ctx,visual.x,visual.y,p.size/2);
         else if(p.visible!==false&&!drawCoronaProjectile(ctx,visual,age,reducedMotion)&&!drawLibraProjectile(ctx,visual,age,reducedMotion)&&!drawTaurusProjectile(ctx,visual,age,reducedMotion)&&!drawAriesProjectile(ctx,visual,age,reducedMotion)&&!drawGeminiProjectile(ctx,visual,age,reducedMotion)&&!drawOphiuchusProjectile(ctx,visual,age,reducedMotion)&&!drawSwanProjectile(ctx,visual,age,reducedMotion)&&!drawWaterProjectile(ctx,visual,age,reducedMotion)&&
           !drawAquarius(ctx,visual,age,reducedMotion)&&!drawCorvus(ctx,visual,progress,reducedMotion))drawSagittarius(ctx,visual,progress,now,reducedMotion);
         count++;

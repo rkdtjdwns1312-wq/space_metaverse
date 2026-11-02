@@ -106,9 +106,10 @@ test('공격 쿨다운은 중복을 막고 스킬은 같은 서버 대상 목록
   assert.equal((await call(a,'combat:skill',{targets:['forged']})).ok,false);
 });
 
+// Native teacher Q/E use a projectile/map-wide healing path, covered in teacher-skill.test.js.
 for (const [role,level,size,radius] of [
   ['student',2,80,36], ['student',3,92,41.4], ['student',4,105.8,47.61],
-  ['student',5,105.8,47.61], ['teacher',6,96,43.2]
+  ['student',5,105.8,47.61]
 ]) test(`${role} LV${level}: 소켓 Q/E 크기별 사거리·반경·대각선 시작점·경계 판정·위조 무시`,async t=>{
   // In-memory room and a fixed clock keep movement/retaliation from changing boundary fixtures.
   const now=Date.now();
@@ -120,8 +121,8 @@ for (const [role,level,size,radius] of [
   const joins=await Promise.all(sockets.map((socket,i)=>call(socket,'room:join',{code:created.room.code,nickname:String(i+1)})));
   for(const joined of joins)assert.equal(joined.ok,true,joined.error);
   const room=game.store.rooms.get(created.room.code);
-  const attacker=room.players.get(role==='teacher'?created.selfId:joins[0].selfId);
-  const actor=role==='teacher'?teacher:sockets[0];
+  const attacker=room.players.get(joins[0].selfId);
+  const actor=sockets[0];
   const targets=joins.slice(1).map(join=>room.players.get(join.selfId));for(const p of [attacker,...targets])chargeHuntingStation(p,'math',now);
   Object.assign(attacker,{mapId:'star-origin-1',x:600,y:500,facing:{x:.6,y:.8}});
   // A constellation-free avatar exercises the common Q/E geometry.
@@ -156,16 +157,9 @@ for (const [role,level,size,radius] of [
     assert.ok(Math.abs(hit.y+hit.dy*hit.originOffset-(500+.8*originOffset))<1e-10);
     assert.notEqual(hit.originOffset,hit.reach);
   };
-  const skillEvent=role==='teacher'?null:nextHit();
+  const skillEvent=nextHit();
   const skill=await call(actor,'combat:skill',spoof);
   assert.equal(skill.ok,true,skill.error);
-  if(role==='teacher'){
-    assert.equal(skill.ready,true);
-    assert.deepEqual(skill.playerTargets.map(p=>p.targetId),[targets[0].id]);
-    assert.deepEqual(skill.targets.map(m=>m.monsterId),[monsters[0].id]);
-    assert.deepEqual(targets.map(p=>ensureVitals(p).hp),[before[0]-1,before[1]]);
-    assert.deepEqual(monsters.map(m=>m.hp),[19,20]);
-  }else{
   assert.equal(skill.ready,false);
   const [skillHit]=await skillEvent;
   checkGeometry(skillHit);assert.equal(skillHit.kind,'skill');
@@ -173,7 +167,6 @@ for (const [role,level,size,radius] of [
   assert.deepEqual(skillHit.monsterTargetIds,[monsters[0].id]);
   assert.deepEqual(targets.map(p=>ensureVitals(p).hp),before);
   assert.deepEqual(monsters.map(m=>m.hp),[20,20]);
-  }
   assert.equal(ensureVitals(attacker).mp,mp);
   assert.equal((await call(actor,'combat:skill',spoof)).ok,false);
 
@@ -182,12 +175,10 @@ for (const [role,level,size,radius] of [
   assert.equal(attack.ok,true,attack.error);
   const [attackHit]=await attackEvent;checkGeometry(attackHit);
   assert.equal(attackHit.power,power);assert.equal(attackHit.durationMs,340);
-  assert.deepEqual(attack.playerTargets.map(p=>p.targetId),role==='teacher'?[targets[0].id]:[]);
+  assert.deepEqual(attack.playerTargets,[]);
   assert.deepEqual(attack.targets.map(m=>m.monsterId),[monsters[0].id]);
-  const targetDamage=role==='teacher'?Math.max(1,power-defensePowerOf(5,'aries',targets[0])):0;
-  if(role==='teacher')assert.equal(attack.playerTargets[0].damage,targetDamage);
   assert.equal(attack.targets[0].damage,power);
-  assert.equal(ensureVitals(targets[0]).hp,Math.max(0,before[0]-targetDamage));
+  assert.equal(ensureVitals(targets[0]).hp,before[0]);
   assert.equal(ensureVitals(targets[1]).hp,before[1]);
   assert.equal(monsters[0].hp,Math.max(0,20-power));assert.equal(monsters[1].hp,20);
   assert.equal((await call(actor,'combat:attack',spoof)).ok,false);

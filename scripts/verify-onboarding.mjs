@@ -38,7 +38,7 @@ try{
   await fillNewClass(teacher,['가람']);
   await teacher.locator('#teacher-form .submit').click();await teacher.locator('#lobby').waitFor({state:'hidden'});
   await teacher.locator('#vitals-hud').waitFor({state:'visible'});
-  assert.match(await teacher.locator('#vitals-hud').innerText(),/HP 999\/999[\s\S]*MP 999\/999/);
+  assert.match(await teacher.locator('#vitals-hud').innerText(),/HP 1000\/1000[\s\S]*MP 1000\/1000/);
   const room=[...game.store.rooms.values()][0];
   const student=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});student.on('pageerror',e=>errors.push(e.message));
   await student.goto(url);

@@ -18,7 +18,7 @@ export function createSleepingStarsMaps(originMaps,streetLayout){
     return Object.freeze({id:sleepingStarsId(stage),name:'별들이 잠드는 곳 '+stage,
       theme:SLEEPING_STARS_THEME,stage,width:origin.width,height:origin.height,
       spawn:Object.freeze({...origin.spawn}),
-      objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===2?[Object.freeze({id:'star-record-statue',name:'별 기록의 석상',kind:'star-record-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate'&&(object.id==='gate-back'||stage<originMaps.length)).map(gate=>{
+      objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===2?[Object.freeze({id:'star-record-statue',name:'별 기록의 석상',kind:'star-record-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===4?[Object.freeze({id:'truth-creator-statue',name:'진리의 별 석상',kind:'truth-creator-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate'&&(object.id==='gate-back'||stage<originMaps.length)).map(gate=>{
         const back=gate.id==='gate-back',targetStage=stage+(back?-1:1);
         return Object.freeze({...gate,
           name:(back&&stage===1?'오색별빛 쉼터':'별들이 잠드는 곳 '+targetStage)+(back?' ↓':' ↑'),
