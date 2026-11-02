@@ -310,7 +310,7 @@ function setMode(value){
   $('lobby-role-title').textContent=value==='student'?'학생 입장하기':'선생님 입장하기';
   $('student-form').hidden=value!=='student';$('teacher-form').hidden=value!=='teacher';
   $('teacher-resume').hidden=value!=='teacher'||!teacherResumeToken;
-  if(value==='teacher'&&!classMode)chooseClassMode('open');
+  if(value==='teacher')chooseClassMode('open');
   $('form-message').textContent='';
   controls();
   $(value==='student'?'join-code':'teacher-key').focus();
@@ -339,7 +339,7 @@ function chooseClassMode(value){
     $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
   }
   const submitButton=$('teacher-form').querySelector('.submit');
-  submitButton.hidden=!value;submitButton.textContent=open?'기존 교실 입장하기':'설정한 교실 생성하기';
+  submitButton.hidden=!value;submitButton.textContent=open?'교실 입장하기':'설정한 교실 생성하기';
 }
 $('choose-open-class').onclick=()=>chooseClassMode('open');
 $('choose-new-class').onclick=()=>chooseClassMode('new');
@@ -1593,7 +1593,7 @@ $('saved-classes-button').onclick=async()=>{
     select.replaceChildren(...(result.classes||[]).map(c=>{const option=document.createElement('option');option.value=c.code;option.textContent=c.title+' · '+c.code+(c.open?' · 열림':'');return option;}));
     select.hidden=!result.classes?.length;
     if(result.classes?.length){$('open-code').value=result.classes[0].code;select.onchange=()=>{$('open-code').value=select.value;};}
-    else toast('아직 저장된 교실이 없어요. 새 교실을 한 번 만들어주세요.');
+    else toast('아직 저장된 교실이 없어요. 관리자에게 교실 개설을 요청해 주세요.');
   }catch(e){toast(e.message);}
 };
 socket.on('connect',async()=>{

@@ -83,7 +83,7 @@ try{
     assert.equal(await login.locator('#lobby-back').textContent(),'뒤로 가기');
     assert.equal(await login.locator('#lobby-back').evaluate(element=>getComputedStyle(element).borderTopStyle),'solid');
     assert.equal(await login.locator('#student-hours-note').count(),0);
-    assert.equal(await login.locator('.lobby-hours').textContent(),'서버 오픈시간 오전 7시 ~ 오후 10시');
+    assert.equal(await login.locator('.lobby-hours').textContent(),'우주가 열리는 시간 · 오전 7시 ~ 오후 10시');
     assert.equal(await login.locator('#student-form').isVisible(),false);
     assert.equal(await login.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'접속 화면 가로 넘침: '+width);
     await login.screenshot({path:`.local/login-teacher-${width}.png`,fullPage:true});

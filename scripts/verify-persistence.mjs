@@ -71,7 +71,7 @@ export async function verifyPersistence(browser){
     await student.locator('#lobby').waitFor({state:'visible'});assert.equal(game.store.rooms.size,0);
     checks.push('수업 마치기 후 학생 입장 화면 복귀와 교실 코드 보존');
     await game.close();game=null;await start();const nextTeacher=await page(),nextStudent=await page();
-    await visit(nextTeacher,true);await nextTeacher.locator('#choose-open-class').click();
+    await visit(nextTeacher,true);
     await nextTeacher.locator('#saved-classes-button').click();await nextTeacher.locator('#saved-classes').waitFor({state:'visible'});
     await nextTeacher.locator('#saved-classes').selectOption(code);assert.equal(await nextTeacher.locator('#open-code').inputValue(),code);
     await nextTeacher.locator('#teacher-form button[type=submit]').click();await nextTeacher.locator('#lobby').waitFor({state:'hidden'});await openMenu(nextTeacher);
@@ -115,6 +115,6 @@ export async function verifyPersistence(browser){
   }
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge',args:['--no-proxy-server']}:{})});
   try{console.log(JSON.stringify(await verifyPersistence(browser),null,2));}finally{await browser.close();}
 }

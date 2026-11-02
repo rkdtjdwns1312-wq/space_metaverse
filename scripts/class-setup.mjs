@@ -2,7 +2,9 @@
 // servers without managed accounts still use the nickname allowlist field.
 export async function fillNewClass(page,names,{pin='1234'}={}){
   const list=Array.isArray(names)?names:names.split(',').map(name=>name.trim()).filter(Boolean);
-  await page.locator('#choose-new-class').click();
+  // Existing integration fixtures still create classrooms; the public teacher
+  // entrance now shows only the administrator-provisioned classroom flow.
+  await page.locator('#choose-new-class').evaluate(button=>button.click());
   await page.waitForFunction(()=>!!document.body.dataset.accountMode);
   if(await page.locator('#student-setup-fields').isVisible()){
     await page.locator('#student-count').fill(String(list.length));

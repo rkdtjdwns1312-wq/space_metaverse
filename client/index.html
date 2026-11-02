@@ -79,12 +79,11 @@
         <form id="teacher-form" hidden>
           <div class="lobby-fields">
           <label for="teacher-key">선생님 접속 코드</label><input id="teacher-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" minlength="8" required placeholder="선생님 접속 코드">
-          <span class="class-mode-label">교실 방식</span>
-          <div class="class-mode-choices" role="group" aria-label="교실 방식">
-            <button id="choose-open-class" class="secondary" type="button" aria-pressed="false">기존 교실 입장하기</button>
-            <button id="choose-new-class" class="secondary" type="button" aria-pressed="false">교실 만들기(관리자)</button>
+          <div id="legacy-class-mode" hidden aria-hidden="true">
+            <button id="choose-open-class" type="button" tabindex="-1">교실 입장하기</button>
+            <button id="choose-new-class" type="button" tabindex="-1">교실 만들기</button>
           </div>
-          <div id="open-class-fields" hidden><label for="open-code">기존 교실 코드</label><input id="open-code" autocomplete="off" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="저장된 교실 코드 6자리"><button id="saved-classes-button" class="small secondary" type="button">저장된 교실 목록 불러오기</button><select id="saved-classes" hidden aria-label="저장된 교실"></select></div>
+          <div id="open-class-fields" hidden><label for="open-code">교실 코드</label><input id="open-code" autocomplete="off" maxlength="6" pattern="[A-Za-z0-9]{6}" placeholder="저장된 교실 코드 6자리"><button id="saved-classes-button" class="small secondary" type="button">저장된 교실 목록 불러오기</button><select id="saved-classes" hidden aria-label="저장된 교실"></select></div>
           <fieldset id="new-class-fields" hidden disabled>
           <label for="class-title">교실 이름</label><input id="class-title" maxlength="12" value="우리 우주 교실" required>
           <fieldset id="student-setup-fields" hidden disabled><legend>학생 계정 함께 만들기</legend>
@@ -100,7 +99,7 @@
           <button id="teacher-resume" class="small secondary" type="button" hidden>이전 교실 이어하기</button>
         </form>
         </div>
-        <p class="lobby-hours">서버 오픈시간 오전 7시 ~ 오후 10시</p>
+        <p class="lobby-hours">우주가 열리는 시간 · 오전 7시 ~ 오후 10시</p>
         </div>
         <p id="form-message" class="form-message" role="alert"></p>
       </div>
