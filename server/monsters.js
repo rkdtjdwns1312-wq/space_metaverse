@@ -136,7 +136,7 @@ export function monsterViews(room,now=Date.now()){
     ...(m.hp>0&&m.leoonSkill?.mapId===m.mapId?{leoonSkill:{...m.leoonSkill}}:{}),
     ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
     ...(m.typeId==='dark-star'?{darkStarEffects:darkStarSkillViews(room,m,now)}:{}),
-    ...(m.typeId==='star-record'?{starRecordEffects:{warning:m.starRecordCast??null,burst:m.starRecordBurst?.endsAt>now?m.starRecordBurst:null,challenge:starRecordChallengeView(m,now),math:starRecordMathView(m,now),flow:starRecordFlowView(m,now)}}:{}),
+    ...(m.typeId==='star-record'?{starRecordEffects:{serverNow:now,warning:m.starRecordCast??null,burst:m.starRecordBurst?.endsAt>now?m.starRecordBurst:null,challenge:starRecordChallengeView(m,now),math:starRecordMathView(m,now),flow:starRecordFlowView(m,now)}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
 // 한 번에 범위 안의 모든 몬스터를 맞힙니다. 방향·범위·피해량은 서버가 정합니다.

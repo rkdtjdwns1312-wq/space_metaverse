@@ -735,3 +735,13 @@ body.placing #new-mission-notice,body.placing #journey-hud,body.placing #journey
 .cetus-hud[hidden]{display:none}.cetus-hud strong{display:block;font-size:18px}.cetus-hud p{margin:8px 0 12px;line-height:1.5}.cetus-actions{display:flex;gap:10px;justify-content:center}.cetus-actions button{flex:1;min-height:44px}.cetus-hud>button{min-height:44px}
 body.in-whale-stomach #journey-hud,body.in-whale-stomach #journey-arrow,body.in-whale-stomach #interact-prompt{display:none!important}
 #student-qr-dialog{text-align:center;max-width:min(560px,calc(100vw - 24px))}#student-qr-canvas{display:block;width:min(100%,360px);height:auto;margin:16px auto;background:white;border:8px solid white;border-radius:10px;box-sizing:border-box}#student-qr-dialog .dialog-actions{flex-wrap:wrap;justify-content:center}.student-qr-link{font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:#625677}
+
+/* 문제 풀이 중에는 단계/보상 안내를 접고 문제와 선택지에 집중합니다. */
+#learning-station-dialog.learning-focus{width:min(900px,calc(100vw - 24px));max-width:min(900px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;padding:clamp(16px,3vw,36px)}
+#learning-station-dialog.learning-focus :is(#learning-intro,.learning-reward-info,#learning-level-row){display:none}
+#learning-station-dialog.learning-focus .learning-prompt{font-size:clamp(32px,5vw,52px);line-height:1.45;min-height:80px;text-align:center;margin:20px 0}
+#learning-station-dialog.learning-focus .learning-choices{gap:16px}
+#learning-station-dialog.learning-focus .learning-answer{min-height:76px;padding:14px;font-size:clamp(22px,3vw,28px);overflow-wrap:anywhere}
+#learning-station-dialog.learning-focus :is(#learning-progress,.learning-question-label){font-size:18px}
+#learning-station-dialog.learning-focus .dialog-actions button{min-height:46px;font-size:17px}
+@media(max-width:480px){#learning-station-dialog.learning-focus{width:calc(100vw - 16px);max-width:calc(100vw - 16px);padding:18px 14px}#learning-station-dialog.learning-focus .learning-choices{gap:10px}#learning-station-dialog.learning-focus .learning-answer{padding:10px}#learning-station-dialog.learning-focus .dialog-actions{gap:8px}}

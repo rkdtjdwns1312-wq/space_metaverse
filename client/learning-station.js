@@ -9,9 +9,12 @@ export function createLearningStation({request}){
   const levelSelect=$('learning-level'),levelLabel=$('learning-level-row').querySelector('label');
   const vocabularyCount=document.createElement('p');vocabularyCount.className='muted';vocabularyCount.hidden=true;
   const rewardInfo=document.createElement('p');rewardInfo.className='learning-reward-info';rewardInfo.textContent='10문제 중 9문제 이상 맞히면 하루 한 번 보상!\n별자리 캐릭터 Lv에 따라 보상을 다르게 받아요.\n단계가 달라도 같은 발전소 보상은 하루에 한 번이에요.';intro.insertAdjacentElement('afterend',rewardInfo);
-  const start=document.createElement('button');start.id='learning-start';start.type='button';start.className='secondary';start.textContent='시작하기';next.before(start);
+  const start=document.createElement('button');start.id='learning-start';start.type='button';start.className='secondary';start.textContent='확인 · 시작하기';next.before(start);
+  const changeLevel=document.createElement('button');changeLevel.id='learning-change-level';changeLevel.type='button';changeLevel.className='secondary';changeLevel.textContent='단계 다시 선택';changeLevel.hidden=true;start.before(changeLevel);
+  changeLevel.onclick=()=>{prepare();levelSelect.focus();};
   const questionElements=[$('learning-progress'),$('learning-question-label'),prompt,choices];
   function prepare(){
+    dialog.classList.remove('learning-focus');changeLevel.hidden=true;
     generation++;round=0;correct=0;question=null;answered=false;learningReward=null;
     choices.replaceChildren();prompt.textContent='';feedback.textContent='단계를 고른 뒤 시작하기를 눌러 주세요.';
     for(const el of questionElements)el.hidden=true;
@@ -28,7 +31,7 @@ export function createLearningStation({request}){
     intro.textContent=[guidance,'10문제를 풀며 새로운 단어를 익혀 봐요.'].filter(Boolean).join(' ');
   }
   function renderQuestion(){
-    // Changing the level starts a fresh run, so keep the selector available throughout.
+    // Return to setup explicitly instead of leaving level controls above every question.
     levelSelect.disabled=false;
     $('learning-progress').textContent=`${Math.min(round+1,10)} / 10 · 맞힌 문제 ${correct}`;
     if(round>=10){
@@ -63,6 +66,7 @@ export function createLearningStation({request}){
     catch(error){if(current===generation){feedback.textContent=error.message;start.disabled=false;}return;}
     if(current!==generation)return;
     question=result;
+    dialog.classList.add('learning-focus');changeLevel.hidden=false;
     start.hidden=true;start.disabled=false;for(const el of questionElements)el.hidden=false;
     renderQuestion();
   }

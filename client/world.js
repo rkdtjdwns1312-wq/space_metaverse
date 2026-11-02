@@ -131,6 +131,11 @@ function drawStar(ctx,x,y,r,fill){
 }
 // Canvas renderer만 교체하면 서버 규칙을 바꾸지 않고 그림을 바꿀 수 있습니다.
 // 행성은 정적 목록이 아니라 room.planets 스냅샷(가변 개수, 최대 PLANET.maxPerRoom)입니다.
+function starRecordNow(effects){
+  // Countdown deadlines are server timestamps. A PC clock that is fast must not shorten them.
+  return Number.isFinite(effects?.serverNow)&&Number.isFinite(effects?.receivedAt)
+    ?effects.serverNow+Math.max(0,performance.now()-effects.receivedAt):Date.now();
+}
 export function createWorld(canvas) {
   const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
@@ -165,6 +170,7 @@ export function createWorld(canvas) {
   let monsters=[],spiritOrbs=[],spiritBlueStars=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
   function setMonsters(data){
     monsters=data;const now=performance.now();
+    for(const m of monsters)if(m.starRecordEffects)m.starRecordEffects={...m.starRecordEffects,receivedAt:now};
     for(const m of monsters)if(m.mapId===myMapId)void prepareMonsterArt(monsterType(m.typeId)?.shape);
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
     for(const id of monsterTracks.keys())if(!monsters.some(m=>m.id===id)){monsterTracks.delete(id);monsterPoints.delete(id);}
@@ -659,15 +665,15 @@ export function createWorld(canvas) {
       recordPrompt=recordBoss?.starRecordEffects?.challenge?.prompts?.find(prompt=>prompt.playerId===p.id),
       flowPrompt=recordBoss?.starRecordEffects?.flow?.prompts?.find(prompt=>prompt.playerId===p.id);
     if(recordPrompt){
-      const seconds=Math.max(0,Math.ceil((recordPrompt.endsAt-Date.now())/1000)),py=y-size/2-50;
+      const seconds=Math.max(0,Math.ceil((recordPrompt.endsAt-starRecordNow(recordBoss.starRecordEffects))/1000)),py=y-size/2-50;
       ctx.save();ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';
       ctx.fillStyle='#fff7dff2';ctx.strokeStyle='#b99548';ctx.lineWidth=2;
       ctx.beginPath();ctx.roundRect(x-66,py-20,132,42,11);ctx.fill();ctx.stroke();
       ctx.fillStyle='#58412c';ctx.fillText(`${recordPrompt.planet} · ${seconds}초`,x,py+7);ctx.restore();
-      if(p.id===selfId)canvas.dataset.starRecordPrompt=recordPrompt.planet;
-    }else if(p.id===selfId)canvas.dataset.starRecordPrompt='';
+      if(p.id===selfId){canvas.dataset.starRecordPrompt=recordPrompt.planet;canvas.dataset.starRecordSeconds=String(seconds);}
+    }else if(p.id===selfId){canvas.dataset.starRecordPrompt='';canvas.dataset.starRecordSeconds='';}
     if(flowPrompt){
-      const seconds=Math.max(0,Math.ceil((flowPrompt.endsAt-Date.now())/1000)),py=y-size/2-54;
+      const seconds=Math.max(0,Math.ceil((flowPrompt.endsAt-starRecordNow(recordBoss.starRecordEffects))/1000)),py=y-size/2-54;
       ctx.save();ctx.textAlign='center';ctx.fillStyle='#fff7dff2';ctx.strokeStyle='#b99548';ctx.lineWidth=2;
       ctx.beginPath();ctx.roundRect(x-102,py-34,204,58,11);ctx.fill();ctx.stroke();
       ctx.font='bold 17px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#5a4028';
@@ -735,8 +741,8 @@ export function createWorld(canvas) {
     canvas.dataset.darkStarCardCount=String(darkEffects.reduce((n,{e})=>n+(e.cards?.length||0),0));
     canvas.dataset.darkStarSatelliteCount=String(darkEffects.reduce((n,{e})=>n+(e.satellites?.length||0),0));
     for(const {e} of darkEffects)drawDarkStarGround(ctx,e,darkNow);
-    for(const monster of visibleMonsters)if(monster.starRecordEffects)drawStarRecordRays(ctx,monster.starRecordEffects,darkNow);
-    for(const monster of visibleMonsters)if(monster.starRecordEffects?.math)drawStarRecordMath(ctx,monster.starRecordEffects.math,darkNow);
+    for(const monster of visibleMonsters)if(monster.starRecordEffects)drawStarRecordRays(ctx,monster.starRecordEffects,starRecordNow(monster.starRecordEffects));
+    for(const monster of visibleMonsters)if(monster.starRecordEffects?.math)drawStarRecordMath(ctx,monster.starRecordEffects.math,starRecordNow(monster.starRecordEffects));
     const drawMonsterLayer=m=>{
       if(m.typeId==='dark-star-card')return;
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)return;

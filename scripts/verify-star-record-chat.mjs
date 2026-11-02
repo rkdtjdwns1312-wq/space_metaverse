@@ -29,9 +29,14 @@ try{
  chargeHuntingStation(player,'math',now);room.chat.enabled=false;player.muted=true;player.mapId=STAR_RECORD.mapId;
  room.starRecord={state:'active',respawnAt:null,monsterId:STAR_RECORD.monsterId};
  const boss=monstersOf(room,now).get(STAR_RECORD.monsterId);
+ await student.evaluate(serverNow=>{Date.now=()=>serverNow+4000;},now);
  boss.recordChallenge={startsAt:now,endsAt:now+10000,participants:new Map([[player.id,{planets:['금성','목성'],round:0,done:false}]])};
  game.io.to(player.socketId).emit('room:state',game.store.snapshot(room,player,now));
  game.io.to(player.socketId).emit('world:positions',{positions:[],monsters:monsterViews(room,now),starRecord:room.starRecord});
+ await student.waitForFunction(()=>document.querySelector('#world').dataset.starRecordPrompt==='금성');
+ assert.equal(await student.locator('#chat-dialog').evaluate(d=>d.open),false,'pattern must not open chat');
+ assert.equal(await student.locator('#world').getAttribute('data-star-record-seconds'),'10','PC clock +4s must still show 10s');
+ await student.locator('#chat-window-toggle').click();
  await student.locator('#chat-dialog[open]').waitFor();
  assert.equal(await student.locator('#chat-input').isEnabled(),true);
  assert.match(await student.locator('#chat-input').getAttribute('placeholder'),/금성/);
@@ -39,6 +44,14 @@ try{
  await student.locator('#chat-send').click({timeout:5000});
  await student.waitForFunction(()=>document.querySelector('#chat-input').value==='');
  assert.equal(boss.recordChallenge.participants.get(player.id).round,1);
+ await student.locator('#chat-dialog').evaluate(d=>d.close());now+=4000;
+ await student.waitForFunction(()=>document.querySelector('#world').dataset.starRecordPrompt==='목성'&&document.querySelector('#world').dataset.starRecordSeconds==='6');
+ assert.equal(await student.locator('#chat-dialog').evaluate(d=>d.open),false,'second round must stay closed and keep original deadline');
+ await student.evaluate(()=>{Date.now=()=>0;});
+ await student.waitForTimeout(200);
+ assert.equal(await student.locator('#world').getAttribute('data-star-record-seconds'),'6','PC clock changes must not alter deadline');
+ await student.locator('#chat-window-toggle').click();await student.locator('#chat-input').fill('목성');await student.locator('#chat-send').click();
+ await student.waitForFunction(()=>document.querySelector('#world').dataset.starRecordPrompt==='');
  assert.deepEqual(errors,[]);
- console.log('PASS muted and chat-disabled student answered star-record challenge in auto-open chat; browser errors0');
+ console.log('PASS muted and chat-disabled student answered star-record challenge in manually opened chat, no automatic opening, server-based 10s countdown despite PC clock skew; browser errors0');
 }finally{await browser.close();await game.close();}
