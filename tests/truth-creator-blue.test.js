@@ -76,8 +76,8 @@ test('red chasers and blue puzzles never overlap and a blocked cast spends no ma
   const f=fixture();assert(tryTruthCreatorChasers(f.room,f.boss,f.player,now));
   assert.equal(tryTruthCreatorBlue(f.room,f.boss,f.player,now,()=>.25),false);
   assert.equal(f.boss.mp,90);assert.equal(f.boss.truthCreatorBlue,undefined);
-  tickTruthCreatorChasers(f.room,f.boss,now+20000);
-  const orbs=cast(f,now+20000);assert.equal(f.boss.mp,85);
+  tickTruthCreatorChasers(f.room,f.boss,now+10000);
+  const orbs=cast(f,now+10000);assert.equal(f.boss.mp,85);
   const readyAt=f.boss.truthCreatorChasers.readyAt;
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+30000),false);
   assert.equal(f.boss.mp,85);assert.equal(f.boss.truthCreatorChasers.readyAt,readyAt);

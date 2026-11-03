@@ -50,16 +50,17 @@ test('orb and light respect immunity and invalid participants, and death/map cha
   }
   for(const change of [boss=>boss.hp=0,boss=>boss.mapId='space-plaza']){const g=fixture();fire(g);change(g.boss);tickTruthCreatorAttack(g.room,g.boss,now+4000);assert.equal(g.boss.truthCreatorAttack,null);}
 });
-test('chaser cast snapshots one safe orb per eligible character, spends ten mana, cooldown thirty seconds and lasts twenty',()=>{
+test('chaser cast snapshots one safe orb per eligible character, spends ten mana, cooldown thirty seconds and lasts ten',()=>{
   const f=fixture();f.player.x=f.boss.x;f.player.y=f.boss.y;
   const b={...f.player,id:'b',x:f.player.x+100,battleVitals:{...f.player.battleVitals},avatar:{level:1}};f.room.players.set(b.id,b);
   for(const [id,change] of [['teacher',{role:'teacher'}],['offline',{connected:false}],['away',{away:true}],['other',{mapId:'space-plaza'}],['black',{avatar:{level:1,blackStar:true}}],['ghost',{role:'teacher',avatar:{level:6,teacherPreview:true}}]])f.room.players.set(id,{...b,id,...change});
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),true);assert.equal(f.boss.mp,90);assert.equal(CHASER.speed,RULES.speed*.3);
   assert.equal(f.boss.truthCreatorChasers.orbs.length,2);
-  for(const orb of f.boss.truthCreatorChasers.orbs){assert.equal(orb.endsAt-now,20000);for(const p of [f.player,b])assert(Math.hypot(orb.x-p.x,orb.y-p.y)>orb.radius+RULES.radius+80);}
+  for(const orb of f.boss.truthCreatorChasers.orbs){assert.equal(orb.endsAt-now,10000);for(const p of [f.player,b])assert(Math.hypot(orb.x-p.x,orb.y-p.y)>orb.radius+RULES.radius+80);}
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+1),false);assert.equal(f.boss.mp,90);
   const late={...b,id:'late'};f.room.players.set(late.id,late);assert.equal(f.boss.truthCreatorChasers.orbs.length,2);
-  assert.deepEqual(tickTruthCreatorChasers(f.room,f.boss,now+20000),[]);assert.equal(truthCreatorChaserViews(f.boss,now+20000).length,0);
+  assert.equal(truthCreatorChaserViews(f.boss,now+9999).length,2);
+  assert.deepEqual(tickTruthCreatorChasers(f.room,f.boss,now+10000),[]);assert.equal(truthCreatorChaserViews(f.boss,now+10000).length,0);
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+29999),false);assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+30000),true);
 });
 test('red orb kills a bystander while pursuing its assigned target, respects Libra, and removes invalid targets',()=>{

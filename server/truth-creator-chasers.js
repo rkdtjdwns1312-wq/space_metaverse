@@ -3,7 +3,7 @@ import {onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals} from './vitals.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
 
-export const TRUTH_CREATOR_CHASERS=Object.freeze({mana:10,cooldownMs:30000,durationMs:20000,speed:RULES.speed*.3,radius:30,spawnDistance:300});
+export const TRUTH_CREATOR_CHASERS=Object.freeze({mana:10,cooldownMs:30000,durationMs:10000,speed:RULES.speed*.3,radius:30,spawnDistance:300});
 const eligible=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
 const stateOf=boss=>boss.truthCreatorChasers??={mapId:boss.mapId,sequence:0,readyAt:0,orbs:[]};
