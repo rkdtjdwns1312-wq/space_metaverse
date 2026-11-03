@@ -9,7 +9,7 @@ import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
 import {advanceProjectiles} from './projectiles.js';
-import {advanceSigilProjectiles} from './sigil-projectiles.js';
+import {advanceSigilProjectiles,resolveSigilHit} from './sigil-projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
 import {teacherInventoryView,adjustTeacherInventory,setTeacherInventoryCurrency,teacherResourcesCatalog,grantTeacherResources} from './teacher-inventory.js';
@@ -2638,7 +2638,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(transformationChanged)roster(room);
       advanceSigilProjectiles(room,clock());
       for(const hit of advanceProjectiles(room,clock(),combatEnemies,(room,player,selected,power,now,cast)=>
-        isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now))){
+        cast.kind==='sigil-black-star'?resolveSigilHit(room,player,selected,power,now):isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now))){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           if(hit.end)io.to(viewer.socketId).emit('combat:projectile-end',hit.end);
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}

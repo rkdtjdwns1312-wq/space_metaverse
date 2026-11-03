@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {attackPowerOf} from '../shared/combat.js';
 import {DARK_STAR_SKILLS} from '../shared/dark-star-skills.js';
-import {monstersOf} from '../server/monsters.js';
-import {advanceSigilProjectiles,SIGIL_SHOT_INTERVAL_MS} from '../server/sigil-projectiles.js';
+import {monstersOf,moveMonsters} from '../server/monsters.js';
+import {advanceSigilProjectiles,resolveSigilHit,SIGIL_SHOT_INTERVAL_MS} from '../server/sigil-projectiles.js';
 import {advanceProjectiles} from '../server/projectiles.js';
 import {combatEnemies,damageTargets} from '../server/sagittarius-skills.js';
 import {ensureVitals} from '../server/vitals.js';
@@ -12,6 +12,25 @@ import {createClassroomServer} from '../server/app.js';
 import {huntingCycle,HUNTING_STATION_MS} from '../shared/hunting-time.js';
 
 const START=1000;
+
+for(const role of ['student','teacher'])test(`인장 실제 명중 ${role}: 피해·기여·추적과 반격을 등록한다`,()=>{
+ const {room,p}=fixture();p.role=role;
+ const template=[...monstersOf({...room,monsters:undefined},START).values()].find(m=>m.mapId===p.mapId);
+ const monster={...template,id:'target',x:700,y:450,hp:10000,maxHp:10000,radius:24,lastMoveAt:START,
+  attackers:new Map(),contributors:new Map(),teacherRetaliation:new Set()};room.monsters.set(monster.id,monster);
+ p.sigilNextShotAt=START;assert.equal(advanceSigilProjectiles(room,START).length,1);
+ const hit=advanceProjectiles(room,START+1000,combatEnemies,resolveSigilHit)[0].targets[0];
+ assert.ok(hit.damage>0);assert.equal(monster.targetId,p.id);assert.equal(monster.contributors.get(p.id),hit.damage);assert(monster.attackers.has(p.id));
+ const x=monster.x;moveMonsters(room,START+1100,()=>.99);assert(monster.x<x);
+ p.x=monster.x-50;p.y=monster.y;const hp=ensureVitals(p).hp;
+ const reply=moveMonsters(room,START+2000,()=>.99);assert(reply.some(h=>h.targetId===p.id));assert(ensureVitals(p).hp<hp);
+});
+
+test('고스트 교사의 인장 명중은 고스트를 추적하지 않는다',()=>{
+ const {room,p}=fixture();p.role='teacher';p.avatar.teacherPreview=true;
+ const monster=[...monstersOf({...room,monsters:undefined},START).values()].find(m=>m.mapId===p.mapId);room.monsters.set(monster.id,monster);
+ const hit=resolveSigilHit(room,p,[{kind:'monster',entity:monster}],1,START);assert.equal(hit.targets.length,1);assert.equal(monster.targetId,null);
+});
 function fixture(){
   const p={id:'sigil',role:'student',connected:true,away:false,mapId:'star-origin-1',x:500,y:450,
     facing:{x:1,y:0},avatar:{level:5,constellationId:'aquarius'},equipmentSlots:['primordial-star-sigil',null,null]};
@@ -85,4 +104,11 @@ test('실제 서버 틱은 몬스터가 나타난 뒤 인장 탄환을 같은 �
   const shot=await shown;
   assert.equal(shot.mapId,player.mapId);
   assert.equal(shot.size,DARK_STAR_SKILLS.basic.radius*2);
+  now+=1000;await new Promise(resolve=>setTimeout(resolve,150));
+  const monster=room.monsters.get('socket-target');assert.equal(monster.targetId,player.id);assert(monster.contributors.get(player.id)>0);
+  const teacherPlayer=room.players.get(created.selfId);
+  player.mapId='space-plaza';Object.assign(teacherPlayer,{mapId:'star-origin-1',x:500,y:450,equipmentSlots:['primordial-star-sigil',null,null],sigilNextShotAt:now});
+  Object.assign(monster,{x:650,y:450,hp:10000,maxHp:10000});
+  await new Promise(resolve=>setTimeout(resolve,150));now+=1000;await new Promise(resolve=>setTimeout(resolve,150));
+  assert.equal(monster.targetId,teacherPlayer.id);assert(monster.teacherRetaliation.has(teacherPlayer.id));assert(monster.contributors.get(teacherPlayer.id)>0);
 });

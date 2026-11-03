@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {monstersOf,monsterViews,moveMonsters,damageMonster} from '../server/monsters.js';
-import {spiritOrbViews,trySpiritKingSkills} from '../server/spirit-king-skills.js';
+import {spiritOrbViews,trySpiritKingSkills,trySpiritGuardianHeal} from '../server/spirit-king-skills.js';
 import {SPIRIT_SUMMON,SPIRIT_ORB} from '../shared/boss-skills.js';
 import {mapOf} from '../shared/config.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
@@ -82,9 +82,9 @@ test('재소환은 생존 지킴이 다섯까지만 채우며 기존 지킴이�
  assert.equal(trySpiritKingSkills(f.room,f.boss,f.player,START+4000,()=>0,map),false);assert.equal(living().length,5);assert.equal(f.boss.mp,mana);
 });
 
-test('성령의 왕 구체는 20초 동안 바닥 안에서 튕기고, 같은 학생에게 1초 이내 재타격하지 않는다',()=>{
+test('성령의 왕 구체는 마나5로 30초 지속하며 닿으면 방어와 무관하게 즉사한다',()=>{
   const f=fixture();f.boss.summonReadyAt=Infinity;
-  f.tick(START);assert.equal(f.boss.mp,90);
+  f.tick(START);assert.equal(f.boss.mp,95);
   assert.equal(f.boss.orbReadyAt,START+SPIRIT_ORB.cooldownMs);
   assert.equal(f.room.spiritOrbs.length,1);
   assert.equal(spiritOrbViews(f.room,f.boss.mapId,START).length,1);
@@ -92,16 +92,51 @@ test('성령의 왕 구체는 20초 동안 바닥 안에서 튕기고, 같은 �
   f.player.x=orb.x;f.player.y=orb.y;
   const before=ensureVitals(f.player).hp;
   const first=f.tick(START+50,.99).filter(hit=>hit.skillKind===SPIRIT_ORB.kind);
-  assert.equal(first.length,1);assert.equal(first[0].damage,28);
-  assert.equal(ensureVitals(f.player).hp,before-28);
+  assert.equal(first.length,1);assert.equal(first[0].damage,before);
+  assert.equal(ensureVitals(f.player).hp,0);assert.equal(first[0].defeated,true);
   assert.equal(f.tick(START+999,.99).filter(hit=>hit.skillKind===SPIRIT_ORB.kind).length,0);
-  for(let now=START+1000;now<START+20000;now+=100){
+  for(let now=START+1000;now<START+30000;now+=100){
     f.tick(now,.99);
     assert.ok(onParadiseFloor(map,orb.x,orb.y,orb.radius));
   }
-  f.tick(START+20000,.99);
-  assert.equal(spiritOrbViews(f.room,f.boss.mapId,START+20000).length,0);
+  f.tick(START+30000,.99);
+  assert.equal(spiritOrbViews(f.room,f.boss.mapId,START+30000).length,0);
   assert.equal(f.room.spiritOrbs.length,0);
+});
+
+test('태양달 구체는 20초 뒤 재시전하여 두 개가 함께 남고 각각 30초에 사라진다',()=>{
+  const f=fixture(),map=mapOf(f.boss.mapId);f.boss.summonReadyAt=Infinity;f.boss.blueStarReadyAt=Infinity;
+  assert.equal(trySpiritKingSkills(f.room,f.boss,f.player,START,()=>0,map),true);
+  assert.equal(trySpiritKingSkills(f.room,f.boss,f.player,START+19999,()=>0,map),false);
+  assert.equal(trySpiritKingSkills(f.room,f.boss,f.player,START+20000,()=>0,map),true);
+  assert.equal(f.boss.mp,90);
+  assert.equal(spiritOrbViews(f.room,f.boss.mapId,START+20000).length,2);
+  assert.equal(spiritOrbViews(f.room,f.boss.mapId,START+30000).length,1);
+  assert.equal(spiritOrbViews(f.room,f.boss.mapId,START+50000).length,0);
+});
+
+test('별 지킴이 MP10으로 성령왕500회복, 20초 쿨타임, 두 번 뒤 마나 소진',()=>{
+  const f=fixture();f.boss.orbReadyAt=Infinity;f.tick(START);
+  const g=[...f.room.monsters.values()].find(m=>m.summonerId===f.boss.id);
+  assert.equal(g.mp,10);assert.equal(g.maxMp,10);
+  assert.equal(trySpiritGuardianHeal(f.room,g,START),false,'최대체력에는 낭비하지 않는다');
+  f.boss.hp-=1600;const hp=f.boss.hp;
+  assert.equal(trySpiritGuardianHeal(f.room,g,START+1),true);assert.equal(g.mp,5);assert.equal(f.boss.hp,hp+500);
+  assert.equal(trySpiritGuardianHeal(f.room,g,START+20000),false);
+  assert.equal(trySpiritGuardianHeal(f.room,g,START+20001),true);assert.equal(g.mp,0);assert.equal(f.boss.hp,hp+1000);
+  assert.equal(trySpiritGuardianHeal(f.room,g,START+40001),false);
+});
+
+test('지킴이 회복은 상한·기절·죽음·다른 맵을 지키며 실제 이동 틱에서도 실행된다',()=>{
+  const f=fixture();f.boss.orbReadyAt=Infinity;f.boss.blueStarReadyAt=Infinity;f.tick(START);
+  const g=[...f.room.monsters.values()].find(m=>m.summonerId===f.boss.id);
+  f.room.monsters=new Map([[f.boss.id,f.boss],[g.id,g]]);f.boss.hp-=100;g.stunUntil=START+1000;
+  assert.equal(trySpiritGuardianHeal(f.room,g,START+100),false);
+  g.stunUntil=0;g.sleepUntil=START+1000;assert.equal(trySpiritGuardianHeal(f.room,g,START+100),false);g.sleepUntil=0;
+  g.hp=0;assert.equal(trySpiritGuardianHeal(f.room,g,START+100),false);g.hp=g.maxHp;
+  const mapId=g.mapId;g.mapId='plaza';assert.equal(trySpiritGuardianHeal(f.room,g,START+100),false);g.mapId=mapId;
+  f.tick(START+100,.99);assert.equal(f.boss.hp,f.boss.maxHp);assert.equal(g.mp,5);
+  f.boss.hp=0;assert.equal(trySpiritGuardianHeal(f.room,g,START+30000),false);
 });
 
 test('성령의 왕을 처치하면 소환 지킴이와 활성 구체를 함께 정리한다',()=>{

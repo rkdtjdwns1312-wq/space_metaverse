@@ -1,7 +1,7 @@
-import {SPIRIT_SUMMON,SPIRIT_ORB,SPIRIT_BLUE_STAR} from '../shared/boss-skills.js';
+import {SPIRIT_SUMMON,SPIRIT_ORB,SPIRIT_BLUE_STAR,SPIRIT_GUARDIAN_HEAL} from '../shared/boss-skills.js';
 import {onParadiseFloor} from '../shared/paradise-floor.js';
-import {playersInArea,reflectLibraDamage} from './area-combat.js';
-import {damagePlayer} from './vitals.js';
+import {playersInArea} from './area-combat.js';
+import {defeatRecordPlayer} from './star-record-challenge.js';
 import {monsterType} from '../shared/monsters.js';
 import {clearSpiritBlueStars,summonSpiritBlueStars} from './spirit-blue-stars.js';
 
@@ -29,13 +29,23 @@ function summonGuardians(room,boss,now,map){
     const targetEntries=[...boss.attackers];
     room.monsters.set(id,{id,typeId:'star-guardian',mapId:boss.mapId,x,y,radius:guardianRadius,
       hp:guardianType.hp,maxHp:guardianType.hp,respawnAt:null,spawnX:x,spawnY:y,summonerId:boss.id,
-      mp:0,maxMp:0,targetId:boss.targetId,attackers:new Map(targetEntries),contributors:new Map(),
+      mp:SPIRIT_GUARDIAN_HEAL.maxMana,maxMp:SPIRIT_GUARDIAN_HEAL.maxMana,healReadyAt:now,targetId:boss.targetId,attackers:new Map(targetEntries),contributors:new Map(),
       meleePresence:new Map(),attackOrder:boss.attackOrder||targetEntries.length,mapExitCount:0,nextAttackAt:now+1000,
       dx:0,dy:0,facingX:boss.facingX||1,moving:false,
       patrolStartedAt:now,patrolPhaseOffset:0,patrolCycle:-1,nextDirectionAt:now,lastMoveAt:now});
     created++;
   }
   return created||false;
+}
+
+export function trySpiritGuardianHeal(room,guardian,now){
+  const rule=SPIRIT_GUARDIAN_HEAL,boss=room.monsters?.get(guardian.summonerId);
+  if(guardian.typeId!=='star-guardian'||guardian.hp<=0||guardian.mp<rule.mana||
+    now<(guardian.healReadyAt||0)||(guardian.sleepUntil||0)>now||(guardian.stunUntil||0)>now||
+    !boss||boss.typeId!=='spirit-king'||boss.hp<=0||boss.mapId!==guardian.mapId||boss.hp>=boss.maxHp)return false;
+  const restored=Math.min(rule.health,boss.maxHp-boss.hp);
+  boss.hp+=restored;guardian.mp-=rule.mana;guardian.healReadyAt=now+rule.cooldownMs;
+  return true;
 }
 
 export function trySpiritKingSkills(room,boss,target,now,random,map){
@@ -89,9 +99,8 @@ export function tickSpiritOrbs(room,now,mapFor){
       excludeTeachers:true,teacherTargetIds:boss.teacherRetaliation});
     for(const player of players){
       if(now-(orb.lastHitAt.get(player.id)??-Infinity)<SPIRIT_ORB.hitIntervalMs)continue;
-      const result=damagePlayer(player,orb.power*SPIRIT_ORB.damageMultiplier,now,{room});
+      const result=defeatRecordPlayer(room,player,now);
       if(!result)continue;
-      if(result.reflectedDamage)reflectLibraDamage(room,player,{sourceMonsterId:boss.id},result.reflectedDamage,now);
       orb.lastHitAt.set(player.id,now);
       hits.push({monsterId:boss.id,mapId:orb.mapId,x:orb.x,y:orb.y,dx:orb.dx,dy:orb.dy,reach:orb.radius,
         skillKind:SPIRIT_ORB.kind,durationMs:450,targetId:player.id,...result,noEffect:true});

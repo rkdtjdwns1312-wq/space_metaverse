@@ -1,5 +1,7 @@
 #crafting-dialog{width:min(740px,calc(100vw - 24px));max-width:none;box-sizing:border-box;max-height:88dvh;overflow:auto}
 #crafting-dialog header,#crafting-dialog footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.crafting-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex-shrink:0}
+@media(max-width:460px){.crafting-header-actions{gap:5px}.crafting-header-actions button{font-size:12px;padding:7px 9px;white-space:nowrap}}
 #crafting-dialog h2{margin:0}#crafting-dialog p{font-size:13px;line-height:1.6}#crafting-dialog h3{font-size:15px}#crafting-dialog h3 small{color:#9684ad;font-size:12px}
 .crafting-columns{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 #crafting-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}

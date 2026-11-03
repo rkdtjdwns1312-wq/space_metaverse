@@ -48,11 +48,14 @@ export function validateCozyActivities(raw){
 function current(player,now){const state=validateCozyActivities(player.cozyActivities),today=cultureDay(now);for(const kind of ['pet','room','garden'])if(state[kind].day!==today){state[kind].day=today;if(kind==='pet')state.pet.careToday=[];if(kind==='room')state.room.rewarded=false;if(kind==='garden')state.garden.harvestsToday=0;}return state;}
 function readyAt(pot){return pot.plantedAt+COZY_SEEDS.find(s=>s.id===pot.seed).minutes*60000*(pot.watered?.8:1);}
 export function cozyView(player,kind,now=Date.now()){
- need(['pet','room','garden'].includes(kind));const state=current(player,now)[kind];
+ need(['pet','room','garden'].includes(kind));const all=current(player,now),state=all[kind];
  if(kind==='pet'){state.raising=starView(state.raising);state.stage=[3,9,18].filter(n=>state.careCount>=n).length;state.album=[3,9,18].filter(n=>state.careCount>=n);}
  if(kind==='garden')state.pots=state.pots.map(p=>p&&({...p,...(p.game?gardenGameView(p,now):{readyAt:readyAt(p),ready:now>=readyAt(p),remainingMs:Math.max(0,readyAt(p)-now)})}));
  const preview=player.role==='teacher'||player.accountKind==='master',unit=preview?0:cozyRewardUnit(player.avatar?.level);
- return {kind,serverNow:now,cosmicEnergy:player.cosmicEnergy??0,state,catalog:COZY_CATALOG,preview,rewards:{unit,perAction:kind==='room'?unit*3:unit,dailyMax:unit*3}};
+ const discovered=new Set(all.pet.raising.album.map(ending=>ending.careerId));
+ const raising={...COZY_CATALOG.raising,canBrowseAll:preview,careers:COZY_CATALOG.raising.careers.map(career=>
+  preview||discovered.has(career.id)?{...career,locked:false}:{id:career.id,track:career.track,locked:true})};
+ return {kind,serverNow:now,cosmicEnergy:player.cosmicEnergy??0,state,catalog:{...COZY_CATALOG,raising},preview,rewards:{unit,perAction:kind==='room'?unit*3:unit,dailyMax:unit*3}};
 }
 export function actCozy(player,data,now=Date.now()){
  const {kind,action}=data;need(['pet','room','garden'].includes(kind));const state=current(player,now),s=state[kind],unit=cozyRewardUnit(player.avatar?.level);need(unit>0||player.role==='teacher'||player.accountKind==='master','현재 레벨을 확인해주세요.');let amount=0;

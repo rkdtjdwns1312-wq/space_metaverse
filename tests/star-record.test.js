@@ -176,7 +176,7 @@ test('세 패턴이 미완료인 동안 기본 공격이 패턴을 끝내지 못
     answerOne(room,player,boss,now);
     const before=ensureVitals(player).hp;
     assert.equal(advanceStarRecordAttack(room,boss,now+2000,()=>0).busy,true,name);
-    assert.equal(boss.starRecordCast,undefined,name);
+    assert.equal(boss.starRecordCast.rays.length,3,name);
     assert.equal(ensureVitals(player).hp,before,name);
     assert(boss.recordChallenge||boss.recordMath||boss.recordFlow,name);
   }
@@ -195,3 +195,26 @@ test('별 기록의 근원이 기절해도 진행 중인 받아쓰기는 유지�
   assert.equal(hits.filter(hit=>hit.skillKind==='star-record-challenge').length,1);
   assert.equal(ensureVitals(player).hp,0);
 });
+
+for(const [key,start] of [['recordChallenge',tryStarRecordChallenge],['recordMath',tryStarRecordMath],['recordFlow',tryStarRecordFlow]]){
+  test(`${key} 중에도 실제 이동 틱에서 기본공격이 반복되고 패턴 마감시각은 유지된다`,()=>{
+    const now=100000,{room,player,boss}=make();player.x=boss.x+160;
+    Object.assign(boss,{lastMoveAt:now,maxHp:10000,radius:100,dx:1,dy:0,attackers:new Map([[player.id,1]]),teacherRetaliation:new Set(),
+      contributors:new Map(),meleePresence:new Map(),targetId:player.id,moving:false});
+    assert.equal(start(room,boss,now,()=>0),true);
+    const pattern=boss[key],deadline=pattern.endsAt;
+    const first=moveMonsters(room,now+100,()=>.99);
+    assert.equal(first.filter(h=>h.skillKind==='star-record-burst').length,0);
+    assert.equal(boss.starRecordCast.endsAt,now+1100);
+    const hp=ensureVitals(player).hp;
+    const hits=moveMonsters(room,now+1100,()=>.99);
+    assert.ok(hits.some(h=>h.skillKind==='star-record-burst'&&h.targetId===player.id));
+    assert.ok(ensureVitals(player).hp<hp);
+    assert.equal(boss[key],pattern);assert.equal(pattern.endsAt,deadline);
+    ensureVitals(player).hp=hp;
+    moveMonsters(room,now+3100,()=>.99);
+    assert.equal(boss.starRecordCast.endsAt,now+4100);
+    assert.ok(moveMonsters(room,now+4100,()=>.99).some(h=>h.skillKind==='star-record-burst'));
+    assert.equal(boss[key],pattern);assert.equal(pattern.endsAt,deadline);
+  });
+}

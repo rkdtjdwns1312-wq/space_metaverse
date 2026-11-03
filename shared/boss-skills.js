@@ -23,7 +23,8 @@ export const LEOON_CHARGE=Object.freeze({kind:'leoon-charge',mana:20,cooldownMs:
   stompMs:900,warningMs:2000,dashMs:700,repeats:3,stomps:3,damageMultiplier:2,
   distanceFactor:3.4,halfWidthFactor:.48,durationMs:700});
 export const SPIRIT_SUMMON=Object.freeze({kind:'spirit-summon',mana:20,cooldownMs:60000,decisionMs:2000,chance:.4,count:5});
-export const SPIRIT_ORB=Object.freeze({kind:'spirit-orb',mana:10,cooldownMs:30000,decisionMs:2000,chance:.4,
-  durationMs:20000,speed:300,radius:38,hitIntervalMs:1000,damageMultiplier:1});
+export const SPIRIT_ORB=Object.freeze({kind:'spirit-orb',mana:5,cooldownMs:20000,decisionMs:2000,chance:.4,
+  durationMs:30000,speed:300,radius:38,hitIntervalMs:1000});
+export const SPIRIT_GUARDIAN_HEAL=Object.freeze({maxMana:10,mana:5,cooldownMs:20000,health:500});
 export const SPIRIT_BLUE_STAR=Object.freeze({kind:'spirit-blue-star',mana:10,cooldownMs:60000,decisionMs:2000,chance:.4,
   count:5,durationMs:20000,radius:46,damageMultiplier:2,placementAttempts:120,minSeparation:190});

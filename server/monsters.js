@@ -1,4 +1,5 @@
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
+import {nearbyMonsterBodies,bodyBlocksStep,monsterDetour} from './monster-navigation.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals,playerVitals,damagePlayer} from './vitals.js';
@@ -20,7 +21,7 @@ import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
 import {bossVictoryCredits} from './serena-progress.js';
 import {BOSS_MANA,NOKSERA_HORN_BURST,nokseraHornRadius,NOKSERA_MOON_PHASE,nokseraMoonTimeline,nokseraFullMoon,LEOON_ROAR,LEOON_CHARGE} from '../shared/boss-skills.js';
 import {beginLeoonRoar,beginLeoonCharge,tickLeoonSkill} from './leoon-boss-skills.js';
-import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs} from './spirit-king-skills.js';
+import {clearSpiritKingEffects,trySpiritKingSkills,tickSpiritOrbs,trySpiritGuardianHeal} from './spirit-king-skills.js';
 import {tickSpiritBlueStars} from './spirit-blue-stars.js';
 import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
 import {clearDarkStarSkills,tryDarkStarSkills,tickDarkStarSkills,darkStarSkillViews,aimDarkStar,damageDarkStarCard,recordDarkStarDamage} from './dark-star-skills.js';
@@ -40,8 +41,7 @@ function starRecordTargets(room,boss){
 }
 export function advanceStarRecordAttack(room,boss,now=Date.now(),random=Math.random){
   if(boss.typeId!=='star-record'||boss.hp<=0)return {busy:false,hits:[]};
-  // 받아쓰기·숫자 별·방향 순서가 남아 있는 동안에는 일반 공격으로 넘어가지 않습니다.
-  if(boss.recordChallenge||boss.recordMath||boss.recordFlow)return {busy:true,hits:[]};
+  // 기본 공격과 학습 패턴은 별도 시계로 진행하며 서로의 진행 상태를 지우지 않습니다.
   const rule=STAR_RECORD_ATTACK,cast=boss.starRecordCast;
   if(cast){
     boss.moving=false;
@@ -222,7 +222,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
 }
 function registerMonsterAttacker(room,target,player,now,retaliateTeacher){
   if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
-  // Only the regular teacher's E opts this particular monster into retaliation.
+  // Teacher E and an actual sigil hit opt this particular monster into retaliation.
   if(retaliateTeacher&&player.role==='teacher'&&!player.avatar?.teacherPreview)(target.teacherRetaliation??=new Set()).add(player.id);
   if(player.role!=='teacher'||target.teacherRetaliation?.has(player.id))target.attackers.set(player.id,++target.attackOrder);
   selectMonsterTarget(room,target);
@@ -333,18 +333,16 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       }
       m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;
     }
+    if(type.id==='star-guardian')trySpiritGuardianHeal(room,m,now);
     if(type.id==='star-record'){
       if(!m.recordChallenge&&!m.recordMath&&!m.recordFlow&&target){
         if(!tryStarRecordChallenge(room,m,now,random)&&!tryStarRecordMath(room,m,now,random))tryStarRecordFlow(room,m,now,random);
       }
       const challenge=tickStarRecordChallenge(room,m,now);hits.push(...challenge.hits);
-      if(challenge.busy)continue;
       const math=tickStarRecordMath(room,m,now);hits.push(...math.hits);
-      if(math.busy)continue;
       const flow=tickStarRecordFlow(room,m,now);hits.push(...flow.hits);
-      if(flow.busy)continue;
       const attack=advanceStarRecordAttack(room,m,now,random);hits.push(...attack.hits);
-      if(attack.busy)continue;
+      if(challenge.busy||math.busy||flow.busy||attack.busy)continue;
     }
     if(type.id==='truth-creator'){hits.push(...aimTruthCreator(room,m,target,now));tryTruthCreatorChasers(room,m,target,now);tryTruthCreatorSentry(room,m,target,now);tryTruthCreatorBlue(room,m,target,now,random);tryTruthCreatorGalaxy(room,m,target,now,random);}
     if(type.id==='dark-star'){
@@ -449,23 +447,12 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
     const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId,STAR_RECORD.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
     const terrainBlocked=terrainBlockedAt(x,y);
-    const blockedAt=(x,y)=>terrainBlockedAt(x,y)||(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>{
-      if(o===m||o.hp<=0||o.mapId!==m.mapId)return false;
-      const next=Math.hypot(x-o.x,y-o.y),current=Math.hypot(m.x-o.x,m.y-o.y),gap=m.radius+o.radius+10;
-      // A guardian spawned near an edge may already overlap. Permit only steps
-      // that separate existing overlap, never steps farther into another body.
-      return next<gap&&!(spiritGroup&&current<gap&&next>current+1e-6);
-    }));
+    const bodies=travel<=0||monstersMayOverlap(m.mapId)?[]:nearbyMonsterBodies(monsters,m,travel);
+    const blockedAt=(x,y)=>terrainBlockedAt(x,y)||bodyBlocksStep(bodies,x,y);
     let blocked=blockedAt(x,y);
-    if(blocked&&spiritGroup&&travel>0){
-      const angle=Math.atan2(m.dy,m.dx),side=m.avoidanceSide||1;
-      // The king and his guards can otherwise queue forever behind each other.
-      // Try short sideways steps with the same floor, body and speed limits.
-      for(const turn of [30,60,90,120,150].flatMap(a=>[a*side,-a*side])){
-        const direction=angle+turn*Math.PI/180,nx=m.x+Math.cos(direction)*travel,ny=m.y+Math.sin(direction)*travel;
-        if(blockedAt(nx,ny))continue;
-        x=nx;y=ny;m.avoidanceSide=Math.sign(turn);blocked=false;break;
-      }
+    if(blocked&&travel>0&&(spiritGroup||(target&&!terrainBlocked))){
+      const detour=monsterDetour(m,travel,blockedAt);
+      if(detour){x=detour.x;y=detour.y;m.dx=detour.dx;m.dy=detour.dy;m.avoidanceSide=detour.side;blocked=false;}
     }
     // 문/다리 뒤의 공격자에게 닿지 못한 채 3초 연속 지형에 막히면 전투를 초기화합니다.
     // 몸끼리 부딪히거나 우회에 성공한 경우, 이미 근접 공격 가능한 거리는 제외합니다.

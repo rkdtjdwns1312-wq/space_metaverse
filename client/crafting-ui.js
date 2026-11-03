@@ -8,8 +8,7 @@ import {SHARDS} from '/shared/config.js';
 // 선택한 재료는 화면에서만 예약합니다. 닫기/실패/연결 종료 때 아이템을 잃지 않습니다.
 export function createCraftingUI({getPlayer,request,stop,toast}) {
   const dialog=document.createElement('dialog');dialog.id='crafting-dialog';dialog.setAttribute('aria-labelledby','crafting-title');
-  dialog.innerHTML=`<header><h2 id="crafting-title">별빛 조합기</h2><button id="crafting-close" type="button" class="secondary">닫기</button></header>
-    <button id="crafting-recipes-open" type="button" class="secondary" hidden>모든 조합법 보기</button>
+  dialog.innerHTML=`<header><h2 id="crafting-title">별빛 조합기</h2><div class="crafting-header-actions"><button id="crafting-recipes-open" type="button" class="secondary" hidden>모든 조합법 보기</button><button id="crafting-close" type="button" class="secondary">닫기</button></div></header>
     <section id="crafting-recipes-panel" hidden aria-label="선생님 전용 조합법">
       <h3>선생님 전용 조합법</h3><div id="crafting-recipe-tabs" role="tablist" aria-label="완성 아이템 레벨">
       <button type="button" role="tab" data-recipe-level="1" aria-selected="false">LV1 · 교환</button>

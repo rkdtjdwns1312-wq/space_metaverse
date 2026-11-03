@@ -1,3 +1,4 @@
+import {starCareerGuide,STAR_CAREER_RESOURCE} from './star-career-guides.js';
 // Original fictional story content. These choices describe a game star, never a child.
 export const STAR_ACTIVITIES = [
  {id:'science',name:'과학 실험',description:'관찰하고 질문하며 별의 비밀을 찾아요.'},
@@ -21,7 +22,7 @@ const careers = [
  ['건축가|사람들이 편안히 지낼 공간을 설계해요.|햇빛이 드는 방의 평면도를 그려보세요.','로봇 개발자|반복되는 일을 도울 로봇의 움직임을 만들어요.|로봇에게 줄 이동 명령을 순서대로 적어보세요.','제품 디자이너|사용하는 사람을 생각하며 물건의 모양을 다듬어요.|컵 손잡이를 더 편하게 바꿔 그려보세요.','소프트웨어 개발자|작은 명령을 연결해 필요한 프로그램을 만들어요.|아침 준비를 조건과 순서로 표현해보세요.','목공예가|나무의 결을 살려 튼튼하고 아름다운 물건을 만들어요.|종이 모형으로 흔들리지 않는 의자를 구상해보세요.','우주선 정비사|우주선의 부품을 점검하고 안전하게 고쳐요.|장난감의 움직이는 부분을 살펴보세요.','재생 에너지 기술자|햇빛과 바람으로 쓸 수 있는 에너지를 만들어요.|바람개비가 잘 도는 방향을 찾아보세요.','안전 설계자|위험을 미리 살피고 안전하게 쓸 방법을 설계해요.|놀이터에서 안전을 돕는 장치를 찾아보세요.'],
  ['여행 안내자|새로운 곳의 이야기를 알기 쉽게 소개해요.|우리 동네의 좋아하는 장소를 소개해보세요.','고고학자|오래된 흔적을 살피며 옛 생활을 상상해요.|오래된 물건이 쓰였던 모습을 질문해보세요.','통역사|서로 다른 언어를 쓰는 사람들의 뜻을 이어줘요.|같은 인사말을 여러 언어로 알아보세요.','기자|궁금한 일을 확인하고 알기 쉽게 전해요.|누가 언제 어디서 무엇을 했는지 정리해보세요.','지도 제작자|길과 장소의 특징을 보기 쉽게 담아요.|집에서 공원까지의 길을 지도에 그려보세요.','박물관 기획자|물건에 담긴 이야기를 전시로 펼쳐요.|소중한 물건 세 개에 설명표를 붙여보세요.','문화 교류 기획자|서로 다른 생활과 놀이를 나누는 만남을 만들어요.|친구와 서로 좋아하는 놀이를 알려주세요.','우주 탐사 대원|낯선 곳을 안전하게 탐험하고 발견을 나눠요.|탐험에 필요한 물건과 이유를 적어보세요.'],
 ];
-export const STAR_CAREERS=careers.flatMap((rows,t)=>rows.map((row,i)=>{const [name,description,learningTip]=row.split('|');return {id:`${STAR_ACTIVITIES[t].id}-${i}`,track:STAR_ACTIVITIES[t].id,name,description,learningTip};}));
+export const STAR_CAREERS=careers.flatMap((rows,t)=>rows.map((row,i)=>{const [name,description,learningTip]=row.split('|');return {id:`${STAR_ACTIVITIES[t].id}-${i}`,track:STAR_ACTIVITIES[t].id,name,description,learningTip,guide:starCareerGuide(STAR_ACTIVITIES[t].id,i)};}));
 // Each axis appears three times: majority voting has no ties. Both paths are constructive.
 const stories = [
  ['첫 인사','작은 별이 눈을 떴어요. 오늘 배운 것을 누구와 나눠볼까요?',0,'조용한 일기장에 담아요','마음을 정리하니 나만의 빛이 또렷해졌어요.','친구들을 불러 들려줘요','이야기를 나누니 별빛이 즐겁게 춤췄어요.'],
@@ -38,4 +39,4 @@ const stories = [
  ['출발하는 아침','열두 번의 배움을 안고 별이 새 모험을 떠나요.',3,'길에서 발견할 기회를 열어둬요','변화를 반기며 나만의 길을 넓혀갈 거예요.','첫 목표와 준비물을 정해요','준비한 한 걸음으로 새로운 세상을 만나러 가요.'],
 ];
 export const STAR_EVENTS=stories.map(([title,text,axis,a,af,b,bf],i)=>({id:`chapter-${i+1}`,title,text,axis,choices:[{id:'0',label:a,feedback:af},{id:'1',label:b,feedback:bf}]}));
-export const STAR_CATALOG={activities:STAR_ACTIVITIES,careers:STAR_CAREERS,axes:STAR_AXES,totalTurns:12,disclaimer:'이 유형과 직업은 선택으로 만든 아기별의 이야기예요. 실제 나의 성격 검사나 진로 추천이 아니에요. 어떤 성향이든 모든 직업에 도전할 수 있어요.'};
+export const STAR_CATALOG={activities:STAR_ACTIVITIES,careers:STAR_CAREERS,axes:STAR_AXES,totalTurns:12,careerResource:STAR_CAREER_RESOURCE,disclaimer:'이 유형과 직업은 선택으로 만든 아기별의 이야기예요. 실제 나의 성격 검사나 진로 추천이 아니에요. 어떤 성향이든 모든 직업에 도전할 수 있어요.'};

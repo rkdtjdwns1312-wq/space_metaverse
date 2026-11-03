@@ -1,7 +1,16 @@
-// Sun and moon share one sphere. This is a world decoration; combat remains server-owned.
+import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
+let art;
+const orbArt=()=>art??=mapImage('/assets/monsters/spirit-sunmoon-orb.webp');
+export const preloadSpiritOrbArt=()=>decodeMapImages([orbArt()]);
+// Sun and moon share one painted sprite; movement and lethal contact are server-owned.
 export function drawSpiritOrb(ctx,orb,time=0,reducedMotion=false){
   const r=Number(orb?.radius),x=Number(orb?.x),y=Number(orb?.y);
   if(!Number.isFinite(r)||r<=0||!Number.isFinite(x)||!Number.isFinite(y))return;
+  if(mapImageReady(orbArt())){
+    const pulse=reducedMotion?1:1+Math.sin(time/700)*.025;
+    ctx.save();ctx.translate(x,y);ctx.scale(pulse,pulse);
+    ctx.drawImage(art,-r*1.14,-r*1.14,r*2.28,r*2.28);ctx.restore();return;
+  }
   const phase=reducedMotion?0:time/700;
   ctx.save();ctx.translate(x,y);
   const aura=ctx.createRadialGradient(0,0,r*.6,0,0,r*1.85);

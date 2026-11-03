@@ -147,5 +147,19 @@
 .cozy-dialog[data-activity=pet] .cozy-energy{width:fit-content;margin-top:12px}
 .raising-back{position:absolute;right:94px;top:18px}
 .raising-map-dialog h4{word-break:keep-all;overflow-wrap:break-word}
+.cozy-dialog[data-activity=pet]{overflow-anchor:none}
+/* The global pressed-button transform must preserve map sign centering. */
+.raising-place,.raising-place:active{transform:translateX(-50%);transition:background .15s,box-shadow .15s}
+.raising-book-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:22px 0}
+.raising-category-card{display:grid;justify-items:center;gap:7px;min-width:0;padding:14px 10px 16px;border:2px solid #ddbb72;border-radius:20px;background:linear-gradient(160deg,#fff9df,#f3e3b9);color:#40324b;box-shadow:0 4px 0 #b69455,0 8px 18px #392f2415;text-align:center}
+.raising-category-card:hover{background:linear-gradient(160deg,#fffef2,#f7e9c5);box-shadow:0 4px 0 #b69455,0 8px 20px #392f2426}
+.raising-category-card img{width:104px;height:91px;object-fit:contain;filter:drop-shadow(0 4px 3px #51402e30)}
+.raising-category-card b{font-size:21px;line-height:1.35;word-break:keep-all}.raising-category-card small{font-size:14px;color:#685239}
+@media(min-width:651px){.raising-category-card{padding:10px;gap:5px}.raising-category-card img{width:90px;height:76px}}
+.raising-career-card{min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px 14px;border:1px solid #ceb67f;border-radius:12px;background:#fff6df;color:#514331}
+.raising-career-card img{width:76px;height:70px;object-fit:contain}.raising-career-card h4,.raising-career-card p{margin:0}.raising-career-card small{font-size:14px}.raising-career-card.locked{background:#f1f0ed;color:#726d76}.raising-career-card.locked strong{font-size:38px;color:#8e8795}
+.raising-career-title{display:flex;align-items:center;gap:18px}.raising-career-title img{width:100px;height:100px;object-fit:contain}.raising-career-title h3{margin:8px 0}.raising-career-intro{font-size:20px;line-height:1.7}.raising-related{color:#655372}
+.raising-career-lesson{margin:18px 0;padding:20px;border:1px solid #ded1b4;border-radius:16px;background:#fffdf6}.raising-career-lesson h4{margin:0 0 12px;font-size:21px;color:#59452f}.raising-career-lesson p,.raising-career-lesson li{font-size:18px;line-height:1.8}.raising-career-lesson ul{list-style:none;padding:0;margin:0}.raising-career-lesson ul li{display:grid;grid-template-columns:80px 1fr;gap:10px;margin:12px 0}.raising-career-lesson ol{padding-left:24px;margin-bottom:0}.raising-career-lesson ol li+li{margin-top:12px}.raising-career-mission{background:#f1f8ee;border-color:#c7dbc0}.raising-career-resource{display:inline-block;padding:12px 0;color:#465e91;text-decoration:underline;font-size:17px}
+@media(max-width:650px){.raising-book-categories{gap:12px}.raising-category-card{padding:12px 6px}.raising-category-card img{width:79px;height:74px}.raising-category-card b{font-size:18px}.raising-career-title{gap:12px}.raising-career-title img{width:68px;height:76px}.raising-career-lesson{padding:16px}.raising-career-lesson ul li{grid-template-columns:1fr;gap:2px}}
 @media(max-width:650px){.raising-back{right:86px;top:12px}.cozy-dialog[data-activity=pet] .cozy-head>div:first-child{padding-right:155px}}
 @media(max-width:350px){.cozy-dialog[data-activity=pet] .cozy-head h2{font-size:18px}.raising-back{right:82px;padding:8px 6px}.cozy-dialog[data-activity=pet] .cozy-head>div:first-child{padding-right:148px}}

@@ -1,5 +1,7 @@
 import {createProjectileEffects} from './projectile-effects.js';
 import {createRenderQuality,RENDER_QUALITY_KEY,intersectsView} from './render-quality.js';
+import {createAvatarLabelCache} from './avatar-label-cache.js';
+import {spiritKingLabelTop,monsterManaLayout} from './boss-label-layout.js';
 import {createAquariusEffects,preloadAquarius} from './aquarius-effects.js';
 import {preloadWater,drawWaterAura,drawWaterProjectile} from './water-effects.js';
 import {drawTranscendentStars} from './transcendent-stars.js';
@@ -147,6 +149,7 @@ function starRecordNow(effects){
 export function createWorld(canvas) {
   let savedQuality;try{savedQuality=localStorage.getItem(RENDER_QUALITY_KEY);}catch{}
   const quality=createRenderQuality({mode:savedQuality,lowPower:navigator.hardwareConcurrency<=2||navigator.deviceMemory<=2});
+  const avatarLabels=createAvatarLabelCache();
   const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
@@ -665,14 +668,9 @@ export function createWorld(canvas) {
     if(blessing)drawCapricornBlessing(ctx,blessing,time-blessing.startsAt,size,reducedMotion.matches);
     ctx.translate(-x,-y);
     // 사용 중 아이템은 내정보/게시판에서 확인하며 머리 위에는 아이콘을 겹치지 않습니다.
-    ctx.font=(p.id===selfId?'700 ':'500 ')+'14px "Jua","Malgun Gothic",sans-serif';
-    const label=avatarLabel(p),nameWidth=ctx.measureText(label.name).width;
-    ctx.font='11px "Jua","Malgun Gothic",sans-serif';
-    const w=Math.max(nameWidth,ctx.measureText(label.detail).width)+18,top=y+(p.role==='teacher'&&!p.avatar?.teacherPreview?44:constellation?size/2+4:29);
-    ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(x-w/2,top,w,40,9);ctx.fill();
-    ctx.fillStyle=p.id===selfId?'#6e4d9b':'#57536d';ctx.textAlign='center';
-    ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillText(label.name,x,top+16);
-    ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#726782';ctx.fillText(label.detail,x,top+32);
+    const label=avatarLabel(p),top=y+(p.role==='teacher'&&!p.avatar?.teacherPreview?44:constellation?size/2+4:29);
+    const w=avatarLabels.draw(ctx,label,p.id===selfId,x,top);
+    ctx.textAlign='center';
     if(p.id===selfId){canvas.dataset.selfLabelName=label.name;canvas.dataset.selfLabelDetail=label.detail;canvas.dataset.selfSprite=p.role==='teacher'&&!p.avatar?.teacherPreview?TEACHER_SPRITE:constellation?.sprite||'';canvas.dataset.selfSize=String(size);canvas.dataset.selfFacingX=String(p.facingX||1);canvas.dataset.selfLabelY=String(top);}
     const recordBoss=monsters.find(monster=>monster.typeId==='star-record'&&monster.alive&&monster.mapId===p.mapId),
       recordPrompt=recordBoss?.starRecordEffects?.challenge?.prompts?.find(prompt=>prompt.playerId===p.id),
@@ -702,6 +700,7 @@ export function createWorld(canvas) {
     // canvas allocation or background rendering there.
     if(!selfId||document.hidden){quality.pause();return;}
     if(!quality.shouldRender(t))return;
+    avatarLabels.beginFrame();
     const renderStarted=performance.now();
     if(mapArt?.status==='loading'){
       const rect=canvas.getBoundingClientRect(),dpr=quality.dpr(window.devicePixelRatio);
@@ -776,18 +775,19 @@ export function createWorld(canvas) {
       const celestial=CELESTIAL_MONSTER_ART[type.shape];
       const barScale=type.boss?1.75:type.shape==='star-guardian'?1.9:type.shape==='baby-energy-star'?1.45:celestial?celestial.scale*2:type.shape==='star-scorpion'?2.15:type.shape==='warm-star'?1.9:type.shape==='grown-warm-star'?2:isWater?1.8:1;
       const bossBounds=type.boss?bossMonsterBounds(body,(m.moving||m.leoonSkill?.stage==='stomp')&&!activeAttack):null;
+      if(type.id==='spirit-king')bossBounds.top=spiritKingLabelTop(body,t,activeAttack);
       const nameY=type.boss?bossBounds.top-64:pos.y+visualRadius*(celestial?celestial.scale:type.shape==='grown-warm-star'?.9:isWater?1.65:1)+13;
       const barWidth=type.boss?200:64,barY=type.boss?bossBounds.top-48:nameY+7;
       const barHeight=type.boss?14:9;
       ctx.save();ctx.fillStyle='#302843';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,barY,barWidth,barHeight,4);ctx.fill();
       ctx.fillStyle=type.boss?'#ffcf75':'#f2a3b7';ctx.fillRect(pos.x-barWidth/2+1,barY+1,(barWidth-2)*Math.max(0,Math.min(1,m.hp/m.maxHp)),barHeight-2);
       ctx.fillStyle='#fff';ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.strokeText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY+barHeight+12);ctx.fillText(m.hp+' / '+m.maxHp,pos.x,type.boss?barY+11:barY+barHeight+12);ctx.restore();
-      if(type.boss&&m.maxMp>0){
-        const manaY=barY+barHeight+3;
-        ctx.save();ctx.fillStyle='#252d4a';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,manaY,barWidth,12,4);ctx.fill();
-        ctx.fillStyle='#82c9ff';ctx.fillRect(pos.x-barWidth/2+1,manaY+1,(barWidth-2)*Math.max(0,Math.min(1,m.mp/m.maxMp)),10);
+      if(m.maxMp>0){
+        const mana=monsterManaLayout(type.boss,barY,barHeight),manaY=mana.y;
+        ctx.save();ctx.fillStyle='#252d4a';ctx.beginPath();ctx.roundRect(pos.x-barWidth/2,manaY,barWidth,mana.height,type.boss?4:3);ctx.fill();
+        ctx.fillStyle='#82c9ff';ctx.fillRect(pos.x-barWidth/2+1,manaY+1,(barWidth-2)*Math.max(0,Math.min(1,m.mp/m.maxMp)),mana.height-2);
         ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.strokeStyle='#263a67';ctx.lineWidth=3;ctx.fillStyle='#fff';
-        const label=`MP ${Math.floor(m.mp)} / ${m.maxMp}`;ctx.strokeText(label,pos.x,manaY+10);ctx.fillText(label,pos.x,manaY+10);ctx.restore();
+        const label=`MP ${Math.floor(m.mp)} / ${m.maxMp}`;ctx.strokeText(label,pos.x,mana.textY);ctx.fillText(label,pos.x,mana.textY);ctx.restore();
       }
       const monsterStatuses=[m.poisoned&&'poison',m.sleeping&&'sleep',m.stunned&&'stun',m.cursed&&'curse'].filter(Boolean);
       monsterStatuses.forEach((id,index)=>{
@@ -991,6 +991,7 @@ export function createWorld(canvas) {
   return {
     setQuality(mode){quality.setMode(mode);try{localStorage.setItem(RENDER_QUALITY_KEY,quality.stats().mode);}catch{}},
     qualityStats:()=>quality.stats(),
+    labelCacheStats:()=>avatarLabels.stats(),
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
       serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();starRecord=room?.starRecord||dormantStarRecord();truthCreator=room?.truthCreator||dormantTruthCreator();

@@ -6,6 +6,7 @@ import {preloadBossArt} from './boss-monster-art.js';
 import {preloadGuardianArt} from './guardian-monster-art.js';
 import {preloadMonsterAttack} from './monster-attack-frames.js';
 import {preloadOriginWalkArt} from './origin-monster-walk.js';
+import {preloadSpiritOrbArt} from './spirit-orb-art.js';
 
 const prepared=new Map();
 // Only prepare species present in the current map, once per page. The rendering
@@ -18,6 +19,7 @@ export function prepareMonsterArt(shape){
       preloadMonsterAttack(shape),preloadOriginWalkArt(shape)];
     if(['leoon','noksera','spirit-king','serena','dark-star','star-record','truth-creator','truth-creator-star'].includes(shape))tasks.push(preloadBossArt(shape));
     if(shape==='star-guardian')tasks.push(preloadGuardianArt());
+    if(shape==='spirit-king')tasks.push(preloadSpiritOrbArt());
     prepared.set(shape,Promise.allSettled(tasks));
   }
   return prepared.get(shape);

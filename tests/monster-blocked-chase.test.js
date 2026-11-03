@@ -88,5 +88,6 @@ test('몬스터끼리의 몸 충돌은 문 뒤 지형 막힘 회복을 일으키
   const player={id:'archer',role:'student',connected:true,mapId:map.id,x:blocker.x+150,y:monster.y,avatar:{level:5,constellationId:'sagittarius'}};
   room.players.set(player.id,player);damageMonster(room,monster,player,10,START);const hp=monster.hp;
   for(let at=START+100;at<=START+5000;at+=100)moveMonsters(room,at,()=>.99);
-  assert.equal(monster.hp,hp);assert.equal(monster.targetId,player.id);assert.equal(monster.blockedChase,null);assert.equal(monster.moving,false);
+  assert.equal(monster.hp,hp);assert.equal(monster.targetId,player.id);assert.equal(monster.blockedChase,null);
+  assert.ok(Math.abs(monster.y-blocker.y)>20,'막힌 직선에서 옆으로 우회한다');
 });

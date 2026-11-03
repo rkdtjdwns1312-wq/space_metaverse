@@ -89,7 +89,16 @@ export function createClassroomHelp({getRoom,getSelfId,stop}){
   // Help opens above the source dialog; close returns to the same screen without losing its inputs.
   const contextTopics={'inventory-dialog':'items','tasks-dialog':'class','student-missions-dialog':'mission','crafting-dialog':'craft','energy-shop-dialog':'shop','shop-dialog':'shop','assignment-dialog':'class','evolution-dialog':'avatar'};
   document.addEventListener('click',event=>{const button=event.target.closest('[data-student-help]');if(button)open(button.dataset.studentHelp,button);});
-  function installContextHelp(){for(const [id,topic] of Object.entries(contextTopics)){const host=document.getElementById(id);if(!host||host.querySelector('[data-student-help]'))continue;const heading=host.querySelector('h2');if(!heading)continue;const button=document.createElement('button');button.type='button';button.className='secondary student-help-link';button.dataset.studentHelp=topic;button.textContent='이용 방법';button.setAttribute('aria-label',`${heading.textContent} 이용 방법`);heading.after(button);}}
+  function installContextHelp(){for(const [id,topic] of Object.entries(contextTopics)){
+    const host=document.getElementById(id);if(!host||host.querySelector('[data-student-help]'))continue;
+    const heading=host.querySelector('h2');if(!heading)continue;
+    const row=document.createElement('div');row.className='student-help-row';
+    const button=document.createElement('button');button.type='button';button.className='secondary student-help-link';
+    button.dataset.studentHelp=topic;button.textContent='이용 방법';button.setAttribute('aria-label',`${heading.textContent} 이용 방법`);
+    row.append(button);const header=heading.closest('header'),title=header&&host.contains(header)?header:heading;
+    const group=document.createElement('div');group.className='student-help-heading';title.before(group);
+    title.style.marginBottom='0';group.append(title,row);
+  }}
   const mapTopics=mapId=>planetIdOfMap(mapId)?['department']:mapId==='space-plaza'?['class','mission','department']:mapId==='star-street'?['cozy','shop','craft','learning','play']:mapId==='milky-valley'?['avatar']:mapId==='black-hole'?['department']:mapId==='whale-stomach'?['special']:['battle','start'];
   let mapReturnFocus=null;
   function openMapGuide(mapId,opener){stop();const r=getRoom(),p=r?.players.find(p=>p.id===getSelfId());if(!p)return;mapReturnFocus=opener||document.activeElement;const guide=mapGuide(mapId,r.planets);detail.querySelector('h2').textContent=guide.name;detail.querySelector('p').textContent=guide.text;const links=detail.querySelector('.map-help-links');links.replaceChildren();for(const id of mapTopics(mapId)){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=HELP_TOPICS.find(t=>t.id===id).title;button.onclick=()=>{detail.close();open(id,mapReturnFocus);};links.append(button);}if(!detail.open)detail.showModal();}

@@ -1,11 +1,18 @@
 import {attackPowerOf} from '../shared/combat.js';
 import {DARK_STAR_SKILLS} from '../shared/dark-star-skills.js';
 import {ensureVitals} from './vitals.js';
-import {monstersOf} from './monsters.js';
+import {monstersOf,damageMonster} from './monsters.js';
 import {launchProjectiles} from './projectiles.js';
 
 export const SIGIL_SHOT_INTERVAL_MS=10_000;
 const MAX_RANGE=DARK_STAR_SKILLS.basic.speed*DARK_STAR_SKILLS.basic.durationMs/1000;
+
+// An actual passive hit provokes that monster, including a normal teacher.
+// Ghost teachers remain excluded by the common retaliation/target rules.
+export function resolveSigilHit(room,player,selected,power,now){
+  return {targets:selected.filter(target=>target.kind==='monster')
+    .map(target=>damageMonster(room,target.entity,player,power,now,{retaliateTeacher:true})).filter(Boolean),playerTargets:[]};
+}
 
 // 장착자에게 살아 있는 몬스터가 보일 때만 발사하며, 목표가 없으면 준비 상태를 보존합니다.
 export function advanceSigilProjectiles(room,now){

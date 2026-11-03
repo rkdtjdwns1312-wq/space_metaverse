@@ -49,7 +49,7 @@ test('sigil grants Lv5 defense and health only while equipped and cannot be purc
   assert.equal(equipmentBonus(p).hp,0);
   p.avatar.level=4;assert.throws(()=>equip(p,id,1),/LV5/);p.avatar.level=5;
   equip(p,id,1);
-  assert.equal(vitalsOf(5,p).hp.max,vitals.hp.max+50);assert.equal(vitalsOf(5,p).mp.max,vitals.mp.max);
+  assert.equal(vitalsOf(5,p).hp.max,vitals.hp.max+40);assert.equal(vitalsOf(5,p).mp.max,vitals.mp.max);
   assert.equal(defensePowerOf(5,'aquarius',p),defense+2);assert.equal(attackPowerOf(5,'aquarius',p),attack);
   unequip(p,1);assert.deepEqual(vitalsOf(5,p),vitals);assert.equal(equipmentBonus(p).defense,0);
 });
