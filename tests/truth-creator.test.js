@@ -42,7 +42,7 @@ test('only the third-map gate enters the fourth map, including teacher route res
   player.role='student';player.mapId=TRUTH_CREATOR.mapId;
   assert.throws(()=>summonTruthCreator(room,player,now),/모든 보스 처치 기록/);
 });
-test('summon validates presence, life and hunting time, then Lv7 50000HP 40attack uses hidden three-second aim',()=>{
+test('summon validates presence, life and hunting time, then Lv7 30000HP 40attack uses hidden three-second aim',()=>{
   for(const change of [{mapId:'space-plaza'},{x:0,y:0},{connected:false},{away:true},{huntingTime:undefined,huntingTimer:undefined}]){
     const {room,player}=fixture();Object.assign(player,change);assert.throws(()=>summonTruthCreator(room,player,now));assert.equal(room.truthCreator,undefined);
   }
@@ -53,7 +53,7 @@ test('summon validates presence, life and hunting time, then Lv7 50000HP 40attac
   assert.equal(isFree(room,statue.x,statue.y,player.id,player.mapId,false,player,true),true);
   assert(!truthCreatorMap(mapOf(player.mapId),room.truthCreator).objects.some(o=>o.id===statue.id));
   const boss=room.monsters.get(TRUTH_CREATOR.monsterId),type=monsterType(boss.typeId);
-  assert.deepEqual([type.level,boss.maxHp,type.power,type.defense,boss.radius],[7,50000,40,0,150]);
+  assert.deepEqual([type.level,boss.maxHp,type.power,type.defense,boss.radius],[7,30000,40,0,150]);
   room.monsters=new Map([[boss.id,boss]]);boss.mp=0;boss.nextManaRegenAt=now+100000;player.x=boss.x+boss.radius+20;player.y=boss.y;boss.attackers.set(player.id,1);
   moveMonsters(room,now,()=>0);assert.equal(monsterViews(room,now)[0].warning,undefined);
   assert.equal(monsterViews(room,now)[0].truthCreatorEffects.aim,undefined);
@@ -64,7 +64,7 @@ test('summon validates presence, life and hunting time, then Lv7 50000HP 40attac
 });
 test('defeat grants one truth gem with baseline rewards and restores only the statue next day',()=>{
   const {room,player}=fixture();summonTruthCreator(room,player,now);const boss=room.monsters.get(TRUTH_CREATOR.monsterId);
-  damageMonster(room,boss,player,50000,now,{energyRoll:()=>1500});const drops=[...room.energyDrops.values()];
+  damageMonster(room,boss,player,30000,now,{energyRoll:()=>1500});const drops=[...room.energyDrops.values()];
   assert.equal(drops.find(d=>!d.kind).total,1500);assert(drops.some(d=>d.itemId==='gold-big-bang-card'));
   assert.equal(drops.filter(d=>d.itemId==='truth-gem').length,1);assert.equal(drops.find(d=>d.itemId==='truth-gem').total,1);
   assert(drops.filter(d=>d.kind).every(d=>['truth-gem','gold-big-bang-card','exploration-ticket'].includes(d.itemId)));

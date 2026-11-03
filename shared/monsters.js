@@ -46,7 +46,7 @@ export const MONSTER_TYPES = Object.freeze([
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
   {id:'star-record',name:'별 기록의 근원',description:'별 기록의 석상에서 깨어난 펼쳐진 황금 책',mapId:'sleeping-stars-2',shape:'star-record',color:'#e8cb84',level:6,boss:true,radius:150,hp:10000,defense:0,power:30,
     combat:Object.freeze({power:30,defense:0,speedFactor:1.5,warningMs:2000,warningRadius:90})},
-  {id:'truth-creator',name:'진리의 창조자',description:'찬란한 별들이 하나로 모여 깨어난 위엄 있는 창조자',mapId:'sleeping-stars-4',shape:'truth-creator',color:'#fff0ba',level:7,boss:true,radius:150,hp:50000,defense:0,power:40,
+  {id:'truth-creator',name:'진리의 창조자',description:'찬란한 별들이 하나로 모여 깨어난 위엄 있는 창조자',mapId:'sleeping-stars-4',shape:'truth-creator',color:'#fff0ba',level:7,boss:true,radius:150,hp:30000,defense:0,power:40,
     combat:Object.freeze({power:40,defense:0,speedFactor:1.5})},
   {id:'truth-creator-star',name:'노란 별의 결집체',description:'진리의 창조자가 소환한 별빛 구체',mapId:'sleeping-stars-4',shape:'truth-creator-star',color:'#fff1a0',level:2,radius:48,hp:1000,power:0,defense:0},
   {id:'star-guardian',name:'Lv3 별 지킴이',description:'성령의 왕이 부른 별빛 수호자. 가까운 대상을 따라가 먼저 공격해요.',mapId:'star-paradise',shape:'star-guardian',color:'#a5dcff',level:3,radius:30,hp:300,power:10,defense:2,

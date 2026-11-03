@@ -8,7 +8,7 @@ import {tryTruthCreatorBlue} from '../server/truth-creator-blue.js';
 import {tryTruthCreatorSentry} from '../server/truth-creator-sentries.js';
 const now=100000;
 function fixture(){
-  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:50000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150};
+  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:30000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150};
   const player={id:'a',role:'student',connected:true,away:false,mapId:map.id,x:boss.x+600,y:boss.y,avatar:{level:1},statGrowth:{bonuses:{hp:1000}},equipmentSlots:[null,null,null],inventory:[]};
   ensureVitals(player);player.battleVitals.hp=1000;
   return {boss,player,room:{players:new Map([[player.id,player]]),monsters:new Map([[boss.id,boss]]),planets:new Map()}};

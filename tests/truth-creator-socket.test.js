@@ -24,5 +24,5 @@ test('socket ignores forged qualifications, blocks fast travel, and opens gate o
   assert.equal(p.mapId,TRUTH_CREATOR.mapId);
   const statue=mapOf(p.mapId).objects.find(o=>o.id===TRUTH_CREATOR.statueId);Object.assign(p,{x:statue.x,y:statue.y+90});
   const summoned=await call(student,'truth-creator:summon');assert(summoned.ok,summoned.error);assert.equal(summoned.truthCreator.state,'active');
-  assert.equal(room.monsters.get(TRUTH_CREATOR.monsterId).hp,50000);assert.equal((await call(student,'truth-creator:summon')).ok,false);
+  assert.equal(room.monsters.get(TRUTH_CREATOR.monsterId).hp,30000);assert.equal((await call(student,'truth-creator:summon')).ok,false);
 });

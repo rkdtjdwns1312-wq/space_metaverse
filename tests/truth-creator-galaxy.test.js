@@ -7,7 +7,7 @@ import {clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
 import {TRUTH_CREATOR_GALAXY as RULE,truthCreatorGalaxyRoute,tryTruthCreatorGalaxy,tickTruthCreatorGalaxy,truthCreatorGalaxyViews} from '../server/truth-creator-galaxy.js';
 const now=100000;
 function fixture(){
-  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:50000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150};
+  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:30000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150};
   const player={id:'a',role:'student',connected:true,away:false,mapId:map.id,x:boss.x,y:boss.y+350,avatar:{level:1},statGrowth:{bonuses:{hp:1000}},equipmentSlots:[],inventory:[]};ensureVitals(player);
   return {boss,player,room:{players:new Map([[player.id,player]]),monsters:new Map([[boss.id,boss]]),planets:new Map()}};
 }

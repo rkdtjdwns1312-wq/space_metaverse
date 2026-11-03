@@ -27,7 +27,7 @@ try{
   await page.locator('#truth-creator-dialog [data-cancel]').click();assert(!room.monsters?.has(TRUTH_CREATOR.monsterId));
   await page.locator('#touch-interact').click();await page.locator('#truth-creator-dialog [data-summon]').click();
   await page.locator('#truth-creator-dialog').waitFor({state:'hidden'});await page.waitForTimeout(250);
-  const boss=room.monsters.get(TRUTH_CREATOR.monsterId);assert.equal(boss.hp,50000);assert.equal(boss.maxMp,100);
+  const boss=room.monsters.get(TRUTH_CREATOR.monsterId);assert.equal(boss.hp,30000);assert.equal(boss.maxMp,100);
   await move(boss.x-260,boss.y+70);await page.screenshot({path:'.local/truth-creator/boss-desktop.png'});
   await page.locator('#map-overview').click();
   await page.locator('[data-map-id="sleeping-stars-4"] .universe-node-select').dblclick();
@@ -61,5 +61,5 @@ try{
   assert.equal(new Set(art.frames).size,8);writeFileSync('.local/truth-creator/art-review.png',Buffer.from(art.sheet.split(',')[1],'base64'));
   await page.emulateMedia({reducedMotion:'reduce'});
   const quiet=await page.evaluate(async()=>{const {drawTruthCreator}=await import('/truth-creator-art.js');const c=document.createElement('canvas');c.width=500;c.height=500;const ctx=c.getContext('2d'),m={shape:'truth-creator',x:250,y:300,radius:150,moving:true};const capture=t=>{ctx.clearRect(0,0,500,500);drawTruthCreator(ctx,m,t);return c.toDataURL();};return capture(0)===capture(800);});assert(quiet);
-  assert.deepEqual(errors,[]);console.log('PASS actual statue/cancel/summon, HP50000/MP100, map shortcut detours to stage3, desktop/mobile combat, eight moving frames/reduced motion, golden orb/light trail/red chaser/yellow sentry art, errors0');
+  assert.deepEqual(errors,[]);console.log('PASS actual statue/cancel/summon, HP30000/MP100, map shortcut detours to stage3, desktop/mobile combat, eight moving frames/reduced motion, golden orb/light trail/red chaser/yellow sentry art, errors0');
 }finally{await browser.close();await game.close();}

@@ -7,7 +7,7 @@ import {damageMonster,moveMonsters} from '../server/monsters.js';
 import {clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
 import {TRUTH_CREATOR_SENTRIES as RULE,tryTruthCreatorSentry,tickTruthCreatorSentries} from '../server/truth-creator-sentries.js';
 function fixture(){
-  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:50000,maxHp:50000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150,attackers:new Map(),contributors:new Map()};
+  const map=mapOf('sleeping-stars-4'),boss={id:'truth-creator-boss',typeId:'truth-creator',hp:30000,maxHp:30000,mp:100,mapId:map.id,x:map.width/2,y:map.height/2,radius:150,attackers:new Map(),contributors:new Map()};
   const player={id:'a',role:'student',connected:true,away:false,mapId:map.id,x:boss.x+200,y:boss.y,avatar:{level:1},statGrowth:{bonuses:{hp:1000,defense:100}},inventory:[],equipmentSlots:[null,null,null]};ensureVitals(player);
   return {boss,player,room:{players:new Map([[player.id,player]]),monsters:new Map([[boss.id,boss]]),planets:new Map()}};
 }

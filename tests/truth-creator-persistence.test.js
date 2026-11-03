@@ -33,8 +33,8 @@ test('summon and victory settlement roll back on save failure; restart and next-
   assert.throws(()=>f.store.transact(()=>summonTruthCreator(f.room,f.player,now)));assert.notEqual(f.room.truthCreator?.state,'active');assert.equal(f.disk().truthCreator.state,'dormant');
   f.store.files.save=save;locate(f);f.store.transact(()=>summonTruthCreator(f.room,f.player,now));f.restart();
   assert.equal(f.room.truthCreator.state,'active');assert.equal(truthCreatorEligible(f.player),true);
-  const boss=monstersOf(f.room,now).get(TRUTH_CREATOR.monsterId);assert.equal(boss.hp,50000);
-  locate(f);damageMonster(f.room,boss,f.player,50000,now+10);assert.equal(f.room.energyDrops?.size||0,0);
+  const boss=monstersOf(f.room,now).get(TRUTH_CREATOR.monsterId);assert.equal(boss.hp,30000);
+  locate(f);damageMonster(f.room,boss,f.player,30000,now+10);assert.equal(f.room.energyDrops?.size||0,0);
   const saveAgain=f.store.files.save.bind(f.store.files);f.store.files.save=()=>{throw Error('test disk unavailable');};
   assert.throws(()=>f.store.transact(()=>settleBossDeaths(f.room,now+11)));
   assert.equal(f.room.truthCreator.state,'active');assert(!f.player.serenaProgress.bossKills.includes('truth-creator'));assert.equal(f.room.energyDrops?.size||0,0);
