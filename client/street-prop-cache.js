@@ -23,11 +23,14 @@ export function drawCachedStreetProp(ctx,o,artReady){
     c.font=`${duel||o.kind==='arcade'?16:19}px "Jua","Malgun Gothic",sans-serif`;
     const width=Math.ceil(Math.max(duel?210:spec.width,c.measureText(o.name||'').width+32)+12);
     const top=duel?-146:spec.foot-spec.height-6,bottom=duel?116:Math.max(spec.foot+6,o.kind==='arcade'?78:0),height=bottom-top;
-    canvas.width=Math.ceil(width*scale);canvas.height=Math.ceil(height*scale);
+    // Never retain (or paint) an entry larger than the whole cache budget.
+    const pixelWidth=Math.ceil(width*scale),pixelHeight=Math.ceil(height*scale),entryBytes=pixelWidth*pixelHeight*4;
+    if(entryBytes>LIMIT)return false;
+    canvas.width=pixelWidth;canvas.height=pixelHeight;
     c.setTransform(scale,0,0,scale,width*scale/2,-top*scale);
     const local={...o,x:0,y:0};
     if(duel)drawDuelArcade(c,local);else if(!drawPaintedProp(c,local))return false;
-    entry={canvas,width,height,top,bytes:canvas.width*canvas.height*4};
+    entry={canvas,width,height,top,bytes:entryBytes};
     entries.set(key,entry);bytes+=entry.bytes;builds++;
     while(bytes>LIMIT&&entries.size>1){const oldest=entries.keys().next().value;bytes-=entries.get(oldest).bytes;entries.delete(oldest);}
   }else{entries.delete(key);entries.set(key,entry);}

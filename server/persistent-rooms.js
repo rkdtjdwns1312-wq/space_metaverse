@@ -315,16 +315,23 @@ export class PersistentRoomStore extends RoomStore {
   }
   // 한 요청은 교실 하나만 바꿉니다. 파일 교체 성공 뒤에만 소켓 응답을 내보냅니다.
   // 실패하면 Map 간 참조까지 함께 복구하여 지급/구매/거래가 메모리에만 반영되지 않게 합니다.
-  transact(work){
-    const originalPlayers=new Map([...this.rooms].map(([code,room])=>[code,new Map(room.players)]));
-    const backup=structuredClone({rooms:this.rooms,sessions:this.sessions,records:this.records});
-    const itemHistory=captureBossItemHistory(this.rooms);
+  // Optional scope is for audited operations on one existing live classroom.
+  // Creation/deletion/open/close and unknown operations keep the full snapshot.
+  transact(work,scope){
+    if(scope!==undefined&&(!scope||this.rooms.get(scope.code)!==scope))throw new Error('현재 교실의 저장 범위를 확인해주세요.');
+    const rooms=scope?new Map([[scope.code,scope]]):this.rooms;
+    const sessions=scope?new Map([...this.sessions].filter(([,s])=>s.room===scope)):this.sessions;
+    const records=scope?new Map(this.records.has(scope.code)?[[scope.code,this.records.get(scope.code)]]:[]):this.records;
+    const originalPlayers=new Map([...rooms].map(([code,room])=>[code,new Map(room.players)]));
+    const backup=structuredClone({rooms,sessions,records});
+    const itemHistory=captureBossItemHistory(rooms);
     let result,denial;
     try {
       try {result=work();}catch(e){if(e.commitOnError)denial=e;else throw e;}
-      commitBossItemHistory(this.rooms,itemHistory);
-      const candidates=new Map(this.records);
-      for(const room of this.rooms.values())candidates.set(room.code,toRecord(room));
+      if(scope&&this.rooms.get(scope.code)!==scope)throw new Error('교실을 열거나 닫을 때는 전체 저장 범위를 사용해주세요.');
+      commitBossItemHistory(scope?rooms:this.rooms,itemHistory);
+      const candidates=new Map(scope?records:this.records);
+      for(const room of (scope?rooms:this.rooms).values())candidates.set(room.code,toRecord(room));
       const changed=[...new Set([...backup.records.keys(),...candidates.keys()])]
         .filter(code=>JSON.stringify(candidates.get(code))!==JSON.stringify(backup.records.get(code)))
         .map(code=>[code,candidates.get(code)]);
@@ -348,7 +355,14 @@ export class PersistentRoomStore extends RoomStore {
         const room=backup.rooms.get(session.room.code);
         if(room){session.room=room;session.player=room.players.get(session.player.id)||session.player;}
       }
-      Object.assign(this,backup);throw error;
+      if(scope){
+        this.rooms.set(scope.code,backup.rooms.get(scope.code));
+        if(backup.records.has(scope.code))this.records.set(scope.code,backup.records.get(scope.code));
+        else this.records.delete(scope.code);
+        for(const [token,session] of this.sessions)if(session.room.code===scope.code)this.sessions.delete(token);
+        for(const [token,session] of backup.sessions)this.sessions.set(token,session);
+      }else Object.assign(this,backup);
+      throw error;
     }
     if(denial)throw denial;
     return result;

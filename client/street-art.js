@@ -20,6 +20,7 @@ const ready=key=>mapImageReady(images[key]);
 export const streetArtCacheKey=()=>revision;
 export function onStreetArtReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
 export async function preloadStreetArt(){await decodeMapImages(Object.values(images));}
+export const preloadStreetGroundArt=()=>decodeMapImages([images.backdrop,images.paving]);
 
 const visual=visualFloor(STREET_POLYGONS,STREET_EDGES,STREET_LAYOUT,[STREET_LAYOUT.westGate]);
 const shape=visualFloorPath(visual.polygons);

@@ -16,6 +16,7 @@ import {drawInteriorFloor,drawInteriorProp} from './interior-art.js';
 import {DEPARTMENT_ART} from './department-art.js';
 import {drawPlanetDesign} from '/shared/planet-design.js';
 import {prepareMapArt} from './map-art-ready.js';
+import {prepareMapPreviewArt} from './map-preview-ready.js';
 import {PAINTED_PROPS} from './painted-props.js';
 import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,UNIVERSE_MAP_LAYOUT,STATIC_MAPS,interiorIdOf,templateOf} from '/shared/config.js';
 
@@ -24,6 +25,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   const $=id=>document.getElementById(id),dialog=$('universe-dialog');
   let position=null,selected=null,signature='';
   let lastTap=null,lastDraw=0,artSignature='';const backgrounds=new Map(),watchedArt=new WeakSet();
+  const visibleThumbnails=new WeakSet();
+  const thumbnailObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
+    for(const entry of entries)if(entry.isIntersecting&&dialog.open){
+      visibleThumbnails.add(entry.target);thumbnailObserver.unobserve(entry.target);draw(entry.target,entry.target.dataset.mapId);
+    }
+  },{root:dialog}):null;
   const confirm=document.createElement('dialog');confirm.id='map-travel-confirm';confirm.setAttribute('aria-labelledby','map-travel-question');confirm.innerHTML='<h2 id="map-travel-question">이동하겠습니까?</h2><p id="map-travel-destination"></p><p id="map-travel-error" role="alert"></p><div class="dialog-actions"><button id="map-travel-no" type="button" class="secondary">아니오</button><button id="map-travel-yes" type="button" class="primary">예</button></div>';document.body.append(confirm);let target=null,travelling=false,travelRevision=0;
   $('map-travel-no').onclick=()=>confirm.close();confirm.addEventListener('close',()=>{target=null;travelRevision++;});
   function askTravel(id){if(!me()||travelling||confirm.open)return;const viaGate=id===TRUTH_CREATOR.mapId,destination=viaGate?'sleeping-stars-3':id;if(destination===me().mapId){toast(viaGate?TRUTH_CREATOR_GATE_MESSAGE:'지금 이 맵에 있어요.');return;}target=destination;$('map-travel-question').textContent=viaGate?map(destination).name+'으로 이동할까요?':'이동하겠습니까?';$('map-travel-destination').textContent=viaGate?TRUTH_CREATOR_GATE_MESSAGE:map(destination).name+'으로 이동해요.';$('map-travel-error').textContent='';$('map-travel-yes').disabled=false;stop();confirm.showModal();}
@@ -76,6 +83,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     const button=document.createElement('div');button.className='universe-node';button.dataset.mapId=id;
     const select=document.createElement('button');select.type='button';select.className='universe-node-select';select.setAttribute('aria-label',map(id).name+' 지도 보기');
     const thumbnail=document.createElement('canvas');thumbnail.width=144;thumbnail.height=84;thumbnail.className='universe-thumbnail';thumbnail.setAttribute('aria-hidden','true');
+    thumbnail.dataset.mapId=id;if(thumbnailObserver)thumbnailObserver.observe(thumbnail);else visibleThumbnails.add(thumbnail);
     const name=document.createElement('span');name.textContent=map(id).name;
     if(map(id).planetId){button.classList.add('universe-department');thumbnail.width=320;thumbnail.height=220;select.append(name,thumbnail);}
     else select.append(thumbnail,name);
@@ -125,14 +133,14 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     // 아직 그림이 도착하지 않은 순간에도 목적지를 찾을 수 있게 부드러운 빛만 남깁니다.
     ctx.save();const glow=ctx.createRadialGradient(x,y,0,x,y,Math.max(4,r*1.5));glow.addColorStop(0,kind==='black-hole'?'#584779':'#fff7d7');glow.addColorStop(1,'#ffffff00');ctx.fillStyle=glow;ctx.fillRect(x-r*1.5,y-r*1.5,r*3,r*3);ctx.restore();
   }
-  function mapBackground(ctx,info,x,y,w,h){
+  function mapBackground(ctx,info,x,y,w,h,thumbnail=false){
     // 고정 맵 네 곳은 config에 theme을 두지 않으므로 실제 id로 배경을 선택합니다.
     const theme=info.theme||({
       [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'paradise-crossroads',[VALLEY_ID]:'valley'
     }[info.id]||'default');
     ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
     if(theme==='plaza')drawPlazaGround(ctx,info);
-    else if(theme==='starlight-street'||theme==='rainbow-space')drawStreetGround(ctx,info);
+    else if(theme==='starlight-street'||theme==='rainbow-space')drawStreetGround(ctx,info,{fountain:!thumbnail});
     else if(theme==='star-origin')drawOriginArt(ctx,info);
     else if(theme==='sleeping-stars')drawSleepingStarsArt(ctx,info);
     else if(theme==='valley')drawValleyGround(ctx,info,0);
@@ -146,7 +154,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   // 지도는 같은 비율로 축소합니다. 화면 모양이 달라도 좌표가 어긋나지 않습니다.
   function draw(canvas,mapId,detailed=false){
     const info=map(mapId),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=detailed?28:info.planetId?4:12;
-    const art=prepareMapArt(info,planets());
+    const thumbnail=canvas.classList.contains('universe-thumbnail');
+    if(thumbnail&&!visibleThumbnails.has(canvas)){
+      ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);canvas.dataset.artState='deferred';return;
+    }
+    const art=thumbnail?prepareMapPreviewArt(info,planets().find(p=>p.id===info.planetId)):prepareMapArt(info,planets());
+    canvas.dataset.artState=art.status;
     if(!watchedArt.has(art)){watchedArt.add(art);art.promise.then(refreshArt);}
     if(art.status==='loading'){
       ctx.clearRect(0,0,w,h);ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
@@ -155,14 +168,15 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     }
     const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
     const interiorPlanet=info.planetId?planets().find(p=>p.id===info.planetId):null;
-    const cacheKey=mapId+':'+w+':'+h+':'+detailed+':'+JSON.stringify(interiorPlanet?.interiorDecor||null);const cached=backgrounds.get(cacheKey);
+    const cacheKey=mapId+':'+w+':'+h+':'+detailed+':'+thumbnail+':'+JSON.stringify(interiorPlanet?.interiorDecor||null);const cached=backgrounds.get(cacheKey);
     ctx.clearRect(0,0,w,h);
     if(cached){ctx.drawImage(cached,0,0);}else{
     ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
-    mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale);
+    mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale,thumbnail);
     // 실세계에는 사각 테두리가 없습니다. 지도에서도 인공적인 외곽선을 덧그리지 않습니다.
     const labels=[];
-    for(const o of info.objects){
+    // Object details stay in the selected large preview and live minimap.
+    for(const o of thumbnail?[]:info.objects){
       if(o.kind==='street-sign')continue; // 길목 글씨는 실물이 아니므로 작은 지도에 푯말을 남기지 않습니다.
       const x=ox+o.x*scale,y=oy+o.y*scale;
       let painted=false;
@@ -224,6 +238,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:PLAZA_ID;
     const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
+      thumbnailObserver?.disconnect();
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
       $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
       $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
@@ -238,6 +253,6 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   return {
     update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
     positions(data){const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};const now=performance.now();if(now-lastDraw>=100&&(minimapOpen||dialog.open)){lastDraw=now;render();}}},
-    reset(){if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
+    reset(){thumbnailObserver?.disconnect();if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
   };
 }

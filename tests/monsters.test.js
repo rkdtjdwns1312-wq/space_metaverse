@@ -214,7 +214,7 @@ test('폐지된 몬스터 정보·사냥 요청은 근접 여부와 무관하게
   const before=structuredClone(p.avatar);await assert.rejects(student.timeout(250).emitWithAck('monster:hunt',{monsterId:m.id,xp:999}));assert.deepEqual(p.avatar,before);
   const otherTeacher=await connect(),other=await call(otherTeacher,'room:create',{teacherKey:'monster-test-only-private',allowedNames:['2']});
   const packet=await new Promise(resolve=>otherTeacher.once('world:positions',resolve));
-  assert.equal(packet.monsters.length,43);
+  assert.deepEqual(packet.monsters,[],'광장에는 다른 맵의 몬스터를 보내지 않는다');
   const otherMonster=game.store.rooms.get(other.room.code).monsters.get(m.id);
   assert.notStrictEqual(otherMonster,m);
   assert.ok(onOriginFloor(mapOf(otherMonster.mapId),otherMonster.x,otherMonster.y,otherMonster.radius));

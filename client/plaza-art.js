@@ -13,6 +13,7 @@ for(const [id,path] of Object.entries({sky:'plaza-sanctuary.png',floor:'plaza-pa
 }
 const ready=mapImageReady;
 export async function preloadPlazaArt(){await decodeMapImages(Object.values(images));}
+export const preloadPlazaGroundArt=()=>decodeMapImages([images.sky,images.floor,images.temple]);
 const visual=visualFloor(PLAZA_POLYGONS,PLAZA_EDGES,L,Object.values(L.gates));
 const floorPath=visualFloorPath(visual.polygons);
 const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}

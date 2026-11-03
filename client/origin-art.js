@@ -19,6 +19,7 @@ const statueImage=mapImage('/assets/maps/star-goddess-statue.png',()=>{revision+
 export const ORIGIN_STATUE_RENDER=Object.freeze({width:256,footY:1390/1536});
 export const originArtCacheKey=()=>revision;
 export async function preloadOriginArt(){await decodeMapImages([image,templeImage,statueImage,pavingImage]);}
+export const preloadOriginGroundArt=map=>decodeMapImages([image,pavingImage,...(map.id==='star-origin-4'?[templeImage]:[])]);
 export function onOriginArtReady(fn){listeners.add(fn);return()=>listeners.delete(fn);}
 
 function pathFor(floor){const path=new Path2D();path.moveTo(floor.points[0].x,floor.points[0].y);for(const p of floor.points.slice(1))path.lineTo(p.x,p.y);path.closePath();return path;}

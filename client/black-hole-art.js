@@ -18,6 +18,7 @@ function loaded(image) {
   return image?.complete && image.naturalWidth > 0;
 }
 export async function preloadBlackHoleArt(){groundImage ||= loadImage(groundUrl);starImage ||= loadImage(starUrl);await Promise.all([groundImage.decode(),starImage.decode()]);}
+export async function preloadBlackHoleGroundArt(){groundImage ||= loadImage(groundUrl);await groundImage.decode();}
 
 function mapDimension(value, fallback) {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;

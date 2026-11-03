@@ -9,6 +9,10 @@ function asset(src){if(!images.has(src)){const image=new Image();image.src=src;i
 const ready=image=>image?.complete&&image.naturalWidth>0;
 // Compressed assets are decoded once; changing a room's style never shows old generic shapes.
 export async function preloadInteriorArt(){await Promise.all([...Object.values(INTERIOR_VARIANT_ART).flatMap(Object.values),INTERIOR_ART['interior-decor-machine']].map(src=>asset(src).decode()));}
+export async function preloadInteriorFloorArt(planet){
+  const style=interiorDecorStyle(planet?.interiorDecor,'room');
+  await Promise.all([...new Set([interiorVisual('room',style.shapeId),interiorVisual('room')])].map(src=>asset(src).decode()));
+}
 function cachedPut(cache,key,value,limit){if(cache.size>=limit)cache.delete(cache.keys().next().value);cache.set(key,value);return value;}
 export function drawInteriorFloor(ctx,map,planet){
   const style=interiorDecorStyle(planet?.interiorDecor,'room'),color=interiorDecorColor(style.colorId)?.hex;

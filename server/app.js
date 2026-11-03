@@ -1,3 +1,4 @@
+import {worldBroadcastFrame} from './world-broadcast.js';
 import {registerStarlightArchive} from './starlight-archive.js';
 import {captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
@@ -7,7 +8,7 @@ import {huntingCycle} from '../shared/hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
-import {advanceProjectiles,projectileViews} from './projectiles.js';
+import {advanceProjectiles} from './projectiles.js';
 import {advanceSigilProjectiles} from './sigil-projectiles.js';
 import {deleteStudentAccounts} from './account-deletion.js';
 import {allowsOfflineItemTarget} from '../shared/item-targets.js';
@@ -15,20 +16,20 @@ import {teacherInventoryView,adjustTeacherInventory,setTeacherInventoryCurrency,
 import {holdingStatus,useHoldingAbility} from './holding-abilities.js';
 import {teacherCardCatalog} from './teacher-card-catalog.js';
 import {displayStarCard,STAR_CARD_TEXT_LIMITS} from './star-card-text.js';
-import {castAquarius,advanceAquarius,aquariusViews,aquariusCooldowns} from './aquarius-skills.js';
+import {castAquarius,advanceAquarius} from './aquarius-skills.js';
 import {refreshTruthRecord} from './truth-record.js';
-import {castCorvus,corvusCooldowns} from './corvus-skills.js';
-import {castWater,advanceWaterAuras,waterAuraViews,waterCooldowns,resolveWaterHit} from './water-skills.js';
-import {castSwan,advanceSwanAuras,swanAuraViews,swanCooldowns} from './swan-skills.js';
-import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison,ophiuchusCooldowns,ophiuchusViews} from './ophiuchus-skills.js';
-import {castGemini,geminiCooldowns} from './gemini-skills.js';
-import {castAries,advanceAriesClouds,ariesCloudViews,ariesCooldowns} from './aries-skills.js';
-import {castTaurus,advanceTaurusDashes,taurusDashViews,taurusCooldowns} from './taurus-skills.js';
-import {castHercules,advanceHerculesShields,advanceHerculesSlams,herculesShieldViews,herculesCooldowns} from './hercules-skills.js';
-import {castLibra,advanceLibraAuras,libraAuraViews,libraCooldowns} from './libra-skills.js';
-import {castCorona,advanceCorona,coronaAuraViews,coronaCooldowns} from './corona-skills.js';
-import {castCapricorn,advanceCapricorn,capricornBlessingViews,capricornCooldowns} from './capricorn-skills.js';
-import {castLeo,advanceLeoRoars,advanceLeoCourage,leoCooldowns} from './leo-skills.js';
+import {castCorvus} from './corvus-skills.js';
+import {castWater,advanceWaterAuras,resolveWaterHit} from './water-skills.js';
+import {castSwan,advanceSwanAuras} from './swan-skills.js';
+import {castOphiuchus,advanceOphiuchusVenoms,advanceOphiuchusPoison} from './ophiuchus-skills.js';
+import {castGemini} from './gemini-skills.js';
+import {castAries,advanceAriesClouds} from './aries-skills.js';
+import {castTaurus,advanceTaurusDashes} from './taurus-skills.js';
+import {castHercules,advanceHerculesShields,advanceHerculesSlams} from './hercules-skills.js';
+import {castLibra,advanceLibraAuras} from './libra-skills.js';
+import {castCorona,advanceCorona} from './corona-skills.js';
+import {castCapricorn,advanceCapricorn} from './capricorn-skills.js';
+import {castLeo,advanceLeoRoars,advanceLeoCourage} from './leo-skills.js';
 import {isWaterConstellation} from '../shared/water-skills.js';
 import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
@@ -45,7 +46,7 @@ import {collectEnergyDrop,rerollPartyLoot,energyDropViews,pruneEnergyDrops} from
 import {attackPowerOf,attackGeometryOf,ATTACK_VISUAL,SKILL_COOLDOWN_MS} from '../shared/combat.js';
 import {skillEffectOf} from '../shared/skill-effects.js';
 import {isSagittarius} from '../shared/sagittarius-skills.js';
-import {attackSagittarius,castSagittarius,advanceSagittarius,sagittariusViews,skillCooldowns,combatEnemies,damageTargets} from './sagittarius-skills.js';
+import {attackSagittarius,castSagittarius,advanceSagittarius,combatEnemies,damageTargets} from './sagittarius-skills.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual, randomUUID, randomBytes } from 'node:crypto';
 import {configuredAdminPassword} from './admin-password.js';
@@ -79,9 +80,8 @@ import {inviteParty,respondParty,leaveParty,invitePiscesPair,respondPiscesPair,s
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
 import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
-import {moveMonsters,monsterViews,strikeMonsters,monstersInAttackArea} from './monsters.js';
-import {spiritOrbViews} from './spirit-king-skills.js';
-import {disarmSpiritBlueStar,spiritBlueStarViews} from './spirit-blue-stars.js';
+import {moveMonsters,strikeMonsters,monstersInAttackArea} from './monsters.js';
+import {disarmSpiritBlueStar} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
 import {openTruthCreatorBlue,inputTruthCreatorBlue} from './truth-creator-blue.js';
 import {summonTruthCreator,requireTruthCreatorEntry} from './truth-creator.js';
@@ -91,7 +91,7 @@ import {answerStarRecordMath} from './star-record-math.js';
 import {recordStarRecordMovement} from './star-record-flow.js';
 import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
-import {serenaView,darkStarView,starRecordView,truthCreatorView,settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
+import {settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -123,7 +123,7 @@ import {createDuelArcade,registerDuelArcade} from './duel-arcade.js';
 import {registerCultureLibrary,registerHistoryLibrary} from './culture-library.js';
 import {registerScienceLibrary} from './science-library.js';
 import {awardLearningReward} from './learning-rewards.js';
-import {usesTeacherSkill,castTeacherSkill,castTeacherAttack,teacherCooldowns} from './teacher-skill.js';
+import {usesTeacherSkill,castTeacherSkill,castTeacherAttack} from './teacher-skill.js';
 import {constellationAbilityStatus,useConstellationAbility,chooseConstellationItem,validateSagittariusUse,completeSagittariusUse,constellationChangedThisWeek,completeSwanCompliment,submitSwanCampaign,approveSwanCampaign} from './constellation-weekly-abilities.js';
 import {weeklyAbilityFor} from '../shared/constellation-weekly-abilities.js';
 import {activeOphiuchusParalysis,useOphiuchus,clearOphiuchusParalysis,ophiuchusTransferDue,settleOphiuchusTransfers,borrowedOphiuchusActor,promoteBorrowedOphiuchusCopy,chooseCopiedOphiuchusItem} from './ophiuchus-weekly.js';
@@ -235,12 +235,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const player=store.rooms.get(code)?.players.get(id),sock=player&&io.sockets.sockets.get(player.socketId);
     if(sock?.data.session?.room.code===code&&sock.data.session.player.id===id)sock.emit(event,payload);
   });}});
-  const transaction=work=>{
+  const transaction=(work,scope)=>{
     if(!persistent){const before=captureBossItemHistory(store.rooms),result=work();commitBossItemHistory(store.rooms,before);return result;}
     const connections=[...io.sockets.sockets.values()].map(s=>[s,s.data.session?.player.token]);
     pending=[];
     try {
-      const result=store.transact(work),events=pending;pending=null;
+      const result=store.transact(work,scope),events=pending;pending=null;
       for(const event of events)event();
       return result;
     }catch(error){
@@ -367,11 +367,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(++rate.count>80){socket.disconnect(true);return;}
       next();
     });
+    // Only audited, single-classroom mutations opt into a scoped save. Account
+    // lifecycle, administration and newly added actions retain the full guard.
+    const scopedActions=new Set(['chat:send','combat:attack','combat:skill','combat:transform',
+      'equipment:equip','equipment:unequip','energy:collect','party:roll',
+      'shop:buy','shop:sell','shop:energy:buy','crafting:combine','item:use',
+      'trade:propose','trade:respond','trade:offer','trade:confirm','trade:cancel',
+      'teacher:inventory:give','teacher:inventory:remove','teacher:inventory:currency:set',
+      'map:travel','map:fast-travel','learning:english:answer','learning:math:answer']);
     const action=(name,handler,save=true)=>socket.on(name,(data,ack)=>{
       if(typeof ack!=='function')return;
       try {
         ensure(data && typeof data==='object' && !Array.isArray(data),'입력 내용을 확인해주세요.');
-        const execute=save?transaction:work=>work();
+        const scope=scopedActions.has(name)?socket.data.session?.room:undefined;
+        const execute=save?work=>transaction(work,scope):work=>work();
         ack({ok:true,...execute(()=>{
           const session=socket.data.session;
           if(session?.player.role==='student'&&session.player.constellationAbilityState?.abilitySeal?.endsAt>clock()&&
@@ -2802,15 +2811,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         }
         // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
-        // 몬스터는 같은 교실 안에서 공유하되 현재 맵의 그림만 클라이언트가 표시합니다.
+        // 몬스터/지대는 현재 맵의 전체 상태를 보내므로 누락 뒤에도 다음 패킷으로 복구합니다.
         if(pruneEnergyDrops(room,now))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-        const visibleMonsters=monsterViews(room,clock());
+        const worldFrame=worldBroadcastFrame(room,clock());
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
           const positions=visiblePositions(room,allPositions,viewer);
-          io.to(viewer.socketId).volatile.emit('world:positions',{positions,monsters:visibleMonsters,serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),truthCreator:truthCreatorView(room),spiritOrbs:spiritOrbViews(room,viewer.mapId,clock()),spiritBlueStars:spiritBlueStarViews(room,viewer.mapId,clock()),projectiles:projectileViews(room,viewer.mapId,clock()),aquarius:aquariusViews(room,viewer.mapId,clock()),ophiuchus:ophiuchusViews(room,viewer.mapId,clock()),water:waterAuraViews(room,viewer.mapId,clock()),swan:swanAuraViews(room,viewer.mapId,clock()),aries:ariesCloudViews(room,viewer.mapId,clock()),taurus:taurusDashViews(room,viewer.mapId,clock()),hercules:herculesShieldViews(room,viewer.mapId,clock()),libra:libraAuraViews(room,viewer.mapId,clock()),corona:coronaAuraViews(room,viewer.mapId,clock()),capricorn:capricornBlessingViews(room,viewer.mapId,clock()),
-            sagittarius:{casts:sagittariusViews(room,viewer.mapId,clock()),cooldowns:usesTeacherSkill(viewer)?teacherCooldowns(viewer):viewer.avatar.constellationId==='aquarius'?aquariusCooldowns(viewer):viewer.avatar.constellationId==='corvus'?corvusCooldowns(viewer):viewer.avatar.constellationId==='cygnus'?swanCooldowns(viewer,clock()):viewer.avatar.constellationId==='ophiuchus'?ophiuchusCooldowns(viewer):viewer.avatar.constellationId==='gemini'?geminiCooldowns(viewer):viewer.avatar.constellationId==='aries'?ariesCooldowns(viewer):viewer.avatar.constellationId==='taurus'?taurusCooldowns(viewer):viewer.avatar.constellationId==='hercules'?herculesCooldowns(viewer):viewer.avatar.constellationId==='libra'?libraCooldowns(viewer):viewer.avatar.constellationId==='corona-borealis'?coronaCooldowns(viewer):viewer.avatar.constellationId==='capricorn'?capricornCooldowns(viewer):viewer.avatar.constellationId==='leo'?leoCooldowns(viewer):isWaterConstellation(viewer)?waterCooldowns(viewer):skillCooldowns(viewer),serverNow:clock()}});
+          io.to(viewer.socketId).volatile.emit('world:positions',worldFrame(viewer,positions));
         }
         previous.set(room.code,next);
       }

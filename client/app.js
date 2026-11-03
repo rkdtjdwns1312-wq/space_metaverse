@@ -77,7 +77,7 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
 const teacherUpdates=createTeacherUpdates();
-const controlSettings=createControlSettings({stop,onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
+const controlSettings=createControlSettings({stop,quality:{get:()=>world.qualityStats().mode,set:mode=>world.setQuality(mode)},onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -1102,7 +1102,8 @@ function updateInteractPrompt(){
     y=point.y+(n.radius||0)*point.scale+gap;
   y=Math.max(8,Math.min(innerHeight-height-8,y));
   // 좌표만 바뀔 때 레이아웃을 다시 계산하지 않도록 합성 이동을 사용합니다.
-  prompt.style.transform='translate3d('+x+'px,'+y+'px,0)';
+  const transform='translate3d('+Math.round(x)+'px,'+Math.round(y)+'px,0)';
+  if(prompt.style.transform!==transform)prompt.style.transform=transform;
   decorate.hidden=true; // 꾸미기는 부서행성 제어장치에서만 엽니다.
   const objectId=n.id||n.target||n.kind;if(prompt.dataset.objectId!==objectId)prompt.dataset.objectId=objectId;
 }
@@ -1626,7 +1627,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){const localMap=!data.mapId||data.mapId===world.currentMapId();if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=localMap?data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null:starRecordPlanetPrompt;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(localMap)truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(localMap&&data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
@@ -1727,5 +1728,11 @@ setInterval(input,80);
 setInterval(()=>{if(!room)return;const me=room.players.find(p=>p.id===selfId);
   if($('avatar-dialog').open)renderSelfEffects(me);else statusDock.update(me);
 },1000);
-function interactionFrame(){updateInteractPrompt();requestAnimationFrame(interactionFrame);}
+let lastInteractionFrame=-Infinity;
+function interactionFrame(time){
+  // Only the floating hint is throttled. Key/click handlers resolve nearby()
+  // immediately, and the independent 80ms movement input timer is unchanged.
+  if(!document.hidden&&time-lastInteractionFrame>=50){updateInteractPrompt();lastInteractionFrame=time;}
+  requestAnimationFrame(interactionFrame);
+}
 requestAnimationFrame(interactionFrame);controls();socket.connect();

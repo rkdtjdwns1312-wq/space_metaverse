@@ -16,8 +16,14 @@ function layer(sprite,kind){
   ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.globalCompositeOperation='destination-out';ctx.drawImage(sprite,PAD,PAD,SIDE,SIDE);
   const value={canvas,edges};kinds.set(kind,value);return value;
 }
-export function drawEquipmentAura(ctx,sprite,player,size,time,reducedMotion=false){
+export function drawEquipmentAura(ctx,sprite,player,size,time,reducedMotion=false,lowQuality=false){
   const kind=player.equipmentAura??equipmentAuraOf(player);if(!kind||!['blue','orange','rainbow'].includes(kind)||!sprite)return false;
+  // Keep the equipment colour visible without per-walk-frame masks or sparks.
+  if(lowQuality){
+    ctx.save();ctx.strokeStyle=kind==='blue'?'#72caff':kind==='orange'?'#ffad53':'#d6adff';
+    ctx.globalAlpha*=.8;ctx.lineWidth=Math.max(2,size*.025);ctx.beginPath();
+    ctx.ellipse(0,0,size*.51,size*.52,0,0,Math.PI*2);ctx.stroke();ctx.restore();return true;
+  }
   const {canvas,edges}=layer(sprite,kind),phase=reducedMotion?0:time/1200;
   ctx.save();ctx.globalAlpha*=.77+.13*Math.sin(phase);const width=size*TOTAL/SIDE;
   ctx.drawImage(canvas,-width/2,-width/2,width,width);

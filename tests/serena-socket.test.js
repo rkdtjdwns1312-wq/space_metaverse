@@ -48,9 +48,9 @@ test('세레나 별 표식 스냅샷과 실제 서버 틱의 즉사·활력 이�
   await until(()=>ownTick?.monsters.some(m=>m.serenaSkillEffects?.marks.length)&&otherTick);
   const mark=ownTick.monsters.find(m=>m.id===boss.id).serenaSkillEffects.marks[0];
   assert.equal(mark.kind,'black');assert.equal(mark.remaining,5);assert.equal(mark.playerId,f.pa.id);assert.equal(Object.hasOwn(mark,'contacts'),false);
-  // 기존 몬스터 위치는 교실 전체에 공유하고 클라이언트가 mapId로 그림을 제한합니다.
+  // 다른 맵에는 보스 패턴 전체 대신 석상/재등장 상태만 공유합니다.
   const otherBoss=otherTick.monsters.find(m=>m.id===boss.id);
-  assert.notEqual(otherBoss.mapId,f.pb.mapId);assert.equal(otherBoss.serenaSkillEffects.marks.some(m=>m.playerId===f.pb.id),false);
+  assert.equal(otherBoss,undefined);assert.equal(otherTick.serena.state,'active');
   f.now+=10000;
   await until(()=>hits.some(h=>h.skillKind==='serena-black')&&vitals.some(v=>v.playerId===f.pa.id&&v.vitals.defeated));
   assert.equal(ensureVitals(f.pa).hp,0);assert.equal(hits.filter(h=>h.skillKind==='serena-black').length,1);

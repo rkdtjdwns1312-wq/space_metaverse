@@ -23,6 +23,7 @@ for (const [id, file] of Object.entries({
 if (typeof document !== 'undefined') document.fonts?.load('32px Jua').then(invalidate).catch(() => {});
 const ready = mapImageReady;
 export async function preloadValleyArt(){await decodeMapImages([...images.values()]);}
+export const preloadValleyGroundArt=()=>decodeMapImages([images.get('sky'),images.get('paving')]);
 // 확인한 원본의 투명 여백만 제외합니다. 원화 파일은 변경하지 않습니다.
 const altarArt = {
   evolution: { width: 1230, height: 1278, crop: [236, 76, 756, 1116], orb: [617, 263] },
