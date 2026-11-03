@@ -1,7 +1,7 @@
 export function createTruthCreatorBlueUI({request,getKey,getKeyLabel,onClose=()=>{},toast=()=>{}}){
   const style=document.createElement('link');style.rel='stylesheet';style.href='/truth-creator-blue.css';document.head.append(style);
   const dialog=document.createElement('dialog');dialog.id='truth-creator-blue-dialog';dialog.setAttribute('aria-labelledby','truth-blue-title');
-  dialog.innerHTML='<header><h2 id="truth-blue-title">차례대로 입력하세요</h2><span class="truth-blue-timer" role="timer" aria-label="폭발까지 남은 시간"><strong data-time>20초</strong></span><button type="button" class="secondary" data-close aria-label="닫기">×</button></header><ol class="truth-blue-sequence" aria-label="해제 순서"></ol><div class="truth-blue-sr"><strong data-progress>0 / 8</strong><p data-message role="status" aria-live="polite">구체를 확인하고 있어요.</p></div><div class="truth-blue-actions" aria-label="해제 입력"><button type="button" data-action="attack" aria-label="공격"><span class="truth-blue-icon" aria-hidden="true">⚔</span><kbd class="truth-blue-sr"></kbd></button><button type="button" data-action="skill" aria-label="스킬"><span class="truth-blue-icon" aria-hidden="true">✦</span><kbd class="truth-blue-sr"></kbd></button></div>';
+  dialog.innerHTML='<header><h2 id="truth-blue-title">차례대로 입력하세요</h2><span class="truth-blue-timer" role="timer" aria-label="폭발까지 남은 시간"><strong data-time>20초</strong></span><button type="button" class="secondary" data-close aria-label="닫기">×</button></header><ol class="truth-blue-sequence" aria-label="해제 순서"></ol><div class="truth-blue-sr"><strong data-progress>0 / 8</strong><p data-message role="status" aria-live="polite">구체를 확인하고 있어요.</p></div><div class="truth-blue-actions" aria-label="해제 입력"><button type="button" data-action="attack" aria-label="공격"><span class="truth-blue-label" aria-hidden="true">공격</span><kbd class="truth-blue-sr"></kbd></button><button type="button" data-action="skill" aria-label="스킬"><span class="truth-blue-label" aria-hidden="true">스킬</span><kbd class="truth-blue-sr"></kbd></button></div>';
 
   document.body.append(dialog);
   const sequence=dialog.querySelector('ol'),message=dialog.querySelector('[data-message]'),progress=dialog.querySelector('[data-progress]'),time=dialog.querySelector('[data-time]');
@@ -17,7 +17,7 @@ export function createTruthCreatorBlueUI({request,getKey,getKeyLabel,onClose=()=
       const item=document.createElement('li'),done=index<orb.progress,current=index===orb.progress;
       item.className=done?'is-done':current?'is-current':'';if(current)item.setAttribute('aria-current','step');
       item.setAttribute('aria-label',`${index+1}번 ${action==='attack'?'공격':'스킬'}${done?' 완료':current?' 다음 입력':''}`);
-      const icon=document.createElement('span');icon.className='truth-blue-icon';icon.setAttribute('aria-hidden','true');icon.textContent=action==='attack'?'⚔':'✦';
+      const icon=document.createElement('span');icon.className='truth-blue-label';icon.setAttribute('aria-hidden','true');icon.textContent=action==='attack'?'공격':'스킬';
       item.append(icon);return item;
     }));
     for(const button of buttons){button.disabled=pending||!orb;const label=(button.dataset.action==='attack'?'공격':'스킬')+' ('+getKeyLabel(button.dataset.action)+')';button.setAttribute('aria-label',label);button.title=label;button.querySelector('kbd').textContent=getKeyLabel(button.dataset.action);}

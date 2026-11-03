@@ -7,14 +7,14 @@
 .is-urgent .truth-blue-timer{color:#b62546}
 .truth-blue-sequence{list-style:none;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;padding:0;margin:20px 0}
 .truth-blue-sequence li{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;min-width:0;border:2px solid #bdcfe2;border-radius:9px;background:#fafdff}
-.truth-blue-icon{display:block;font-family:"Segoe UI Symbol",sans-serif;font-size:30px;line-height:1;color:#2c72bd}
+.truth-blue-label{display:block;font-family:inherit;font-size:18px;font-weight:600;line-height:1.2;white-space:nowrap;word-break:keep-all;color:#2c72bd}
 .truth-blue-sequence .is-current{border-color:#2674c1;box-shadow:0 0 0 2px #b6dcff;background:#e0f0ff}
 .truth-blue-sequence .is-done{background:#d8efeb;border-color:#71ab9b;opacity:.6}
 .truth-blue-actions{display:flex;justify-content:center;gap:20px}
-.truth-blue-actions button{width:64px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;border:2px solid #7eacd9;border-radius:12px;background:#fff;color:#224f7e;touch-action:manipulation}
-.truth-blue-actions .truth-blue-icon{font-size:34px}
+.truth-blue-actions button{width:76px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;border:2px solid #7eacd9;border-radius:12px;background:#fff;color:#224f7e;touch-action:manipulation}
+.truth-blue-actions .truth-blue-label{font-size:22px}
 .truth-blue-actions button:disabled{opacity:.55}
 #truth-creator-blue-dialog button:focus-visible{outline:3px solid #1d70bd;outline-offset:3px}
 #truth-creator-blue-dialog .truth-blue-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:420px){#truth-creator-blue-dialog{padding:14px 10px}#truth-creator-blue-dialog header{gap:6px}#truth-creator-blue-dialog h2{font-size:17px}.truth-blue-timer{font-size:15px}.truth-blue-sequence{gap:4px;margin:18px 0}.truth-blue-sequence li{border-width:1px;border-radius:6px}.truth-blue-sequence .truth-blue-icon{font-size:22px}}
+@media(max-width:420px){#truth-creator-blue-dialog{padding:14px 10px}#truth-creator-blue-dialog header{gap:6px}#truth-creator-blue-dialog h2{font-size:17px}.truth-blue-timer{font-size:15px}.truth-blue-sequence{gap:4px;margin:18px 0}.truth-blue-sequence li{border-width:1px;border-radius:6px}.truth-blue-sequence .truth-blue-label{font-size:13px}}
 @media(max-height:360px){#truth-creator-blue-dialog{padding:12px}.truth-blue-sequence{margin:12px 0}.truth-blue-actions button{width:52px;height:52px}}
