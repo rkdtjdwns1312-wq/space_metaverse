@@ -33,7 +33,7 @@ test('세레나 자격은 학생에게 LV5와 두 보스 직접 처치 경력을
   recordSerenaLevel(player);player.avatar.level=2;assert.equal(serenaEligibility(player).reachedLv5,true);
 });
 
-test('처치 기록은 같은 맵의 실제 피해 기여자만 인정하고 파티·오프라인·무피해는 제외한다',()=>{
+test('처치 기록은 이탈·접속 종료 전 실제 피해 기여도 인정하며 무기여 파티·무피해는 제외한다',()=>{
   const {room,player}=fixture();
   for(const id of ['a','b','party','offline','away','other','zero']){
     const p={...player,id,serenaProgress:{highestLevel:5,bossKills:[]}};
@@ -43,7 +43,7 @@ test('처치 기록은 같은 맵의 실제 피해 기여자만 인정하고 파
   room.parties=new Map([['party',{memberIds:[...room.players.keys()]}]]);
   const contributions=new Map([['a',1],['b',20],['offline',40],['away',40],['other',40],['zero',0]]);
   for(const typeId of ['leoon','noksera'])recordBossVictory(room,{typeId,mapId:SERENA.mapId},contributions);
-  for(const [id,p] of room.players)assert.equal(serenaEligible(p),['a','b'].includes(id),id);
+  for(const [id,p] of room.players)assert.equal(serenaEligible(p),['a','b','offline','away','other'].includes(id),id);
 });
 
 test('소환은 맵·거리·접속·생존을 서버에서 검사하며 중복 생성하지 않는다',()=>{

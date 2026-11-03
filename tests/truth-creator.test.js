@@ -18,17 +18,18 @@ function fixture(){
   chargeHuntingStation(player,'math',now);
   return {player,room:{players:new Map([['a',player]]),planets:new Map(),unattended:true}};
 }
-test('all six previous bosses require actual contributions; old two records remain and items do not qualify',()=>{
+test('all six bosses accept actual contributions or acquired boss items while old records remain',()=>{
   assert.equal(TRUTH_CREATOR_REQUIRED_BOSSES.length,6);assert(!TRUTH_CREATOR_REQUIRED_BOSSES.includes('truth-creator'));
   const {room,player}=fixture();player.serenaProgress={highestLevel:1,bossKills:['leoon','noksera']};
   player.inventory=[{id:'black-gem',quantity:1},{id:'spirit-king-soul',quantity:1},{id:'radiant-star-origin',quantity:1},{id:'origin-star-record',quantity:1}];
-  assert.equal(truthCreatorEligible(player),false);
+  assert.equal(truthCreatorEligible(player),true);
   assert.deepEqual(validateSerenaProgress(player.serenaProgress,player.avatar).bossKills,['leoon','noksera']);
   for(const id of ['party','offline','other','zero'])room.players.set(id,{...player,id,serenaProgress:{highestLevel:1,bossKills:[]},connected:id!=='offline',mapId:id==='other'?'space-plaza':player.mapId});
   const damage=new Map([['a',1],['offline',2],['other',2],['zero',0]]);
   for(const typeId of TRUTH_CREATOR_REQUIRED_BOSSES)recordBossVictory(room,{typeId,mapId:player.mapId},damage);
   assert.equal(truthCreatorEligible(player),true);
-  for(const id of ['party','offline','other','zero'])assert.deepEqual(room.players.get(id).serenaProgress.bossKills,[]);
+  for(const id of ['offline','other'])assert.equal(truthCreatorEligible(room.players.get(id)),true);
+  for(const id of ['party','zero'])assert.deepEqual(room.players.get(id).serenaProgress.bossKills,[]);
 });
 test('only the third-map gate enters the fourth map, including teacher route restrictions and summon rechecks',()=>{
   const {room,player}=fixture();player.mapId='sleeping-stars-3';

@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readingFixture,call,ok} from './helpers/reading-fixture.js';
+import {STREET,mapOf} from '../shared/config.js';
+import {MARKET} from '../shared/market.js';
+import {TRUTH_CREATOR,TRUTH_CREATOR_REQUIRED_BOSSES,truthCreatorEligible} from '../shared/truth-creator.js';
+import {addBossDrops} from '../server/energy-drops.js';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+
+test('real pickup/craft/equip/trade records survive consumption and restart; forged claims and failed saves grant no history',async t=>{
+ const f=await readingFixture(t,{craftingRecipes:[]}),machine=STREET.objects.find(o=>o.kind==='crafting');
+ f.mutate(p=>{Object.assign(p.avatar,{level:5,form:'transcendent',constellationId:'taurus'});p.starShards=10;p.cosmicEnergy=10000;p.inventory=[];p.serenaProgress={highestLevel:5,bossKills:[]};
+  Object.assign(f.q.avatar,{level:5,form:'transcendent',constellationId:'leo'});f.q.serenaProgress={highestLevel:5,bossKills:[]};});
+ const atMachine=()=>Object.assign(f.p,{mapId:STREET.id,x:machine.x,y:machine.y+80,input:{x:0,y:0,at:0}});atMachine();
+ assert.equal((await call(f.student,'teacher:inventory:give',{playerId:f.p.id,itemIds:['spirit-king-cloak']})).ok,false);
+ assert.equal((await call(f.student,'equipment:equip',{itemId:'spirit-king-cloak',slot:1})).ok,false);
+ const dropFor=(boss,item)=>addBossDrops(f.room,{typeId:boss,mapId:f.p.mapId,x:f.p.x,y:f.p.y},new Map([[f.p.id,1]]),f.now,()=>1).find(d=>d.itemId===item);
+ const soul=dropFor('spirit-king','spirit-king-soul');
+ await f.fail(async()=>assert.equal((await call(f.student,'energy:collect',{dropId:soul.id})).ok,false));
+ assert.deepEqual(f.p.inventory,[]);assert.deepEqual(f.p.serenaProgress.bossKills,[]);
+ assert(f.room.energyDrops.has(soul.id));
+ ok(await call(f.student,'energy:collect',{dropId:soul.id,serenaProgress:{bossKills:TRUTH_CREATOR_REQUIRED_BOSSES}}));
+ assert.deepEqual(f.p.serenaProgress.bossKills,['spirit-king']);
+ const recipe={ingredients:[{id:'spirit-king-soul',quantity:1}]};
+ await f.fail(async()=>assert.equal((await call(f.student,'crafting:combine',recipe)).ok,false));
+ assert(f.p.inventory.some(i=>i.id==='spirit-king-soul'));assert.deepEqual(f.p.serenaProgress.bossKills,['spirit-king']);
+ assert(ok(await call(f.student,'crafting:combine',recipe)).success);
+ ok(await call(f.student,'equipment:equip',{itemId:'spirit-king-cloak',slot:1}));
+ ok(await call(f.student,'equipment:unequip',{slot:1}));
+ for(const p of [f.p,f.q])Object.assign(p,{mapId:'space-plaza',x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});
+ const tradeId=ok(await call(f.student,'trade:propose',{targetId:f.q.id})).tradeId;
+ ok(await call(f.other,'trade:respond',{tradeId,accept:true}));
+ const revision=ok(await call(f.student,'trade:offer',{tradeId,revision:0,offer:{shards:0,energy:0,items:[{id:'spirit-king-cloak',quantity:1}]}})).revision;
+ ok(await call(f.student,'trade:confirm',{tradeId,revision}));
+ await f.fail(async()=>assert.equal((await call(f.other,'trade:confirm',{tradeId,revision})).ok,false));
+ assert.deepEqual(f.q.serenaProgress.bossKills,[]);assert(!f.q.inventory.some(i=>i.id==='spirit-king-cloak'));
+ assert(ok(await call(f.other,'trade:confirm',{tradeId,revision})).completed);
+ assert.deepEqual(f.p.serenaProgress.bossKills,['spirit-king']);assert.deepEqual(f.q.serenaProgress.bossKills,['spirit-king']);
+ ok(await call(f.other,'equipment:equip',{itemId:'spirit-king-cloak',slot:1}));ok(await call(f.other,'equipment:unequip',{slot:1}));
+ ok(await call(f.teacher,'teacher:inventory:remove',{playerId:f.q.id,itemId:'spirit-king-cloak'}));
+ for(const [boss,item] of [['leoon','leoon-claw'],['noksera','noksera-horn'],['serena','radiant-star-origin'],['dark-star','black-gem'],['star-record','origin-star-record']]){
+  const drop=dropFor(boss,item);ok(await call(f.student,'energy:collect',{dropId:drop.id}));
+  ok(await call(f.teacher,'teacher:inventory:remove',{playerId:f.p.id,itemId:item}));
+ }
+ assert.deepEqual(f.p.inventory,[]);assert(truthCreatorEligible(f.p));assert(!truthCreatorEligible(f.q));
+ await f.restart();assert.deepEqual(f.p.inventory,[]);assert.deepEqual(f.q.inventory,[]);
+ assert(truthCreatorEligible(f.p));assert.deepEqual(f.q.serenaProgress.bossKills,['spirit-king']);
+ const gate=mapOf('sleeping-stars-3').objects.find(o=>o.target===TRUTH_CREATOR.mapId);
+ chargeHuntingStation(f.p,'math',f.now);Object.assign(f.p,{mapId:'sleeping-stars-3',x:gate.x,y:gate.y});
+ ok(await call(f.student,'map:travel',{to:TRUTH_CREATOR.mapId}));assert.equal(f.p.mapId,TRUTH_CREATOR.mapId);
+ chargeHuntingStation(f.q,'math',f.now);Object.assign(f.q,{mapId:'sleeping-stars-3',x:gate.x,y:gate.y});
+ const forged=await call(f.other,'map:travel',{to:TRUTH_CREATOR.mapId,inventory:[{id:'burning-ice-necklace',quantity:1}],serenaProgress:{bossKills:TRUTH_CREATOR_REQUIRED_BOSSES}});
+ assert.equal(forged.ok,false);assert.equal(f.q.mapId,'sleeping-stars-3');
+});

@@ -1,4 +1,5 @@
 import {registerStarlightArchive} from './starlight-archive.js';
+import {captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
 import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
@@ -235,7 +236,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     if(sock?.data.session?.room.code===code&&sock.data.session.player.id===id)sock.emit(event,payload);
   });}});
   const transaction=work=>{
-    if(!persistent)return work();
+    if(!persistent){const before=captureBossItemHistory(store.rooms),result=work();commitBossItemHistory(store.rooms,before);return result;}
     const connections=[...io.sockets.sockets.values()].map(s=>[s,s.data.session?.player.token]);
     pending=[];
     try {

@@ -118,3 +118,22 @@ test('옛 24시간 저장 파일을 재개하면 네 보스 모두 해당 날짜
   assert.equal(restoreSerenaStatue(f.room,opening+1000),true);
   assert.equal(f.room.monsters.has(SERENA.monsterId),false);
 });
+
+test('earlier non-finishing damage earns durable credit after death, departure or disconnect; failed settlement retries once',t=>{
+ const f=fixture(t),now=Date.now();
+ const {player:other}=f.store.transact(()=>f.store.join({code:f.code,nickname:'2',pin:'1234'},'student-2'));
+ for(const [index,alter] of [(p)=>{p.battleVitals.hp=0;},p=>{p.mapId='space-plaza';},p=>{p.connected=false;p.away=true;}].entries()){
+  const boss=monstersOf(f.room,now).get(['leoon-boss','noksera-boss','spirit-king-boss'][index]);
+  Object.assign(f.player,{connected:true,away:false,mapId:boss.mapId});Object.assign(other,{mapId:boss.mapId});
+  if(f.player.battleVitals)f.player.battleVitals.hp=10;
+  damageMonster(f.room,boss,f.player,5,now+index*100);
+  damageMonster(f.room,boss,other,5,now+index*100+1);
+  alter(f.player);damageMonster(f.room,boss,other,50000,now+index*100+2);
+  const save=f.store.files.save.bind(f.store.files);f.store.files.save=()=>{throw Error('isolated credit save failure');};
+  assert.throws(()=>f.store.transact(()=>settleBossDeaths(f.room,now+index*100+3)));
+  assert(!f.player.serenaProgress?.bossKills.includes(boss.typeId));
+  f.store.files.save=save;f.store.transact(()=>settleBossDeaths(f.room,now+index*100+4));
+  assert(f.player.serenaProgress.bossKills.includes(boss.typeId));assert(other.serenaProgress.bossKills.includes(boss.typeId));
+ }
+ f.restart();assert.deepEqual(new Set(f.player.serenaProgress.bossKills),new Set(['leoon','noksera','spirit-king']));
+});

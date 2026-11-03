@@ -19,14 +19,14 @@ export function serenaEligibility(player){
 export const serenaEligible=player=>Object.values(serenaEligibility(player)).every(Boolean);
 export function bossVictoryCredits(room,monster,contributors){
   return [...contributors].filter(([id,damage])=>{
-    const p=room.players?.get(id);return damage>0&&p?.connected&&!p.away&&p.mapId===monster.mapId;
+    const p=room.players?.get(id);return Number.isFinite(damage)&&damage>0&&!!p;
   }).map(([id])=>{const p=room.players.get(id);return {id,highestLevel:validateSerenaProgress(p.serenaProgress,p.avatar,p.role).highestLevel};});
 }
 export function recordBossVictory(room,monster,contributors,credits=bossVictoryCredits(room,monster,contributors)){
   if(!RECORDED_BOSSES.includes(monster.typeId))return;
   for(const {id,highestLevel} of credits){
     const p=room.players?.get(id);
-    // 보상 파티 분배와 별개: 처치 순간 같은 맵에서 접속 중인 실제 피해 기여자만 인정.
+    // 보상 파티 분배와 별개: 해당 전투의 실제 피해 기여자는 처치 전 사망·이탈·접속 종료와 관계없이 인정.
     if(!p)continue;
     p.serenaProgress=validateSerenaProgress(p.serenaProgress,p.avatar,p.role);
     p.serenaProgress.highestLevel=Math.max(p.serenaProgress.highestLevel,highestLevel);

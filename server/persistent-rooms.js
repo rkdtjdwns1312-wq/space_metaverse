@@ -48,6 +48,7 @@ import {validateLearnedRecipeIds} from './learned-recipes.js';
 import {validateExploration,validateExplorationChances} from './exploration.js';
 import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 import {validateSerenaProgress} from './serena-progress.js';
+import {restoreBossItemHistory,captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
 import {validateSerenaState,validateDarkStarState,validateStarRecordState,validateTruthCreatorState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
 
 // 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
@@ -192,6 +193,7 @@ export function fromRecord(r,now=Date.now()) {
       starBestMs:p.starBestMs??null,dodgeBestMs:p.dodgeBestMs??null,equipmentSlots,learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),statGrowth:validateStatGrowth(p.statGrowth),cosmicEnergy,explorationChances:validateExplorationChances(p.explorationChances),avatar,tasks,cardMarkers,rabbitDraw,rabbitUsedDay:p.rabbitUsedDay||null,
       lv2State:structuredClone(lv2State),lv3State:validateLv3State(p.lv3State),lv4State:validateLv4State(p.lv4State),holdingState:validateHoldingState(p.holdingState),abilityState:validateAbilityState(p.abilityState),constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),piscesPair:validatePiscesPair(p.piscesPair),role:'student'}));
   }
+  restoreBossItemHistory(room);
   restorePiscesParties(room,now);
   for(const pr of r.proposals){
     if(typeof pr.id!=='string'||room.proposals.has(pr.id)||!room.players.has(pr.playerId))bad();
@@ -316,9 +318,11 @@ export class PersistentRoomStore extends RoomStore {
   transact(work){
     const originalPlayers=new Map([...this.rooms].map(([code,room])=>[code,new Map(room.players)]));
     const backup=structuredClone({rooms:this.rooms,sessions:this.sessions,records:this.records});
+    const itemHistory=captureBossItemHistory(this.rooms);
     let result,denial;
     try {
       try {result=work();}catch(e){if(e.commitOnError)denial=e;else throw e;}
+      commitBossItemHistory(this.rooms,itemHistory);
       const candidates=new Map(this.records);
       for(const room of this.rooms.values())candidates.set(room.code,toRecord(room));
       const changed=[...new Set([...backup.records.keys(),...candidates.keys()])]
