@@ -83,13 +83,14 @@ test('다른 맵·방 및 비활동 아군은 보호/보호에서 제외',()=>{
 
 
 
-test('까마귀 투사체 공통 피해 경로도 아군 무적·범위 밖 피해 처리',()=>{
+test('까마귀 투사체는 천칭 무적의 안팎 모두 친구에게 피해를 주지 않는다',()=>{
   const {room,caster,ally,attacker}=fixture();
   attacker.avatar.constellationId='corvus';
-  const hit=damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+1).playerTargets[0];
-  assert.equal(hit.damage,0);assert.equal(hit.reflectedDamage,undefined);
+  const hp=ensureVitals(ally).hp;
+  assert.deepEqual(damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+1).playerTargets,[]);
   caster.x-=2000;
-  assert.equal(damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+2).playerTargets[0].damage,10);
+  assert.deepEqual(damageTargets(room,attacker,[{kind:'player',entity:ally}],10,NOW+2).playerTargets,[]);
+  assert.equal(ensureVitals(ally).hp,hp);
 });
 
 test('실제 몬스터 근접 공격은 범위 내 아군 대신 몬스터에 무적한다',()=>{

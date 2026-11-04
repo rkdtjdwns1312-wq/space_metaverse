@@ -1,6 +1,7 @@
 import {renderWallet} from './wallet-ui.js';
 import {EQUIPMENT_ITEMS,equipmentStatText} from '/shared/equipment.js';
 import {hasUnlimitedShards} from '/shared/economy.js';
+import {STAT_GROWTH_KEYS,statGrowthRule} from '/shared/stat-growth.js';
 
 // 원화는 프레임·배경 없이 보여 줍니다. 가격과 능력치는 서버/공유 목록의 한 값만 사용합니다.
 export function createEnergyShopUI({request,getPlayer,stop,toast}){
@@ -11,10 +12,13 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
   catalogDialog.innerHTML='<header><h2 id="teacher-equipment-catalog-title">장착 가능한 모든 아이템</h2><button id="teacher-equipment-catalog-close" class="secondary" type="button">닫기</button></header><p class="energy-shop-hint">현재 등록된 장비 목록이에요. 여기서는 구매할 수 없어요.</p><div id="teacher-equipment-catalog-list" class="energy-shop-list"></div>';
   document.body.append(catalogDialog);
   document.body.append(dialog);
-  const statPanel=document.createElement('section');statPanel.className='energy-stat-purchase';statPanel.innerHTML='<h3>하루 한 번 · 영구 능력치</h3><p>우주에너지 100으로 능력치 하나가 영구히 1 올라요.<br>선택 확률: 최대 체력 40% · 최대 마나 40% · 공격력 10% · 방어력 10%</p><button id="energy-stat-buy" type="button" class="primary">능력치 구매 · 100</button><p id="energy-stat-summary" class="muted"></p><p id="energy-stat-result" class="energy-stat-result" role="status"></p>';dialog.querySelector('#energy-shop-level-tabs').before(statPanel);
+  const statPanel=document.createElement('section');statPanel.className='energy-stat-purchase';statPanel.innerHTML='<h3>하루 한 번 · 영구 능력치</h3><p id="energy-stat-description"></p><p id="energy-stat-chances"></p><button id="energy-stat-buy" type="button" class="primary">능력치 구매</button><p id="energy-stat-summary" class="muted"></p><p id="energy-stat-result" class="energy-stat-result" role="status"></p>';dialog.querySelector('#energy-shop-level-tabs').before(statPanel);
   const statBuy=statPanel.querySelector('button'),statSummary=statPanel.querySelector('#energy-stat-summary'),statResult=statPanel.querySelector('#energy-stat-result');let statInfo=null,statBusy=false;
   function renderStat(){const player=getPlayer();statPanel.hidden=player?.role!=='student';if(statPanel.hidden)return;const state=player.statGrowth,day=statInfo?.dayKey;const bought=!!day&&(statInfo.purchasedToday||(state?.lastPurchaseDay||'')>=day);
-    statBuy.disabled=statBusy||!statInfo||bought||(!hasUnlimitedShards(player)&&(player.cosmicEnergy||0)<100);statBuy.textContent=bought?'오늘 구매 완료':hasUnlimitedShards(player)?'능력치 구매 · 마스터 무료':'능력치 구매 · 100';const bonuses=state?.bonuses||statInfo?.bonuses||{};statSummary.textContent=`누적: 체력 +${bonuses.hp||0} · 마나 +${bonuses.mp||0} · 공격력 +${bonuses.attack||0} · 방어력 +${bonuses.defense||0} · 한국시간 자정에 다시 구매 가능`;
+    const level=player.avatar?.level??1,rule=statGrowthRule(level),cost=rule?(hasUnlimitedShards(player)?0:rule.cost):0;
+    statPanel.querySelector('#energy-stat-description').textContent=rule?`현재 Lv${level} · ${hasUnlimitedShards(player)?'마스터 무료':`우주에너지 ${cost}개`}로 능력치 하나가 영구히 올라요.`:'Lv2로 진화한 뒤 영구 능력치를 구매할 수 있어요.';
+    const names={hp:'최대 체력',mp:'최대 마나',attack:'공격력',defense:'방어력'};statPanel.querySelector('#energy-stat-chances').textContent=rule?STAT_GROWTH_KEYS.map(key=>`${names[key]} +${rule.amounts[key]} (${rule.weights[key]}%)`).join(' · '):'';
+    statBuy.disabled=statBusy||!statInfo||!rule||bought||(player.cosmicEnergy||0)<cost;statBuy.textContent=!rule?'Lv2부터 구매 가능':bought?'오늘 구매 완료':hasUnlimitedShards(player)?'능력치 구매 · 마스터 무료':`능력치 구매 · ${cost}`;const bonuses=state?.bonuses||statInfo?.bonuses||{};statSummary.textContent=`누적: 체력 +${bonuses.hp||0} · 마나 +${bonuses.mp||0} · 공격력 +${bonuses.attack||0} · 방어력 +${bonuses.defense||0} · 계정당 하루 한 번 · 한국시간 자정 초기화 · 진화해도 당일 재구매 불가`;
   }
   statBuy.onclick=async()=>{if(statBusy||statBuy.disabled)return;const ticket=revision;statBusy=true;statResult.textContent='별빛으로 능력치를 정하는 중…';renderStat();try{const result=await request('shop:energy:stat-buy',{});if(ticket!==revision||!dialog.open)return;statInfo=result;const p=getPlayer();if(p){p.cosmicEnergy=result.cosmicEnergy;p.statGrowth={bonuses:result.bonuses,lastPurchaseDay:result.dayKey};}statResult.textContent=result.message;toast(result.message);render();}catch(error){if(ticket===revision)statResult.textContent=error.message;}finally{statBusy=false;if(ticket===revision)renderStat();}};
   const wallet=dialog.querySelector('#energy-shop-wallet'),list=dialog.querySelector('#energy-shop-list'),catalogList=catalogDialog.querySelector('#teacher-equipment-catalog-list');let revision=0,catalogItems=EQUIPMENT_ITEMS,selectedLevel=1;

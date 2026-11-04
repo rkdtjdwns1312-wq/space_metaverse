@@ -1,3 +1,4 @@
+import {studentReminders} from './student-reminders.js';
 import {activeHazardView} from './boss-map-hazards.js';
 import {huntingTimeView} from './hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
@@ -169,11 +170,12 @@ export class RoomStore {
   // 받는 사람에 따라 내용을 다르게 만듭니다(선생님은 전부 봅니다). roster()가 방의 플레이어 소켓마다 이 함수를 따로 호출합니다.
   snapshot(room, viewer=null,now=Date.now()) {
     const isTeacher=!!(viewer && viewer.role==='teacher');
+    const missions=missionViews(room,viewer,now);
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
     return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       spiritBlueStars:spiritBlueStarViews(room,viewer?.mapId||room.mapId,now),
       monsters:monsterViews(room,now),energyDrops:energyDropViews(room),serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),truthCreator:truthCreatorView(room),
-      missions:missionViews(room,viewer,now),
+      missions,studentReminders:studentReminders(room,viewer,now,missions),
       ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
       cancerInvites:[...(room.cancerInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)).map(invite=>{
         if(invite.fromId===viewer.id)return {...invite};

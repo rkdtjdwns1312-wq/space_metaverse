@@ -18,7 +18,7 @@ async function fixture(t){
   for(const nickname of ['1','2']){const s=await connect(),joined=await call(s,'room:join',{code:made.room.code,nickname,pin:'1234'});assert(joined.ok,joined.error);students.push(s);}
   const room=game.store.rooms.get(made.room.code),players=[...room.players.values()].filter(p=>p.role==='student');
   room.truthCreator={state:'active',monsterId:TRUTH_CREATOR.monsterId,respawnAt:null};const boss=monstersOf(room,now).get(TRUTH_CREATOR.monsterId);
-  for(const p of players){chargeHuntingStation(p,'math',now);Object.assign(p,{mapId:boss.mapId,x:boss.x+300,y:boss.y});p.statGrowth={bonuses:{hp:1000}};ensureVitals(p);}
+  for(const p of players){chargeHuntingStation(p,'math',now);Object.assign(p,{mapId:boss.mapId,x:boss.x+300,y:boss.y});p.statGrowth={bonuses:{hp:1000,mp:0,attack:0,defense:0},lastPurchaseDay:null};ensureVitals(p);}
   assert(tryTruthCreatorBlue(room,boss,players[0],now,()=>.25));const orbs=[...boss.truthCreatorBlue.orbs];
   return {game,room,boss,players,students,orbs,call,connect,setNow:value=>{now=value;},get now(){return now;}};
 }

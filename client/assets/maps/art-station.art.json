@@ -1,0 +1,10 @@
+{
+  "generator": "image_gen",
+  "date": "2026-11-04",
+  "reference": "english-station-front.png",
+  "assets": [
+    {"file":"star-angel-statue.webp","prompt":"Ivory plaster baby STAR ANGEL statue, plump five-point star face with peacefully closed eyes, two carved feather wings, tiny halo, celestial book, round pale-stone pedestal with low-relief stars and subtle gold. Warm white with lavender-grey shadows, slightly top-down front three-quarter view, full base isolated on transparency. Match existing soft hand-painted Korean storybook fantasy RPG props; ornate, child-friendly, readable at 240x300; no text or environment.","source":"exec-2b825080-28f1-4bf8-9024-06f2814c29ba.png"},
+    {"file":"art-station-front.webp","prompt":"STAR ART WORKSHOP palace matching reference perspective and hand-painted storybook fantasy RPG ivory/gold/pastels. Large palette crown with five pastel paint spots and crossed brushes, mint/rose-lavender domes, entry easel, stained-glass star windows, open double door and two steps. Wide blank ivory curved sign at 51% height, no letters. Full base, clean transparent background without scene/floor/glow, readable at 330x330.","source":"exec-d7cee0bc-f11c-450a-90bc-605038f0ebb3.png"}
+  ],
+  "packing":"Preserved aspect ratio and alpha; resized longest edge to 512 px; WebP quality 0.94. No hue rotation. Art station grants no extra hunting time; five original learning stations retain 75 minute total."
+}

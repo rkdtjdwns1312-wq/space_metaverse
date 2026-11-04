@@ -1,10 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAP} from '../shared/config.js';
+import {MAP,STREET} from '../shared/config.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
 const at=(f,p=f.p)=>{const o=MAP.objects.find(o=>o.kind==='starlight-archive');assert(o);Object.assign(p,{mapId:MAP.id,x:o.x,y:o.y+80,input:{x:0,y:0,at:0}});};
 const draft=(extra={})=>({kind:'diary',requestId:'request-socket-001',date:'2026-10-30',title:'나의 하루',body:'비밀 기록 <b>평문</b>',...extra});
+
+test('culture station lets students submit their own reading logs, while diary and teacher permissions stay at archive',async t=>{
+ const f=await readingFixture(t),o=STREET.objects.find(o=>o.kind==='culture-station');
+ for(const p of [f.p,f.q,f.teacherPlayer])Object.assign(p,{mapId:STREET.id,x:o.x,y:o.y+100,input:{x:0,y:0,at:0}});
+ const data=draft({kind:'reading',bookTitle:'작은 별 이야기',author:''}),e=ok(await call(f.student,'archive:save',data)).entry;
+ assert.equal(ok(await call(f.student,'archive:read',{kind:'reading'})).records.length,1);
+ assert.equal(ok(await call(f.student,'archive:get',{kind:'reading',id:e.id})).entry.bookTitle,data.bookTitle);
+ assert.equal(ok(await call(f.student,'archive:save',data)).entry.id,e.id);
+ assert.equal((await call(f.student,'archive:save',draft())).ok,false);
+ assert.equal((await call(f.student,'archive:read',{kind:'diary'})).ok,false);
+ assert.equal((await call(f.other,'archive:get',{kind:'reading',studentId:f.p.id,id:e.id})).ok,false);
+ assert.equal((await call(f.other,'archive:save',{...data,studentId:f.p.id})).ok,false);
+ assert.equal((await call(f.teacher,'archive:sign',{kind:'reading',studentId:f.p.id,id:e.id,revision:1})).ok,false);
+ f.p.x=900;f.p.y=1000;assert.equal((await call(f.student,'archive:save',{...data,requestId:'culture-too-far'})).ok,false);
+ at(f);at(f,f.teacherPlayer);
+ assert.equal(ok(await call(f.student,'archive:get',{kind:'reading',id:e.id})).entry.body,data.body);
+ assert.equal(ok(await call(f.teacher,'archive:get',{kind:'reading',studentId:f.p.id,id:e.id})).entry.bookTitle,data.bookTitle);
+ assert(ok(await call(f.teacher,'archive:sign',{kind:'reading',studentId:f.p.id,id:e.id,revision:1})).entry.stamp);
+});
 test('archive sockets reject guests, other students/classes, stale and distant sessions; teacher access stays private',async t=>{
  const f=await readingFixture(t),guest=await f.connect();at(f);at(f,f.q);at(f,f.teacherPlayer);
  for(const event of ['archive:read','archive:get','archive:save','archive:sign','archive:reply'])assert.equal((await call(guest,event,draft())).ok,false);

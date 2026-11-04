@@ -1,4 +1,6 @@
+import {createStudentReminders} from './student-reminders.js';
 import {createStarArchiveUI} from './star-archive-ui.js';
+import {createArtStudioUI} from './art-studio-ui.js';
 import {createHuntingTimeUI} from './hunting-time-ui.js';
 import {appearanceLevelOf} from '/shared/character-skills.js';
 import {RULES} from '/shared/config.js';
@@ -55,6 +57,7 @@ import {createBossDialogueUI} from './boss-dialogue-ui.js';
 import { createJoystick } from './joystick-ui.js';
 import { createTempleUI } from './temple-ui.js';
 import { createArcadeUI } from './arcade-ui.js';
+import {sessionRecoveryAction} from './session-recovery.js';
 import {createDuelArcadeUI} from './duel-arcade-ui.js';
 import {createHallOfFameUI} from './hall-of-fame-ui.js';
 import {createCozyActivitiesUI} from './cozy-activities-ui.js';
@@ -148,10 +151,27 @@ async function resumeExistingSession(){
   if(!selfId||!sessionToken)return;
   if(sessionResumePromise)return sessionResumePromise;
   sessionResumePromise=(async()=>{
+    const attemptId=socket.id;
     busy=true;controls();
-    try{enter(await request('session:resume',{token:sessionToken}));}
+    try{
+      const result=await request('session:resume',{token:sessionToken});
+      if(!socket.connected||socket.id!==attemptId)throw new Error('socket has been disconnected');
+      enter(result);
+    }
     catch(error){
-      if(error.message==='operation has timed out'){
+      const recovery=sessionRecoveryAction(error,{connected:socket.connected,id:socket.id,attemptId});
+      if(recovery==='retry'){
+        showReconnect(true);reconnectStatus.textContent='요청이 잠시 몰려 기존 교실 연결을 다시 확인하고 있어요.';
+        const retryToken=sessionToken;
+        setTimeout(()=>{if(selfId&&sessionToken===retryToken&&socket.connected&&socket.id===attemptId&&!reconnectOverlay.hidden)resumeExistingSession();},1100);
+      }else if(recovery==='resume'){
+        // The old acknowledgement may reject after a new connect event already
+        // reused this in-flight promise. Resume that new socket after cleanup.
+        setTimeout(()=>{if(selfId&&sessionToken&&socket.connected)resumeExistingSession();},0);
+      }else if(recovery==='wait'){
+        showReconnect(true);reconnectStatus.textContent='연결이 안정되면 기존 교실로 다시 돌아갑니다.';
+        if(!socket.active)socket.connect();
+      }else if(recovery==='reconnect'){
         showReconnect(true);reconnectStatus.textContent='서버 응답이 늦어 연결을 새로 열고 다시 확인합니다.';
         if(socket.connected){socket.disconnect();setTimeout(()=>{if(selfId&&sessionToken&&!socket.connected)socket.connect();},150);}
         else if(!socket.active)socket.connect();
@@ -201,6 +221,7 @@ $('menu-dialog').insertBefore(tutorialButton,$('my-password'));
 tutorialButton.onclick=()=>{$('menu-dialog').close();tutorial.open();};
 const holdings=createHoldingUI({request,toast,onChanged:()=>renderBag(myInventory()),onDraw:async()=>{stop();$('draw-dialog').showModal();await loadRabbitDraw();}});
 const vitals=createVitalsUI($('bottom-dock'));
+const studentReminders=createStudentReminders({hud:$('vitals-hud'),request,stop,toast});
 const teacherGhost=createTeacherGhostUI({hud:$('vitals-hud'),request,toast});
 dockResizeObserver.observe($('vitals-hud'));
 const combatControls=createCombatControls({getKey:controlSettings.code,getPlayer:()=>room?.players.find(p=>p.id===selfId),canAct:()=>socket.connected&&!placing&&!document.querySelector('dialog:modal'),getAim:()=>{const aim=mouseAim?world.aimAt(mouseAim):null;return aim?{x:aim.dx,y:aim.dy}:null;},toast,request:createSkillGatedRequest({getPlayer:()=>room?.players.find(p=>p.id===selfId),request}),onSound:(key,constellationId)=>audio.playSfx('constellation',{key,constellationId})});
@@ -236,8 +257,9 @@ const interiorDecor=createInteriorDecorUI({request,stop,toast,getRoom:()=>room,g
 const duelArcade=createDuelArcadeUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,socket});
 const hallOfFame=createHallOfFameUI({request,stop,toast});
 const starArchive=createStarArchiveUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
+const artStudio=createArtStudioUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const cozyActivities=createCozyActivitiesUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
-const cultureLibrary=createCultureLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
+const cultureLibrary=createCultureLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId),onWriteReading:book=>starArchive.writeReading(book)});
 const historyLibrary=createHistoryLibrary({request,stop,getSelf:()=>room?.players.find(p=>p.id===selfId)});
 const scienceLibrary=createScienceLibrary({request,stop});
 const subscribe=(event,listener)=>{socket.on(event,listener);return()=>socket.off(event,listener);};
@@ -391,7 +413,7 @@ function controls(){for(const b of document.querySelectorAll('.submit, #teacher-
 async function request(event,data){
   if(!socket.connected)throw new Error('연결을 기다리고 있어요. 잠시 후 다시 시도해주세요.');
   const reply=await socket.timeout(6000).emitWithAck(event,data);
-  if(!reply.ok)throw new Error(reply.error);
+  if(!reply.ok)throw Object.assign(new Error(reply.error),{retryable:reply.retryable===true});
   return reply;
 }
 let serenaWorldState=null;
@@ -471,6 +493,7 @@ function updateRoom(value){
   const previewLv=isTeacher&&me?.avatar?.teacherPreview?me.avatar.level:null;
   const cardLv=previewLv??myLv;
   vitals.update(me?.vitals);
+  studentReminders.update(me,value.studentReminders);
   teacherGhost.update(me);
   // 초기 HTML의 소행성 표기를 진화·별자리 변경·재접속 때 함께 갱신합니다.
   $('self-form-name').textContent=isTeacher&&!previewLv?'별의수호자':cardLv>=2?(constellationOf(me?.avatar?.constellationId,cardLv)?.name||'별자리'):'소행성';
@@ -1075,6 +1098,7 @@ function doInteract(){
   else if(n.kind==='arcade'){stop();request('arcade:open',{objectId:n.id}).then(r=>{if(selfId&&!document.querySelector('dialog:modal'))arcade.open(r.gameId);}).catch(e=>toast(e.message));}
   else if(n.kind==='math-station'||n.kind==='english-station'){stop();learningStation.open(n.kind);}
   else if(n.kind==='culture-station')cultureLibrary.open();
+  else if(n.kind==='art-station')artStudio.open();
   else if(n.kind==='history-station')historyLibrary.open();
   else if(n.kind==='science-station')scienceLibrary.open();
 }
@@ -1482,6 +1506,7 @@ function addChatMessage(msg){
 function clearChat(){$('chat-log').replaceChildren();$('chat-empty').hidden=false;}
 function enter(result){
   showReconnect(false);
+  arcade.setConnected(true);
   clearTeacherActiveItems();
   social.reset();selfId=result.selfId;saveToken(result.token,result.room.players.find(p=>p.id===result.selfId)?.role);updateRoom(result.room);$('lobby').hidden=true;
   $('menu-dialog').prepend($('connection'));
@@ -1496,6 +1521,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
+  arcade.reset();
   showReconnect(false);classroomHelp.reset();teacherUpdates.reset();mouseAim=null;aimMap=null;
   clearTeacherActiveItems();
   resourceCatalogRevision++;$('resource-kind').value='starShards';$('resource-kind').onchange();
@@ -1505,11 +1531,12 @@ function reset(message){
   holdings.reset();
   characterSkills.reset();constellationAbility.reset();ariesSleepUI.reset();cancerDuelUI.reset();cetusUI.reset();
   craftingUI.reset();
-  cozyActivities.reset();starArchive.reset();darkCardReads.clear();
+  cozyActivities.reset();starArchive.reset();artStudio.reset();darkCardReads.clear();
   huntingTime.reset();
   energyShopUI.reset();lv4UI.reset();
   inventoryPages.reset();
   vitals.reset();
+  studentReminders.reset();
   teacherGhost.reset();
   accounts.reset();
   tutorial.reset();tutorialButton.hidden=true;
@@ -1605,7 +1632,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{arcade.setConnected(false);truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('hunting:state',data=>{if(selfId)huntingTime.update(data);});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});
@@ -1684,6 +1711,7 @@ function input(){
 function stop(){held.clear();touch={x:0,y:0};joystick.reset();input();}
 window.addEventListener('keydown',e=>{
   if(!selfId||!keys[e.code]||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.target.isContentEditable)return;
+  if(e.repeat){e.preventDefault();return;}
   e.preventDefault();$('world').focus({preventScroll:true});held.add(e.code);input();
 });
 window.addEventListener('keyup',e=>{if(keys[e.code]){held.delete(e.code);input();}});

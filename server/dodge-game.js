@@ -10,9 +10,10 @@ export const DODGE_RULES=Object.freeze({
 });
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-const eligible=(room,player)=>!!player&&room?.players instanceof Map&&room.players.get(player.id)===player&&
-  player.connected&&!player.away&&player.mapId==='star-street'&&
+const participant=(room,player)=>!!player&&room?.players instanceof Map&&room.players.get(player.id)===player&&
+  !player.away&&player.mapId==='star-street'&&
   (player.role==='student'||player.role==='teacher');
+const eligible=(room,player)=>participant(room,player)&&player.connected;
 
 function normalize(x,y){
   if(!Number.isFinite(x)||!Number.isFinite(y))return {x:0,y:0};
@@ -101,7 +102,7 @@ export function startDodgeRun(room,player,now=performance.now()){
   room.dodgeRuns??=new Map();
   ensure(room.dodgeRuns.get(player.id)?.status!=='pending','끝난 기록을 저장하는 중이에요. 잠시만 기다려주세요.');
   const run={
-    runId:randomUUID(),playerId:player.id,status:'running',startedAt:now,lastAdvancedAt:now,
+    runId:randomUUID(),playerId:player.id,sessionToken:player.token,status:'running',startedAt:now,lastAdvancedAt:now,
     elapsedMs:0,lastBroadcastAt:now,waveIndex:0,starSpeed:DODGE_RULES.baseStarSpeed,starSerial:0,stars:[],
     playerBody:{x:DODGE_RULES.width/2,y:DODGE_RULES.height/2,radius:DODGE_RULES.playerRadius},
     input:{x:0,y:0,at:now}
@@ -113,26 +114,48 @@ export function startDodgeRun(room,player,now=performance.now()){
 
 export function setDodgeInput(room,player,{runId,x,y}={},now=performance.now()){
   const run=room?.dodgeRuns?.get(player?.id);
-  if(!run||run.runId!==runId||run.status!=='running')return;
+  if(!eligible(room,player)||!run||run.sessionToken!==player.token||run.runId!==runId||run.status!=='running')return;
   const direction=normalize(x,y);
   run.input={...direction,at:now};
 }
 
 export function cancelDodgeRun(room,player,runId){
   const run=room?.dodgeRuns?.get(player?.id);
-  if(run?.runId===runId&&run.status==='running')room.dodgeRuns.delete(player.id);
+  if(run?.runId===runId&&['running','paused'].includes(run.status))room.dodgeRuns.delete(player.id);
+}
+
+export function dodgeRunState(room,player,runId){
+  const run=room?.dodgeRuns?.get(player?.id);
+  return eligible(room,player)&&run?.runId===runId&&run.sessionToken===player.token?stateOf(run):null;
+}
+
+// Disconnect can be shorter than a world tick. Mark it immediately so reconnect
+// never simulates that gap or carries a held direction into the resumed run.
+export function pauseDodgeRun(room,player,now=performance.now()){
+  const run=room?.dodgeRuns?.get(player?.id);
+  if(!run||!['running','paused'].includes(run.status))return;
+  run.status='paused';run.lastAdvancedAt=now;run.input={x:0,y:0,at:now};
 }
 
 export function advanceDodgeRuns(room,now=performance.now()){
   const updates=[];
   if(!(room?.dodgeRuns instanceof Map))return updates;
   for(const [playerId,run] of [...room.dodgeRuns]){
+    const player=room.players?.get(playerId);
+    if(!participant(room,player)||run.sessionToken!==player.token||
+      (!player.connected&&Number.isFinite(player.expiresAt)&&player.expiresAt<=Date.now())){
+      room.dodgeRuns.delete(playerId);continue;
+    }
+    if(!player.connected){pauseDodgeRun(room,player,now);continue;}
     if(run.status==='pending'){
       if(run.retryAt===undefined||now>=run.retryAt)updates.push({playerId,state:stateOf(run),finished:true});
       continue;
     }
-    const player=room.players?.get(playerId);
-    if(!eligible(room,player)){room.dodgeRuns.delete(playerId);continue;}
+    if(run.status==='paused'){
+      run.status='running';run.lastAdvancedAt=now;run.lastBroadcastAt=now;run.input={x:0,y:0,at:now};
+      updates.push({playerId,state:stateOf(run),finished:false});
+      continue;
+    }
 
     const stepMs=Math.min(DODGE_RULES.maxStepMs,Math.max(0,now-run.lastAdvancedAt));
     run.elapsedMs+=stepMs;

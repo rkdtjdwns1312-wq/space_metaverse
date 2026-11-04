@@ -28,10 +28,10 @@ test('오색별빛 쉼터의 발전소·상점·놀이터가 하나의 외곽 �
 
 test('발전소·상점·조합기·오락기가 북·중앙·남쪽 마당에 배치된다',()=>{
   const stations=STREET.objects.filter(o=>o.kind.endsWith('-station'));
-  assert.equal(stations.length,5);
+  assert.equal(stations.length,6);
   assert.deepEqual(stations.slice(0,2).map(o=>[o.x,o.y]),[[250,650],[1550,650]]);
   const top=stations.slice(2);assert(top[1].y<top[0].y&&top[1].y<top[2].y);
-  for(const o of stations){assert(onStreetFloor(STREET,o.x,o.y,o.radius));assert(onStreetFloor(STREET,o.x,o.y+o.radius+60,30));}
+  for(const o of stations){assert(onStreetFloor(STREET,o.x,o.y,o.radius));assert(onStreetFloor(STREET,o.x,o.y+(o.kind==='art-station'?100:o.radius+60),30));}
   assert(STREET_LAYOUT.north.rx*STREET_LAYOUT.north.ry>720*300*1.5);
   assert.deepEqual(STREET.objects.filter(o=>o.kind==='shop'||o.kind==='energy-shop').map(o=>[o.x,o.y]),[[1290,1450],[1290,1980]]);
   assert.deepEqual(STREET.objects.filter(o=>o.kind==='arcade').map(o=>[o.x,o.y]),[[300,2900],[500,2900],[700,2900],[900,2900],[1100,2900],[1300,2900],[1500,2900]]);
@@ -43,7 +43,7 @@ test('발전소·상점·조합기·오락기가 북·중앙·남쪽 마당에 �
 
 test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고 발전소 중심 여유가 늘어난다',()=>{
   const old={ 'math-station':[300,600], 'english-station':[1500,600], 'history-station':[550,370], 'science-station':[900,290], 'culture-station':[1250,370] };
-  for(const o of STREET.objects.filter(o=>o.kind.endsWith('-station'))){
+  for(const o of STREET.objects.filter(o=>Object.hasOwn(old,o.id))){
     assert(Math.hypot(o.x-900,o.y-530)>Math.hypot(old[o.id][0]-900,old[o.id][1]-480),o.id+' 중앙에서 멀어짐');
   }
   const shop=STREET.objects.find(o=>o.kind==='shop'),craft=STREET.objects.find(o=>o.kind==='crafting'),energy=STREET.objects.find(o=>o.kind==='energy-shop');

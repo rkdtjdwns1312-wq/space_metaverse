@@ -38,29 +38,29 @@ test('공개 파일은 재검증 캐시를 쓰고 상태 응답은 저장·조�
   }
 });
 
-test('영구 능력치는 정확한 40/40/10/10 구간·KST 자정·중복/실패 무차감을 지킨다',()=>{
+test('영구 능력치는 Lv2의 정확한 45/45/5/5 구간·KST 자정·중복/실패 무차감을 지킨다',()=>{
   const now=Date.parse('2026-10-27T14:59:59Z'),counts={hp:0,mp:0,attack:0,defense:0};
   for(let roll=0;roll<100;roll++){
     const p={role:'student',cosmicEnergy:300,avatar:{level:2,constellationId:'sagittarius'}},before=vitalsOf(2,p),attack=attackPowerOf(2,'sagittarius',p),defense=defensePowerOf(2,'sagittarius',p);
     const result=buyStatGrowth(p,now,()=>roll);counts[result.stat]++;
-    assert.equal(p.cosmicEnergy,200);assert.equal(result.dayKey,'2026-10-27');assert.equal(result.purchasedToday,true);
+    assert.equal(p.cosmicEnergy,280);assert.equal(result.dayKey,'2026-10-27');assert.equal(result.purchasedToday,true);
     assert.equal(vitalsOf(2,p).hp.max,before.hp.max+(result.stat==='hp'?1:0));
     assert.equal(vitalsOf(2,p).mp.max,before.mp.max+(result.stat==='mp'?1:0));
     assert.equal(attackPowerOf(2,'sagittarius',p),attack+(result.stat==='attack'?1:0));
     assert.equal(defensePowerOf(2,'sagittarius',p),defense+(result.stat==='defense'?1:0));
     const copy=structuredClone(p);assert.throws(()=>buyStatGrowth(p,now,()=>0),/이미/);assert.deepEqual(p,copy);
-    assert.equal(statGrowthInfo(p,now+1000).canBuy,true);buyStatGrowth(p,now+1000,()=>0);assert.equal(p.cosmicEnergy,100);
+    assert.equal(statGrowthInfo(p,now+1000).canBuy,true);buyStatGrowth(p,now+1000,()=>0);assert.equal(p.cosmicEnergy,260);
     assert.equal(statGrowthInfo(p,now-86400_000).canBuy,false);
   }
-  assert.deepEqual(counts,{hp:40,mp:40,attack:10,defense:10});
-  for(const [balance,draw] of [[99,()=>0],[100,()=>100],[100,()=>NaN],[100,()=>{throw Error('rng');}]]){
-    const p={role:'student',cosmicEnergy:balance},copy=structuredClone(p);assert.throws(()=>buyStatGrowth(p,now,draw));assert.deepEqual(p,copy);
+  assert.deepEqual(counts,{hp:45,mp:45,attack:5,defense:5});
+  for(const [balance,draw] of [[19,()=>0],[20,()=>100],[20,()=>NaN],[20,()=>{throw Error('rng');}]]){
+    const p={role:'student',avatar:{level:2},cosmicEnergy:balance},copy=structuredClone(p);assert.throws(()=>buyStatGrowth(p,now,draw));assert.deepEqual(p,copy);
   }
   assert.throws(()=>validateStatGrowth({bonuses:{hp:-1,mp:0,attack:0,defense:0},lastPurchaseDay:null}));
   assert.throws(()=>buyStatGrowth({role:'teacher',cosmicEnergy:100},now));
-  const master={role:'student',accountKind:'master',cosmicEnergy:0};assert.equal(statGrowthInfo(master,now).cost,0);
+  const master={role:'student',avatar:{level:2},accountKind:'master',cosmicEnergy:0};assert.equal(statGrowthInfo(master,now).cost,0);
   buyStatGrowth(master,now,()=>0);assert.equal(master.cosmicEnergy,0);assert.throws(()=>buyStatGrowth(master,now,()=>0),/이미/);
-  const asteroid={role:'student',cosmicEnergy:100,avatar:{level:1}};buyStatGrowth(asteroid,now,()=>99);assert.equal(defensePowerOf(1,null,asteroid),1);assert.equal(attackPowerOf(1,null,asteroid),null);
+  const asteroid={role:'student',cosmicEnergy:100,avatar:{level:1}};assert.throws(()=>buyStatGrowth(asteroid,now,()=>99),/Lv2/);assert.equal(defensePowerOf(1,null,asteroid),0);assert.equal(attackPowerOf(1,null,asteroid),null);
 });
 
 test('경험치가 이미 가득 차면 0/누락 입력에도 명확한 안내를 하고 차감하지 않는다',()=>{
@@ -95,20 +95,20 @@ for(const [id,module,fn] of [['corvus','corvus','castCorvus'],['aquarius','aquar
     assert.equal(ensureVitals(friend).hp,hp);
   });
 }
-test('기본 공격 보호는 E 피해와 게자리 강화 Q 회복을 차단하지 않는다',async()=>{
+test('까마귀 E도 친구 피해를 차단하고 게자리 강화 Q 회복은 유지한다',async()=>{
   const p={id:'a',role:'student',connected:true,mapId:'star-origin-1',x:500,y:450,facing:{x:1,y:0},avatar:{level:4,constellationId:'corvus'}},friend={...structuredClone(p),id:'b',x:590,avatar:{level:4,constellationId:'aries'}};
   const room={players:new Map([[p.id,p],[friend.id,friend]]),planets:new Map(),monsters:new Map()},hp=ensureVitals(friend).hp;
   damagePlayersInArea(room,{sourceId:p.id,mapId:p.mapId,x:friend.x,y:friend.y,radius:50,basic:true},10,1000);assert.equal(ensureVitals(friend).hp,hp);
   damagePlayersInArea(room,{sourceId:p.id,mapId:p.mapId,x:friend.x,y:friend.y,radius:50},10,1000);assert.ok(ensureVitals(friend).hp<hp);
   const {castCorvus}=await import('../server/corvus-skills.js');castCorvus(room,p,2000,{basic:false});const before=ensureVitals(friend).hp;
-  advanceProjectiles(room,3100,combatEnemies,damageTargets);assert.ok(ensureVitals(friend).hp<before);
+  advanceProjectiles(room,3100,combatEnemies,damageTargets);assert.equal(ensureVitals(friend).hp,before);
   ensureVitals(friend).hp=10;
   const healed=resolveWaterHit(room,p,[{kind:'player',entity:friend}],10,4000,{basic:true,healing:true});assert.ok(healed.healed.length);assert.ok(ensureVitals(friend).hp>10);
 });
 
 test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/재시작 경계를 지킨다',async t=>{
   const root=resolve(tmpdir()),dir=mkdtempSync(join(root,'oct27-rules-')),key='oct27-rules-teacher-key';let game,now=Date.parse('2026-10-27T14:59:59Z');const sockets=[];
-  const start=async()=>{game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,clock:()=>now,statGrowthDraw:()=>90,craftingRecipes:[]});await game.listen();};
+  const start=async()=>{game=createClassroomServer({teacherKey:key,dataDir:dir,studentHours:false,clock:()=>now,statGrowthDraw:()=>99,craftingRecipes:[]});await game.listen();};
   const connect=async()=>{const s=io(`http://127.0.0.1:${game.http.address().port}`,{transports:['websocket'],reconnection:false,autoConnect:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);s.connect();});return s;};
   const call=(s,event,data={})=>s.timeout(5000).emitWithAck(event,data);
   t.after(async()=>{sockets.forEach(s=>s.disconnect());await game?.close();assert.equal(dirname(resolve(dir)),root);rmSync(dir,{recursive:true,force:true});});
@@ -124,12 +124,12 @@ test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/
   for(const client of [anon,student])assert.equal((await call(client,'teacher:resources:grant',{playerIds:[id],cosmicEnergy:100})).ok,false);
   assert.ok((await call(teacher,'teacher:resources:grant',{playerIds:[id,friend],cosmicEnergy:300})).ok);
   assert.equal((await call(student,'shop:energy:stat-buy')).ok,false);
-  const atShop=()=>{const shop=STREET.objects.find(o=>o.kind==='energy-shop');Object.assign(p(),{mapId:STREET_ID,x:shop.x,y:shop.y+100});};atShop();
+  const atShop=()=>{const shop=STREET.objects.find(o=>o.kind==='energy-shop');Object.assign(p(),{mapId:STREET_ID,x:shop.x,y:shop.y+100});};atShop();assert.equal((await call(student,'shop:energy:stat-buy',{level:5,cost:0})).ok,false);p().avatar.level=2;
   const save=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw Error('expected disk failure');};
   try{assert.equal((await call(student,'shop:energy:stat-buy')).ok,false);assert.equal((await call(teacher,'teacher:resources:grant',{playerIds:[id,friend],cosmicEnergy:100})).ok,false);}finally{game.store.files.save=save;}
   assert.equal(p().cosmicEnergy,300);assert.equal(p().statGrowth?.bonuses.defense??0,0);assert.equal(room().players.get(friend).cosmicEnergy,300);
-  const attempts=await Promise.all([call(student,'shop:energy:stat-buy'),call(student,'shop:energy:stat-buy')]);assert.equal(attempts.filter(a=>a.ok).length,1);
-  const bought=attempts.find(a=>a.ok);assert.equal(bought.stat,'defense');assert.equal(p().cosmicEnergy,200);
+  const attempts=await Promise.all([call(student,'shop:energy:stat-buy',{level:5,cost:0,amount:999}),call(student,'shop:energy:stat-buy')]);assert.equal(attempts.filter(a=>a.ok).length,1);
+  const bought=attempts.find(a=>a.ok);assert.equal(bought.stat,'defense');assert.equal(p().cosmicEnergy,280);assert.equal(bought.level,2);assert.equal(bought.amount,1);p().avatar.level=3;
   assert.equal((await call(student,'shop:energy:stat-buy')).ok,false);
   assert.equal(game.store.snapshot(room(),p(),now).teacherActivity,undefined);assert.ok(game.store.snapshot(room(),room().players.get(made.selfId),now).teacherActivity);
   for(const to of ['unknown',WHALE_STOMACH_ID,BLACK_HOLE_ID,'__proto__'])assert.equal((await call(student,'map:fast-travel',{to})).ok,false);
@@ -167,5 +167,5 @@ test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/
   const reStudent=await connect();assert.ok((await call(reStudent,'room:join',{code,nickname:'학생',pin:'1234'})).ok);atShop();
   assert.deepEqual(room().planets.get(planet.id).customDesign,design);
   assert.equal(p().statGrowth.bonuses.defense,1);assert.equal((await call(reStudent,'shop:energy:stat-buy')).ok,false);
-  now+=1000;atShop();const next=await call(reStudent,'shop:energy:stat-buy');assert.ok(next.ok,next.error);assert.equal(p().statGrowth.bonuses.defense,2);assert.equal(p().cosmicEnergy,100);
+  now+=1000;atShop();const next=await call(reStudent,'shop:energy:stat-buy');assert.ok(next.ok,next.error);assert.equal(p().statGrowth.bonuses.defense,2);assert.equal(p().cosmicEnergy,260);
 });

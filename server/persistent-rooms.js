@@ -1,4 +1,5 @@
 import {validateArchive} from './starlight-archive.js';
+import {validateArtStudio} from './art-studio.js';
 import {validateHuntingTime} from './hunting-time.js';
 import {validateCozyActivities} from './cozy-activities.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
@@ -84,6 +85,7 @@ export function toRecord(room) {
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       starlightArchive:validateArchive(p.starlightArchive),
+      artStudio:validateArtStudio(p.artStudio,{trustedCompact:true}),
       cultureReading:validateCultureReading(p.cultureReading),
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
@@ -183,6 +185,7 @@ export function fromRecord(r,now=Date.now()) {
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       starlightArchive:validateArchive(p.starlightArchive),
+      artStudio:validateArtStudio(p.artStudio),
       cultureReading:validateCultureReading(p.cultureReading),
       cultureRecommendationVotes:validateCultureRecommendationVotes(p.cultureRecommendationVotes),
       historyReading:validateHistoryReading(p.historyReading),
@@ -214,7 +217,7 @@ export class PersistentRoomStore extends RoomStore {
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
       this.records.set(r.code,{...r,serena:restored.serena,darkStar:restored.darkStar,starRecord:restored.starRecord,truthCreator:restored.truthCreator,bossRespawns:restored.bossRespawns,
-        students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress}))});
+        students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress,artStudio:restored.players.get(p.id).artStudio}))});
     }}
     catch(error){this.files.close();throw error;}
   }

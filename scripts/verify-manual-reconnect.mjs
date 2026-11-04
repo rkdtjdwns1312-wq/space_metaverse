@@ -21,6 +21,21 @@ try{
         const socket=factory(...args),emitWithAck=socket.emitWithAck.bind(socket);
         window.__testReconnectSocket=socket;
         socket.emitWithAck=function(event,...eventArgs){
+          if(event==='session:resume'&&window.__busyResumeOnce){
+            window.__busyResumeOnce=false;window.__busyResumeAt=performance.now();
+            return Promise.resolve({ok:false,error:'요청이 잠시 몰렸어요. 잠시 뒤 다시 시도해주세요.',retryable:true});
+          }
+          if(event==='session:resume'&&window.__busyResumeAt)window.__busyResumeDelay=performance.now()-window.__busyResumeAt;
+          if(event==='session:resume'&&window.__breakResumeOnce){
+            const mode=window.__breakResumeOnce,reconnectFirst=mode.startsWith('new-socket');window.__breakResumeOnce=false;
+            return emitWithAck(event,...eventArgs).then(reply=>new Promise((resolve,reject)=>{
+              socket.disconnect();
+              if(reconnectFirst){
+                socket.once('connect',()=>mode==='new-socket-success'?resolve(reply):reject(new Error('socket has been disconnected')));
+                setTimeout(()=>socket.connect(),30);
+              }else reject(new Error('socket has been disconnected'));
+            }));
+          }
           if(event==='session:resume'&&window.__dropResumeAckOnce){
             window.__dropResumeAckOnce=false;
             return emitWithAck(event,...eventArgs).then(reply=>{
@@ -45,12 +60,14 @@ try{
     while(Date.now()<deadline){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,30));}
     throw new Error(message);
   }
-  async function forceDisconnectAndResume({dropAck=false}={}){
+  async function forceDisconnectAndResume({dropAck=false,breakAck=false,busyAck=false}={}){
     const socket=game.io.sockets.sockets.get(player.socketId);assert(socket,'student socket should be present');
     const previousSocketId=player.socketId;
     socket.disconnect(true);await student.locator('#reconnect-overlay').waitFor({state:'visible'});
     const button=student.locator('#reconnect-overlay button');
     if(dropAck)await student.evaluate(()=>{window.__dropResumeAckOnce=true;window.__resumeAckDropped=false;window.__resumeReply=null;});
+    if(breakAck)await student.evaluate(mode=>{window.__breakResumeOnce=mode;},breakAck);
+    if(busyAck)await student.evaluate(()=>{window.__busyResumeOnce=true;window.__busyResumeAt=0;window.__busyResumeDelay=0;});
     await button.click();
     if(dropAck){
       await student.waitForFunction(()=>window.__resumeAckDropped===true,null,{timeout:10000});
@@ -66,10 +83,15 @@ try{
   await forceDisconnectAndResume();
   await forceDisconnectAndResume();
   await forceDisconnectAndResume({dropAck:true});
+  await forceDisconnectAndResume({breakAck:'disconnected'});
+  await forceDisconnectAndResume({breakAck:'new-socket'});
+  await forceDisconnectAndResume({breakAck:'new-socket-success'});
+  await forceDisconnectAndResume({busyAck:true});
+  assert.ok(await student.evaluate(()=>window.__busyResumeDelay)>=1000,'busy session recovery backs off before retrying');
   game.store.sessions.delete(player.token);
   const socket=game.io.sockets.sockets.get(player.socketId);assert(socket);socket.disconnect(true);
   await student.locator('#reconnect-overlay').waitFor({state:'visible'});await student.locator('#reconnect-overlay button').click();
   await student.locator('#lobby').waitFor({state:'visible'});await student.locator('#form-message').waitFor();
   assert.match(await student.locator('#form-message').textContent(),/연결 시간이 끝났어요|다시 입장해/,'expired token shows a clear login prompt');
-  assert.deepEqual(errors,[]);console.log('PASS normal state, two server disconnect/manual resume cycles, and expired-token login prompt; JS errors 0');
+  assert.deepEqual(errors,[]);console.log('PASS normal state, manual resume, lost ACK, repeated transport loss, stale ACK after new connection, and expired-token login prompt; JS errors 0');
 }finally{await browser.close();await game.close();}

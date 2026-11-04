@@ -1,12 +1,16 @@
-import {HUNTING_STATIONS,HUNTING_STATION_MS,HUNTING_MAX_MS,isHuntingMap,huntingCycle,huntingResetAt} from '../shared/hunting-time.js';
+import {HUNTING_STATIONS,HUNTING_STATION_MS,isHuntingMap,huntingCycle,huntingResetAt} from '../shared/hunting-time.js';
 import {GameError} from './pin-auth.js';
 export {isHuntingMap};
 export const huntingExempt=p=>p?.role==='teacher'||p?.accountKind==='master';
+// Read the previous 20-minute awards without cutting an already earned balance.
+// New awards use 15 minutes; the five station stamps cap each new cycle at 75.
+// Mixed old/new balances disappear naturally at the existing 22:00 KST reset.
+const LEGACY_STATION_MS=20*60*1000;
 export function validateHuntingTime(raw){
  if(raw===undefined)return {cycle:null,remainingMs:0,chargedStations:[]};
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!(raw.cycle===null||Number.isSafeInteger(raw.cycle)&&raw.cycle>=-1&&raw.cycle<=100000000)||
- !Number.isSafeInteger(raw.remainingMs)||raw.remainingMs<0||raw.remainingMs>HUNTING_MAX_MS||!Array.isArray(raw.chargedStations)||raw.chargedStations.length>5||
- new Set(raw.chargedStations).size!==raw.chargedStations.length||raw.chargedStations.some(s=>!HUNTING_STATIONS.includes(s))||raw.remainingMs>raw.chargedStations.length*HUNTING_STATION_MS||raw.cycle===null&&(raw.remainingMs!==0||raw.chargedStations.length))throw Error('Invalid hunting time record');
+ !Number.isSafeInteger(raw.remainingMs)||raw.remainingMs<0||raw.remainingMs>LEGACY_STATION_MS*HUNTING_STATIONS.length||!Array.isArray(raw.chargedStations)||raw.chargedStations.length>5||
+ new Set(raw.chargedStations).size!==raw.chargedStations.length||raw.chargedStations.some(s=>!HUNTING_STATIONS.includes(s))||raw.remainingMs>raw.chargedStations.length*LEGACY_STATION_MS||raw.cycle===null&&(raw.remainingMs!==0||raw.chargedStations.length))throw Error('Invalid hunting time record');
  return {cycle:raw.cycle,remainingMs:raw.remainingMs,chargedStations:[...raw.chargedStations]};
 }
 const active=p=>!huntingExempt(p)&&p?.role==='student'&&p.connected&&!p.away&&isHuntingMap(p.mapId);
@@ -43,5 +47,5 @@ export function chargeHuntingStation(p,station,now=Date.now()){
  settleHuntingTime(p,now);return HUNTING_STATION_MS;
 }
 export function requireHuntingEntry(p,mapId,now=Date.now()){
- if(isHuntingMap(mapId)&&!huntingExempt(p)&&huntingTimeView(p,now).remainingMs<=0)throw new GameError('사냥 시간이 없어요. 쉼터의 다섯 발전소에서 학습을 마치면 각각 20분을 받을 수 있어요.');
+ if(isHuntingMap(mapId)&&!huntingExempt(p)&&huntingTimeView(p,now).remainingMs<=0)throw new GameError('사냥 시간이 없어요. 쉼터의 다섯 발전소에서 학습을 마치면 각각 15분을 받을 수 있어요.');
 }

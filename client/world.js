@@ -394,7 +394,7 @@ export function createWorld(canvas) {
       // Include the complete roof, sign and glow, even with the foot offscreen.
       // The old loop repainted every station and arcade at the opposite end.
       // 발전소는 캐릭터와 발밑 깊이를 비교해 아래 레이어 단계에서 한 번만 그립니다.
-      if(o.kind?.endsWith('-station')||!streetPropVisible(o))continue;
+      if(o.kind?.endsWith('-station')||o.kind==='star-angel-statue'||!streetPropVisible(o))continue;
       if(drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))continue;
       if(o.kind==='gate'){drawGate(o);continue;}
       if(o.kind==='shop'){drawShop(o);continue;}
@@ -896,7 +896,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='truth-creator-statue').map(o=>({y:o.y+30,draw:()=>drawTruthCreatorStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='star-record-statue').map(o=>({y:o.y+30,draw:()=>drawStarRecordStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
-        ...map.objects.filter(o=>myMapId===STREET_ID&&o.kind?.endsWith('-station')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
+        ...map.objects.filter(o=>myMapId===STREET_ID&&(o.kind?.endsWith('-station')||o.kind==='star-angel-statue')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }

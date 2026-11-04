@@ -1,0 +1,6 @@
+#student-reminders{position:absolute;right:calc(100% + 5px);top:50%;transform:translateY(-50%);pointer-events:auto}
+#student-reminders[hidden],#student-reminders-list[hidden]{display:none!important}
+#student-reminders-toggle{display:grid;place-items:center;width:30px;height:34px;padding:0;border:1px solid #b98125;border-radius:9px;background:#fff2bf;color:#81520a;font-size:22px;line-height:1}
+#student-reminders-list{position:absolute;bottom:calc(100% + 12px);left:0;display:flex;flex-direction:column;gap:6px;width:min(280px,calc(100vw - 90px));padding:10px;background:#fffdf5;border:1px solid #e0c785;border-radius:12px;box-shadow:0 4px 20px #34264433;z-index:20}
+#student-reminders-list button{white-space:normal;text-align:left;font-size:15px;line-height:1.4;padding:10px;border-radius:8px;background:#fff5d4;color:#5a451d}
+body.joined .bottom-dock:has(#student-reminders-list:not([hidden])){z-index:24}

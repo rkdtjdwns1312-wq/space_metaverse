@@ -5,7 +5,7 @@ import {createClassroomServer} from '../server/app.js';
 import {STREET,STREET_ID} from '../shared/config.js';
 import {
   DODGE_RULES,advanceDodgeRuns,cancelDodgeRun,completeDodgeRun,dodgeRanking,
-  setDodgeInput,startDodgeRun,validateDodgeRanking
+  setDodgeInput,startDodgeRun,validateDodgeRanking,pauseDodgeRun,dodgeRunState
 } from '../server/dodge-game.js';
 
 function fixture(id='student-1',role='student'){
@@ -161,8 +161,8 @@ test('ranking keeps this KST week only, orders longest first, caps at ten, and s
   assert.deepEqual(ranking.map(r=>r.rank),[1,2,3,4,5,6,7,8,9,10]);assert.deepEqual(dodgeRanking(b.room),[]);
 });
 
-test('advance cancels runs after leave, disconnect, away, or map change without touching another room',()=>{
-  for(const change of [null,{connected:false},{away:true},{mapId:'star-origin'}]){
+test('advance cancels runs after leave, expiry, away, or map change without touching another room',()=>{
+  for(const change of [null,{connected:false,expiresAt:Date.now()-1},{away:true},{mapId:'star-origin'}]){
     const {room,player}=fixture(),other=fixture('other');startDodgeRun(room,player,0);startDodgeRun(other.room,other.player,0);
     if(change===null)room.players.delete(player.id);else Object.assign(player,change);
     assert.deepEqual(advanceDodgeRuns(room,50),[]);assert.equal(room.dodgeRuns.size,0);assert.equal(other.room.dodgeRuns.size,1);
@@ -195,6 +195,15 @@ test('real socket wiring enforces arcade access, accepts no-ack input, broadcast
     socket.on('dodge:state',listener);
   });
   assert.equal(moved.finished,false);assert.ok(moved.state.elapsedMs<999999999);
+  socket.disconnect();
+  for(let i=0;i<40&&player.connected;i++)await sleep(10);
+  assert.equal(player.connected,false);
+  const paused=room.dodgeRuns.get(player.id),frozen=paused.elapsedMs,stars=structuredClone(paused.stars);
+  await sleep(150);assert.equal(paused.status,'paused');assert.equal(paused.elapsedMs,frozen);assert.deepEqual(paused.stars,stars);
+  socket.connect();await new Promise(resolve=>socket.once('connect',resolve));
+  const resumed=await socketCall(socket,'session:resume',{token:created.token});assert.equal(resumed.ok,true);
+  const resumedRun=await socketCall(socket,'dodge:resume',{runId:started.runId});assert.equal(resumedRun.ok,true);assert.equal(resumedRun.state.runId,started.runId);
+  assert.ok(resumedRun.state.elapsedMs<=frozen+50);
   const run=room.dodgeRuns.get(player.id);run.stars=[{id:'socket-hit',x:run.playerBody.x,y:run.playerBody.y,vx:0,vy:0,radius:10}];
   const finished=await new Promise((resolve,reject)=>{
     const timeout=setTimeout(()=>reject(new Error('dodge finish broadcast timeout')),1500);
@@ -206,4 +215,29 @@ test('real socket wiring enforces arcade access, accepts no-ack input, broadcast
   const second=await socketCall(socket,'dodge:start',{});assert.equal(second.ok,true);player.mapId='star-origin';
   for(let i=0;i<20&&room.dodgeRuns.has(player.id);i++)await sleep(25);
   assert.equal(room.dodgeRuns.has(player.id),false);assert.equal(room.dodgeRanking.length,1);
+});
+
+
+test('disconnect freezes time, stars, difficulty and input; same session resumes without the gap',()=>{
+  const {room,player}=fixture();player.token='same-session';
+  const start=startDodgeRun(room,player,0),run=room.dodgeRuns.get(player.id);
+  setDodgeInput(room,player,{runId:start.runId,x:1,y:0},0);advanceDodgeRuns(room,50);
+  player.connected=false;pauseDodgeRun(room,player,55);
+  const before={elapsedMs:run.elapsedMs,stars:structuredClone(run.stars),body:{...run.playerBody},wave:run.waveIndex};
+  setDodgeInput(room,player,{runId:start.runId,x:1,y:0},5000);
+  assert.deepEqual(advanceDodgeRuns(room,10000),[]);
+  assert.equal(run.status,'paused');assert.equal(run.elapsedMs,before.elapsedMs);
+  assert.deepEqual(run.stars,before.stars);assert.deepEqual(run.playerBody,before.body);assert.equal(run.waveIndex,before.wave);assert.equal(run.input.x,0);
+  player.connected=true;
+  assert.equal(dodgeRunState(room,player,start.runId).status,'paused');
+  const resumed=advanceDodgeRuns(room,11000)[0];assert.equal(resumed.state.runId,start.runId);assert.equal(resumed.state.elapsedMs,before.elapsedMs);
+  advanceDodgeRuns(room,11050);assert.equal(run.elapsedMs,before.elapsedMs+50);assert.deepEqual(run.playerBody,before.body);
+  player.connected=false;pauseDodgeRun(room,player,11051);cancelDodgeRun(room,player,start.runId);assert.equal(room.dodgeRuns.size,0);
+});
+
+test('short disconnect pauses even without an intervening world tick; fresh login cannot inherit a run',()=>{
+  const {room,player}=fixture();player.token='original';startDodgeRun(room,player,0);
+  const run=room.dodgeRuns.get(player.id);advanceDodgeRuns(room,50);pauseDodgeRun(room,player,55);
+  advanceDodgeRuns(room,70);assert.equal(run.elapsedMs,50);
+  player.token='new-login';assert.equal(dodgeRunState(room,player,run.runId),null);advanceDodgeRuns(room,120);assert.equal(room.dodgeRuns.size,0);
 });

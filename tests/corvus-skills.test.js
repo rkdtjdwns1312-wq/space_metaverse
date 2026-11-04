@@ -34,3 +34,37 @@ test('까마귀 지속 타격은 사망·맵변경·접속종료 때 취소하�
  }
  const {room,player}=setup(2);ensureVitals(player).mp=4;assert.throws(()=>castCorvus(room,player,1000),/마나/);assert.equal(ensureVitals(player).mp,4);assert.equal(player.corvusCooldownUntil,undefined);
 });
+
+for(const level of [2,3,4,5])for(const basic of [true,false])test(`까마귀 Lv${level} ${basic?'Q':'E'}는 친구/교사를 통과하고 뒤 몬스터만 타격`,()=>{
+ const {room,player,monster}=setup(level);
+ const others=['student','teacher'].map((role,i)=>({id:role,role,connected:true,mapId:player.mapId,x:540+i*25,y:500,avatar:{level:5,constellationId:'libra'},statGrowth:{bonuses:{hp:1000}}}));
+ for(const p of others)room.players.set(p.id,p);
+ const before=others.map(p=>ensureVitals(p).hp);
+ assert(combatEnemies(room,player).every(t=>t.kind==='monster'));
+ castCorvus(room,player,1000,{basic});
+ const hits=advanceCorvus(room,2300);assert(monster.hp<1000);assert(hits.every(h=>h.playerTargets.length===0));
+ assert.deepEqual(others.map(p=>ensureVitals(p).hp),before);
+ const forced=damageTargets(room,player,others.map(entity=>({kind:'player',entity})),999,2400);
+ assert.deepEqual(forced.playerTargets,[]);assert.deepEqual(others.map(p=>ensureVitals(p).hp),before);
+});
+
+import {createClassroomServer} from '../server/app.js';
+import {io} from 'socket.io-client';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+test('까마귀 실제 소켓 E 연속탄은 친구를 통과해 몬스터만 공격한다',async t=>{
+ let now=Date.now();const game=createClassroomServer({teacherKey:'corvus-peer-only',studentHours:false,clock:()=>now}),sockets=[];
+ const {port}=await game.listen();t.after(async()=>{sockets.forEach(s=>s.disconnect());await game.close();});
+ const connect=async()=>{const s=io(`http://127.0.0.1:${port}`,{transports:['websocket'],reconnection:false});sockets.push(s);await new Promise((r,j)=>{s.once('connect',r);s.once('connect_error',j);});return s;};
+ const call=(s,e,d={})=>s.timeout(3000).emitWithAck(e,d),teacher=await connect(),student=await connect(),friendSocket=await connect();
+ const made=await call(teacher,'room:create',{teacherKey:'corvus-peer-only',allowedNames:['까마귀','친구']});assert.ok(made.ok,made.error);
+ const a=await call(student,'room:join',{code:made.room.code,nickname:'까마귀'}),b=await call(friendSocket,'room:join',{code:made.room.code,nickname:'친구'});assert.ok(a.ok);assert.ok(b.ok);
+ const room=game.store.rooms.get(made.room.code),caster=room.players.get(a.selfId),friend=room.players.get(b.selfId);
+ for(const p of [caster,friend])chargeHuntingStation(p,'math',now);
+ Object.assign(caster,{mapId:'star-origin-1',x:500,y:500,facing:{x:1,y:0},avatar:{level:4,constellationId:'corvus'}});
+ Object.assign(friend,{mapId:caster.mapId,x:580,y:500,avatar:{level:4,constellationId:'aries'}});
+ const monster=[...monstersOf(room,now).values()][0];Object.assign(monster,{x:700,y:500,hp:1000,maxHp:1000,radius:24,stunUntil:now+100000});room.monsters=new Map([[monster.id,monster]]);
+ const hp=ensureVitals(friend).hp,events=[];friendSocket.on('combat:player-hit',e=>events.push(e));
+ const cast=await call(student,'combat:skill',{slot:0,targetId:friend.id});assert.ok(cast.ok,cast.error);now+=2000;
+ const deadline=Date.now()+2000;while(room.projectiles.length&&Date.now()<deadline)await new Promise(r=>setTimeout(r,20));
+ assert.equal(monster.hp,1000-attackPowerOf(4,'corvus',caster)*3*4);assert.equal(ensureVitals(friend).hp,hp);assert.deepEqual(events,[]);
+});

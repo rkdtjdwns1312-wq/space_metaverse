@@ -12,9 +12,9 @@ const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewpor
 import {createDodgeGame} from './client/dodge-game.js';
 const calls={requests:[],inputs:[]};let stateListener=()=>{},rankingListener=()=>{},ranking=[];
 const initial={runId:'browser-run',status:'running',arenaWidth:600,arenaHeight:420,elapsedMs:0,wave:1,waveCount:2,starSpeed:82,maxActiveStars:120,player:{x:300,y:210,radius:14},stars:[{id:'s1',x:10,y:80,vx:82,vy:0,radius:10}]};
-const request=async(event,data)=>{calls.requests.push({event,data});if(event==='dodge:start')return structuredClone(initial);if(event==='dodge:ranking')return {ranking:structuredClone(ranking)};if(event==='dodge:cancel')return {};throw new Error('unexpected '+event)};
+const request=async(event,data)=>{calls.requests.push({event,data});if(event==='dodge:start')return structuredClone(initial);if(event==='dodge:ranking')return {ranking:structuredClone(ranking)};if(event==='dodge:cancel')return {};if(event==='dodge:resume')return {state:{...structuredClone(initial),elapsedMs:5350,player:{x:380,y:210,radius:14}}};throw new Error('unexpected '+event)};
 const game=createDodgeGame({board:document.querySelector('#arcade-board'),request,sendInput:data=>calls.inputs.push({...data,at:performance.now()}),subscribeState:cb=>{stateListener=cb;return()=>{calls.stateUnsubscribed=true}},subscribeRanking:cb=>{rankingListener=cb;return()=>{calls.rankingUnsubscribed=true}},toast:text=>{calls.toast=text}});
-window.fixture={calls,emitState:event=>{if(event.result?.ranking)ranking=structuredClone(event.result.ranking);stateListener(event)},emitRanking:event=>{ranking=structuredClone(event.ranking||[]);rankingListener(event)},destroy:()=>game.destroy()};
+window.fixture={calls,setConnected:value=>game.setConnected(value),emitState:event=>{if(event.result?.ranking)ranking=structuredClone(event.result.ranking);stateListener(event)},emitRanking:event=>{ranking=structuredClone(event.ranking||[]);rankingListener(event)},destroy:()=>game.destroy()};
 document.querySelector('#fixture-close').onclick=()=>game.destroy();
 </script></body></html>`;
 
@@ -69,6 +69,18 @@ try{
   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:center.x+55,y:center.y+5,id:1}]});await page.waitForTimeout(40);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   const touch=await page.evaluate(()=>window.fixture.calls.inputs.slice(-4));assert.ok(touch.some(input=>input.x>.7));assert.equal(touch.at(-1).x,0);assert.equal(touch.at(-1).y,0);check('모바일 터치 드래그 이동과 손 떼기 정지');
+
+  await page.evaluate(()=>window.fixture.setConnected(false));
+  const frozen=await page.locator('#dodge-stopwatch').textContent(),inputs=await page.evaluate(()=>window.fixture.calls.inputs.length);
+  await page.keyboard.down('ArrowRight');await page.waitForTimeout(650);await page.keyboard.up('ArrowRight');
+  assert.equal(await page.locator('#dodge-stopwatch').textContent(),frozen);assert.equal(await page.evaluate(()=>window.fixture.calls.inputs.length),inputs);
+  assert.match(await page.locator('#dodge-status').textContent(),/연결이 끊겨/);
+  await page.evaluate(()=>window.fixture.setConnected(true));
+  await page.waitForFunction(()=>window.fixture.calls.requests.some(c=>c.event==='dodge:resume'));
+  await page.keyboard.down('ArrowRight');await page.keyboard.up('ArrowRight');
+  assert.ok(await page.evaluate(()=>window.fixture.calls.inputs.length)>inputs);
+  await page.waitForTimeout(650);const stale=await page.locator('#dodge-stopwatch').textContent();await page.waitForTimeout(200);assert.equal(await page.locator('#dodge-stopwatch').textContent(),stale);
+  check('연결 끊김 시간·입력 정지, 같은 경기 재개, 패킷 중단 타이머 정지');
 
   const pending={runId:'browser-run',status:'pending',arenaWidth:600,arenaHeight:420,elapsedMs:12345,wave:3,waveCount:4,starSpeed:96,maxActiveStars:120,player:{x:330,y:210,radius:14},stars:[{id:'hit',x:330,y:210,vx:96,vy:0,radius:10}]};
   await page.evaluate(state=>window.fixture.emitState({state,finished:true,error:'저장하지 못했어요. 다시 시도할게요.'}),pending);

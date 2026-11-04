@@ -1,6 +1,8 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 // 그림 안에 글씨를 굽지 않고 공통 게임 글꼴로 간판을 얹습니다.
 export const PAINTED_PROPS=Object.freeze({
+  'art-station':{file:'art-station-front.webp',width:330,height:330,foot:80,signY:.51,signInk:'#79546e'},
+  'star-angel-statue':{file:'star-angel-statue.webp',width:240,height:300,foot:45},
   shop:{file:'star-shop-front.png',width:300,height:300,foot:70,signY:.35,signWidth:.34},
   'energy-shop':{file:'energy-shop-front.png',width:290,height:310,foot:75,signY:.455,signWidth:.34},
   crafting:{file:'crafting-front.png',width:245,height:280,foot:70,signY:.59,signWidth:.34},

@@ -1,5 +1,10 @@
+import {socketRateMiddleware} from './socket-rate-limit.js';
+import {INTERACTION_SAVE_ACTIONS} from './interaction-save-scope.js';
+import {reminderTarget} from './student-reminders.js';
 import {worldBroadcastFrame} from './world-broadcast.js';
 import {registerStarlightArchive} from './starlight-archive.js';
+import {registerArtStudio} from './art-studio.js';
+import {createConnectionHealth} from './connection-health.js';
 import {captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
@@ -96,7 +101,7 @@ import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
 import {starRanking} from './star-game.js';
-import {startDodgeRun,setDodgeInput,cancelDodgeRun,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
+import {startDodgeRun,setDodgeInput,cancelDodgeRun,pauseDodgeRun,dodgeRunState,advanceDodgeRuns,completeDodgeRun,dodgeRanking} from './dodge-game.js';
 import {currentWeekRecords,resetWeeklyRanking} from './weekly-ranking.js';
 import {memoryRanking,startMemoryRun,cancelMemoryRun,flipMemoryCard} from './memory-game.js';
 import {evolutionInfo,changeConstellation,evolveConstellation,selectTeacherEvolution,growthInfo,buyExperience} from './evolution.js';
@@ -200,6 +205,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
   configuredAdminPassword(adminPassword);
   const app=express(), http=createServer(app), store=dataDir?new PersistentRoomStore(dataDir,{unattended,teacherManagedAccounts,maxActiveRooms,clock}):new RoomStore({maxActiveRooms,clock});
   const persistent=!!dataDir;
+  const connectionHealth=createConnectionHealth({enabled:persistent});
   const studentOpen=()=>!studentHours||studentAccessOpen(clock());
   // 브라우저의 미리 연결(preconnect)은 HTTP 요청 없이도 남을 수 있습니다.
   // 서버 종료 때 이 연결까지 닫아야 http.close()가 무기한 기다리지 않습니다.
@@ -355,21 +361,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
     }else {
       Object.assign(s.player,{connected:false,expiresAt:Date.now()+reconnectMs,input:{x:0,y:0,at:0}});
+      pauseDodgeRun(s.room,s.player);
       settleHuntingTime(s.player,clock());
       roster(s.room);
     }
   };
   io.on('connection',socket=>{
+    connectionHealth.connected();
     if(io.engine.clientsCount>400){socket.disconnect(true);return;}
-    let rate={at:Date.now(),count:0};
-    socket.use((_packet,next)=>{
-      const now=Date.now();if(now-rate.at>1000)rate={at:now,count:0};
-      if(++rate.count>80){socket.disconnect(true);return;}
-      next();
-    });
+    socket.use(socketRateMiddleware(socket));
     // Only audited, single-classroom mutations opt into a scoped save. Account
     // lifecycle, administration and newly added actions retain the full guard.
-    const scopedActions=new Set(['chat:send','combat:attack','combat:skill','combat:transform',
+    const scopedActions=new Set([...INTERACTION_SAVE_ACTIONS,'chat:send','combat:attack','combat:skill','combat:transform',
+      'art:save','art:delete',
       'equipment:equip','equipment:unequip','energy:collect','party:roll',
       'shop:buy','shop:sell','shop:energy:buy','crafting:combine','item:use',
       'trade:propose','trade:respond','trade:offer','trade:confirm','trade:cancel',
@@ -377,6 +381,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       'map:travel','map:fast-travel','learning:english:answer','learning:math:answer']);
     const action=(name,handler,save=true)=>socket.on(name,(data,ack)=>{
       if(typeof ack!=='function')return;
+      const actionStarted=performance.now();let actionFailed=false;
       try {
         ensure(data && typeof data==='object' && !Array.isArray(data),'입력 내용을 확인해주세요.');
         const scope=scopedActions.has(name)?socket.data.session?.room:undefined;
@@ -427,7 +432,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             if(before&&before.mapId!==p.mapId&&isHuntingMap(p.mapId)&&!huntingExempt(p)&&huntingTimeView(p,clock()).remainingMs<=0)returnHuntingPlayer(current.room,p,clock());
             settleHuntingTime(p,clock());
             if(before&&p.huntingTime.chargedStations.length>before.charged){
-              deliver(()=>io.to(p.socketId).emit('item:notice',{text:'발전소 학습 완료! 오늘의 사냥 시간 20분을 받았어요.'}));
+              deliver(()=>io.to(p.socketId).emit('item:notice',{text:'발전소 학습 완료! 오늘의 사냥 시간 15분을 받았어요.'}));
               deliver(()=>io.to(p.socketId).emit('hunting:state',huntingTimeView(p,clock())));
             }
           }
@@ -437,9 +442,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           return result;
         })});
       }catch(error){
+        actionFailed=true;
         if(!(error instanceof GameError)) console.error('Action failed:',name,error.message);
         ack({ok:false,error:error instanceof GameError?error.message:'처리하지 못했어요. 다시 시도해주세요.'});
-      }
+      }finally{connectionHealth.action(name,performance.now()-actionStarted,actionFailed);}
     });
     // 일시적인 타격 표시는 디스크에 저장하지 않습니다. 좌표·방향·공격력은 서버만 결정합니다.
     registerDuelArcade({socket,action,duel:duelArcade});
@@ -448,6 +454,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     registerScienceLibrary({socket,action,store,roster,clock});
     registerCozyActivities({socket,action,store,roster,clock});
     registerStarlightArchive({socket,action,store,clock});
+    registerArtStudio({socket,action,store,clock});
     action('dark-star:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonDarkStar(session.room,session.player,clock());
@@ -1455,7 +1462,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     action('map:fast-travel',data=>{
       const s=socket.data.session;ensure(s?.player.connected&&!s.player.away,'먼저 교실에 입장해주세요.');
-      const {room,player:p}=s,to=data.to;
+      const {room,player:p}=s;
+      const reminder=data.reminder===undefined?null:reminderTarget(room,p,data.reminder,clock());
+      if(data.reminder!==undefined)ensure(reminder,'이미 완료했거나 사용할 수 없는 알림이에요.');
+      const to=reminder?.mapId??data.to;
       requireTruthCreatorEntry(p,to);
       requireHuntingEntry(p,to,clock());
       ensure(typeof to==='string'&&to!==WHALE_STOMACH_ID,'그곳으로 바로 이동할 수 없어요.');
@@ -1466,7 +1476,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(planet)ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,planet.name+' 소속 친구만 들어갈 수 있어요.');
       const map=mapOf(to,room.planets.values());
       if(map.minLevel)ensure(p.role==='teacher'||p.avatar.level>=map.minLevel,'이곳에 들어가기 위한 레벨이 부족해요.');
-      Object.assign(p,spawnInside(room,to,p),{mapId:to,input:{x:0,y:0,at:0}});
+      const facility=reminder&&map.objects.find(o=>o.id===reminder.objectId);
+      const arrival=facility?arrivePosition(room,to,{x:facility.x,y:facility.y+facility.radius+32},p):spawnInside(room,to,p);
+      if(facility)ensure(isNear(arrival,facility),'시설 근처에 빈자리가 없어요. 잠시 뒤 다시 시도해주세요.');
+      Object.assign(p,arrival,{mapId:to,input:{x:0,y:0,at:0}});
       advanceMissions(room,p,'map-travel',undefined,clock());roster(room);return {mapId:to};
     });
     action('map:travel',data=>{
@@ -1793,6 +1806,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       });
     }
     action('dodge:start',()=>{const s=dodgeAccess();return startDodgeRun(s.room,s.player);});
+    action('dodge:resume',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');return {state:dodgeRunState(s.room,s.player,data.runId)};},false);
     action('dodge:cancel',data=>{const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');cancelDodgeRun(s.room,s.player,data.runId);return {};});
     // 방향 입력에는 디스크 저장이 필요 없습니다. 점수와 충돌 판정은 서버가 계산합니다.
     socket.on('dodge:input',data=>{
@@ -2467,7 +2481,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       // 방향 패턴은 키 입력 자체가 아니라 아래 월드 틱의 실제 이동량으로 판정합니다.
       if(data.x===0&&data.y===0)recordStarRecordMovement(socket.data.session.room,p,0,0,clock());
     });
-    socket.on('disconnect',()=>{
+    socket.on('disconnect',reason=>{
+      connectionHealth.disconnected(reason);
       try{transaction(()=>detach(socket,false));}
       catch(error){const p=socket.data.session?.player;if(p){clearBossMapHazard(socket.data.session.room,p.id);p.herculesSlam=null;settleHuntingTime(p,clock());p.connected=false;if(p.huntingTimer)p.huntingTimer.running=false;}console.error('접속 종료 시간 저장 실패:',error.message);}
     });
@@ -2834,6 +2849,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       http.once('error',reject);http.listen(port,host,()=>{http.off('error',reject);resolve(http.address());});
     }),
     close:async()=>{
+      connectionHealth.stop();
       clearInterval(timer);
       duelArcade.dispose();
       let saveError;

@@ -1,3 +1,4 @@
+import {GameError} from './pin-auth.js';
 import {ensureVitals} from './vitals.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
 import {STATIC_MAPS} from '../shared/config.js';
@@ -33,10 +34,10 @@ export function tryStarRecordMath(room,boss,now=Date.now(),random=Math.random){
 export function answerStarRecordMath(room,player,starId,operator,now=Date.now()){
   const boss=room.monsters?.get('star-record-boss'),math=boss?.recordMath;
   if(!math||now>=math.endsAt||boss.hp<=0||player.mapId!==boss.mapId||!player.connected||player.away||ensureVitals(player)?.hp<=0)
-    throw new Error('지금은 숫자 별을 풀 수 없어요.');
+    throw new GameError('지금은 숫자 별을 풀 수 없어요.');
   const star=math.stars.find(item=>item.id===starId&&!item.solved);
-  if(!star||Math.hypot(player.x-star.x,player.y-star.y)>STAR_RECORD_MATH.reach)throw new Error('숫자 별 가까이에서 다시 시도해 주세요.');
-  if(!operators.includes(operator))throw new Error('연산 기호를 선택해 주세요.');
+  if(!star||Math.hypot(player.x-star.x,player.y-star.y)>STAR_RECORD_MATH.reach)throw new GameError('숫자 별 가까이에서 다시 시도해 주세요.');
+  if(!operators.includes(operator))throw new GameError('연산 기호를 선택해 주세요.');
   if(!solves(star,operator)){
     const hit=defeatRecordPlayer(room,player,now);
     return {correct:false,hit:{monsterId:boss.id,mapId:boss.mapId,x:player.x,y:player.y,skillKind:'star-record-math-wrong',targetId:player.id,...hit}};

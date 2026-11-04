@@ -32,7 +32,10 @@ export function createArcadeUI({
   const restartButton=document.createElement('button');restartButton.id='arcade-restart';restartButton.type='button';restartButton.textContent='다시하기';
   dialog.append(header,instructions,score,board,restartButton,footer);document.body.append(dialog);
 
-  let current=null,activeGame=null;
+  let current=null,activeGame=null,connected=true;
+  const cancelledDodgeRuns=new Set();
+  const flushDodgeCancels=()=>{if(connected)for(const runId of cancelledDodgeRuns)request('dodge:cancel',{runId}).then(()=>cancelledDodgeRuns.delete(runId)).catch(()=>{});};
+  const cancelDodgeRun=runId=>{cancelledDodgeRuns.add(runId);flushDodgeCancels();};
   let lastOutcome='';
   const setScore=text=>{
     score.textContent=text;
@@ -46,7 +49,7 @@ export function createArcadeUI({
     baseball:()=>createBaseballGame({board,setScore,toast,request}),
     tetris:()=>createTetrisGame({board,setScore,request,subscribeRanking:subscribeTetrisRanking,toast,footer:rankingActions}),
     sudoku:()=>createSudokuGame({board,request,toast}),
-    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,toast,footer:rankingActions}),
+    dodge:()=>createDodgeGame({board,request,sendInput:sendDodgeInput,subscribeState:subscribeDodgeState,subscribeRanking:subscribeDodgeRanking,cancelRun:cancelDodgeRun,connected,toast,footer:rankingActions}),
     path:()=>createStarPathGame({board,setScore,request,toast}),
     signal:()=>createSpaceSignalGame({board,setScore,request,footer:rankingActions,subscribeRanking:subscribeSignalRanking,toast,onCue:index=>onSound('signal','cue',index)})
   };
@@ -64,5 +67,9 @@ export function createArcadeUI({
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
   dialog.addEventListener('close',cleanup);
 
-  return {open(gameId){if(!GAMES[gameId])return;stop();cleanup();current=gameId;onSound(current,'start');render(gameId);if(!dialog.open)dialog.showModal();}};
+  return {
+    setConnected(value){connected=!!value;flushDodgeCancels();activeGame?.setConnected?.(connected);},
+    reset(){connected=false;close();cancelledDodgeRuns.clear();},
+    open(gameId){if(!GAMES[gameId])return;stop();cleanup();current=gameId;onSound(current,'start');render(gameId);if(!dialog.open)dialog.showModal();}
+  };
 }

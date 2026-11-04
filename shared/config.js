@@ -93,6 +93,8 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     {id:'history-station',name:'별 역사 발전소',x:430,y:390,radius:86,kind:'history-station'},
     {id:'science-station',name:'별 과학 발전소',x:820,y:280,radius:86,kind:'science-station'},
     {id:'culture-station',name:'별 교양 발전소',x:1370,y:390,radius:86,kind:'culture-station'},
+    {id:'art-station',name:'별 예술 발전소',x:1200,y:850,radius:86,kind:'art-station'},
+    {id:'star-angel-statue',name:'아기별 천사 석상',x:900,y:650,radius:70,collisionRx:70,collisionRy:45,kind:'star-angel-statue'},
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['tetris','별 테트리스','#ffdfd5'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],

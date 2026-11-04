@@ -1,3 +1,4 @@
+import {GameError} from './pin-auth.js';
 import {interactionDistance,interactionReach} from '../shared/config.js';
 import {SPIRIT_BLUE_STAR} from '../shared/boss-skills.js';
 import {constellationOf} from '../shared/constellations.js';
@@ -87,11 +88,11 @@ export function spiritBlueStarViews(room,mapId,now){
 
 export function disarmSpiritBlueStar(room,player,starId,now=Date.now()){
   const stars=room.spiritBlueStars||[],index=stars.findIndex(star=>star.id===starId);
-  if(index<0)throw new Error('해체할 별이 이미 사라졌어요.');
+  if(index<0)throw new GameError('해체할 별이 이미 사라졌어요.');
   const star=stars[index],boss=room.monsters?.get(star.bossId);
   if(!player?.connected||player.away||player.avatar?.blackStar||ensureVitals(player)?.hp<=0||player.mapId!==star.mapId||
     !boss||boss.hp<=0||boss.mapId!==star.mapId||now>=star.endsAt||
-    interactionDistance(player,star)>interactionReach(star))throw new Error('푸른 별 가까이에서 해체해 주세요.');
+    interactionDistance(player,star)>interactionReach(star))throw new GameError('푸른 별 가까이에서 해체해 주세요.');
   stars.splice(index,1);
   return {message:'푸른 별을 해체했어요.'};
 }

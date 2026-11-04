@@ -9,10 +9,10 @@ const plain={'ㄲ':'ㄱ','ㄸ':'ㄷ','ㅃ':'ㅂ','ㅆ':'ㅅ','ㅉ':'ㅈ'};
 export function storyInitial(title){const n=title.trim().charCodeAt(0)-0xac00;if(n<0||n>=11172)return '';const letter=INITIALS[Math.floor(n/588)];return plain[letter]||letter;}
 const node=(tag,className,text)=>{const element=document.createElement(tag);if(className)element.className=className;if(text)element.textContent=text;return element;};
 function historyText(element,text,id){element.replaceChildren(...historyTextParts(text,id).map(part=>part.key?node('strong','history-keyword',part.text):document.createTextNode(part.text)));return element;}
-export function createCultureLibrary({request,stop,getSelf}){
- return createReadingLibrary({request,stop,getSelf,stories:CULTURE_STORIES});
+export function createCultureLibrary({request,stop,getSelf,onWriteReading}){
+ return createReadingLibrary({request,stop,getSelf,onWriteReading,stories:CULTURE_STORIES});
 }
-export function createReadingLibrary({request,stop,getSelf,stories,chapters=null,namespace='culture',titleText='별 교양 발전소'}){
+export function createReadingLibrary({request,stop,getSelf,stories,onWriteReading,chapters=null,namespace='culture',titleText='별 교양 발전소'}){
  const history=namespace==='history',unit=history?'편':'권',item=history?'글':'책';
  const dialog=node('dialog',`culture-library${history?' history-library':''}`);dialog.id=`${namespace}-library-dialog`;dialog.setAttribute('aria-labelledby',`${namespace}-library-title`);
  const header=node('header','culture-header'),title=node('h2','',titleText);title.id=`${namespace}-library-title`;
@@ -23,7 +23,7 @@ export function createReadingLibrary({request,stop,getSelf,stories,chapters=null
  if(chapters){intro.hidden=true;tabs.classList.add('history-chapter-tabs');}
  const reader=node('section','culture-reader'),back=node('button','secondary culture-back',history?'제목 목록':'책 목록'),paper=node('article','culture-paper'),category=node('p','culture-category'),bookTitle=node('h3','culture-book-title'),paragraphs=node('div','culture-paragraphs'),lesson=node('p','culture-lesson'),source=node('details','culture-source'),sourceTitle=node('summary','',history?'참고한 역사 자료':'이야기의 바탕'),sourceInfo=node('p'),sourceLink=node('a');
  sourceLink.target='_blank';sourceLink.rel='noopener noreferrer';source.append(sourceTitle,sourceInfo,sourceLink);paper.append(category,bookTitle,paragraphs,lesson,source);
- const footer=node('footer','culture-reader-footer'),reward=node('p','culture-reward'),recommend=node('button','secondary culture-recommend','추천해요'),done=node('button','secondary culture-done','다 읽음');done.type='button';back.type='button';recommend.type='button';footer.append(reward,...(history?[]:[recommend]),done);reader.append(back,paper,footer);reader.hidden=true;
+ const footer=node('footer','culture-reader-footer'),reward=node('p','culture-reward'),recommend=node('button','secondary culture-recommend','추천해요'),done=node('button','secondary culture-done','다 읽음');done.type='button';back.type='button';recommend.type='button';const writeReading=node('button','secondary culture-write-reading','독서록 쓰기');writeReading.type='button';writeReading.onclick=()=>{if(!busy&&selected&&getSelf()?.role!=='teacher')onWriteReading?.(selected);};footer.append(reward,...(history?[]:[writeReading,recommend]),done);reader.append(back,paper,footer);reader.hidden=true;
  dialog.append(header,progress,notice,catalog,reader);document.body.append(dialog);
  let status=null,selected=null,letter=chapters?.[0].id??'전체',generation=0,busy=false,recommendedSort=false;
  const dailyRefresh=createReadingRefresh({dialog,refresh:async()=>{
@@ -35,7 +35,7 @@ export function createReadingLibrary({request,stop,getSelf,stories,chapters=null
  }});
  const books=chapters?[...stories]:[...stories].sort((a,b)=>a.title.localeCompare(b.title,'ko'));
  function renderStatus(){
-  const teacher=getSelf()?.role==='teacher';
+  const teacher=getSelf()?.role==='teacher';writeReading.hidden=teacher||!onWriteReading;writeReading.disabled=busy||!selected;
   progress.textContent=teacher?'선생님은 모든 글을 자유롭게 살펴볼 수 있어요.':`오늘의 ${history?'역사 읽기':'독서'} 보상 ${status?.count??0} / ${status?.limit??10}${unit} · 한 ${unit}당 우주에너지 ${status?.reward??stationReward(getSelf()?.avatar?.level??1)}개`;
   if(!selected)return;
   const already=status?.claimedIds?.includes(selected.id),full=(status?.count??0)>=(status?.limit??10);
