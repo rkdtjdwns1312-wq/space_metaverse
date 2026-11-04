@@ -30,7 +30,7 @@ try{
  await title.fill('수정한 작품');await page.locator('[data-art=canvas]').click({position:{x:100,y:100}});
  await save.click();await page.locator('[data-art=status]').filter({hasText:'그 뒤에 고친 그림은 그대로'}).waitFor();
  assert.equal(await title.inputValue(),'수정한 작품');
- assert.match(await page.locator('[data-art=capacity]').textContent(),/^1 \/ 100/);
+ assert.equal(await page.locator('[data-art=capacity]').textContent(),'아직 저장하지 않았어요');
  assert.equal(await page.evaluate(()=>window.savedRetryArt.drawing.strokes.length),0);
  await save.click();await page.locator('[data-art=status]').filter({hasText:'작품을 저장했어요.'}).waitFor();
  const stored=await page.evaluate(()=>window.savedRetryArt);

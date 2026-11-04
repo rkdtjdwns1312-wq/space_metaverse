@@ -25,7 +25,7 @@ test('art save/delete roll back on disk failure; duplicate requests, revisions, 
  await f.fail(async()=>assert.equal((await call(f.student,'art:delete',{id:w.id,revision:2})).ok,false));assert.equal(f.p.artStudio.length,1);
  for(let n=1;n<10;n++)ok(await call(f.student,'art:save',draft(n)));assert.equal((await call(f.student,'art:save',draft(10))).ok,false);
  ok(await call(f.student,'art:delete',{id:w.id,revision:2}));assert.equal(f.p.artStudio.length,9);
- const large=draft(10);large.drawing.strokes=Array.from({length:100},()=>({tool:'brush',color:'#123456',width:40,points:Array.from({length:60},()=>[600,400])}));assert(Buffer.byteLength(JSON.stringify(large))>32768);ok(await call(f.student,'art:save',large));assert.equal(f.p.artStudio.length,10);
- const saved=structuredClone(f.p.artStudio);await f.restart();at(f);assert.deepEqual(f.p.artStudio,saved);assert.equal(ok(await call(f.student,'art:list')).total,10);
+ const large=draft(10);large.drawing.strokes=Array.from({length:200},()=>({tool:'brush',color:'#123456',width:40,points:Array.from({length:30},()=>[600,400])}));assert(Buffer.byteLength(JSON.stringify(large))>32768);ok(await call(f.student,'art:save',large));assert.equal(f.p.artStudio.length,10);
+ const saved=structuredClone(f.p.artStudio);await f.restart();at(f);assert.deepEqual(f.p.artStudio,saved);assert.equal(ok(await call(f.student,'art:list')).total,10);assert.equal(ok(await call(f.student,'art:get',{id:saved.at(-1).id})).work.drawing.strokes.length,200);
  const record=toRecord(f.room),student=record.students.find(p=>p.id===f.p.id);delete student.artStudio;assert.deepEqual(fromRecord(record).players.get(f.p.id).artStudio,[]);student.artStudio=[{}];assert.throws(()=>fromRecord(record));
 });

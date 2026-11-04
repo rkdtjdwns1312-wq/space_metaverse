@@ -1,4 +1,4 @@
-import {ART_LIMITS as L,ART_TEACHER_OWNER,blankArtDrawing,normalizeArtDrawing,paintArtDrawing} from '/shared/art-studio.js';
+import {ART_LIMITS as L,ART_TEACHER_OWNER,ART_SHAPE_TOOLS,artDrawingPointCount,createArtFill,blankArtDrawing,normalizeArtDrawing,paintArtDrawing} from '/shared/art-studio.js';
 
 export function createArtStudioUI({request,stop,getPlayer,toast}){
  const dialog=document.createElement('dialog');dialog.id='art-studio-dialog';dialog.setAttribute('aria-labelledby','art-studio-title');
@@ -7,7 +7,7 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
  <nav data-art="menu" class="art-studio-entry-menu" aria-label="예술 발전소 활동 선택"><button type="button" data-art-tab="friends"><strong>친구 작품 보기</strong><span>같은 교실의 작품을 감상해요</span></button><button type="button" data-art-tab="mine"><strong>작품 직접 만들기</strong><span>그림을 그리고 내 작품을 보관해요</span></button></nav><div data-art="workspace" hidden><button type="button" data-art="back" class="secondary art-studio-back">← 처음으로</button>
  <div class="art-studio-layout"><aside class="art-studio-gallery"><label data-art="friend-label" hidden>친구 고르기<select data-art="friend"></select></label><h3 data-art="gallery-title">내 작품</h3><button type="button" data-art="new" class="secondary">＋ 새 그림 그리기</button><div data-art="list" class="art-studio-list"></div></aside>
  <section class="art-studio-editor" aria-label="그림판"><label class="art-studio-title-field">작품 제목<input data-art="title" maxlength="40" placeholder="그림에 이름을 붙여주세요" autocomplete="off"></label>
- <div data-art="tools" class="art-studio-tools"><div role="group" aria-label="그리기 도구"><button type="button" data-art-tool="brush" aria-pressed="true">붓</button><button type="button" data-art-tool="eraser" aria-pressed="false">지우개</button></div><label>색상<input type="color" data-art="color" value="#7258a3"></label><label>굵기<input type="range" data-art="width" min="1" max="40" value="8"><output data-art="width-label">8</output></label><button type="button" data-art="undo">되돌리기</button><button type="button" data-art="clear">모두 지우기</button></div>
+ <div data-art="tools" class="art-studio-tools"><div role="group" aria-label="그리기 도구"><button type="button" data-art-tool="brush" aria-pressed="true">붓</button><button type="button" data-art-tool="eraser" aria-pressed="false">지우개</button><button type="button" data-art-tool="fill" aria-pressed="false">🪣 페인트통</button></div><div role="group" aria-label="도형 넣기"><button type="button" data-art-tool="rectangle" aria-pressed="false">□ 네모</button><button type="button" data-art-tool="ellipse" aria-pressed="false">○ 원</button><button type="button" data-art-tool="triangle" aria-pressed="false">△ 삼각형</button><button type="button" data-art-tool="star" aria-pressed="false">☆ 별</button></div><label>색상<input type="color" data-art="color" value="#7258a3"></label><label>굵기<input type="range" data-art="width" min="1" max="40" value="8"><output data-art="width-label">8</output></label><button type="button" data-art="undo">되돌리기</button><button type="button" data-art="clear">모두 지우기</button></div><p data-art="tool-hint" class="art-studio-capacity"></p>
  <p data-art="view-note" class="art-studio-view-note" hidden>친구의 작품을 감상하고 있어요.</p><canvas width="600" height="400" data-art="canvas" aria-label="600×400 그림판"></canvas><p data-art="capacity" class="art-studio-capacity"></p>
  <div class="art-studio-actions"><button type="button" data-art="save" class="primary">새 작품 저장</button><button type="button" data-art="delete" class="secondary" hidden>작품 삭제</button><button type="button" data-art="download" class="secondary">PNG 내려받기</button></div></section></div></div><p data-art="status" class="art-studio-status" role="status" aria-live="polite"></p>`;
  document.body.append(dialog);const $=name=>dialog.querySelector(`[data-art="${name}"]`),canvas=$('canvas'),ctx=canvas.getContext('2d');
@@ -25,9 +25,10 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
   const edit=editable();$('menu').hidden=tab!==null;$('workspace').hidden=tab===null;$('tools').hidden=!edit;$('new').hidden=!edit;$('save').hidden=!edit;$('delete').hidden=!edit||!work;$('title').readOnly=!edit;$('view-note').hidden=edit;
   $('view-note').textContent=work?'감상 중인 작품이에요. PNG로 내려받아 간직할 수 있어요.':'작품 주인을 고르고 제목을 눌러 감상해보세요.';
   canvas.classList.toggle('readonly',!edit);$('save').textContent=work?'수정한 작품 저장':'새 작품 저장';
+  $('tool-hint').hidden=!edit;$('tool-hint').textContent=tool==='fill'?'색을 고르고 눌러요. 같은 색으로 이어진 영역을 한 번에 칠해요.':ART_SHAPE_TOOLS.includes(tool)?'그림판을 눌러 도형을 넣거나, 끌어서 크기를 정해요.':'그림판에 마우스나 손가락으로 자유롭게 그려요.';
   for(const input of dialog.querySelectorAll('button,input,select'))input.disabled=busy;
   $('save').disabled=busy||!edit||(!work&&list.length>=L.works);$('delete').disabled=busy||!work;$('undo').disabled=busy||!history.length;$('clear').disabled=busy||!drawing.strokes.length;$('download').disabled=busy||(!edit&&!work);
-  $('capacity').textContent=edit?`${drawing.strokes.length} / ${L.strokes}번의 붓질 · ${dirty?'아직 저장하지 않았어요':'저장한 그림을 불러오거나 새로 그려보세요'}`:'';
+  $('capacity').textContent=edit?(dirty?'아직 저장하지 않았어요':'저장한 그림을 불러오거나 새로 그려보세요'):'';
   for(const button of dialog.querySelectorAll('[data-art-tool]'))button.setAttribute('aria-pressed',String(button.dataset.artTool===tool));
  }
  function gallery(){
@@ -51,10 +52,26 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
  function remember(){history.push(JSON.stringify(drawing));if(history.length>30)history.shift();}
  function commit(next){const valid=normalizeArtDrawing(next);if(!valid){message('그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.');paint();return;}remember();drawing=valid;dirty=true;controls();paint();}
  const point=e=>{const b=canvas.getBoundingClientRect();return [Math.max(0,Math.min(600,Math.round((e.clientX-b.left)/b.width*600))),Math.max(0,Math.min(400,Math.round((e.clientY-b.top)/b.height*400)))];};
- function move(e){const p=point(e),last=stroke.points.at(-1);if(p[0]===last[0]&&p[1]===last[1])return;if(stroke.points.length<pointBudget)stroke.points.push(p);else message('긴 선은 여기까지 그려져요. 손을 떼고 새 선을 그려주세요.');paint();}
- canvas.addEventListener('pointerdown',e=>{if(busy||!editable()||pointerId!==null||e.button!==0)return;pointBudget=Math.min(L.strokePoints,L.points-drawing.strokes.reduce((sum,s)=>sum+s.points.length,0));if(drawing.strokes.length>=L.strokes||pointBudget<=0){message('그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.');return;}e.preventDefault();pointerId=e.pointerId;stroke={tool,color:$('color').value,width:Number($('width').value),points:[point(e)]};canvas.setPointerCapture(pointerId);message('');paint();});
+ function move(e){const p=point(e),last=stroke.points.at(-1);if(p[0]===last[0]&&p[1]===last[1])return;if(ART_SHAPE_TOOLS.includes(stroke.tool))stroke.points[1]=p;else if(stroke.points.length<pointBudget)stroke.points.push(p);else message('긴 선은 여기까지 그려져요. 손을 떼고 새 선을 그려주세요.');paint();}
+ canvas.addEventListener('pointerdown',e=>{
+  if(busy||!editable()||pointerId!==null||e.button!==0)return;
+  pointBudget=Math.min(L.strokePoints,L.points-artDrawingPointCount(drawing));
+  if(pointBudget<(ART_SHAPE_TOOLS.includes(tool)?2:1)){message('그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.');return;}
+  e.preventDefault();message('');const p=point(e);
+  if(tool==='fill'){
+   if(paintFrame!==null){cancelAnimationFrame(paintFrame);paintFrame=null;}renderPaint();
+   try{
+    const filled=createArtFill(ctx.getImageData(0,0,L.width,L.height),Math.min(L.width-1,p[0]),Math.min(L.height-1,p[1]),$('color').value,{maxSpans:L.points-artDrawingPointCount(drawing)});
+    if(filled)commit({...drawing,strokes:[...drawing.strokes,filled]});else message('이미 같은 색으로 칠해져 있어요.');
+   }catch(error){message(error instanceof RangeError?'그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.':'이 영역을 채우지 못했어요. 다른 곳을 눌러주세요.');}
+   return;
+  }
+  pointerId=e.pointerId;stroke={tool,color:$('color').value,width:Number($('width').value),points:ART_SHAPE_TOOLS.includes(tool)?[p,[...p]]:[p]};canvas.setPointerCapture(pointerId);paint();
+ });
  canvas.addEventListener('pointermove',e=>{if(e.pointerId===pointerId&&stroke)move(e);});
- canvas.addEventListener('pointerup',e=>{if(e.pointerId!==pointerId||!stroke)return;move(e);const next=stroke;stroke=null;pointerId=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);commit({...drawing,strokes:[...drawing.strokes,next]});});
+ canvas.addEventListener('pointerup',e=>{if(e.pointerId!==pointerId||!stroke)return;move(e);const next=stroke;
+  if(ART_SHAPE_TOOLS.includes(next.tool)&&Math.abs(next.points[1][0]-next.points[0][0])<2&&Math.abs(next.points[1][1]-next.points[0][1])<2){const [x,y]=next.points[0].map((v,i)=>Math.min(v,(i?L.height:L.width)-80));next.points=[[x,y],[x+80,y+80]];}
+  stroke=null;pointerId=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);commit({...drawing,strokes:[...drawing.strokes,next]});});
  canvas.addEventListener('pointercancel',e=>{if(e.pointerId===pointerId)cancelStroke();});canvas.addEventListener('lostpointercapture',()=>{if(stroke)cancelStroke();});
  $('title').oninput=()=>{if(editable()){dirty=true;controls();}};$('width').oninput=()=>{$('width-label').value=$('width').value;};
  for(const b of dialog.querySelectorAll('[data-art-tool]'))b.onclick=()=>{tool=b.dataset.artTool;controls();};

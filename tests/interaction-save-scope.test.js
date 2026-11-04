@@ -6,8 +6,15 @@ import {INTERACTION_SAVE_ACTIONS} from '../server/interaction-save-scope.js';
 test('audited interaction reads save only their classroom while retaining journey persistence',async t=>{
  const f=await readingFixture(t),store=f.game.store;
  const foreign=store.transact(()=>store.create({title:'다른 교실',allowedNames:['셋']},'foreign')).room;
- foreign.liveOnlyCallback=()=>{};
- const trans=store.transact.bind(store),scopes=[];store.transact=(work,scope)=>{scopes.push(scope);return trans(work,scope);};
+ const trans=store.transact.bind(store),scopes=[];
+ store.transact=(work,scope)=>{
+  scopes.push(scope);
+  // Keep the uncloneable probe inside the synchronous scoped transaction;
+  // ordinary background global saves must not encounter this test-only field.
+  if(scope!==f.room)return trans(work,scope);
+  foreign.liveOnlyCallback=()=>{};
+  try{return trans(work,scope);}finally{delete foreign.liveOnlyCallback;}
+ };
  t.after(()=>{delete foreign.liveOnlyCallback;store.transact=trans;});
  for(const [event,object,data]of [
   ['temple:read',MAP.objects.find(o=>o.id==='pillar-notice'),{objectId:'pillar-notice'}],
@@ -16,9 +23,11 @@ test('audited interaction reads save only their classroom while retaining journe
   ['arcade:open',STREET.objects.find(o=>o.kind==='arcade'),null]
  ]){
   Object.assign(f.p,{mapId:event==='arcade:open'?STREET.id:MAP.id,x:object.x,y:object.y+object.radius+25});
-  ok(await call(f.student,event,data??{objectId:object.id}));assert.equal(scopes.at(-1),f.room);assert(INTERACTION_SAVE_ACTIONS.includes(event));
+  const start=scopes.length,expected=f.room;
+  ok(await call(f.student,event,data??{objectId:object.id}));
+  assert(scopes.slice(start).includes(expected),`${event} must use its classroom scope`);assert(INTERACTION_SAVE_ACTIONS.includes(event));
  }
- assert.equal(foreign.liveOnlyCallback instanceof Function,true);
+ assert.equal(Object.hasOwn(foreign,'liveOnlyCallback'),false);
  delete foreign.liveOnlyCallback;store.transact=trans;
  f.at('science');const before=structuredClone(f.p.scienceReading);await f.fail(async()=>assert.equal((await call(f.student,'science:open')).ok,false));assert.deepEqual(f.p.scienceReading,before);
  const opened=ok(await call(f.student,'science:open'));const energy=f.p.cosmicEnergy;await f.fail(async()=>assert.equal((await call(f.student,'science:claim',{factId:opened.factId})).ok,false));assert.equal(f.p.cosmicEnergy,energy);
