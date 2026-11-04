@@ -40,6 +40,7 @@ import {startTransformation,expireTransformation} from './transformation.js';
 import {requestMembership,clearJoinRequests,mailboxView,requireNoDepartment} from './planet-membership.js';
 import {startLifeRecovery,advanceLifeRecovery,finishLifeRecovery} from './life-star.js';
 import {blessAtShelterFountain} from './shelter-fountain.js';
+import {blessAtStarAngel,advanceStarAngelRecovery} from './star-angel-statue.js';
 import {hallOfFame,recordOmokWin} from './hall-of-fame.js';
 import {advancePassiveRecovery} from './passive-recovery.js';
 import {readExploration,explore,clearExplorationResults,resetExploration,useExplorationTicket,updateExplorationCards} from './exploration.js';
@@ -510,6 +511,10 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('shelter-fountain:bless',()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const result=blessAtShelterFountain(s.player,clock());roster(s.room);return result;
+    },false);
+    action('star-angel:bless',()=>{
+      const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player&&s.player.socketId===socket.id,'먼저 교실에 입장해주세요.');
+      const result=blessAtStarAngel(s.player,clock());roster(s.room);return result;
     },false);
     action('spirit-star:disarm',data=>{
       const s=socket.data.session;ensure(s&&store.rooms.get(s.room.code)===s.room&&s.room.players.get(s.player.id)===s.player,'먼저 교실에 입장해주세요.');
@@ -2737,7 +2742,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 저장 실패 복구는 방 Map 자체를 교체하므로, 다음 틱에서 새 참조로 재시도합니다.
       if(lifeSaveFailed)break;
-      for(const update of advancePassiveRecovery(room,clock())){
+      for(const update of [...advancePassiveRecovery(room,clock()),...advanceStarAngelRecovery(room,clock())]){
         const player=room.players.get(update.playerId);
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)
           io.to(viewer.socketId).emit('combat:vitals',update);

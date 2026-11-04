@@ -23,6 +23,7 @@ try{
   }});
   await window.artRetryUI.open();
  });
+ await page.locator('[data-art-tab=mine]').click();
  const title=page.locator('[data-art=title]'),save=page.locator('[data-art=save]');
  await title.fill('원래 작품');await save.click();
  await page.locator('[data-art=status]').filter({hasText:'simulated lost ACK'}).waitFor();

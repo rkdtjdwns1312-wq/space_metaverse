@@ -1061,6 +1061,7 @@ function doInteract(){
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
   else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='star-angel-statue')request('star-angel:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='dark-star-card')interactDarkCard(n);
   else if(n.kind==='truth-creator-blue'){stop();truthCreatorBlueUI.open(n,room?.players.find(p=>p.id===selfId));}
   else if(n.kind==='star-record-number'){stop();starRecordMathUI.open(n);}

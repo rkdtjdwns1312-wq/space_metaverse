@@ -1116,7 +1116,7 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','star-record-statue','truth-creator-statue','shelter-fountain'].includes(o.kind)),
+        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','star-record-statue','truth-creator-statue','shelter-fountain','star-angel-statue'].includes(o.kind)),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.darkStarEffects).flatMap(m=>(m.darkStarEffects.cards||[]).filter(c=>Date.now()<c.endsAt).map(c=>({...c,kind:'dark-star-card',name:'위성 확인하기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.starRecordEffects?.math).flatMap(m=>m.starRecordEffects.math.stars.map(star=>({...star,kind:'star-record-number',radius:30,name:'숫자 별 풀기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.truthCreatorEffects&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&!me.vitals?.defeated).flatMap(m=>(m.truthCreatorEffects.blueOrbs||[]).filter(orb=>orb.phase==='landed'&&starRecordNow(m.truthCreatorEffects)<orb.endsAt).map(orb=>({...orb,kind:'truth-creator-blue',name:`파란 구체 해제하기 · ${Math.max(0,Math.ceil((orb.endsAt-starRecordNow(m.truthCreatorEffects))/1000))}초` }))),

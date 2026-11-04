@@ -62,6 +62,7 @@ export function toRecord(room) {
   const cultureVotes=[...room.players.values()].filter(p=>p.role==='student').map(p=>validateCultureRecommendationVotes(p.cultureRecommendationVotes));
   return {schemaVersion:1,code:room.code,title:room.title,createdAt:room.createdAt,
     cultureRecommendations:validateCultureRecommendations(room.cultureRecommendations,cultureVotes),
+    teacherArtStudio:validateArtStudio(room.teacherArtStudio,{trustedCompact:true}),
     dailyMissions:validateDailyMissions(room.dailyMissions),
     serena:validateSerenaState(room.serena),darkStar:validateDarkStarState(room.darkStar),starRecord:validateStarRecordState(room.starRecord),truthCreator:validateTruthCreatorState(room.truthCreator),bossRespawns:validateBossRespawns(room.bossRespawns),
     ...(room.adminCreated?{adminCreated:true}:{}),
@@ -120,6 +121,7 @@ export function fromRecord(r,now=Date.now()) {
   try{cultureRecommendations=validateCultureRecommendations(r.cultureRecommendations,savedCultureVotes);}catch{bad();}
   const room={code:r.code,title:nickname(r.title),createdAt:r.createdAt,adminCreated:r.adminCreated===true,allowedNames,players:new Map(),ariesInvites:new Map(),cancerInvites:new Map(),
     cultureRecommendations,
+    teacherArtStudio:validateArtStudio(r.teacherArtStudio),
     dailyMissions:validateDailyMissions(r.dailyMissions),
     serena:validateSerenaState(r.serena),darkStar:validateDarkStarState(r.darkStar),starRecord:validateStarRecordState(r.starRecord),truthCreator:validateTruthCreatorState(r.truthCreator),bossRespawns:validateBossRespawns(r.bossRespawns),persistBossDefeats:true,
     teacherAccess:r.teacherAccess?structuredClone(r.teacherAccess):null,
@@ -216,7 +218,7 @@ export class PersistentRoomStore extends RoomStore {
       const restored=fromRecord(r,this.clock());
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
-      this.records.set(r.code,{...r,serena:restored.serena,darkStar:restored.darkStar,starRecord:restored.starRecord,truthCreator:restored.truthCreator,bossRespawns:restored.bossRespawns,
+      this.records.set(r.code,{...r,teacherArtStudio:restored.teacherArtStudio,serena:restored.serena,darkStar:restored.darkStar,starRecord:restored.starRecord,truthCreator:restored.truthCreator,bossRespawns:restored.bossRespawns,
         students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress,artStudio:restored.players.get(p.id).artStudio}))});
     }}
     catch(error){this.files.close();throw error;}

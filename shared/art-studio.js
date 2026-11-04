@@ -1,3 +1,4 @@
+export const ART_TEACHER_OWNER='@teacher';
 export const ART_LIMITS=Object.freeze({width:600,height:400,works:10,title:40,strokes:100,strokePoints:1000,points:6000,bytes:96*1024});
 const fields=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const color=v=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
