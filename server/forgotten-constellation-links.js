@@ -7,11 +7,11 @@ import {defeatRecordPlayer} from './star-record-challenge.js';
 import {ensureVitals} from './vitals.js';
 import {GameError} from './pin-auth.js';
 
-export const CONSTELLATION_LINKS=Object.freeze({mana:10,cooldownMs:40000,durationMs:20000,decisionMs:3000,chance:.45});
+export const CONSTELLATION_LINKS=Object.freeze({mana:10,cooldownMs:40000,durationMs:15000,decisionMs:3000,chance:.45});
 const roll=random=>Math.max(0,Math.min(.999999,Number(random())||0));
-const present=(p,boss)=>p?.connected&&!p.away&&p.mapId===boss.mapId&&!p.avatar?.blackStar&&!p.avatar?.teacherPreview&&
+export const present=(p,boss)=>p?.connected&&!p.away&&p.mapId===boss.mapId&&!p.avatar?.blackStar&&!p.avatar?.teacherPreview&&
  ['student','teacher'].includes(p.role)&&ensureVitals(p)?.hp>0;
-const vulnerable=(p,boss)=>present(p,boss)&&(p.role==='student'||boss.teacherRetaliation?.has(p.id));
+export const vulnerable=(p,boss)=>present(p,boss)&&(p.role==='student'||boss.teacherRetaliation?.has(p.id));
 
 function positions(boss,random){
  const map=mapOf(spec.mapId),wall=monsterFootprint(boss),points=[],rotation=roll(random)*2*Math.PI,reverse=roll(random)<.5?-1:1;
@@ -35,7 +35,7 @@ function positions(boss,random){
 }
 export function tryConstellationLinks(room,boss,now,random=Math.random){
  const rule=CONSTELLATION_LINKS;
- if(boss.typeId!==spec.typeId||boss.hp<=0||boss.mapId!==spec.mapId||boss.links||boss.pendingAttack||boss.mp<rule.mana||
+ if(boss.typeId!==spec.typeId||boss.hp<=0||boss.mapId!==spec.mapId||boss.links||boss.names||boss.gather||boss.pendingAttack||boss.mp<rule.mana||
     now<(boss.linksReadyAt||0)||now<(boss.linksDecisionAt||0))return false;
  boss.linksDecisionAt=now+rule.decisionMs;
  if(![...room.players.values()].some(p=>vulnerable(p,boss))||roll(random)>=rule.chance)return false;

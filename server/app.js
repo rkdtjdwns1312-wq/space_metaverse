@@ -1,4 +1,6 @@
 import {linkConstellationStar} from './forgotten-constellation-links.js';
+import {answerConstellationName} from './forgotten-constellation-names.js';
+import {collectConstellationGather} from './forgotten-constellation-gather.js';
 import {socketRateMiddleware} from './socket-rate-limit.js';
 import {INTERACTION_SAVE_ACTIONS} from './interaction-save-scope.js';
 import {reminderTarget} from './student-reminders.js';
@@ -283,6 +285,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(sock) deliver(()=>sock.emit('room:state',store.snapshot(room,p,clock())));
     }
   };
+  const broadcastMonsterHit=(room,hit)=>{
+    for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
+      io.to(viewer.socketId).emit('combat:monster-hit',hit);
+      if(!hit.attackOnly)io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
+    }
+  };
   const announce=(room,text)=>{
     const msg=store.pushChat(room,{playerId:null,nickname:'안내',role:'system',text,flagged:false});
     deliver(()=>io.to(room.code).emit('chat:message',msg));
@@ -480,6 +488,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     action('forgotten-constellation:link',data=>{
       const {room,player}=socket.data.session||{};ensure(socket.connected&&room&&store.rooms.get(room.code)===room&&room.players.get(player?.id)===player&&player.socketId===socket.id,'먼저 교실에 다시 입장해주세요.');
       return linkConstellationStar(room,player,data,clock());
+    },false);
+    action('forgotten-constellation:gather',data=>{
+      const {room,player}=socket.data.session||{};
+      ensure(socket.connected&&room&&store.rooms.get(room.code)===room&&room.players.get(player?.id)===player&&player.socketId===socket.id,'먼저 교실에 다시 입장해주세요.');
+      return collectConstellationGather(room,player,data,clock(),hit=>broadcastMonsterHit(room,hit));
     },false);
     action('forgotten-constellation:summon',()=>{
       const {room,player}=socket.data.session||{};ensure(room&&store.rooms.get(room.code)===room&&room.players.get(player?.id)===player&&player.socketId===socket.id,'먼저 교실에 다시 입장해주세요.');
@@ -1087,6 +1100,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const hasControl=[...trimmed].some(ch=>{const c=ch.codePointAt(0);return c<32||c===127;});
       ensure(typeof raw==='string' && trimmed.length>=1 && [...trimmed].length<=CHAT.maxLength && !hasControl,'채팅은 1~100자로 입력해주세요.');
       const text=trimmed.replace(/ {2,}/g,' ');
+      if((data.channel??'map')==='map'){
+        const tagged=Object.hasOwn(data,'constellationNameCastId');
+        const answer=answerConstellationName(room,p,text,clock(),data.constellationNameCastId);
+        if(answer){
+          if(answer.hit)deliver(()=>{
+            for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===answer.hit.mapId){
+              io.to(viewer.socketId).emit('combat:monster-hit',answer.hit);
+              io.to(viewer.socketId).emit('combat:vitals',{playerId:p.id,vitals:answer.hit.vitals});
+            }
+          });
+          return {constellationNameAnswer:answer.status};
+        }
+        if(tagged)return {constellationNameAnswer:'expired'};
+      }
       // 행성 이름은 채팅 입력창으로 답하지만 대화 기록에는 남기지 않습니다.
       // 선생님이 일반 채팅을 잠시 꺼도 전투 중 정답 입력은 가능합니다.
       if(answerStarRecordChallenge(room,p,text,clock()))return {starRecordAnswer:true};
@@ -2624,12 +2651,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       for(const p of recoverDefeated(room,clock())){
         io.to(p.socketId).emit('combat:recovered',{message:'체력과 마나를 회복했어요. 다시 출발해요!'});roster(room);
       }
-      for(const hit of moveMonsters(room,clock())){
-        for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
-          io.to(viewer.socketId).emit('combat:monster-hit',hit);
-          if(!hit.attackOnly)io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});
-        }
-      }
+      for(const hit of moveMonsters(room,clock()))broadcastMonsterHit(room,hit);
       const hazards=advanceBossMapHazards(room,clock());
       for(const hit of hazards.hits)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId)
         io.to(viewer.socketId).emit('combat:vitals',{playerId:hit.targetId,vitals:hit.vitals});

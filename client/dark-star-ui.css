@@ -9,6 +9,6 @@
 #star-record-math-dialog .star-record-operators strong{font-size:1.7rem}
 #star-record-math-dialog .star-record-operators kbd{font-size:1rem}
 #interact-prompt[data-satellite-color] #interact-object::before{content:'';display:inline-block;width:.85em;height:.85em;margin-right:.4em;border-radius:50%;background:var(--satellite-color);border:1px solid currentColor;vertical-align:-.05em}
-#constellation-links-hint{position:absolute;z-index:7;top:66px;left:12px;pointer-events:none;border:1px solid #f6c554;border-radius:12px;padding:6px 12px;background:#281c2ff2;color:#ffed9e;font-size:clamp(13px,2vw,17px);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:center}
+#constellation-links-hint{position:absolute;z-index:7;top:66px;left:12px;pointer-events:none;border:1px solid #817f76;border-radius:10px;padding:5px 9px;background:#171a1be8;color:#ddd9c8;font-size:clamp(13px,2vw,17px);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:center}
 
 @media(max-width:620px){#constellation-links-hint{top:calc(var(--hunting-bottom,138px) + 8px);right:6px;left:auto;width:clamp(88px,34vw,165px);box-sizing:border-box;white-space:normal;padding:6px;font-size:12px;line-height:1.45}}

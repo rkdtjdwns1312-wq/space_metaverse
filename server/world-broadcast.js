@@ -1,4 +1,5 @@
 import {monsterViews} from './monsters.js';
+import {visibleGatherMonsters} from './forgotten-constellation-gather.js';
 import {serenaView,darkStarView,starRecordView,forgottenConstellationView,truthCreatorView} from './boss-lifecycle.js';
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {spiritBlueStarViews} from './spirit-blue-stars.js';
@@ -43,11 +44,12 @@ export function worldBroadcastFrame(room,now){
     const mapId=viewer.mapId;
     if(!maps.has(mapId)){
       const effects=Object.fromEntries(Object.entries(effectViews).map(([key,view])=>[key,view(room,mapId,now)]));
-      maps.set(mapId,{...bosses,...effects,monsters:monstersByMap.get(mapId)||[],casts:sagittariusViews(room,mapId,now)});
+      const monsters=monstersByMap.get(mapId)||[];
+      maps.set(mapId,{...bosses,...effects,monsters,studentMonsters:visibleGatherMonsters(room,monsters,{mapId,role:'student'}),casts:sagittariusViews(room,mapId,now)});
     }
-    const {casts,...shared}=maps.get(mapId);
+    const {casts,studentMonsters,...shared}=maps.get(mapId);
     const cooldownView=usesTeacherSkill(viewer)?teacherCooldowns:
       cooldownViews[viewer.avatar.constellationId]||(isWaterConstellation(viewer)?waterCooldowns:skillCooldowns);
-    return {...shared,mapId,positions,sagittarius:{casts,cooldowns:cooldownView(viewer,now),serverNow:now}};
+    return {...shared,monsters:viewer.role==='teacher'?shared.monsters:studentMonsters,mapId,positions,positionTime:now,sagittarius:{casts,cooldowns:cooldownView(viewer,now),serverNow:now}};
   };
 }

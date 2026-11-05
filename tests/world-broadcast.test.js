@@ -16,6 +16,7 @@ test('one frame shares each map effect/monster view and keeps cooldowns private;
   a.aquariusCooldownUntil=now+3000;b.aquariusCooldownUntil=now+7000;
   room.aquariusCasts=new Map([['cast',{id:'cast',playerId:a.id,mapId:a.mapId,kind:'aquarius-fountain',at:now-100,durationMs:5000}]]);
   const frame=worldBroadcastFrame(room,now),av=frame(a,[]),bv=frame(b,[]),tv=frame(teacher,[]);
+  assert.equal(av.positionTime,now);assert.equal(store.snapshot(room,a,now).positionTime,now);
   assert.ok(av.monsters.length);assert.ok(av.monsters.every(m=>m.mapId===a.mapId));
   assert.strictEqual(av.monsters,bv.monsters);assert.strictEqual(av.aquarius,bv.aquarius);
   assert.equal(av.aquarius[0].elapsedMs,100);assert.equal(av.sagittarius.serverNow,now);

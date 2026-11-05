@@ -70,7 +70,10 @@ import {drawTruthCreatorStatue,drawTruthCreatorGround,truthCreatorObjectLayers} 
 import {forgottenConstellationMap,dormantForgottenConstellation} from '/shared/forgotten-constellation.js';
 import {starRecordMap,dormantStarRecord} from '/shared/star-record.js';
 import {drawConstellationLine,drawConstellationPoint} from './forgotten-links-art.js';
+import {drawNamePortrait} from './forgotten-name-portraits.js';
 import {drawForgottenStatue,drawHomingStar} from './forgotten-constellation-art.js';
+import {drawGatherCount,drawGatherStar} from './forgotten-gather-art.js';
+import {STEADY_WALK_KEY,walkCameraAxis} from './walk-camera.js';
 import {drawStarRecordStatue,drawStarRecordRays,drawStarRecordMath} from './star-record-art.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
@@ -93,7 +96,7 @@ import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, 
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin, drawSleepingStars } from './scenery.js';
 import {drawOriginStatue} from './origin-art.js';
 import * as config from '/shared/config.js';
-import { createMotionTrack } from './motion.js';
+import { createMotionTrack, createPositionClock } from './motion.js';
 import {monsterType,monsterVisualScale} from '/shared/monsters.js';
 import {drawMonster} from './monster-art.js';
 import {constellationOf} from '/shared/constellations.js';
@@ -153,11 +156,14 @@ export function createWorld(canvas) {
   let savedQuality;try{savedQuality=localStorage.getItem(RENDER_QUALITY_KEY);}catch{}
   const FRIEND_WALK_REDUCTION_KEY='woozooclass-friend-walk-reduction-v1';
   let friendWalkReduction=false;try{friendWalkReduction=localStorage.getItem(FRIEND_WALK_REDUCTION_KEY)==='true';}catch{}
+  let steadyWalk=true;try{steadyWalk=localStorage.getItem(STEADY_WALK_KEY)!=='false';}catch{}
+  let followView=null;
   const quality=createRenderQuality({mode:savedQuality,lowPower:navigator.hardwareConcurrency<=2||navigator.deviceMemory<=2});
   const avatarLabels=createAvatarLabelCache();
   const interiorBoard=createInteriorBoardUI(canvas);
   const ctx=canvas.getContext('2d'); let players=[],selfId=null,planets=[],proposals=[],myMapId=PLAZA_ID,placement=null,placing=false;
   const points=new Map(),tracks=new Map(),bubbles=new Map();
+  let positionTime=createPositionClock();
   const cetusLastPoint=new Map(),cetusMovingUntil=new Map();
   const geminiLastPoint=new Map(),geminiMovingUntil=new Map(),geminiMovingSince=new Map();
   const aquariusLastPoint=new Map(),aquariusMovingUntil=new Map(),aquariusMovingSince=new Map();
@@ -192,16 +198,19 @@ export function createWorld(canvas) {
     for(const m of monsters)if(m.darkStarEffects)m.darkStarEffects={...m.darkStarEffects,receivedAt:now};
     for(const m of monsters)if(m.truthCreatorEffects)m.truthCreatorEffects={...m.truthCreatorEffects,receivedAt:now};
     for(const m of monsters)if(m.homingStar)m.homingStar={...m.homingStar,receivedAt:now};
+    for(const m of monsters)if(m.homingStars)m.homingStars=m.homingStars.map(shot=>({...shot,receivedAt:now}));
     for(const m of monsters)if(m.constellationLinks)m.constellationLinks={...m.constellationLinks,receivedAt:now};
+    for(const m of monsters)if(m.constellationNames)m.constellationNames={...m.constellationNames,receivedAt:now};
+    for(const m of monsters)if(m.constellationGather)m.constellationGather={...m.constellationGather,receivedAt:now};
     for(const m of monsters)if(m.starRecordEffects)m.starRecordEffects={...m.starRecordEffects,receivedAt:now};
     for(const m of monsters)if(m.mapId===myMapId)void prepareMonsterArt(monsterType(m.typeId)?.shape);
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
     for(const id of monsterTracks.keys())if(!monsters.some(m=>m.id===id)){monsterTracks.delete(id);monsterPoints.delete(id);}
   }
   let view={x:0,y:0,scale:1},overview=false,mapArt=null;
-  function recordPosition(p,now){
+  function recordPosition(p,now,options){
     if(!tracks.has(p.id))tracks.set(p.id,createMotionTrack());
-    tracks.get(p.id).push(p.x,p.y,p.mapId||PLAZA_ID,now);
+    tracks.get(p.id).push(p.x,p.y,p.mapId||PLAZA_ID,now,options);
   }
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
@@ -480,7 +489,7 @@ export function createWorld(canvas) {
     ctx.fillStyle='#524969';ctx.textAlign='center';
     lines.forEach((value,index)=>ctx.fillText(value,bx,by+lineHeight+index*lineHeight));
   }
-  function drawAvatar(p,time){
+  function drawAvatar(p,time,gatherCount=0){
     const point=points.get(p.id)||{x:p.x,y:p.y};
     const x=point.x,y=point.y,aura=waterAuras.find(c=>c.playerId===p.id),swan=swanAuras.find(c=>c.playerId===p.id),dash=taurusDashes.find(c=>c.playerId===p.id),shield=herculesShields.find(c=>c.playerId===p.id),libra=libraAuras.find(c=>c.playerId===p.id),corona=coronaAuras.find(c=>c.playerId===p.id),blessing=capricornBlessings.find(c=>c.playerId===p.id);
     const size=avatarSizeOf(p)*(aura?.kind==='cetus'?2:1);
@@ -491,7 +500,8 @@ export function createWorld(canvas) {
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
     const floating=p.role==='teacher'&&!p.avatar?.teacherPreview?false:!constellation||constellation.celestial||locomotionMode(constellation.id,constellation.assetLevel)==='floating';
-    const bodyPose=trackWalkMotion?bodyMotion.sample(p.id,`${myMapId}:${constellation?.sprite||p.role}`,x,y,time,reducedMotion.matches||!!dash||!!p.avatar?.blackStar,floating):{y:0,angle:0};
+    const pose=trackWalkMotion?bodyMotion.sample(p.id,`${myMapId}:${constellation?.sprite||p.role}`,x,y,time,reducedMotion.matches||!!dash||!!p.avatar?.blackStar,floating):{y:0,angle:0};
+    const bodyPose=steadyWalk?{y:pose.y*.25,angle:0}:pose;
     const whaleSprite=constellation?.id==='cetus'?loadedAvatarSprite(constellation.sprite):null;
     if(aura?.kind==='cetus'){
       const elapsed=time-aura.startsAt,opacity=Math.max(0,Math.min(1,elapsed/450,(aura.durationMs-elapsed)/450));
@@ -703,6 +713,7 @@ export function createWorld(canvas) {
     }
     if(effects.some(e=>e.style==='happy')){ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#c9628f';ctx.fillText('♪',x+w/2+11,y+46);}
     drawBubble(p.id,x,y-Math.max(0,size/2-16));
+    drawGatherCount(ctx,x,y-size/2-13,gatherCount,quality.low||reducedMotion.matches);
     ctx.restore();
   }
   function frame(t){
@@ -726,13 +737,13 @@ export function createWorld(canvas) {
     // Resolve unchanged geometry once per draw, not once per nearby avatar.
     const map=currentMap();
     // 도착한 위치를 시간순으로 재생합니다. 화면 프레임 수와 관계없이 같은 시각은
-    // 같은 위치가 되며, 카메라도 아바타와 정확히 같은 좌표를 사용합니다.
+    // 같은 위치가 되며, 카메라의 추적 범위도 이 좌표를 기준으로 계산합니다.
     for(const p of players){
       if(p.mapId!==myMapId)continue;
       const position=tracks.get(p.id)?.at(t)||{x:p.x,y:p.y};
       const previous=points.get(p.id);
       // 모서리에서 막힌 보간을 복구할 때도 한 프레임에 밀린 거리를 뛰지 않습니다.
-      const maxDistance=previous?(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)*Math.max(0,t-previous.time)/1000+.1:Infinity;
+      const maxDistance=previous?p.renderSpeed*Math.max(0,t-previous.time)/1000+.1:Infinity;
       points.set(p.id,{...avatarRenderPoint(map,position,{x:p.x,y:p.y},p,monsters,
         previous?.mapId===p.mapId?previous:null,maxDistance,taurusDashes.some(d=>d.playerId===p.id&&d.mapId===p.mapId&&t-d.startsAt<d.durationMs)),mapId:p.mapId,time:t});
     }
@@ -744,9 +755,14 @@ export function createWorld(canvas) {
     const zone=placing&&myMapId===PLAZA_ID?DEPARTMENT_ZONE:null;
     const scale=zone?Math.min(rect.width/(zone.rx*2+300),rect.height/(zone.ry*2+300)):(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
     const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
-    const x=cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
-    const y=ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
+    const following=steadyWalk&&me&&!placing&&!overview;
+    const previous=followView?.width===cw&&followView.height===ch?followView:null;
+    const x=following?walkCameraAxis(me.x,cw,map.width,previous?.x,dpr*scale):
+      cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
+    const y=following?walkCameraAxis(me.y,ch,map.height,previous?.y,dpr*scale):
+      ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
     view={x,y,scale,width:cw,height:ch};
+    followView=following?view:null;
     interiorBoard.update({map,planet:planets.find(p=>p.id===map.planetId),view,rect,visible:!!selfId&&document.body.classList.contains('joined')});
     canvas.dataset.viewX=x;canvas.dataset.viewY=y;canvas.dataset.viewScale=scale;
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
@@ -768,10 +784,23 @@ export function createWorld(canvas) {
     const remaining=links?Math.ceil((links.endsAt-starRecordNow(links))/1000):0;
     linksHint.hidden=remaining<=0;
     if(remaining>0){
-      const hint='점 '+(links.linked+1)+'개인 별 조사하기 · '+links.linked+'/5 · '+remaining+'초';
+      const hint='이어지는 별 · 점 '+(links.linked+1)+'개부터 · '+links.linked+'/5 · '+remaining+'초';
       if(linksHint.textContent!==hint)linksHint.textContent=hint;
+      const boss=visibleMonsters.find(m=>m.constellationLinks===links),point=boss&&(monsterPoints.get(boss.id)||boss);
+      if(point){
+        const wrap=canvas.parentElement.getBoundingClientRect(),rect=canvas.getBoundingClientRect();
+        linksHint.style.left=(rect.left-wrap.left+(point.x-x)*scale)+'px';
+        linksHint.style.top=(rect.top-wrap.top+(point.y-y-boss.radius*1.4)*scale)+'px';
+        linksHint.style.transform='translate(-50%,-100%)';
+      }
       drawConstellationLine(ctx,links,scale);
     }
+    const gatherBoss=visibleMonsters.find(m=>m.constellationGather),gather=gatherBoss?.constellationGather;
+    const gatherRemaining=gather?Math.max(0,Math.ceil((gather.endsAt-starRecordNow(gather))/1000)):0;
+    canvas.dataset.forgottenGatherPickupCount=String(gather?.stars?.length||0);
+    canvas.dataset.forgottenGatherSeconds=String(gatherRemaining);
+    canvas.dataset.forgottenGatherSelfCount=String(gather?.counts?.[selfId]||0);
+    canvas.dataset.forgottenGatherRowCount=String(Object.entries(gather?.counts||{}).filter(([id,count])=>count>0&&players.some(p=>p.id===id&&p.mapId===myMapId&&!p.away)).length);
     const darkEffects=visibleMonsters.filter(m=>m.darkStarEffects).map(m=>({boss:m,e:m.darkStarEffects,now:starRecordNow(m.darkStarEffects)}));
     canvas.dataset.darkStarCardCount=String(darkEffects.reduce((n,{e})=>n+(e.cards?.length||0),0));
     canvas.dataset.darkStarSatelliteCount=String(darkEffects.reduce((n,{e})=>n+(e.satellites?.length||0),0));
@@ -822,6 +851,57 @@ export function createWorld(canvas) {
         ctx.shadowColor=type.id==='leoon'?'#ff9d32':'#89a5f8';ctx.shadowBlur=quality.low?0:15;
         ctx.strokeStyle='#29264e';ctx.lineWidth=8;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x+2,nameY+3);
         ctx.fillText(type.name,pos.x,nameY);
+        if(type.id==='forgotten-constellation'&&m.constellationGather&&gatherRemaining>0){
+          const headerY=nameY-169,timerY=nameY-147;
+          ctx.save();ctx.textAlign='center';ctx.font='bold 19px "Jua","Malgun Gothic",sans-serif';
+          ctx.fillStyle='#fffdf8';ctx.strokeStyle='#25252b';ctx.lineWidth=5;ctx.lineJoin='round';
+          ctx.strokeText('별을 힘을 모아',pos.x,headerY);ctx.fillText('별을 힘을 모아',pos.x,headerY);
+          ctx.font='bold 15px "Jua","Malgun Gothic",sans-serif';ctx.strokeText(gatherRemaining+'초',pos.x,timerY);ctx.fillText(gatherRemaining+'초',pos.x,timerY);ctx.restore();
+        }
+        if(type.id==='forgotten-constellation'&&m.constellationNames?.remaining?.length){
+          const challenge=m.constellationNames,remaining=Math.max(0,Math.ceil((challenge.endsAt-starRecordNow(challenge))/1000));
+          if(remaining>0){
+          const narrow=canvas.clientWidth<500,slots=challenge.remaining.slice(0,2);let centerY=nameY-(narrow?52:72);
+          ctx.save();ctx.textAlign='center';ctx.font='bold 15px "Jua","Malgun Gothic",sans-serif';
+          ctx.fillStyle='#fff1b8';ctx.strokeStyle='#29264e';ctx.lineWidth=4;
+          const header='별자리에게 새겨진 이름',headerWidth=ctx.measureText(header).width;
+          ctx.font='bold 14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#fff';
+          const timer=`채팅으로 이름을 맞혀요 · ${remaining}초`,textWidth=Math.max(headerWidth,ctx.measureText(timer).width);
+          if(narrow){
+            const canvasRect=canvas.getBoundingClientRect(),minimap=document.getElementById('minimap'),mapRect=minimap&&!minimap.hidden?minimap.getBoundingClientRect():null;
+            const half=textWidth*scale/2,screenX=(pos.x-x)*scale,screenY=(centerY-47-y)*scale;
+            const left=screenX-half,right=screenX+half,top=screenY,bottom=(centerY+38-y)*scale;
+            const mapLeft=mapRect?mapRect.left-canvasRect.left:Infinity,mapRight=mapRect?mapRect.right-canvasRect.left:-Infinity;
+            const mapTop=mapRect?mapRect.top-canvasRect.top:Infinity,mapBottom=mapRect?mapRect.bottom-canvasRect.top:-Infinity;
+            const obscured=!!mapRect&&mapRect.width>0&&mapRect.height>0&&left<mapRight&&right>mapLeft&&top<mapBottom&&bottom>mapTop;
+            if(obscured&&canvas.clientWidth-mapRight>78){
+              const sideWidth=canvas.clientWidth-mapRight-6,hudX=x+(mapRight+sideWidth/2)/scale;
+              const sideY=y+(mapTop+12)/scale,compact=sideWidth<textWidth*scale+8;
+              ctx.textAlign='center';ctx.fillStyle='#fff1b8';ctx.strokeStyle='#29264e';ctx.lineWidth=3;
+              if(compact){
+                const unit=1/scale;ctx.font=`bold ${12*unit}px "Jua","Malgun Gothic",sans-serif`;
+                for(const [line,index] of [['별자리에게',0],['새겨진 이름',1]]){const lineY=sideY+(index?15:0)*unit;ctx.strokeText(line,hudX,lineY);ctx.fillText(line,hudX,lineY);}
+                ctx.font=`bold ${11*unit}px "Jua","Malgun Gothic",sans-serif`;const shortTimer=`맵 채팅 · ${remaining}초`;ctx.strokeText(shortTimer,hudX,sideY+32*unit);ctx.fillText(shortTimer,hudX,sideY+32*unit);
+                const gap=36*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+66*unit,30*unit);ctx.restore();});
+              }else{
+                const unit=1/scale;ctx.font=`bold ${13*unit}px "Jua","Malgun Gothic",sans-serif`;ctx.strokeText(header,hudX,sideY+16*unit);ctx.fillText(header,hudX,sideY+16*unit);
+                ctx.font=`bold ${12*unit}px "Jua","Malgun Gothic",sans-serif`;const shortTimer=`맵 채팅 · ${remaining}초`;ctx.strokeText(shortTimer,hudX,sideY+34*unit);ctx.fillText(shortTimer,hudX,sideY+34*unit);
+                const gap=44*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+69*unit,36*unit);ctx.restore();});
+              }
+            }else{
+              const clamped=Math.max(half+5,Math.min(canvas.clientWidth-half-5,screenX)),hudX=x+clamped/scale;
+              ctx.strokeText(timer,hudX,centerY-22);ctx.fillText(timer,hudX,centerY-22);ctx.strokeText(header,hudX,centerY-42);ctx.fillText(header,hudX,centerY-42);
+              const gap=66,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:12;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,centerY+12,50);ctx.restore();});
+            }
+            ctx.restore();
+          }else{
+            ctx.strokeText(timer,pos.x,centerY-22);ctx.fillText(timer,pos.x,centerY-22);
+            const gap=66,start=pos.x-gap/2;
+          slots.forEach(entry=>{const x=start+entry.slot*gap,y=centerY+12;ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:12;
+            drawNamePortrait(ctx,entry.constellationId,x,y,50);ctx.restore();
+            });ctx.restore();}
+          }
+        }
         if(type.id==='star-record'&&(m.starRecordEffects?.challenge||m.starRecordEffects?.math||m.starRecordEffects?.flow)){
           const line=m.starRecordEffects.challenge?.line||m.starRecordEffects.math?.line||m.starRecordEffects.flow?.line;
           ctx.shadowColor='#f4ca68';ctx.shadowBlur=quality.low?0:12;ctx.fillStyle='#ffe7a0';ctx.font='bold 21px "Jua","Malgun Gothic",sans-serif';
@@ -897,16 +977,19 @@ export function createWorld(canvas) {
       drawLeoRoar(ctx,{...roar,x:point.x,y:point.y},t-roar.startsAt,reducedMotion.matches);
     }
     if(myMapId===PLAZA_ID){
-      const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t)})),
+      const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t,gatherRemaining?gather.counts?.[p.id]:0)})),
         ...map.objects.filter(o=>o.kind==='pillar'&&intersectsView(view,{x:o.x-180,y:o.y-220,width:360,height:280})).map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='starlight-archive').map(o=>({y:o.y,draw:()=>drawStarlightArchive(ctx,o)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
       const visibleOrbs=spiritOrbs.filter(orb=>orb.mapId===myMapId&&Date.now()>=(orb.startsAt??0)&&Date.now()<(orb.endsAt??Infinity));
       const visibleBlueStars=spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt);
-      const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
+      const activeGather=gather&&gatherRemaining>0?gather:null;
+      const gatherStars=activeGather?(activeGather.stars||[]).filter(star=>star.appearsAt<=starRecordNow(activeGather)&&star.expiresAt>starRecordNow(activeGather)):[];
+      const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t,gatherRemaining?gather.counts?.[p.id]:0)})),
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
+        ...gatherStars.map(star=>({y:star.y+star.radius,draw:()=>drawGatherStar(ctx,star.x,star.y,star.radius,quality.low||reducedMotion.matches)})),
         ...(remaining>0?links.stars.map(star=>({y:star.y+30,draw:()=>drawConstellationPoint(ctx,star,links.linked,Math.max(30,13/scale),quality.low||reducedMotion.matches?0:t+star.number*230)})):[]),
         ...truthEffects.flatMap(e=>truthCreatorObjectLayers(ctx,e,starRecordNow(e))),
         ...darkEffects.flatMap(({e,now})=>darkStarObjectLayers(ctx,e,now,reducedMotion.matches)),
@@ -921,7 +1004,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
-    for(const m of visibleMonsters)if(m.homingStar)drawHomingStar(ctx,m.homingStar,starRecordNow(m.homingStar),quality.low||reducedMotion.matches);
+    for(const m of visibleMonsters){const shots=Array.isArray(m.homingStars)?m.homingStars:m.homingStar?[m.homingStar]:[];for(const shot of shots)drawHomingStar(ctx,shot,starRecordNow(shot),quality.low||reducedMotion.matches);}
     for(const {boss,e,now} of darkEffects)drawDarkStarPuzzleHint(ctx,e,boss.x,boss.y+boss.radius+70,now);
     for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
@@ -1013,6 +1096,11 @@ export function createWorld(canvas) {
   return {
     setQuality(mode){quality.setMode(mode);try{localStorage.setItem(RENDER_QUALITY_KEY,quality.stats().mode);}catch{}},
     friendWalkReduction:()=>friendWalkReduction,
+    steadyWalk:()=>steadyWalk,
+    setSteadyWalk(enabled,persist=true){
+      steadyWalk=!!enabled;followView=null;bodyMotion.clear();
+      if(persist)try{localStorage.setItem(STEADY_WALK_KEY,String(steadyWalk));}catch{}
+    },
     setFriendWalkReduction(enabled,persist=true){friendWalkReduction=!!enabled;if(persist)try{localStorage.setItem(FRIEND_WALK_REDUCTION_KEY,String(friendWalkReduction));}catch{}},
     qualityStats:()=>quality.stats(),
     labelCacheStats:()=>avatarLabels.stats(),
@@ -1021,9 +1109,9 @@ export function createWorld(canvas) {
       serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();starRecord=room?.starRecord||dormantStarRecord();forgottenConstellation=room?.forgottenConstellation||dormantForgottenConstellation();truthCreator=room?.truthCreator||dormantTruthCreator();
       linksHint.hidden=true;
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){extraLocomotion.clear();bodyMotion.clear();}
+      if(nextMap!==myMapId||id!==selfId){extraLocomotion.clear();bodyMotion.clear();positionTime=createPositionClock();followView=null;}
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();poisonZones.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
-      players=(room?.players||[]).map(p=>({...p}));selfId=id;
+      players=(room?.players||[]).map(p=>({...p,renderSpeed:(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)}));selfId=id;
       extraLocomotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));
       bodyMotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));
       const localPlayers=players.filter(p=>(p.mapId||PLAZA_ID)===nextMap);
@@ -1044,7 +1132,7 @@ export function createWorld(canvas) {
       spiritBlueStars=Array.isArray(room?.spiritBlueStars)?room.spiritBlueStars:[];
       for(const key of points.keys())if(!players.some(p=>p.id===key))points.delete(key);
       for(const key of tracks.keys())if(!players.some(p=>p.id===key))tracks.delete(key);
-      const now=performance.now();for(const p of players)recordPosition(p,now);
+      const now=positionTime(room?.positionTime,performance.now());for(const p of players)recordPosition(p,now,{snapshot:true});
       for(const key of bubbles.keys())if(!players.some(p=>p.id===key))bubbles.delete(key);
     },
     projectileEnd(data){if(data.mapId===myMapId)projectiles.end(data);},
@@ -1053,9 +1141,10 @@ export function createWorld(canvas) {
     leoRoar(data){if(data.mapId===myMapId)leoRoars.push({...data,startsAt:performance.now(),until:performance.now()+data.durationMs});},
     positions(data){
       const now=performance.now();
-      for(const [id,x,y,facingX] of data.positions||[]){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}
-      if(data.truthCreator)truthCreator=data.truthCreator;if(data.darkStar)darkStar=data.darkStar;if(data.starRecord)starRecord=data.starRecord;if(data.forgottenConstellation)forgottenConstellation=data.forgottenConstellation;if(data.serena)serena=data.serena;
       if(data.mapId&&data.mapId!==myMapId)return;
+      const sampleTime=positionTime(data.positionTime,now);
+      for(const [id,x,y,facingX] of data.positions||[]){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,sampleTime);}}
+      if(data.truthCreator)truthCreator=data.truthCreator;if(data.darkStar)darkStar=data.darkStar;if(data.starRecord)starRecord=data.starRecord;if(data.forgottenConstellation)forgottenConstellation=data.forgottenConstellation;if(data.serena)serena=data.serena;
       if(data.spiritBlueStars)spiritBlueStars=data.spiritBlueStars;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));},
     waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
     monsters(data){if(data.mapId&&data.mapId!==myMapId)return;setMonsters(data.monsters||[]);if(Array.isArray(data.spiritOrbs))spiritOrbs=data.spiritOrbs;},
@@ -1144,6 +1233,7 @@ export function createWorld(canvas) {
         const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','star-record-statue','forgotten-constellation-statue','truth-creator-statue','shelter-fountain','star-angel-statue'].includes(o.kind)),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.darkStarEffects).flatMap(m=>(m.darkStarEffects.cards||[]).filter(c=>starRecordNow(m.darkStarEffects)<c.endsAt).map(c=>({...c,kind:'dark-star-card',name:'위성 확인하기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.constellationLinks&&!me.vitals?.defeated&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&starRecordNow(m.constellationLinks)<m.constellationLinks.endsAt).flatMap(m=>m.constellationLinks.stars.filter(s=>s.number>m.constellationLinks.linked).map(s=>({...s,castId:m.constellationLinks.id,kind:'forgotten-link',name:'점 '+s.number+'개 별 조사하기'}))),
+          ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.constellationGather&&!me.vitals?.defeated&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&starRecordNow(m.constellationGather)<m.constellationGather.endsAt).flatMap(m=>m.constellationGather.stars.filter(s=>s.appearsAt<=starRecordNow(m.constellationGather)&&s.expiresAt>starRecordNow(m.constellationGather)).map(s=>({...s,castId:m.constellationGather.id,kind:'forgotten-gather-star',name:'별 모으기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.starRecordEffects?.math).flatMap(m=>m.starRecordEffects.math.stars.map(star=>({...star,kind:'star-record-number',radius:30,name:'숫자 별 풀기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.truthCreatorEffects&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&!me.vitals?.defeated).flatMap(m=>(m.truthCreatorEffects.blueOrbs||[]).filter(orb=>orb.phase==='landed'&&starRecordNow(m.truthCreatorEffects)<orb.endsAt).map(orb=>({...orb,kind:'truth-creator-blue',name:`파란 구체 해제하기 · ${Math.max(0,Math.ceil((orb.endsAt-starRecordNow(m.truthCreatorEffects))/1000))}초` }))),
           ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];

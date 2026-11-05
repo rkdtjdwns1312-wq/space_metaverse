@@ -1,5 +1,7 @@
-import {tickHomingStar,homingStarView} from './forgotten-homing-star.js';
+import {tickHomingStar,homingStarView,homingStarsView,homingVolleyView,tryHomingVolley} from './forgotten-homing-star.js';
 import {tryConstellationLinks,tickConstellationLinks} from './forgotten-constellation-links.js';
+import {tryConstellationNames,tickConstellationNames,constellationNamesView} from './forgotten-constellation-names.js';
+import {tryConstellationGather,tickConstellationGather,constellationGatherView} from './forgotten-constellation-gather.js';
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {nearbyMonsterBodies,bodyBlocksStep,monsterDetour} from './monster-navigation.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
@@ -154,8 +156,11 @@ export function monsterViews(room,now=Date.now()){
     ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
     ...(m.typeId==='dark-star'?{darkStarEffects:darkStarSkillViews(room,m,now)}:{}),
     ...(m.typeId==='truth-creator'?{truthCreatorEffects:truthCreatorAttackView(m,now)}:{}),
-    ...(m.homing?.shot&&m.hp>0?{homingStar:{...homingStarView(m),serverNow:now}}:{}),
+    ...(m.homing?.shots.length&&m.hp>0?{homingStar:{...homingStarView(m),serverNow:now},homingStars:homingStarsView(m,now)}:{}),
+    ...(m.homingVolley&&m.hp>0&&now<m.homingVolley.endsAt?{homingVolley:homingVolleyView(m,now)}:{}),
     ...(m.links&&m.hp>0?{constellationLinks:{...m.links,serverNow:now}}:{}),
+    ...(m.names&&m.hp>0&&now<m.names.endsAt?{constellationNames:constellationNamesView(m,now)}:{}),
+    ...(m.gather&&m.hp>0&&now<m.gather.endsAt?{constellationGather:constellationGatherView(m,now)}:{}),
     ...(m.typeId==='star-record'?{starRecordEffects:{serverNow:now,warning:m.starRecordCast??null,burst:m.starRecordBurst?.endsAt>now?m.starRecordBurst:null,challenge:starRecordChallengeView(m,now),math:starRecordMathView(m,now),flow:starRecordFlowView(m,now)}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
@@ -210,7 +215,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
     if(target.typeId==='truth-creator-star')room.monsters.delete(target.id);
     if(target.typeId==='truth-creator')clearTruthCreatorAttack(target,room);
     if(target.typeId==='dark-star')clearDarkStarSkills(room,target);
-    if(target.typeId===FORGOTTEN_CONSTELLATION.typeId){target.links=null;target.homing=null;}
+    if(target.typeId===FORGOTTEN_CONSTELLATION.typeId){target.links=null;target.names=null;target.gather=null;target.homing=null;target.homingVolley=null;}
     if(target.typeId==='star-record'){target.starRecordCast=null;target.starRecordBurst=null;target.recordChallenge=null;target.recordMath=null;target.recordFlow=null;}
     if(target.typeId==='serena')clearSerenaSkills(target);
     if(target.typeId==='spirit-king')clearSpiritKingEffects(room,target.id);
@@ -332,8 +337,15 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(delayedMeleeBoss(type)&&(!target||m.pendingAttack||m.moonCast||m.leoonSkill||(m.sleepUntil||0)>now||(m.stunUntil||0)>now))m.meleePresence?.clear();
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
-    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId){hits.push(...tickHomingStar(room,m,target,now));if(m.hp<=0)continue;}
+    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId){
+      // Enhanced basic fire runs independently, even while one of the three puzzles is active.
+      if(target)tryHomingVolley(room,m,now,random);
+      hits.push(...tickHomingStar(room,m,target,now,random));
+      if(m.hp<=0)continue;
+    }
     if(m.typeId===FORGOTTEN_CONSTELLATION.typeId&&m.links){hits.push(...tickConstellationLinks(room,m,now));continue;}
+    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId&&m.names){hits.push(...tickConstellationNames(room,m,now));continue;}
+    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId&&m.gather){hits.push(...tickConstellationGather(room,m,now));continue;}
     if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){
       if(m.darkStarSkills)m.darkStarSkills.aim=null;
       if(m.truthCreatorAttack)m.truthCreatorAttack.aim=null;
@@ -345,7 +357,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       }
       m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;
     }
-    if(type.id===FORGOTTEN_CONSTELLATION.typeId&&target&&tryConstellationLinks(room,m,now,random))continue;
+    if(type.id===FORGOTTEN_CONSTELLATION.typeId&&target&&
+      (tryConstellationLinks(room,m,now,random)||tryConstellationNames(room,m,now,random)||tryConstellationGather(room,m,now,random)))continue;
     if(type.id==='star-guardian')trySpiritGuardianHeal(room,m,now);
     if(type.id==='star-record'){
       if(!m.recordChallenge&&!m.recordMath&&!m.recordFlow&&target){

@@ -19,8 +19,8 @@ function create(){
 }
 
 test('AI starts five reachable stars, uses 10 MP once per 40s, and continues while stunned',()=>{
- const {p,room,boss}=create();damageMonster(room,boss,p,1,start);moveMonsters(room,start+160,()=>0);
- const cast=boss.links;assert(cast);assert.equal(cast.endsAt,start+160+20000);assert.equal(boss.mp,90);assert.equal(cast.stars.length,5);
+ const {p,room,boss}=create();boss.volleyReadyAt=start+60000;damageMonster(room,boss,p,1,start);moveMonsters(room,start+160,()=>0);
+ const cast=boss.links;assert(cast);assert.equal(cast.endsAt,start+160+15000);assert.equal(boss.mp,90);assert.equal(cast.stars.length,5);
  assert.deepEqual(cast.stars.map(s=>s.number),[1,2,3,4,5]);const activeMap={...map,objects:map.objects.filter(o=>o.id!==spec.statueId)};
  for(const s of cast.stars){
   assert(onOriginFloor(map,s.x,s.y,80));assert(avatarPositionIsClear(activeMap,s.x,s.y,p,[boss]));assert(!cast.stars.some(o=>s!==o&&Math.hypot(o.x-s.x,o.y-s.y)<110));

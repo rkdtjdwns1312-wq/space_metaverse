@@ -1,13 +1,14 @@
 import {DEFAULT_CONTROL_KEYS,CONTROL_KEY_OPTIONS,controlKeyLabel,validateControlKeys} from '/shared/control-keys.js';
+import {STEADY_WALK_KEY} from './walk-camera.js';
 const STORAGE_KEY='woozooclass-control-keys-v1';
 const FRIEND_WALK_REDUCTION_KEY='woozooclass-friend-walk-reduction-v1';
-export function createControlSettings({stop,onChange=()=>{},quality,friendWalkReduction}){
+export function createControlSettings({stop,onChange=()=>{},quality,friendWalkReduction,steadyWalk}){
   let bindings={...DEFAULT_CONTROL_KEYS};
   try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY));if(validateControlKeys(stored))bindings=stored;}catch{}
   const dialog=document.createElement('dialog');dialog.id='control-settings-dialog';dialog.setAttribute('aria-labelledby','control-settings-title');
   dialog.innerHTML='<header><h2 id="control-settings-title">조작 키 설정</h2><button type="button" class="secondary" id="control-settings-close">닫기</button></header><p>자주 쓰는 세 가지 키를 알파벳 또는 키보드 윗줄 1~6으로 바꿔 보세요.</p><div id="control-key-fields"></div><p class="muted">컴퓨터에서 게임 화면 왼쪽 클릭은 기본공격, 오른쪽 클릭은 스킬이에요.<br>이동 W·A·S·D와 파티 R은 그대로 사용해요. 1을 선택하면 별자리초월은 화면 버튼으로 사용할 수 있어요.<br>설정은 이 기기의 현재 브라우저에 저장돼요.</p><p id="control-settings-message" role="status"></p><footer><button type="button" class="secondary" id="control-settings-default">기본값 Q · E · F</button><button type="button" class="primary" id="control-settings-save">저장</button></footer>';
   document.body.append(dialog);
-  let qualitySelect,friendWalkToggle;
+  let qualitySelect,friendWalkToggle,steadyWalkToggle;
   if(quality){
     dialog.querySelector('h2').textContent='조작 · 화면 설정';
     const row=document.createElement('label');row.className='render-quality-field';row.textContent='화면 품질';
@@ -18,6 +19,13 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
     row.append(qualitySelect);dialog.querySelector('footer').before(row);
     const hint=document.createElement('p');hint.className='muted';hint.textContent='자동은 화면이 느릴 때 품질을 낮춰요. 저사양은 장식을 줄이고 초당 30장으로 표시해요. 이동·공격 속도와 위험 표시는 그대로예요.';
     row.after(hint);
+    if(steadyWalk){
+      const row=document.createElement('label');row.className='friend-walk-reduction-field';
+      steadyWalkToggle=document.createElement('input');steadyWalkToggle.type='checkbox';steadyWalkToggle.id='steady-walk-toggle';
+      row.htmlFor=steadyWalkToggle.id;row.append('이동 중 화면 흔들림 줄이기',steadyWalkToggle);
+      const description=document.createElement('p');description.className='muted';description.textContent='짧게 걸을 때는 배경이 고정되고, 더 멀리 걸으면 화면이 따라와요.';
+      dialog.querySelector('footer').before(row,description);
+    }
     if(friendWalkReduction){
       friendWalkToggle=document.createElement('input');friendWalkToggle.type='checkbox';friendWalkToggle.id='friend-walk-reduction-toggle';
       const motionRow=document.createElement('label');motionRow.className='friend-walk-reduction-field';motionRow.htmlFor=friendWalkToggle.id;
@@ -45,7 +53,7 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
     document.querySelector('.map-footer>span').textContent=`⌨ WASD·방향키·조이스틱 이동 / ${label('attack')} 공격·${label('skill')} 스킬·${label('interact')} 상호작용`;
   }
   function fill(value){for(const action of Object.keys(selects))selects[action].value=value[action];}
-  document.getElementById('control-settings-open').onclick=()=>{stop();fill(bindings);if(qualitySelect)qualitySelect.value=quality.get();if(friendWalkToggle)friendWalkToggle.checked=friendWalkReduction.get();message.textContent='';dialog.showModal();};
+  document.getElementById('control-settings-open').onclick=()=>{stop();fill(bindings);if(qualitySelect)qualitySelect.value=quality.get();if(friendWalkToggle)friendWalkToggle.checked=friendWalkReduction.get();if(steadyWalkToggle)steadyWalkToggle.checked=steadyWalk.get();message.textContent='';dialog.showModal();};
   dialog.querySelector('#control-settings-close').onclick=()=>dialog.close();
   dialog.querySelector('#control-settings-default').onclick=()=>{fill(DEFAULT_CONTROL_KEYS);message.textContent='저장을 누르면 기본 키로 돌아가요.';};
   dialog.querySelector('#control-settings-save').onclick=()=>{
@@ -54,9 +62,11 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
     stop();bindings=next;let persisted=true;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(next));}catch{persisted=false;}
     if(qualitySelect)quality.set(qualitySelect.value);
     if(friendWalkToggle)friendWalkReduction.set(friendWalkToggle.checked);
+    if(steadyWalkToggle)steadyWalk.set(steadyWalkToggle.checked);
     refresh();onChange();message.textContent=persisted?'저장했어요. 닫기를 누르고 새 설정을 사용해 보세요.':'현재 창에 적용했어요. 브라우저가 저장을 차단하여 새로고침하면 초기화될 수 있어요.';
   };
   window.addEventListener('storage',event=>{
+    if(event.key===STEADY_WALK_KEY){const enabled=event.newValue!=='false';steadyWalk?.set(enabled,false);if(steadyWalkToggle)steadyWalkToggle.checked=enabled;return;}
     if(event.key===FRIEND_WALK_REDUCTION_KEY){const enabled=event.newValue==='true';friendWalkReduction?.set(enabled,false);if(friendWalkToggle)friendWalkToggle.checked=enabled;return;}
     if(event.key!==STORAGE_KEY)return;try{const next=event.newValue===null?DEFAULT_CONTROL_KEYS:JSON.parse(event.newValue);if(validateControlKeys(next)){bindings={...next};refresh();onChange();}}catch{}
   });

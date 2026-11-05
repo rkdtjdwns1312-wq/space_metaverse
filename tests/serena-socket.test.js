@@ -141,7 +141,7 @@ test('보스 저장 재시도 대기 중에도 위치 전파·자연 회복·만
   damageMonster(f.room,f.room.monsters.get(SERENA.monsterId),f.pa,10000,f.now);
   f.room.bossSaveRetryAt=f.now+1000;
   const vitals=ensureVitals(f.pa);vitals.hp=1;vitals.mp=0;vitals.nextPassiveRecoveryAt=f.now;
-  f.room.energyDrops=new Map([['expired',{id:'expired',expiresAt:Date.now()-1}]]);
+  f.room.energyDrops=new Map([['expired',{id:'expired',expiresAt:f.now-1}]]);
   let ticks=0;f.a.on('world:positions',()=>ticks++);
   await until(()=>ticks>=2&&ensureVitals(f.pa).hp>1&&!f.room.energyDrops.has('expired'));
   assert.equal(f.room.pendingBossDeaths.size,1);assert.equal(f.room.serena.state,'active');

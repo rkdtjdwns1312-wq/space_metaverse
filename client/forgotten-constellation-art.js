@@ -1,9 +1,10 @@
 import {drawQuietStar} from './forgotten-links-art.js';
+import {preloadNamePortraits} from './forgotten-name-portraits.js';
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {drawMonsterArtLoading} from './monster-art-loading.js';
 const boss=mapImage('/assets/monsters/forgotten-constellation.webp');
 const statue=mapImage('/assets/monsters/forgotten-constellation-statue.webp');
-export const preloadForgottenArt=()=>decodeMapImages([boss,statue]);
+export const preloadForgottenArt=()=>Promise.all([decodeMapImages([boss,statue]),preloadNamePortraits()]);
 export function forgottenBounds(monster){
  const width=monster.radius*2.4,height=width*(boss?.naturalHeight||1)/(boss?.naturalWidth||1),bottom=monster.y+monster.radius*.85;
  return {width,height,top:bottom-height-8,bottom};
@@ -37,5 +38,10 @@ export function drawHomingStar(ctx,shot,now,quiet=false){
  // Stop interpolation at the next server-owned turn or hit update.
  const elapsed=Math.max(0,Math.min(100,now-shot.lastAt,shot.nextTurnAt-shot.lastAt));
  const x=shot.x+shot.dx*elapsed/1000*shot.speed,y=shot.y+shot.dy*elapsed/1000*shot.speed,r=shot.radius;
- drawQuietStar(ctx,x,y,r,quiet?0:now);
+ if(shot.color!=='blue'){drawQuietStar(ctx,x,y,r,quiet?0:now);return;}
+ const pulse=quiet?1:1+.065*Math.sin(now/530);
+ ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);ctx.scale(r*pulse,r*pulse);
+ ctx.fillStyle='#70dcff';ctx.strokeStyle='#263d70';ctx.lineWidth=.12;
+ ctx.beginPath();ctx.moveTo(0,-1);ctx.quadraticCurveTo(.13,-.13,.86,0);ctx.quadraticCurveTo(.13,.13,0,1);ctx.quadraticCurveTo(-.13,.13,-.86,0);ctx.quadraticCurveTo(-.13,-.13,0,-1);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle='#effcff';ctx.beginPath();ctx.arc(0,0,.2,0,2*Math.PI);ctx.fill();ctx.restore();
 }

@@ -21,7 +21,7 @@ test('stage three only summons at its statue, then uses basic combat and next mo
  assert.deepEqual([boss.x,boss.y,boss.hp,boss.mp],[map.width/2,map.height/2,20000,100]);assert.equal(monsterType('star-record').hp,15000);
  assert(!forgottenConstellationMap(map,room.forgottenConstellation).objects.some(o=>o.id===spec.statueId));assert.throws(()=>summonForgottenConstellation(room,p,now));
  room.monsters=new Map([[boss.id,boss]]);damageMonster(room,boss,p,1,now);moveMonsters(room,now+250,()=>.5);
- assert(!boss.pendingAttack);moveMonsters(room,now+3250,()=>.5);assert.ok(boss.homing.shot);const hit=moveMonsters(room,now+3900,()=>.5).find(h=>h.targetId===p.id);assert.ok(hit&&hit.damage>0);
+ assert(!boss.pendingAttack);moveMonsters(room,now+5250,()=>.5);assert.ok(boss.homing.shots[0]);const hit=moveMonsters(room,now+5900,()=>.5).find(h=>h.targetId===p.id);assert.ok(hit&&hit.damage>0);
  damageMonster(room,boss,p,20000,now+4000);const due=nextBossRespawnAt(now+4000);
  assert.equal(room.forgottenConstellation.respawnAt,due);assert.equal(room.energyDrops?.size||0,0);
  assert.equal(restoreForgottenConstellationStatue(room,due-1),false);assert.equal(restoreForgottenConstellationStatue(room,due),true);

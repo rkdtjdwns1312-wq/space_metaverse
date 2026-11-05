@@ -11,6 +11,7 @@ import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
 import { spawnPosition, addPlanet } from './world.js';
 import {monsterViews} from './monsters.js';
+import {visibleGatherMonsters} from './forgotten-constellation-gather.js';
 import {serenaView,darkStarView,starRecordView,forgottenConstellationView,truthCreatorView} from './boss-lifecycle.js';
 import {serenaEligible,serenaEligibility} from './serena-progress.js';
 import {cardMarkerViews} from './item-cards.js';
@@ -172,9 +173,9 @@ export class RoomStore {
     const isTeacher=!!(viewer && viewer.role==='teacher');
     const missions=missionViews(room,viewer,now);
     const memberCount=planetId=>[...room.players.values()].filter(p=>p.avatar.departmentId===planetId).length;
-    return {code:room.code,title:room.title,mapId:room.mapId,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
+    return {code:room.code,title:room.title,mapId:room.mapId,positionTime:now,maxPlayers:RULES.maxPlayers,chat:{enabled:room.chat.enabled},
       spiritBlueStars:spiritBlueStarViews(room,viewer?.mapId||room.mapId,now),
-      monsters:monsterViews(room,now),energyDrops:energyDropViews(room,now),serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),forgottenConstellation:forgottenConstellationView(room),truthCreator:truthCreatorView(room),
+      monsters:visibleGatherMonsters(room,monsterViews(room,now),viewer),energyDrops:energyDropViews(room,now),serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),forgottenConstellation:forgottenConstellationView(room),truthCreator:truthCreatorView(room),
       missions,studentReminders:studentReminders(room,viewer,now,missions),
       ariesInvites:[...(room.ariesInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)),
       cancerInvites:[...(room.cancerInvites?.values()||[])].filter(invite=>viewer&&invite.expiresAt>now&&(invite.fromId===viewer.id||invite.toId===viewer.id)).map(invite=>{

@@ -11,11 +11,15 @@ export async function verifyControlsLayout(page,width){
  for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)assert.ok(!overlap(boxes[i][1],boxes[j][1]),`${width}: ${boxes[i][0]} overlaps ${boxes[j][0]}`);
  const attack=await page.locator('#touch-attack').boundingBox(),skill=await page.locator('#touch-skill').boundingBox(),investigate=await page.locator('#touch-interact').boundingBox(),stick=await page.locator('#joystick').boundingBox(),dock=await page.locator('.bottom-dock').boundingBox();
  if(width>=801){assert.equal(attack.width,84);assert.equal(skill.width,84);assert.equal(investigate.width,126);assert.equal(investigate.height,63);assert.equal(stick.width,114);}
- assert.ok(Math.abs(investigate.x+investigate.width/2-((attack.x+attack.width/2+skill.x+skill.width/2)/2))<1,'investigate horizontal center '+width);
+ const settings=await page.locator('#control-settings-open').boundingBox();
+ assert.ok(settings.x>=investigate.x+investigate.width&&settings.x+settings.width<=width,'settings beside interact '+width);
+ assert.ok(Math.abs(settings.y+settings.height/2-investigate.y-investigate.height/2)<1,'settings and interact share a row');
  assert.ok(attack.x<width/2&&skill.x<width/2);assert.ok(investigate.y>=attack.y+attack.height);
  const vitals=await page.locator('#vitals-hud').boundingBox(),vitalsCenterY=vitals.y+vitals.height/2;
- assert.ok(Math.abs(investigate.y+investigate.height/2-(dock.y+dock.height/2))<1,'investigate/bottom-dock centerY '+width);
- for(const [id,b] of [['attack',attack],['skill',skill],['joystick',stick]])assert.ok(Math.abs(b.y+b.height/2-vitalsCenterY)<1,`${id}/vitals centerY ${width}`);
+ if(width>=801){
+   assert.ok(Math.abs(investigate.y+investigate.height/2-(dock.y+dock.height/2))<1,'investigate/bottom-dock centerY '+width);
+   for(const [id,b] of [['attack',attack],['skill',skill],['joystick',stick]])assert.ok(Math.abs(b.y+b.height/2-vitalsCenterY)<1,`${id}/vitals centerY ${width}`);
+ }else assert.ok(stick.x+stick.width/2>width/2,'touch joystick on the right');
  if(width>=801)assert.ok(Math.abs(stick.x+stick.width/2-(dock.x+dock.width+width)/2)<3,'joystick midpoint '+width);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
 }

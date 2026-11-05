@@ -1,6 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMotionTrack,MOTION} from '../client/motion.js';
+import {createMotionTrack,createPositionClock,MOTION} from '../client/motion.js';
+
+test('같은 서버 이동이 ±30ms 도착 지터와 중간 교실 새로고침에도 등속으로 재생된다',()=>{
+  const stamp=1_800_000_000_000,local=200,latency=[30,60,0,55,5,50,10],speed=.62;
+  for(const frameMs of [1000/30,1000/60,1000/120]){
+    const track=createMotionTrack(),clock=createPositionClock(),packets=[];
+    for(let i=0;i<30;i++){
+      const t=i*100,arrival=t+local+latency[i%latency.length];
+      packets.push({t,x:t*speed,arrival},{t:t+10,x:t*speed,arrival:arrival+10,snapshot:true});
+    }
+    let cursor=0;
+    for(let now=local;now<local+2800;now+=frameMs){
+      while(packets[cursor]?.arrival<=now){
+        const {t,x,arrival,snapshot}=packets[cursor++];
+        track.push(x,0,'plaza',clock(stamp+t,arrival),{snapshot});
+      }
+      if(now>local+350)assert.ok(Math.abs(track.at(now).x-(now-local-latency[0]-MOTION.delayMs)*speed)<1e-7);
+    }
+  }
+});
+
+test('정지 확인 후 한 틱 뒤 재출발하며 늦은 이전 위치는 무시한다',()=>{
+  const track=createMotionTrack();
+  for(const [x,t] of [[0,0],[62,100],[62,200],[99,180],[124,300]])track.push(x,0,'plaza',t);
+  assert.equal(track.at(350).x,62);assert.equal(track.at(400).x,93);
+});
+
+test('오래 멎은 탭에 과거 패킷과 최신 패킷이 함께 도착하면 바로 최신 시각을 따라잡는다',()=>{
+  const clock=createPositionClock(),track=createMotionTrack();
+  for(const [t,arrived,x] of [[0,0,0],[100,100,60],[200,2200,120],[2200,2210,740],[2300,2310,800]]){
+    const sample=clock(t,arrived);
+    assert.equal(sample,arrived);
+    track.push(x,0,'plaza',sample);
+  }
+  // An old UI snapshot received again must not rewind playback or its clock.
+  track.push(1,0,'plaza',clock(100,2320),{snapshot:true});
+  assert.equal(track.at(2410).x,770);
+  assert.equal(clock(2400,2410),2410);
+});
 
 test('100ms 위치 수신 사이를 일정한 속도로 표시하고 60/120Hz 결과가 같다',()=>{
   for(const frame of [1000/60,1000/120]){

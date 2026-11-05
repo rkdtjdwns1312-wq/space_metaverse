@@ -81,7 +81,12 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
 const teacherUpdates=createTeacherUpdates();
-const controlSettings=createControlSettings({stop,quality:{get:()=>world.qualityStats().mode,set:mode=>world.setQuality(mode)},friendWalkReduction:{get:()=>world.friendWalkReduction(),set:(enabled,persist)=>world.setFriendWalkReduction(enabled,persist)},onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
+const controlSettings=createControlSettings({
+  stop,quality:{get:()=>world.qualityStats().mode,set:mode=>world.setQuality(mode)},
+  friendWalkReduction:{get:()=>world.friendWalkReduction(),set:(enabled,persist)=>world.setFriendWalkReduction(enabled,persist)},
+  steadyWalk:{get:()=>world.steadyWalk(),set:(enabled,persist)=>world.setSteadyWalk(enabled,persist)},
+  onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}
+});
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -122,7 +127,7 @@ function unlockLobbyAudio(){if(!$('lobby').hidden)audio.playBgm('lobby');else au
 document.addEventListener('pointerdown',unlockLobbyAudio,{once:true});
 document.addEventListener('keydown',unlockLobbyAudio,{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
-let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,starRecordPlanetPrompt=null,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
+let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,starRecordPlanetPrompt=null,forgottenNamesPrompt=false,forgottenNamesDeadline=0,forgottenNamesCastId=null,forgottenNamesExpiryTimer=null,forgottenNameDraftCastId=null,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 let reconnectAttempt=null,sessionResumePromise=null,finishReconnectAttempt=null;
 let mouseAim=null,aimMap=null,customPlanetDesign=null;
 $('world').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouseAim={clientX:e.clientX,clientY:e.clientY};});
@@ -908,12 +913,15 @@ function updateProposalsPanel(isTeacher){
 }
 function updateChatUI(me,isTeacher){
   const enabled=room.chat?.enabled!==false;
+  const nameChallenge=forgottenNamesPrompt&&performance.now()<forgottenNamesDeadline&&me?.mapId==='sleeping-stars-3'&&social.scope().channel==='map';
   $('chat-teacher-controls').hidden=!isTeacher;
   $('chat-toggle').textContent=enabled?'채팅 끄기':'채팅 켜기';
   if(isTeacher){
     $('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';$('chat-status').textContent=enabled?'켜짐':'꺼짐 · 선생님만 말할 수 있어요';
   }else if(starRecordPlanetPrompt){
     $('chat-input').disabled=false;$('chat-input').placeholder=`별 기록 답: ${starRecordPlanetPrompt}`;$('chat-status').textContent='보스 문제 답하기';
+  }else if(nameChallenge){
+    $('chat-input').disabled=false;$('chat-input').placeholder='별자리 이름 답하기 (Enter)';$('chat-status').textContent='보스 이름 맞히기 · 모바일에서도 입력할 수 있어요';
   }else if(!enabled){
     $('chat-input').disabled=true;$('chat-input').placeholder='선생님이 채팅을 껐어요';$('chat-status').textContent='꺼짐';
   }else if(me?.muted){
@@ -923,6 +931,19 @@ function updateChatUI(me,isTeacher){
   }
   $('chat-send').disabled=chatBusy||$('chat-input').disabled;
 }
+function syncForgottenNamesPrompt(namesData){
+  const active=!!namesData?.remaining?.length;
+  if(active&&namesData.id===forgottenNamesCastId&&performance.now()<forgottenNamesDeadline)return true;
+  if(forgottenNamesExpiryTimer){clearTimeout(forgottenNamesExpiryTimer);forgottenNamesExpiryTimer=null;}
+  const remainingMs=active?namesData.endsAt-namesData.serverNow:0;
+  if(!active||remainingMs<=0){forgottenNamesCastId=null;forgottenNamesDeadline=0;return false;}
+  forgottenNamesCastId=active?namesData.id:null;
+  forgottenNamesDeadline=performance.now()+remainingMs;
+  forgottenNamesExpiryTimer=setTimeout(()=>{forgottenNamesPrompt=false;forgottenNamesCastId=null;forgottenNamesExpiryTimer=null;const me=room?.players.find(p=>p.id===selfId);if(me)updateChatUI(me,me.role==='teacher');},remainingMs);
+  return active;
+}
+$('chat-channel').addEventListener('change',()=>{const me=room?.players.find(p=>p.id===selfId);if(me)updateChatUI(me,me.role==='teacher');});
+for(const tab of document.querySelectorAll('[data-chat-tab]'))tab.addEventListener('click',()=>{if(tab.dataset.chatTab!=='map')forgottenNameDraftCastId=null;const me=room?.players.find(p=>p.id===selfId);if(me)updateChatUI(me,me.role==='teacher');});
 function renderPlanetDialog(planetId){
   if(!room)return;
   const planet=planetById(planetId);
@@ -1072,6 +1093,7 @@ function doInteract(){
   else if(n.kind==='dark-star-card')interactDarkCard(n);
   else if(n.kind==='truth-creator-blue'){stop();truthCreatorBlueUI.open(n,room?.players.find(p=>p.id===selfId));}
   else if(n.kind==='forgotten-link'){stop();request('forgotten-constellation:link',{castId:n.castId,number:n.number}).then(r=>toast(r.message)).catch(e=>toast(e.message));}
+  else if(n.kind==='forgotten-gather-star')request('forgotten-constellation:gather',{castId:n.castId,starId:n.id}).catch(e=>toast(e.message));
   else if(n.kind==='star-record-number'){stop();starRecordMathUI.open(n);}
   else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='hall-of-fame')hallOfFame.open();
@@ -1557,7 +1579,7 @@ function reset(message){
   clearStudentAccountPins();
   universe.reset();overview=false;world.setOverview(false);$('map-area-view').textContent='현재 맵 한눈에 보기';
   social.reset();partyUI.reset();document.querySelector('.top-right').append($('connection'));
-  stop();audio.playBgm('lobby');selfId=null;room=null;starRecordPlanetPrompt=null;saveToken(null);world.setRoom(null,null);
+  stop();audio.playBgm('lobby');selfId=null;room=null;starRecordPlanetPrompt=null;forgottenNamesPrompt=false;forgottenNamesCastId=null;forgottenNameDraftCastId=null;if(forgottenNamesExpiryTimer)clearTimeout(forgottenNamesExpiryTimer);forgottenNamesExpiryTimer=null;saveToken(null);world.setRoom(null,null);
   $('lobby').hidden=false;showLobbyChoice(false);$('room-badge').hidden=true;$('leave').hidden=true;$('chat-panel').hidden=true;
   $('crew-button').hidden=true;$('teacher-tools').hidden=true;$('teacher-badge').hidden=true;
   teacherInventory.update();
@@ -1668,7 +1690,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){const localMap=!data.mapId||data.mapId===world.currentMapId();if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.forgottenConstellation){if(room)room.forgottenConstellation=data.forgottenConstellation;forgottenUI.update(data.forgottenConstellation);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=localMap?data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null:starRecordPlanetPrompt;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(localMap)truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(localMap&&data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){const localMap=!data.mapId||data.mapId===world.currentMapId();if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.forgottenConstellation){if(room)room.forgottenConstellation=data.forgottenConstellation;forgottenUI.update(data.forgottenConstellation);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=localMap?data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null:starRecordPlanetPrompt;const namesData=Array.isArray(data.monsters)?(localMap&&room?.players.find(p=>p.id===selfId)?.mapId==='sleeping-stars-3'?data.monsters.find(m=>m.typeId==='forgotten-constellation')?.constellationNames:null):undefined;const names=namesData===undefined?forgottenNamesPrompt:syncForgottenNamesPrompt(namesData);if(prompt!==starRecordPlanetPrompt||names!==forgottenNamesPrompt){starRecordPlanetPrompt=prompt;forgottenNamesPrompt=names;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(localMap)truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(localMap&&data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});
@@ -1682,14 +1704,14 @@ function updateChatCount(){
   $('chat-count').textContent=Array.from(input.value).length+' / '+CHAT.maxLength+'자';
 }
 // 한글 조합 중에는 자르지 않고 조합이 끝난 뒤 제한합니다. 이모지도 한 글자로 셉니다.
-$('chat-input').addEventListener('input',e=>{if(!e.isComposing)updateChatCount();});
+$('chat-input').addEventListener('input',e=>{if($('chat-input').value&&forgottenNamesPrompt&&social.scope().channel==='map')forgottenNameDraftCastId=forgottenNamesCastId;else if(!$('chat-input').value)forgottenNameDraftCastId=null;if(!e.isComposing)updateChatCount();});
 $('chat-input').addEventListener('compositionend',updateChatCount);
 $('chat-form').onsubmit=async e=>{
   e.preventDefault();const text=$('chat-input').value.trim();if(!text||chatBusy)return;
   if(Array.from(text).length>CHAT.maxLength){$('chat-feedback').textContent='채팅은 1~100자로 입력해주세요.';return;}
   $('chat-feedback').textContent='';
   chatBusy=true;$('chat-send').disabled=true;
-  try{const result=await request('chat:send',{text,...social.scope()});$('chat-input').value='';updateChatCount();if(result.starRecordAnswer)toast('별 기록을 맞혔어요!');}
+  try{const result=await request('chat:send',{text,...social.scope(),...(social.scope().channel==='map'&&forgottenNameDraftCastId?{constellationNameCastId:forgottenNameDraftCastId}:{})});$('chat-input').value='';forgottenNameDraftCastId=null;updateChatCount();if(result.starRecordAnswer)toast('별 기록을 맞혔어요!');if(result.constellationNameAnswer==='expired')toast('이름 맞히기 시간이 끝났어요.');else if(result.constellationNameAnswer==='correct')toast('이름을 맞혔어요!');else if(result.constellationNameAnswer==='complete')toast('두 이름을 모두 맞혔어요!');else if(result.constellationNameAnswer==='already')toast('이미 맞힌 이름이에요.');else if(result.constellationNameAnswer==='wrong')toast('아직 이름을 맞히지 못했어요.');}
   catch(err){$('chat-feedback').textContent=err.message;toast(err.message);}
   finally{chatBusy=false;$('chat-send').disabled=$('chat-input').disabled;$('chat-input').focus();}
 };

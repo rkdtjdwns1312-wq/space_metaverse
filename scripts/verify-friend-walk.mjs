@@ -30,6 +30,31 @@ try{
  const publish=()=>{for(const viewer of [self,peer])game.io.to(viewer.socketId).emit('room:state',game.store.snapshot(room,viewer,Date.now()));};publish();
  const ownSprite=constellationOf('aries',4).sprite,peerSprite='/assets/avatars/teacher/star-sovereign.png';
  await Promise.all([student,teacher].map(p=>p.waitForFunction(path=>!!window.spriteTransforms[path],ownSprite)));
+ // Use an unobstructed stretch away from either map edge for a camera A/B check.
+ let cameraPoint;
+ for(let x=800;x<MAP.width-800&&!cameraPoint;x+=80)for(let y=500;y<MAP.height-500&&!cameraPoint;y+=80){
+  if([0,25,50].every(dx=>isFree(room,x+dx,y,self.id,PLAZA_ID,false,self)))cameraPoint={x,y};
+ }
+ assert.ok(cameraPoint);
+ const viewX=()=>student.locator('#world').evaluate(c=>Number(c.dataset.viewX));
+ async function positionCamera(dx){
+  Object.assign(self,{x:cameraPoint.x+dx,y:cameraPoint.y});publish();
+  await student.waitForFunction(({x,y})=>{const d=document.querySelector('#world').dataset;return Math.abs(Number(d.selfRenderX)-x)<1&&Math.abs(Number(d.selfRenderY)-y)<1;},{x:self.x,y:self.y});
+ }
+ async function steady(enabled){
+  await student.locator('#control-settings-open').click();const toggle=student.locator('#steady-walk-toggle');
+  await toggle.setChecked(enabled);await student.locator('#control-settings-save').click();await student.locator('#control-settings-close').click();
+ }
+ await positionCamera(0);
+ await student.locator('#control-settings-open').click();assert(await student.locator('#steady-walk-toggle').isChecked());
+ await student.locator('#control-settings-close').click();
+ for(const enabled of [false,true]){
+  await positionCamera(0);await steady(enabled);await student.waitForTimeout(120);
+  const start=await viewX();await positionCamera(50);const delta=await viewX()-start;
+  if(enabled)assert(Math.abs(delta)<1,'short walk leaves the background still');
+  else assert(Math.abs(delta-50)<2,'center-follow camera follows the same 50-unit walk');
+  console.log('short walk camera delta',enabled,delta);
+ }
  async function setMode(mode){await student.locator('#control-settings-open').click();await student.locator('#render-quality-select').selectOption(mode);await student.locator('#control-settings-save').click();await student.locator('#control-settings-close').click();await student.waitForFunction(mode=>document.querySelector('#world').dataset.renderMode===mode,mode);}
  async function setFriendReduction(enabled){await student.locator('#control-settings-open').click();const toggle=student.locator('#friend-walk-reduction-toggle');if(enabled)await toggle.check();else await toggle.uncheck();await student.locator('#control-settings-save').click();await student.locator('#control-settings-close').click();assert.equal(await student.evaluate(()=>localStorage.getItem('woozooclass-friend-walk-reduction-v1')),String(enabled));}
  async function moveAndObserve(label){

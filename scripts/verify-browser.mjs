@@ -25,6 +25,7 @@ async function expandTeacherSection(page,label){
 }
 async function rejoinStudentAfterReload(page,code){
  await page.reload();
+ await page.locator('#connection.is-connected').waitFor({state:'attached'});
  await page.locator('#lobby-choice').waitFor({state:'visible'});
  assert.equal(await page.locator('#lobby').getAttribute('data-step'),'choose','새로고침 후에는 입장 방법 선택이 첫 화면이어야 해요.');
  await page.locator('#student-tab').click();

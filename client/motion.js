@@ -3,21 +3,43 @@
 // 충돌 밖으로 예측 이동하지 않으며 서버 좌표나 이동 속도를 수정하지 않습니다.
 export const MOTION = Object.freeze({ delayMs: 150, intervalMs: 100, snapDistance: 240, maxSamples: 12 });
 
+// Keep all avatars on one server timeline. Packet arrival jitter inside the
+// playback buffer must not stretch or compress individual steps.
+export function createPositionClock(){
+  let offset,lastStamp,lastReceipt;
+  return (stamp,received)=>{
+    if(!Number.isFinite(stamp))return received;
+    if(offset===undefined)offset=received-stamp;
+    if(lastStamp===undefined||stamp>lastStamp){
+      const error=received-(stamp+offset);
+      // A suspended tab can receive an old queued frame and then a live one
+      // in the same turn. Do not schedule that live frame seconds in the future.
+      if(error < -MOTION.intervalMs || (lastReceipt!==undefined&&received-lastReceipt>1000))offset=received-stamp;
+      else if(Math.abs(error)>MOTION.intervalMs)offset+=Math.max(-2,Math.min(2,error));
+      lastStamp=stamp;lastReceipt=received;
+    }
+    return stamp+offset;
+  };
+}
+
 export function createMotionTrack({delayMs=MOTION.delayMs,intervalMs=MOTION.intervalMs}={}) {
-  let samples=[],mapId=null;
+  let samples=[],mapId=null,lastSeen=-Infinity;
   return {
-    push(x,y,map,now) {
+    push(x,y,map,now,{snapshot=false}={}) {
       if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(now))return;
       const last=samples.at(-1);
-      if(last&&now<last.time)return;
+      if(now<lastSeen)return;
+      // A roster refresh can repeat a moving avatar between simulation ticks.
+      if(snapshot&&map===mapId&&last?.x===x&&last.y===y)return;
+      const heldUntil=lastSeen;lastSeen=now;
       if(!last||mapId!==map||Math.hypot(x-last.x,y-last.y)>MOTION.snapDistance){
         samples=[{x,y,time:now}];mapId=map;return;
       }
       if(x===last.x&&y===last.y)return; // 상태창/정지 중 반복 패킷은 이동 시간을 바꾸지 않습니다.
       if(now-last.time>intervalMs*2){
         // 오래 정지한 뒤 출발할 때 정지한 시간 전체를 천천히 이동하는 것으로 해석하지 않습니다.
-        samples=[{x:last.x,y:last.y,time:now-intervalMs}];
-      }
+        samples=[{x:last.x,y:last.y,time:Math.max(now-intervalMs,heldUntil)}];
+      }else if(heldUntil>last.time)samples.push({x:last.x,y:last.y,time:heldUntil});
       if(samples.at(-1).time===now)samples.pop();
       samples.push({x,y,time:now});
       if(samples.length>MOTION.maxSamples)samples.splice(0,samples.length-MOTION.maxSamples);
