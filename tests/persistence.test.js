@@ -107,7 +107,7 @@ test('수업 마치기/서버 재시작 후 코드·학생 id·행성·소속·�
   const back=await join(nextStudent,code);assert.equal(back.ok,true,back.error);assert.equal(back.selfId,j.selfId);
   const me=back.room.players.find(p=>p.id===back.selfId);
   assert.equal(me.starShards,balance);assert.deepEqual(me.inventory,bag);assert.equal(me.departmentId,planet.id);
-  assert.equal(me.mapId,PLAZA_ID);assert.ok(!back.chat.messages.some(m=>m.text==='내일도 만나요'));
+  assert.equal(me.mapId,STREET_ID);assert.ok(back.chat.messages.some(m=>m.text==='내일도 만나요'));
   assert.ok(f.game.store.rooms.get(code).chat.history.some(m=>m.text==='내일도 만나요'&&m.mapId===STREET_ID));
   assert.ok(back.chat.messages.some(m=>m.private));
   assert.equal((await call(nextStudent,'room:list',{teacherKey:key})).ok,false);

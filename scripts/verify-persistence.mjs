@@ -67,6 +67,7 @@ export async function verifyPersistence(browser){
     await student.locator('#chat-log li').filter({hasText:'다음 수업에도 만나요'}).waitFor({state:'attached'});
     assert.equal(await teacher.locator('#chat-log li').filter({hasText:'다음 수업에도 만나요'}).count(),0);
     checks.push('행성 가입·규칙 수정·개별 지급·상점 구매·채팅을 UI로 저장');
+    const exitLocation={mapId:p.mapId,x:p.x,y:p.y};
     await openMenu(teacher);await teacher.getByRole('button',{name:'수업 마치기',exact:true}).click();await teacher.locator('#confirm-leave').click();
     await student.locator('#lobby').waitFor({state:'visible'});assert.equal(game.store.rooms.size,0);
     checks.push('수업 마치기 후 학생 입장 화면 복귀와 교실 코드 보존');
@@ -83,13 +84,19 @@ export async function verifyPersistence(browser){
     await nextStudent.locator('#self-shards').filter({hasText:balance}).waitFor({state:'attached'});
     assert.equal(await nextStudent.locator('#bag-list li').count(),1);
     await nextStudent.locator('#self-department').filter({hasText:planet.name}).waitFor({state:'attached'});
-    assert.equal(await nextStudent.locator('#chat-log li').filter({hasText:'다음 수업에도 만나요'}).count(),0);
+    assert.equal(await nextStudent.locator('#chat-log li').filter({hasText:'다음 수업에도 만나요'}).count(),1);
+    const returned=game.store.rooms.get(code).players.get(id);
+    assert.deepEqual({mapId:returned.mapId,x:returned.x,y:returned.y},exitLocation);
     assert.ok(game.store.rooms.get(code).chat.history.some(m=>m.text==='다음 수업에도 만나요'&&m.mapId===STREET_ID));
     await nextStudent.locator('#chat-log li.private').filter({hasText:'40개'}).waitFor({state:'attached'});
     assert.equal([...game.store.rooms.get(code).players.values()].find(p=>p.nickname==='1').id,id);
+    // Re-entry now restores the shop map. Move to the plaza for the separate planet UI check.
+    Object.assign(returned,{mapId:'space-plaza',...MAP.spawn});
+    game.io.to(returned.socketId).emit('room:state',game.store.snapshot(game.store.rooms.get(code),returned));
+    await nextStudent.waitForFunction(()=>!document.querySelector('#planet-new').hidden);
     await clickPlanet(nextStudent,planet);await nextStudent.locator('#planet-rules-toggle').click();
     await nextStudent.locator('#planet-rules-list li').filter({hasText:'책을 소중하게 읽어요'}).waitFor({state:'attached'});await nextStudent.locator('#planet-close').click();
-    checks.push('잘못된 PIN 거부 후 학생 id·소속·규칙·잔액·가방·개인 안내 복원, 다른 맵 대화는 저장하되 비공개');
+    checks.push('잘못된 PIN 거부 후 종료 맵·좌표·학생 id·소속·규칙·잔액·가방·개인 안내 및 해당 맵 대화 복원');
     await nextTeacher.locator('#teacher-tools').click();
     await nextTeacher.getByRole('button',{name:'학생 비밀번호 바꾸기',exact:true}).click();
     await nextTeacher.locator('#pin-target').selectOption(id);

@@ -1,4 +1,5 @@
 import {validateArchive} from './starlight-archive.js';
+import {validateLastLocation,rememberStudentLocation,studentReturnPosition} from './last-location.js';
 import {validateArtStudio} from './art-studio.js';
 import {validateHuntingTime} from './hunting-time.js';
 import {validateCozyActivities} from './cozy-activities.js';
@@ -36,8 +37,7 @@ import {pinHash,checkPin} from './pin-auth.js';
 export {PIN_RULES,pinHash,checkPin} from './pin-auth.js';
 import { ClassFileStore } from './store.js';
 import {isEncryptedTeacherCode} from './teacher-access.js';
-import { RULES, PLAZA_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, itemOf, PROGRESSION } from '../shared/config.js';
-import { spawnPosition,spawnInside } from './world.js';
+import { RULES, PLAZA_ID, itemOf, PROGRESSION } from '../shared/config.js';
 import {validateStarRanking} from './star-game.js';
 import {validateDodgeRanking} from './dodge-game.js';
 import {validateMemoryRanking} from './memory-game.js';
@@ -52,7 +52,7 @@ import {validateSerenaProgress} from './serena-progress.js';
 import {restoreBossItemHistory,captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
 import {validateSerenaState,validateDarkStarState,validateStarRecordState,validateForgottenConstellationState,validateTruthCreatorState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
 
-// 작은 교실용 파일 저장. 위치·접속 토큰은 제외하고, 학생의 고정 id와 소유물만 보존합니다.
+// 학생의 종료 위치는 별도 lastLocation에 보존하고 접속 토큰은 저장하지 않습니다.
 function offline(p) {
   Object.assign(p,{connected:false,socketId:null,token:null,expiresAt:null,away:true,
     x:0,y:0,mapId:PLAZA_ID,input:{x:0,y:0,at:0},effects:[],lastChatAt:0,lastItemUseAt:0});
@@ -99,7 +99,8 @@ export function toRecord(room) {
       constellationAbilityState:validateConstellationAbilityState(p.constellationAbilityState),
       piscesPair:validatePiscesPair(p.piscesPair),
       learnedRecipeIds:validateLearnedRecipeIds(p.learnedRecipeIds),statGrowth:validateStatGrowth(p.statGrowth),
-      rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin
+      rabbitDraw:p.rabbitDraw||null,rabbitUsedDay:p.rabbitUsedDay||null,abilityState:p.abilityState,pin:p.pin,
+      ...(validateLastLocation(p.lastLocation)?{lastLocation:validateLastLocation(p.lastLocation)}:{})
     }))};
 }
 // 읽을 수 없는 파일은 조용히 초기화하지 않습니다. 관리자가 원본/백업을 확인하도록 시작을 중단합니다.
@@ -183,7 +184,7 @@ export function fromRecord(r,now=Date.now()) {
     if(crownTrial&&(avatar.level!==1||
       !(avatar.constellationId==='corona-borealis'||avatar.constellationId==='ophiuchus'&&borrowedCrown?.constellationId==='corona-borealis'&&borrowedCrown.level===4)||
       crownTrial.savedEquipmentSlots.some(id=>id&&!equipmentOf(id))))bad();
-    room.players.set(p.id,offline({...structuredClone(p),huntingTimer:null,tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
+    room.players.set(p.id,offline({...structuredClone(p),lastLocation:validateLastLocation(p.lastLocation),huntingTimer:null,tutorialCompleted:p.tutorialCompleted??false,tutorialRewardClaimed:p.tutorialRewardClaimed??!!p.tutorialCompleted,
       tutorialCompletedAt:p.tutorialCompletedAt??null,tutorialRewardClaimedAt:p.tutorialRewardClaimedAt??null,
       journey:validateJourney(p.journey),
       starlightArchive:validateArchive(p.starlightArchive),
@@ -219,7 +220,8 @@ export class PersistentRoomStore extends RoomStore {
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
       this.records.set(r.code,{...r,teacherArtStudio:restored.teacherArtStudio,serena:restored.serena,darkStar:restored.darkStar,starRecord:restored.starRecord,forgottenConstellation:restored.forgottenConstellation,truthCreator:restored.truthCreator,bossRespawns:restored.bossRespawns,
-        students:r.students.map(p=>({...p,serenaProgress:restored.players.get(p.id).serenaProgress,artStudio:restored.players.get(p.id).artStudio}))});
+        students:r.students.map(p=>{const {lastLocation,...rest}=p;const saved=validateLastLocation(lastLocation);
+          return {...rest,serenaProgress:restored.players.get(p.id).serenaProgress,artStudio:restored.players.get(p.id).artStudio,...(saved?{lastLocation:saved}:{})};})});
     }}
     catch(error){this.files.close();throw error;}
   }
@@ -293,9 +295,8 @@ export class PersistentRoomStore extends RoomStore {
       ensure(!p.connected,'이미 사용 중인 닉네임이에요. 원래 창에서 계속해주세요.');
       checkPin(p,data.pin);
       this.sessions.delete(p.token);
-      const mapId=p.avatar.blackStar?BLACK_HOLE_ID:p.constellationAbilityState?.cetusStomach?.endsAt>this.clock()?WHALE_STOMACH_ID:PLAZA_ID;
-      Object.assign(p,mapId===BLACK_HOLE_ID||mapId===WHALE_STOMACH_ID?spawnInside(room,mapId,p):spawnPosition(room),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
-        expiresAt:null,mapId,input:{x:0,y:0,at:0}});
+      Object.assign(p,studentReturnPosition(room,p,this.clock()),{token:randomBytes(32).toString('hex'),socketId,connected:true,away:false,
+        expiresAt:null,input:{x:0,y:0,at:0}});
       const session={room,player:p};this.sessions.set(p.token,session);return session;
     }
     ensure(!this.teacherManagedAccounts,'선생님이 아직 계정을 만들지 않았어요. 선생님께 알려주세요.');
@@ -303,13 +304,20 @@ export class PersistentRoomStore extends RoomStore {
     ensure(room.players.size<RULES.maxPlayers,`교실 정원 ${RULES.maxPlayers}명이 모두 찼어요.`);
     const player=this.add(room,name,'student',socketId);player.pin=pin;return {room,player};
   }
+  resume(token,socketId,now=Date.now()){
+    const session=super.resume(token,socketId,now),p=session.player;
+    if(p.role==='student')Object.assign(p,studentReturnPosition(session.room,p,this.clock(),p));
+    return session;
+  }
   remove(room,p){
+    rememberStudentLocation(p);
     this.sessions.delete(p.token);
     if(p.role==='student')offline(p);else room.players.delete(p.id);
   }
   destroy(room,now=Date.now()){
     // 처치 직후 다음 전투 틱 전에 수업을 끝내도 자격과 다음 날 07시 복원 시각을 보존합니다.
     settleBossDeaths(room,now);
+    for(const player of room.players.values())rememberStudentLocation(player);
     this.records.set(room.code,structuredClone(toRecord(room)));
     super.destroy(room);
   }

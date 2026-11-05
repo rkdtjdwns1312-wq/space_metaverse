@@ -14,6 +14,7 @@ import {captureBossItemHistory,commitBossItemHistory} from './boss-item-history.
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
 import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
+import {rememberStudentLocation} from './last-location.js';
 import {HUNTING_STATION_MS,huntingCycle} from '../shared/hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
@@ -362,6 +363,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const s=socket.data.session;if(!s)return;
     clearBossMapHazard(s.room,s.player.id);s.player.herculesSlam=null;
     settleHuntingTime(s.player,clock());
+    rememberStudentLocation(s.player);
     deliver(()=>socket.leave(s.room.code));socket.data.session=null;
     if(immediate){
       if(s.player.role==='teacher'&&!s.room.unattended) roomClosed(s.room);

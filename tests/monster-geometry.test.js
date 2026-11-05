@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MONSTER_TYPES,monsterVisualScale} from '../shared/monsters.js';
-import {monsterFootprint,MONSTER_BODY_GEOMETRY} from '../shared/monster-geometry.js';
+import {monsterFootprint,monsterMovementFootprint,MONSTER_BODY_GEOMETRY} from '../shared/monster-geometry.js';
 import {avatarFootprint,avatarFitsFloor,avatarTouchesObject,avatarPositionIsClear,avatarRenderPoint} from '../shared/avatar-boundary.js';
 import {advance,isFree,arrivePosition} from '../server/world.js';
 import {STATIC_MAPS} from '../shared/config.js';
@@ -28,6 +28,33 @@ test('공유 몸체 메타데이터가 실제 렌더러의 crop anchor와 배율
     const body=MONSTER_BODY_GEOMETRY[id];
     assert.equal(body.anchorX,art.frames[0][4]*body.sourceWidth/640,id);
     assert.equal(body.width,LV2_MONSTER_ART[id]?3.6:3*(art.visualScale??art.scale??1),id);
+  }
+});
+
+test('보스 8종만 이동 점유 폭과 깊이를 절반으로 줄이고 그림 기준과 일반 몬스터는 유지한다',()=>{
+  assert.equal(MONSTER_TYPES.filter(type=>type.boss).length,8);
+  for(const type of MONSTER_TYPES)for(const facingX of [-1,1]){
+    const m={typeId:type.id,mapId:type.mapId,x:500,y:500,radius:type.radius||100,hp:100,facingX};
+    const original=monsterFootprint(m),wall=monsterMovementFootprint(m);
+    assert.equal(wall.x,original.x);assert.equal(wall.y,original.y);
+    assert.equal(wall.rx,original.rx*(type.boss?.5:1));
+    assert.equal(wall.ry,original.ry*(type.boss?.5:1));
+    assert.deepEqual(monsterFootprint(m),original,'원화/패턴 배치용 경계 유지');
+  }
+});
+
+test('보스 옆 새 통로는 서버와 화면 보간 모두 통과하고 축소된 중심 영역은 계속 막는다',()=>{
+  for(const type of MONSTER_TYPES.filter(type=>type.boss))for(const level of [1,5]){
+    const map=STATIC_MAPS[type.mapId],m={id:'boss',typeId:type.id,mapId:map.id,x:map.width/2,y:map.height/2,radius:type.radius||100,hp:100,facingX:1};
+    const p={...player(),mapId:map.id,avatar:{level}},foot=avatarFootprint(p),art=monsterFootprint(m),wall=monsterMovementFootprint(m);
+    const point={x:wall.x+(wall.rx+art.rx)/2+foot.radius,y:wall.y-foot.offsetY};Object.assign(p,point);
+    const room={players:new Map([[p.id,p]]),planets:new Map(),monsters:new Map([[m.id,m]]),unattended:true};
+    assert(isFree(room,point.x,point.y,p.id,p.mapId,true,p),type.id);
+    const safe={x:art.right+foot.radius+5,y:point.y};
+    assert.equal(avatarRenderPoint(map,point,safe,p,[m]),point,type.id);
+    assert.equal(isFree(room,wall.x,point.y,p.id,p.mapId,true,p),false,type.id);
+    assert.equal(avatarRenderPoint(map,{x:wall.x,y:point.y},safe,p,[m]),safe,type.id);
+    m.hp=0;assert(isFree(room,wall.x,point.y,p.id,p.mapId,true,p),type.id);
   }
 });
 test('머리 겹침은 허용하지만 허리부터 발끝의 벽·원형 물체 접촉은 막는다',()=>{

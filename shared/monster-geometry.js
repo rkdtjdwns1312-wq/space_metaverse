@@ -1,4 +1,7 @@
-import {monsterVisualScale} from './monsters.js';
+import {MONSTER_TYPES,monsterVisualScale} from './monsters.js';
+
+const bossTypes=new Set(MONSTER_TYPES.filter(type=>type.boss).map(type=>type.id));
+export const BOSS_MOVEMENT_FOOTPRINT_SCALE=.5;
 
 // 대기 원화 alpha>=128 몸체 좌우 끝(픽셀, 오른쪽 exclusive).
 // 4포즈는 첫 셀의 실제627px와 기존1280 기준 발 anchor를 환산합니다.
@@ -39,4 +42,13 @@ export function monsterFootprint(monster){
   }
   return {x:monster.x+(left+right)/2,y:monster.y+r*.8,rx:(right-left)/2,ry:r*.28,
     left:monster.x+left,right:monster.x+right};
+}
+
+// Only avatar movement uses this smaller footprint. Keep artwork, attacks and
+// puzzle placement on the original geometry so their sizes do not change.
+export function monsterMovementFootprint(monster){
+  const footprint=monsterFootprint(monster);
+  if(!bossTypes.has(monster.typeId||monster.shape))return footprint;
+  const rx=footprint.rx*BOSS_MOVEMENT_FOOTPRINT_SCALE,ry=footprint.ry*BOSS_MOVEMENT_FOOTPRINT_SCALE;
+  return {...footprint,rx,ry,left:footprint.x-rx,right:footprint.x+rx};
 }

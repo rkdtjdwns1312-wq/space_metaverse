@@ -34,7 +34,9 @@ test('qualifiedscience claim charges once transactionally, private snapshot, off
  for(const viewer of [f.q,f.teacherPlayer])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).huntingTime,undefined);
  assert.equal(f.game.store.snapshot(f.room,f.p,f.now).players.find(p=>p.id===f.p.id).huntingTime.remainingMs,HUNTING_STATION_MS);
  f.mutate(p=>{p.avatar.level=5;});ok(await call(f.student,'map:fast-travel',{to:'moon-garden'}));f.advance(4000);await wait(150);
- await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,HUNTING_STATION_MS-4000);f.advance(60000);assert.equal(huntingTimeView(f.p,f.now).remainingMs,HUNTING_STATION_MS-4000);
+ await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,HUNTING_STATION_MS-4000);
+ assert.equal(f.p.mapId,'moon-garden','재접속하면 마지막 사냥터로 복귀');
+ f.advance(60000);assert.equal(huntingTimeView(f.p,f.now).remainingMs,HUNTING_STATION_MS-64000,'복귀 뒤 접속 중인 사냥 시간은 정상 차감');
  const record=toRecord(f.room),saved=record.students.find(p=>p.id===f.p.id);assert.equal(saved.huntingTimer,undefined);assert.deepEqual(fromRecord(record).players.get(f.p.id).huntingTime,f.p.huntingTime);delete saved.huntingTime;assert.deepEqual(fromRecord(record).players.get(f.p.id).huntingTime,validateHuntingTime());
 });
 test('summon acceptance cannot bypass zero budget, and22KST resets balance andstationcredits durably',async t=>{

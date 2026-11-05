@@ -2,7 +2,7 @@ import {avatarSizeOf} from './avatar-size.js';
 import {onParadiseFloor} from './paradise-floor.js';
 import {onPlazaFloor} from './plaza-layout.js';
 import {onValleyFloor} from './valley-layout.js';
-import {monsterFootprint} from './monster-geometry.js';
+import {monsterMovementFootprint} from './monster-geometry.js';
 
 // 이동은 허리(y)~발(y+size/2)의 하반신 원. 그림·전투·깊이 정렬은 그대로입니다.
 export function avatarCollisionShape(player){
@@ -27,7 +27,7 @@ export function avatarTouchesObject(player,x,y,object){
   return Math.hypot(foot.x-object.x,foot.y-object.y)<foot.radius+object.radius;
 }
 export function avatarMonsterDistance(player,x,y,monster){
-  const foot=avatarFootprint(player,x,y),wall=monsterFootprint(monster);
+  const foot=avatarFootprint(player,x,y),wall=monsterMovementFootprint(monster);
   return ((foot.x-wall.x)/(wall.rx+foot.radius))**2+((foot.y-wall.y)/(wall.ry+foot.radius))**2;
 }
 // 서버 이동과 클라이언트 보간이 같은 하반신·물체·몬스터 경계를 사용합니다.
