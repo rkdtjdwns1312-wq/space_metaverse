@@ -72,7 +72,7 @@ test('card reveal validates socket position and broadcasts only temporarily reve
  };
  assertPrivate();assert(!Object.hasOwn(tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards[0],'color'));
  f.pa.x=card.x;f.pa.y=card.y;
- const result=await call(f.a,'dark-star:reveal',{cardId:card.id});assert(result.ok,result.error);assert(!Object.hasOwn(result,'color'));assert(!Object.hasOwn(result,'correct'));
+ const result=await call(f.a,'dark-star:reveal',{cardId:card.id});assert(result.ok,result.error);assert.equal(result.color,card.color);assert.equal(result.revealUntil-result.serverNow,3000);assert(!Object.hasOwn(result,'correct'));
  await until(()=>tick?.monsters.find(m=>m.id===boss.id)?.darkStarEffects?.cards[0]?.color===card.color);assertPrivate();
  f.now+=3000;await until(()=>!Object.hasOwn(tick.monsters.find(m=>m.id===boss.id).darkStarEffects.cards[0],'color'));assertPrivate();
 });

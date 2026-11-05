@@ -5,6 +5,7 @@ import {STREET} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
 import {isDefeated} from './vitals.js';
+import {chargeHuntingStation} from './hunting-time.js';
 const need=(v,m='작품 내용을 확인해주세요.')=>{if(!v)throw new GameError(m);};
 const key=v=>typeof v==='string'&&/^[a-zA-Z0-9_-]{8,80}$/.test(v);
 const integer=v=>Number.isSafeInteger(v)&&v>=0;
@@ -52,9 +53,22 @@ function writable(player,data,room){
 export function saveArt(player,data,now,room){
  const {target,field}=writable(player,data,room);
  const list=validateArtStudio(target[field],{trustedCompact:true}),title=titleOf(data.title),drawing=normalizeArtDrawing(data.drawing);need(drawing,'그림이 너무 복잡하거나 올바르지 않아요. 되돌리기 후 다시 저장해주세요.');const compact=encodeDrawing(drawing);let work;
- if(data.id===undefined){need(key(data.requestId));work=list.find(w=>w.requestId===data.requestId);if(work)return {work:view(work),replayed:true};need(list.length<L.works,'작품은 10개까지 보관해요. 기존 작품을 수정하거나 하나를 삭제해주세요.');work={id:randomUUID(),requestId:data.requestId,revision:1,title,drawing:compact,createdAt:now,updatedAt:now};list.push(work);}
- else{need(key(data.id));work=list.find(w=>w.id===data.id);need(work,'본인의 작품을 선택해주세요.');need(data.revision===work.revision,'다른 창에서 작품이 바뀌었어요. 다시 불러온 뒤 수정해주세요.');if(work.title!==title||JSON.stringify(work.drawing)!==JSON.stringify(compact)){need(work.revision<Number.MAX_SAFE_INTEGER);Object.assign(work,{title,drawing:compact,revision:work.revision+1,updatedAt:now});}}
- target[field]=list;return {work:view(work)};
+ let drawingChanged=true;
+ if(data.id===undefined){
+  need(key(data.requestId));work=list.find(w=>w.requestId===data.requestId);
+  if(work)return {work:view(work),replayed:true,huntingRewardMs:0};
+  need(list.length<L.works,'작품은 10개까지 보관해요. 기존 작품을 수정하거나 하나를 삭제해주세요.');
+  work={id:randomUUID(),requestId:data.requestId,revision:1,title,drawing:compact,createdAt:now,updatedAt:now};list.push(work);
+ }else{
+  need(key(data.id));work=list.find(w=>w.id===data.id);need(work,'본인의 작품을 선택해주세요.');
+  need(data.revision===work.revision,'다른 창에서 작품이 바뀌었어요. 다시 불러온 뒤 수정해주세요.');
+  drawingChanged=work.drawing.data!==compact.data&&JSON.stringify(decodeDrawing(work.drawing))!==JSON.stringify(drawing);
+  if(work.title!==title||drawingChanged){need(work.revision<Number.MAX_SAFE_INTEGER);Object.assign(work,{title,drawing:compact,revision:work.revision+1,updatedAt:now});}
+ }
+ target[field]=list;
+ const hasInk=drawing.strokes.some(stroke=>stroke.tool!=='eraser'&&stroke.color!==drawing.background);
+ const huntingRewardMs=drawingChanged&&hasInk?chargeHuntingStation(player,'art',now):0;
+ return {work:view(work),huntingRewardMs};
 }
 export function deleteArt(player,data,room){
  const {target,field}=writable(player,data,room);const list=validateArtStudio(target[field],{trustedCompact:true}),index=list.findIndex(w=>w.id===data.id);need(index>=0,'본인의 작품을 선택해주세요.');need(data.revision===list[index].revision,'다른 창에서 작품이 바뀌었어요. 다시 불러온 뒤 삭제해주세요.');list.splice(index,1);target[field]=list;return {id:data.id};

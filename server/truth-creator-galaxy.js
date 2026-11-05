@@ -1,5 +1,6 @@
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
+import {truthCreatorBlueProtected} from './truth-creator-blue.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
 import {randomUUID} from 'node:crypto';
 
@@ -45,7 +46,7 @@ export function tickTruthCreatorGalaxy(room,boss,now){
   state.orbs=state.orbs.filter(orb=>{
     const oldX=orb.x,oldY=orb.y,until=Math.min(now,orb.endsAt),travel=Math.max(0,until-orb.lastAt)/1000*TRUTH_CREATOR_GALAXY.speed;
     orb.x+=orb.dx*travel;orb.y+=orb.dy*travel;orb.lastAt=until;
-    for(const player of room.players.values())if(eligible(boss,player)&&segmentDistance(player.x,player.y,oldX,oldY,orb.x,orb.y)<=orb.radius+RULES.radius)
+    for(const player of room.players.values())if(eligible(boss,player)&&!truthCreatorBlueProtected(boss,player,now)&&segmentDistance(player.x,player.y,oldX,oldY,orb.x,orb.y)<=orb.radius+RULES.radius)
       hits.push({monsterId:boss.id,mapId:boss.mapId,x:player.x,y:player.y,targetId:player.id,skillKind:'truth-creator-galaxy',durationMs:450,noEffect:true,...defeatRecordPlayer(room,player,now)});
     return now<orb.endsAt;
   });

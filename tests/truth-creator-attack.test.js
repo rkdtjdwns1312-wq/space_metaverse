@@ -4,7 +4,7 @@ import {mapOf,RULES} from '../shared/config.js';
 import {ensureVitals} from '../server/vitals.js';
 import {TRUTH_CREATOR_ATTACK as RULE,aimTruthCreator,tickTruthCreatorAttack,truthCreatorAttackView,clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
 import {TRUTH_CREATOR_CHASERS as CHASER,tryTruthCreatorChasers,tickTruthCreatorChasers,truthCreatorChaserViews} from '../server/truth-creator-chasers.js';
-import {tryTruthCreatorBlue} from '../server/truth-creator-blue.js';
+import {openTruthCreatorBlue,tryTruthCreatorBlue} from '../server/truth-creator-blue.js';
 import {tryTruthCreatorSentry} from '../server/truth-creator-sentries.js';
 const now=100000;
 function fixture(){
@@ -91,19 +91,19 @@ test('visual teacher ghost never changes retaliation: ordinary teachers are exem
   }
 });
 
-test('blue pattern blocks basic orb and light-trail damage only until its last orb is gone',()=>{
+test('blue cast alone leaves ordinary damage active; opening the puzzle protects the opener from orbs and trails for six seconds',()=>{
   const f=fixture();fire(f);assert(tryTruthCreatorBlue(f.room,f.boss,f.player,now+3000,()=>.25));
-  const hp=f.player.battleVitals.hp;
-  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5000),[]);assert.equal(f.player.battleVitals.hp,hp);
-  assert.equal(f.boss.truthCreatorAttack.shots.length,0,'contact still consumes the ordinary projectile');
-  f.player.x=f.boss.x+100;
-  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5001),[]);assert.equal(f.player.battleVitals.hp,hp);
-  f.boss.truthCreatorBlue.orbs.splice(0,2);
-  assert.deepEqual(tickTruthCreatorAttack(f.room,f.boss,now+5002),[],'last remaining blue orb still protects');
-  f.boss.truthCreatorBlue.orbs=[];
-  assert.equal(tickTruthCreatorAttack(f.room,f.boss,now+5003)[0].damage,40);assert.equal(f.player.battleVitals.hp,hp-40);
-  for(const state of [
-    {mapId:'space-plaza',orbs:[{startsAt:now,endsAt:now+10000}]},
-    {mapId:'sleeping-stars-4',orbs:[{startsAt:now,endsAt:now+5000}]}
-  ]){const g=fixture();fire(g);g.boss.truthCreatorBlue=state;assert.equal(tickTruthCreatorAttack(g.room,g.boss,now+5000)[0].damage,40);}
+  assert.equal(tickTruthCreatorAttack(f.room,f.boss,now+5000)[0].damage,40);
+  const g=fixture();fire(g);assert(tryTruthCreatorBlue(g.room,g.boss,g.player,now+3000,()=>.25));
+  const orb=g.boss.truthCreatorBlue.orbs[0];
+  Object.assign(g.player,{x:orb.x,y:orb.y});openTruthCreatorBlue(g.room,g.player,orb.id,orb.landsAt);
+  Object.assign(g.player,{x:g.boss.x+600,y:g.boss.y});
+  assert.deepEqual(tickTruthCreatorAttack(g.room,g.boss,now+5000),[]);
+  assert.equal(g.boss.truthCreatorAttack.shots.length,0);
+  g.player.x=g.boss.x+100;
+  const other={...g.player,id:'b',battleVitals:{...g.player.battleVitals}};g.room.players.set(other.id,other);
+  assert.deepEqual(tickTruthCreatorAttack(g.room,g.boss,now+5001).map(hit=>hit.targetId),['b']);
+  g.boss.truthCreatorBlue.orbs=[];
+  assert(tickTruthCreatorAttack(g.room,g.boss,orb.landsAt+5999).every(hit=>hit.targetId!=='a'));
+  assert(tickTruthCreatorAttack(g.room,g.boss,orb.landsAt+6000).some(hit=>hit.targetId==='a'&&hit.damage===40));
 });

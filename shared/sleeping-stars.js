@@ -1,3 +1,4 @@
+import {FORGOTTEN_CONSTELLATION as forgotten} from './forgotten-constellation.js';
 // 네 밤맵은 기존 3구역의 크기·중앙 바닥·문 위치를 공통 원형으로 씁니다.
 // 기존 맵 ID와 저장 좌표는 바꾸지 않고 새 맵만 추가합니다.
 export const SLEEPING_STARS_THEME='sleeping-stars';
@@ -18,7 +19,7 @@ export function createSleepingStarsMaps(originMaps,streetLayout){
     return Object.freeze({id:sleepingStarsId(stage),name:'별들이 잠드는 곳 '+stage,
       theme:SLEEPING_STARS_THEME,stage,width:origin.width,height:origin.height,
       spawn:Object.freeze({...origin.spawn}),
-      objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===2?[Object.freeze({id:'star-record-statue',name:'별 기록의 석상',kind:'star-record-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===4?[Object.freeze({id:'truth-creator-statue',name:'진리의 별 석상',kind:'truth-creator-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate'&&(object.id==='gate-back'||stage<originMaps.length)).map(gate=>{
+      objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===2?[Object.freeze({id:'star-record-statue',name:'별 기록의 석상',kind:'star-record-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===3?[Object.freeze({id:forgotten.statueId,name:forgotten.statueName,kind:forgotten.statueId,x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===4?[Object.freeze({id:'truth-creator-statue',name:'진리의 별 석상',kind:'truth-creator-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate'&&(object.id==='gate-back'||stage<originMaps.length)).map(gate=>{
         const back=gate.id==='gate-back',targetStage=stage+(back?-1:1);
         return Object.freeze({...gate,
           name:(back&&stage===1?'오색별빛 쉼터':'별들이 잠드는 곳 '+targetStage)+(back?' ↓':' ↑'),

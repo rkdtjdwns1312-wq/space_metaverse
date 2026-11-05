@@ -45,8 +45,9 @@ export function tryTruthCreatorBlue(room,boss,target,now=Date.now(),random=Math.
   const state=stateOf(boss);if(state.orbs.length||now<state.readyAt||boss.mp<RULE.mana)return false;
   const points=landingPoints(room,boss,random);if(!points){state.readyAt=now+1000;return false;}
   const landsAt=now+RULE.flightMs,endsAt=landsAt+RULE.durationMs;
+  state.protectedUntil=new Map();
   state.orbs=points.map(point=>({id:`${boss.id}-blue-${randomUUID()}`,fromX:boss.x,fromY:boss.y,x:point.x,y:point.y,radius:RULE.radius,
-    startsAt:now,landsAt,endsAt,sequence:sequence(random),progress:0,revision:0,sessions:new Map()}));
+    startsAt:now,landsAt,endsAt,sequence:sequence(random),progress:0,revision:0,sessions:new Map(),openedBy:new Set()}));
   state.readyAt=now+RULE.cooldownMs;boss.mp-=RULE.mana;return true;
 }
 function orbView(orb,now){
@@ -69,9 +70,17 @@ function requireOrb(room,player,id,now){
   return {boss,state,orb};
 }
 export function openTruthCreatorBlue(room,player,orbId,now=Date.now()){
-  const {orb}=requireOrb(room,player,orbId,now),interactionToken=randomUUID();
+  const {state,orb}=requireOrb(room,player,orbId,now),interactionToken=randomUUID();
+  if(player.role==='student'&&!orb.openedBy.has(player.id)){
+    orb.openedBy.add(player.id);
+    state.protectedUntil.set(player.id,now+RULE.protectionMs);
+  }
   orb.sessions.set(player.id,{interactionToken,socketId:player.socketId});
   return {orb:puzzleView(orb,now),interactionToken,serverNow:now};
+}
+export function truthCreatorBlueProtected(boss,player,now){
+  const state=boss.truthCreatorBlue;
+  return player.role==='student'&&player.mapId===boss.mapId&&state?.mapId===boss.mapId&&now<(state.protectedUntil?.get(player.id)??0);
 }
 export function inputTruthCreatorBlue(room,player,data,now=Date.now()){
   const {state,orb}=requireOrb(room,player,data?.orbId,now),session=orb.sessions.get(player.id);

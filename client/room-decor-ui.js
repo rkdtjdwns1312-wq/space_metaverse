@@ -4,6 +4,20 @@ const widths={bed:23,sofa:23,rug:23,desk:21,piano:23,wardrobe:21,table:20,aquari
 const newFurniture=new Set(['harp','mobile','rockingchair','terrarium','stove','screen']);
 const furnitureArt=(id,palette=0)=>palette?`/assets/cozy/palettes/${id}-${palette}.webp`:`/assets/cozy/furniture-${id}.${newFurniture.has(id)?'png':'webp'}`;
 const palettes=['기본','민트 정원','은빛 하늘','장밋빛 보라'];
+const pieceWidth=p=>(widths[p.id]||15)*(p.scale||1);
+ const anchor=p=>p.space==='room'?{x:p.x/5*100,y:p.y/3*100}:{x:8+p.x/5*84,y:49+p.y/3*41};
+function paintPiece(p,el,chosen=false){const w=pieceWidth(p),a=anchor(p),x=clamp(a.x,w/2,100-w/2),y=clamp(a.y,w*4/3,100);el.style.width=w+'%';el.style.left=x+'%';el.style.top=y+'%';el.style.zIndex=String(chosen?900:p.id==='rug'?1:10+Math.round(a.y*4));const img=el.querySelector('img');if(img){img.style.transform=`scaleX(${p.rotation%2?-1:1})`;img.style.filter='none';}return {x,y,w};}
+export function renderVisitedScene(room,catalog){
+ const scene=document.createElement('div');scene.className='room-decor-scene room-visited-scene';
+ scene.setAttribute('role','group');scene.setAttribute('aria-label',room.nickname+'의 가구 배치');
+ const background=document.createElement('img');background.className='room-background';background.src='/assets/cozy/room-'+room.theme+'.webp';background.alt=(catalog.themes?.find(t=>t.id===room.theme)?.name||'별방')+' 배경';scene.append(background);
+ for(const p of room.layout){
+  const piece=document.createElement('span'),img=document.createElement('img');
+  piece.className='room-piece';img.src=furnitureArt(p.id,p.palette);img.alt=(catalog.furniture?.find(f=>f.id===p.id)?.name||p.id)+' · '+palettes[p.palette||0];
+  piece.append(img);paintPiece(p,piece);scene.append(piece);
+ }
+ return scene;
+}
 export function createRoomDecor({panel,getState,getCatalog,draw,status=()=>{},onSave,onPreset,isBusy=()=>false}){
  let selected=null,pending=null,dirty=false,drag=null,ignoreClickUntil=0;
  const abort=new AbortController(),opts={signal:abort.signal};
@@ -12,9 +26,7 @@ export function createRoomDecor({panel,getState,getCatalog,draw,status=()=>{},on
  const scene=()=>panel.querySelector('.room-decor-scene');
  let observedScene=null;
  const sceneResize=typeof ResizeObserver==='function'?new ResizeObserver(()=>{const p=find(selected),el=p&&panel.querySelector(`[data-room-piece="${p.id}"]`);if(el)place(p,el);}):null;
- const pieceWidth=p=>(widths[p.id]||15)*(p.scale||1);
- const anchor=p=>p.space==='room'?{x:p.x/5*100,y:p.y/3*100}:{x:8+p.x/5*84,y:49+p.y/3*41};
-  const place=(p,el)=>{const w=pieceWidth(p),a=anchor(p),x=clamp(a.x,w/2,100-w/2),y=clamp(a.y,w*4/3,100);el.style.width=w+'%';el.style.left=x+'%';el.style.top=y+'%';el.style.zIndex=String(p.id===selected?900:p.id==='rug'?1:10+Math.round(a.y*4));const img=el.querySelector('img');if(img){img.style.transform=`scaleX(${p.rotation%2?-1:1})`;img.style.filter='none';}if(p.id===selected){const handle=scene()?.querySelector('[data-room-resize]');if(handle){handle.style.left=(x+w/2)+'%';handle.style.top=y+'%';}const tools=scene()?.querySelector('.room-scene-tools'),rect=scene()?.getBoundingClientRect();if(tools&&rect){tools.style.left=clamp(x/100*rect.width,tools.offsetWidth/2+4,rect.width-tools.offsetWidth/2-4)+'px';const above=y/100*rect.height-w/100*rect.width-tools.offsetHeight-8;tools.style.top=(above>=0?above:y/100*rect.height+8)+'px';}}};
+ const place=(p,el)=>{const {x,y,w}=paintPiece(p,el,p.id===selected);if(p.id===selected){const handle=scene()?.querySelector('[data-room-resize]');if(handle){handle.style.left=(x+w/2)+'%';handle.style.top=y+'%';}const tools=scene()?.querySelector('.room-scene-tools'),rect=scene()?.getBoundingClientRect();if(tools&&rect){tools.style.left=clamp(x/100*rect.width,tools.offsetWidth/2+4,rect.width-tools.offsetWidth/2-4)+'px';const above=y/100*rect.height-w/100*rect.width-tools.offsetHeight-8;tools.style.top=(above>=0?above:y/100*rect.height+8)+'px';}}};
  const point=(e,p,offset={x:0,y:0})=>{const r=scene().getBoundingClientRect(),w=pieceWidth(p),x=clamp((e.clientX-r.left-offset.x)/r.width*100,w/2,100-w/2),y=clamp((e.clientY-r.top-offset.y)/r.height*100,w*r.width/r.height,100);return {x:Math.round(x/100*5*100)/100,y:Math.round(y/100*3*100)/100,space:'room'};};
  const freePoint=(id,pos)=>{const occupied=p=>layout().some(o=>o.id!==id&&Math.abs(anchor(o).x-anchor(p).x)<.001&&Math.abs(anchor(o).y-anchor(p).y)<.001);if(!occupied(pos))return pos;for(let ring=1;ring<=24;ring++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1]]){const p={...pos,x:Math.round(clamp(pos.x+dx*ring*.04,0,5)*100)/100,y:Math.round(clamp(pos.y+dy*ring*.04,0,3)*100)/100};if(!occupied(p))return p;}return pos;};
  const clearDrag=()=>{drag?.ghost?.remove();drag=null;panel.classList.remove('room-is-dragging');};
@@ -47,5 +59,5 @@ export function createRoomDecor({panel,getState,getCatalog,draw,status=()=>{},on
  },opts);
  window.addEventListener('keydown',e=>{if(!panel.querySelector('.room-decor')||!panel.contains(document.activeElement))return;if(isBusy()){e.preventDefault();e.stopImmediatePropagation();return;}const arrow={ArrowLeft:[-.1,0],ArrowRight:[.1,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]}[e.key];if(arrow){e.preventDefault();e.stopImmediatePropagation();const p=find(selected);if(document.activeElement?.hasAttribute('data-room-resize')){if(p&&arrow[0]){const next=boundedScale((p.scale||1)+Math.sign(arrow[0])*(e.shiftKey ? .01 : .05));if(p.scale!==next){p.scale=next;changed();focusResize();}}return;}if(p){const multiplier=e.shiftKey?5:1;if(p.space!=='room'){const a=anchor(p);p.x=a.x/100*5;p.y=a.y/100*3;p.space='room';}p.x=Math.round(clamp(p.x+arrow[0]*multiplier,0,5)*100)/100;p.y=Math.round(clamp(p.y+arrow[1]*multiplier,0,3)*100)/100;Object.assign(p,freePoint(p.id,{x:p.x,y:p.y,space:'room'}));changed();scene()?.focus();}}else if(e.key==='Enter'&&document.activeElement===scene()&&pending){e.preventDefault();e.stopImmediatePropagation();add(pending,{x:2.5,y:1.5,space:'room'});scene()?.focus();}else if(e.key==='Delete'&&find(selected)){e.preventDefault();e.stopImmediatePropagation();state().layout=layout().filter(p=>p.id!==selected);selected=null;changed();scene()?.focus();}}, {capture:true,...opts});
  window.addEventListener('keyup',e=>{if(panel.querySelector('.room-decor')&&panel.contains(document.activeElement)&&e.key.startsWith('Arrow')){e.preventDefault();e.stopImmediatePropagation();}}, {capture:true,...opts});
- return {render,decorate,reset(){clearDrag();selected=null;pending=null;dirty=false;},destroy(){clearDrag();sceneResize?.disconnect();abort.abort();},isDirty:()=>dirty,markSaved(){dirty=false;const label=panel.querySelector('.room-save-state');if(label)label.textContent='저장된 방';}};
+ return {render,decorate,cancelDrag:clearDrag,reset(){clearDrag();selected=null;pending=null;dirty=false;},destroy(){clearDrag();sceneResize?.disconnect();abort.abort();},isDirty:()=>dirty,markSaved(){dirty=false;const label=panel.querySelector('.room-save-state');if(label)label.textContent='저장된 방';}};
 }

@@ -1,10 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {STREET} from '../shared/config.js';
+import {HUNTING_STATION_MS,huntingResetAt} from '../shared/hunting-time.js';
+import {huntingTimeView} from '../server/hunting-time.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
 const at=(f,p=f.p)=>{const o=STREET.objects.find(o=>o.kind==='art-station');assert(o);Object.assign(p,{mapId:STREET.id,x:o.x,y:o.y+80,input:{x:0,y:0,at:0}});};
 const draft=(n=0)=>({requestId:`socket-art-${n}`,title:`검증작품${n}`,drawing:{version:1,background:'#ffffff',strokes:[{tool:'brush',color:'#123456',width:10,points:[[20,20],[400,300]]}]}});
+test('art awards only a committed nonempty new drawing or drawing edit once per cycle and updates its owner',async t=>{
+ const f=await readingFixture(t);at(f);at(f,f.q);at(f,f.teacherPlayer);
+ const save=data=>call(f.student,'art:save',data),balance=p=>huntingTimeView(p,f.now).remainingMs;
+ const blank=draft(1);blank.drawing.strokes=[];
+ assert.equal(ok(await save(blank)).huntingRewardMs,0);
+ for(const [tool,color] of [['eraser','#123456'],['brush','#ffffff'],['rectangle','#ffffff'],['fill','#ffffff']]){
+  const empty=draft(tool);
+  empty.drawing.strokes=[tool==='fill'?{tool,color,spans:[[1,1,10]]}:{...empty.drawing.strokes[0],tool,color}];
+  assert.equal(ok(await save(empty)).huntingRewardMs,0);
+ }
+ assert.equal(ok(await call(f.teacher,'art:save',draft())).huntingRewardMs,0);
+ await f.fail(async()=>assert.equal((await save(draft())).ok,false));
+ assert.equal(balance(f.p),0);
+ const states=[];f.student.on('hunting:state',view=>states.push(view));
+ const [a,b]=await Promise.all([save(draft()),save(draft())]);ok(a);ok(b);
+ assert.deepEqual([a.huntingRewardMs,b.huntingRewardMs].sort((x,y)=>x-y),[0,HUNTING_STATION_MS]);
+ assert(states.some(view=>view.remainingMs===HUNTING_STATION_MS&&view.chargedStations.includes('art')));
+ const id=a.work.id;
+ ok(await call(f.other,'art:get',{ownerId:f.p.id,id}));assert.equal(balance(f.q),0);
+ assert.equal(ok(await save(draft(2))).huntingRewardMs,0);
+ f.advance(huntingResetAt(f.now)-f.now);
+ assert.equal(ok(await save(draft())).huntingRewardMs,0);
+ const edit={...draft(),id,revision:1};
+ assert.equal(ok(await save(edit)).huntingRewardMs,0);
+ assert.equal(ok(await save({...edit,title:'새 이름'})).huntingRewardMs,0);
+ assert.equal(balance(f.p),0);
+ edit.revision=2;edit.drawing.strokes[0].width=20;
+ await f.fail(async()=>assert.equal((await save(edit)).ok,false));
+ assert.equal(balance(f.p),0);
+ assert.equal(ok(await save(edit)).huntingRewardMs,HUNTING_STATION_MS);
+ await f.restart();assert.equal(balance(f.p),HUNTING_STATION_MS);
+ assert.deepEqual(f.p.huntingTime.chargedStations,['art']);
+});
 test('art sockets enforce live nearby ownership; selected peer/teacher viewing remains private to request',async t=>{
  const f=await readingFixture(t),guest=await f.connect();at(f);at(f,f.q);at(f,f.teacherPlayer);
  for(const event of ['art:list','art:get','art:save','art:delete'])assert.equal((await call(guest,event,draft())).ok,false);

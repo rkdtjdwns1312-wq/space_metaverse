@@ -76,6 +76,32 @@ try{
  await page.locator('[data-room-tray="toybox"]').click();await page.locator('[data-room-piece="toybox"]').waitFor();await sc().screenshot({path:'.local/cozy-activities/room-selected-tools.png'});
  for(const [delta,expected] of [[-200,.5],[200,1.75]]){const grip=page.locator('[data-room-resize]');await grip.scrollIntoViewIfNeeded();const box=await grip.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+delta,box.y+box.height/2,{steps:5});await page.mouse.up();near(await page.locator('[data-room-piece="toybox"]').evaluate(el=>parseFloat(el.style.width)/18),expected);}
  await page.locator('[data-room-remove]').click();assert.equal(await page.locator('[data-room-piece="toybox"]').count(),0);await page.locator('[data-room-save]').click();await page.waitForFunction(()=>document.querySelector('.room-save-state')?.textContent==='저장된 방');
+
+ // The owner keeps her unsaved theme while a teacher visits the saved scene and posts a note.
+ const previousTheme=player.cozyActivities.room.theme,otherTheme=previousTheme==='moon'?'study':'moon';
+ await page.locator('[data-room-theme="'+otherTheme+'"]').click();
+ await page.getByRole('button',{name:'친구방 구경하기',exact:true}).click();
+ await page.getByText('아직 별방을 저장한 친구가 없어요.').waitFor();
+ await teacher.setViewportSize({width:390,height:844});await moveTo(teacherPlayer,teacher,'room');await teacher.locator('#interact-prompt').click();
+ await teacher.getByRole('button',{name:'친구방 구경하기'}).click();
+ const visitButton=teacher.getByRole('button',{name:'학생1의 별방'});await visitButton.click();
+ await teacher.locator('.room-visited-scene').waitFor();await assertDialogFits(teacher,'mobile friend visit');assert.equal(await teacher.locator('[data-room-save],[data-room-piece],[data-room-resize]').count(),0);
+ const saved=player.cozyActivities.room;assert.equal(await teacher.locator('.room-visited-scene .room-piece').count(),saved.layout.length);
+ for(let i=0;i<saved.layout.length;i++){
+  const item=saved.layout[i],preview=teacher.locator('.room-visited-scene .room-piece').nth(i);
+  assert.equal(await preview.locator('img').evaluate(img=>img.style.transform),item.rotation%2?'scaleX(-1)':'scaleX(1)');
+  if(item.palette)assert((await preview.locator('img').getAttribute('src')).includes('/'+item.id+'-'+item.palette+'.webp'));
+ }
+ await teacher.getByRole('button',{name:'메모 남기기'}).click();await teacher.getByRole('textbox',{name:/방명록 메모/}).fill('<b>예쁜 방이에요!</b>');
+ await teacher.getByRole('button',{name:'메모 저장'}).click();await teacher.getByText('<b>예쁜 방이에요!</b>',{exact:true}).waitFor();
+ await teacher.getByRole('button',{name:'목록으로'}).click();await visitButton.click();await teacher.getByText('<b>예쁜 방이에요!</b>',{exact:true}).waitFor();
+ await capture(teacher,'.local/cozy-activities/room-visit-note-mobile.png');
+ await page.getByRole('button',{name:'내 방 꾸미기'}).click();await page.getByText('<b>예쁜 방이에요!</b>',{exact:true}).waitFor();
+ assert.equal(await page.locator('.room-save-state').textContent(),'저장하지 않은 변경');assert.equal(player.cozyActivities.room.theme,previousTheme);
+ assert.equal(await page.locator('[data-room-theme="'+otherTheme+'"]').getAttribute('aria-pressed'),'true');
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:/메모 삭제/}).click();await page.getByText('아직 남겨진 메모가 없어요.').waitFor();
+ await page.locator('[data-room-save]').click();await page.waitForFunction(()=>document.querySelector('.room-save-state')?.textContent==='저장된 방');
+ console.log('PASS mobile teacher read-only visit, note post/revisit/owner deletion, draft retained, no layout or reward changes on visit');
  await page.locator('.cozy-close').click();await at('garden');assert.equal(await page.locator('.cozy-hero h3').textContent(),'우주 식물 가꾸기');assert.equal(await page.locator('.cozy-head p').count(),0);assert.equal(await page.locator('.cozy-close').textContent(),'닫기');await page.locator('.cozy-close').click();await at('pet');assert.equal(await page.locator('.cozy-head p').count(),0);assert.equal(await page.locator('.cozy-close').textContent(),'닫기');await page.locator('.cozy-close').click();
  assert.deepEqual(errors,[]);console.log('PASS room 3backgrounds/30assets, tray click/keyboard center and drag/reposition, pointer/touch/keyboard resize, fractionalcoordinates, color/rotation, save/reopen/cap, mobilewidth, JS/CSP errors0');
 }finally{await browser.close();await game.close();}

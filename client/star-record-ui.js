@@ -1,8 +1,8 @@
-export function createStarRecordUI({request,onClose=()=>{}}){
- const dialog=document.getElementById('star-record-dialog'),yes=dialog.querySelector('[data-summon]'),no=dialog.querySelector('[data-cancel]'),message=dialog.querySelector('[data-message]');let pending=false;
- yes.onclick=async()=>{if(pending)return;pending=true;yes.disabled=true;try{await request('star-record:summon',{});dialog.close();}catch(error){message.textContent=error.message||'소환 요청을 처리하지 못했어요.';}finally{pending=false;yes.disabled=false;}};
+export function createStatueSummonUI({request,onClose=()=>{},id,messageText}){
+ const dialog=document.getElementById(id+'-dialog'),yes=dialog.querySelector('[data-summon]'),no=dialog.querySelector('[data-cancel]'),message=dialog.querySelector('[data-message]');let pending=false;
+ yes.onclick=async()=>{if(pending)return;pending=true;yes.disabled=true;try{await request(id+':summon',{});dialog.close();}catch(error){message.textContent=error.message||'소환 요청을 처리하지 못했어요.';}finally{pending=false;yes.disabled=false;}};
  no.onclick=()=>{if(!pending)dialog.close();};dialog.addEventListener('cancel',event=>{if(pending)event.preventDefault();});dialog.addEventListener('close',onClose);
- return {open(){if(pending)return;message.textContent='별 기록의 근원을 소환할까요?';if(!dialog.open)dialog.showModal();no.focus();},update(state){if(state?.state!=='dormant'&&dialog.open&&!pending)dialog.close();}};
+ return {open(){if(pending)return;message.textContent=messageText;const img=dialog.querySelector('[data-src]');if(img&&!img.src)img.src=img.dataset.src;if(!dialog.open)dialog.showModal();no.focus();},update(state){if(state?.state!=='dormant'&&dialog.open&&!pending)dialog.close();}};
 }
 export function createStarRecordMathUI({request,onClose=()=>{}}){
  const dialog=document.getElementById('star-record-math-dialog'),equation=dialog.querySelector('[data-equation]'),message=dialog.querySelector('[data-message]');

@@ -1,3 +1,4 @@
+import {registerRoomVisits,validateGuestbook} from './room-visits.js';
 import {createGardenGame,validateGardenGame,gardenGameView,actGardenGame,gardenScore} from './garden-minigame.js';
 import {gardenGrade} from '../shared/garden-minigame.js';
 import {validateStarRaising,starView,actStarRaising} from './star-raising.js';
@@ -34,16 +35,17 @@ function layout(raw){
  });
 }
 export function validateCozyActivities(raw){
- if(raw===undefined)return {pet:{species:null,name:'',careCount:0,accessory:'none',day:null,careToday:[],raising:validateStarRaising()},room:{theme:'moon',layout:[],day:null,rewarded:false},garden:{pots:[null,null,null],collection:Object.fromEntries(COZY_SEEDS.map(s=>[s.id,0])),qualityCollection:blankQuality(),day:null,harvestsToday:0}};
+ if(raw===undefined)return {pet:{species:null,name:'',careCount:0,accessory:'none',day:null,careToday:[],raising:validateStarRaising()},room:{theme:'moon',layout:[],day:null,rewarded:false,saved:false,guestbook:validateGuestbook()},garden:{pots:[null,null,null],collection:Object.fromEntries(COZY_SEEDS.map(s=>[s.id,0])),qualityCollection:blankQuality(),day:null,harvestsToday:0}};
  need(raw&&typeof raw==='object'&&!Array.isArray(raw),'꾸미기 저장 데이터를 확인해주세요.');const p=raw.pet,r=raw.room,g=raw.garden;
  need(p&&r&&g&&day(p.day)&&day(r.day)&&day(g.day));
  need((p.species===null||has(COZY_SPECIES,p.species))&&typeof p.name==='string'&&p.name===name(p.name)&&int(p.careCount)&&has(COZY_ACCESSORIES,p.accessory)&&COZY_ACCESSORIES.find(a=>a.id===p.accessory).care<=p.careCount);
  need(Array.isArray(p.careToday)&&p.careToday.length<=3&&new Set(p.careToday).size===p.careToday.length&&p.careToday.every(c=>COZY_CARE.includes(c))&&p.careCount>=p.careToday.length);
  need(p.species!==null?!!p.name:p.name===''&&p.careCount===0&&p.careToday.length===0);need(p.day!==null||p.careToday.length===0);
  need(has(COZY_THEMES,r.theme)&&typeof r.rewarded==='boolean'&&(r.day!==null||!r.rewarded));const savedLayout=layout(r.layout);
+ need(r.saved===undefined||typeof r.saved==='boolean');const saved=r.saved??(savedLayout.length>0||r.theme!=='moon'||r.rewarded);
  need(Array.isArray(g.pots)&&g.pots.length===3&&g.collection&&typeof g.collection==='object'&&!Array.isArray(g.collection)&&Object.keys(g.collection).length===5&&COZY_SEEDS.every(s=>int(g.collection[s.id]))&&int(g.harvestsToday,3)&&(g.day!==null||g.harvestsToday===0));
  const pots=g.pots.map(pot=>{if(pot===null)return null;need(pot&&has(COZY_SEEDS,pot.seed)&&int(pot.plantedAt,8640000000000000)&&typeof pot.watered==='boolean');return {seed:pot.seed,plantedAt:pot.plantedAt,watered:pot.watered,...(pot.game===undefined?{}:{game:validateGardenGame(pot.game)})};});
- return {pet:{species:p.species,name:p.name,careCount:p.careCount,accessory:p.accessory,day:p.day,careToday:[...p.careToday],raising:validateStarRaising(p.raising)},room:{theme:r.theme,layout:savedLayout,day:r.day,rewarded:r.rewarded},garden:{pots,collection:{...g.collection},qualityCollection:qualityCollection(g.qualityCollection,g.collection),day:g.day,harvestsToday:g.harvestsToday}};
+ return {pet:{species:p.species,name:p.name,careCount:p.careCount,accessory:p.accessory,day:p.day,careToday:[...p.careToday],raising:validateStarRaising(p.raising)},room:{theme:r.theme,layout:savedLayout,day:r.day,rewarded:r.rewarded,saved,guestbook:validateGuestbook(r.guestbook)},garden:{pots,collection:{...g.collection},qualityCollection:qualityCollection(g.qualityCollection,g.collection),day:g.day,harvestsToday:g.harvestsToday}};
 }
 function current(player,now){const state=validateCozyActivities(player.cozyActivities),today=cultureDay(now);for(const kind of ['pet','room','garden'])if(state[kind].day!==today){state[kind].day=today;if(kind==='pet')state.pet.careToday=[];if(kind==='room')state.room.rewarded=false;if(kind==='garden')state.garden.harvestsToday=0;}return state;}
 function readyAt(pot){return pot.plantedAt+COZY_SEEDS.find(s=>s.id===pot.seed).minutes*60000*(pot.watered?.8:1);}
@@ -76,7 +78,7 @@ export function actCozy(player,data,now=Date.now()){
    else if(action==='accessory'){need(has(COZY_ACCESSORIES,data.accessory)&&COZY_ACCESSORIES.find(a=>a.id===data.accessory).care<=s.careCount,'아기별을 더 돌보면 열려요.');s.accessory=data.accessory;}
    else need(false);}
  } else if(kind==='room'){
-  need(has(COZY_THEMES,data.theme));need(['save','preset'].includes(action));s.theme=data.theme;s.layout=action==='preset'?cozyPreset(data.theme):layout(data.layout);
+  need(has(COZY_THEMES,data.theme));need(['save','preset'].includes(action));need(data.id===undefined&&data.ownerId===undefined,'내 별방만 저장할 수 있어요.');s.saved=true;s.theme=data.theme;s.layout=action==='preset'?cozyPreset(data.theme):layout(data.layout);
   if(action==='save'&&s.layout.length>=3&&!s.rewarded){s.rewarded=true;amount=unit*3;}
  } else {
   need(int(data.pot,2));const pot=s.pots[data.pot];
@@ -99,6 +101,7 @@ export function registerCozyActivities({socket,action,store,roster,clock=Date.no
  const access=kind=>{need(['pet','room','garden'].includes(kind));const {room,player}=socket.data.session||{};
   need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['teacher','student'].includes(player.role)&&store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');
   const prop=STREET.objects.find(o=>o.kind===`cozy-${kind}`);need(player.mapId===STREET_ID&&prop&&isNear(player,prop),'쉼터의 활동 장소 가까이에서 이용해주세요.');need(!isDefeated(player),'체력을 회복한 뒤 이용해주세요.');return {room,player};};
+ registerRoomVisits({action,access});
  action('cozy:read',data=>cozyView(access(data.kind).player,data.kind,clock()),false);
  action('cozy:act',data=>{const {room,player}=access(data.kind),result=actCozy(player,data,clock());if(result.amount)roster(room);return result;});
 }

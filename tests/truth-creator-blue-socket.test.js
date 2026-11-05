@@ -4,7 +4,7 @@ import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {monstersOf} from '../server/monsters.js';
 import {TRUTH_CREATOR} from '../shared/truth-creator.js';
-import {tryTruthCreatorBlue} from '../server/truth-creator-blue.js';
+import {tryTruthCreatorBlue,truthCreatorBlueProtected} from '../server/truth-creator-blue.js';
 import {chargeHuntingStation} from '../server/hunting-time.js';
 import {ensureVitals} from '../server/vitals.js';
 const initial=Date.parse('2026-11-02T12:00:00+09:00');
@@ -23,6 +23,21 @@ async function fixture(t){
   return {game,room,boss,players,students,orbs,call,connect,setNow:value=>{now=value;},get now(){return now;}};
 }
 const input=(opened,action=opened.orb.sequence[opened.orb.progress])=>({orbId:opened.orb.id,action,revision:opened.orb.revision,interactionToken:opened.interactionToken});
+test('each student starts protection only on the first authorized open of a given orb',async t=>{
+  const f=await fixture(t),[p,q]=f.players,[s]=f.students,[first,second]=f.orbs;
+  const open=orb=>f.call(s,'truth-creator:blue-open',{orbId:orb.id});
+  const protectedAt=(player,at)=>truthCreatorBlueProtected(f.boss,player,at);
+  f.setNow(first.landsAt);
+  Object.assign(p,{x:first.x+600,y:first.y});assert.equal((await open(first)).ok,false);
+  assert.equal(protectedAt(p,f.now),false);
+  Object.assign(p,{x:first.x,y:first.y});assert((await open(first)).ok);
+  assert(protectedAt(p,f.now));assert.equal(protectedAt(q,f.now),false);
+  f.setNow(first.landsAt+5900);assert((await open(first)).ok);
+  assert(protectedAt(p,first.landsAt+5999));assert.equal(protectedAt(p,first.landsAt+6000),false);
+  f.setNow(first.landsAt+6100);assert((await open(first)).ok);assert.equal(protectedAt(p,f.now),false);
+  Object.assign(p,{x:second.x,y:second.y});assert((await open(second)).ok);
+  assert(protectedAt(p,f.now+5999));assert.equal(protectedAt(p,f.now+6000),false);
+});
 test('real sockets authorize each read/key, preserve reopened progress, ignore replay/concurrent revisions, and defuse all three individually',async t=>{
   const f=await fixture(t),[p,q]=f.players,[s,other]=f.students,[orb]=f.orbs,anonymous=await f.connect();
   assert.equal((await f.call(anonymous,'truth-creator:blue-open',{orbId:orb.id})).ok,false);
@@ -42,8 +57,9 @@ test('real sockets authorize each read/key, preserve reopened progress, ignore r
   assert.equal(f.boss.truthCreatorBlue.orbs.length,0);assert.equal((await f.call(s,'truth-creator:blue-open',{orbId:orb.id})).ok,false);
 });
 test('late socket input cannot defer a deadline or forge completion, and the server executes the map-wide blast',async t=>{
-  const f=await fixture(t),p=f.players[0],s=f.students[0],orb=f.orbs[0];f.setNow(orb.landsAt);Object.assign(p,{x:orb.x,y:orb.y});
+  const f=await fixture(t),p=f.players[0],s=f.students[0],orb=f.orbs[0];f.setNow(orb.endsAt-1000);Object.assign(p,{x:orb.x,y:orb.y});
   const opened=await f.call(s,'truth-creator:blue-open',{orbId:orb.id});assert(opened.ok,opened.error);
+  assert(truthCreatorBlueProtected(f.boss,p,orb.endsAt));
   f.setNow(orb.endsAt);
   const late=await f.call(s,'truth-creator:blue-input',{...input(opened),progress:8,disarmed:true,endsAt:orb.endsAt+100000});assert.equal(late.ok,false);
   const until=Date.now()+2000;while(p.battleVitals.hp>0&&Date.now()<until)await new Promise(resolve=>setTimeout(resolve,20));

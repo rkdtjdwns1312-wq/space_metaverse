@@ -49,9 +49,10 @@ import {createTeacherUpdates} from './teacher-updates.js';
 import {openPlanetDesigner} from './planet-designer.js';
 import {drawPlanetDesign} from '/shared/planet-design.js';
 import {createDarkStarUI} from './dark-star-ui.js';
+import {DARK_STAR_SATELLITES} from '/shared/dark-star.js';
 import {createTruthCreatorUI} from './truth-creator-ui.js';
 import {createTruthCreatorBlueUI} from './truth-creator-blue-ui.js';
-import {createStarRecordUI,createStarRecordMathUI} from './star-record-ui.js';
+import {createStatueSummonUI,createStarRecordMathUI} from './star-record-ui.js';
 import {createSerenaUI} from './serena-ui.js';
 import {createBossDialogueUI} from './boss-dialogue-ui.js';
 import { createJoystick } from './joystick-ui.js';
@@ -80,7 +81,7 @@ const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
 const teacherUpdates=createTeacherUpdates();
-const controlSettings=createControlSettings({stop,quality:{get:()=>world.qualityStats().mode,set:mode=>world.setQuality(mode)},onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
+const controlSettings=createControlSettings({stop,quality:{get:()=>world.qualityStats().mode,set:mode=>world.setQuality(mode)},friendWalkReduction:{get:()=>world.friendWalkReduction(),set:(enabled,persist)=>world.setFriendWalkReduction(enabled,persist)},onChange:()=>{characterSkills.reset();characterSkills.update(room?.players.find(p=>p.id===selfId));auxiliarySkills.update();}});
 // 글꼴·화면 크기·메뉴 개수가 달라져도 실제 표시된 두 줄의 중심에 맞춥니다.
 function updateControlAlignment(){
   const dock=$('bottom-dock');
@@ -420,7 +421,8 @@ let serenaWorldState=null;
 const darkStarUI=createDarkStarUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const truthCreatorUI=createTruthCreatorUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const truthCreatorBlueUI=createTruthCreatorBlueUI({request,getKey:controlSettings.code,getKeyLabel:controlSettings.label,toast,onClose:()=>$('world').focus({preventScroll:true})});
-const starRecordUI=createStarRecordUI({request,onClose:()=>$('world').focus({preventScroll:true})});
+const forgottenUI=createStatueSummonUI({request,id:'forgotten-constellation',messageText:'별자리의 기원을 소환할까요?',onClose:()=>$('world').focus({preventScroll:true})});
+const starRecordUI=createStatueSummonUI({request,id:'star-record',messageText:'별 기록의 근원을 소환할까요?',onClose:()=>$('world').focus({preventScroll:true})});
 const starRecordMathUI=createStarRecordMathUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const bossDialogueUI=createBossDialogueUI({getMapId:()=>room?.players.find(p=>p.id===selfId)?.mapId,onOpen:()=>stop(),onClose:()=>$('world').focus({preventScroll:true})});
@@ -439,6 +441,7 @@ function updateRoom(value){
   if(room.serena)serenaWorldState=room.serena;
   if(room.darkStar)darkStarUI.update(room.darkStar);
   if(room.truthCreator)truthCreatorUI.update(room.truthCreator);
+  if(room.forgottenConstellation)forgottenUI.update(room.forgottenConstellation);
   if(room.starRecord)starRecordUI.update(room.starRecord);
   world.setObjectUpdates(objectUpdates.update(room,selfId));
   universe.update();
@@ -1043,15 +1046,19 @@ async function travelTo(to){try{await request('map:travel',{to});}catch(e){toast
 const darkCardReads=new Map();let darkCardBusy=false;
 async function interactDarkCard(card){
   if(darkCardBusy)return;
-  const prior=darkCardReads.get(card.id),now=Date.now(),ready=prior&&now<prior.expiresAt;
+  const prior=darkCardReads.get(card.id),now=performance.now(),ready=prior&&now<prior.expiresAt;
   if(ready&&now<prior.removeAfter)return;
   darkCardBusy=true;
   try{
     const result=await request('dark-star:reveal',{cardId:card.id,...(ready?{removeToken:prior.token}:{})});
     if(result.removed)darkCardReads.delete(card.id);
-    else if(result.canRemove)darkCardReads.set(card.id,{token:result.removeToken,expiresAt:Date.now()+3000,removeAfter:Date.now()+300});
-    for(const [id,read]of darkCardReads)if(read.expiresAt<Date.now())darkCardReads.delete(id);
-    toast(result.message+(result.canRemove?' 잘못된 카드를 제거하면 자신이 쓰러져요.':''));
+    else if(result.canRemove){
+      const received=performance.now();
+      darkCardReads.set(card.id,{token:result.removeToken,color:result.color,expiresAt:received+(result.revealUntil-result.serverNow),removeAfter:received+(result.removeAfter-result.serverNow)});
+    }
+    for(const [id,read]of darkCardReads)if(read.expiresAt<=performance.now())darkCardReads.delete(id);
+    const satellite=result.canRemove&&DARK_STAR_SATELLITES[result.color];
+    toast(satellite?satellite.name+' 위성을 확인했어요. 잘못 제거하면 자신이 쓰러져요.':result.message);
   }catch(e){toast(e.message);}finally{darkCardBusy=false;}
 }
 function doInteract(){
@@ -1064,6 +1071,7 @@ function doInteract(){
   else if(n.kind==='star-angel-statue')request('star-angel:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='dark-star-card')interactDarkCard(n);
   else if(n.kind==='truth-creator-blue'){stop();truthCreatorBlueUI.open(n,room?.players.find(p=>p.id===selfId));}
+  else if(n.kind==='forgotten-link'){stop();request('forgotten-constellation:link',{castId:n.castId,number:n.number}).then(r=>toast(r.message)).catch(e=>toast(e.message));}
   else if(n.kind==='star-record-number'){stop();starRecordMathUI.open(n);}
   else if(n.kind==='spirit-blue-star')request('spirit-star:disarm',{starId:n.id}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='hall-of-fame')hallOfFame.open();
@@ -1078,6 +1086,7 @@ function doInteract(){
   else if(n.kind==='black-star'){stop();$('black-hole-info-dialog').showModal();}
   else if(n.kind==='dark-star-statue'){stop();darkStarUI.open();}
   else if(n.kind==='truth-creator-statue'){stop();truthCreatorUI.open();}
+  else if(n.kind==='forgotten-constellation-statue'){stop();forgottenUI.open();}
   else if(n.kind==='star-record-statue'){stop();starRecordUI.open();}
   else if(n.kind==='goddess-statue'){stop();serenaUI.open();}
   else if(n.kind==='shop')openShopDialog();
@@ -1112,7 +1121,10 @@ function updateInteractPrompt(){
   const n=world.nearby();
   if(!n){hide();return;}
   const cardRead=n.kind==='dark-star-card'&&darkCardReads.get(n.id);
-  const label=cardRead&&Date.now()<cardRead.expiresAt?controlSettings.label('interact')+' 한 번 더 누르면 제거합니다':n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
+  const revealed=cardRead&&performance.now()<cardRead.expiresAt&&DARK_STAR_SATELLITES[cardRead.color];
+  if(revealed){prompt.style.setProperty('--satellite-color',revealed.ink);prompt.dataset.satelliteColor=cardRead.color;}
+  else if(prompt.hasAttribute('data-satellite-color')){delete prompt.dataset.satelliteColor;prompt.style.removeProperty('--satellite-color');}
+  const label=revealed?revealed.name+' 위성 · 다시 누르면 제거':n.kind==='door'?'광장으로 나가기':n.kind==='shop'?'별상점 구경하기':n.kind==='goddess-statue'?'아직 잠든 석상':n.name;
   const caption=$('interact-object');
   if(caption.textContent!==label){caption.textContent=label;touchButton.setAttribute('aria-label',label+' · '+controlSettings.label('interact')+' 상호작용하기');}
   if(prompt.hidden)prompt.hidden=false;
@@ -1120,7 +1132,8 @@ function updateInteractPrompt(){
   const point=world.screenPoint(n),width=prompt.offsetWidth,height=prompt.offsetHeight,gap=12;
   let x=Math.max(8,Math.min(innerWidth-width-8,point.x-width/2));
   const objectTop=n.kind==='dark-star-card'?90:n.kind==='star-card'?(n.height||90)+20:(n.radius||0);
-  let y=point.y-objectTop*point.scale-height-gap;
+  let y=n.kind==='dark-star-card'?point.y+24*point.scale+gap:point.y-objectTop*point.scale-height-gap;
+  if(n.kind==='dark-star-card'&&y+height>innerHeight-8)y=point.y-objectTop*point.scale-height-gap;
   const navigation=$('world-navigation').getBoundingClientRect();
   // 맵 상단과 미니맵에 가려지는 경우에는 같은 물체 바로 아래에 붙입니다.
   if(y<8||(x<navigation.right&&x+width>navigation.left&&y<navigation.bottom&&y+height>navigation.top))
@@ -1655,7 +1668,7 @@ socket.on('combat:vitals',data=>{
   partyUI.update();
   if(player.id===selfId){vitals.update(data.vitals);if(data.vitals?.defeated){stop();toast('체력이 다했어요. 잠시 쉬며 회복해요.');}}
 });
-socket.on('world:positions',data=>{if(selfId){const localMap=!data.mapId||data.mapId===world.currentMapId();if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=localMap?data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null:starRecordPlanetPrompt;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(localMap)truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(localMap&&data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
+socket.on('world:positions',data=>{if(selfId){const localMap=!data.mapId||data.mapId===world.currentMapId();if(data.truthCreator){if(room)room.truthCreator=data.truthCreator;truthCreatorUI.update(data.truthCreator);}if(data.darkStar){if(room)room.darkStar=data.darkStar;darkStarUI.update(data.darkStar);}if(data.forgottenConstellation){if(room)room.forgottenConstellation=data.forgottenConstellation;forgottenUI.update(data.forgottenConstellation);}if(data.starRecord){if(room)room.starRecord=data.starRecord;starRecordUI.update(data.starRecord);}if(data.serena){const previous=serenaWorldState?.state;serenaWorldState=data.serena;if(room)room.serena=data.serena;serenaUI.update(data.serena);const mapId=room?.players.find(p=>p.id===selfId)?.mapId;if(mapId&&previous!==data.serena.state)updateBgm(mapId,data.serena);}const prompt=localMap?data.monsters?.find(m=>m.typeId==='star-record')?.starRecordEffects?.challenge?.prompts?.find(p=>p.playerId===selfId)?.planet||null:starRecordPlanetPrompt;if(prompt!==starRecordPlanetPrompt){starRecordPlanetPrompt=prompt;updateChatUI(room?.players.find(p=>p.id===selfId),room?.players.find(p=>p.id===selfId)?.role==='teacher');}world.positions(data);world.monsters(data);if(localMap)truthCreatorBlueUI.sync(data.monsters,room?.players.find(p=>p.id===selfId));if(localMap&&data.sagittarius){world.sagittariusState(data.sagittarius);combatControls.sync(data.sagittarius);}universe.positions(data);for(const [id,x,y] of data.positions||[]){const p=room?.players.find(p=>p.id===id);if(p){p.x=x;p.y=y;}}marketUI.update();}});
 socket.on('energy:drops',data=>{if(selfId&&room){room.energyDrops=data.drops||[];world.energyDrops(data);}});
 socket.on('room:closed',data=>reset(data.message));
 socket.on('item:notice',data=>{if(selfId)toast(data.text);});

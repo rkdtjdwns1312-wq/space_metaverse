@@ -4,6 +4,7 @@ import {mapOf} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals} from '../server/vitals.js';
 import {clearTruthCreatorAttack} from '../server/truth-creator-attack.js';
+import {tryTruthCreatorBlue,openTruthCreatorBlue,inputTruthCreatorBlue} from '../server/truth-creator-blue.js';
 import {TRUTH_CREATOR_GALAXY as RULE,truthCreatorGalaxyRoute,tryTruthCreatorGalaxy,tickTruthCreatorGalaxy,truthCreatorGalaxyViews} from '../server/truth-creator-galaxy.js';
 const now=100000;
 function fixture(){
@@ -61,4 +62,19 @@ test('death, map change, departure and combat reset clear both flying galaxies a
     const f=fixture();tryTruthCreatorGalaxy(f.room,f.boss,f.player,now,()=>.2);alter(f);assert.deepEqual(tickTruthCreatorGalaxy(f.room,f.boss,now+500),[]);assert.equal(f.boss.truthCreatorGalaxy,null);
   }
   const f=fixture();tryTruthCreatorGalaxy(f.room,f.boss,f.player,now,()=>.2);clearTruthCreatorAttack(f.boss,f.room);assert.equal(f.boss.truthCreatorGalaxy,null);
+});
+test('galaxy spares only a protected puzzle opener even after the final disarm, then hits at the exact deadline',()=>{
+  const f=fixture();assert(tryTruthCreatorBlue(f.room,f.boss,f.player,now,()=>.25));
+  const at=f.boss.truthCreatorBlue.orbs[0].landsAt;
+  for(const orb of [...f.boss.truthCreatorBlue.orbs]){
+    Object.assign(f.player,{x:orb.x,y:orb.y});
+    const {interactionToken}=openTruthCreatorBlue(f.room,f.player,orb.id,at);
+    for(const action of orb.sequence)inputTruthCreatorBlue(f.room,f.player,{orbId:orb.id,interactionToken,revision:orb.revision,action},at);
+  }
+  assert(tryTruthCreatorGalaxy(f.room,f.boss,f.player,at,()=>0));
+  const shot=f.boss.truthCreatorGalaxy.orbs[0];
+  f.player.x=shot.x+5.9*RULE.speed;f.player.y=shot.y;
+  const other={...f.player,id:'b',battleVitals:{...f.player.battleVitals}};f.room.players.set(other.id,other);
+  assert.deepEqual(tickTruthCreatorGalaxy(f.room,f.boss,at+5999).map(hit=>hit.targetId),['b']);
+  assert(tickTruthCreatorGalaxy(f.room,f.boss,at+6000).some(hit=>hit.targetId==='a'&&hit.defeated));
 });

@@ -1,5 +1,5 @@
 import {monsterViews} from './monsters.js';
-import {serenaView,darkStarView,starRecordView,truthCreatorView} from './boss-lifecycle.js';
+import {serenaView,darkStarView,starRecordView,forgottenConstellationView,truthCreatorView} from './boss-lifecycle.js';
 import {spiritOrbViews} from './spirit-king-skills.js';
 import {spiritBlueStarViews} from './spirit-blue-stars.js';
 import {projectileViews} from './projectiles.js';
@@ -38,7 +38,7 @@ export function worldBroadcastFrame(room,now){
     monstersByMap.get(monster.mapId).push(monster);
   }
   // Statue/respawn state remains global for map navigation and boss interfaces.
-  const bosses={serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),truthCreator:truthCreatorView(room)};
+  const bosses={serena:serenaView(room),darkStar:darkStarView(room),starRecord:starRecordView(room),forgottenConstellation:forgottenConstellationView(room),truthCreator:truthCreatorView(room)};
   return (viewer,positions)=>{
     const mapId=viewer.mapId;
     if(!maps.has(mapId)){

@@ -1,3 +1,4 @@
+import {forgottenConstellationMap} from '../shared/forgotten-constellation.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
@@ -11,7 +12,7 @@ import {originFloor} from '../shared/origin-floor.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 import {MONSTER_TYPES} from '../shared/monsters.js';
 
-test('sleeping stars share stage-three dimensions and central floor with summon statues on stages one, two and four',()=>{
+test('sleeping stars share stage-three dimensions and central floor with one summon statue per stage',()=>{
   assert.equal(SLEEPING_STARS_MAPS.length,4);
   for(const [index,map] of SLEEPING_STARS_MAPS.entries()){
     const origin=ORIGIN_MAPS[2];
@@ -22,8 +23,8 @@ test('sleeping stars share stage-three dimensions and central floor with summon 
     if(index<3)assert.deepEqual(floor,base);
     assert.equal(map.objects.filter(o=>o.kind==='gate').length,index===3?1:2);
     const statue=map.objects.find(o=>o.kind==='dark-star-statue');if(statue)assert.deepEqual([statue.x,statue.y],[map.width/2,map.height/2]);
-    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'||index===3&&object.kind==='truth-creator-statue'));
-    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===2?0:index===3?2:1);
+    assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'||index===2&&object.kind==='forgotten-constellation-statue'||index===3&&object.kind==='truth-creator-statue'));
+    assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===3?2:1);
     assert.equal(STATIC_MAPS[map.id],map);
   }
 });
@@ -44,7 +45,7 @@ test('all sleeping-star arrivals and north shelter path fit every avatar without
   assert(gate.y<Math.min(...STREET.objects.filter(object=>object.kind.endsWith('-station')).map(object=>object.y)));
   for(let y=gate.y;y<=480;y+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,gate.x,y,avatar),'north approach '+y);
   for(let x=gate.x;x<=660;x+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,x,480,avatar),'north approach turn '+x);
-  for(const original of SLEEPING_STARS_MAPS)for(const map of [truthCreatorMap(starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
+  for(const original of SLEEPING_STARS_MAPS)for(const map of [forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'}),{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
     const t=step/40,x=map.width/2+(gate.x-map.width/2)*t,y=map.height/2+(gate.y-map.height/2)*t;
     for(const avatar of avatars)assert(avatarPositionIsClear(map,x,y,avatar),map.id+' bridge '+step);
   }

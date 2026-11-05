@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mapOf} from '../shared/config.js';
+import {FORGOTTEN_CONSTELLATION as spec,forgottenConstellationMap} from '../shared/forgotten-constellation.js';
+import {monsterType,MONSTER_SPAWNS} from '../shared/monsters.js';
+import {TRUTH_CREATOR_REQUIRED_BOSSES} from '../shared/truth-creator.js';
+import {monstersOf,monsterViews,damageMonster,moveMonsters} from '../server/monsters.js';
+import {summonForgottenConstellation} from '../server/forgotten-constellation.js';
+import {validateForgottenConstellationState,restoreForgottenConstellationStatue,nextBossRespawnAt,settleBossDeaths} from '../server/boss-lifecycle.js';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+import {readingFixture,call} from './helpers/reading-fixture.js';
+
+const map=mapOf(spec.mapId),statue=map.objects.find(o=>o.id===spec.statueId);
+const locate=p=>Object.assign(p,{mapId:spec.mapId,x:statue.x,y:statue.y+100});
+test('stage three only summons at its statue, then uses basic combat and next morning restoration',()=>{
+ const now=Date.parse('2026-11-05T12:00:00+09:00'),p={id:'p',role:'student',avatar:{level:3},connected:true},room={players:new Map([['p',p]]),planets:new Map()};
+ assert.equal(MONSTER_SPAWNS.some(m=>m.typeId===spec.typeId),false);assert(!TRUTH_CREATOR_REQUIRED_BOSSES.includes(spec.typeId));
+ assert.equal(validateForgottenConstellationState().state,'dormant');assert.equal(monstersOf(room,now).has(spec.monsterId),false);
+ locate(p);assert.throws(()=>summonForgottenConstellation(room,p,now));chargeHuntingStation(p,'math',now);
+ summonForgottenConstellation(room,p,now);const boss=room.monsters.get(spec.monsterId);
+ assert.deepEqual([boss.x,boss.y,boss.hp,boss.mp],[map.width/2,map.height/2,20000,100]);assert.equal(monsterType('star-record').hp,15000);
+ assert(!forgottenConstellationMap(map,room.forgottenConstellation).objects.some(o=>o.id===spec.statueId));assert.throws(()=>summonForgottenConstellation(room,p,now));
+ room.monsters=new Map([[boss.id,boss]]);damageMonster(room,boss,p,1,now);moveMonsters(room,now+250,()=>.5);
+ assert(!boss.pendingAttack);moveMonsters(room,now+3250,()=>.5);assert.ok(boss.homing.shot);const hit=moveMonsters(room,now+3900,()=>.5).find(h=>h.targetId===p.id);assert.ok(hit&&hit.damage>0);
+ damageMonster(room,boss,p,20000,now+4000);const due=nextBossRespawnAt(now+4000);
+ assert.equal(room.forgottenConstellation.respawnAt,due);assert.equal(room.energyDrops?.size||0,0);
+ assert.equal(restoreForgottenConstellationStatue(room,due-1),false);assert.equal(restoreForgottenConstellationStatue(room,due),true);
+ assert(!room.monsters.has(boss.id));assert(forgottenConstellationMap(map,room.forgottenConstellation).objects.includes(statue));
+});
+
+test('socket summon checks hunting time, map, distance, session and competing requests; persistence survives failed commits and restart',async t=>{
+ const f=await readingFixture(t),guest=await f.connect();const event='forgotten-constellation:summon';
+ assert.equal((await call(guest,event)).ok,false);assert.equal((await call(f.student,event)).ok,false);
+ locate(f.p);assert.equal((await call(f.student,event)).ok,false);chargeHuntingStation(f.p,'math',f.now);f.p.x=map.width/2-600;
+ assert.equal((await call(f.student,event)).ok,false);locate(f.p);
+ await f.fail(async()=>assert.equal((await call(f.student,event)).ok,false));assert.equal(validateForgottenConstellationState(f.room.forgottenConstellation).state,'dormant');
+ locate(f.p);const attempts=await Promise.all([call(f.student,event),call(f.student,event)]);assert.equal(attempts.filter(x=>x.ok).length,1);
+ await f.restart();assert.equal(f.room.forgottenConstellation.state,'active');const boss=monstersOf(f.room,f.now).get(spec.monsterId);
+ assert.equal(monsterViews(f.room,f.now).find(m=>m.id===boss.id).maxHp,20000);
+ locate(f.p);damageMonster(f.room,boss,f.p,20000,f.now);
+ f.mutate(()=>settleBossDeaths(f.room,f.now));const due=f.room.forgottenConstellation.respawnAt;
+ assert(f.p.serenaProgress.bossKills.includes(spec.typeId));await f.restart();
+ assert.equal(f.room.forgottenConstellation.state,'recovering');assert(!monstersOf(f.room,f.now).has(spec.monsterId));assert.equal(f.room.bossRespawns[spec.monsterId],due);
+ f.mutate(()=>restoreForgottenConstellationStatue(f.room,due));await f.restart();assert.equal(f.room.forgottenConstellation.state,'dormant');
+});

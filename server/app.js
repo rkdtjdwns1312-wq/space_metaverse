@@ -1,3 +1,4 @@
+import {linkConstellationStar} from './forgotten-constellation-links.js';
 import {socketRateMiddleware} from './socket-rate-limit.js';
 import {INTERACTION_SAVE_ACTIONS} from './interaction-save-scope.js';
 import {reminderTarget} from './student-reminders.js';
@@ -9,7 +10,7 @@ import {captureBossItemHistory,commitBossItemHistory} from './boss-item-history.
 import {advanceBossMapHazards,clearBossMapHazard} from './boss-map-hazards.js';
 import {registerCozyActivities} from './cozy-activities.js';
 import {settleHuntingTime,huntingTimeView,requireHuntingEntry,huntingExempt,isHuntingMap} from './hunting-time.js';
-import {huntingCycle} from '../shared/hunting-time.js';
+import {HUNTING_STATION_MS,huntingCycle} from '../shared/hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {setTeacherGhost,visiblePositions} from './teacher-ghost.js';
 import {statGrowthInfo,buyStatGrowth} from './stat-growth.js';
@@ -91,13 +92,14 @@ import {disarmSpiritBlueStar} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
 import {openTruthCreatorBlue,inputTruthCreatorBlue} from './truth-creator-blue.js';
 import {summonTruthCreator,requireTruthCreatorEntry} from './truth-creator.js';
+import {summonForgottenConstellation} from './forgotten-constellation.js';
 import {summonStarRecord} from './star-record.js';
 import {answerStarRecordChallenge} from './star-record-challenge.js';
 import {answerStarRecordMath} from './star-record-math.js';
 import {recordStarRecordMovement} from './star-record-flow.js';
 import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
-import {settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
+import {settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreForgottenConstellationStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -374,7 +376,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     // Only audited, single-classroom mutations opt into a scoped save. Account
     // lifecycle, administration and newly added actions retain the full guard.
     const scopedActions=new Set([...INTERACTION_SAVE_ACTIONS,'chat:send','combat:attack','combat:skill','combat:transform',
-      'art:save','art:delete',
+      'art:save','art:delete','forgotten-constellation:summon',
       'equipment:equip','equipment:unequip','energy:collect','party:roll',
       'shop:buy','shop:sell','shop:energy:buy','crafting:combine','item:use',
       'trade:propose','trade:respond','trade:offer','trade:confirm','trade:cancel',
@@ -433,7 +435,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             if(before&&before.mapId!==p.mapId&&isHuntingMap(p.mapId)&&!huntingExempt(p)&&huntingTimeView(p,clock()).remainingMs<=0)returnHuntingPlayer(current.room,p,clock());
             settleHuntingTime(p,clock());
             if(before&&p.huntingTime.chargedStations.length>before.charged){
-              deliver(()=>io.to(p.socketId).emit('item:notice',{text:'발전소 학습 완료! 오늘의 사냥 시간 15분을 받았어요.'}));
+              deliver(()=>io.to(p.socketId).emit('item:notice',{text:`발전소 학습 완료! 오늘의 사냥 시간 ${HUNTING_STATION_MS/60000}분을 받았어요.`}));
               deliver(()=>io.to(p.socketId).emit('hunting:state',huntingTimeView(p,clock())));
             }
           }
@@ -474,6 +476,14 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
       const result=summonTruthCreator(session.room,session.player,clock());
       roster(session.room);return result;
+    });
+    action('forgotten-constellation:link',data=>{
+      const {room,player}=socket.data.session||{};ensure(socket.connected&&room&&store.rooms.get(room.code)===room&&room.players.get(player?.id)===player&&player.socketId===socket.id,'먼저 교실에 다시 입장해주세요.');
+      return linkConstellationStar(room,player,data,clock());
+    },false);
+    action('forgotten-constellation:summon',()=>{
+      const {room,player}=socket.data.session||{};ensure(room&&store.rooms.get(room.code)===room&&room.players.get(player?.id)===player&&player.socketId===socket.id,'먼저 교실에 다시 입장해주세요.');
+      const result=summonForgottenConstellation(room,player,clock());roster(room);return result;
     });
     action('star-record:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
@@ -2706,9 +2716,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
       const bossNow=clock();
-      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||needsTemporaryBossRespawnShortening(room,bossNow)||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt||room.truthCreator?.state==='recovering'&&bossNow>=room.truthCreator.respawnAt)){
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||needsTemporaryBossRespawnShortening(room,bossNow)||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt||room.forgottenConstellation?.state==='recovering'&&bossNow>=room.forgottenConstellation.respawnAt||room.truthCreator?.state==='recovering'&&bossNow>=room.truthCreator.respawnAt)){
         try{transaction(()=>{
-          settleBossDeaths(room,bossNow);shortenTemporaryBossRespawns(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);restoreTruthCreatorStatue(room,bossNow);roster(room);
+          settleBossDeaths(room,bossNow);shortenTemporaryBossRespawns(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);restoreForgottenConstellationStatue(room,bossNow);restoreTruthCreatorStatue(room,bossNow);roster(room);
           deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
         });}catch(error){
           const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;
@@ -2832,8 +2842,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // 아바타 좌표와 몬스터 좌표를 한 번에 보냅니다. 두 volatile 이벤트를 연달아
         // 전송하면 이동 중 첫 패킷 뒤의 몬스터 패킷이 버려질 수 있습니다.
         // 몬스터/지대는 현재 맵의 전체 상태를 보내므로 누락 뒤에도 다음 패킷으로 복구합니다.
-        if(pruneEnergyDrops(room,now))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-        const worldFrame=worldBroadcastFrame(room,clock());
+        const broadcastNow=clock();
+        if(pruneEnergyDrops(room,broadcastNow))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,broadcastNow)});
+        const worldFrame=worldBroadcastFrame(room,broadcastNow);
         // volatile 패킷을 연속 전송하면 뒤 패킷이 버려지므로 이동과 스킬 상태를 합칩니다.
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){

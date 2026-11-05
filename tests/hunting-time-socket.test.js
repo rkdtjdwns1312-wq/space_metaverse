@@ -8,14 +8,14 @@ import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const credit=f=>f.mutate(p=>chargeHuntingStation(p,'math',f.now));
 
-test('pre-change80-minute save restarts without clipping; new science reward adds15 once then reset gives75',async t=>{
- const f=await readingFixture(t),charged=['math','english','history','culture'];
- f.mutate(p=>{p.huntingTime={cycle:huntingCycle(f.now),remainingMs:80*60000,chargedStations:charged};});
- await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,80*60000);assert.deepEqual(f.p.huntingTime.chargedStations,charged);
- f.at('science');const opened=ok(await call(f.student,'science:open'));ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,95*60000);
- ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,95*60000);await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,95*60000);
+test('legacy five-stamp balance restarts without clipping; extra activity grants no time and reset allows 80',async t=>{
+ const f=await readingFixture(t),charged=['math','english','history','culture','science'];
+ f.mutate(p=>{p.huntingTime={cycle:huntingCycle(f.now),remainingMs:92*60000,chargedStations:charged};});
+ await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);assert.deepEqual(f.p.huntingTime.chargedStations,charged);
+ f.at('science');const opened=ok(await call(f.student,'science:open'));ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);
+ ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);
  f.advance(huntingResetAt(f.now)-f.now+1);assert.equal(huntingTimeView(f.p,f.now).remainingMs,0);
- f.mutate(p=>{for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,f.now);});await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,75*60000);
+ f.mutate(p=>{for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,f.now);});await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,80*60000);
 });
 test('entrygate and fasttravel deny zero; actualclock runs in hunts, pauses safe, expires to shelter',async t=>{
  const f=await readingFixture(t);f.mutate(p=>{p.avatar.level=5;});

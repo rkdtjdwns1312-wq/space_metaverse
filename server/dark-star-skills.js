@@ -205,14 +205,14 @@ export function revealDarkStarCard(room,player,cardId,now=Date.now(),removeToken
   card.revealUntil=now+RULE.puzzle.revealMs;
   const next={token:randomUUID(),player,socketId:player.socketId,until:card.revealUntil,removeAfter:now+300};
   card.confirmations.set(player.id,next);
-  return {message:'F를 한 번 더 누르면 제거합니다.',cardId:card.id,revealUntil:next.until,canRemove:true,removeToken:next.token,removeAfter:next.removeAfter};
+  return {message:'F를 한 번 더 누르면 제거합니다.',cardId:card.id,color:card.color,serverNow:now,revealUntil:next.until,canRemove:true,removeToken:next.token,removeAfter:next.removeAfter};
 }
 // Cards are interaction-only objects. Every attack/skill shares this final guard.
 export function damageDarkStarCard(){return null;}
 export function darkStarSkillViews(room,boss,now){
   const state=boss.darkStarSkills;
   if(!state||boss.hp<=0||state.mapId!==boss.mapId)return null;
-  return {aim:state.aim?{...state.aim}:null,
+  return {serverNow:now,aim:state.aim?{...state.aim}:null,
     projectiles:state.projectiles.filter(s=>now<s.endsAt).map(({id,x,y,dx,dy,radius,startsAt,endsAt})=>({id,x,y,dx,dy,radius,startsAt,endsAt})),
     paths:state.paths.filter(p=>now<p.endsAt).map(({id,x1,y1,x2,y2,width,startsAt,endsAt})=>({id,x1,y1,x2,y2,width,startsAt,endsAt})),
     cards:state.cards.filter(c=>c.hp>0&&now<c.endsAt).map(({id,x,y,radius,startsAt,endsAt,revealUntil,color})=>({id,x,y,radius,startsAt,endsAt,revealUntil,...(now<revealUntil?{color}:{})})),

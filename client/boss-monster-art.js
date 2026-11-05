@@ -1,5 +1,6 @@
 import {preloadDarkStarArt,darkStarBounds,drawDarkStar} from './dark-star-art.js';
 import {preloadTruthCreatorArt,truthCreatorBounds,drawTruthCreator,drawTruthCreatorSentry} from './truth-creator-art.js';
+import {preloadForgottenArt,forgottenBounds,drawForgottenBoss} from './forgotten-constellation-art.js';
 import {preloadStarRecordArt,starRecordBounds,drawStarRecord} from './star-record-art.js';
 import {drawMonsterArtLoading} from './monster-art-loading.js';
 import {preloadSerenaArt,serenaBounds,drawSerena} from './serena-art.js';
@@ -30,13 +31,14 @@ function sprite(shape,walking=false){
   }
   return images.get(key);
 }
-export async function preloadBossArt(shape){if(shape==='dark-star')return preloadDarkStarArt();if(shape==='truth-creator'||shape==='truth-creator-star')return preloadTruthCreatorArt();if(shape==='star-record')return preloadStarRecordArt();if(shape==='serena')return preloadSerenaArt();await Promise.all((shape?[shape]:Object.keys(ART)).flatMap(id=>{
+export async function preloadBossArt(shape){if(shape==='dark-star')return preloadDarkStarArt();if(shape==='truth-creator'||shape==='truth-creator-star')return preloadTruthCreatorArt();if(shape==='forgotten-constellation')return preloadForgottenArt();if(shape==='star-record')return preloadStarRecordArt();if(shape==='serena')return preloadSerenaArt();await Promise.all((shape?[shape]:Object.keys(ART)).flatMap(id=>{
   const art=ART[id],files=[sprite(id)?.decode(),art.walkSrc&&sprite(id,true)?.decode(),preloadMonsterAttack(id),id==='spirit-king'&&preloadMonsterAttack('spirit-king-walk'),id==='noksera'&&preloadNokseraSkill(),id==='noksera'&&preloadNokseraMoon()];
   return files.filter(Boolean);
 }));}
 export function bossMonsterBounds(m,walking=false){
   if(m.shape==='dark-star')return darkStarBounds(m);
   if(m.shape==='truth-creator')return truthCreatorBounds(m);
+  if(m.shape==='forgotten-constellation')return forgottenBounds(m);
   if(m.shape==='star-record')return starRecordBounds(m);
   if(m.shape==='serena')return serenaBounds(m);
   const art=ART[m.shape],r=m.radius,w=r*art.width;
@@ -49,6 +51,7 @@ export function drawBossMonster(ctx,m,time=0,attack){
   if(m?.shape==='dark-star')return drawDarkStar(ctx,m,time,attack);
   if(m?.shape==='truth-creator-star')return drawTruthCreatorSentry(ctx,m,time);
   if(m?.shape==='truth-creator')return drawTruthCreator(ctx,m,time,attack);
+  if(m?.shape==='forgotten-constellation')return drawForgottenBoss(ctx,m,time);
   if(m?.shape==='star-record')return drawStarRecord(ctx,m,time,attack);
   if(m?.shape==='serena')return drawSerena(ctx,m,time,attack);
   const art=ART[m?.shape];if(!art)return false;if(!ctx)return true;

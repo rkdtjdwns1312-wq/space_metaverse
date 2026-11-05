@@ -17,7 +17,7 @@ const make=()=>{
   const player={id:'student',role:'student',connected:true,away:false,mapId:'sleeping-stars-2',x:600,y:600,
     avatar:{level:5,constellationId:'leo'},input:{x:0,y:0,at:0}};
   ensureVitals(player);
-  const boss={id:'star-record-boss',typeId:'star-record',mapId:player.mapId,x:600,y:600,hp:10000,mp:100};
+  const boss={id:'star-record-boss',typeId:'star-record',mapId:player.mapId,x:600,y:600,hp:15000,mp:100};
   const room={players:new Map([[player.id,player]]),monsters:new Map([[boss.id,boss]])};
   return {room,player,boss};
 };
@@ -118,7 +118,7 @@ test('방향을 틀리면 처음부터 다시 시작하고 공격력 100% 피해
   assert.equal(tickStarRecordFlow(room,boss,now+10000).hits.length,1);
   assert.equal(ensureVitals(player).hp,0);
 });
-test('2구역 석상은 소환과 처치 후 복구되며 보스 크기와 능력이 검은별과 같다',()=>{
+test('2구역 석상은 소환과 처치 후 복구되며 보스 체력은 15,000이고 기본 전투 능력은 검은별과 같다',()=>{
   const at=Date.parse('2026-11-01T12:00:00+09:00'),statue=mapOf(STAR_RECORD.mapId).objects.find(o=>o.id===STAR_RECORD.statueId);
   const {room,player}=make();room.monsters.clear();player.x=statue.x;player.y=statue.y+90;
   chargeHuntingStation(player,'math',at);
@@ -126,10 +126,10 @@ test('2구역 석상은 소환과 처치 후 복구되며 보스 크기와 능�
   assert.equal(summonStarRecord(room,player,at).starRecord.state,'active');
   assert.equal(starRecordMap(mapOf(STAR_RECORD.mapId),room.starRecord).objects.some(o=>o.id===statue.id),false);
   const boss=room.monsters.get(STAR_RECORD.monsterId);
-  assert.deepEqual([boss.maxHp,boss.maxMp,boss.radius,monsterType('star-record').power],[10000,100,150,30]);
+  assert.deepEqual([boss.maxHp,boss.maxMp,boss.radius,monsterType('star-record').power],[15000,100,150,30]);
   assert.deepEqual(monsterType('star-record').combat,monsterType('dark-star').combat);
   assert.equal(monsterViews(room,at).find(m=>m.id===boss.id).typeId,'star-record');
-  damageMonster(room,boss,player,10000,at,{energyRoll:()=>1500});
+  damageMonster(room,boss,player,15000,at,{energyRoll:()=>1500});
   assert.equal(room.starRecord.state,'recovering');
   const rewards=[...room.energyDrops.values()].map(drop=>drop.itemId).filter(Boolean);
   assert(rewards.includes('origin-star-record'));assert(rewards.includes('gold-big-bang-card'));

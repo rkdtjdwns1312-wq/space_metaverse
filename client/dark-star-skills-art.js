@@ -1,7 +1,7 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {drawDarkStarSatellite} from './dark-star-art.js';
+import {DARK_STAR_SATELLITES} from '/shared/dark-star.js';
 const orb=mapImage('/assets/monsters/dark-star-orb.webp'),road=mapImage('/assets/monsters/dark-star-rainbow.webp'),cardArt=mapImage('/assets/cards/dark-star-card-back.webp');
-const names={red:'빨강',purple:'보라',indigo:'남색',green:'초록',blue:'파랑'};
 export const preloadDarkStarSkillsArt=()=>decodeMapImages([orb,road,cardArt]);
 export function drawDarkStarOrb(ctx,x,y,radius){
  if(!mapImageReady(orb))return false;
@@ -35,5 +35,15 @@ export function darkStarObjectLayers(ctx,e,now,quiet){
  ];
 }
 export function drawDarkStarPuzzleHint(ctx,e,x,y,now){
- for(const c of e.cards||[])if(c.color&&now<c.revealUntil&&now<c.endsAt){drawDarkStarSatellite(ctx,c.color,c.x,c.y-52,38);label(ctx,names[c.color]+' 위성',c.x,c.y-79,14);}
- const a=e.absorption;if(a&&now<a.endsAt){label(ctx,'범위 밖으로! · '+Math.max(0,(a.endsAt-now)/1000).toFixed(1)+'초',a.x,a.y+a.radius*.4,24);return;}if(e.puzzleEndsAt>now)label(ctx,'색 확인 → 한 번 더 상호작용해 제거 · '+Math.ceil((e.puzzleEndsAt-now)/1000)+'초',x,y,18);}
+ const a=e.absorption;
+ if(a&&now<a.endsAt)label(ctx,'범위 밖으로! · '+Math.max(0,(a.endsAt-now)/1000).toFixed(1)+'초',a.x,a.y+a.radius*.4,24);
+ else if(e.puzzleEndsAt>now)label(ctx,'색 확인 → 한 번 더 상호작용해 제거 · '+Math.ceil((e.puzzleEndsAt-now)/1000)+'초',x,y,18);
+ for(const c of e.cards||[]){
+  const color=DARK_STAR_SATELLITES[c.color];
+  if(!color||now>=c.revealUntil||now>=c.endsAt)continue;
+  ctx.save();ctx.fillStyle='#232035';ctx.beginPath();ctx.roundRect(c.x-48,c.y-80,96,30,12);ctx.fill();
+  ctx.fillStyle=color.ink;ctx.beginPath();ctx.arc(c.x-28,c.y-65,8,0,Math.PI*2);ctx.fill();
+  label(ctx,color.name+' 위성',c.x+10,c.y-60,14);ctx.restore();
+  drawDarkStarSatellite(ctx,c.color,c.x,c.y-36,27);
+ }
+}

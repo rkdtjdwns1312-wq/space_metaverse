@@ -1,3 +1,5 @@
+import {tickHomingStar,homingStarView} from './forgotten-homing-star.js';
+import {tryConstellationLinks,tickConstellationLinks} from './forgotten-constellation-links.js';
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {nearbyMonsterBodies,bodyBlocksStep,monsterDetour} from './monster-navigation.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
@@ -15,6 +17,7 @@ import {tryTruthCreatorSentry,tickTruthCreatorSentries} from './truth-creator-se
 import {tryTruthCreatorChasers,tickTruthCreatorChasers} from './truth-creator-chasers.js';
 import {aimTruthCreator,tickTruthCreatorAttack,truthCreatorAttackView,clearTruthCreatorAttack} from './truth-creator-attack.js';
 import {TRUTH_CREATOR} from '../shared/truth-creator.js';
+import {FORGOTTEN_CONSTELLATION} from '../shared/forgotten-constellation.js';
 import {STAR_RECORD} from '../shared/star-record.js';
 import {SERENA} from '../shared/serena.js';
 import {monsterRespawnMs,finishBossDefeat} from './boss-lifecycle.js';
@@ -89,7 +92,7 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const map=mapOf(type.mapId,room.planets?.values?.()||[]);
     const [baseX,baseY]=(({1:1,2:2,3:4,4:5}[type.level]||1)>=4?largeSpawns:spawns)[i%5];
     const [sx,sy]=sunSpawns[i%5];
-    const manualBoss=[SERENA,DARK_STAR,STAR_RECORD,TRUTH_CREATOR].find(boss=>boss.typeId===type.id);
+    const manualBoss=[SERENA,DARK_STAR,STAR_RECORD,FORGOTTEN_CONSTELLATION,TRUTH_CREATOR].find(boss=>boss.typeId===type.id);
     const statue=manualBoss?map.objects.find(o=>o.id===manualBoss.statueId):null;
     let x=statue?statue.x:type.boss?map.width/2:isParadise(map.id)?map.width/2+sx:baseX*map.width/1200,y=statue?statue.y:type.boss?map.height/2:isParadise(map.id)?map.height/2+sy:baseY*map.height/900;
     // 낙원도 공통 레벨 규칙을 따릅니다: 1단계×1, 2단계×2, 3단계×4, 4단계×5.
@@ -129,6 +132,10 @@ export function monstersOf(room,now=Date.now(),phaseRandom=Math.random){
     const [id,m]=create({id:STAR_RECORD.monsterId,typeId:STAR_RECORD.typeId},0);
     m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
   }
+  if(room.forgottenConstellation?.state==='active'&&!room.monsters.has(FORGOTTEN_CONSTELLATION.monsterId)){
+    const [id,m]=create({id:FORGOTTEN_CONSTELLATION.monsterId,typeId:FORGOTTEN_CONSTELLATION.typeId},0);
+    m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
+  }
   if(room.truthCreator?.state==='active'&&!room.monsters.has(TRUTH_CREATOR.monsterId)){
     const [id,m]=create({id:TRUTH_CREATOR.monsterId,typeId:TRUTH_CREATOR.typeId},0);
     m.hp=m.maxHp;m.respawnAt=null;room.monsters.set(id,m);
@@ -147,6 +154,8 @@ export function monsterViews(room,now=Date.now()){
     ...(m.typeId==='serena'?{serenaSkillEffects:serenaSkillViews(room,m,now)}:{}),
     ...(m.typeId==='dark-star'?{darkStarEffects:darkStarSkillViews(room,m,now)}:{}),
     ...(m.typeId==='truth-creator'?{truthCreatorEffects:truthCreatorAttackView(m,now)}:{}),
+    ...(m.homing?.shot&&m.hp>0?{homingStar:{...homingStarView(m),serverNow:now}}:{}),
+    ...(m.links&&m.hp>0?{constellationLinks:{...m.links,serverNow:now}}:{}),
     ...(m.typeId==='star-record'?{starRecordEffects:{serverNow:now,warning:m.starRecordCast??null,burst:m.starRecordBurst?.endsAt>now?m.starRecordBurst:null,challenge:starRecordChallengeView(m,now),math:starRecordMathView(m,now),flow:starRecordFlowView(m,now)}}:{}),
     poisoned:!!m.combatPoison,sleeping:(m.sleepUntil||0)>now,stunned:(m.stunUntil||0)>now,cursed:[...(m.capricornCurses?.values()||[])].some(c=>c.endsAt>now),attackPower:monsterType(m.typeId)?.power??MONSTER_COMBAT[m.mapId].power}));
 }
@@ -201,6 +210,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
     if(target.typeId==='truth-creator-star')room.monsters.delete(target.id);
     if(target.typeId==='truth-creator')clearTruthCreatorAttack(target,room);
     if(target.typeId==='dark-star')clearDarkStarSkills(room,target);
+    if(target.typeId===FORGOTTEN_CONSTELLATION.typeId){target.links=null;target.homing=null;}
     if(target.typeId==='star-record'){target.starRecordCast=null;target.starRecordBurst=null;target.recordChallenge=null;target.recordMath=null;target.recordFlow=null;}
     if(target.typeId==='serena')clearSerenaSkills(target);
     if(target.typeId==='spirit-king')clearSpiritKingEffects(room,target.id);
@@ -294,7 +304,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(m.typeId==='serena')clearSerenaSkills(m);
       m.pendingAttack=null;m.moonCast=null;m.moonAura=null;m.leoonSkill=null;m.meleePresence?.clear();m.moving=false;
       if(m.summonerId){if(now>=m.respawnAt)monsters.delete(m.id);continue;}
-      if(m.typeId===SERENA.typeId||m.typeId===DARK_STAR.typeId||m.typeId===STAR_RECORD.typeId||m.typeId===TRUTH_CREATOR.typeId||room.pendingBossDeaths?.has(m.id))continue;
+      if(m.typeId===SERENA.typeId||m.typeId===DARK_STAR.typeId||m.typeId===STAR_RECORD.typeId||m.typeId===FORGOTTEN_CONSTELLATION.typeId||m.typeId===TRUTH_CREATOR.typeId||room.pendingBossDeaths?.has(m.id))continue;
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
@@ -322,6 +332,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const previousTarget=m.targetId,target=selectMonsterTarget(room,m);
     if(delayedMeleeBoss(type)&&(!target||m.pendingAttack||m.moonCast||m.leoonSkill||(m.sleepUntil||0)>now||(m.stunUntil||0)>now))m.meleePresence?.clear();
     if(previousTarget&&!target){m.patrolPhaseOffset=randomPatrolOffset(random);m.patrolStartedAt=now+m.patrolPhaseOffset;m.patrolCycle=-1;m.nextDirectionAt=m.patrolStartedAt;}
+    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId){hits.push(...tickHomingStar(room,m,target,now));if(m.hp<=0)continue;}
+    if(m.typeId===FORGOTTEN_CONSTELLATION.typeId&&m.links){hits.push(...tickConstellationLinks(room,m,now));continue;}
     if((m.sleepUntil||0)>now||(m.stunUntil||0)>now){
       if(m.darkStarSkills)m.darkStarSkills.aim=null;
       if(m.truthCreatorAttack)m.truthCreatorAttack.aim=null;
@@ -333,6 +345,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       }
       m.pendingAttack=null;if(m.moonCast)m.moonAura=null;m.moonCast=null;m.leoonSkill=null;m.moving=false;continue;
     }
+    if(type.id===FORGOTTEN_CONSTELLATION.typeId&&target&&tryConstellationLinks(room,m,now,random))continue;
     if(type.id==='star-guardian')trySpiritGuardianHeal(room,m,now);
     if(type.id==='star-record'){
       if(!m.recordChallenge&&!m.recordMath&&!m.recordFlow&&target){
@@ -445,7 +458,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
     const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
-    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId,STAR_RECORD.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
+    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId,STAR_RECORD.typeId,FORGOTTEN_CONSTELLATION.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
     const terrainBlocked=terrainBlockedAt(x,y);
     const bodies=travel<=0||monstersMayOverlap(m.mapId)?[]:nearbyMonsterBodies(monsters,m,travel);
     const blockedAt=(x,y)=>terrainBlockedAt(x,y)||bodyBlocksStep(bodies,x,y);
@@ -474,7 +487,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     m.moving=!blocked&&travel>0.01;
     if(Math.abs(m.dx)>0.05)m.facingX=m.dx<0?-1:1;
     if(blocked){if(!target){m.dx=-m.dx;m.dy=-m.dy;}}else{m.x=x;m.y=y;}
-    if(target&&type.id!=='dark-star'&&type.id!=='star-record'&&type.id!=='truth-creator'){
+    if(target&&type.id!==FORGOTTEN_CONSTELLATION.typeId&&type.id!=='dark-star'&&type.id!=='star-record'&&type.id!=='truth-creator'){
       const dx=target.x-m.x,dy=target.y-m.y,distance=Math.hypot(dx,dy);
       // 초근접에서도 몸을 뚫고 지나가거나 후방을 원격 공격하지 않도록 몸 앞 근접 거리만 판정합니다.
       if(distance<=reach+RULES.radius+MONSTER_RULES.hitRadius){

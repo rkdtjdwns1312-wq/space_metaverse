@@ -2,6 +2,8 @@ import {onFloatingCliffReady} from './floating-island.js';
 import {drawParadiseFloor} from './paradise-floor.js';
 import {darkStarMap} from '/shared/dark-star.js';
 import {truthCreatorMap,TRUTH_CREATOR,TRUTH_CREATOR_GATE_MESSAGE} from '/shared/truth-creator.js';
+import {drawConstellationLine,drawConstellationPoint} from './forgotten-links-art.js';
+import {forgottenConstellationMap} from '/shared/forgotten-constellation.js';
 import {starRecordMap} from '/shared/star-record.js';
 import {serenaMap} from '/shared/serena.js';
 import {drawParadiseBackdrop,onParadiseArtReady} from './paradise-art.js';
@@ -37,7 +39,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   $('map-travel-yes').onclick=async()=>{if(travelling||!target||!request)return;const revision=travelRevision;travelling=true;$('map-travel-yes').disabled=true;try{await request('map:fast-travel',{to:target});if(revision!==travelRevision)return;confirm.close();dialog.close();toast('맵으로 이동했어요.');}catch(e){if(revision===travelRevision)$('map-travel-error').textContent=e.message;}finally{travelling=false;$('map-travel-yes').disabled=false;}};
   const guide=document.createElement('p');guide.className='muted';guide.textContent='지도를 빠르게 두 번 클릭하거나 터치하면 이동할 수 있어요. 상태·레벨에 따라 이동이 제한될 수 있어요.';
   $('universe-preview').nextElementSibling.replaceWith(guide);
-  let minimapOpen=true;
+  let minimapOpen=true,links=null;
   function setMinimapOpen(open){
     minimapOpen=open;
     $('world-navigation').classList.toggle('minimap-collapsed',!open);
@@ -49,7 +51,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
-  const map=id=>truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar),getRoom()?.starRecord),getRoom()?.truthCreator);
+  const map=id=>forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar),getRoom()?.starRecord),getRoom()?.truthCreator),getRoom()?.forgottenConstellation);
   const pictures=new Map();
   const picture=src=>{
     if(!src)return null;
@@ -113,6 +115,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       kind==='black-hole'?'/assets/maps/plaza-black-hole.png':
       kind==='goddess-statue'?'/assets/maps/star-goddess-statue.png':
       kind==='dark-star-statue'?'/assets/maps/dark-star-statue.webp':
+      kind==='forgotten-constellation-statue'?'/assets/monsters/forgotten-constellation-statue.webp':
       kind==='star-record-statue'?'/assets/monsters/star-record-statue.png':
       kind==='evolution'?'/assets/maps/evolution-altar.png':
       kind==='growth'?'/assets/maps/growth-altar.png':
@@ -221,6 +224,11 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     }
     const layer=document.createElement('canvas');layer.width=w;layer.height=h;layer.getContext('2d').drawImage(canvas,0,0);backgrounds.set(cacheKey,layer);while(backgrounds.size>24)backgrounds.delete(backgrounds.keys().next().value);
     }
+    if(links&&mapId==='sleeping-stars-3'&&!thumbnail&&performance.now()<links.expires){
+      ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);drawConstellationLine(ctx,links,scale);
+      for(const star of links.stars)drawConstellationPoint(ctx,star,links.linked,Math.max(30,(detailed?10:7)/scale));
+      ctx.restore();
+    }
     const p=position||me();canvas.dataset.mapId=mapId;
     if(p&&p.mapId===mapId){
       const x=ox+Math.max(0,Math.min(info.width,p.x))*scale,y=oy+Math.max(0,Math.min(info.height,p.y))*scale;
@@ -236,7 +244,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     if(!dialog.open)return;
     const selectable=[...UNIVERSE_MAP_LAYOUT.map(item=>item.id),...planets().map(planet=>interiorIdOf(planet.id))];
     if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:PLAZA_ID;
-    const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
+    const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,getRoom()?.forgottenConstellation?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
       thumbnailObserver?.disconnect();
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
@@ -251,8 +259,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   }
   // showModal 직후에도 첫 프레임을 그립니다. 열린 동안에만 큰 지도를 갱신합니다.
   return {
-    update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
-    positions(data){const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};const now=performance.now();if(now-lastDraw>=100&&(minimapOpen||dialog.open)){lastDraw=now;render();}}},
-    reset(){thumbnailObserver?.disconnect();if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
+    update(){position=me()?{...me()}:null;const next=JSON.stringify([getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,getRoom()?.forgottenConstellation?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);if(next!==artSignature){artSignature=next;backgrounds.clear();}render();},
+    positions(data){if(data.monsters){const live=data.monsters.find(m=>m.alive&&m.constellationLinks)?.constellationLinks;links=live?{...live,expires:performance.now()+live.endsAt-live.serverNow}:null;}const own=data.positions.find(([id])=>id===getSelfId());if(own&&me()){position={mapId:me().mapId,x:own[1],y:own[2]};const now=performance.now();if(now-lastDraw>=100&&(minimapOpen||dialog.open)){lastDraw=now;render();}}},
+    reset(){links=null;thumbnailObserver?.disconnect();if(dialog.open)dialog.close();if(confirm.open)confirm.close();travelRevision++;position=null;selected=null;signature='';artSignature='';lastTap=null;backgrounds.clear();$('minimap').getContext('2d').clearRect(0,0,300,180);}
   };
 }

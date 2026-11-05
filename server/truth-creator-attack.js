@@ -1,5 +1,6 @@
+import {collisionDistance} from './projectile-collision.js';
 import {clearTruthCreatorGalaxy,truthCreatorGalaxyViews} from './truth-creator-galaxy.js';
-import {clearTruthCreatorBlue,truthCreatorBlueViews} from './truth-creator-blue.js';
+import {clearTruthCreatorBlue,truthCreatorBlueViews,truthCreatorBlueProtected} from './truth-creator-blue.js';
 import {clearTruthCreatorSentries} from './truth-creator-sentries.js';
 import {clearTruthCreatorChasers,truthCreatorChaserViews} from './truth-creator-chasers.js';
 import {RULES} from '../shared/config.js';
@@ -43,19 +44,10 @@ function trailView(trail,now){
   return {id:trail.id,x1:trail.x+trail.dx*tail,y1:trail.y+trail.dy*tail,x2:trail.x+trail.dx*trail.distance,y2:trail.y+trail.dy*trail.distance,
     width:rule.trailWidth,startsAt:trail.startsAt,endsAt:trail.flightEndsAt+rule.trailMs};
 }
-// Swept circle entry avoids tunnelling and stops at the nearest player rather than overshooting.
-function collisionDistance(shot,player,travel){
-  const dx=player.x-shot.x,dy=player.y-shot.y,radius=shot.radius+RULES.radius;
-  const along=dx*shot.dx+dy*shot.dy,acrossSquared=dx*dx+dy*dy-along*along;
-  if(acrossSquared>radius*radius)return null;
-  const half=Math.sqrt(Math.max(0,radius*radius-acrossSquared)),entry=Math.max(0,along-half);
-  return along+half>=0&&entry<=travel?entry:null;
-}
 export function tickTruthCreatorAttack(room,boss,now){
   const state=boss.truthCreatorAttack,hits=[],rule=TRUTH_CREATOR_ATTACK;
   if(!state)return hits;
   if(boss.hp<=0||state.mapId!==boss.mapId||![...room.players.values()].some(p=>valid(boss,p))){clearTruthCreatorAttack(boss,room);return hits;}
-  const blue=boss.truthCreatorBlue,basicProtected=blue?.mapId===boss.mapId&&blue.orbs.some(orb=>now>=orb.startsAt&&now<orb.endsAt);
   state.shots=state.shots.filter(shot=>{
     if(boss.hp<=0)return false;
     const until=Math.min(now,shot.endsAt),travel=Math.max(0,until-shot.lastAt)/1000*rule.speed;
@@ -67,7 +59,7 @@ export function tickTruthCreatorAttack(room,boss,now){
     shot.x+=shot.dx*distance;shot.y+=shot.dy*distance;shot.lastAt=until;
     const trail=state.trails.find(trail=>trail.id===shot.id);
     if(trail){trail.distance+=distance;if(target)trail.flightEndsAt=trail.startsAt+trail.distance/rule.speed*1000;}
-    if(target){if(!basicProtected){state.contacts.set(target.id,now+rule.contactMs);hits.push(hitPlayer(room,boss,target,now,'orb'));}return false;}
+    if(target){if(!truthCreatorBlueProtected(boss,target,now)){state.contacts.set(target.id,now+rule.contactMs);hits.push(hitPlayer(room,boss,target,now,'orb'));}return false;}
     return now<shot.endsAt;
   });
   state.trails=state.trails.filter(trail=>now<trail.flightEndsAt+rule.trailMs);
@@ -75,7 +67,7 @@ export function tickTruthCreatorAttack(room,boss,now){
   for(const p of room.players.values()){
     if(boss.hp<=0)break;
     if(!valid(boss,p)){state.contacts.delete(p.id);continue;}
-    if(basicProtected||now<(state.contacts.get(p.id)||0)||!paths.some(path=>segmentDistance(p.x,p.y,path.x1,path.y1,path.x2,path.y2)<=path.width/2+RULES.radius))continue;
+    if(truthCreatorBlueProtected(boss,p,now)||now<(state.contacts.get(p.id)||0)||!paths.some(path=>segmentDistance(p.x,p.y,path.x1,path.y1,path.x2,path.y2)<=path.width/2+RULES.radius))continue;
     // All overlapping paths share one cooldown, kept even if the player briefly steps off the light.
     state.contacts.set(p.id,now+rule.contactMs);hits.push(hitPlayer(room,boss,p,now,'trail'));
   }

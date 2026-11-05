@@ -12,6 +12,9 @@ test('truth loot and public crafting enforce ownership/location, roll back faile
  const boss={typeId:'truth-creator',mapId:f.p.mapId,x:f.p.x,y:f.p.y};
  const drops=addBossDrops(f.room,boss,new Map([[f.p.id,1]]),f.now,()=>1),gem=drops.find(d=>d.itemId==='truth-gem');
  assert.equal(drops.filter(d=>d.itemId==='truth-gem').length,1);assert.equal(gem.total,1);
+ // The next world broadcast must use the same game clock that created this drop.
+ await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('world broadcast timeout')),3000);f.student.once('world:positions',()=>{clearTimeout(timer);resolve();});});
+ assert(f.room.energyDrops.has(gem.id));
  assert.equal((await call(f.other,'energy:collect',{dropId:gem.id})).ok,false);
  await f.fail(async()=>assert.equal((await call(f.student,'energy:collect',{dropId:gem.id})).ok,false));
  assert.deepEqual(f.p.inventory,[]);assert(f.room.energyDrops.has(gem.id));

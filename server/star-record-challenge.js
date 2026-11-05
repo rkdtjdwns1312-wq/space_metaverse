@@ -5,8 +5,8 @@ export const RECORD_PLANETS=Object.freeze(['금성','지구','화성','목성','
 const roll=(random,length)=>Math.min(length-1,Math.max(0,Math.floor((Number(random())||0)*length)));
 const eligible=(room,boss)=>[...room.players.values()].filter(player=>player.connected&&!player.away&&player.mapId===boss.mapId&&
   !player.avatar?.blackStar&&ensureVitals(player)?.hp>0);
-export function defeatRecordPlayer(room,player,now){
-  if(libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
+export function defeatRecordPlayer(room,player,now,{bypassProtection=false}={}){
+  if(!bypassProtection&&libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const value=ensureVitals(player),damage=value.hp;
   value.hp=0;value.defeatedAt=now;player.input={x:0,y:0,at:0};
   (player.damageNumbers??=[]).push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage});

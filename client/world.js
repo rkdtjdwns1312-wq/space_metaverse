@@ -67,7 +67,10 @@ import {darkStarMap,dormantDarkStar} from '/shared/dark-star.js';
 import {drawDarkStarStatue} from './dark-star-art.js';
 import {truthCreatorMap,dormantTruthCreator} from '/shared/truth-creator.js';
 import {drawTruthCreatorStatue,drawTruthCreatorGround,truthCreatorObjectLayers} from './truth-creator-art.js';
+import {forgottenConstellationMap,dormantForgottenConstellation} from '/shared/forgotten-constellation.js';
 import {starRecordMap,dormantStarRecord} from '/shared/star-record.js';
+import {drawConstellationLine,drawConstellationPoint} from './forgotten-links-art.js';
+import {drawForgottenStatue,drawHomingStar} from './forgotten-constellation-art.js';
 import {drawStarRecordStatue,drawStarRecordRays,drawStarRecordMath} from './star-record-art.js';
 import {serenaMap,dormantSerena} from '/shared/serena.js';
 import {drawSerenaExplosion} from './serena-art.js';
@@ -148,6 +151,8 @@ function starRecordNow(effects){
 }
 export function createWorld(canvas) {
   let savedQuality;try{savedQuality=localStorage.getItem(RENDER_QUALITY_KEY);}catch{}
+  const FRIEND_WALK_REDUCTION_KEY='woozooclass-friend-walk-reduction-v1';
+  let friendWalkReduction=false;try{friendWalkReduction=localStorage.getItem(FRIEND_WALK_REDUCTION_KEY)==='true';}catch{}
   const quality=createRenderQuality({mode:savedQuality,lowPower:navigator.hardwareConcurrency<=2||navigator.deviceMemory<=2});
   const avatarLabels=createAvatarLabelCache();
   const interiorBoard=createInteriorBoardUI(canvas);
@@ -166,7 +171,7 @@ export function createWorld(canvas) {
   const projectiles=createProjectileEffects(canvas);
   const aquarius=createAquariusEffects(canvas);
   const poisonZones=createOphiuchusEffects(canvas);
-  let hits=[],starCards=[],campaignSigns=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena(),darkStar=dormantDarkStar(),starRecord=dormantStarRecord(),truthCreator=dormantTruthCreator();
+  let hits=[],starCards=[],campaignSigns=[],energyDrops=[],lootRolls=[],exploration=null,objectUpdateIds=new Set(),serena=dormantSerena(),darkStar=dormantDarkStar(),starRecord=dormantStarRecord(),forgottenConstellation=dormantForgottenConstellation(),truthCreator=dormantTruthCreator();
   let waterAuras=[],waterPulses=[],swanAuras=[],ariesClouds=[],taurusDashes=[],herculesShields=[],herculesBursts=[],libraAuras=[],coronaAuras=[],coronaFalls=[],capricornBlessings=[],leoRoars=[];
   const lastSwanAura=new Map();
   function swanVisualFor(playerId,live,time){
@@ -181,9 +186,13 @@ export function createWorld(canvas) {
     (d.publicAt<=Date.now()?d.remaining>0:d.shares.some(s=>s.playerId===selfId&&s.amount>0)));
   const damageNumbers=createDamageNumbers();
   let monsters=[],spiritOrbs=[],spiritBlueStars=[];const monsterAttacks=new Map();const monsterTracks=new Map(),monsterPoints=new Map();
+  const linksHint=document.getElementById('constellation-links-hint');
   function setMonsters(data){
     monsters=data;const now=performance.now();
+    for(const m of monsters)if(m.darkStarEffects)m.darkStarEffects={...m.darkStarEffects,receivedAt:now};
     for(const m of monsters)if(m.truthCreatorEffects)m.truthCreatorEffects={...m.truthCreatorEffects,receivedAt:now};
+    for(const m of monsters)if(m.homingStar)m.homingStar={...m.homingStar,receivedAt:now};
+    for(const m of monsters)if(m.constellationLinks)m.constellationLinks={...m.constellationLinks,receivedAt:now};
     for(const m of monsters)if(m.starRecordEffects)m.starRecordEffects={...m.starRecordEffects,receivedAt:now};
     for(const m of monsters)if(m.mapId===myMapId)void prepareMonsterArt(monsterType(m.typeId)?.shape);
     for(const m of monsters){if(!monsterTracks.has(m.id))monsterTracks.set(m.id,createMotionTrack());monsterTracks.get(m.id).push(m.x,m.y,m.mapId,now);}
@@ -196,7 +205,7 @@ export function createWorld(canvas) {
   }
   const stars=Array.from({length:105},(_,i)=>({x:(i*137+41)%1200,y:(i*191+23)%760,r:i%5===0?2:1}));
   const star=(x,y,r,fill)=>drawStar(ctx,x,y,r,fill);
-  function currentMap(){return truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(myMapId,planets.map(p=>({...p,kind:'planet'}))),serena),darkStar),starRecord),truthCreator);}
+  function currentMap(){return forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(myMapId,planets.map(p=>({...p,kind:'planet'}))),serena),darkStar),starRecord),truthCreator),forgottenConstellation);}
   let placementPlanetId=null;
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
@@ -475,12 +484,14 @@ export function createWorld(canvas) {
     const point=points.get(p.id)||{x:p.x,y:p.y};
     const x=point.x,y=point.y,aura=waterAuras.find(c=>c.playerId===p.id),swan=swanAuras.find(c=>c.playerId===p.id),dash=taurusDashes.find(c=>c.playerId===p.id),shield=herculesShields.find(c=>c.playerId===p.id),libra=libraAuras.find(c=>c.playerId===p.id),corona=coronaAuras.find(c=>c.playerId===p.id),blessing=capricornBlessings.find(c=>c.playerId===p.id);
     const size=avatarSizeOf(p)*(aura?.kind==='cetus'?2:1);
+    const trackWalkMotion=!friendWalkReduction||p.id===selfId;
+    const allowWalkFrames=trackWalkMotion&&!reducedMotion.matches&&(!quality.low||(friendWalkReduction&&p.id===selfId));
     if(p.id===selfId)canvas.dataset.equipmentAura=p.equipmentAura||'';
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
     const constellation=p.avatar?.level>=2?constellationOf(p.avatar.constellationId,appearanceLevelOf(p)):null;
     const floating=p.role==='teacher'&&!p.avatar?.teacherPreview?false:!constellation||constellation.celestial||locomotionMode(constellation.id,constellation.assetLevel)==='floating';
-    const bodyPose=bodyMotion.sample(p.id,`${myMapId}:${constellation?.sprite||p.role}`,x,y,time,reducedMotion.matches||!!dash||!!p.avatar?.blackStar,floating);
+    const bodyPose=trackWalkMotion?bodyMotion.sample(p.id,`${myMapId}:${constellation?.sprite||p.role}`,x,y,time,reducedMotion.matches||!!dash||!!p.avatar?.blackStar,floating):{y:0,angle:0};
     const whaleSprite=constellation?.id==='cetus'?loadedAvatarSprite(constellation.sprite):null;
     if(aura?.kind==='cetus'){
       const elapsed=time-aura.startsAt,opacity=Math.max(0,Math.min(1,elapsed/450,(aura.durationMs-elapsed)/450));
@@ -504,8 +515,8 @@ export function createWorld(canvas) {
       if(!quality.low)celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
       if(sprite){
-        const pose=extraLocomotion.sample(p.id,`${myMapId}:teacher`,x,y,time,115/2,reducedMotion.matches);
-        const visible=pose.moving&&!quality.low?constellationWalkFrame(sprite,'teacher',1,pose.index)||sprite:sprite;
+        const pose=trackWalkMotion?extraLocomotion.sample(p.id,`${myMapId}:teacher`,x,y,time,115/2,reducedMotion.matches):{moving:false,index:0};
+        const visible=pose.moving&&allowWalkFrames?constellationWalkFrame(sprite,'teacher',1,pose.index)||sprite:sprite;
         ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);drawEquipmentAura(ctx,visible,p,96,time,reducedMotion.matches,quality.low);ctx.drawImage(visible,-48,-48,96,96);ctx.restore();
       }
       else star(0,0,26,'#e9c77b');
@@ -521,109 +532,109 @@ export function createWorld(canvas) {
       // 몸 그림만 반전합니다. 이름표·말풍선·HP 글자는 원래 방향을 유지합니다.
       if(sprite){
         let visible= sprite;
-        if(constellation.id==='cetus'&&constellation.assetLevel<=4){
+        if(constellation.id==='cetus'&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=cetusLastPoint.get(p.id);
           if(previous&&Math.hypot(x-previous.x,y-previous.y)>.12)cetusMovingUntil.set(p.id,time+180);
           cetusLastPoint.set(p.id,{x,y});
-          if(!quality.low&&!reducedMotion.matches&&cetusMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&cetusMovingUntil.get(p.id)>time){
             const frames=cetusWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor(time/(185/3))%24;
             if(frames)visible=frames[index];
             canvas.dataset.cetusWalkFrame=String(index);
           }
         }
-        if(constellation.id==='gemini'&&constellation.assetLevel<=4){
+        if(constellation.id==='gemini'&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=geminiLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           geminiLastPoint.set(p.id,{x,y});
           if(moving){
             if((geminiMovingUntil.get(p.id)||0)<time)geminiMovingSince.set(p.id,time);
             geminiMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&geminiMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&geminiMovingUntil.get(p.id)>time){
             const frames=geminiWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(geminiMovingSince.get(p.id)||time))/(110/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.geminiWalkFrame=String(index);
           }
         }
-        if(constellation.id==='aquarius'&&constellation.assetLevel<=4){
+        if(constellation.id==='aquarius'&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=aquariusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           aquariusLastPoint.set(p.id,{x,y});
           if(moving){
             if((aquariusMovingUntil.get(p.id)||0)<time)aquariusMovingSince.set(p.id,time);
             aquariusMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&aquariusMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&aquariusMovingUntil.get(p.id)>time){
             const frames=aquariusWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(aquariusMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.aquariusWalkFrame=String(index);
           }
         }
-        if(constellation.id==='capricorn'&&constellation.assetLevel<=4){
+        if(constellation.id==='capricorn'&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=capricornLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           capricornLastPoint.set(p.id,{x,y});
           if(moving){
             if((capricornMovingUntil.get(p.id)||0)<time)capricornMovingSince.set(p.id,time);
             capricornMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&capricornMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&capricornMovingUntil.get(p.id)>time){
             const frames=capricornWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(capricornMovingSince.get(p.id)||time))/(125/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.capricornWalkFrame=String(index);
           }
         }
-        if(constellation.id==='taurus'&&constellation.assetLevel<=4){
+        if(constellation.id==='taurus'&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=taurusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           taurusLastPoint.set(p.id,{x,y});
           if(moving){
             if((taurusMovingUntil.get(p.id)||0)<time)taurusMovingSince.set(p.id,time);
             taurusMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&taurusMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&taurusMovingUntil.get(p.id)>time){
             const frames=taurusWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(taurusMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.taurusWalkFrame=String(index);
           }
         }
-        if(constellation.id==='libra'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+        if(constellation.id==='libra'&&constellation.assetLevel>=2&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=libraLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           libraLastPoint.set(p.id,{x,y});
           if(moving){
             if((libraMovingUntil.get(p.id)||0)<time)libraMovingSince.set(p.id,time);
             libraMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&libraMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&libraMovingUntil.get(p.id)>time){
             const frames=libraWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(libraMovingSince.get(p.id)||time))/(135/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.libraWalkFrame=String(index);
           }
         }
-        if(constellation.id==='hercules'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+        if(constellation.id==='hercules'&&constellation.assetLevel>=2&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=herculesLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           herculesLastPoint.set(p.id,{x,y});
           if(moving){
             if((herculesMovingUntil.get(p.id)||0)<time)herculesMovingSince.set(p.id,time);
             herculesMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&herculesMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&herculesMovingUntil.get(p.id)>time){
             const frames=herculesWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(herculesMovingSince.get(p.id)||time))/(130/2))%(frames?.length||16);
             if(frames)visible=frames[index];
             canvas.dataset.herculesWalkFrame=String(index);
           }
         }
-        if(constellation.id==='corvus'&&constellation.assetLevel>=2&&constellation.assetLevel<=4){
+        if(constellation.id==='corvus'&&constellation.assetLevel>=2&&constellation.assetLevel<=4&&trackWalkMotion){
           const previous=corvusLastPoint.get(p.id),moving=previous&&Math.hypot(x-previous.x,y-previous.y)>.12;
           corvusLastPoint.set(p.id,{x,y});
           if(moving){
             if((corvusMovingUntil.get(p.id)||0)<time)corvusMovingSince.set(p.id,time);
             corvusMovingUntil.set(p.id,time+190);
           }
-          if(!quality.low&&!reducedMotion.matches&&corvusMovingUntil.get(p.id)>time){
+          if(allowWalkFrames&&corvusMovingUntil.get(p.id)>time){
             const frames=corvusWalkFrames(sprite,constellation.assetLevel);
             const index=Math.floor((time-(corvusMovingSince.get(p.id)||time))/(130/2))%(frames?.length||16);
             if(frames)visible=frames[index];
@@ -631,9 +642,9 @@ export function createWorld(canvas) {
           }
         }
         const walkProfile=locomotionProfile(constellation.id,constellation.assetLevel);
-        if(walkProfile){
+        if(walkProfile&&trackWalkMotion){
           const pose=extraLocomotion.sample(p.id,`${myMapId}:${constellation.sprite}`,x,y,time,(walkProfile.ms||110)/2,reducedMotion.matches);
-          if(pose.moving&&!quality.low)visible=constellationWalkFrame(sprite,constellation.id,constellation.assetLevel,pose.index)||sprite;
+          if(pose.moving&&allowWalkFrames)visible=constellationWalkFrame(sprite,constellation.id,constellation.assetLevel,pose.index)||sprite;
           if(p.id===selfId){canvas.dataset.locomotionId=constellation.id;canvas.dataset.locomotionLevel=String(constellation.assetLevel);canvas.dataset.locomotionFrame=String(pose.index);canvas.dataset.locomotionMoving=String(pose.moving);}
         }else if(p.id===selfId){delete canvas.dataset.locomotionId;delete canvas.dataset.locomotionLevel;delete canvas.dataset.locomotionFrame;delete canvas.dataset.locomotionMoving;}
         ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
@@ -753,10 +764,18 @@ export function createWorld(canvas) {
     const firstMonster=visibleMonsters[0],firstMonsterPoint=firstMonster&&(monsterPoints.get(firstMonster.id)||firstMonster);
     canvas.dataset.monsterRenderX=firstMonsterPoint?.x??'';
     canvas.dataset.monsterRenderY=firstMonsterPoint?.y??'';
-    const darkEffects=visibleMonsters.filter(m=>m.darkStarEffects).map(m=>({boss:m,e:m.darkStarEffects})),darkNow=Date.now();
+    const links=visibleMonsters.find(m=>m.constellationLinks)?.constellationLinks;
+    const remaining=links?Math.ceil((links.endsAt-starRecordNow(links))/1000):0;
+    linksHint.hidden=remaining<=0;
+    if(remaining>0){
+      const hint='점 '+(links.linked+1)+'개인 별 조사하기 · '+links.linked+'/5 · '+remaining+'초';
+      if(linksHint.textContent!==hint)linksHint.textContent=hint;
+      drawConstellationLine(ctx,links,scale);
+    }
+    const darkEffects=visibleMonsters.filter(m=>m.darkStarEffects).map(m=>({boss:m,e:m.darkStarEffects,now:starRecordNow(m.darkStarEffects)}));
     canvas.dataset.darkStarCardCount=String(darkEffects.reduce((n,{e})=>n+(e.cards?.length||0),0));
     canvas.dataset.darkStarSatelliteCount=String(darkEffects.reduce((n,{e})=>n+(e.satellites?.length||0),0));
-    for(const {e} of darkEffects)drawDarkStarGround(ctx,e,darkNow);
+    for(const {e,now} of darkEffects)drawDarkStarGround(ctx,e,now);
     const truthEffects=visibleMonsters.filter(m=>m.truthCreatorEffects).map(m=>m.truthCreatorEffects);
     for(const e of truthEffects)drawTruthCreatorGround(ctx,e,starRecordNow(e),reducedMotion.matches);
     for(const monster of visibleMonsters)if(monster.starRecordEffects)drawStarRecordRays(ctx,monster.starRecordEffects,starRecordNow(monster.starRecordEffects));
@@ -888,19 +907,22 @@ export function createWorld(canvas) {
       const layers=[...visiblePlayers.map(p=>({y:(points.get(p.id)?.y??p.y)+avatarSizeOf(p)*.5,draw:()=>drawAvatar(p,t)})),
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
+        ...(remaining>0?links.stars.map(star=>({y:star.y+30,draw:()=>drawConstellationPoint(ctx,star,links.linked,Math.max(30,13/scale),quality.low||reducedMotion.matches?0:t+star.number*230)})):[]),
         ...truthEffects.flatMap(e=>truthCreatorObjectLayers(ctx,e,starRecordNow(e))),
-        ...darkEffects.flatMap(({e})=>darkStarObjectLayers(ctx,e,darkNow,reducedMotion.matches)),
+        ...darkEffects.flatMap(({e,now})=>darkStarObjectLayers(ctx,e,now,reducedMotion.matches)),
         ...visibleMonsters.map(m=>({y:(monsterPoints.get(m.id)?.y??m.y)+m.radius*.8,draw:()=>drawMonsterLayer(m)})),
         ...map.objects.filter(o=>o.kind==='goddess-statue').map(o=>({y:o.y,draw:()=>drawOriginStatue(ctx,map)})),
         ...map.objects.filter(o=>o.kind==='dark-star-statue').map(o=>({y:o.y+30,draw:()=>drawDarkStarStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='truth-creator-statue').map(o=>({y:o.y+30,draw:()=>drawTruthCreatorStatue(ctx,o)})),
+        ...map.objects.filter(o=>o.kind==='forgotten-constellation-statue').map(o=>({y:o.y+30,draw:()=>drawForgottenStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='star-record-statue').map(o=>({y:o.y+30,draw:()=>drawStarRecordStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
         ...map.objects.filter(o=>myMapId===STREET_ID&&(o.kind?.endsWith('-station')||o.kind==='star-angel-statue')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
-    for(const {boss,e} of darkEffects)drawDarkStarPuzzleHint(ctx,e,boss.x,boss.y+boss.radius+70,darkNow);
+    for(const m of visibleMonsters)if(m.homingStar)drawHomingStar(ctx,m.homingStar,starRecordNow(m.homingStar),quality.low||reducedMotion.matches);
+    for(const {boss,e,now} of darkEffects)drawDarkStarPuzzleHint(ctx,e,boss.x,boss.y+boss.radius+70,now);
     for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
     for(const roll of lootRolls)if(roll.mapId===myMapId&&roll.expiresAt>Date.now())
@@ -990,11 +1012,14 @@ export function createWorld(canvas) {
   requestAnimationFrame(frame);
   return {
     setQuality(mode){quality.setMode(mode);try{localStorage.setItem(RENDER_QUALITY_KEY,quality.stats().mode);}catch{}},
+    friendWalkReduction:()=>friendWalkReduction,
+    setFriendWalkReduction(enabled,persist=true){friendWalkReduction=!!enabled;if(persist)try{localStorage.setItem(FRIEND_WALK_REDUCTION_KEY,String(friendWalkReduction));}catch{}},
     qualityStats:()=>quality.stats(),
     labelCacheStats:()=>avatarLabels.stats(),
     setObjectUpdates(ids){objectUpdateIds=new Set(ids||[]);canvas.dataset.objectUpdateCount=String(objectUpdateIds.size);},
     setRoom(room,id){
-      serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();starRecord=room?.starRecord||dormantStarRecord();truthCreator=room?.truthCreator||dormantTruthCreator();
+      serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();starRecord=room?.starRecord||dormantStarRecord();forgottenConstellation=room?.forgottenConstellation||dormantForgottenConstellation();truthCreator=room?.truthCreator||dormantTruthCreator();
+      linksHint.hidden=true;
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
       if(nextMap!==myMapId||id!==selfId){extraLocomotion.clear();bodyMotion.clear();}
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();poisonZones.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
@@ -1029,7 +1054,7 @@ export function createWorld(canvas) {
     positions(data){
       const now=performance.now();
       for(const [id,x,y,facingX] of data.positions||[]){const p=players.find(p=>p.id===id);if(p){p.x=x;p.y=y;if(facingX===-1||facingX===1)p.facingX=facingX;recordPosition(p,now);}}
-      if(data.truthCreator)truthCreator=data.truthCreator;if(data.darkStar)darkStar=data.darkStar;if(data.starRecord)starRecord=data.starRecord;if(data.serena)serena=data.serena;
+      if(data.truthCreator)truthCreator=data.truthCreator;if(data.darkStar)darkStar=data.darkStar;if(data.starRecord)starRecord=data.starRecord;if(data.forgottenConstellation)forgottenConstellation=data.forgottenConstellation;if(data.serena)serena=data.serena;
       if(data.mapId&&data.mapId!==myMapId)return;
       if(data.spiritBlueStars)spiritBlueStars=data.spiritBlueStars;if(data.aquarius)aquarius.sync(data.aquarius.filter(p=>p.mapId===myMapId));if(data.ophiuchus)poisonZones.sync(data.ophiuchus.filter(p=>p.mapId===myMapId));if(data.water){const previous=new Map(waterAuras.map(a=>[a.playerId,a]));waterAuras=data.water.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.swan){const previous=new Map(swanAuras.map(a=>[a.playerId,a]));swanAuras=data.swan.filter(p=>p.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.aries){const previous=new Map(ariesClouds.map(a=>[a.id,a]));ariesClouds=data.aries.filter(c=>c.mapId===myMapId).map(c=>{const expected=now-c.elapsedMs,old=previous.get(c.id);return {...c,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.taurus){const previous=new Map(taurusDashes.map(a=>[a.playerId,a]));taurusDashes=data.taurus.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.hercules){const previous=new Map(herculesShields.map(a=>[a.playerId,a]));herculesShields=data.hercules.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.libra){const previous=new Map(libraAuras.map(a=>[a.playerId,a]));libraAuras=data.libra.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.corona){const previous=new Map(coronaAuras.map(a=>[a.playerId,a]));coronaAuras=data.corona.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.capricorn){const previous=new Map(capricornBlessings.map(a=>[a.playerId,a]));capricornBlessings=data.capricorn.filter(c=>c.mapId===myMapId).map(a=>{const expected=now-a.elapsedMs,old=previous.get(a.playerId);return {...a,startsAt:old&&Math.abs(old.startsAt-expected)<150?old.startsAt:expected};});}if(data.projectiles)projectiles.sync(data.projectiles.filter(p=>p.mapId===myMapId));},
     waterPulse(data){if(data.mapId!==myMapId)return;const player=players.find(p=>p.id===data.playerId);for(const pulse of data.pulses||[]){const monster=monsters.find(m=>m.id===pulse.targetId);if(monster&&player)waterPulses.push({x:monster.x,y:monster.y,direction:pulse.direction,size:avatarSizeOf(player),startedAt:performance.now()});}},
@@ -1116,8 +1141,9 @@ export function createWorld(canvas) {
         return {...best};
       }
       if(!planetIdOfMap(myMapId)){
-        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','star-record-statue','truth-creator-statue','shelter-fountain','star-angel-statue'].includes(o.kind)),
-          ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.darkStarEffects).flatMap(m=>(m.darkStarEffects.cards||[]).filter(c=>Date.now()<c.endsAt).map(c=>({...c,kind:'dark-star-card',name:'위성 확인하기'}))),
+        const candidates=[...currentMap().objects.filter(o=>o.kind?.startsWith('cozy-')||o.kind.endsWith('-station')||['gate','shop','energy-shop','arcade','duel-arcade','hall-of-fame','crafting','evolution','growth','black-star','goddess-statue','dark-star-statue','star-record-statue','forgotten-constellation-statue','truth-creator-statue','shelter-fountain','star-angel-statue'].includes(o.kind)),
+          ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.darkStarEffects).flatMap(m=>(m.darkStarEffects.cards||[]).filter(c=>starRecordNow(m.darkStarEffects)<c.endsAt).map(c=>({...c,kind:'dark-star-card',name:'위성 확인하기'}))),
+          ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.constellationLinks&&!me.vitals?.defeated&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&starRecordNow(m.constellationLinks)<m.constellationLinks.endsAt).flatMap(m=>m.constellationLinks.stars.filter(s=>s.number>m.constellationLinks.linked).map(s=>({...s,castId:m.constellationLinks.id,kind:'forgotten-link',name:'점 '+s.number+'개 별 조사하기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.starRecordEffects?.math).flatMap(m=>m.starRecordEffects.math.stars.map(star=>({...star,kind:'star-record-number',radius:30,name:'숫자 별 풀기'}))),
           ...monsters.filter(m=>m.alive&&m.mapId===myMapId&&m.truthCreatorEffects&&!me.avatar?.teacherPreview&&!me.avatar?.blackStar&&!me.vitals?.defeated).flatMap(m=>(m.truthCreatorEffects.blueOrbs||[]).filter(orb=>orb.phase==='landed'&&starRecordNow(m.truthCreatorEffects)<orb.endsAt).map(orb=>({...orb,kind:'truth-creator-blue',name:`파란 구체 해제하기 · ${Math.max(0,Math.ceil((orb.endsAt-starRecordNow(m.truthCreatorEffects))/1000))}초` }))),
           ...spiritBlueStars.filter(star=>star.mapId===myMapId&&Date.now()<star.endsAt).map(star=>({...star,kind:'spirit-blue-star',name:`푸른 별 해체하기 · ${Math.max(0,Math.ceil((star.endsAt-Date.now())/1000))}초`}))];
