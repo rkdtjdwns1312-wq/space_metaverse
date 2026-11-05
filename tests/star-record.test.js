@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ensureVitals} from '../server/vitals.js';
 import {STAR_RECORD_CHALLENGE,tryStarRecordChallenge,answerStarRecordChallenge,tickStarRecordChallenge,starRecordChallengeView} from '../server/star-record-challenge.js';
-import {STAR_RECORD_MATH,tryStarRecordMath,answerStarRecordMath,tickStarRecordMath,starRecordMathView} from '../server/star-record-math.js';
+import {STAR_RECORD_MATH,tryStarRecordMath,answerStarRecordMath,tickStarRecordMath,starRecordMathView,starRecordNumberClearance,starRecordNumberBodies} from '../server/star-record-math.js';
 import {STAR_RECORD_FLOW,tryStarRecordFlow,recordStarRecordMovement,tickStarRecordFlow,starRecordFlowView} from '../server/star-record-flow.js';
 import {STAR_RECORD,starRecordMap} from '../shared/star-record.js';
 import {mapOf} from '../shared/config.js';
@@ -174,6 +174,8 @@ test('세 패턴이 미완료인 동안 기본 공격이 패턴을 끝내지 못
     const {room,player,boss}=make(),now=100000;
     assert.equal(start(room,boss,now,()=>0),true,name);
     answerOne(room,player,boss,now);
+    // Solving a number now moves the student farther across the larger object layout.
+    Object.assign(player,{x:boss.x+160,y:boss.y});
     const before=ensureVitals(player).hp;
     assert.equal(advanceStarRecordAttack(room,boss,now+2000,()=>0).busy,true,name);
     assert.equal(boss.starRecordCast.rays.length,3,name);
@@ -194,6 +196,47 @@ test('별 기록의 근원이 기절해도 진행 중인 받아쓰기는 유지�
   const hits=moveMonsters(room,now+10000,()=>1);
   assert.equal(hits.filter(hit=>hit.skillKind==='star-record-challenge').length,1);
   assert.equal(ensureVitals(player).hp,0);
+});
+
+test('숫자 패턴 중 기본공격을 예고하면서도 추격하고 숫자 별 위치와 제한 시간을 유지한다',()=>{
+  const now=100000,{room,player,boss}=make(),map=mapOf(boss.mapId);
+  Object.assign(boss,{x:map.width/2,y:map.height/2,lastMoveAt:now,maxHp:15000,radius:100,dx:1,dy:0,
+    attackers:new Map([[player.id,1]]),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),targetId:player.id});
+  Object.assign(player,{x:boss.x+400,y:boss.y,taurusImmuneUntil:now+60000});
+  assert(tryStarRecordMath(room,boss,now,()=>0));
+  const pattern=boss.recordMath,stars=structuredClone(pattern.stars),x=boss.x;
+  moveMonsters(room,now+100,()=>.99);
+  assert(boss.x>x);assert(boss.moving);assert(boss.starRecordCast);
+  const nextX=boss.x;
+  moveMonsters(room,now+200,()=>.99);
+  assert(boss.x>nextX);assert(boss.moving);
+  assert.equal(boss.recordMath,pattern);assert.equal(pattern.endsAt,now+30000);
+  assert.deepEqual(pattern.stars,stars);
+  boss.stunUntil=now+1000;const stoppedX=boss.x;
+  moveMonsters(room,now+300,()=>.99);
+  assert.equal(boss.x,stoppedX);assert.equal(boss.moving,false);assert.equal(boss.recordMath,pattern);
+});
+
+test('숫자 별은 보스를 피해 소환되고 추격 경로의 오브젝트로 우회하며 정답 후 충돌이 사라진다',()=>{
+  const now=100000,{room,player,boss}=make(),map=mapOf(boss.mapId);
+  Object.assign(boss,{x:map.width/2-440,y:map.height/2-240,lastMoveAt:now,maxHp:15000,radius:150,dx:1,dy:0,
+    attackers:new Map([[player.id,1]]),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),targetId:player.id});
+  assert(tryStarRecordMath(room,boss,now,()=>0));
+  const pattern=boss.recordMath;
+  for(const s of pattern.stars)assert(Math.hypot(s.x-boss.x,s.y-boss.y)>=starRecordNumberClearance(boss));
+  const star=pattern.stars.find(s=>s.x>map.width/2&&s.y<map.height/2),gap=starRecordNumberClearance(boss);
+  for(const s of pattern.stars)if(s!==star)s.solved=true;
+  Object.assign(boss,{x:star.x-gap-1,y:star.y});
+  Object.assign(player,{x:star.x+100,y:star.y,taurusImmuneUntil:now+60000});
+  const initial={x:boss.x,y:boss.y};
+  for(let dt=100;dt<=1000;dt+=100){
+    moveMonsters(room,now+dt,()=>.99);
+    assert(Math.hypot(star.x-boss.x,star.y-boss.y)>=gap-.001);
+  }
+  assert(Math.hypot(boss.x-initial.x,boss.y-initial.y)>1);assert(Math.abs(boss.y-initial.y)>1,'장애물 옆으로 우회');
+  Object.assign(player,{x:star.x,y:star.y});
+  assert(answerStarRecordMath(room,player,star.id,star.operator,now+1001).correct);
+  assert.equal(starRecordNumberBodies(boss).length,0);
 });
 
 for(const [key,start] of [['recordChallenge',tryStarRecordChallenge],['recordMath',tryStarRecordMath],['recordFlow',tryStarRecordFlow]]){

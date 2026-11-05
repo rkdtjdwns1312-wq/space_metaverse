@@ -6,7 +6,9 @@ const statue=mapImage('/assets/monsters/star-record-statue.png');
 export const preloadStarRecordArt=()=>decodeMapImages([book,statue]);
 export function starRecordBounds(monster){
   const width=monster.radius*2.4,height=width,bottom=monster.y+monster.radius*.9;
-  return {width,height,top:bottom-height-8,bottom};
+  // The 512px source has 86px of transparent padding above the visible book.
+  // Anchor labels to the artwork, allowing 2px for its floating motion.
+  return {width,height,top:bottom-height+height*(86/512)-2,bottom};
 }
 export function drawStarRecord(ctx,monster,time=0,attack){
   if(monster?.shape!=='star-record')return false;
@@ -51,11 +53,11 @@ export function drawStarRecordRays(ctx,effects,now=Date.now()){
   }
   ctx.restore();
 }
-export function drawStarRecordMath(ctx,math,now=Date.now()){
+export function drawStarRecordMath(ctx,math,now=Date.now(),{stars=true,timer=true}={}){
   if(!math)return;
   const seconds=Math.max(0,Math.ceil((math.endsAt-now)/1000));
   ctx.save();ctx.textAlign='center';
-  for(const star of math.stars){
+  for(const star of stars?math.stars:[]){
     const pulse=.5+.5*Math.sin(now/420+star.x*.02),radius=35+pulse*3;
     ctx.shadowColor='#ffd977';ctx.shadowBlur=16;ctx.fillStyle='rgba(79,54,115,.9)';
     ctx.beginPath();ctx.arc(star.x,star.y,radius,0,Math.PI*2);ctx.fill();
@@ -64,7 +66,7 @@ export function drawStarRecordMath(ctx,math,now=Date.now()){
       ctx.font='bold 14px "Jua","Malgun Gothic",sans-serif';ctx.fillText(String((star.left+i*star.right)%10),star.x+Math.cos(angle)*(radius-9),star.y+Math.sin(angle)*(radius-9));}
     ctx.shadowBlur=0;ctx.font='bold 23px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#fff5cf';ctx.fillText('✦',star.x,star.y+8);
   }
-  if(math.stars.length){const cx=math.stars.reduce((sum,s)=>sum+s.x,0)/math.stars.length;
+  if(timer&&math.stars.length){const cx=math.stars.reduce((sum,s)=>sum+s.x,0)/math.stars.length;
     ctx.font='bold 22px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#ffe9a9';ctx.strokeStyle='#31284b';ctx.lineWidth=5;
     ctx.strokeText('숫자 별 · '+seconds+'초',cx,Math.min(...math.stars.map(s=>s.y))-64);
     ctx.fillText('숫자 별 · '+seconds+'초',cx,Math.min(...math.stars.map(s=>s.y))-64);}

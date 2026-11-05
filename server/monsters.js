@@ -32,7 +32,7 @@ import {tickSpiritBlueStars} from './spirit-blue-stars.js';
 import {clearSerenaSkills,trySerenaSkills,tickSerenaSkills,serenaSkillViews} from './serena-skills.js';
 import {clearDarkStarSkills,tryDarkStarSkills,tickDarkStarSkills,darkStarSkillViews,aimDarkStar,damageDarkStarCard,recordDarkStarDamage} from './dark-star-skills.js';
 import {tryStarRecordChallenge,tickStarRecordChallenge,starRecordChallengeView} from './star-record-challenge.js';
-import {tryStarRecordMath,tickStarRecordMath,starRecordMathView} from './star-record-math.js';
+import {tryStarRecordMath,tickStarRecordMath,starRecordMathView,starRecordNumberBodies} from './star-record-math.js';
 import {tryStarRecordFlow,tickStarRecordFlow,starRecordFlowView} from './star-record-flow.js';
 
 
@@ -370,7 +370,8 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       const math=tickStarRecordMath(room,m,now);hits.push(...math.hits);
       const flow=tickStarRecordFlow(room,m,now);hits.push(...flow.hits);
       const attack=advanceStarRecordAttack(room,m,now,random);hits.push(...attack.hits);
-      if(challenge.busy||math.busy||flow.busy||attack.busy)continue;
+      // Number stars stay fixed while the boss chases, including during its basic attack.
+      if(challenge.busy||flow.busy||(!m.recordMath&&(math.busy||attack.busy)))continue;
     }
     if(type.id==='truth-creator'){hits.push(...aimTruthCreator(room,m,target,now));tryTruthCreatorChasers(room,m,target,now);tryTruthCreatorSentry(room,m,target,now);tryTruthCreatorBlue(room,m,target,now,random);tryTruthCreatorGalaxy(room,m,target,now,random);}
     if(type.id==='dark-star'){
@@ -476,6 +477,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
     const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId,STAR_RECORD.typeId,FORGOTTEN_CONSTELLATION.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
     const terrainBlocked=terrainBlockedAt(x,y);
     const bodies=travel<=0||monstersMayOverlap(m.mapId)?[]:nearbyMonsterBodies(monsters,m,travel);
+    if(m.recordMath)bodies.push(...starRecordNumberBodies(m));
     const blockedAt=(x,y)=>terrainBlockedAt(x,y)||bodyBlocksStep(bodies,x,y);
     let blocked=blockedAt(x,y);
     if(blocked&&travel>0&&(spiritGroup||(target&&!terrainBlocked))){

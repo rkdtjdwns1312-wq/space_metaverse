@@ -808,7 +808,7 @@ export function createWorld(canvas) {
     const truthEffects=visibleMonsters.filter(m=>m.truthCreatorEffects).map(m=>m.truthCreatorEffects);
     for(const e of truthEffects)drawTruthCreatorGround(ctx,e,starRecordNow(e),reducedMotion.matches);
     for(const monster of visibleMonsters)if(monster.starRecordEffects)drawStarRecordRays(ctx,monster.starRecordEffects,starRecordNow(monster.starRecordEffects));
-    for(const monster of visibleMonsters)if(monster.starRecordEffects?.math)drawStarRecordMath(ctx,monster.starRecordEffects.math,starRecordNow(monster.starRecordEffects));
+    for(const monster of visibleMonsters)if(monster.starRecordEffects?.math)drawStarRecordMath(ctx,monster.starRecordEffects.math,starRecordNow(monster.starRecordEffects),{stars:false});
     const drawMonsterLayer=m=>{
       if(m.typeId==='dark-star-card')return;
       const pos=monsterPoints.get(m.id)||m,type=monsterType(m.typeId);if(!type)return;
@@ -990,6 +990,8 @@ export function createWorld(canvas) {
         ...visibleOrbs.map(orb=>({y:orb.y,draw:()=>drawSpiritOrb(ctx,orb,t,reducedMotion.matches)})),
         ...visibleBlueStars.map(star=>({y:star.y+star.radius,draw:()=>drawSpiritBlueStar(ctx,star,Date.now())})),
         ...gatherStars.map(star=>({y:star.y+star.radius,draw:()=>drawGatherStar(ctx,star.x,star.y,star.radius,quality.low||reducedMotion.matches)})),
+        ...visibleMonsters.flatMap(m=>(m.starRecordEffects?.math?.stars||[]).map(star=>({y:star.y+38,
+          draw:()=>drawStarRecordMath(ctx,{...m.starRecordEffects.math,stars:[star]},starRecordNow(m.starRecordEffects),{timer:false})}))),
         ...(remaining>0?links.stars.map(star=>({y:star.y+30,draw:()=>drawConstellationPoint(ctx,star,links.linked,Math.max(30,13/scale),quality.low||reducedMotion.matches?0:t+star.number*230)})):[]),
         ...truthEffects.flatMap(e=>truthCreatorObjectLayers(ctx,e,starRecordNow(e))),
         ...darkEffects.flatMap(({e,now})=>darkStarObjectLayers(ctx,e,now,reducedMotion.matches)),

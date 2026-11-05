@@ -154,14 +154,19 @@ test('absorption warning freezes boss, cancels aim/casts, kills inside after thr
  assert.equal(boss.darkStarSkills.absorption.endsAt,NOW+3000);tickDarkStarSkills(room,boss,NOW+2999,random);assert(ensureVitals(inside).hp>0);
  p.x=boss.x+700;const hits=tickDarkStarSkills(room,boss,NOW+3000,random);assert(hits.some(h=>h.targetId==='inside'&&h.defeated));assert(ensureVitals(outside).hp>0);assert(ensureVitals(p).hp>0);
 });
-test('detached satellite requires continuous one-second proximity and repeats once per second; leaving/reconnect restart dwell',()=>{
+test('detached satellite hits immediately on entry and reentry, then once per second without catch-up bursts',()=>{
  const {room,boss,p}=fixture();damageMonster(room,boss,p,2000,NOW);tickDarkStarSkills(room,boss,NOW,random);
  const s=boss.darkStarSkills.satellites[0];boss.darkStarSkills.absorption=null;
- p.x=s.x;p.y=s.y;tickDarkStarSkills(room,boss,NOW+1);assert.equal(tickDarkStarSkills(room,boss,NOW+1000).length,0);
+ p.accountKind='master';ensureVitals(p).hp=500;
+ p.x=s.x;p.y=s.y;const first=tickDarkStarSkills(room,boss,NOW+1);
+ assert.equal(first.length,1);assert(first[0].damage>0);assert(ensureVitals(p).hp<500);
+ assert.equal(tickDarkStarSkills(room,boss,NOW+1000).length,0);
  assert.equal(tickDarkStarSkills(room,boss,NOW+1001).filter(h=>h.skillKind==='dark-star-satellite').length,1);
  assert.equal(tickDarkStarSkills(room,boss,NOW+2001).length,1);
- p.x+=500;tickDarkStarSkills(room,boss,NOW+2100);p.x=s.x;assert.equal(tickDarkStarSkills(room,boss,NOW+3000).length,0);
- p.socketId='reconnected';assert.equal(tickDarkStarSkills(room,boss,NOW+4000).length,0);assert.equal(tickDarkStarSkills(room,boss,NOW+5000).length,1);
+ p.x+=500;tickDarkStarSkills(room,boss,NOW+2100);p.x=s.x;assert.equal(tickDarkStarSkills(room,boss,NOW+2200).length,1);
+ p.socketId='reconnected';assert.equal(tickDarkStarSkills(room,boss,NOW+2300).length,1);
+ assert.equal(tickDarkStarSkills(room,boss,NOW+3299).length,0);assert.equal(tickDarkStarSkills(room,boss,NOW+3300).length,1);
+ assert.equal(tickDarkStarSkills(room,boss,NOW+9000).length,1);assert.equal(tickDarkStarSkills(room,boss,NOW+9001).length,0);
  assert.equal(darkStarSkillViews(room,boss,NOW+99999).satellites.length,1);
 });
 test('boss death, map change and combat reset remove all effects and card targets',()=>{

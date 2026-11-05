@@ -3,10 +3,8 @@ import {FORGOTTEN_CONSTELLATION as spec,forgottenConstellationMap} from '../shar
 import {mapOf,interactionDistance,interactionReach} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {avatarFootprint,avatarPositionIsClear} from '../shared/avatar-boundary.js';
-import {monsterType} from '../shared/monsters.js';
 import {vulnerable} from './forgotten-constellation-links.js';
 import {defeatRecordPlayer} from './star-record-challenge.js';
-import {damagePlayer} from './vitals.js';
 import {GameError} from './pin-auth.js';
 import {playerVisibleTo} from './teacher-ghost.js';
 
@@ -83,12 +81,9 @@ export function tickConstellationGather(room,boss,now){
   for(const star of cast.stars){
     if(star.resolved||now<star.expiresAt)continue;
     star.resolved=true;
-    for(const p of room.players.values())if(vulnerable(p,boss)){
-      hits.push(hitInfo(boss,p,'forgotten-gather-missed',damagePlayer(p,monsterType(spec.typeId).power,star.expiresAt,{room})));
-    }
   }
   if(now<cast.endsAt)return hits;
-  // Snapshot after all due star hits, before applying any final defeats. Use the
+  // Snapshot before applying any final defeats. Use the
   // same feet circles as server movement, allowing its 2px gap plus one step.
   const group=[...room.players.values()].filter(p=>vulnerable(p,boss)).map(p=>({
     player:p,count:cast.counts.get(p.id)||0,foot:avatarFootprint(p)
@@ -104,7 +99,7 @@ export function tickConstellationGather(room,boss,now){
 export function collectConstellationGather(room,player,data,now,onHit=()=>{}){
   const boss=room.monsters?.get(spec.monsterId),cast=boss?.gather;
   if(!cast||cast.id!==data.castId||!vulnerable(player,boss))throw new GameError('지금은 이 별을 모을 수 없어요.');
-  // A pickup arriving between server ticks must respect prior missed stars.
+  // Settle expired stars and the pattern deadline before accepting a pickup.
   for(const hit of tickConstellationGather(room,boss,now))onHit(hit);
   const star=cast.stars.find(s=>s.id===data.starId);
   if(!boss.gather||!vulnerable(player,boss)||!star||star.resolved||now<star.appearsAt||now>=star.expiresAt)

@@ -132,10 +132,10 @@ function tickAbsorption(room,boss,state,now,hits,random){
     for(const p of room.players.values())if(valid(boss,p)&&Math.hypot(p.x-satellite.x,p.y-satellite.y)<=satellite.radius+RULES.radius){
       present.add(p.id);
       const contact=satellite.contacts.get(p.id);
-      // Reconnecting cannot claim continuity while absent from the server.
-      if(!contact||contact.player!==p||contact.socketId!==p.socketId){satellite.contacts.set(p.id,{player:p,socketId:p.socketId,nextAt:now+rule.contactMs});continue;}
-      if(now>=contact.nextAt&&boss.hp>0){
-        contact.nextAt=now+rule.contactMs;hits.push(hitPlayer(room,boss,p,now,'satellite',satellite.x,satellite.y));
+      // First contact hits immediately; sustained contact repeats once per second.
+      if((!contact||contact.player!==p||contact.socketId!==p.socketId||now>=contact.nextAt)&&boss.hp>0){
+        satellite.contacts.set(p.id,{player:p,socketId:p.socketId,nextAt:now+rule.contactMs});
+        hits.push(hitPlayer(room,boss,p,now,'satellite',satellite.x,satellite.y));
       }
     }
     for(const id of satellite.contacts.keys())if(!present.has(id))satellite.contacts.delete(id);

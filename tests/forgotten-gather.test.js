@@ -43,21 +43,25 @@ test('15 distinct reachable sites include the first at t0 and every star gets 4s
   }
 });
 
-test('delayed ticks apply one full attack per missed star, only to live targets on the map, before a pickup',()=>{
+test('expired stars disappear without damage, including delayed ticks and pickups, while final failure remains lethal',()=>{
   const {room,boss,p,q}=fixture(),teacher=actor('teacher','teacher'),other=actor('other'),dead=actor('dead'),ghost=actor('ghost'),away=actor('away'),preview=actor('preview','teacher');
   other.mapId='space-plaza';ensureVitals(dead).hp=0;ghost.avatar.blackStar=true;away.away=true;preview.avatar.teacherPreview=true;
   for(const a of [teacher,other,dead,ghost,away,preview])room.players.set(a.id,a);
-  assert(tryConstellationGather(room,boss,start,()=>0));q.taurusImmuneUntil=start+60000;
+  assert(tryConstellationGather(room,boss,start,()=>0));
+  const initialHp=new Map([...room.players.values()].map(a=>[a.id,ensureVitals(a).hp]));
   const cast=boss.gather,star=cast.stars[5];Object.assign(q,{x:star.x,y:star.y});
   const hits=[];const result=collectConstellationGather(room,q,{castId:cast.id,starId:star.id},start+5100,h=>hits.push(h));
-  assert.equal(result.count,1);assert.deepEqual(hits.map(h=>h.targetId),[p.id,q.id,p.id,q.id]);
-  assert(hits.filter(h=>h.targetId===p.id).every(h=>h.damage>0));
-  assert(hits.filter(h=>h.targetId===q.id).every(h=>h.immune));
+  assert.equal(result.count,1);assert.deepEqual(hits,[]);
+  assert(cast.stars[0].resolved);assert(cast.stars[1].resolved);
+  assert(!constellationGatherView(boss,start+5100).stars.some(s=>s.id===1||s.id===2));
+  for(const a of room.players.values())assert.equal(ensureVitals(a).hp,initialHp.get(a.id));
   assert.deepEqual(tickConstellationGather(room,boss,start+5100),[]);
   assert.throws(()=>collectConstellationGather(room,q,{castId:cast.id,starId:1},start+5100));
   assert.throws(()=>collectConstellationGather(room,q,{castId:cast.id,starId:15},start+5100));
+  assert.deepEqual(tickConstellationGather(room,boss,cast.endsAt-1),[]);
+  for(const a of room.players.values())assert.equal(ensureVitals(a).hp,initialHp.get(a.id));
   const end=tickConstellationGather(room,boss,cast.endsAt);
-  assert.equal(end.filter(h=>h.targetId==='q'&&h.skillKind==='forgotten-gather-missed').length,12);
+  assert(end.every(h=>h.skillKind==='forgotten-gather-finish'));
   assert(end.some(h=>h.targetId==='q'&&h.skillKind==='forgotten-gather-finish'&&h.defeated));
   assert.deepEqual(tickConstellationGather(room,boss,cast.endsAt+1),[]);
 });
