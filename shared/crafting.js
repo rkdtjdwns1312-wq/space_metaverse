@@ -37,7 +37,14 @@ export const TRUTH_RECORD_RECIPE = Object.freeze({
   ingredients: Object.freeze([{id:'origin-star-record',quantity:1}]),
   output: Object.freeze({id:'truth-record',quantity:1}),
   starShards:0,
-  cosmicEnergy:10000
+  cosmicEnergy:15000
+});
+
+export const INFINITE_STAR_BRACELET_RECIPE = Object.freeze({
+  ingredients: Object.freeze([{id:'infinite-star-fragment',quantity:1}]),
+  output: Object.freeze({id:'infinite-star-bracelet',quantity:1}),
+  starShards:0,
+  cosmicEnergy:20000
 });
 
 export const TRUTH_CONVERGENCE_RECIPE = Object.freeze({
@@ -60,6 +67,7 @@ export const PUBLIC_CRAFTING_RECIPES = Object.freeze([
   PRIMORDIAL_STAR_GEM_RECIPE,
   PRIMORDIAL_STAR_SIGIL_RECIPE,
   TRUTH_RECORD_RECIPE,
+  INFINITE_STAR_BRACELET_RECIPE,
   TRUTH_CONVERGENCE_RECIPE,
   STAR_CRUMB_RECIPE
 ]);

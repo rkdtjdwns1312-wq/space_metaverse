@@ -13,29 +13,30 @@ export const coronaCooldowns=p=>({0:p.coronaCooldownUntil||0});
 export function castCorona(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='corona-borealis'&&player.avatar.level>=2,'LV2 왕관자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
-  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'corona-borealis',player);
+  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'corona-borealis',player,now);
   if(basic){
     const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
     const aura=player.coronaAura?.remaining>0&&player.coronaAura.mapId===player.mapId?player.coronaAura:null;
     const spec=aura?coronaSkillOf(player):null;
     const reach=size*(aura?spec.enhancedReachWidths:.75),width=size*(aura?.44:.48);
-    const hitPower=aura?skillDamage(power*spec.enhancedMultiplier,aura.skillDamageFactor):power;
+    const hit=attack=>aura?skillDamage(attack*spec.enhancedMultiplier,aura.skillDamageFactor):attack;
+    const hitPower=hit(power),playerPower=attackPowerOf(player.avatar.level,'corona-borealis',player,now,true);
     const targets=[...monstersOf(room,now).values()].filter(m=>{
       if(m.hp<=0||m.mapId!==player.mapId)return false;
       const vx=m.x-player.x,vy=m.y-player.y,along=vx*dx+vy*dy;
       return along>=-m.radius&&along<=reach+m.radius&&Math.abs(vx*dy-vy*dx)<=width+m.radius;
     }).map(m=>damageMonster(room,m,player,hitPower,now)).filter(Boolean);
     const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+dx*reach,y:player.y+dy*reach,
-      radius:width,sourceId:player.id,basic:true},hitPower,now);
+      radius:width,sourceId:player.id,basic:true},hit(playerPower),now);
     let projectiles=[];
     if(aura){
       if(targets.length)aura.successfulHits++;
       aura.remaining--;
       if(aura.remaining===0){
         player.coronaAura=null;
-        const finalePower=skillDamage(power*aura.successfulHits*spec.finaleMultiplier,aura.skillDamageFactor);
+        const finale=attack=>skillDamage(attack*aura.successfulHits*spec.finaleMultiplier,aura.skillDamageFactor);
         projectiles=launchProjectiles(room,player,{x:player.x,y:player.y,dx,dy,size,
-          range:size*spec.finaleRangeWidths,width:size*.255,power:finalePower,basic:false,piercing:true,
+          range:size*spec.finaleRangeWidths,width:size*.255,power:finale(power),playerPower:finale(playerPower),basic:false,piercing:true,
           kind:'corona-finale',vfxId:'attack',originOffset:size/2,durationMs:650,
           visualScale:spec.finaleVisualScale},now);
       }

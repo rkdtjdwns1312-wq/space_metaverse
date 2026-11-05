@@ -29,11 +29,12 @@ export function castWater(room,player,now,{basic=false}={}){
   }
   const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   const boosted=id==='cancer'&&active(player,'cancer',now);
-  const power=attackPowerOf(player.avatar.level,id,player);
+  const power=attackPowerOf(player.avatar.level,id,player,now);
+  const hitPower=attack=>basic?Math.round(attack*(boosted?spec.multiplier:1)):skillDamage(attack*spec.multiplier,skillDamageFactor(player));
   const visualScale=boosted?3:1;
   const base={x:player.x,y:player.y,dx,dy,size,range:size*spec.rangeWidths*(boosted?1.5:id==='pisces'&&!basic?1.2:1),
     width:size*(id==='cetus'?.28:.13)*visualScale,
-    power:basic?Math.round(power*(boosted?spec.multiplier:1)):skillDamage(power*spec.multiplier,skillDamageFactor(player)),
+    power:hitPower(power),playerPower:hitPower(attackPowerOf(player.avatar.level,id,player,now,true)),
     basic,kind:`${id}-${basic?'attack':'skill'}`,vfxId:basic?'attack':`skill-lv${spec.stage}`,
     piercing:id==='cetus'||boosted||(!basic&&id==='pisces'),healing:boosted,visualScale,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:2000};
@@ -50,7 +51,7 @@ export function castWater(room,player,now,{basic=false}={}){
 // 기존 공통 투사체가 선택한 대상만 처리합니다. 게자리 강화 Q는 친구를
 // 피해 없이 회복하며, 다른 별자리/일반 Q는 친구에게 피해를 주지 않습니다.
 export function resolveWaterHit(room,player,selected,power,now,cast){
-  if(!cast.healing)return damageTargets(room,player,selected,power,now);
+  if(!cast.healing)return damageTargets(room,player,selected,power,now,cast);
   const targets=[],healed=[];
   for(const target of selected){
     if(target.kind==='monster'){
@@ -59,7 +60,7 @@ export function resolveWaterHit(room,player,selected,power,now,cast){
       const friend=target.entity,value=ensureVitals(friend),before=value.hp;
       const maximum=playerVitals(friend).hp.max;
       // 회복은 명중 시점 시전자의 실제 공격력 100%이며 강화 Q 피해 배율과 별개입니다.
-      const healing=Math.max(0,attackPowerOf(player.avatar.level,player.avatar.constellationId,player)||0);
+      const healing=Math.max(0,attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now)||0);
       value.hp=Math.min(maximum,value.hp+healing);
       if(value.hp>before)healed.push({targetId:friend.id,amount:value.hp-before,vitals:playerVitals(friend)});
     }
@@ -91,7 +92,7 @@ export function advanceWaterAuras(room,now){
         Math.hypot(m.x-player.x,m.y-player.y)<=radius+m.radius)
         .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))
         .slice(0,spec.maxTargets);
-      const power=skillDamage(attackPowerOf(player.avatar.level,'cetus',player),aura.skillDamageFactor),targets=[];
+      const power=skillDamage(attackPowerOf(player.avatar.level,'cetus',player,now),aura.skillDamageFactor),targets=[];
       for(const monster of monsters){const hit=damageMonster(room,monster,player,power,aura.nextPulseAt);if(hit)targets.push(hit);}
       results.push({mapId:player.mapId,playerId:player.id,targets,
         pulses:targets.map((t,i)=>({targetId:t.monsterId,direction:(Math.random()<.5?-1:1),index:i}))});

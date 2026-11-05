@@ -15,7 +15,7 @@ export function castLibra(room,player,now,{basic=false}={}){
   if(basic){
     const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1;
     const base={x:player.x,y:player.y,dx:facing.x/length,dy:facing.y/length,size,range:size*4,
-      width:size*.13,power:attackPowerOf(player.avatar.level,'libra',player),basic:true,kind:'libra-attack',vfxId:'attack',
+      width:size*.13,power:attackPowerOf(player.avatar.level,'libra',player,now),basic:true,kind:'libra-attack',vfxId:'attack',
       originOffset:attackGeometryOf(player).originOffset,durationMs:650};
     const projectiles=launchProjectiles(room,player,base,now);
     return {ready:true,targets:[],playerTargets:[],vitals:playerVitals(player),hit:{...base,playerId:player.id,mapId:player.mapId,projectiles}};
@@ -44,7 +44,7 @@ export function advanceLibraAuras(room,now){
     // 첫 피해는 1초 뒤, 마지막 피해는 종료 시각에 한 번. 같은 틱을 반복해도 중복하지 않습니다.
     while(aura.nextPulseAt<=now&&aura.nextPulseAt<=aura.endsAt){
       const at=aura.nextPulseAt;aura.nextPulseAt+=1000;
-      const power=skillDamage(attackPowerOf(p.avatar.level,'libra',p)*aura.multiplier,aura.skillDamageFactor);
+      const power=skillDamage(attackPowerOf(p.avatar.level,'libra',p,now)*aura.multiplier,aura.skillDamageFactor);
       const targets=[...monstersOf(room,at).values()].filter(m=>m.hp>0&&m.mapId===p.mapId&&
         Math.hypot(m.x-p.x,m.y-(p.y+aura.size*.22))<=aura.radius+m.radius);
       for(const monster of targets){if(!(ensureVitals(p)?.hp>0))break;const hit=damageMonster(room,monster,p,power,at);if(hit)(room.libraHits??=[]).push({mapId:p.mapId,playerId:p.id,...hit});}

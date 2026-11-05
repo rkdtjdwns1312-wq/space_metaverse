@@ -84,9 +84,18 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     const publicRecipe=PUBLIC_CRAFTING_RECIPES.find(recipe=>recipe.ingredients.length===selected.size&&recipe.ingredients.every(part=>selected.get(part.id)===part.quantity));
     const cost=publicRecipe?(isMaster(player)?0:publicRecipe.starShards||0):shardCost(player,fee),teacher=hasUnlimitedShards(player);
     renderWallet($('crafting-wallet'),player);
-    const blackSelected=selected.has('black-gem'),energyNeeded=isMaster(player)?0:10000;
-    $('crafting-requirements').hidden=!blackSelected;
-    $('crafting-requirements').textContent=!blackSelected?'':!publicRecipe?'검은별의 인장은 검은 보석 1개만 재료 칸에 넣어주세요. 우주에너지는 조합할 때 자동으로 사용돼요.':(player.cosmicEnergy||0)<energyNeeded?'우주에너지가 '+(energyNeeded-(player.cosmicEnergy||0)).toLocaleString()+'개 부족해요. 검은 보석 1개와 우주에너지 '+energyNeeded.toLocaleString()+'개가 필요해요.':'검은 보석 1개와 우주에너지 '+energyNeeded.toLocaleString()+'개로 만들어요. 별 파편과 사전 조합법 학습은 필요 없어요.';
+    const materialRecipe=PUBLIC_CRAFTING_RECIPES.find(r=>r.cosmicEnergy&&r.ingredients.length===1&&selected.has(r.ingredients[0].id));
+    const requirements=$('crafting-requirements');
+    requirements.hidden=!materialRecipe;
+    if(materialRecipe){
+      const part=materialRecipe.ingredients[0],material=itemOf(part.id).name;
+      const energy=isMaster(player)?0:materialRecipe.cosmicEnergy;
+      const missing=Math.max(0,energy-(player.cosmicEnergy||0));
+      const costText=material+' '+part.quantity+'개와 우주에너지 '+energy.toLocaleString()+'개';
+      if(!publicRecipe)requirements.textContent=material+' '+part.quantity+'개만 재료 칸에 넣어주세요. 우주에너지는 조합할 때 자동으로 사용돼요.';
+      else if(missing)requirements.textContent='우주에너지가 '+missing.toLocaleString()+'개 부족해요. '+costText+'가 필요해요.';
+      else requirements.textContent=costText+(cost?'와 별 파편 '+cost+'개':'')+'로 만들어요.';
+    }
     $('crafting-submit').textContent=publicRecipe?.currency==='starShards'?'별 파편 1개로 바꾸기':publicRecipe?itemOf(publicRecipe.output.id)?.name+' 조합 · 별 파편 '+cost+' · 우주에너지 '+(isMaster(player)?0:(publicRecipe.cosmicEnergy??0)).toLocaleString():teacher?'조합 · 재화 비용 없음':'조합 · 별 파편 '+cost+'개';
     $('crafting-submit').disabled=busy||!enabled||(!configured&&!publicRecipe)||!selected.size||(player.starShards||0)<cost||(publicRecipe&&!isMaster(player)&&(player.cosmicEnergy||0)<publicRecipe.cosmicEnergy)||(publicRecipe?.currency==='starShards'&&!isMaster(player)&&(player.starShards||0)>=SHARDS.max);
     $('crafting-clear').disabled=busy||!selected.size;

@@ -18,13 +18,13 @@ export function castTeacherAttack(room,player,now){
  requireTeacher(player);
  const size=avatarSizeOf(player),direction=player.facing||{x:0,y:1},length=Math.hypot(direction.x,direction.y)||1;
  const base={x:player.x,y:player.y,dx:direction.x/length,dy:direction.y/length,size,range:size*5,width:10,
-  power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player),basic:true,kind:'teacher-star',originOffset:attackGeometryOf(player).originOffset,durationMs:650};
+  power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now),basic:true,kind:'teacher-star',originOffset:attackGeometryOf(player).originOffset,durationMs:650};
  const projectiles=launchProjectiles(room,player,base,now,1);
  return {ready:true,target:null,targets:[],playerTargets:[],vitals:playerVitals(player),hit:{...base,playerId:player.id,mapId:player.mapId,projectiles}};
 }
 export function castTeacherSkill(room,player,now){
  requireTeacher(player);
- const vitals=ensureVitals(player),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
+ const vitals=ensureVitals(player),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now);
  ensure(now>=(player.teacherCooldownUntil||0),'스킬을 다시 쓰려면 조금 기다려주세요.');
  ensure(vitals.mp>=TEACHER_SKILL.mana,'마나가 부족해요.');
  vitals.mp-=TEACHER_SKILL.mana;player.teacherCooldownUntil=now+TEACHER_SKILL.cooldownMs;

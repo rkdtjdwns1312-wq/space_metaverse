@@ -35,7 +35,7 @@ export function castOphiuchus(room,player,now,{basic=false}={}){
   const size=avatarSizeOf(player),facing=player.facing||{x:0,y:1};
   const length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   const spec=ophiuchusSkillOf(player),vitals=ensureVitals(player);
-  const power=attackPowerOf(player.avatar.level,'ophiuchus',player);
+  const power=attackPowerOf(player.avatar.level,'ophiuchus',player,now);
   if(basic){
     const base={x:player.x,y:player.y,dx,dy,size,range:size*4,width:size*.13,power,
       basic:true,kind:'ophiuchus-attack',vfxId:'attack',originOffset:attackGeometryOf(player).originOffset,durationMs:650};

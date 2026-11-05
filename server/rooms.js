@@ -4,6 +4,7 @@ import {huntingTimeView} from './hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
 import {warningSummary} from './warnings.js';
 import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
+import {infiniteEnergyEffect} from '../shared/infinite-energy.js';
 import {playerVitals,libraProtectors} from './vitals.js';
 import {equipmentAuraOf} from '../shared/equipment.js';
 import {knownStatus} from '../shared/statuses.js';
@@ -59,6 +60,8 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now(),room=nul
   const add=(id,label,icon,until)=>{if(until>now)combat.push({statusId:id,label,icon,style:'combat',until});};
   add('capricorn-blessing','염소의 축복','♑',player.capricornBlessing?.endsAt);
   add('leo-courage','사자의 용기','♌',player.leoCourage?.endsAt);
+  const energy=infiniteEnergyEffect(player,now);
+  if(energy)combat.push(energy);
   add('libra-reflect','천칭의 무적','⚖',Math.max(0,...libraProtectors(room,player,now).map(p=>p.libraAura.endsAt)));
   add('hercules-shield','헤라클레스 방패','🛡',player.herculesShield?.endsAt);
   if(player.equipmentSlots?.includes('dream-guardian-cloak')&&now>=(player.dreamGuardianNextAt||0))
@@ -199,7 +202,7 @@ export class RoomStore {
           connected:p.connected,connectedAt:p.connectedAt||0,away:!!p.away,avatar:{...p.avatar,blackStar:!!p.avatar.blackStar},muted:p.muted,mapId:p.mapId,departmentId:p.avatar.departmentId,
           piscesPair:p.piscesPair?.endsAt>now?{partnerId:p.piscesPair.partnerId,partnerName:room.players.get(p.piscesPair.partnerId)?.nickname||'친구',endsAt:p.piscesPair.endsAt,level:p.piscesPair.level,warningMirror:(p.piscesPair.level===3||p.piscesPair.level===4)&&p.piscesPair.sourceId===p.id}:null,
           ariesSleep:p.constellationAbilityState?.ariesSleep?.endsAt>now?{endsAt:p.constellationAbilityState.ariesSleep.endsAt,wakeCost:p.constellationAbilityState.ariesSleep.wakeCost}:null,
-          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now,room),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
+          transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now,room),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p,now),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0;out.statGrowth=structuredClone(p.statGrowth||{bonuses:{hp:0,mp:0,attack:0,defense:0},lastPurchaseDay:null}); out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.herculesNextStance=p.herculesNextStance==='attack'?'attack':'shield';out.huntingTime=huntingTimeView(p,now);out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
           if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}

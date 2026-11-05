@@ -11,13 +11,13 @@ export const herculesCooldowns=p=>({0:p.herculesCooldownUntil||0});
 export function castHercules(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='hercules'&&player.avatar.level>=2,'LV2 헤라클레스자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
-  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'hercules',player);
+  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'hercules',player,now);
   if(basic){
     const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
     const x=player.x+dx*size*.75,y=player.y+dy*size*.75,radius=size*.48;
     const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId&&Math.hypot(m.x-x,m.y-y)<=m.radius+radius)
       .map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
-    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id,basic:true},power,now);
+    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id,basic:true},attackPowerOf(player.avatar.level,'hercules',player,now,true),now);
     return {ready:true,targets,playerTargets,vitals:playerVitals(player),hit:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,
       dx,dy,reach:size*.75,radius,kind:'hercules-attack',vfxId:'attack',durationMs:550,size}};
   }
@@ -35,7 +35,8 @@ export function castHercules(room,player,now,{basic=false}={}){
   }
   player.herculesNextStance='attack';
   player.herculesShield={at:now,endsAt:now+spec.durationMs,hp:vitals.hp,maxHp:vitals.hp,absorbed:0,
-    stage:spec.stage,size,skillDamageFactor:skillDamageFactor(player),power:Math.round(power*spec.multiplier)};
+    stage:spec.stage,size,skillDamageFactor:skillDamageFactor(player),power:Math.round(power*spec.multiplier),
+    playerPower:Math.round(attackPowerOf(player.avatar.level,'hercules',player,now,true)*spec.multiplier)};
   return {ready:true,vitals:playerVitals(player),cooldowns:herculesCooldowns(player),serverNow:now};
 }
 export function herculesShieldViews(room,mapId,now){
@@ -54,7 +55,8 @@ export function advanceHerculesShields(room,now){
     const power=skillDamage(shield.absorbed+shield.power,shield.skillDamageFactor),radius=shield.size*2;
     const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId&&Math.hypot(m.x-player.x,m.y-player.y)<=m.radius+radius)
       .map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
-    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x,y:player.y,radius,sourceId:player.id},power,now);
+    const playerPower=skillDamage(shield.absorbed+(shield.playerPower??shield.power),shield.skillDamageFactor);
+    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x,y:player.y,radius,sourceId:player.id},playerPower,now);
     events.push({playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,radius,stage:shield.stage,size:shield.size,targets,playerTargets});
   }
   return events;

@@ -3,6 +3,7 @@ import {ensureVitals} from './vitals.js';
 import {swanProjectilePoint} from '../shared/swan-skills.js';
 import {piscesPortalGeometry} from '../shared/pisces-portals.js';
 import {usesTeacherCombat} from '../shared/teacher-avatar.js';
+import {infiniteEnergyStacks} from '../shared/infinite-energy.js';
 
 // 실제 이동 구간과 원형 피격 범위의 교차를 검사합니다. 낮은 tick에서도 적을 건너뛰지 않습니다.
 function contact(cast,target,end){
@@ -49,7 +50,10 @@ export function projectileView(cast,now){
 }
 export function launchProjectiles(room,player,base,now,count=1){
   room.projectiles??=[];
-  const launched=Array.from({length:count},(_,i)=>({...base,id:randomUUID(),playerId:player.id,mapId:player.mapId,visible:base.piscesPortal||base.kind!=='pisces-skill'||i===0,
+  // Basic shots use one point per attack stat. Scaled skills supply their own
+  // player power so both target types preserve the original casting-time roll.
+  const playerPower=base.playerPower??Math.max(0,base.power-infiniteEnergyStacks(player,now));
+  const launched=Array.from({length:count},(_,i)=>({...base,playerPower,id:randomUUID(),playerId:player.id,mapId:player.mapId,visible:base.piscesPortal||base.kind!=='pisces-skill'||i===0,
     constellationId:player.avatar.constellationId,level:player.avatar.level,at:now+i*120,distance:base.piscesPortal?piscesPortalGeometry(base).start:0,seen:new Set()}));
   room.projectiles.push(...launched);return launched.map(c=>projectileView(c,now));
 }

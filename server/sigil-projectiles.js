@@ -33,7 +33,7 @@ export function advanceSigilProjectiles(room,now){
       kind:'sigil-black-star',basic:true,piercing:false,x:player.x,y:player.y,dx,dy,
       range:MAX_RANGE,durationMs:DARK_STAR_SKILLS.basic.durationMs,width:DARK_STAR_SKILLS.basic.radius,
       size:DARK_STAR_SKILLS.basic.radius*2,originOffset:0,
-      power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player)*5
+      power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now)*5
     },now));
     player.sigilNextShotAt=now+SIGIL_SHOT_INTERVAL_MS;
   }

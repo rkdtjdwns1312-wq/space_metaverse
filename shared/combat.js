@@ -3,7 +3,8 @@ import {transformationBonus} from './transformation.js';
 import {constellationOf} from './constellations.js';
 import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
 import {avatarSizeOf} from './avatar-size.js';
-import {equipmentBonus} from './equipment.js';
+import {equipmentBonus,equipmentOf} from './equipment.js';
+import {INFINITE_BRACELET,infiniteEnergyStacks} from './infinite-energy.js';
 import {isMaster,MASTER_BASE} from './master-account.js';
 // LV5가 최종 초월체입니다. 단계별 기본값에 계열 보정을 적용합니다.
 export const ATTACK_POWER=Object.freeze({2:5,3:7,4:10,5:10});
@@ -11,14 +12,16 @@ export const ATTACK_MODIFIERS=Object.freeze({'수호계':-2,'제작계':-1,'생�
 // Q uses close-range contact/area hits for these four constellations.
 const MELEE_CONSTELLATIONS=new Set(['hercules','capricorn','leo','corona-borealis']);
 const meleePassive=(level,constellationId,player)=>!isTeacher(player)&&!isMaster(player)&&Number.isInteger(level)&&level>=2&&level<=5&&MELEE_CONSTELLATIONS.has(constellationId)?1:0;
-export function attackPowerOf(level,constellationId,player=null){
-  if(isTeacher(player))return TEACHER_AVATAR.attackPower;
+export function attackPowerOf(level,constellationId,player=null,now=Date.now(),againstPlayer=false){
+  const stacks=againstPlayer?0:infiniteEnergyStacks(player,now);
+  if(isTeacher(player))return TEACHER_AVATAR.attackPower+stacks+
+    (player.equipmentSlots?.includes(INFINITE_BRACELET)?equipmentOf(INFINITE_BRACELET)?.bonus.attack||0:0);
   // LV1은 아직 공격을 배우지 않은 상태입니다. 미지원 단계에는 보정을 적용하지 않습니다.
   if(!isMaster(player)&&(!Number.isInteger(level)||!Object.hasOwn(ATTACK_POWER,level)))return null;
   const type=constellationOf(constellationId,level)?.type;
   return Math.max(0,(isMaster(player)?MASTER_BASE.attack:ATTACK_POWER[level]+(ATTACK_MODIFIERS[type]??0))+transformationBonus(player).attackBonus+equipmentBonus(player).attack+statGrowthBonus(player,'attack')+
     (player?.leoCourage?.endsAt>Date.now()?player.leoCourage.bonus:0)+
-    (player?.avatar?.constellationId==='cetus'&&player?.waterAura?.kind==='cetus'&&player.waterAura.endsAt>Date.now()?player.waterAura.attackBonus||0:0))+meleePassive(level,constellationId,player);
+    (player?.avatar?.constellationId==='cetus'&&player?.waterAura?.kind==='cetus'&&player.waterAura.endsAt>Date.now()?player.waterAura.attackBonus||0:0))+meleePassive(level,constellationId,player)+stacks;
 }
 export const DEFENSE_POWER=Object.freeze({1:0,2:0,3:1,4:2,5:2});
 export const DEFENSE_MODIFIERS=Object.freeze({'생산계':0,'제작계':0,'공격계':-2,'특수계':0,'수호계':2});

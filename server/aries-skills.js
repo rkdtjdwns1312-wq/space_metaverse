@@ -15,7 +15,7 @@ export function castAries(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='aries'&&player.avatar.level>=2,'LV2 양자리부터 사용할 수 있어요.');
   ensure(eligible(player),'지금은 스킬을 사용할 수 없어요.');
   const spec=ariesSkillOf(player),vitals=ensureVitals(player),size=avatarSizeOf(player);
-  const power=attackPowerOf(player.avatar.level,'aries',player);
+  const power=attackPowerOf(player.avatar.level,'aries',player,now);
   if(basic){
     const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1;
     const base={x:player.x,y:player.y,dx:facing.x/length,dy:facing.y/length,size,

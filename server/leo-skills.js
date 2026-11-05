@@ -11,13 +11,13 @@ export const leoCooldowns=p=>({0:p.leoCooldownUntil||0});
 export function castLeo(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='leo'&&player.avatar.level>=2,'LV2 사자자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
-  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'leo',player);
+  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'leo',player,now);
   if(basic){
     const direction=player.facing||{x:0,y:1},length=Math.hypot(direction.x,direction.y)||1,dx=direction.x/length,dy=direction.y/length;
     const x=player.x+dx*size*.74,y=player.y+dy*size*.74,radius=size*.46;
     const targets=[...monstersOf(room,now).values()].filter(m=>m.hp>0&&m.mapId===player.mapId&&Math.hypot(m.x-x,m.y-y)<=m.radius+radius)
       .map(m=>damageMonster(room,m,player,power,now)).filter(Boolean);
-    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id,basic:true},power,now);
+    const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x,y,radius,sourceId:player.id,basic:true},attackPowerOf(player.avatar.level,'leo',player,now,true),now);
     return {ready:true,targets,playerTargets,vitals:playerVitals(player),hit:{playerId:player.id,mapId:player.mapId,x:player.x,y:player.y,
       dx,dy,reach:size*.74,radius,kind:'leo-attack',vfxId:'attack',durationMs:500,size}};
   }

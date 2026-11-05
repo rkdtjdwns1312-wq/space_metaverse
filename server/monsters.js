@@ -2,6 +2,7 @@ import {tickHomingStar,homingStarView,homingStarsView,homingVolleyView,tryHoming
 import {tryConstellationLinks,tickConstellationLinks} from './forgotten-constellation-links.js';
 import {tryConstellationNames,tickConstellationNames,constellationNamesView} from './forgotten-constellation-names.js';
 import {tryConstellationGather,tickConstellationGather,constellationGatherView} from './forgotten-constellation-gather.js';
+import {gainInfiniteEnergy} from './infinite-energy.js';
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {nearbyMonsterBodies,bodyBlocksStep,monsterDetour} from './monster-navigation.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
@@ -202,6 +203,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   target.contributors??=new Map();
   target.contributors.set(player.id,(target.contributors.get(player.id)||0)+Math.min(dealt,target.hp));
   target.hp=Math.max(0,target.hp-dealt);
+  if(dealt>0&&!reflected&&player.connected&&!player.away&&player.mapId===target.mapId)gainInfiniteEnergy(player,now);
   if(power>0&&dealt>0&&!ignoreSleep&&(target.sleepUntil||0)>now&&
       room.ariesClouds&&[...room.ariesClouds.values()].some(cloud=>cloud.playerId===player.id&&cloud.monsterId===target.id&&cloud.endsAt>now)){
     const vitals=ensureVitals(player),max=playerVitals(player).mp.max;

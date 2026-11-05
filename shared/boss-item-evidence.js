@@ -8,6 +8,7 @@ export const BOSS_ITEM_CREDITS=Object.freeze(Object.fromEntries(Object.entries({
   'radiant-star-origin':['serena'],'primordial-star-gem':['serena'],
   'black-gem':['dark-star'],'primordial-star-sigil':['dark-star'],
   'origin-star-record':['star-record'],'truth-record':['star-record'],
+  'infinite-star-fragment':['forgotten-constellation'],'infinite-star-bracelet':['forgotten-constellation'],
   'truth-gem':['truth-creator'],'truth-convergence':['truth-creator']
 }).map(([id,bosses])=>[id,Object.freeze(bosses)])));
 

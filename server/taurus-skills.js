@@ -14,7 +14,7 @@ export const taurusContactRadius=dash=>dash.size*({2:.62,3:.72,4:.84}[dash.stage
 export function castTaurus(room,player,now,{basic=false}={}){
   ensure(player?.avatar?.constellationId==='taurus'&&player.avatar.level>=2,'LV2 황소자리부터 사용할 수 있어요.');
   ensure(player.connected&&!player.away&&!player.avatar.blackStar&&ensureVitals(player).hp>0,'지금은 스킬을 사용할 수 없어요.');
-  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'taurus',player);
+  const size=avatarSizeOf(player),power=attackPowerOf(player.avatar.level,'taurus',player,now);
   const facing=player.facing||{x:0,y:1},length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   if(basic){
     const base={x:player.x,y:player.y,dx,dy,size,range:size*4,width:size*.13,power,basic:true,

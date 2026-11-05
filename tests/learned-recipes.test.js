@@ -80,7 +80,7 @@ test('public Lv5 learned recipes retain their shard and energy costs in the stud
   const view=learnedRecipesView(player,PUBLIC_CRAFTING_RECIPES);
   assert.deepEqual(view.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,10000],['truth-convergence',0,30000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,15000],['infinite-star-bracelet',0,20000],['truth-convergence',0,30000]
   ]);
   assert.deepEqual(validateLearnedRecipeIds(player.learnedRecipeIds),player.learnedRecipeIds);
 });
@@ -172,13 +172,13 @@ test('student lookup is private; unauthenticated, other-student, forged-role que
   assert.equal(teacherAll.length,recipes.length+PUBLIC_CRAFTING_RECIPES.length);
   const teacherLv5=ok(await call(f.teacher,'crafting:recipes',{level:5})).recipes;
   assert.deepEqual(teacherLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,10000],['truth-convergence',0,30000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,15000],['infinite-star-bracelet',0,20000],['truth-convergence',0,30000]
   ]);
   await f.mutate(p=>{p.learnedRecipeIds=publicItemRecipes.map(recipe=>recipe.output.id);});
   const learnedLv5=ok(await call(f.student,'recipes:learned')).recipes;
   assert.deepEqual(learnedLv5.map(recipe=>[recipe.output.id,recipe.starShards,recipe.cosmicEnergy]),[
     ['sun-ring',undefined,undefined],['moon-earring',undefined,undefined],['burning-ice-necklace',undefined,undefined],
-    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,10000],['truth-convergence',0,30000]
+    ['spirit-king-cloak',10,10000],['primordial-star-gem',0,10000],['primordial-star-sigil',0,10000],['truth-record',0,15000],['infinite-star-bracelet',0,20000],['truth-convergence',0,30000]
   ]);
   const publicState=f.game.store.snapshot(f.room,f.q);
   assert.equal(JSON.stringify(publicState).includes('ingredients'),false);assert.equal(JSON.stringify(publicState).includes('learnedRecipeIds'),false);

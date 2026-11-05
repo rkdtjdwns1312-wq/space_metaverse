@@ -1,6 +1,8 @@
 import {linkConstellationStar} from './forgotten-constellation-links.js';
 import {answerConstellationName} from './forgotten-constellation-names.js';
 import {collectConstellationGather} from './forgotten-constellation-gather.js';
+import {infiniteEnergyChanged} from './infinite-energy.js';
+import {infiniteEnergyEffect} from '../shared/infinite-energy.js';
 import {socketRateMiddleware} from './socket-rate-limit.js';
 import {INTERACTION_SAVE_ACTIONS} from './interaction-save-scope.js';
 import {reminderTarget} from './student-reminders.js';
@@ -684,7 +686,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const result=resetExploration(s.room,s.player,clock());roster(s.room);return result;});
     action('combat:attack',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
+      const {room,player}=session,now=clock(),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now);
       ensure(player.connected&&!player.away,'먼저 교실에 입장해주세요.');
       ensure(!player.avatar.blackStar,'현재 검은별 상태입니다');
       ensure(power!==null,player.avatar.level<2?'LV2부터 공격할 수 있어요.':'이 단계의 공격력은 설정 준비 중이에요.');
@@ -727,7 +729,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId)io.to(viewer.socketId).emit('combat:hit',hit);
       const targets=strikeMonsters(room,player,power,now);
       if(targets.some(target=>target.defeated))io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,now)});
-      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id,basic:true},power,now);
+      const playerTargets=damagePlayersInArea(room,{mapId:player.mapId,x:player.x+direction.x*geometry.reach,y:player.y+direction.y*geometry.reach,radius:geometry.radius,sourceId:player.id,basic:true},attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now,true),now);
       for(const result of playerTargets)for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===player.mapId){
         io.to(viewer.socketId).emit('combat:player-hit',{...hit,...result});
         io.to(viewer.socketId).emit('combat:vitals',{playerId:result.targetId,vitals:result.vitals});
@@ -2690,7 +2692,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(transformationChanged)roster(room);
       advanceSigilProjectiles(room,clock());
       for(const hit of advanceProjectiles(room,clock(),combatEnemies,(room,player,selected,power,now,cast)=>
-        cast.kind==='sigil-black-star'?resolveSigilHit(room,player,selected,power,now):isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now))){
+        cast.kind==='sigil-black-star'?resolveSigilHit(room,player,selected,power,now):isWaterConstellation(player)?resolveWaterHit(room,player,selected,power,now,cast):damageTargets(room,player,selected,power,now,cast))){
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away&&viewer.mapId===hit.mapId){
           if(hit.end)io.to(viewer.socketId).emit('combat:projectile-end',hit.end);
           for(const target of hit.playerTargets){io.to(viewer.socketId).emit('combat:player-hit',{mapId:hit.mapId,...target});io.to(viewer.socketId).emit('combat:vitals',{playerId:target.targetId,vitals:target.vitals});}
@@ -2753,6 +2755,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           io.to(viewer.socketId).emit('combat:boss-defeated',event);
       }
       const damageNumbers=room.damageNumbers?.splice(0)||[];
+      const energyNow=clock();
+      for(const p of room.players.values())if(p.connected&&infiniteEnergyChanged(p,energyNow)){
+        io.to(p.socketId).emit('combat:infinite-energy',{effect:infiniteEnergyEffect(p,energyNow),
+          attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p,energyNow)});
+      }
       for(const player of room.players.values())damageNumbers.push(...(player.damageNumbers?.splice(0)||[]));
       for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
         const visible=damageNumbers.filter(hit=>hit.mapId===viewer.mapId);

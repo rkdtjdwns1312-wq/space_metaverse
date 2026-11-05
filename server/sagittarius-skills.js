@@ -19,12 +19,13 @@ function enemies(room,player){
     .concat(monsterOnly(player)?[]:[...room.players.values()].filter(p=>p.id!==player.id&&p.mapId===player.mapId&&valid(p)).map(p=>({entity:p,kind:'player',radius:RULES.radius})));
 }
 function nearest(list,x,y){return list.sort((a,b)=>Math.hypot(a.entity.x-x,a.entity.y-y)-Math.hypot(b.entity.x-x,b.entity.y-y))[0];}
-function damage(room,player,list,power,now){
+function damage(room,player,list,power,now,cast=null){
+  const playerPower=cast?.playerPower??power;
   const targets=[],playerTargets=[];
   for(const target of list){
     if(target.kind==='monster'){const hit=damageMonster(room,target.entity,player,power,now);if(hit)targets.push(hit);}
     // 사수·까마귀자리는 Q/E/지속 스킬 모두 몬스터만 공격합니다. 공통 호출의 대상 목록도 재검증합니다.
-    else if(!monsterOnly(player)){const hit=damagePlayer(target.entity,power,now,{room});if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
+    else if(!monsterOnly(player)){const hit=damagePlayer(target.entity,playerPower,now,{room});if(hit){if(hit.reflectedDamage)reflectLibraDamage(room,target.entity,{sourceId:player.id},hit.reflectedDamage,now);playerTargets.push({targetId:target.entity.id,...hit});}}
   }
   return {targets,playerTargets};
 }
@@ -48,7 +49,7 @@ function execute(room,player,skill,now,basic,random=Math.random){
   const vitals=ensureVitals(player);ensure(vitals.mp>=skill.mana,'마나가 부족해요.');
   const size=avatarSizeOf(player),direction=player.facing||{x:0,y:1};
   const length=Math.hypot(direction.x,direction.y)||1,dx=direction.x/length,dy=direction.y/length;
-  const list=enemies(room,player),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player);
+  const list=enemies(room,player),power=attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now);
   let target;
   if(slot===1)target=nearest(list,player.x,player.y);
   if(slot===2)target=nearest(list.filter(t=>t.kind==='monster'&&(t.entity.x-player.x)*dx+(t.entity.y-player.y)*dy>0),player.x,player.y);

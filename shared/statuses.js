@@ -24,6 +24,7 @@ export const STATUS_TYPES=Object.freeze({
   'star-guardian':{name:'별의 수호',icon:'✦',tone:'mint',description:'5분 동안 최대 체력과 최대 마나가 각각 10% 늘어나요.'},
   'star-angel-recovery':{name:'아기별 천사의 축복',icon:'✧',tone:'mint',description:'5분 동안 10초마다 체력 1·마나 1을 추가로 회복해요.'},
   'leo-courage':{name:'사자의 용기',icon:'♌',tone:'warm',description:'공격력이 잠시 높아져요.'},
+  'infinite-energy':{name:'무한의기운',icon:'∞',tone:'violet',description:'몬스터를 맞힐 때마다 10초간 몬스터에 대한 공격력이 1 올라요. 최대 5번 중첩되고, 다시 맞히면 시간이 갱신돼요.'},
   'libra-reflect':{name:'천칭의 무적',icon:'⚖',tone:'warm',description:'살아 있는 천칭 영역 안에서는 고정 피해를 포함한 모든 피해를 막아요.'},
   'hercules-shield':{name:'헤라클레스 방패',icon:'🛡',tone:'warm',description:'방패가 피해를 대신 받아요.'},
   'dream-guardian':{name:'수호',icon:'🛡',tone:'cool',description:'다음 즉사 외 피해를 한 번 막아요. 막은 뒤 30초가 지나면 다시 생겨요.'},
@@ -42,7 +43,8 @@ export function activeStatuses(player,now=Date.now()){
     // 무기한은 null. 잘못된 시간이나 끝난 효과는 상태를 남기지 않습니다.
     if(!knownStatus(effect.statusId)||(effect.until!==null&&(!Number.isFinite(effect.until)||effect.until<=now)))continue;
     const old=grouped.get(effect.statusId);
-    grouped.set(effect.statusId,{id:effect.statusId,...STATUS_TYPES[effect.statusId],count:(old?.count||0)+1,
+    const stacks=effect.statusId==='infinite-energy'?effect.stacks||1:1;
+    grouped.set(effect.statusId,{id:effect.statusId,...STATUS_TYPES[effect.statusId],count:(old?.count||0)+stacks,
       until:effect.until===null||old?.until===null?null:Math.max(old?.until||0,effect.until)});
   }
   if(player?.avatar?.blackStar)grouped.set('black-star',{id:'black-star',...STATUS_TYPES['black-star'],count:1,until:null});

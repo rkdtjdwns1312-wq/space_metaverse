@@ -5,10 +5,13 @@ import {EQUIPMENT_ITEMS,equipmentBonus} from '../shared/equipment.js';
 import {PUBLIC_CRAFTING_RECIPES} from '../shared/crafting.js';
 import {attemptCraft} from '../server/crafting.js';
 
-test('진리의 기록은 공개 조합법으로 재료1·우주에너지10000을 정확히 차감한다',()=>{
+test('진리의 기록은 공개 조합법으로 재료1·우주에너지15000을 정확히 차감한다',()=>{
   assert.ok(EQUIPMENT_ITEMS.some(item=>item.id==='truth-record'&&item.level===5&&item.bonus.attack===3));
   assert.ok(PUBLIC_CRAFTING_RECIPES.some(recipe=>recipe.output.id==='truth-record'));
-  const player={role:'student',starShards:0,cosmicEnergy:10000,inventory:[{id:'origin-star-record',quantity:1}],equipmentSlots:[null,null,null]};
+  const player={role:'student',starShards:0,cosmicEnergy:14999,inventory:[{id:'origin-star-record',quantity:1}],equipmentSlots:[null,null,null]};
+  assert.equal(attemptCraft(player,[{id:'origin-star-record',quantity:1}]).error,'insufficient-energy');
+  assert.equal(player.inventory[0].quantity,1);assert.equal(player.cosmicEnergy,14999);
+  player.cosmicEnergy=15000;
   const result=attemptCraft(player,[{id:'origin-star-record',quantity:1}]);
   assert.equal(result.success,true);assert.equal(player.cosmicEnergy,0);
   assert.deepEqual(player.inventory,[{id:'truth-record',quantity:1}]);

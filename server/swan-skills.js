@@ -34,9 +34,10 @@ export function castSwan(room,player,now,{basic=false}={}){
   const boosted=active(player,now),size=avatarSizeOf(player),facing=player.facing||{x:0,y:1};
   const length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
   const count=boosted?player.swanAura.stage:1;
-  const power=Math.round(attackPowerOf(player.avatar.level,'cygnus',player)*(boosted?spec.effectAmount:1));
+  const power=Math.round(attackPowerOf(player.avatar.level,'cygnus',player,now)*(boosted?spec.effectAmount:1));
   const base={x:player.x,y:player.y,size,range:size*spec.rangeWidths,width:size*.13,
-    power,basic:true,kind:'cygnus-attack',vfxId:'attack',originOffset:attackGeometryOf(player).originOffset,durationMs:650,
+    power,playerPower:Math.round(attackPowerOf(player.avatar.level,'cygnus',player,now,true)*(boosted?spec.effectAmount:1)),
+    basic:true,kind:'cygnus-attack',vfxId:'attack',originOffset:attackGeometryOf(player).originOffset,durationMs:650,
     visualScale:boosted?1.2:1};
   // 모든 깃털은 같은 곳에서 출발하며 중간에서 서로 교차합니다.
   const projectiles=[];

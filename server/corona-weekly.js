@@ -35,6 +35,7 @@ export function useCoronaWeekly(player,choice,now=Date.now()){
     player.constellationAbilityState={...validateConstellationAbilityState(player.constellationAbilityState),
       coronaTrial:{week,endsAt:expiresAt,savedXp:player.avatar.xp,savedLevel:player.nativeAvatarLevel??player.avatar.level,savedEquipmentSlots:[...player.equipmentSlots]}};
     player.equipmentSlots=[null,null,null];
+    delete player.infiniteEnergy;
     player.avatar={...player.avatar,level:1,xp:0,form:'asteroid'};
   }
   const state=validateConstellationAbilityState(player.constellationAbilityState);

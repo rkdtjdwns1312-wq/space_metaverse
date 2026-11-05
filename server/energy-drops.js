@@ -48,7 +48,7 @@ export function addEnergyDrop(room,monster,contributions,now=Date.now(),roll=ran
     publicAt:now+ENERGY_DROPS.publicAfterMs,expiresAt:now+ENERGY_DROPS.lifetimeMs};
   room.energyDrops.set(drop.id,drop);return drop;
 }
-const bossMaterial=Object.freeze({noksera:'noksera-horn',leoon:'leoon-claw'});
+const bossMaterial=Object.freeze({noksera:'noksera-horn',leoon:'leoon-claw','forgotten-constellation':'infinite-star-fragment'});
 export function addBossDrops(room,monster,contributions,now=Date.now(),roll=randomInt){
   if(['spirit-king','serena','dark-star','star-record','truth-creator'].includes(monster.typeId)){
     const ids=rewardRecipients(room,monster,contributions);if(!ids.length)return [];
@@ -77,7 +77,7 @@ export function addBossDrops(room,monster,contributions,now=Date.now(),roll=rand
   };
   pruneEnergyDrops(room,now);room.energyDrops??=new Map();
   addItem(itemId);
-  if(roll(0,100)===0){
+  if(monster.typeId!=='forgotten-constellation'&&roll(0,100)===0){
     const lv4=SHOP.items.filter(item=>item.level===4&&item.mode==='lv4');
     if(lv4.length)addItem(lv4[roll(0,lv4.length)].id);
   }

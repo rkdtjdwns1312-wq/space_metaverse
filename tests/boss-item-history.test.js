@@ -11,13 +11,13 @@ import {captureBossItemHistory,commitBossItemHistory} from '../server/boss-item-
 const expected={leoon:['leoon-claw','sun-ring'],noksera:['noksera-horn','moon-earring'],
  'spirit-king':['spirit-king-soul','spirit-king-cloak'],serena:['radiant-star-origin','primordial-star-gem'],
  'dark-star':['black-gem','primordial-star-sigil'],'star-record':['origin-star-record','truth-record'],
- 'truth-creator':['truth-gem','truth-convergence']};
-test('all seven boss materials and crafted equipment map precisely; fused gear proves both and recipes never qualify',()=>{
+ 'forgotten-constellation':['infinite-star-fragment','infinite-star-bracelet'],'truth-creator':['truth-gem','truth-convergence']};
+test('all boss materials and crafted equipment map precisely; fused gear proves both and recipes never qualify',()=>{
  for(const [boss,items] of Object.entries(expected))for(const id of items){
   assert.deepEqual(bossItemEvidence({inventory:[{id,quantity:1}]}),[boss]);
   if(id===items[1])assert.deepEqual(bossItemEvidence({equipmentSlots:[id]}),[boss]);
  }
- assert.equal(Object.keys(BOSS_ITEM_CREDITS).length,15);
+ assert.equal(Object.keys(BOSS_ITEM_CREDITS).length,17);
  assert.deepEqual(bossItemEvidence({equipmentSlots:['burning-ice-necklace']}),['leoon','noksera']);
  assert.deepEqual(bossItemEvidence({constellationAbilityState:{coronaTrial:{savedEquipmentSlots:['burning-ice-necklace',null,null]}}}),['leoon','noksera']);
  assert.deepEqual(bossItemEvidence({inventory:[{id:'black-gem',quantity:0},{id:'leoon-claw',quantity:-1},{id:'truth-gem',quantity:Infinity},{id:'recipe-truth-record',quantity:1},{id:'gold-big-bang-card',quantity:1}],learnedRecipeIds:Object.values(expected).flat()}),[]);

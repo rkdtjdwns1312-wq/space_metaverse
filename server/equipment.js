@@ -2,6 +2,7 @@ import {EQUIPMENT_ITEMS,equipmentOf,validateEquipmentSlots} from '../shared/equi
 import {SHOP} from '../shared/config.js';
 import {GameError} from './rooms.js';
 import {hasUnlimitedShards} from '../shared/economy.js';
+import {INFINITE_BRACELET} from '../shared/infinite-energy.js';
 
 function ensure(ok,message){if(!ok)throw new GameError(message);}
 const levelOf=p=>p.role==='teacher'?5:p.avatar?.level||1;
@@ -34,11 +35,13 @@ export function equip(player,itemId,slot){
   row.quantity--;if(row.quantity===0)player.inventory=player.inventory.filter(entry=>entry!==row);
   if(previous)addToBag(player,previous);
   slots[slot-1]=itemId;player.equipmentSlots=slots;
+  if(previous===INFINITE_BRACELET||itemId===INFINITE_BRACELET)delete player.infiniteEnergy;
   return {inventory:[...player.inventory],equipmentSlots:[...slots]};
 }
 export function unequip(player,slot){
   ensure(Number.isInteger(slot)&&slot>=1&&slot<=3,'장비 칸을 다시 골라주세요.');
   const slots=validateEquipmentSlots(player.equipmentSlots),itemId=slots[slot-1];ensure(itemId,'비어 있는 칸이에요.');
   addToBag(player,itemId);slots[slot-1]=null;player.equipmentSlots=slots;
+  if(itemId===INFINITE_BRACELET)delete player.infiniteEnergy;
   return {inventory:[...player.inventory],equipmentSlots:[...slots]};
 }

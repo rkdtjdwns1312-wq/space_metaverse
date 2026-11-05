@@ -26,7 +26,7 @@ export function castAquarius(room,player,now,{basic=false}={}){
   ensure(valid(player),'지금은 스킬을 사용할 수 없어요.');
   const spec=aquariusSkillOf(player),size=avatarSizeOf(player),vitals=ensureVitals(player);
   const direction=player.facing||{x:0,y:1},length=Math.hypot(direction.x,direction.y)||1,dx=direction.x/length,dy=direction.y/length;
-  const power=attackPowerOf(player.avatar.level,'aquarius',player);
+  const power=attackPowerOf(player.avatar.level,'aquarius',player,now);
   if(basic){
     const base={x:player.x,y:player.y,dx,dy,size,range:size*4,width:size*.13,power,basic:true,kind:'aquarius-attack',vfxId:'attack',originOffset:attackGeometryOf(player).originOffset,durationMs:650};
     const projectiles=launchProjectiles(room,player,base,now);
@@ -59,7 +59,7 @@ export function advanceAquarius(room,now){
     const {tickMs}=AQUARIUS_TIMING;
     while((cast.tick+1)*tickMs<cast.durationMs&&now>=cast.at+(cast.tick+1)*tickMs){
       const tick=++cast.tick,elapsedMs=tick*tickMs,targets=[],healed=[];
-      const damage=cast.power,healing=Math.max(0,attackPowerOf(player.avatar.level,'aquarius',player)||0);
+      const damage=cast.power,healing=Math.max(0,attackPowerOf(player.avatar.level,'aquarius',player,now)||0);
       if(damage>0)for(const monster of monstersOf(room).values())if(monster.hp>0&&monster.mapId===cast.mapId&&inAquariusArea(cast,monster,elapsedMs)){
         const hit=damageMonster(room,monster,player,damage,cast.at+elapsedMs);if(hit)targets.push(hit);
       }

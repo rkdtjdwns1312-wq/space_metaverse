@@ -438,6 +438,8 @@ function updateBgm(mapId,serenaOverride){
   audio.playBgm(statueMap&&state==='active'?'serena-battle':statueMap?'serena-dormant':mapId);
 }
 function updateRoom(value){
+  const energy=value.players.find(p=>p.id===selfId)?.effects?.find(e=>e.statusId==='infinite-energy');
+  if(energy&&Number.isFinite(energy.remainingMs))energy.until=Date.now()+energy.remainingMs;
   room=value;world.setRoom(room,selfId);starCardUI.update();
   truthCreatorBlueUI.sync(room.monsters,room.players.find(p=>p.id===selfId));
   classroomHelp.update();teacherUpdates.update(room,selfId);
@@ -727,6 +729,7 @@ function renderEquipmentSlots(me){
 $('equipment-close').onclick=()=>$('equipment-dialog').close();
 function effectText(e){
   if(e.until===null)return e.icon+' '+e.label+' · 선생님 처리 대기';
+  if(e.statusId==='infinite-energy')return e.icon+' '+e.label+' · '+Math.max(0,Math.ceil((e.until-Date.now())/1000))+'초';
   const mins=Math.max(1,Math.ceil((e.until-Date.now())/60000));
   return e.icon+' '+e.label+' · '+mins+'분';
 }
@@ -1684,6 +1687,15 @@ socket.on('combat:monster-hit',data=>{if(selfId){world.monsterHit(data);if(!data
 socket.on('combat:water-pulse',data=>{if(selfId)world.waterPulse(data);});
 socket.on('combat:recovered',data=>{if(selfId){stop();toast(data.message);}});
 socket.on('life-star:complete',()=>{if(selfId)toast('체력과 마나가 가득 찼어요!');});
+socket.on('combat:infinite-energy',({effect,attackPower})=>{
+  const me=room?.players.find(p=>p.id===selfId);
+  if(!me)return;
+  me.effects=(me.effects||[]).filter(e=>e.statusId!=='infinite-energy');
+  if(effect)me.effects.push({...effect,until:Date.now()+effect.remainingMs});
+  me.combat={...me.combat,attackPower};
+  $('self-attack-power').textContent='공격력 · '+(attackPower??'LV2부터 사용');
+  renderSelfEffects(me);
+});
 socket.on('combat:vitals',data=>{
   const player=room?.players.find(p=>p.id===data.playerId);if(!player)return;
   player.vitals=data.vitals;

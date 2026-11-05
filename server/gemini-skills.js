@@ -20,9 +20,10 @@ export function castGemini(room,player,now,{basic=false}={}){
   }
   const size=avatarSizeOf(player),facing=player.facing||{x:0,y:1};
   const length=Math.hypot(facing.x,facing.y)||1,dx=facing.x/length,dy=facing.y/length;
-  const power=attackPowerOf(player.avatar.level,'gemini',player);
+  const power=attackPowerOf(player.avatar.level,'gemini',player,now);
+  const hitPower=attack=>basic?attack:skillDamage(attack*spec.multiplier*spec.effectAmount,skillDamageFactor(player));
   const base={x:player.x,y:player.y,dx,dy,size,range:size*4,width:size*.13,
-    power:basic?power:skillDamage(power*spec.multiplier*spec.effectAmount,skillDamageFactor(player)),basic,
+    power:hitPower(power),playerPower:hitPower(attackPowerOf(player.avatar.level,'gemini',player,now,true)),basic,
     piercing:!basic,kind:basic?'gemini-attack':'gemini-skill',
     vfxId:basic?'attack':`skill-lv${spec.stage}`,
     originOffset:attackGeometryOf(player).originOffset,durationMs:basic?650:900};
