@@ -10,7 +10,7 @@ body.joined .dock-button{font-size:15px;font-weight:800;line-height:1.2}
 body.joined .dock-status-button{width:44px;height:44px;min-height:44px}
 body.joined #avatar-dialog{--info-text-scale:1.45}
 body.joined .dock-button:focus-visible,body.joined dialog button:focus-visible,body.joined dialog input:focus-visible,body.joined dialog select:focus-visible{outline:3px solid #7442ae;outline-offset:3px}
-body.joined dialog :is(button,select,input):not(.slot-btn):not([type="checkbox"]):not([type="radio"]){min-height:44px}
+body.joined dialog :is(button,select,input):not(.slot-btn):not(.effect-help-button):not([type="checkbox"]):not([type="radio"]){min-height:44px}
 body.joined dialog :is(p,li,label,small,.hint,.muted){line-height:1.55}
 body.joined dialog small,body.joined dialog .hint,body.joined dialog .item-list .info :is(p,.meta),body.joined dialog .item-list :is(.qty,.type,.level-hint){font-size:15px}
 body.joined #inventory-dialog :is(.bag-detail,.bag-flavor,#bag-empty){font-size:15px;color:#51436c}

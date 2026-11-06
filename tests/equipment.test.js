@@ -31,7 +31,7 @@ test('Lv4 별빛 수호석은 체력·방어력·10초 회복을 적용하고 �
   const stone=EQUIPMENT_ITEMS.find(item=>item.id==='starlight-guardian-stone');
   assert.deepEqual(stone.bonus,{defense:1,hp:20,hpRegen:1});
   assert.equal(equipmentStatText(stone),'방어력 +1 · 최대 체력 +20 · 10초마다 체력 회복 +1');
-  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(item=>item.id==='moon-earring')),'최대 마나 +10 · 일반 스킬 쿨타임 -30%');
+  assert.equal(equipmentStatText(EQUIPMENT_ITEMS.find(item=>item.id==='moon-earring')),'최대 마나 +10 · 스킬 재사용 시간 감소 30%');
   assert.equal(equipmentStatText({bonus:{speed:.1,hpRegen:2,defense:-1,attack:3,mp:5}}),
     '공격력 +3 · 방어력 -1 · 최대 마나 +5 · 10초마다 체력 회복 +2 · 이동속도 +10%');
   const p=player();p.avatar.level=4;p.equipmentSlots=['starlight-guardian-stone',null,null];

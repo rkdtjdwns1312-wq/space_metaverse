@@ -1,4 +1,5 @@
 import {renderWallet} from './wallet-ui.js';
+import {renderEffectText} from './effect-text-ui.js';
 import {EQUIPMENT_ITEMS,equipmentStatText} from '/shared/equipment.js';
 import {hasUnlimitedShards} from '/shared/economy.js';
 import {STAT_GROWTH_KEYS,statGrowthRule} from '/shared/stat-growth.js';
@@ -52,13 +53,15 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
     }
     const items=catalogItems.filter(item=>item.level===selectedLevel);
     dialog.querySelector('#energy-shop-empty').hidden=items.length>0;
+    const expanded=new Set([...list.querySelectorAll('.effect-help-button[aria-expanded="true"]')].map(button=>button.closest('[data-item-id]').dataset.itemId));
+    const focusedHelp=list.contains(document.activeElement)&&document.activeElement.matches('.effect-help-button')?document.activeElement.closest('[data-item-id]').dataset.itemId:null;
     list.replaceChildren(...items.map(item=>{
       const row=document.createElement('article');row.className='energy-shop-item';row.dataset.itemId=item.id;
       const picture=document.createElement('img');picture.src=item.art;picture.alt='';picture.className='energy-shop-picture';
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=equipmentStatText(item);
+      const bonus=document.createElement('small');renderEffectText(bonus,equipmentStatText(item));
       details.append(title,flavor,bonus);
       const actions=document.createElement('div');actions.className='energy-shop-actions';
       if(item.craftOnly&&player.role!=='teacher'){
@@ -73,6 +76,11 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       buy.onclick=async()=>{buy.disabled=true;try{await request('shop:energy:buy',{itemId:item.id});toast(item.name+'를 구매했습니다');render();}catch(error){toast(error.message);buy.disabled=false;}};
       actions.append(price,buy);row.append(picture,details,actions);return row;
     }));
+    for(const button of list.querySelectorAll('.effect-help-button')){
+      const id=button.closest('[data-item-id]').dataset.itemId;
+      if(expanded.has(id))button.click();
+      if(focusedHelp===id)button.focus({preventScroll:true});
+    }
   }
   function renderCatalog(){
     if(getPlayer()?.role!=='teacher')return;
@@ -82,7 +90,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
       const flavor=document.createElement('p');flavor.textContent=item.description;
-      const bonus=document.createElement('small');bonus.textContent=equipmentStatText(item);
+      const bonus=document.createElement('small');renderEffectText(bonus,equipmentStatText(item));
       details.append(title,flavor,bonus);row.append(picture,details);return row;
     }));
   }

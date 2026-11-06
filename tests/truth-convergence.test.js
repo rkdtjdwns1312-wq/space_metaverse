@@ -50,7 +50,7 @@ test('failed crafting preserves material, currencies, inventory and learning; fu
 test('necklace is Lv5 craft-only, grants only HP/MP maxima and cannot refill vitals or stack in equipment slots',()=>{
  const p=player();attemptCraft(p,recipe.ingredients);const item=itemOf(id),base=vitalsOf(5,p),atk=attackPowerOf(5,'gemini',p),def=defensePowerOf(5,'gemini',p);
  assert.equal(item.name,'진리의 결집체');assert.equal(item.art,'/assets/equipment/truth-convergence.png');assert.equal(item.level,5);assert.equal(item.craftOnly,true);
- assert.equal(equipmentStatText(item),'최대 체력 +10 · 최대 마나 +10 · 스킬 피해량 +50% · 일반 스킬 쿨타임 -50%');
+ assert.equal(equipmentStatText(item),'최대 체력 +10 · 최대 마나 +10 · 스킬 피해량 +50% · 스킬 재사용 시간 감소 50%');
  assert.throws(()=>buyEquipment(p,id),/상점의 물건/);p.avatar.level=4;assert.throws(()=>equip(p,id,1),/LV5/);p.avatar.level=5;
  const current=ensureVitals(p);current.hp=7;current.mp=8;equip(p,id,1);
  assert.equal(vitalsOf(5,p).hp.max,base.hp.max+10);assert.equal(vitalsOf(5,p).mp.max,base.mp.max+10);

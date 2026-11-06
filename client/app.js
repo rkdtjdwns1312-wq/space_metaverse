@@ -22,6 +22,7 @@ import {sellQuote,sellPrice} from '/shared/item-pricing.js';
 import {formatShards,hasUnlimitedShards,shardCost} from '/shared/economy.js';
 import {renderWallet} from './wallet-ui.js';
 import {equipmentOf,equipmentStatText} from '/shared/equipment.js';
+import {renderEffectText} from './effect-text-ui.js';
 import {createEnergyShopUI} from './energy-shop-ui.js';
 import {discountedPurchase} from '/shared/star-card-automation.js';
 import {createCombatControls} from './combat-controls.js';
@@ -617,7 +618,7 @@ function openItemInfo(item,hints=[]){
   $('item-info-title').textContent=item.icon+' '+item.name;
   $('item-info-level').textContent='Lv '+item.level+' 아이템';
   const description=[...new Set([item.description,itemUseText(item),item.special].filter(Boolean).map(text=>text.trim()))].join('\n\n');
-  $('item-info-text').textContent=description+(hints.length?'\n\n'+hints.map(hint=>'조합 힌트 : '+hint).join('\n'):'');
+  renderEffectText($('item-info-text'),description+(hints.length?'\n\n'+hints.map(hint=>'조합 힌트 : '+hint).join('\n'):''));
   $('item-info-dialog').showModal();
   if(item.mode==='journey-practice')tutorial.observe('item-info');
 }
@@ -717,7 +718,7 @@ function renderEquipmentSlots(me){
     button.onclick=()=>{
       if(!item){toast('가방에서 장비를 골라 장착해 보세요.');return;}
       $('equipment-title').textContent=item.name;$('equipment-picture').src=item.art;
-      $('equipment-description').textContent=itemUseText(item);
+      renderEffectText($('equipment-description'),itemUseText(item));
       $('equipment-remove').onclick=async()=>{const remove=$('equipment-remove');remove.disabled=true;try{
         const ack=await request('equipment:unequip',{slot:index+1});applyEquipmentAck(ack);$('equipment-dialog').close();toast(item.name+'을 가방에 넣었어요.');
       }catch(error){toast(error.message);}finally{remove.disabled=false;}};
@@ -765,7 +766,7 @@ async function openUseDialog(item){
   $('use-title').textContent=item.icon+' '+item.name+' 사용하기';
   $('use-description').textContent=item.description;
   const eclipsed=me?.eclipseFeeDue===true;
-  $('use-effect').textContent=itemUseText(item)+(eclipsed?'\n현재 개기 일식 상태입니다. 별 1개를 지급 후 사용하시겠습니까?':'');
+  renderEffectText($('use-effect'),itemUseText(item)+(eclipsed?'\n현재 개기 일식 상태입니다. 별 1개를 지급 후 사용하시겠습니까?':''));
   $('use-confirm').textContent=eclipsed?'별 1개 지급 후 사용하기':'사용하기';
   $('use-special').textContent=item.special||'';$('use-special').hidden=!item.special;
   $('use-secret-note').hidden=!item.secret;

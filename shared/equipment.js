@@ -15,7 +15,7 @@ export const EQUIPMENT_ITEMS=Object.freeze([
   {id:'breeze-anklet',name:'산들바람 발찌',description:'산들바람이 마나와 이동속도를 높여줘요.',level:2,price:800,bonus:{mp:10,speed:.10}},
   {id:'galaxy-pendant',name:'은하수 목걸이',description:'은하수의 빛이 최대 마나와 마나 회복을 높여줘요.',level:3,price:1000,bonus:{mp:20,mpRegen:1}},
   {id:'star-heart',name:'별하트',description:'따뜻한 별빛이 최대 체력과 체력 회복을 높여줘요.',level:3,price:1000,bonus:{hp:10,hpRegen:2}},
-  {id:'meteor-boots',name:'유성 장화',description:'유성의 속도가 이동을 돕고 스킬 재사용을 줄여줘요.',level:3,price:1200,bonus:{speed:.20,cooldownReduction:.10}},
+  {id:'meteor-boots',name:'유성 장화',description:'유성의 속도가 이동을 돕고 스킬 재사용 시간을 줄여줘요.',level:3,price:1200,bonus:{speed:.20,cooldownReduction:.10}},
   {id:'galaxy-compass',name:'은하수 나침반',description:'은하수의 길이 공격력과 스킬 피해를 높여줘요.',level:3,price:1500,bonus:{attack:1,skillDamage:.20}},
   {id:'dream-guardian-cloak',name:'꿈의 파수꾼 망토',description:'꿈결 같은 수호가 위험한 타격을 막아줘요.',level:3,price:1500,bonus:{},effectText:'30초마다 즉사 외 피해 1회 막기 · 수호 상태'},
   {id:'celestial-crown',name:'천공의 왕관',description:'은은한 별빛이 몸과 마음을 지켜요.',level:4,price:5000,bonus:{attack:1,hp:20}},
@@ -37,7 +37,7 @@ const STAT_ORDER=Object.freeze([
   ['attack','공격력'],['defense','방어력'],['hp','최대 체력'],['mp','최대 마나'],
   ['hpRegen','10초마다 체력 회복'],['mpRegen','10초마다 마나 회복'],['regen','10초 회복 비율'],
   ['speed','이동속도'],['skillDamage','스킬 피해량'],['manaCostIncrease','스킬 마나 소모량'],['durationMs','지속형 스킬 지속시간'],
-  ['cooldownReduction','일반 스킬 쿨타임'],['allCooldownReduction','모든 스킬 쿨타임']
+  ['cooldownReduction','스킬 재사용 시간'],['allCooldownReduction','모든 스킬 재사용 시간']
 ]);
 const PERCENT_STATS=new Set(['regen','speed','skillDamage','manaCostIncrease','cooldownReduction','allCooldownReduction']);
 const REDUCTION_STATS=new Set(['cooldownReduction','allCooldownReduction']);
@@ -47,6 +47,7 @@ export function equipmentStatText(item){
   return STAT_ORDER.filter(([key])=>bonus[key]).map(([key,label])=>{
     const value=bonus[key],sign=REDUCTION_STATS.has(key)||value<0?'-':'+';
     const amount=PERCENT_STATS.has(key)?Math.round(Math.abs(value)*100)+'%':key==='durationMs'?Math.abs(value)/1000+'초':Math.abs(value);
+    if(REDUCTION_STATS.has(key))return `${label} ${value<0?'증가':'감소'} ${amount}`;
     return `${label} ${sign}${amount}`;
   }).join(' · ');
 }
