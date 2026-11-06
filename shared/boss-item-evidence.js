@@ -1,3 +1,4 @@
+import {equipmentBaseId} from './equipment.js';
 // Possessions prove acquisition regardless of who dealt the final blow.
 // Recipe knowledge and recipe cards are deliberately excluded.
 export const BOSS_ITEM_CREDITS=Object.freeze(Object.fromEntries(Object.entries({
@@ -14,7 +15,7 @@ export const BOSS_ITEM_CREDITS=Object.freeze(Object.fromEntries(Object.entries({
 
 export function bossItemEvidence(player){
   const found=new Set();
-  const add=id=>{if(Object.hasOwn(BOSS_ITEM_CREDITS,id))for(const boss of BOSS_ITEM_CREDITS[id])found.add(boss);};
+  const add=id=>{id=equipmentBaseId(id);if(Object.hasOwn(BOSS_ITEM_CREDITS,id))for(const boss of BOSS_ITEM_CREDITS[id])found.add(boss);};
   for(const item of player?.inventory||[])if(Number.isSafeInteger(item?.quantity)&&item.quantity>0)add(item.id);
   for(const id of player?.equipmentSlots||[])if(typeof id==='string')add(id);
   // The server temporarily stores previously worn gear during the Corona Lv1 trial.

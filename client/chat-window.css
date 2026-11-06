@@ -1,5 +1,5 @@
-#chat-window-toggle{display:none;position:fixed;top:12px;left:12px;z-index:30;margin:0;min-height:49px;padding:10px 17px;border-radius:12px;font-size:17px;font-weight:800;overflow:visible}
-.main-chat-new-badge{position:absolute;top:-8px;right:-8px;padding:2px 6px;border:1px solid #d79aab;border-radius:8px;background:#fff3f6;color:#b72f50;font-size:11px;font-weight:800;line-height:1.2;box-shadow:0 2px 6px #49304725;pointer-events:none}
+#chat-window-toggle{display:none;position:fixed;top:12px;left:12px;z-index:30;margin:0;min-height:49px;padding:10px 25px 10px 17px;border-radius:12px;font-size:17px;font-weight:800;overflow:visible}
+.main-chat-new-badge{position:absolute;top:-5px;right:-5px;padding:2px 6px;border:1px solid #d79aab;border-radius:8px;background:#fff3f6;color:#b72f50;font-size:11px;font-weight:800;line-height:1.2;box-shadow:0 2px 6px #49304725;pointer-events:none}
 .main-chat-new-badge[hidden]{display:none}
 body.joined #chat-window-toggle{display:block}
 

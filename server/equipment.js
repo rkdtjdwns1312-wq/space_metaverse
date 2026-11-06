@@ -1,4 +1,4 @@
-import {EQUIPMENT_ITEMS,equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
+import {EQUIPMENT_ITEMS,equipmentOf,equipmentBaseId,validateEquipmentSlots} from '../shared/equipment.js';
 import {SHOP} from '../shared/config.js';
 import {GameError} from './rooms.js';
 import {hasUnlimitedShards} from '../shared/economy.js';
@@ -26,7 +26,7 @@ export function equip(player,itemId,slot){
   ensure(levelOf(player)>=item.level,'이 장비는 LV'+item.level+'부터 장착할 수 있어요.');
   const slots=validateEquipmentSlots(player.equipmentSlots),row=player.inventory.find(entry=>entry.id===itemId);
   ensure(row?.quantity>0,'가방에 장비가 없어요.');
-  ensure(!slots.includes(itemId),'같은 장비는 한 번만 장착할 수 있어요.');
+  ensure(!slots.some(id=>id&&equipmentBaseId(id)===equipmentBaseId(itemId)),'같은 장비는 한 번만 장착할 수 있어요.');
   const previous=slots[slot-1];
   // 교체할 때 빈칸이 필요한 경우는 먼저 검사하여 기존 장비를 잃지 않게 합니다.
   ensure(!previous||!player.inventory.some(entry=>entry.id===previous&&entry.quantity>=SHOP.maxStack),'가방에 장비를 더 담을 수 없어요.');
@@ -35,13 +35,13 @@ export function equip(player,itemId,slot){
   row.quantity--;if(row.quantity===0)player.inventory=player.inventory.filter(entry=>entry!==row);
   if(previous)addToBag(player,previous);
   slots[slot-1]=itemId;player.equipmentSlots=slots;
-  if(previous===INFINITE_BRACELET||itemId===INFINITE_BRACELET)delete player.infiniteEnergy;
+  if(equipmentBaseId(previous)===INFINITE_BRACELET||equipmentBaseId(itemId)===INFINITE_BRACELET)delete player.infiniteEnergy;
   return {inventory:[...player.inventory],equipmentSlots:[...slots]};
 }
 export function unequip(player,slot){
   ensure(Number.isInteger(slot)&&slot>=1&&slot<=3,'장비 칸을 다시 골라주세요.');
   const slots=validateEquipmentSlots(player.equipmentSlots),itemId=slots[slot-1];ensure(itemId,'비어 있는 칸이에요.');
   addToBag(player,itemId);slots[slot-1]=null;player.equipmentSlots=slots;
-  if(itemId===INFINITE_BRACELET)delete player.infiniteEnergy;
+  if(equipmentBaseId(itemId)===INFINITE_BRACELET)delete player.infiniteEnergy;
   return {inventory:[...player.inventory],equipmentSlots:[...slots]};
 }

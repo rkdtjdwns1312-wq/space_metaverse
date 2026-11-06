@@ -1,10 +1,10 @@
-import {INFINITE_BRACELET,INFINITE_ENERGY,infiniteEnergyStacks} from '../shared/infinite-energy.js';
+import {infiniteEnergyConfig,infiniteEnergyStacks} from '../shared/infinite-energy.js';
 
 export function gainInfiniteEnergy(player,now){
-  if(!player.equipmentSlots?.includes(INFINITE_BRACELET))return;
-  const stacks=Math.min(INFINITE_ENERGY.maxStacks,infiniteEnergyStacks(player,now)+1);
+  const config=infiniteEnergyConfig(player);if(!config)return;
+  const stacks=Math.min(config.maxStacks,infiniteEnergyStacks(player,now)+1);
   // Delayed damage can carry an earlier simulation tick than a recent direct hit.
-  const endsAt=Math.max(player.infiniteEnergy?.endsAt||0,now+INFINITE_ENERGY.durationMs);
+  const endsAt=Math.max(player.infiniteEnergy?.endsAt||0,now+config.durationMs);
   player.infiniteEnergy={stacks,endsAt};
 }
 

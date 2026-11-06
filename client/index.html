@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="/planet-designer.css">
   <link rel="stylesheet" href="/mobile-top-controls.css">
   <link rel="stylesheet" href="/star-archive.css">
+  <link rel="stylesheet" href="/dialog-layout.css">
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/">✦ <span>우주 교실<small>우리들의 작은 우주</small></span></a>
@@ -48,7 +49,7 @@
     <div class="map-wrap">
       <canvas id="world" width="1200" height="760" tabindex="0" aria-label="우주 광장. WASD 또는 방향키·조이스틱으로 이동하고 Q로 공격, E로 스킬, F로 상호작용해요."></canvas>
       <time id="classroom-clock" class="classroom-clock" aria-label="현재 한국 시간"></time>
-      <div class="audio-control"><button id="audio-toggle" class="audio-toggle" type="button" aria-label="배경음과 효과음 설정" aria-controls="audio-panel" aria-expanded="false" title="소리 설정">🔊</button><div id="audio-panel" class="audio-panel" hidden><label for="audio-volume">게임 소리</label><input id="audio-volume" type="range" min="0" max="100" value="35" aria-label="게임 소리 크기"><button id="audio-mute" class="small secondary" type="button">음소거</button></div></div>
+      <div class="audio-control"><button id="audio-toggle" class="audio-toggle" type="button" aria-label="배경음과 효과음 설정" aria-controls="audio-panel" aria-expanded="false" title="소리 설정">🔊</button><div id="audio-panel" class="audio-panel" hidden><label for="audio-volume">게임 소리 <output id="audio-volume-value" for="audio-volume">35%</output></label><input id="audio-volume" type="range" min="0" max="100" step="1" value="35" aria-label="게임 소리 크기"><button id="audio-mute" class="small secondary" type="button">음소거</button></div></div>
       <aside id="world-navigation" aria-label="현재 맵 탐색">
         <button id="map-overview" class="secondary" type="button">전체 우주 지도</button>
         <div id="minimap-title">현재 맵</div>
@@ -242,7 +243,7 @@
 <dialog id="serena-dialog" aria-labelledby="serena-title" aria-describedby="serena-message"><h2 id="serena-title">세레나</h2><p id="serena-message" role="status" aria-live="polite">보스를 소환하시겠습니까?</p><div class="dialog-actions"><button id="serena-no" class="secondary" type="button">아니오</button><button id="serena-yes" class="primary" type="button">예</button></div></dialog>
 <dialog id="planet-move-dialog" aria-labelledby="planet-move-title"><h2 id="planet-move-title">행성위치 이동하기</h2><p id="planet-move-name"></p><p id="planet-move-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-move-cancel" class="secondary" type="button">취소</button><button id="planet-move-submit" class="primary" type="button">이 위치로 이동하기</button></div></dialog>
 <dialog id="planet-create-dialog"><h2 id="planet-create-title">새 행성 신청하기</h2><p id="planet-create-hint" class="muted">행성은 우리 반의 역할이에요. 어떤 역할의 행성인지 이름과 소개를 적어요.</p><fieldset id="planet-types"><legend>행성 종류</legend></fieldset><label for="planet-name">행성 이름</label><input id="planet-name" maxlength="10" required placeholder="예: 급식행성"><label for="planet-desc">행성 소개</label><input id="planet-desc" maxlength="40" placeholder="어떤 친구들의 행성인가요? (선택)"><fieldset id="planet-colors"><legend>행성 색</legend></fieldset><p id="planet-create-error" class="form-message" role="alert"></p><div class="dialog-actions"><button id="planet-create-cancel" class="secondary" type="button">취소</button><button id="planet-create-submit" class="primary" type="button">신청하기</button></div></dialog>
-<dialog id="shop-dialog" aria-labelledby="shop-title"><div class="shop-heading"><h2 id="shop-title">별상점</h2><p id="shop-shards" role="status" aria-live="polite">내 별 파편 ★ 0</p></div>
+<dialog id="shop-dialog" aria-labelledby="shop-title"><header class="shop-heading"><h2 id="shop-title">별상점</h2><button id="shop-close" class="secondary" type="button">닫기</button></header><p id="shop-shards" role="status" aria-live="polite">내 별 파편 ★ 0</p>
   <div class="tabs" role="tablist" aria-label="상점 탭">
     <button id="shop-tab-buy" class="tab selected" role="tab" aria-selected="true" aria-controls="shop-buy-list" type="button">사기</button>
     <button id="shop-tab-sell" class="tab" role="tab" aria-selected="false" aria-controls="shop-sell-list" type="button">팔기</button>
@@ -258,7 +259,6 @@
   <p id="shop-buy-empty" class="muted" hidden>이 레벨 상품은 준비중이에요.</p>
   <ul id="shop-sell-list" class="item-list" aria-label="팔 수 있는 물건" hidden></ul>
   <p id="shop-sell-empty" class="muted" hidden>팔 물건이 없어요.</p>
-  <div class="dialog-actions"><button id="shop-close" class="secondary" type="button">닫기</button></div>
 </dialog>
 <dialog id="use-dialog" aria-labelledby="use-title"><h2 id="use-title">물건 사용하기</h2>
   <p id="use-description"></p>

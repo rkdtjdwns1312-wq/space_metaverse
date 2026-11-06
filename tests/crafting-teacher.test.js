@@ -118,7 +118,8 @@ test('학생 스냅샷과 crafting:open에는 레시피 내용이 포함되지 �
   const player=game.store.rooms.get(created.room.code).players.get(joined.selfId);placeAtMachine(player);
   const opened=await call(student,'crafting:open');
   assert.equal(opened.ok,true);
-  assert.deepEqual(Object.keys(opened).sort(),['configured','enabled','fee','ok','privateRecipeCount']);
+  assert.deepEqual(Object.keys(opened).sort(),['configured','enabled','enhancementToken','fee','ok','privateRecipeCount']);
+  assert.match(opened.enhancementToken,/^[0-9a-f-]{36}$/);
   assert.equal(opened.configured,true);assert.ok(opened.privateRecipeCount>0);
   const state=game.store.snapshot(game.store.rooms.get(created.room.code),player);
   assert.equal(JSON.stringify(state).includes('space-station-card'),false);

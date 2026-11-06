@@ -8,11 +8,11 @@ import {ensureVitals,playerVitals} from '../server/vitals.js';
 import {characterAbilities} from '../shared/character-skills.js';
 import {skillDamageFactor} from '../shared/skill-damage.js';
 const make=()=>({id:'gem-test',role:'student',connected:true,away:false,avatar:{level:5,constellationId:'hercules'},equipmentSlots:['primordial-star-gem',null,null]});
-test('시초 보석은 10초당 기존 자연회복에 HP5 MP5를 더하고 최대치를 넘지 않는다',()=>{
+test('시초 보석은 10초당 기존 자연회복에 HP5 MP3를 더하고 최대치를 넘지 않는다',()=>{
  const p=make(),room={players:new Map([[p.id,p]])},v=ensureVitals(p),max=playerVitals(p);v.hp=1;v.mp=0;
  advancePassiveRecovery(room,1000);advancePassiveRecovery(room,10999);assert.equal(v.hp,1);assert.equal(v.mp,0);
- advancePassiveRecovery(room,11000);assert.equal(v.hp,1+Math.ceil(max.hp.max*.1)+5);assert.equal(v.mp,7);
- p.equipmentSlots=[];advancePassiveRecovery(room,21000);assert.equal(v.mp,9);
+ advancePassiveRecovery(room,11000);assert.equal(v.hp,1+Math.ceil(max.hp.max*.1)+5);assert.equal(v.mp,5);
+ p.equipmentSlots=[];advancePassiveRecovery(room,21000);assert.equal(v.mp,7);
  p.equipmentSlots=['primordial-star-gem'];advancePassiveRecovery(room,101000);assert.equal(v.hp,max.hp.max);assert.equal(v.mp,max.mp.max);
  assert.equal(equipmentOf('primordial-star-gem').craftOnly,true);
 });

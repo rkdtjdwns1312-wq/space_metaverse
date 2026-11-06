@@ -62,16 +62,21 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
   const error = document.createElement('p');
   error.className = 'star-card-error';
   error.setAttribute('role', 'alert');
-  const removeConfirm = document.createElement('div');
+  const removeConfirm = document.createElement('dialog');
+  removeConfirm.id = 'star-card-remove-dialog';
   removeConfirm.className = 'star-card-remove-confirm';
-  removeConfirm.hidden = true;
+  removeConfirm.setAttribute('aria-labelledby', 'star-card-remove-title');
+  const removeTitle = document.createElement('h2');
+  removeTitle.id = 'star-card-remove-title'; removeTitle.textContent = '별카드 종료 확인';
   const removeQuestion = document.createElement('p');
   removeQuestion.textContent = '이 활성 별카드를 종료할까요?';
   const removeYes = document.createElement('button');
-  removeYes.type = 'button'; removeYes.className = 'danger'; removeYes.textContent = '종료하기';
+  removeYes.type = 'button'; removeYes.className = 'danger'; removeYes.textContent = '예';
   const removeNo = document.createElement('button');
-  removeNo.type = 'button'; removeNo.className = 'secondary'; removeNo.textContent = '취소';
-  removeConfirm.append(removeQuestion, removeYes, removeNo);
+  removeNo.type = 'button'; removeNo.className = 'secondary'; removeNo.textContent = '아니오';
+  const removeError = document.createElement('p');
+  removeError.className = 'star-card-error'; removeError.setAttribute('role', 'alert');
+  removeConfirm.append(removeTitle, removeQuestion, removeError, removeYes, removeNo);
   const actions = document.createElement('div');
   actions.className = 'dialog-actions';
   const remove = document.createElement('button');
@@ -82,8 +87,8 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
   // 학생에게는 카드의 이름·설명·효과만 보여 주고, 효과 선택은 효과 아래에 둡니다.
   effect.append(choicePanel);
   face.append(name, description, effect, usedBy, expiry, messages, manualNote);
-  dialog.append(title, face, error, removeConfirm, actions);
-  document.body.append(dialog);
+  dialog.append(title, face, error, actions);
+  document.body.append(dialog, removeConfirm);
 
   let cardId = null;
   let previousFocus = null;
@@ -93,6 +98,7 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
   let choosing = false;
   let choiceVersion = 0;
   let observedAutomationChoice;
+  let removeVersion = 0, removing = false;
 
   function remaining(card) {
     const value = card?.remainingMs ?? card?.remaining ?? card?.expiresInMs;
@@ -136,7 +142,9 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
     renderChoice(result);
     error.textContent = '';
     remove.hidden = result?.canRemove !== true;
-    removeConfirm.hidden = true;
+    removeVersion += 1; removing = false;
+    removeYes.disabled = removeNo.disabled = false;
+    if (removeConfirm.open) removeConfirm.close();
   }
 
   function renderCardText(definition,card){
@@ -268,15 +276,28 @@ export function createStarCardUI({ request, stop, toast, getRoom, getSelfId }) {
   }
 
   close.onclick = () => dialog.close();
-  dialog.addEventListener('close', () => { stopTicker(); finishClose(); });
-  remove.onclick = () => { removeConfirm.hidden = false; removeYes.focus(); };
-  removeNo.onclick = () => { removeConfirm.hidden = true; remove.focus(); };
+  dialog.addEventListener('close', () => { removeVersion += 1; if (removeConfirm.open) removeConfirm.close(); stopTicker(); finishClose(); });
+  remove.onclick = () => {
+    if (!cardId || currentResult?.canRemove !== true || removing) return;
+    removeQuestion.textContent = `“${name.textContent}” 별카드를 종료할까요?`;
+    removeError.textContent = '';
+    if (!removeConfirm.open) removeConfirm.showModal();
+    removeNo.focus();
+  };
+  removeNo.onclick = () => { if (!removing) removeConfirm.close(); };
+  removeConfirm.addEventListener('cancel', event => { if (removing) event.preventDefault(); });
+  removeConfirm.addEventListener('close', () => { if (dialog.open && !remove.hidden) remove.focus(); });
   removeYes.onclick = async () => {
-    if (!cardId) return;
-    removeYes.disabled = true;
-    try { await request('star-card:remove', { id: cardId }); dialog.close(); toast?.('별카드를 종료했어요.'); }
-    catch (errorValue) { error.textContent = errorValue.message; }
-    finally { removeYes.disabled = false; }
+    if (!cardId || removing || !removeConfirm.open || currentResult?.canRemove !== true) return;
+    const version = removeVersion, id = cardId;
+    removing = true; removeYes.disabled = removeNo.disabled = true; removeError.textContent = '';
+    try {
+      await request('star-card:remove', { id });
+      if (version !== removeVersion || !dialog.open) return;
+      removeConfirm.close(); dialog.close(); toast?.('별카드를 종료했어요.');
+    }
+    catch (errorValue) { if (version === removeVersion && removeConfirm.open) removeError.textContent = errorValue.message; }
+    finally { if (version === removeVersion) { removing = false; removeYes.disabled = removeNo.disabled = false; } }
   };
   choiceCancel.onclick = () => {
     if (choosing) return;

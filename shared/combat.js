@@ -3,7 +3,7 @@ import {transformationBonus} from './transformation.js';
 import {constellationOf} from './constellations.js';
 import {isTeacher,TEACHER_AVATAR} from './teacher-avatar.js';
 import {avatarSizeOf} from './avatar-size.js';
-import {equipmentBonus,equipmentOf} from './equipment.js';
+import {equipmentBonus,equipmentOf,equipmentBaseId} from './equipment.js';
 import {INFINITE_BRACELET,infiniteEnergyStacks} from './infinite-energy.js';
 import {isMaster,MASTER_BASE} from './master-account.js';
 // LV5가 최종 초월체입니다. 단계별 기본값에 계열 보정을 적용합니다.
@@ -15,7 +15,7 @@ const meleePassive=(level,constellationId,player)=>!isTeacher(player)&&!isMaster
 export function attackPowerOf(level,constellationId,player=null,now=Date.now(),againstPlayer=false){
   const stacks=againstPlayer?0:infiniteEnergyStacks(player,now);
   if(isTeacher(player))return TEACHER_AVATAR.attackPower+stacks+
-    (player.equipmentSlots?.includes(INFINITE_BRACELET)?equipmentOf(INFINITE_BRACELET)?.bonus.attack||0:0);
+    (player.equipmentSlots?.some(id=>equipmentBaseId(id)===INFINITE_BRACELET)?equipmentOf(INFINITE_BRACELET)?.bonus.attack||0:0);
   // LV1은 아직 공격을 배우지 않은 상태입니다. 미지원 단계에는 보정을 적용하지 않습니다.
   if(!isMaster(player)&&(!Number.isInteger(level)||!Object.hasOwn(ATTACK_POWER,level)))return null;
   const type=constellationOf(constellationId,level)?.type;

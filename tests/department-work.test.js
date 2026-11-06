@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateWork, saveReport, awardReport, proposeDistribution, confirmDistribution, reconcileMembership, cancelDistribution } from '../server/department-work.js';
+import { validateWork, saveReport, reviseReport, awardReport, proposeDistribution, confirmDistribution, reconcileMembership, cancelDistribution } from '../server/department-work.js';
 import { GameError } from '../server/rooms.js';
 
 const make = () => {
@@ -36,6 +36,24 @@ test('save, stale version, submit lock, and award clears the report', () => {
   awardReport(planet, 10, 2, 30);
   assert.deepEqual(planet.work.report, { text: '', status: 'draft', version: 3, submittedAt: null });
   assert.equal(planet.work.balance, 10);
+});
+
+test('submitted revision preserves balances and distribution, rejects stale/empty/awarded revisions', () => {
+  const {room,planet,a,b}=make();planet.work=validateWork();planet.work.balance=9;
+  const distribution=proposeDistribution(room,planet,a.id,[{playerId:a.id,quantity:4},{playerId:b.id,quantity:5}]);
+  saveReport(planet,'원본',0,true,10);
+  assert.throws(()=>reviseReport(planet,'늦은 내용',0,20),/바뀌었어요/);
+  assert.throws(()=>reviseReport(planet,'  ',1,20),/1~4000/);
+  assert.throws(()=>reviseReport(planet,'가'.repeat(4001),1,20),/1~4000/);
+  reviseReport(planet,'  수정한 제출본  ',1,20);
+  assert.deepEqual(planet.work.report,{text:'수정한 제출본',status:'submitted',version:2,submittedAt:20});
+  assert.equal(planet.work.balance,9);assert.deepEqual(planet.work.distribution,distribution);
+  assert.equal(a.starShards+b.starShards,0);assert.deepEqual(planet.work.history,[]);
+  assert.throws(()=>awardReport(planet,3,1,30),/바뀌었어요/);
+  awardReport(planet,3,2,30);
+  assert.throws(()=>reviseReport(planet,'지급 후 수정',3,40),/확인 대기/);
+  assert.throws(()=>awardReport(planet,3,3,40),/제출된/);
+  assert.equal(planet.work.balance,12);
 });
 
 test('teacher cannot propose, zero allocations are allowed, every member confirms, and duplicate confirmation pays once', () => {

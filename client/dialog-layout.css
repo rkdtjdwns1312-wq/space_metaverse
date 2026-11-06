@@ -1,0 +1,25 @@
+/* The title/help/close row stays in place; only the content below it scrolls. */
+dialog.fixed-dialog-header{box-sizing:border-box;overflow:hidden;max-height:86dvh}
+dialog.fixed-dialog-header[open]{display:flex;flex-direction:column;gap:0}
+:is(#shop-dialog,#energy-shop-dialog,#teacher-equipment-catalog-dialog,#crafting-dialog,#department-work-dialog,#temple-dialog,#enhancement-dialog).fixed-dialog-header{overflow:hidden;max-height:86dvh}
+dialog.fixed-dialog-header > header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;min-width:0;margin:0;padding:0 0 12px}
+dialog.fixed-dialog-header > header h2{margin:0;min-width:0;overflow-wrap:anywhere}
+dialog.fixed-dialog-header > header > button{flex:0 0 auto;white-space:nowrap}
+dialog.fixed-dialog-header > header .student-help-heading{margin:0;gap:6px 10px}
+dialog.fixed-dialog-header > .dialog-scroll-body{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;padding:3px 4px 5px;scrollbar-width:thin;scrollbar-color:#b9accb transparent}
+#shop-dialog #shop-shards{max-width:none;margin:0 0 12px}
+#shop-dialog #shop-buy-list,#shop-dialog #shop-sell-list,#energy-shop-dialog #energy-shop-list,#teacher-equipment-catalog-dialog #teacher-equipment-catalog-list{max-height:none;overflow:visible}
+#shop-dialog .item-art{object-fit:contain}
+#shop-dialog .shop-heading{flex-wrap:nowrap}
+#energy-shop-dialog > header{flex-wrap:nowrap}
+#enhancement-dialog{width:min(650px,calc(100vw - 24px));max-width:none;background:linear-gradient(145deg,#fffaf0,#f2ecfa)}
+#enhancement-preview{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;margin:16px 0;padding:14px;border:1px solid #d8cae4;border-radius:16px;background:#fff9}
+#enhancement-preview[hidden]{display:none}
+#enhancement-art{width:82px;height:82px;object-fit:contain}
+#enhancement-preview h3{font-size:15px;margin:14px 0 5px}
+#enhancement-preview p{margin:5px 0;line-height:1.65}
+#enhancement-dialog select{width:100%;min-width:0}
+#enhancement-chance{font-weight:700;color:#685094}
+#enhancement-result{white-space:pre-line;line-height:1.6}
+#crafting-dialog .crafting-header-actions{flex-wrap:wrap;flex-shrink:1}
+@media(max-width:580px){dialog.fixed-dialog-header{padding:16px}dialog.fixed-dialog-header > header{gap:6px}dialog.fixed-dialog-header > header h2{font-size:20px}dialog.fixed-dialog-header > header .student-help-link{padding:6px 8px;font-size:12px;white-space:nowrap}}

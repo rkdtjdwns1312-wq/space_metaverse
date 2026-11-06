@@ -27,18 +27,18 @@ function fixture(){
   return {player,room,monster,attack,hit};
 }
 
-test('each real monster hit powers subsequent attacks up to five, refreshes at cap, and expires exactly ten seconds later',()=>{
+test('each real monster hit powers subsequent attacks up to three, refreshes at cap, and expires exactly five seconds later',()=>{
   const {player,room,hit,attack}=fixture(),base=attack(1000);
   assert.equal(base,attackPowerOf(5,'gemini',{...player,equipmentSlots:[]},1000)+5);
   for(let i=0;i<7;i++){
-    assert.equal(hit(1000+i*1000).damage,base+Math.min(5,i));
-    assert.equal(infiniteEnergyStacks(player,1000+i*1000),Math.min(5,i+1));
+    assert.equal(hit(1000+i*1000).damage,base+Math.min(3,i));
+    assert.equal(infiniteEnergyStacks(player,1000+i*1000),Math.min(3,i+1));
   }
-  const effects=playerEffectsView(player,false,16999,room);
-  assert.equal(activeStatuses({effects},16999).find(s=>s.id==='infinite-energy').count,5);
-  assert.equal(effects.find(s=>s.statusId==='infinite-energy').until,17000);
-  assert.equal(attack(16999),base+5);assert.equal(attack(17000),base);
-  assert.equal(hit(17000).damage,base);assert.equal(player.infiniteEnergy.stacks,1);
+  const effects=playerEffectsView(player,false,11999,room);
+  assert.equal(activeStatuses({effects},11999).find(s=>s.id==='infinite-energy').count,3);
+  assert.equal(effects.find(s=>s.statusId==='infinite-energy').until,12000);
+  assert.equal(attack(11999),base+3);assert.equal(attack(12000),base);
+  assert.equal(hit(12000).damage,base);assert.equal(player.infiniteEnergy.stacks,1);
 });
 
 test('empty, dead, reflected and immune targets do not grant stacks; replacement or unequip removes them immediately',()=>{
@@ -97,8 +97,8 @@ test('the wearer receives actual attack and countdown updates on gain and expiry
     f.student.on('combat:infinite-energy',listen);
   });
   const base=attackPowerOf(5,'hercules',p,f.now),gain=next();damageMonster(f.room,monster,p,base,f.now);
-  const event=await gain;assert.equal(event.attackPower,base+1);assert.equal(event.effect.until,f.now+10000);
+  const event=await gain;assert.equal(event.attackPower,base+1);assert.equal(event.effect.until,f.now+5000);
   const me=f.game.store.snapshot(f.room,p,f.now).players.find(s=>s.id===p.id);
   assert.equal(me.combat.attackPower,base+1);assert.equal(me.effects.find(s=>s.statusId==='infinite-energy').stacks,1);
-  const expired=next();f.advance(10000);assert.deepEqual(await expired,{effect:null,attackPower:base});
+  const expired=next();f.advance(5000);assert.deepEqual(await expired,{effect:null,attackPower:base});
 });

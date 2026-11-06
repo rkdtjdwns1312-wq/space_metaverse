@@ -1,3 +1,4 @@
+import {equipmentOf,equipmentBaseId} from '../shared/equipment.js';
 // Successful E skill use (or Lv5 transformation) rolls once, after mana and cast checks.
 const COOLDOWN_FIELD=Object.freeze({
   aquarius:'aquariusCooldownUntil',corvus:'corvusCooldownUntil',cancer:'waterCooldownUntil',
@@ -8,8 +9,9 @@ const COOLDOWN_FIELD=Object.freeze({
 });
 
 export function refreshTruthRecord(player,result,kind,now,random=Math.random){
-  if(player?.role!=='student'||!player.equipmentSlots?.includes('truth-record')||!result?.ready&&kind!=='transform')return result;
-  if(random()>=.5)return result;
+  const item=equipmentOf(player?.equipmentSlots?.find(id=>equipmentBaseId(id)==='truth-record'));
+  if(player?.role!=='student'||!item||!result?.ready&&kind!=='transform')return result;
+  if(random()>=item.cooldownResetChance)return result;
   if(kind==='transform'){
     if(!player.transformation?.active)return result;
     player.transformation.cooldownUntil=now;

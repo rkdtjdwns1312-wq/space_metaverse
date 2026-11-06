@@ -17,7 +17,7 @@ export function validatePiscesPair(value){
   return {partnerId:value.partnerId,sourceId:value.sourceId,level:value.level,startsAt:value.startsAt,endsAt:value.endsAt};
 }
 export const activePiscesPair=(player,now=Date.now())=>player?.piscesPair?.endsAt>now?player.piscesPair:null;
-function clearPiscesPair(room,playerId){
+export function clearPiscesPair(room,playerId){
   const player=room.players.get(playerId),pair=player?.piscesPair;
   if(!pair)return false;
   const other=room.players.get(pair.partnerId);

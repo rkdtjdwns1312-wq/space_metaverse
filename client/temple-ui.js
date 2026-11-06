@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {itemOf} from '/shared/config.js';
 import {exemptionName} from '/shared/item-exemptions.js';
 import {createResetConfirmation} from './reset-confirm.js';
@@ -20,7 +21,7 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
   const dialog=document.createElement('dialog');dialog.id='temple-dialog';dialog.setAttribute('aria-labelledby','temple-title');
   // 고정된 화면 뼈대만 HTML로 만듭니다. 학생 이름·교사 내용은 모두 textContent로 넣습니다.
   dialog.innerHTML='<header><h2 id="temple-title"></h2><button id="temple-close" type="button" class="secondary">닫기</button></header><p id="temple-description"></p><div id="temple-content" tabindex="0"></div><div id="temple-notice-rows" hidden></div><button id="temple-add-line" type="button" class="secondary" hidden>줄 추가</button><p id="temple-error" role="alert"></p><button id="temple-save" class="primary" type="button" hidden>저장하기</button><button id="temple-refresh" class="secondary" type="button" hidden>새로 보기</button>';
-  document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0,effectTab='item';const selectedXp=new Map();
+  pinDialogHeader(dialog);document.body.append(dialog);const $=id=>dialog.querySelector('#temple-'+id);let selected=null,result=null,revision=0,effectTab='item';const selectedXp=new Map();
   const effectTabs=document.createElement('div');effectTabs.id='temple-effect-tabs';effectTabs.hidden=true;
   for(const [kind,label] of [['item','사용 중인 아이템'],['ability','사용 중인 별 능력']]){
     const button=document.createElement('button');button.type='button';button.className='secondary';button.dataset.effectTab=kind;button.textContent=label;
@@ -50,7 +51,11 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
     submit:async()=>{const rev=revision,data=await request('temple:weekly:reset',{objectId:selected.id});return {rev,data};},
     onSuccess:({rev,data})=>{if(rev!==revision||!dialog.open)return;result=data;render();toast('이번 주 받은 별 집계를 초기화했어요.');}});
   reset.onclick=()=>{if(result?.kind==='weekly'&&result.canReset)resetConfirm.open();};
-  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(devour.open)devour.close();selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();});
+  let cancellingAbility=null;
+  const abilityCancelConfirm=createResetConfirmation({root:dialog,title:'별 능력 해제 확인',message:'이 별 능력을 해제할까요?',acceptLabel:'해제',
+    submit:async()=>{const rev=revision,data=await request('ability:cancel',{objectId:selected.id,targetId:cancellingAbility.targetId,abilityCancelKey:cancellingAbility.abilityCancelKey});return {rev,data};},
+    onSuccess:({rev,data})=>{if(rev!==revision||!dialog.open)return;result=data;render();toast('별 능력을 해제했어요.');}});
+  $('close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(devour.open)devour.close();selected=null;result=null;revision++;selectedXp.clear();resetConfirm.close();abilityCancelConfirm.close();});
   function usableEffectRows(now=Date.now()){
     return (result?.rows||[]).filter(e=>(e.category||'item')===effectTab&&
       (e.until===null||e.until>now)&&(!Number.isInteger(e.remainingUses)||e.remainingUses>0));
@@ -87,6 +92,11 @@ export function createTempleUI({request,stop,toast,getRoom,getSelfId}){
         const done=document.createElement('button');done.type='button';done.className='small secondary';done.textContent=r.remainingUses>0?'1회 사용 처리':'처리 완료';
         done.onclick=async()=>{done.disabled=true;try{await request(r.abilityMarkerId?'ability:complete':'item:complete',{objectId:selected.id,targetId:r.targetId,...(r.abilityMarkerId?{abilityMarkerId:r.abilityMarkerId,...(xpSelect?{xpAmount:Number(xpSelect.value)}:{})}:{markerId:r.markerId})});toast(r.nickname+' 친구의 '+(itemOf(r.itemId)?.name||r.label)+' 처리를 완료했어요.');await load();}
           catch(error){done.disabled=false;$('error').textContent=error.message;}};li.append(done);
+      }
+      if(result.canComplete&&r.category==='ability'&&r.abilityCancelKey){
+        const cancel=document.createElement('button');cancel.type='button';cancel.className='small secondary';cancel.textContent='해제';
+        cancel.onclick=()=>{cancellingAbility=r;abilityCancelConfirm.open(`${r.nickname} 친구의 ${r.label} 효과를 해제할까요? 이미 받은 보상과 능력 사용 횟수는 되돌리지 않습니다.`);};
+        li.append(cancel);
       }
       ul.append(li);
     }

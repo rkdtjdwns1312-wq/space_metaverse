@@ -1,10 +1,11 @@
 import {attackPowerOf} from '../shared/combat.js';
+import {equipmentOf,equipmentBaseId} from '../shared/equipment.js';
 import {DARK_STAR_SKILLS} from '../shared/dark-star-skills.js';
 import {ensureVitals} from './vitals.js';
 import {monstersOf,damageMonster} from './monsters.js';
 import {launchProjectiles} from './projectiles.js';
 
-export const SIGIL_SHOT_INTERVAL_MS=10_000;
+export const SIGIL_SHOT_INTERVAL_MS=5_000;
 const MAX_RANGE=DARK_STAR_SKILLS.basic.speed*DARK_STAR_SKILLS.basic.durationMs/1000;
 
 // An actual passive hit provokes that monster, including a normal teacher.
@@ -18,7 +19,8 @@ export function resolveSigilHit(room,player,selected,power,now){
 export function advanceSigilProjectiles(room,now){
   const launched=[];
   for(const player of room.players.values()){
-    if(!player.equipmentSlots?.includes('primordial-star-sigil')||!player.connected||player.away||
+    const sigil=equipmentOf(player.equipmentSlots?.find(id=>equipmentBaseId(id)==='primordial-star-sigil'));
+    if(!sigil||!player.connected||player.away||
       player.avatar?.blackStar||!(ensureVitals(player)?.hp>0))continue;
     player.sigilNextShotAt??=now+SIGIL_SHOT_INTERVAL_MS;
     if(now<player.sigilNextShotAt)continue;
@@ -33,7 +35,7 @@ export function advanceSigilProjectiles(room,now){
       kind:'sigil-black-star',basic:true,piercing:false,x:player.x,y:player.y,dx,dy,
       range:MAX_RANGE,durationMs:DARK_STAR_SKILLS.basic.durationMs,width:DARK_STAR_SKILLS.basic.radius,
       size:DARK_STAR_SKILLS.basic.radius*2,originOffset:0,
-      power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now)*5
+      power:attackPowerOf(player.avatar.level,player.avatar.constellationId,player,now)*sigil.sigilDamageFactor
     },now));
     player.sigilNextShotAt=now+SIGIL_SHOT_INTERVAL_MS;
   }

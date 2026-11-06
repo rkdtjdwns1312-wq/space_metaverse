@@ -266,7 +266,11 @@ body.placing #world{cursor:crosshair}
 .audio-control{position:absolute;top:14px;left:calc(50% + 128px);z-index:12}.audio-toggle{width:38px;height:38px;min-height:38px;padding:0;border:1px solid #e7d8ff;border-radius:50%;background:#fff9;color:#59457c;box-shadow:0 5px 18px #25355521;font-size:18px}.audio-panel{position:absolute;top:43px;right:0;width:195px;padding:12px;border:1px solid #d7c8ef;border-radius:14px;background:#fffc;box-shadow:0 12px 28px #25355535;display:grid;gap:8px;color:#59457c;font-size:12px}.audio-panel[hidden]{display:none}.audio-panel input{width:100%}.audio-toggle:focus-visible,.audio-panel input:focus-visible{outline:3px solid #f0b35b;outline-offset:2px}
 #party-hud{position:absolute;left:14px;top:39%;z-index:9;width:min(245px,34vw);padding:9px 11px;border:1px solid #d9d3f0;border-radius:15px;background:#fcfaffdf;box-shadow:0 7px 24px #28305935;color:#464166;font-size:12px;pointer-events:auto}#party-hud[hidden]{display:none}#party-hud h3{margin:0 0 6px;font-size:13px;color:#7a5b9b}#party-hud ul{list-style:none;padding:0;margin:0;display:grid;gap:5px}#party-hud li{border-top:1px solid #d9d3f0;padding-top:4px}#party-hud .party-member-name{font-weight:700}#party-hud .party-member-vitals{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-variant-numeric:tabular-nums}#party-hud .party-member-vitals img{object-fit:contain}.party-roll-message{margin:6px 0;font-weight:700;color:#7a5b9b}
 @media(max-width:520px){.classroom-clock{top:8px;max-width:calc(100vw - 160px);padding:6px 9px;white-space:normal;font-size:12px;line-height:1.2}}
-@media(max-width:520px){.audio-control{top:8px;left:auto;right:8px}.audio-toggle{width:32px;height:32px;min-height:32px}.audio-panel{top:38px}}
+/* 범위 막대에는 텍스트 입력칸의 좌우 여백을 적용하지 않습니다. */
+#audio-volume{width:100%;height:32px;min-height:32px;padding:0;margin:0;border:0;border-radius:0;background:transparent;accent-color:#8065b2;cursor:pointer}
+.audio-panel label{display:flex;justify-content:space-between;align-items:center;gap:6px;margin:0}
+#audio-volume-value{font-size:12px;font-variant-numeric:tabular-nums}
+@media(max-width:520px){.audio-control{top:8px;left:auto;right:8px}.audio-toggle{width:32px;height:32px;min-height:32px;padding:0}.audio-panel{top:38px}}
 @media(max-width:520px){#party-hud{left:6px;top:34%;width:160px;padding:6px;font-size:10px}}
 body.joined #menu-dialog .topline{display:flex;gap:18px}
 body.joined .hud{display:contents!important}
@@ -501,6 +505,7 @@ body.joined #touch-interact{position:fixed;top:var(--dock-center-y,calc(100% - 5
 .department-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.department-heading h2{margin:0}
 .department-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.department-tabs button{flex:1;border-radius:16px;padding:10px;white-space:nowrap}.department-tabs .selected{background:#e4d8ff}
 #department-text{display:block;width:100%;box-sizing:border-box;margin:10px 0;resize:vertical}#department-text:read-only{background:#f5f0fa}
+.department-report-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .department-allocation{display:grid;grid-template-columns:minmax(85px,1fr) 85px 75px;align-items:center;gap:8px;margin:10px 0}.department-allocation input{width:100%;box-sizing:border-box}
 #department-message{color:#935d31;white-space:pre-wrap}#department-history article{background:#f6f0ff;border-radius:16px;padding:12px;margin:10px 0}#department-award-row{padding:14px;background:#fff2cb;border-radius:16px}#department-award-amount{width:90px}
 #experience-panel{border-top:1px solid #ded3ee;padding-top:14px;margin-top:14px;color:#695582}.experience-heading{display:flex;justify-content:space-between;gap:14px}#experience-bar{display:block;width:100%;height:13px;margin-top:9px;accent-color:#a48ade;border:0;border-radius:9px;overflow:hidden;background:#eee6f7}#experience-bar::-webkit-progress-bar{background:#eee6f7}#experience-bar::-webkit-progress-value{background:linear-gradient(90deg,#b5a0ed,#e3b5dd);border-radius:9px}#experience-next{font-size:13px;margin:8px 0 0;color:#887899}

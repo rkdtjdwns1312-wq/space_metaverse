@@ -1,8 +1,15 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {renderWallet} from './wallet-ui.js';
 import {renderEffectText} from './effect-text-ui.js';
 import {EQUIPMENT_ITEMS,equipmentStatText} from '/shared/equipment.js';
 import {hasUnlimitedShards} from '/shared/economy.js';
 import {STAT_GROWTH_KEYS,statGrowthRule} from '/shared/stat-growth.js';
+
+function shopDescription(item){
+  if(item.id==='infinite-star-bracelet')return '무한한 별의 기운을 담은 팔찌입니다.';
+  if(item.id==='truth-convergence')return '진리를 담은 보석의 별빛이 모인 목걸이입니다.';
+  return item.description;
+}
 
 // 원화는 프레임·배경 없이 보여 줍니다. 가격과 능력치는 서버/공유 목록의 한 값만 사용합니다.
 export function createEnergyShopUI({request,getPlayer,stop,toast}){
@@ -11,9 +18,10 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
   dialog.innerHTML='<header><h2 id="energy-shop-title">우주에너지 상점</h2><button id="energy-shop-close" class="secondary" type="button">닫기</button></header><div id="energy-shop-wallet"></div><p class="energy-shop-hint">모은 우주에너지로 장비를 골라 보세요. 가방에서 장비 → 장착하기를 누르고 1·2·3번 칸을 골라요.</p><button id="energy-shop-catalog-open" class="secondary teacher-equipment-catalog-trigger" type="button" hidden>모든 아이템 보기</button><div id="energy-shop-level-tabs" class="shop-level-tabs" role="tablist" aria-label="장비 레벨"></div><div id="energy-shop-list" class="energy-shop-list"></div><p id="energy-shop-empty" class="energy-shop-hint" hidden>이 레벨의 장비는 준비 중이에요.</p>';
   const catalogDialog=document.createElement('dialog');catalogDialog.id='teacher-equipment-catalog-dialog';catalogDialog.setAttribute('aria-labelledby','teacher-equipment-catalog-title');
   catalogDialog.innerHTML='<header><h2 id="teacher-equipment-catalog-title">장착 가능한 모든 아이템</h2><button id="teacher-equipment-catalog-close" class="secondary" type="button">닫기</button></header><p class="energy-shop-hint">현재 등록된 장비 목록이에요. 여기서는 구매할 수 없어요.</p><div id="teacher-equipment-catalog-list" class="energy-shop-list"></div>';
-  document.body.append(catalogDialog);
+  pinDialogHeader(catalogDialog);document.body.append(catalogDialog);
   document.body.append(dialog);
   const statPanel=document.createElement('section');statPanel.className='energy-stat-purchase';statPanel.innerHTML='<h3>하루 한 번 · 영구 능력치</h3><p id="energy-stat-description"></p><p id="energy-stat-chances"></p><button id="energy-stat-buy" type="button" class="primary">능력치 구매</button><p id="energy-stat-summary" class="muted"></p><p id="energy-stat-result" class="energy-stat-result" role="status"></p>';dialog.querySelector('#energy-shop-level-tabs').before(statPanel);
+  dialog.querySelector('.energy-shop-hint').remove();pinDialogHeader(dialog);
   const statBuy=statPanel.querySelector('button'),statSummary=statPanel.querySelector('#energy-stat-summary'),statResult=statPanel.querySelector('#energy-stat-result');let statInfo=null,statBusy=false;
   function renderStat(){const player=getPlayer();statPanel.hidden=player?.role!=='student';if(statPanel.hidden)return;const state=player.statGrowth,day=statInfo?.dayKey;const bought=!!day&&(statInfo.purchasedToday||(state?.lastPurchaseDay||'')>=day);
     const level=player.avatar?.level??1,rule=statGrowthRule(level),cost=rule?(hasUnlimitedShards(player)?0:rule.cost):0;
@@ -60,7 +68,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const picture=document.createElement('img');picture.src=item.art;picture.alt='';picture.className='energy-shop-picture';
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
-      const flavor=document.createElement('p');flavor.textContent=item.description;
+      const flavor=document.createElement('p');flavor.textContent=shopDescription(item);
       const bonus=document.createElement('small');renderEffectText(bonus,equipmentStatText(item));
       details.append(title,flavor,bonus);
       const actions=document.createElement('div');actions.className='energy-shop-actions';
@@ -89,7 +97,7 @@ export function createEnergyShopUI({request,getPlayer,stop,toast}){
       const picture=document.createElement('img');picture.src=item.art;picture.alt='';picture.className='energy-shop-picture';
       const details=document.createElement('div');details.className='energy-shop-details';
       const title=document.createElement('strong');title.textContent=item.name+' · LV'+item.level;
-      const flavor=document.createElement('p');flavor.textContent=item.description;
+      const flavor=document.createElement('p');flavor.textContent=shopDescription(item);
       const bonus=document.createElement('small');renderEffectText(bonus,equipmentStatText(item));
       details.append(title,flavor,bonus);row.append(picture,details);return row;
     }));

@@ -36,8 +36,11 @@
 .star-card-effect { font-weight: 700; }
 .star-card-manual-note { color: #664400; }
 .star-card-error { color: #a00; min-height: 1.4em; }
-.star-card-remove-confirm { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-.star-card-remove-confirm[hidden] { display: none; }
+.star-card-remove-confirm { box-sizing: border-box; width: min(380px,calc(100vw - 28px)); max-height: calc(100dvh - 28px); padding: 20px; border: 1px solid #cbb6dc; border-radius: 18px; background: #fffaf3; color: #4d416f; }
+.star-card-remove-confirm[open] { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.star-card-remove-confirm:not([open]) { display: none; }
+.star-card-remove-confirm h2 { flex: 1 0 100%; margin: 0; font-size: 20px; }
+.star-card-remove-confirm button { flex: 1; }
 .star-card-remove-confirm p { flex: 1 0 100%; margin: .25rem 0; }
 .star-card-dialog button { min-height: 2.5rem; max-width: 100%; }
 

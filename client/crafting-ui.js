@@ -1,3 +1,5 @@
+import {pinDialogHeader} from './dialog-layout.js';
+import {createEnhancementUI} from './enhancement-ui.js';
 import {itemOf} from '/shared/config.js';
 import {hasUnlimitedShards,hasUnlimitedCrumbs,shardCost} from '/shared/economy.js';
 import {isMaster} from '/shared/master-account.js';
@@ -23,7 +25,10 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     <div class="crafting-columns"><section><h3>조합 재료 <small>4 × 4</small></h3><div id="crafting-grid" aria-label="조합 재료 16칸"></div></section>
     <section><h3>내 인벤토리</h3><div id="crafting-bag" aria-label="조합에 넣을 아이템"></div><p id="crafting-bag-empty" hidden>가방이 비었어요.</p></section></div>
     <p id="crafting-wallet"></p><p id="crafting-requirements" role="status" hidden></p><p id="crafting-note" role="status"></p><footer><button id="crafting-clear" type="button" class="secondary">재료 모두 빼기</button><button id="crafting-submit" type="button" class="primary">조합</button></footer>`;
-  document.body.append(dialog);const $=id=>dialog.querySelector('#'+id);
+  pinDialogHeader(dialog);document.body.append(dialog);const $=id=>dialog.querySelector('#'+id);
+  const enhancement=createEnhancementUI({getPlayer,request,stop,toast});
+  const enhanceButton=document.createElement('button');enhanceButton.id='crafting-enhance-open';enhanceButton.className='secondary';enhanceButton.type='button';enhanceButton.textContent='강화하기';
+  $('crafting-recipes-open').before(enhanceButton);enhanceButton.onclick=()=>enhancement.open();
   let selected=new Map(),busy=false,enabled=false,configured=true,fee=0;
   let recipeRequest=0;
   function clearRecipes(){
@@ -101,7 +106,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
     $('crafting-clear').disabled=busy||!selected.size;
   }
   $('crafting-close').onclick=()=>dialog.close();$('crafting-clear').onclick=()=>{selected.clear();render();};
-  dialog.addEventListener('close',()=>{selected.clear();clearRecipes();});
+  dialog.addEventListener('close',()=>{selected.clear();clearRecipes();enhancement.reset();});
   $('crafting-submit').onclick=async()=>{
     if(busy)return;busy=true;render();
     const ingredients=[...selected].map(([id,quantity])=>({id,quantity}));
@@ -116,7 +121,7 @@ export function createCraftingUI({getPlayer,request,stop,toast}) {
       try{const info=await request('crafting:open',{});enabled=info.enabled;configured=info.configured!==false;fee=info.fee;selected.clear();const player=getPlayer();$('crafting-note').textContent=configured?'조합법을 몰라도 올바른 재료로 조합할 수 있어요. 성공하면 내 조합레시피에 자동 등록돼요. '+(hasUnlimitedShards(player)?'일반 조합은 재화 비용이 없어요.':'일반 조합에는 별 파편 '+shardCost(player,fee)+'개가 사용돼요.')+(isMaster(player)?' 마스터도 보스 조합 재료는 직접 구해야 해요.':' 공개 보스 조합은 재료와 우주에너지가 필요해요.'):'일반 조합법 데이터가 준비되지 않았어요. 선생님께 알려 주세요. 재료와 별 파편은 차감되지 않아요. 별 부스러기 5개 → 별 파편 1개와 공개 보스 조합은 이용할 수 있어요.';render();stop();if(!dialog.open)dialog.showModal();}
       catch(e){toast(e.message);}
     },
-    update(){if(dialog.open)render();},
+    update(){if(dialog.open)render();enhancement.update();},
     reset(){dialog.close();selected.clear();clearRecipes();}
   };
 }

@@ -53,6 +53,7 @@ try {
   }
   const teacher = await newPage(), actor = await newPage(), observer = await newPage();
   await teacher.goto(url);
+  await teacher.locator('#connection.is-connected').waitFor({state:'attached'});
   await teacher.locator('#teacher-tab').click();
   await teacher.locator('#teacher-key').fill(key);
   await fillNewClass(teacher, ['별이', '달이'], {pin: ['1357', '2468']});
@@ -61,6 +62,8 @@ try {
   code = [...game.store.rooms.keys()][0];
   for (const [page, nickname, pin] of [[actor, '별이', '1357'], [observer, '달이', '2468']]) {
     await page.goto(`${url}/?class=${code}`);
+    await page.locator('#connection.is-connected').waitFor({state:'attached'});
+    await page.locator('#student-tab').click();
     await page.locator('#nickname').fill(nickname);
     await page.locator('#student-pin').fill(pin);
     await page.locator('#student-form .submit').click();
@@ -144,10 +147,11 @@ try {
   await teacher.keyboard.press('f');
   await teacher.locator('#star-card-dialog').waitFor({state: 'visible'});
   await teacher.locator('.star-card-remove').click();
-  await teacher.locator('.star-card-remove-confirm').getByRole('button', {name: '취소', exact: true}).click();
+  assert.equal(await teacher.locator('#star-card-remove-dialog').evaluate(el=>el.matches(':modal')), true);
+  await teacher.locator('.star-card-remove-confirm').getByRole('button', {name: '아니오', exact: true}).click();
   assert.equal(room().starCards.length, 1);
   await teacher.locator('.star-card-remove').click();
-  await teacher.locator('.star-card-remove-confirm').getByRole('button', {name: '종료하기', exact: true}).click();
+  await teacher.locator('.star-card-remove-confirm').getByRole('button', {name: '예', exact: true}).click();
   await teacher.locator('#star-card-dialog').waitFor({state: 'hidden'});
   assert.equal(room().starCards.length, 0);
   assert.equal(player('별이').inventory.find(item => item.id === 'space-food-card').quantity, 2);

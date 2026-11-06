@@ -79,6 +79,15 @@ export function awardReport(planet, amount, expectedVersion, now = Date.now()) {
   return copy(w);
 }
 
+// 승인 대기 중인 제출본만 교체합니다. 지급/분배 상태는 손대지 않습니다.
+export function reviseReport(planet, text, expectedVersion, now = Date.now()) {
+  const w = work(planet, now); ensureVersion(w, expectedVersion);
+  if (w.report.status !== 'submitted') fail('확인 대기 중인 실적만 수정할 수 있어요. 새로 보기를 눌러주세요.');
+  if (!textOf(text) || !text.trim()) fail('실적 내용을 1~4000자로 적어주세요.');
+  w.report = { text: text.trim(), status: 'submitted', version: w.report.version + 1, submittedAt: now };
+  return copy(w.report);
+}
+
 export function proposeDistribution(room, planet, actorId, allocations, now = Date.now()) {
   const w = work(planet, now); const all = members(room, planet); const actor = member(room, planet, actorId);
   if (!actor) fail('부서 소속 학생만 제안할 수 있어요.');

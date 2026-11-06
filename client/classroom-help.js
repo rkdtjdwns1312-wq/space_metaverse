@@ -1,6 +1,7 @@
 import {mapOf,planetIdOfMap} from '/shared/config.js';
 import {STUDENT_QUESTIONS,POPULAR_QUESTIONS} from './student-help-data.js';
 import {searchHelp} from './help-search.js';
+import {PATCH_QUESTIONS} from './patch-help-data.js';
 
 export const HELP_TOPICS=[
   {id:'cozy',title:'돌보기와 꾸미기',entries:[['아기별 돌보기','쉼터의 별 침대에서 시작하기를 누르고 아기별 종류·이름·장식을 골라요. 마을 위 성장 이야기를 읽고 확인을 누른 뒤, 원하는 시설을 눌러 두 방법 중 하나를 선택해요. 12번의 교육·놀이와 이야기 선택으로 아기별을 키우면 16가지 성향과 48가지 직업 결말 중 하나를 만나요. 약 5~10분이며 닫았다 다시 이어갈 수 있어요. 결말을 모으고 장식을 열어보세요. 실제 나의 성격 검사나 진로 추천은 아니에요.'],['별방 꾸미기','달빛·구름·책 읽는 방의 그림을 고른 뒤, 30가지 가구를 누르면 방 가운데 놓여요. 끌어서 원하는 곳에 놓을 수도 있어요. 가구 위 단추로 색·방향을 바꾸고 모서리를 끌어 크기를 조절해요. 저장 버튼을 누르면 다음에도 이어 꾸며요. 서로 다른 가구 3개 이상을 저장하면 하루 한 번 보상을 받아요.'],['우주 식물 가꾸기','씨앗 3개를 표시된 자리에 간격을 맞춰 심고, 화살표 8번으로 햇빛을 주세요. 물 주기를 꾹 눌렀다가 3.5초 표시선에서 손을 떼세요. 세 과정의 점수로 아주 좋음·좋음·보통·나쁨·아주 나쁨 등급이 정해져요. 하루 첫 세 수확은 등급·레벨에 따른 우주에너지를 주고, 등급별 꽃은 계속 모을 수 있어요.'],['각자 즐기는 세 가지 활동','세 활동은 서로 연결된 재료나 진행 조건이 없어요. 원하는 것만 해도 돼요. 레벨에 따라 각 활동의 하루 최대 보상은 Lv1 30, Lv2 90, Lv3 300, Lv4 750, Lv5 1200이에요. 한국시간 자정에 보상 기회가 다시 열려요. 선생님·마스터 계정은 보상 없는 체험이에요.']]},
@@ -48,7 +49,7 @@ export function createClassroomHelp({getRoom,getSelfId,stop}){
   document.body.append(dialog);
   const tabs=dialog.querySelector('#classroom-help-tabs'),content=dialog.querySelector('#classroom-help-content'),search=dialog.querySelector('input'),body=dialog.querySelector('#help-page-body');
   const heading=dialog.querySelector('h2'),searchPanel=dialog.querySelector('#help-search-panel'),find=dialog.querySelector('#classroom-help-find');
-  const answers=[...STUDENT_QUESTIONS,...HELP_TOPICS.flatMap(t=>t.entries.map(([title,text],i)=>({id:`guide-${t.id}-${i}`,topic:t.id,title,text})))];
+  const answers=[...STUDENT_QUESTIONS,...PATCH_QUESTIONS,...HELP_TOPICS.flatMap(t=>t.entries.map(([title,text],i)=>({id:`guide-${t.id}-${i}`,topic:t.id,title,text})))];
   const categories=[{id:'popular',title:'자주 묻는 질문'},...HELP_TOPICS].sort((a,b)=>a.title.localeCompare(b.title,'ko'));
   const icons={items:'🎒',play:'🎮',cozy:'🌱',battle:'⚔️',mission:'⭐',learning:'📚',department:'🪐',shop:'🛍️',avatar:'🌟',class:'📝',safety:'🛟',start:'🧭',popular:'💬',craft:'🔮',friends:'🤝',special:'🌌'};
   const status=dialog.querySelector('#help-result-status'),clear=dialog.querySelector('#classroom-help-clear');
@@ -96,9 +97,9 @@ export function createClassroomHelp({getRoom,getSelfId,stop}){
     const row=document.createElement('div');row.className='student-help-row';
     const button=document.createElement('button');button.type='button';button.className='secondary student-help-link';
     button.dataset.studentHelp=topic;button.textContent='이용 방법';button.setAttribute('aria-label',`${heading.textContent} 이용 방법`);
-    row.append(button);const header=heading.closest('header'),title=header&&host.contains(header)?header:heading;
-    const group=document.createElement('div');group.className='student-help-heading';title.before(group);
-    title.style.marginBottom='0';group.append(title,row);
+    row.append(button);
+    const group=document.createElement('div');group.className='student-help-heading';heading.before(group);
+    group.append(heading,row);
   }}
   const mapTopics=mapId=>planetIdOfMap(mapId)?['department']:mapId==='space-plaza'?['class','mission','department']:mapId==='star-street'?['cozy','shop','craft','learning','play']:mapId==='milky-valley'?['avatar']:mapId==='black-hole'?['department']:mapId==='whale-stomach'?['special']:['battle','start'];
   let mapReturnFocus=null;

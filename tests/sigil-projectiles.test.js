@@ -39,7 +39,7 @@ function fixture(){
   const room={players:new Map([[p.id,p],[friend.id,friend]]),planets:new Map(),monsters:new Map()};
   return {p,friend,room};
 }
-test('검은별 인장은 몬스터가 없을 때 발동하지 않고, 등장한 적에게만 10초 간격으로 원본 구체를 발사한다',()=>{
+test('검은별 인장은 몬스터가 없을 때 발동하지 않고, 등장한 적에게만 5초 간격으로 원본 구체를 발사한다',()=>{
   const {p,friend,room}=fixture();
   assert.deepEqual(advanceSigilProjectiles(room,START),[]);
   assert.equal(p.sigilNextShotAt,START+SIGIL_SHOT_INTERVAL_MS);
@@ -52,13 +52,13 @@ test('검은별 인장은 몬스터가 없을 때 발동하지 않고, 등장한
   const friendHp=ensureVitals(friend).hp;
   const launched=advanceSigilProjectiles(room,START+SIGIL_SHOT_INTERVAL_MS+1);
   assert.equal(launched.length,1);
-  assert.equal(room.projectiles[0].power,attackPowerOf(5,'aquarius',p)*5);
+  assert.equal(room.projectiles[0].power,attackPowerOf(5,'aquarius',p)*2.5);
   assert.equal(room.projectiles[0].width,DARK_STAR_SKILLS.basic.radius);
   assert.equal(room.projectiles[0].durationMs,DARK_STAR_SKILLS.basic.durationMs);
   assert.deepEqual(advanceSigilProjectiles(room,START+SIGIL_SHOT_INTERVAL_MS+2),[]);
   const hits=advanceProjectiles(room,START+SIGIL_SHOT_INTERVAL_MS+1001,combatEnemies,damageTargets);
   assert.equal(hits[0].targets[0].monsterId,monster.id);
-  assert.equal(hits[0].targets[0].damage,room.projectiles[0]?.power??attackPowerOf(5,'aquarius',p)*5);
+  assert.equal(hits[0].targets[0].damage,Math.round(room.projectiles[0]?.power??attackPowerOf(5,'aquarius',p)*2.5));
   assert.equal(ensureVitals(friend).hp,friendHp);
   assert.equal(room.projectiles.length,0);
   assert.deepEqual(advanceSigilProjectiles(room,p.sigilNextShotAt-1),[]);
@@ -111,4 +111,13 @@ test('실제 서버 틱은 몬스터가 나타난 뒤 인장 탄환을 같은 �
   Object.assign(monster,{x:650,y:450,hp:10000,maxHp:10000});
   await new Promise(resolve=>setTimeout(resolve,150));now+=1000;await new Promise(resolve=>setTimeout(resolve,150));
   assert.equal(monster.targetId,teacherPlayer.id);assert(monster.teacherRetaliation.has(teacherPlayer.id));assert(monster.contributors.get(teacherPlayer.id)>0);
+});
+
+test('enhanced sigil snapshots its damage and remains valid in flight',()=>{
+ const {p,room}=fixture();p.equipmentSlots=['primordial-star-sigil+9',null,null];
+ const template=[...monstersOf({...room,monsters:undefined},START).values()].find(m=>m.mapId===p.mapId);
+ const monster={...template,id:'enhanced-target',x:650,y:450,hp:10000,maxHp:10000,radius:20,attackers:new Map(),contributors:new Map()};room.monsters.set(monster.id,monster);
+ p.sigilNextShotAt=START;assert.equal(advanceSigilProjectiles(room,START).length,1);
+ assert.equal(room.projectiles[0].power,attackPowerOf(5,'aquarius',p)*11.5);assert.equal(p.sigilNextShotAt,START+5000);
+ const hits=advanceProjectiles(room,START+1000,combatEnemies,resolveSigilHit);assert.equal(hits[0].targets[0].monsterId,monster.id);assert.equal(monster.targetId,p.id);
 });

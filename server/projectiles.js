@@ -4,6 +4,7 @@ import {swanProjectilePoint} from '../shared/swan-skills.js';
 import {piscesPortalGeometry} from '../shared/pisces-portals.js';
 import {usesTeacherCombat} from '../shared/teacher-avatar.js';
 import {infiniteEnergyStacks} from '../shared/infinite-energy.js';
+import {equipmentBaseId} from '../shared/equipment.js';
 
 // 실제 이동 구간과 원형 피격 범위의 교차를 검사합니다. 낮은 tick에서도 적을 건너뛰지 않습니다.
 function contact(cast,target,end){
@@ -63,7 +64,7 @@ export function advanceProjectiles(room,now,enemies,damage){
   for(const cast of room.projectiles||[]){
     const player=room.players.get(cast.playerId);
     const valid=player?.connected&&!player.away&&!player.avatar.blackStar&&player.mapId===cast.mapId&&
-      (cast.kind!=='sigil-black-star'||player.equipmentSlots?.includes('primordial-star-sigil'))&&
+      (cast.kind!=='sigil-black-star'||player.equipmentSlots?.some(id=>equipmentBaseId(id)==='primordial-star-sigil'))&&
       (cast.kind!=='teacher-star'||usesTeacherCombat(player))&&
       player.avatar.constellationId===cast.constellationId&&player.avatar.level===cast.level&&ensureVitals(player).hp>0;
     if(!valid){results.push({mapId:cast.mapId,end:{id:cast.id,mapId:cast.mapId,distance:cast.distance},targets:[],playerTargets:[]});continue;}

@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {createStudentReminders} from './student-reminders.js';
 import {createStarArchiveUI} from './star-archive-ui.js';
 import {createArtStudioUI} from './art-studio-ui.js';
@@ -116,8 +117,10 @@ const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('aud
 const mobileAudioMute=document.createElement('button');mobileAudioMute.id='mobile-audio-mute';mobileAudioMute.type='button';mobileAudioMute.className='secondary';$('mobile-hunting-row').append(mobileAudioMute);mobileAudioMute.onclick=()=>audioMute.click();
 function syncAudioControls(){
   audioVolume.value=Math.round(audio.volume*100);
+  $('audio-volume-value').textContent=audioVolume.value+'%'+(audio.muted?' · 음소거':'');
+  audioVolume.setAttribute('aria-valuetext',audioVolume.value+'%'+(audio.muted?' · 음소거':''));
   audioToggle.textContent=audio.muted||audio.volume===0?'🔇':'🔊';
-  audioToggle.setAttribute('aria-label',audio.muted?'소리 꺼짐 · 소리 설정':'소리 켜짐 · 소리 설정');
+  audioToggle.setAttribute('aria-label',audio.muted||audio.volume===0?'소리 꺼짐 · 소리 설정':'소리 켜짐 · 소리 설정');
   audioMute.textContent=audio.muted?'소리 켜기':'음소거';mobileAudioMute.textContent=audioMute.textContent;mobileAudioMute.setAttribute('aria-pressed',String(audio.muted));
 }
 syncAudioControls();
@@ -1517,6 +1520,7 @@ function renderShopSellList(){
     return li;
   }).filter(Boolean));
 }
+pinDialogHeader($('shop-dialog'));
 function openShopDialog(){
   shopSig=shopSignature();setShopLevel(1);setShopTab('buy');updateShopShards();renderShopBuyList();renderShopSellList();
   stop();$('shop-dialog').showModal();

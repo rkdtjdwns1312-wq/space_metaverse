@@ -71,8 +71,10 @@ import { advance, spawnInside, exitPosition, isNear, placementFree, addPlanet, m
 import { filterChat } from './chat-filter.js';
 import { CRAFTING } from '../shared/crafting.js';
 import { attemptCraft } from './crafting.js';
+import {enhanceEquipment} from './equipment-enhancement.js';
 import {learnedRecipesView,useRecipeItem} from './learned-recipes.js';
 import { templeItemRows } from './temple-items.js';
+import {cancelAbilityEffect} from './ability-cancellation.js';
 import {observeJourney,journeyPillar,journeyGoal,journeyTickGoals,journeyView,journeyMissions,claimJourney,usePractice,equipPractice} from './tutorial-journey.js';
 import { availableCraftingRecipes,loadCraftingRecipes } from './crafting-recipes.js';
 import {craftingHintViews} from './crafting-hints.js';
@@ -91,7 +93,7 @@ import { chatScope, canReadChat, visibleHistory, requestSummon, respondSummon } 
 import {inviteParty,respondParty,leaveParty,invitePiscesPair,respondPiscesPair,settlePiscesPairs,activePiscesPair} from './party.js';
 import { studentAccessOpen, STUDENT_HOURS_MESSAGE } from './access-hours.js';
 import {readDaily,saveNotice,readTimetable,saveTimetable,assignmentById,markAssignmentDone,recentAssignments,incompleteAssignments,weeklyRewards,resetWeeklyRewards,recordReward,koreaDay,weekStart} from './temple.js';
-import {validateWork,saveReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
+import {validateWork,saveReport,reviseReport,awardReport,proposeDistribution,confirmDistribution,cancelDistribution,reconcileMembership} from './department-work.js';
 import {moveMonsters,strikeMonsters,monstersInAttackArea} from './monsters.js';
 import {disarmSpiritBlueStar} from './spirit-blue-stars.js';
 import {summonDarkStar} from './dark-star.js';
@@ -390,7 +392,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     const scopedActions=new Set([...INTERACTION_SAVE_ACTIONS,'chat:send','combat:attack','combat:skill','combat:transform',
       'art:save','art:delete','forgotten-constellation:summon',
       'equipment:equip','equipment:unequip','energy:collect','party:roll',
-      'shop:buy','shop:sell','shop:energy:buy','crafting:combine','item:use',
+      'shop:buy','shop:sell','shop:energy:buy','crafting:combine','crafting:enhance','item:use',
       'trade:propose','trade:respond','trade:offer','trade:confirm','trade:cancel',
       'teacher:inventory:give','teacher:inventory:remove','teacher:inventory:currency:set',
       'map:travel','map:fast-travel','learning:english:answer','learning:math:answer']);
@@ -1427,6 +1429,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=departmentAccess(data);ensure(s.player.role==='teacher','선생님만 실적을 확인하고 별을 줄 수 있어요.');
       awardReport(s.planet,data.amount,data.version,clock());return departmentChanged(s);
     });
+    action('department:revise',data=>{
+      const s=departmentAccess(data);
+      ensure(s.player.role==='teacher'||s.canWrite,'부서 안의 실적 문서에 가까이 가주세요.');
+      reviseReport(s.planet,data.text,data.version,clock());return departmentChanged(s);
+    });
     action('department:propose',data=>{
       const s=departmentAccess(data);proposeDistribution(s.room,s.planet,s.player.id,data.allocations,clock());return departmentChanged(s);
     });
@@ -1869,8 +1876,20 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return s;
     };
     action('crafting:open',()=>{
-      const {player}=requireCrafting();return {enabled:true,fee:shardCost(player,CRAFTING.fee),configured:craftingReadiness.ready,privateRecipeCount:craftingReadiness.privateRecipeCount};
+      const {player}=requireCrafting();
+      socket.data.enhancementToken=randomUUID();
+      socket.data.enhancementPlayerId=player.id;
+      return {enabled:true,enhancementToken:socket.data.enhancementToken,fee:shardCost(player,CRAFTING.fee),configured:craftingReadiness.ready,privateRecipeCount:craftingReadiness.privateRecipeCount};
     },false);
+    action('crafting:enhance',data=>{
+      const {room,player}=requireCrafting();
+      ensure(socket.data.enhancementPlayerId===player.id&&typeof data.enhancementToken==='string'&&data.enhancementToken===socket.data.enhancementToken,'강화 상태가 바뀌었어요. 조합기를 다시 열어주세요.');
+      const result=enhanceEquipment(player,data),enhancementToken=randomUUID();
+      // Rotate only after the classroom transaction commits; failed disk saves
+      // retain both the inventory and the token for a safe retry.
+      deliver(()=>{socket.data.enhancementToken=enhancementToken;});
+      roster(room);return {...result,enhancementToken};
+    });
     action('recipes:learned',data=>{
       const s=socket.data.session;
       ensure(s?.player.role==='student'&&s.player.connected&&!s.player.away,'학생 본인만 배운 조합법을 볼 수 있어요.');
@@ -2354,6 +2373,12 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       return {itemName:item.name,quantity,inventory:[...p.inventory]};
     });
     action('ability:retry',()=>{throw new GameError('천칭자리의 주사위 다시 던지기는 종료되었어요.');});
+    action('ability:cancel',data=>{
+      const {room,player,pillar}=templeAccess(data);
+      ensure(pillar.service==='effects','사용 중인 별 능력 기둥에서 해제해주세요.');
+      cancelAbilityEffect(room,player,data.targetId,data.abilityCancelKey,clock());
+      roster(room);return {kind:'effects',canComplete:true,rows:templeItemRows(room,player,clock())};
+    });
     action('ability:complete',data=>{
       const {room,player,pillar}=templeAccess(data);
       ensure(player.role==='teacher'&&pillar.service==='effects','선생님만 별자리 능력 처리를 완료할 수 있어요.');
