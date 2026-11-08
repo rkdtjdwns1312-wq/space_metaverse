@@ -18,12 +18,10 @@ function layer(sprite,kind){
 }
 export function drawEquipmentAura(ctx,sprite,player,size,time,reducedMotion=false,lowQuality=false){
   const kind=player.equipmentAura??equipmentAuraOf(player);if(!kind||!['blue','orange','rainbow'].includes(kind)||!sprite)return false;
-  // Keep the equipment colour visible without per-walk-frame masks or sparks.
-  if(lowQuality){
-    ctx.save();ctx.strokeStyle=kind==='blue'?'#72caff':kind==='orange'?'#ffad53':'#d6adff';
-    ctx.globalAlpha*=.8;ctx.lineWidth=Math.max(2,size*.025);ctx.beginPath();
-    ctx.ellipse(0,0,size*.51,size*.52,0,0,Math.PI*2);ctx.stroke();ctx.restore();return true;
-  }
+  // Low quality omits decorative equipment light. An enclosing oval looked
+  // like a stuck transformation effect when automatic quality stayed low.
+  // Return before building masks so walking frames remain inexpensive.
+  if(lowQuality)return false;
   const {canvas,edges}=layer(sprite,kind),phase=reducedMotion?0:time/1200;
   ctx.save();ctx.globalAlpha*=.77+.13*Math.sin(phase);const width=size*TOTAL/SIDE;
   ctx.drawImage(canvas,-width/2,-width/2,width,width);
