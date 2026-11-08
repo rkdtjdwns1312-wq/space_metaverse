@@ -11,21 +11,21 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
  <p data-art="view-note" class="art-studio-view-note" hidden>친구의 작품을 감상하고 있어요.</p><canvas width="600" height="400" data-art="canvas" aria-label="600×400 그림판"></canvas><p data-art="capacity" class="art-studio-capacity"></p>
  <div class="art-studio-actions"><button type="button" data-art="save" class="primary">새 작품 저장</button><button type="button" data-art="delete" class="secondary" hidden>작품 삭제</button><button type="button" data-art="download" class="secondary">PNG 내려받기</button></div></section></div></div><p data-art="status" class="art-studio-status" role="status" aria-live="polite"></p>`;
  document.body.append(dialog);const $=name=>dialog.querySelector(`[data-art="${name}"]`),canvas=$('canvas'),ctx=canvas.getContext('2d');
- let epoch=0,busy=false,tab=null,ownerId=null,roster=[],list=[],work=null,drawing=blankArtDrawing(),dirty=false,tool='brush',history=[],stroke=null,pointerId=null,pointBudget=0,requestId=crypto.randomUUID(),paintFrame=null;
+ let epoch=0,busy=false,tab=null,ownerId=null,roster=[],list=[],work=null,drawing=blankArtDrawing(),dirty=false,tool='brush',history=[],stroke=null,pointerId=null,pointerType=null,pointBudget=0,requestId=crypto.randomUUID(),paintFrame=null;
  const ownId=()=>getPlayer()?.role==='teacher'?ART_TEACHER_OWNER:getPlayer()?.id;
  const editable=()=>tab==='mine'&&['student','teacher'].includes(getPlayer()?.role);
  const message=text=>{$('status').textContent=text;};
  function discardOkay(){return !dirty||confirm('아직 저장하지 않은 그림이 있어요. 저장하지 않고 이동할까요?');}
  function renderPaint(){paintFrame=null;paintArtDrawing(ctx,stroke?{...drawing,strokes:[...drawing.strokes,stroke]}:drawing);}
  function paint(){if(paintFrame===null)paintFrame=requestAnimationFrame(renderPaint);}
- function cancelStroke(){stroke=null;pointerId=null;paint();}
+ function cancelStroke(){const id=pointerId;stroke=null;pointerId=null;pointerType=null;if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);paint();}
  function blank(){cancelStroke();work=null;drawing=blankArtDrawing();$('title').value='';history=[];dirty=false;requestId=crypto.randomUUID();}
  function setWork(next){cancelStroke();work=next;drawing=normalizeArtDrawing(next.drawing)||blankArtDrawing();$('title').value=next.title;history=[];dirty=false;requestId=crypto.randomUUID();}
  function controls(){
   const edit=editable();$('menu').hidden=tab!==null;$('workspace').hidden=tab===null;$('tools').hidden=!edit;$('new').hidden=!edit;$('save').hidden=!edit;$('delete').hidden=!edit||!work;$('title').readOnly=!edit;$('view-note').hidden=edit;
   $('view-note').textContent=work?'감상 중인 작품이에요. PNG로 내려받아 간직할 수 있어요.':'작품 주인을 고르고 제목을 눌러 감상해보세요.';
   canvas.classList.toggle('readonly',!edit);$('save').textContent=work?'수정한 작품 저장':'새 작품 저장';
-  $('tool-hint').hidden=!edit;$('tool-hint').textContent=tool==='fill'?'색을 고르고 눌러요. 같은 색으로 이어진 영역을 한 번에 칠해요.':ART_SHAPE_TOOLS.includes(tool)?'그림판을 눌러 도형을 넣거나, 끌어서 크기를 정해요.':'그림판에 마우스나 손가락으로 자유롭게 그려요.';
+  $('tool-hint').hidden=!edit;$('tool-hint').textContent=tool==='fill'?'색을 고르고 눌러요. 같은 색으로 이어진 영역을 한 번에 칠해요.':ART_SHAPE_TOOLS.includes(tool)?'그림판을 눌러 도형을 넣거나, 끌어서 크기를 정해요.':'그림판에 펜·마우스·손가락으로 자유롭게 그려요.';
   for(const input of dialog.querySelectorAll('button,input,select'))input.disabled=busy;
   $('save').disabled=busy||!edit||(!work&&list.length>=L.works);$('delete').disabled=busy||!work;$('undo').disabled=busy||!history.length;$('clear').disabled=busy||!drawing.strokes.length;$('download').disabled=busy||(!edit&&!work);
   $('capacity').textContent=edit?(dirty?'아직 저장하지 않았어요':'저장한 그림을 불러오거나 새로 그려보세요'):'';
@@ -54,10 +54,16 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
  const point=e=>{const b=canvas.getBoundingClientRect();return [Math.max(0,Math.min(600,Math.round((e.clientX-b.left)/b.width*600))),Math.max(0,Math.min(400,Math.round((e.clientY-b.top)/b.height*400)))];};
  function move(e){const p=point(e),last=stroke.points.at(-1);if(p[0]===last[0]&&p[1]===last[1])return;if(ART_SHAPE_TOOLS.includes(stroke.tool))stroke.points[1]=p;else if(stroke.points.length<pointBudget)stroke.points.push(p);else message('긴 선은 여기까지 그려져요. 손을 떼고 새 선을 그려주세요.');paint();}
  canvas.addEventListener('pointerdown',e=>{
-  if(busy||!editable()||pointerId!==null||e.button!==0)return;
+  if(!editable()||e.button!==0)return;
+  // Cancel native selection even for an ignored palm or a full/busy canvas.
+  e.preventDefault();
+  if(busy)return;
+  // A resting palm may arrive first. Let the pen take over that unfinished touch.
+  if(pointerId!==null&&e.pointerType==='pen'&&pointerType==='touch')cancelStroke();
+  if(pointerId!==null)return;
   pointBudget=Math.min(L.strokePoints,L.points-artDrawingPointCount(drawing));
   if(pointBudget<(ART_SHAPE_TOOLS.includes(tool)?2:1)){message('그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.');return;}
-  e.preventDefault();message('');const p=point(e);
+  message('');const p=point(e);
   if(tool==='fill'){
    if(paintFrame!==null){cancelAnimationFrame(paintFrame);paintFrame=null;}renderPaint();
    try{
@@ -66,13 +72,15 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
    }catch(error){message(error instanceof RangeError?'그림이 꽉 찼어요. 되돌리거나 모두 지운 뒤 다시 그려주세요.':'이 영역을 채우지 못했어요. 다른 곳을 눌러주세요.');}
    return;
   }
-  pointerId=e.pointerId;stroke={tool,color:$('color').value,width:Number($('width').value),points:ART_SHAPE_TOOLS.includes(tool)?[p,[...p]]:[p]};canvas.setPointerCapture(pointerId);paint();
+  pointerId=e.pointerId;pointerType=e.pointerType;stroke={tool,color:$('color').value,width:Number($('width').value),points:ART_SHAPE_TOOLS.includes(tool)?[p,[...p]]:[p]};canvas.setPointerCapture(pointerId);paint();
  });
- canvas.addEventListener('pointermove',e=>{if(e.pointerId===pointerId&&stroke)move(e);});
- canvas.addEventListener('pointerup',e=>{if(e.pointerId!==pointerId||!stroke)return;move(e);const next=stroke;
+ canvas.addEventListener('pointermove',e=>{if(e.pointerId===pointerId&&stroke){e.preventDefault();move(e);}});
+ canvas.addEventListener('pointerup',e=>{if(e.pointerId!==pointerId||!stroke)return;e.preventDefault();move(e);const next=stroke;
   if(ART_SHAPE_TOOLS.includes(next.tool)&&Math.abs(next.points[1][0]-next.points[0][0])<2&&Math.abs(next.points[1][1]-next.points[0][1])<2){const [x,y]=next.points[0].map((v,i)=>Math.min(v,(i?L.height:L.width)-80));next.points=[[x,y],[x+80,y+80]];}
-  stroke=null;pointerId=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);commit({...drawing,strokes:[...drawing.strokes,next]});});
- canvas.addEventListener('pointercancel',e=>{if(e.pointerId===pointerId)cancelStroke();});canvas.addEventListener('lostpointercapture',()=>{if(stroke)cancelStroke();});
+  stroke=null;pointerId=null;pointerType=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);commit({...drawing,strokes:[...drawing.strokes,next]});});
+ canvas.addEventListener('pointercancel',e=>{if(e.pointerId===pointerId)cancelStroke();});canvas.addEventListener('lostpointercapture',e=>{if(e.pointerId===pointerId&&stroke)cancelStroke();});
+ for(const name of ['selectstart','dragstart'])canvas.addEventListener(name,e=>e.preventDefault());
+ canvas.addEventListener('contextmenu',e=>{if(editable())e.preventDefault();});
  $('title').oninput=()=>{if(editable()){dirty=true;controls();}};$('width').oninput=()=>{$('width-label').value=$('width').value;};
  for(const b of dialog.querySelectorAll('[data-art-tool]'))b.onclick=()=>{tool=b.dataset.artTool;controls();};
  $('undo').onclick=()=>{if(!history.length||busy)return;drawing=JSON.parse(history.pop());dirty=true;controls();paint();};
