@@ -1,3 +1,4 @@
+import {migrateLegacyPlazaPosition} from '../shared/plaza-layout.js';
 import {migrateLegacyStreetPosition} from '../shared/street-layout.js';
 import {PLAZA_ID,STREET_ID,BLACK_HOLE_ID,WHALE_STOMACH_ID,STATIC_MAPS,mapOf,planetIdOfMap} from '../shared/config.js';
 import {TRUTH_CREATOR,truthCreatorEligible} from '../shared/truth-creator.js';
@@ -19,7 +20,7 @@ export function rememberStudentLocation(player){
 }
 
 export function studentReturnPosition(room,player,now,location=player.lastLocation){
-  const raw=validateLastLocation(location),saved=raw?migrateLegacyStreetPosition(raw):null;
+  const raw=validateLastLocation(location),saved=raw?migrateLegacyPlazaPosition(migrateLegacyStreetPosition(raw)):null;
   const forced=player.avatar.blackStar?BLACK_HOLE_ID:
     player.constellationAbilityState?.cetusStomach?.endsAt>now?WHALE_STOMACH_ID:null;
   let mapId=forced||saved?.mapId||PLAZA_ID;

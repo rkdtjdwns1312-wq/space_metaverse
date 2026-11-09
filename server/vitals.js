@@ -1,5 +1,6 @@
 import {vitalsOf} from '../shared/vitals.js';
 import {defensePowerOf,damageAfterDefense} from '../shared/combat.js';
+import {consumeTruthRecordShield} from './truth-record.js';
 
 // 전투 HP/MP는 서버 실행 상태로 보관합니다. 스냅샷을 읽거나 재접속해도 회복되지 않습니다.
 // 서버를 다시 시작하면 초기화하며, 재화/아이템의 영구 저장 형식은 변경하지 않습니다.
@@ -39,6 +40,8 @@ export function damagePlayer(player,power,now,{room=null,skipLibra=false,skipDef
     player.dreamGuardianNextAt=now+30000;
     return {damage:0,vitals:playerVitals(player),defeated:false,immune:true,guardian:true};
   }
+  if(consumeTruthRecordShield(player,damage,now))
+    return {damage:0,vitals:playerVitals(player),defeated:false,immune:true,truthRecordShield:true};
   let remaining=damage;
   if(fixedDamage===null&&player.herculesShield&&player.herculesShield.endsAt>now&&player.herculesShield.hp>0){
     const absorbed=Math.min(remaining,player.herculesShield.hp);

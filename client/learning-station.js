@@ -30,10 +30,13 @@ export function createLearningStation({request}){
       level==='grade-2'?'기초 어휘를 넓히는 단계예요. 익숙한 낱말부터 연습해요.':'';
     intro.textContent=[guidance,'10문제를 풀며 새로운 단어를 익혀 봐요.'].filter(Boolean).join(' ');
   }
+  function updateProgress(){
+    $('learning-progress').textContent=`${Math.min(round+1,10)} / 10 · 맞힌 문제 ${correct}`;
+  }
   function renderQuestion(){
     // Return to setup explicitly instead of leaving level controls above every question.
     levelSelect.disabled=false;
-    $('learning-progress').textContent=`${Math.min(round+1,10)} / 10 · 맞힌 문제 ${correct}`;
+    updateProgress();
     if(round>=10){
       prompt.textContent=`10문제 중 ${correct}문제를 맞혔어요!`;
       choices.replaceChildren();
@@ -49,7 +52,7 @@ export function createLearningStation({request}){
         let right,answer;
         try{const result=await request(`learning:${subject}:answer`,{questionId:activeQuestion.questionId,answer:value});
           if(current!==generation)return;
-          right=result.right;answer=result.answer;correct=result.correct;if(result.learningReward)learningReward=result.learningReward;
+          right=result.right;answer=result.answer;correct=result.correct;updateProgress();if(result.learningReward)learningReward=result.learningReward;
         }catch(error){if(current===generation){answered=false;feedback.textContent=error.message;}return;}
         feedback.textContent=[right?'정답이에요! ✨':`아쉬워요. 정답은 ${answer}예요.`,round===9?learningReward?.message:null].filter(Boolean).join(' ');
         for(const option of choices.children){option.disabled=true;if(option.textContent===String(answer))option.classList.add('correct');else if(option===button)option.classList.add('incorrect');}

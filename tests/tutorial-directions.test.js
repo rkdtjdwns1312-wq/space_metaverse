@@ -31,7 +31,10 @@ test('tutorial route destinations resolve across all five tutorial maps',()=>{
 test('random valid starts and moving waypoints produce walkable routes to every world destination',()=>{
  const rand=seeded(6232026),destinations=[...new Set(JOURNEY_STEPS.flatMap(step=>step.goals.map(g=>g.id)).filter(id=>journeyDestination(id)))];
  const plans={
-  'space-plaza':[{x:1800,y:1320},{x:600,y:510},{x:600,y:2100},{x:2940,y:2070},{x:3090,y:510}],
+  'space-plaza':[{x:1800,y:1320},{x:2280,y:1020}],
+  'assignment-archive':[{x:600,y:510}],
+  'star-market':[{x:600,y:2100}],
+  'department-plaza':[{x:2940,y:2070}],
   'star-street':[STREET_LAYOUT.upper],
   'star-station':[STREET_LAYOUT.north],
   'star-playground':[STREET_LAYOUT.lower],

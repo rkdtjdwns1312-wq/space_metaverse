@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {inMarket,MARKET} from '../shared/market.js';
 import {PLAZA_LAYOUT} from '../shared/plaza-layout.js';
 
-const player=(x,y,overrides={})=>({mapId:'space-plaza',connected:true,away:false,x,y,...overrides});
+const player=(x,y,overrides={})=>({mapId:'star-market',connected:true,away:false,x,y,...overrides});
 
 test('market trade area follows the full market island ellipse with a 10px wall margin',()=>{
   const island=PLAZA_LAYOUT.islands.find(value=>value.id==='market');

@@ -16,7 +16,7 @@ function checkCaps(visual,count){
   }
 }
 for(const [name,map,polygons,edges,gates] of [
-  ['광장',PLAZA_LAYOUT,PLAZA_POLYGONS,PLAZA_EDGES,Object.values(PLAZA_LAYOUT.gates)],
+  ['짧은 광장(문 뒤 추가 연장 없음)',PLAZA_LAYOUT,PLAZA_POLYGONS,PLAZA_EDGES,[]],
   ['쉼터',STREET_LAYOUT,STREET_POLYGONS,STREET_EDGES,[STREET_LAYOUT.westGate]],
   ['계곡',VALLEY_LAYOUT,VALLEY_POLYGONS,VALLEY_EDGES,[VALLEY_LAYOUT.gate]],
 ])test(`${name}: 문 뒤 바닥 전체 폭만 연장하며 공유 논리 도형과 내부 접합은 보존`,()=>{

@@ -38,7 +38,7 @@ import {appearanceLevelOf,CORVUS_VFX} from '/shared/character-skills.js';
 import {avatarRenderPoint} from '/shared/avatar-boundary.js';
 import {equipmentBonus} from '/shared/equipment.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
-import {inMarket} from '/shared/market.js';
+import {marketInteraction} from '/shared/market.js';
 import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
@@ -92,7 +92,7 @@ import {ATTACK_VISUAL} from '/shared/combat.js';
 import {skillEffectById} from '/shared/skill-effects.js';
 import {drawSkillEffect} from './skill-effects.js';
 import {drawSagittarius,preloadSagittarius} from './sagittarius-effects.js';
-import { STATIC_MAPS, mapOf, PLAZA_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap, itemOf } from '/shared/config.js';
+import { STATIC_MAPS, mapOf, PLAZA_ID, DEPARTMENT_ID, MARKET_ID, PLANET, STREET_ID, GARDEN_ID, VALLEY_ID, MAP, STREET, templateOf, planetIdOfMap, itemOf } from '/shared/config.js';
 import { drawCrossroads, drawParadise, drawStarParadise, drawRainbowSpace, drawValley, drawStarOrigin, drawSleepingStars } from './scenery.js';
 import {drawOriginStatue} from './origin-art.js';
 import * as config from '/shared/config.js';
@@ -219,9 +219,9 @@ export function createWorld(canvas) {
   function placementOk(pt){
     const r=PLANET.radius+(config.RULES?.radius||16);
     if(!departmentSite(pt.x,pt.y,r))return false;
-    if(pt.x<r||pt.y<r||pt.x>MAP.width-r||pt.y>MAP.height-r)return false;
+    if(pt.x<r||pt.y<r||pt.x>mapOf(DEPARTMENT_ID).width-r||pt.y>mapOf(DEPARTMENT_ID).height-r)return false;
     if((PLANET.reserved||[]).some(z=>{const cx=Math.max(z.x,Math.min(pt.x,z.x+z.width)),cy=Math.max(z.y,Math.min(pt.y,z.y+z.height));return Math.hypot(pt.x-cx,pt.y-cy)<PLANET.radius;}))return false;
-    const bodies=[...mapOf(PLAZA_ID,[]).objects,...planets.filter(p=>p.id!==placementPlanetId),...proposals];
+    const bodies=[...mapOf(DEPARTMENT_ID,[]).objects,...planets.filter(p=>p.id!==placementPlanetId),...proposals];
     return !bodies.some(o=>Math.hypot(pt.x-o.x,pt.y-o.y)<PLANET.radius+(o.radius||PLANET.radius)+PLANET.minGap);
   }
   // 행성 종류(templateOf(o.templateId).look)에 따라 겉모습을 다르게 꾸며 줍니다. 종류를 모르면 장식 없이 기본 모양만 그립니다.
@@ -282,7 +282,7 @@ export function createWorld(canvas) {
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
-    if(exploration?.festival&&!quality.reducedEffects){
+    if(map.id===PLAZA_ID&&exploration?.festival&&!quality.reducedEffects){
       // 바닥 위에만 나타나는 축제 별빛. 움직임과 충돌 판정은 건드리지 않습니다.
       for(const [index,[x,y]] of [[1310,1050],[1470,1580],[1700,900],[2020,930],[2280,1190],[2220,1570],[1850,1700],[1150,1310],[1800,1320],[600,510],[600,2100],[2940,2070]].entries()){
         const pulse=1+Math.sin(time/530+index*1.7)*.17;
@@ -291,8 +291,8 @@ export function createWorld(canvas) {
         star(x,y,11*pulse,index%3===0?'#fff0af':'#fffefa');ctx.restore();
       }
     }
-    for(const sign of PLAZA_SIGNS)drawPlazaSign(ctx,sign);
-    for(const sign of campaignSigns){
+    for(const sign of map.id===PLAZA_ID?PLAZA_SIGNS:[])drawPlazaSign(ctx,sign);
+    for(const sign of map.id===PLAZA_ID?campaignSigns:[]){
       ctx.save();ctx.translate(sign.x,sign.y);
       ctx.fillStyle='#64507c55';ctx.beginPath();ctx.ellipse(0,30,52,15,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#796493';ctx.fillRect(-4,0,8,35);
@@ -349,7 +349,7 @@ export function createWorld(canvas) {
         ctx.fillStyle='#805218';ctx.fillText('실적제출확인요함',lx,badgeY+19);
       }
     }
-    for(const o of proposals){
+    for(const o of map.id===DEPARTMENT_ID?proposals:[]){
       ctx.save();ctx.globalAlpha=.6;ctx.setLineDash([5,7]);ctx.strokeStyle=o.color;ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(o.x,o.y,PLANET.radius,0,Math.PI*2);ctx.stroke();ctx.restore();
       const template=templateOf(o.templateId);
@@ -359,7 +359,7 @@ export function createWorld(canvas) {
       ctx.font='11px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#a09ab7';
       ctx.fillText('승인 기다리는 중',o.x,o.y+PLANET.radius+38);
     }
-    for(const card of starCards)drawStarCard(ctx,card,time);
+    for(const card of map.id===PLAZA_ID?starCards:[])drawStarCard(ctx,card,time);
     if(placing||placement){
       drawDepartmentGuide(ctx);
       // 배치 모드: 행성을 만들 수 없는 예약 구역(이동 버튼 자리)을 빗금으로 보여 줍니다.
@@ -386,6 +386,7 @@ export function createWorld(canvas) {
   function drawGate(o){
     if(!intersectsView(view,gateVisualBox(o),200))return;
     drawPaintedGate(ctx,o);
+    if(o.hideLabel){if(myMapId!==PLAZA_ID||!['gate-assignment','gate-market','gate-department'].includes(o.id))drawPlazaSign(ctx,{x:o.x,y:o.y+65,lines:[(STATIC_MAPS[o.target]?.name||o.name)+' 가는 길']});return;}
     if(myMapId===STREET_ID)return;
     ctx.font='600 19.5px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
@@ -438,7 +439,7 @@ export function createWorld(canvas) {
     const planet=planets.find(p=>p.id===map.planetId);
     drawInteriorFloor(ctx,map,planet);
     for(const o of map.objects){
-      if(o.kind==='door'){drawGate({...o,target:PLAZA_ID});drawInteriorDecoration(ctx,o,interiorDecorStyle(planet?.interiorDecor,o.id));}
+      if(o.kind==='door'){drawGate({...o,target:DEPARTMENT_ID});drawInteriorDecoration(ctx,o,interiorDecorStyle(planet?.interiorDecor,o.id));}
       else drawInteriorProp(ctx,o,planet);
     }
   }
@@ -753,7 +754,7 @@ export function createWorld(canvas) {
     const rect=canvas.getBoundingClientRect(),dpr=quality.dpr(window.devicePixelRatio);
     const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-    const zone=placing&&myMapId===PLAZA_ID?DEPARTMENT_ZONE:null;
+    const zone=placing&&myMapId===DEPARTMENT_ID?DEPARTMENT_ZONE:null;
     const bounds=map.viewBounds||{x:0,y:0,width:map.width,height:map.height};
     const scale=zone?Math.min(rect.width/(zone.rx*2+300),rect.height/(zone.ry*2+300)):(placing||overview)?Math.min(rect.width/bounds.width,rect.height/bounds.height):Math.max(rect.width/1200,rect.height/760)||1;
     const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
@@ -770,7 +771,7 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle=map.theme==='sleeping-stars'?'#010203':'#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(map.theme==='starlight-street')drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+    if(map.theme==='plaza')drawMap(map,t);else if(map.theme==='starlight-street')drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
@@ -1219,11 +1220,11 @@ export function createWorld(canvas) {
       const drop=myEnergyDrops().filter(d=>Math.hypot(me.x-d.x,me.y-d.y)<=ENERGY_DROPS.pickupDistance)
         .sort((a,b)=>Math.hypot(me.x-a.x,me.y-a.y)-Math.hypot(me.x-b.x,me.y-b.y))[0];
       if(drop)return {...drop,kind:'energy-drop',name:['recipe','item'].includes(drop.kind)?(itemOf(drop.itemId)?.name||'아이템')+' 줍기':'우주에너지 '+(drop.publicAt<=Date.now()?drop.remaining:drop.shares.find(s=>s.playerId===selfId)?.amount)+' 줍기'};
-      if(myMapId===PLAZA_ID){
-        const market=MAP.objects.find(o=>o.kind==='market');
-        if(market&&inMarket(me))return {...market,x:me.x,y:me.y,radius:18,name:me.role==='teacher'?'거래 내역 조회':'거래걸기'};
+      if(currentMap().theme==='plaza'){
+        const market=marketInteraction(me,currentMap().objects,(p,o)=>config.interactionDistance(p,o)<=config.interactionReach(o));
+        if(market)return market;
         const cards=starCards.filter(c=>c.expiresAt===null||c.expiresAt>Date.now()).map(c=>({...c,kind:'star-card',name:'별 카드 효과 보기',radius:28}));
-        const candidates=[...cards,...campaignSigns,...planets.map(o=>({...o,kind:'planet'})),...MAP.objects.filter(o=>o.kind==='life-star'||o.kind==='starlight-archive'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
+        const candidates=[...(myMapId===PLAZA_ID?cards:[]),...(myMapId===PLAZA_ID?campaignSigns:[]),...(myMapId===DEPARTMENT_ID?planets.map(o=>({...o,kind:'planet'})):[]),...currentMap().objects.filter(o=>o.kind==='life-star'||o.kind==='starlight-archive'||o.kind==='exploration'||o.kind==='gate'||o.kind==='pillar'||o.kind==='black-hole'||o.kind==='andromeda'||o.kind==='mission-board')];
         let best=null,bestDist=Infinity;
         for(const o of candidates){
           const d=config.interactionDistance?config.interactionDistance(me,o):Math.hypot(me.x-o.x,me.y-o.y);

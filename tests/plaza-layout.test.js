@@ -5,20 +5,20 @@ import {MAP,PLAZA_ID,STATIC_MAPS,PLANET,RULES} from '../shared/config.js';
 import {placementFree,isFree,advance} from '../server/world.js';
 import {relocateDepartments} from '../server/plaza-migration.js';
 const room=()=>({players:new Map(),planets:new Map(),proposals:new Map(),unattended:true});
-test('광장 중앙과 대각선 네 원형 구역·네 방향 출입구가 끊김 없이 연결된다',()=>{
-  assert.equal(MAP.width,3720);assert.equal(MAP.height,2640);
-  for(const to of [...L.islands,...Object.values(L.gates)])for(let t=0;t<=1;t+=.01)
+test('중앙 광장과 짧아진 네 방향 출입구가 연결된다',()=>{
+  assert.equal(MAP.width,2760);assert.equal(MAP.height,1970);
+  for(const to of Object.values(L.gates))for(let t=0;t<=1;t+=.01)
     assert.ok(onPlazaFloor(MAP,L.center.x+(to.x-L.center.x)*t,L.center.y+(to.y-L.center.y)*t,RULES.radius),JSON.stringify({to,t}));
   assert.ok(L.islands.find(i=>i.id==='assignment').x<L.center.x);
   for(const source of Object.values(STATIC_MAPS))for(const g of source.objects||[])if(g.target===PLAZA_ID)assert.ok(isFree(room(),g.arrival.x,g.arrival.y,null,PLAZA_ID,false),source.id);
 });
 test('본광장·다리 테두리 밖을 서버가 차단하고 매 틱 이동에도 반영한다',()=>{
   const right=L.center.x+L.bridgeWidth/2;
-  assert.equal(onPlazaFloor(MAP,18,18,16),false);assert.equal(onPlazaFloor(MAP,right+12,240,16),false);
-  const r=room(),p={id:'s',role:'student',mapId:PLAZA_ID,x:right-12,y:240,connected:true,input:{x:1,y:0,at:100},avatar:{level:2},facing:{x:0,y:1}};r.players.set(p.id,p);
+  assert.equal(onPlazaFloor(MAP,18,18,16),false);assert.equal(onPlazaFloor(MAP,right+12,810,16),false);
+  const r=room(),p={id:'s',role:'student',mapId:PLAZA_ID,x:right-12,y:810,connected:true,input:{x:1,y:0,at:100},avatar:{level:2},facing:{x:0,y:1}};r.players.set(p.id,p);
   assert.equal(isFree(r,p.x,p.y,null,PLAZA_ID,false),false);p.x=right-55;
   for(let i=0;i<20;i++){p.input.at=100+i;advance(r,100+i);assert.ok(onPlazaFloor(MAP,p.x,p.y,16));}
-  assert.ok(PLAZA_EDGES.length>500);
+  assert.ok(PLAZA_EDGES.length>100);
 });
 test('48개 부서행성을 전용 공간에 간격 보장하여 배치하며 다른 구역은 금지한다',()=>{
   const department=L.islands.find(i=>i.id==='department');

@@ -6,7 +6,7 @@ import path from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
 import {addPlanet,placementFree} from '../server/world.js';
-import {PLAZA_ID,PLANET,PLANET_COLORS,interiorIdOf,mapOf} from '../shared/config.js';
+import {DEPARTMENT_ID,PLANET,PLANET_COLORS,interiorIdOf,mapOf} from '../shared/config.js';
 import {departmentSlots} from '../shared/plaza-layout.js';
 import {avatarTouchesObject} from '../shared/avatar-boundary.js';
 
@@ -33,7 +33,7 @@ async function fixture(t){
     const make=(name,position)=>addPlanet(room(),{name,description:'test',...position,color:PLANET_COLORS[0],rules:['test'],templateId:'reading'});
     planetId=make('이동행성',site(0)).id;otherId=make('다른행성',site(4)).id;
     for(const name of ['member','inside'])person(name).avatar.departmentId=planetId;
-    Object.assign(person('member'),{mapId:PLAZA_ID,x:site(0).x,y:site(0).y+100});
+    Object.assign(person('member'),{mapId:DEPARTMENT_ID,x:site(0).x,y:site(0).y+100});
     Object.assign(person('inside'),{mapId:interiorIdOf(planetId),x:600,y:400});
   });
   return {get game(){return game;},dir,code,teacher,clients,ids,room,person,planetId,otherId,connect,
@@ -43,15 +43,15 @@ async function fixture(t){
 
 test('부원 무료 이동: ID/소속/내용 유지·새 자리 플레이어 안전 배치·스냅샷·내부 출구 갱신',async t=>{
   const f=await fixture(t),before=structuredClone(f.planet()),balance=f.person('member').starShards;
-  Object.assign(f.person('visitor'),site(2));const inside={...f.person('inside')};
+  Object.assign(f.person('visitor'),{...site(2),mapId:DEPARTMENT_ID});const inside={...f.person('inside')};
   const result=await f.move();assert.equal(result.ok,true);assert.equal(result.moved,true);
   assert.deepEqual(f.planet(),{...before,...site(2),joinRequests:[]});assert.equal(f.person('member').starShards,balance);
   assert.equal(f.person('inside').mapId,inside.mapId);assert.equal(f.person('inside').x,inside.x);
   assert.equal(avatarTouchesObject(f.person('visitor'),f.person('visitor').x,f.person('visitor').y,f.planet()),false);
   assert.equal(f.game.store.snapshot(f.room(),f.person('inside')).planets.find(p=>p.id===f.planetId).x,site(2).x);
-  assert.equal(mapOf(PLAZA_ID,f.room().planets.values()).objects.find(p=>p.id===f.planetId).x,site(2).x);
+  assert.equal(mapOf(DEPARTMENT_ID,f.room().planets.values()).objects.find(p=>p.id===f.planetId).x,site(2).x);
   assert.equal((await call(f.clients.inside,'planet:exit')).ok,true);
-  assert.equal(f.person('inside').mapId,PLAZA_ID);assert.ok(Math.hypot(f.person('inside').x-site(2).x,f.person('inside').y-site(2).y)<250);
+  assert.equal(f.person('inside').mapId,DEPARTMENT_ID);assert.ok(Math.hypot(f.person('inside').x-site(2).x,f.person('inside').y-site(2).y)<250);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir,f.code+'.json'),'utf8')).planets.find(p=>p.id===f.planetId),JSON.parse(JSON.stringify({...f.planet(),customDesign:f.planet().customDesign??null})));
 });
 

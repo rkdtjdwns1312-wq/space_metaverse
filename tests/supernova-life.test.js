@@ -167,7 +167,7 @@ test('teacher grants, trade and crafting update acquisition order; order and wee
   await f.give(ALPHA);assert.equal(activeSupernova(f.p),ALPHA);assert.equal((await f.status()).canUse,false);
   await f.give(BETA);assert.equal(activeSupernova(f.p),BETA);
   await f.give(ALPHA,f.other.id);
-  f.mutate((p,q)=>{for(const x of [p,q])Object.assign(x,{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});});
+  f.mutate((p,q)=>{for(const x of [p,q])Object.assign(x,{mapId:'star-market',x:MARKET.x,y:MARKET.y});});
   const trade=ok(await call(f.friend,'trade:propose',{targetId:f.p.id}));ok(await call(f.student,'trade:respond',{tradeId:trade.tradeId,accept:true}));
   const offer=ok(await call(f.friend,'trade:offer',{tradeId:trade.tradeId,revision:0,offer:{shards:0,energy:0,items:[{id:ALPHA,quantity:1}]}}));
   ok(await call(f.friend,'trade:confirm',{tradeId:trade.tradeId,revision:offer.revision}));ok(await call(f.student,'trade:confirm',{tradeId:trade.tradeId,revision:offer.revision}));

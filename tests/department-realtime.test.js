@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 import { createClassroomServer } from '../server/app.js';
 import { addPlanet } from '../server/world.js';
 import {weeklyRewards} from '../server/temple.js';
-import { INTERIOR, MAP, PLANET_COLORS, PLAZA_ID, interiorIdOf } from '../shared/config.js';
+import { INTERIOR, MAP, PLANET_COLORS, DEPARTMENT_ID, interiorIdOf } from '../shared/config.js';
 
 const key = 'department-test-private-not-real-key';
 const call = (socket, event, data = {}) => socket.timeout(3000).emitWithAck(event, data);
@@ -54,7 +54,7 @@ test('department realtime access, work, distribution, privacy, and persistence',
     planet = room.planets.get(planet.id);
   };
   const insideNearBoard = player => Object.assign(player, { mapId: interiorIdOf(planet.id), x: reportBoard.x, y: reportBoard.y });
-  const plazaNearPlanet = player => Object.assign(player, { mapId: PLAZA_ID, x: planet.x + planet.radius + 10, y: planet.y });
+  const plazaNearPlanet = player => Object.assign(player, { mapId: DEPARTMENT_ID, x: planet.x + planet.radius + 10, y: planet.y });
   plazaNearPlanet(teacherPlayer);
   await call(teacher, 'department:get', { planetId: planet.id });
   const snapshot = game.store.snapshot(room, room.players.get(firstPlayer.id));

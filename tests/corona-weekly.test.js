@@ -100,7 +100,7 @@ test('socket use, failed-save rollback, expiry and restart keep crown rewards si
   await f.restart();
   assert.equal(f.p.inventory.find(i=>i.id==='crown-food-card')?.quantity,2);
   const expiresAt=f.p.inventory.find(i=>i.id==='crown-food-card').expiresAt;
-  f.mutate(p=>{for(const member of [p,f.q])Object.assign(member,{mapId:'space-plaza',x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});});
+  f.mutate(p=>{for(const member of [p,f.q])Object.assign(member,{mapId:'star-market',x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});});
   const proposed=ok(await call(f.student,'trade:propose',{targetId:f.q.id}));
   ok(await call(f.other,'trade:respond',{tradeId:proposed.tradeId,accept:true}));
   ok(await call(f.student,'trade:offer',{tradeId:proposed.tradeId,revision:0,offer:{shards:1,energy:0,items:[]}}));

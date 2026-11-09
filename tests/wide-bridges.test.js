@@ -12,8 +12,7 @@ import {advance,isFree} from '../server/world.js';
 const avatar={id:'walker',role:'student',avatar:{level:5,constellationId:'sagittarius'},connected:true};
 const point=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 export const bridgeRoutes=[
-  ...P.islands.map(z=>({map:MAP,a:P.center,b:z,end:.83})),
-  ...Object.values(P.gates).map(g=>({map:MAP,a:P.center,b:g,end:1-80/Math.hypot(g.x-P.center.x,g.y-P.center.y)})),
+  ...Object.values(P.gates).map(g=>({map:MAP,a:P.center,b:g,start:.8,end:1-35/Math.hypot(g.x-P.center.x,g.y-P.center.y)})),
   ...V.temples.map(z=>({map:STATIC_MAPS['milky-valley'],a:V.center,b:z,end:.78})),
   {map:STATIC_MAPS['milky-valley'],a:V.center,b:V.gate,end:.76},
   {map:STREET,a:{x:900,y:2190},b:{x:900,y:2350},start:0,end:1},

@@ -135,6 +135,7 @@ test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/
   for(const to of ['unknown',WHALE_STOMACH_ID,BLACK_HOLE_ID,'__proto__'])assert.equal((await call(student,'map:fast-travel',{to})).ok,false);
   const design={version:1,background:'#123456',marks:Array.from({length:12},()=>({tool:'brush',color:'#ffffff',width:4,points:Array.from({length:256},()=>[123.45,234.56])}))};
   assert.ok(Buffer.byteLength(JSON.stringify(design))>32768);
+  for(const member of room().players.values())member.mapId='department-plaza';
   const planetData={name:'테스트행성',description:'',...departmentSlots()[0],color:PLANET_COLORS[0],templateId:'meal',customDesign:design};
   assert.equal((await call(student,'planet:create',planetData)).ok,false);
   assert.equal((await call(teacher,'planet:create',{...planetData,customDesign:{...design,url:'https://example.test/image'}})).ok,false);
@@ -142,7 +143,7 @@ test('소켓 구매·교사 지급·빠른 이동은 권한/저장실패/중복/
   const planet=room().planets.get(created.planetId);assert.deepEqual(planet.customDesign,design);
   assert.deepEqual(game.store.snapshot(room(),p(),now).planets.find(pl=>pl.id===planet.id).customDesign,design);
   assert.equal((await call(student,'map:fast-travel',{to:interiorIdOf(planet.id)})).ok,false);
-  p().mapId=PLAZA_ID;
+  p().mapId='department-plaza';
   const proposal=await call(student,'planet:propose',{...planetData,...departmentSlots()[1],name:'그림행성'});assert.ok(proposal.ok,proposal.error);
   const approved=await call(teacher,'planet:approve',{proposalId:proposal.proposalId});assert.ok(approved.ok,approved.error);assert.deepEqual(room().planets.get(approved.planetId).customDesign,design);
   atShop();

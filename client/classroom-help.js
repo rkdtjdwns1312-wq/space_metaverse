@@ -27,7 +27,7 @@ export function mapGuide(mapId,planets=[]){
   const map=mapOf(mapId,planets);
   let text='주변의 물체 가까이 가서 조사하기로 이곳의 활동을 살펴보세요.';
   if(planetIdOfMap(mapId))text='우리 부서의 규칙·실적을 확인하고 경고 제어돌과 꾸미기 장치를 이용해요.';
-  else if(mapId==='space-plaza')text='알림장·시간표·과제·미션을 확인하고 부서행성과 우주 탐사를 이용해요.';
+  else if(['space-plaza','assignment-archive','star-market','department-plaza'].includes(mapId))text='알림장·시간표·과제·미션을 확인하고 부서행성과 우주 탐사를 이용해요.';
   else if(mapId==='star-station')text='수학·영어·역사·과학·교양·예술 발전소에서 배우고 사냥 시간을 충전해요. 천사 석상에서 회복 버프를 받아요. 북쪽은 별들이 잠드는 곳, 남쪽은 쉼터예요.';
   else if(mapId==='star-playground')text='일곱 오락기와 짝 맞추기·오목 경쟁 게임을 즐겨요. 명예의 전당에서 1등을 확인하고 북쪽 문으로 쉼터에 돌아가요.';
   else if(mapId==='star-street')text='쇼핑·조합·아기별 돌보기·별방 꾸미기·꽃 키우기를 해요. 북쪽 문은 별 발전소, 남쪽 문은 별 놀이터로 이어져요. 공원 분수대에서 5분간 최대 체력과 최대 마나가 10% 늘어나는 별의 수호를 받을 수 있어요.';
@@ -103,7 +103,7 @@ export function createClassroomHelp({getRoom,getSelfId,stop}){
     const group=document.createElement('div');group.className='student-help-heading';heading.before(group);
     group.append(heading,row);
   }}
-  const mapTopics=mapId=>planetIdOfMap(mapId)?['department']:mapId==='space-plaza'?['class','mission','department']:mapId==='star-station'?['learning']:mapId==='star-playground'?['play']:mapId==='star-street'?['cozy','shop','craft']:mapId==='milky-valley'?['avatar']:mapId==='black-hole'?['department']:mapId==='whale-stomach'?['special']:['battle','start'];
+  const mapTopics=mapId=>planetIdOfMap(mapId)?['department']:['space-plaza','assignment-archive','star-market','department-plaza'].includes(mapId)?['class','mission','department']:mapId==='star-station'?['learning']:mapId==='star-playground'?['play']:mapId==='star-street'?['cozy','shop','craft']:mapId==='milky-valley'?['avatar']:mapId==='black-hole'?['department']:mapId==='whale-stomach'?['special']:['battle','start'];
   let mapReturnFocus=null;
   function openMapGuide(mapId,opener){stop();const r=getRoom(),p=r?.players.find(p=>p.id===getSelfId());if(!p)return;mapReturnFocus=opener||document.activeElement;const guide=mapGuide(mapId,r.planets);detail.querySelector('h2').textContent=guide.name;detail.querySelector('p').textContent=guide.text;const links=detail.querySelector('.map-help-links');links.replaceChildren();for(const id of mapTopics(mapId)){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=HELP_TOPICS.find(t=>t.id===id).title;button.onclick=()=>{detail.close();open(id,mapReturnFocus);};links.append(button);}if(!detail.open)detail.showModal();}
   const detail=document.createElement('dialog');detail.id='map-guide-dialog';detail.innerHTML='<h2></h2><p></p><div class="dialog-actions"><button class="secondary" type="button">확인</button></div>';detail.querySelector('button').onclick=()=>detail.close();document.body.append(detail);

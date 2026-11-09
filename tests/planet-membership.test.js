@@ -1,7 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {io} from 'socket.io-client';
 import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 import {createClassroomServer} from '../server/app.js';import {addPlanet} from '../server/world.js';
-import {INTERIOR,interiorIdOf,PLAZA_ID} from '../shared/config.js';import {validateJoinRequests} from '../server/planet-membership.js';import {issueWarning,warningSummary,clearBlackStar} from '../server/warnings.js';
+import {departmentSlots} from '../shared/plaza-layout.js';
+import {INTERIOR,interiorIdOf,DEPARTMENT_ID} from '../shared/config.js';import {validateJoinRequests} from '../server/planet-membership.js';import {issueWarning,warningSummary,clearBlackStar} from '../server/warnings.js';
 const call=(s,event,data={})=>s.timeout(4000).emitWithAck(event,data),key='membership-integration-test';
 async function fixture(t,persistent=false){
  const dir=persistent?await mkdtemp(join(tmpdir(),'membership-test-')):null,sockets=[];let game,url;
@@ -11,7 +12,8 @@ async function fixture(t,persistent=false){
  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1','2','3'],title:'승인 검사'}),code=created.room.code;
  const students=[];for(const name of ['1','2','3']){const socket=await connect(),reply=await call(socket,'room:join',{code,nickname:name,pin:'1234'});assert.ok(reply.ok,reply.error);students.push({socket,id:reply.selfId});}
  const room=()=>game.store.rooms.get(code),player=i=>room().players.get(students[i].id);
- const planet=addPlanet(room(),{name:'우체통행성',description:'',x:650,y:150,color:'#ccccff',rules:[]});
+ const planet=addPlanet(room(),{name:'우체통행성',description:'',...departmentSlots()[0],color:'#ccccff',rules:[]});
+ for(const p of room().players.values())Object.assign(p,{mapId:DEPARTMENT_ID,...departmentSlots()[3]});
  const mailbox=i=>Object.assign(player(i),{mapId:interiorIdOf(planet.id),x:220,y:210});
  return {get game(){return game;},code,room,player,planet,students,mailbox,connect,restart:async()=>{sockets.forEach(s=>s.disconnect());await game.close();await start();}};
 }
@@ -32,8 +34,8 @@ test('가입: 빈 행성 즉시, 부원 있는 행성 승인 전 출입 금지·
 test('가입: 빈/유인 행성 모두 선탈퇴 필수, 승인 시에도 현재 소속 재검증',async t=>{
  const f=await fixture(t),[a,b]=f.students,id=f.planet.id;
  await call(a.socket,'planet:join',{planetId:id});
- const previous=addPlanet(f.room(),{name:'이전행성',description:'',x:1450,y:175,color:'#ccccff',rules:[]});
- const empty=addPlanet(f.room(),{name:'빈행성',description:'',x:2000,y:175,color:'#ccccff',rules:[]});
+ const previous=addPlanet(f.room(),{name:'이전행성',description:'',...departmentSlots()[1],color:'#ccccff',rules:[]});
+ const empty=addPlanet(f.room(),{name:'빈행성',description:'',...departmentSlots()[2],color:'#ccccff',rules:[]});
  f.player(1).avatar.departmentId=previous.id;
  for(const target of [id,empty.id]){
   const blocked=await call(b.socket,'planet:join',{planetId:target});assert.equal(blocked.ok,false);assert.match(blocked.error,/먼저 탈퇴/);
@@ -45,7 +47,7 @@ test('가입: 빈/유인 행성 모두 선탈퇴 필수, 승인 시에도 현재
  assert.equal(f.player(1).avatar.departmentId,previous.id);
  f.player(1).mapId=interiorIdOf(previous.id);
  assert.equal((await call(b.socket,'planet:leave',{planetId:previous.id})).ok,true);
- assert.equal(f.player(1).avatar.departmentId,null);assert.equal(f.player(1).mapId,PLAZA_ID);assert.equal(f.planet.joinRequests.length,0);
+ assert.equal(f.player(1).avatar.departmentId,null);assert.equal(f.player(1).mapId,DEPARTMENT_ID);assert.equal(f.planet.joinRequests.length,0);
  assert.equal((await call(b.socket,'planet:join',{planetId:empty.id})).pending,false);
  assert.equal(f.player(1).avatar.departmentId,empty.id);
  await call(b.socket,'planet:leave',{planetId:empty.id});
@@ -64,7 +66,7 @@ test('가입: 재시작 후 신청·오프라인 소속 유지 및 오프라인 
  assert.ok((await call(anew,'planet:mailbox:decide',{planetId:id,playerId:b.id,accept:true})).ok);await f.restart();
  const bnew=await f.connect();const back=await call(bnew,'room:join',{code:f.code,nickname:'2',pin:'1234'});assert.ok(back.ok,back.error);assert.equal(f.player(1).avatar.departmentId,id);
  const cnew=await f.connect();await call(cnew,'room:join',{code:f.code,nickname:'3',pin:'1234'});
- assert.equal((await call(cnew,'planet:join',{planetId:id})).pending,true,'기존 부원이 로그아웃해도 자동 가입하지 않음');
+ f.player(2).mapId=DEPARTMENT_ID;assert.equal((await call(cnew,'planet:join',{planetId:id})).pending,true,'기존 부원이 로그아웃해도 자동 가입하지 않음');
 });
 test('가입 신청 저장 구조는 중복·잘못된 시간 거부, 옛 저장은 빈 목록',()=>{
  assert.deepEqual(validateJoinRequests(),[]);assert.throws(()=>validateJoinRequests([{playerId:'a',at:-1}]));assert.throws(()=>validateJoinRequests([{playerId:'a',at:1},{playerId:'a',at:2}]));

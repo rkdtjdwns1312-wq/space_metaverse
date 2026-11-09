@@ -5,7 +5,7 @@ import {freshConstellationAbilityState,validateConstellationAbilityState} from '
 import {useLeoChallenge,rewardLeoSubmission} from '../server/leo-weekly.js';
 import {borrowedOphiuchusActor,useOphiuchus} from '../server/ophiuchus-weekly.js';
 import {saveNotice} from '../server/temple.js';
-import {MAP} from '../shared/config.js';
+import {ASSIGNMENT_MAP,MAP} from '../shared/config.js';
 
 const makePlayer=(id,level,constellationId='aquarius')=>({id,nickname:id,role:'student',connected:true,away:false,
   avatar:{level,constellationId,xp:0,form:'constellation'},starShards:0,constellationAbilityState:freshConstellationAbilityState()});
@@ -59,8 +59,8 @@ test('Lv4 reward happens on the actual first homework submission and survives re
     p.avatar.constellationId='leo';p.avatar.level=4;p.starShards=0;
     f.q.avatar.level=3;f.q.avatar.xp=0;
     saveNotice(room,'별 과제',[0],f.now);
-    const portal=MAP.objects.find(object=>object.kind==='andromeda');
-    Object.assign(f.q,{mapId:MAP.id,x:portal.x,y:portal.y,input:{x:0,y:0,at:0}});
+    const portal=ASSIGNMENT_MAP.objects.find(o=>o.kind==='andromeda');
+    Object.assign(f.q,{mapId:ASSIGNMENT_MAP.id,x:portal.x,y:portal.y,input:{x:0,y:0,at:0}});
   });
   ok(await call(f.student,'constellation-ability:use',{targetIds:[f.q.id]}));
   const assignment=f.room.temple.assignments[0];
@@ -77,8 +77,8 @@ test('failed homework save rolls back challenge reward and submission status',as
   const f=await readingFixture(t);f.mutate((p,room)=>{
     p.avatar.constellationId='leo';p.avatar.level=4;p.starShards=0;f.q.avatar.level=3;
     saveNotice(room,'별 과제',[0],f.now);
-    const portal=MAP.objects.find(object=>object.kind==='andromeda');
-    Object.assign(f.q,{mapId:MAP.id,x:portal.x,y:portal.y,input:{x:0,y:0,at:0}});
+    const portal=ASSIGNMENT_MAP.objects.find(o=>o.kind==='andromeda');
+    Object.assign(f.q,{mapId:ASSIGNMENT_MAP.id,x:portal.x,y:portal.y,input:{x:0,y:0,at:0}});
   });
   ok(await call(f.student,'constellation-ability:use',{targetIds:[f.q.id]}));
   const assignment=f.room.temple.assignments[0];

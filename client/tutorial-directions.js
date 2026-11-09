@@ -1,5 +1,5 @@
-import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,VALLEY_ID,mapOf} from '../shared/config.js';
-import {PLAZA_LAYOUT} from '../shared/plaza-layout.js';
+import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,DEPARTMENT_ID,STREET_ID,VALLEY_ID,mapOf} from '../shared/config.js';
+import {PLAZA_LAYOUT,PLAZA_AREA_IDS,PLAZA_ROUTES,plazaLayoutOf} from '../shared/plaza-layout.js';
 import {STREET_LAYOUT,streetLayoutOf,isStarlightStreet} from '../shared/street-layout.js';
 import {VALLEY_LAYOUT} from '../shared/valley-layout.js';
 import {avatarPositionIsClear,avatarCollisionShape} from '../shared/avatar-boundary.js';
@@ -8,7 +8,7 @@ export function journeyDestination(goal){
  const pillar=MAP.objects.find(o=>o.id===goal||(goal==='effects-seen'&&o.id==='pillar-effects'));
  if(pillar)return {...pillar,mapId:PLAZA_ID,interact:true};
  const island=PLAZA_LAYOUT.islands.find(i=>i.id===goal);
- if(island)return {...island,mapId:PLAZA_ID};
+ if(island)return goal==='black-hole'?{...island,...PLAZA_ROUTES.find(r=>r.id===goal),rx:170,ry:170,mapId:PLAZA_ID}:{...island,mapId:PLAZA_AREA_IDS[goal]};
  const zones={station:STREET_LAYOUT.north,shops:STREET_LAYOUT.upper,playground:STREET_LAYOUT.lower};
  if(zones[goal])return {...zones[goal],name:{station:'별 발전소',shops:'상점가',playground:'놀이터'}[goal],mapId:goal==='station'?'star-station':goal==='playground'?'star-playground':STREET_ID};
  const star=VALLEY.objects.find(o=>o.id===goal);
@@ -41,8 +41,8 @@ export function tutorialButtonArrowPlacement(rect,viewport,size=32,gap=8){
 }
 function nextGate(mapId,targetId,planets){
  const map=mapOf(mapId,planets),queue=[{map,first:null}],seen=new Set([mapId]);
- while(queue.length){const current=queue.shift();for(const gate of current.map.objects.filter(o=>o.kind==='gate'||o.kind==='door')){
-  const id=gate.target||(gate.kind==='door'?PLAZA_ID:null);if(!id||seen.has(id))continue;
+ while(queue.length){const current=queue.shift();for(const gate of current.map.objects.filter(o=>o.kind==='gate'||o.kind==='door'||o.kind==='black-hole')){
+  const id=gate.target||(gate.kind==='door'?DEPARTMENT_ID:null);if(!id||seen.has(id))continue;
   const first=current.first||gate;if(id===targetId)return first;
   if(STATIC_MAPS[id]){seen.add(id);queue.push({map:STATIC_MAPS[id],first});}
  }}return null;
@@ -90,7 +90,7 @@ export function journeyRoute(player,goal,planets=[]){
  const ends=goalCandidates(map,target,player,shape);if(!ends.length)return {target,points:[],reachable:false};
  const end=ends[0];
  if(clear(map,player,end,player))return {target,points:[end],reachable:true};
- const hubs=map.id===PLAZA_ID?[PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands]:isStarlightStreet(map.id)?[...streetLayoutOf(map).islands,...map.objects.filter(o=>o.kind==='gate')].map(o=>({x:o.x,y:o.y})):map.id===VALLEY_ID?[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples]:[];
+ const hubs=plazaLayoutOf(map)?[plazaLayoutOf(map).center,...plazaLayoutOf(map).islands].filter(Boolean):isStarlightStreet(map.id)?[...streetLayoutOf(map).islands,...map.objects.filter(o=>o.kind==='gate')].map(o=>({x:o.x,y:o.y})):map.id===VALLEY_ID?[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples]:[];
  const nodes=[{x:player.x,y:player.y},...ends,...hubs];
  for(const object of map.objects.filter(o=>!o.passable))for(let i=0;i<8;i++){
   const a=i*Math.PI/4,rx=(object.collisionRx??object.radius)+shape.radius+26,ry=(object.collisionRy??object.radius)+shape.radius+26;

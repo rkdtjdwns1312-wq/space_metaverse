@@ -24,7 +24,7 @@ import {preloadCozyArt} from './cozy-activities-art.js';
 // Each family is decoded once. Failed assets remain observable until refresh.
 const states=new Map();
 export function prepareMapArt(map,planets=[]){
-  const family=map.id==='space-plaza'?'plaza':map.theme==='starlight-street'?'street':map.id==='milky-valley'?'valley':map.theme==='star-origin'?'origin':map.theme==='sleeping-stars'?'sleeping-stars':map.theme?.includes('paradise')?'paradise':map.id==='black-hole'?'black-hole':map.theme==='whale-stomach'?'whale':'interior';
+  const family=map.theme==='plaza'||map.id==='space-plaza'?'plaza':map.theme==='starlight-street'?'street':map.id==='milky-valley'?'valley':map.theme==='star-origin'?'origin':map.theme==='sleeping-stars'?'sleeping-stars':map.theme?.includes('paradise')?'paradise':map.id==='black-hole'?'black-hole':map.theme==='whale-stomach'?'whale':'interior';
   const departments=family==='plaza'?[...new Set(planets.filter(p=>!p.customDesign).map(p=>p.templateId))].sort():[];
   const key=family+':'+(['sleeping-stars','street'].includes(family)?map.id:departments.join(','));
   if(states.has(key))return states.get(key);

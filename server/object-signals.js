@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {PLAZA_ID,PLAYGROUND_ID,interiorIdOf} from '../shared/config.js';
+import {PLAZA_ID,DEPARTMENT_ID,PLAYGROUND_ID,interiorIdOf} from '../shared/config.js';
 
 // 내용 자체를 신호로 보내지 않습니다. 받은 학생이 내용을 볼 권한이 있는지와
 // 무관하게 해시만 비교하여 새 알림 표시를 정합니다.
@@ -15,7 +15,7 @@ export function objectSignals(room,viewer){
   for(const pl of room.planets.values()){
     const memberCount=[...room.players.values()].filter(p=>p.avatar.departmentId===pl.id).length;
     const publicState=[pl.name,pl.description,pl.rules,pl.work?.report?.status,pl.work?.history?.length,pl.warnings,memberCount];
-    put(PLAZA_ID,pl.id,publicState);
+    put(DEPARTMENT_ID,pl.id,publicState);
     if(viewer?.role!=='teacher'&&viewer?.avatar?.departmentId!==pl.id)continue;
     const inside=interiorIdOf(pl.id);
     put(inside,'board',pl.rules||[]);

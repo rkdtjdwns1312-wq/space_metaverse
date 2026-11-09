@@ -148,7 +148,7 @@ import {swanDailyDue,settleSwanDaily,swanCardOffer,buySwanStarCard} from './swan
 import {useCoronaWeekly,coronaDue,settleCorona,CROWN_ITEMS} from './corona-weekly.js';
 import {activeAriesSleep,ariesSleepDue,settleAriesSleep,inviteAriesSleep,respondAriesSleep,useAriesSleep,wakeAriesSleep} from './aries-weekly.js';
 import {inviteCancerDuel,respondCancerDuel} from './cancer-weekly.js';
-import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
+import { RULES, CHAT, DEPARTMENT_RULES, PLAZA_ID, DEPARTMENT_ID, ASSIGNMENT_ID, ASSIGNMENT_MAP, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf,
   MAP, STREET, STREET_ID, STAR_STATION, STAR_STATION_ID, PLAYGROUND, PLAYGROUND_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, WARNING_RULES, STATIC_MAPS, UNIVERSE_MAP_LAYOUT, mapOf, SHARDS, SHOP, itemOf, ITEM_USE, TRADE, templateOf } from '../shared/config.js';
 
 const equalSecret=(value,key) => {
@@ -203,7 +203,7 @@ const planetInput=(room,data) => {
   ensure(!filterChat(description).flagged,'행성 소개에 쓸 수 없는 말이 있어요.');
   ensure(Number.isFinite(data.x) && Number.isFinite(data.y),'행성 위치를 확인해주세요.');
   const x=Math.round(data.x), y=Math.round(data.y);
-  ensure(placementFree(room,x,y),'오른쪽 아래 부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
+  ensure(placementFree(room,x,y),'부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
   ensure(PLANET_COLORS.includes(data.color),'행성 색을 골라주세요.');
   ensure(templateOf(data.templateId),'행성 종류를 골라주세요.');
   const customDesign=data.customDesign==null?null:normalizePlanetDesign(data.customDesign);
@@ -580,8 +580,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     const missionBoardAccess=()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');
-      const board=MAP.objects.find(object=>object.kind==='mission-board');
-      ensure(session.player.role==='teacher'||session.player.mapId===PLAZA_ID&&isNear(session.player,board),'별 미션 게시판 가까이에서 확인해주세요.');
+      const board=ASSIGNMENT_MAP.objects.find(object=>object.kind==='mission-board');
+      ensure(session.player.role==='teacher'||session.player.mapId===ASSIGNMENT_ID&&isNear(session.player,board),'별 미션 게시판 가까이에서 확인해주세요.');
       return session;
     };
     action('mission:board:read',()=>{
@@ -1230,7 +1230,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(p.role==='student','선생님은 행성 만들기로 바로 만들 수 있어요.');
-      ensure(p.mapId===PLAZA_ID,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
+      ensure(p.mapId===DEPARTMENT_ID,'부서행성 광장에서만 새 행성을 만들 수 있어요. 별의 기원 오른쪽 아래 문으로 이동해주세요.');
       ensure(room.planets.size+room.proposals.size<PLANET.maxPerRoom,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
       ensure(room.proposals.size<PLANET.maxPending,'승인을 기다리는 행성이 너무 많아요. 잠시 후 다시 신청해주세요.');
       ensure(![...room.proposals.values()].some(pr=>pr.playerId===p.id),'이미 승인을 기다리는 행성이 있어요.');
@@ -1245,7 +1245,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       ensure(p.role==='teacher','선생님만 할 수 있어요.');
-      ensure(p.mapId===PLAZA_ID,'광장에서만 새 행성을 만들 수 있어요. 먼저 우주 광장으로 돌아와주세요.');
+      ensure(p.mapId===DEPARTMENT_ID,'부서행성 광장에서만 새 행성을 만들 수 있어요. 별의 기원 오른쪽 아래 문으로 이동해주세요.');
       ensure(room.planets.size+room.proposals.size<PLANET.maxPerRoom,'행성이 너무 많아요. (최대 '+PLANET.maxPerRoom+'개)');
       const input=planetInput(room,data);
       // 새 행성의 기본 규칙은 고른 종류의 규칙(없으면 공통 기본 규칙)으로 시작합니다.
@@ -1271,9 +1271,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const student=room.players.get(proposal.playerId);
       if(student){
         const previousId=student.avatar.departmentId;
-        if(student.mapId!==PLAZA_ID&&!student.avatar.blackStar){
+        if(student.mapId!==DEPARTMENT_ID&&!student.avatar.blackStar){
           const previousPlanet=room.planets.get(previousId);
-          Object.assign(student,exitPosition(room,previousPlanet||planet,student),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+          Object.assign(student,exitPosition(room,previousPlanet||planet,student),{mapId:DEPARTMENT_ID,input:{x:0,y:0,at:0}});
         }
         student.avatar.departmentId=planet.id;
         if(previousId){
@@ -1312,11 +1312,11 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player:p}=s,planet=requirePlanet(room,data);
       ensure(p.role==='student'&&p.avatar.departmentId===planet.id,'소속 부원만 행성 위치를 옮길 수 있어요.');
       ensure(p.connected&&!p.away&&!p.avatar.blackStar&&!isDefeated(p),'지금은 행성 위치를 옮길 수 없어요.');
-      ensure(p.mapId===PLAZA_ID,'광장에서 행성 위치를 골라주세요.');
+      ensure(p.mapId===DEPARTMENT_ID,'광장에서 행성 위치를 골라주세요.');
       ensure(Number.isFinite(data.x)&&Number.isFinite(data.y),'행성 위치를 확인해주세요.');
       const x=Math.round(data.x),y=Math.round(data.y);
       if(x===planet.x&&y===planet.y)return {planetId:planet.id,x,y,moved:false};
-      ensure(placementFree(room,x,y,planet.id),'오른쪽 아래 부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
+      ensure(placementFree(room,x,y,planet.id),'부서행성 광장의 빈자리를 골라주세요. 다른 행성과 떨어져 있어야 해요.');
       movePlanet(room,planet,x,y);
       roster(room);announce(room,'"'+planet.name+'" 행성의 위치를 옮겼어요.');
       return {planetId:planet.id,x,y,moved:true};
@@ -1330,7 +1330,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       room.planets.delete(planet.id);
       const mapId=interiorIdOf(planet.id);
       for(const player of room.players.values()){
-        if(player.mapId===mapId) Object.assign(player,exitPosition(room,planet,player),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+        if(player.mapId===mapId) Object.assign(player,exitPosition(room,planet,player),{mapId:DEPARTMENT_ID,input:{x:0,y:0,at:0}});
         if(player.avatar.departmentId===planet.id) player.avatar.departmentId=null;
       }
       roster(room);
@@ -1348,7 +1348,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player:p}=s;
       const planet=requirePlanet(room,data);
       ensure(p.role==='student','선생님은 모든 행성에 들어갈 수 있어요.');
-      ensure(p.mapId===PLAZA_ID,'광장에서만 행성에 가입할 수 있어요.');
+      ensure(p.mapId===DEPARTMENT_ID,'부서행성 광장에서만 행성에 가입할 수 있어요.');
       const previousId=p.avatar.departmentId;
       ensure(previousId!==planet.id,'이미 '+planet.name+' 소속이에요.');
       const result=requestMembership(room,planet,p,clock());
@@ -1384,7 +1384,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const {room,player:p}=s;
       const planet=requirePlanet(room,data);
       ensure(p.avatar.departmentId===planet.id,planet.name+' 소속이 아니에요.');
-      if(p.mapId===interiorIdOf(planet.id)) Object.assign(p,exitPosition(room,planet,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      if(p.mapId===interiorIdOf(planet.id)) Object.assign(p,exitPosition(room,planet,p),{mapId:DEPARTMENT_ID,input:{x:0,y:0,at:0}});
       p.avatar.departmentId=null;
       clearJoinRequests(room,p.id);
       planet.rename?.votes.delete(p.id); evaluateRename(room,planet);
@@ -1396,7 +1396,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
       const {room,player:p}=s;
       const planet=requirePlanet(room,data);
-      ensure(p.mapId===PLAZA_ID,'먼저 광장으로 나와주세요.');
+      ensure(p.mapId===DEPARTMENT_ID,'먼저 부서행성 광장으로 나와주세요.');
       ensure(p.role==='teacher' || p.avatar.departmentId===planet.id,planet.name+' 소속 친구만 들어갈 수 있어요.');
       ensure(isNear(p,planet),'행성에 더 가까이 가주세요.');
       const mapId=interiorIdOf(planet.id);
@@ -1411,7 +1411,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(planetId,'지금은 행성 안이 아니에요.');
       const planet=room.planets.get(planetId);
       ensure(planet,'행성을 찾지 못했어요.');
-      Object.assign(p,exitPosition(room,planet,p),{mapId:PLAZA_ID,input:{x:0,y:0,at:0}});
+      Object.assign(p,exitPosition(room,planet,p),{mapId:DEPARTMENT_ID,input:{x:0,y:0,at:0}});
       roster(room);
       return {};
     });
@@ -1421,7 +1421,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       const planet=requirePlanet(s.room,data),p=s.player;
       ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,'우리 부서의 실적만 볼 수 있어요.');
       const inside=p.mapId===interiorIdOf(planet.id);
-      ensure(inside||(p.mapId===PLAZA_ID&&isNear(p,planet)),'행성에 가까이 가거나 안에 입장해주세요.');
+      ensure(inside||(p.mapId===DEPARTMENT_ID&&isNear(p,planet)),'행성에 가까이 가거나 안에 입장해주세요.');
       const document=mapOf(interiorIdOf(planet.id)).objects.find(o=>o.kind==='report-board');
       return {...s,planet,canWrite:p.role==='student'&&inside&&isNear(p,document)};
     };
@@ -1534,7 +1534,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(!p.avatar.blackStar||to===BLACK_HOLE_ID,'현재 검은별 상태입니다');
       ensure(to!==BLACK_HOLE_ID||p.role==='teacher'||!!p.avatar.blackStar,'검은별 상태일 때만 블랙홀에 들어갈 수 있어요.');
       const planetId=planetIdOfMap(to),planet=planetId&&room.planets.get(planetId);
-      ensure(planet||UNIVERSE_MAP_LAYOUT.some(m=>m.id===to),'지도에서 갈 곳을 선택해주세요.');
+      ensure(planet||reminder||UNIVERSE_MAP_LAYOUT.some(m=>m.id===to),'지도에서 갈 곳을 선택해주세요.');
       if(planet)ensure(p.role==='teacher'||p.avatar.departmentId===planet.id,planet.name+' 소속 친구만 들어갈 수 있어요.');
       const map=mapOf(to,room.planets.values());
       if(map.minLevel)ensure(p.role==='teacher'||p.avatar.level>=map.minLevel,'이곳에 들어가기 위한 레벨이 부족해요.');
@@ -1709,8 +1709,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     });
     const assignmentAccess=()=>{
       const s=socket.data.session;ensure(s,'먼저 교실에 입장해주세요.');
-      const portal=MAP.objects.find(o=>o.kind==='andromeda');
-      ensure(s.player.role==='teacher'||s.player.mapId===PLAZA_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
+      const portal=ASSIGNMENT_MAP.objects.find(o=>o.kind==='andromeda');
+      ensure(s.player.role==='teacher'||s.player.mapId===ASSIGNMENT_ID&&isNear(s.player,portal),'과제별서고 가까이에서 확인해주세요.');
       return s;
     };
     action('assignment:read',()=>{

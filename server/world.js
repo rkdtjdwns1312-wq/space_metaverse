@@ -2,7 +2,7 @@ import {avatarFitsFloor,avatarPositionIsClear,avatarFootprint,avatarTouchesObjec
 import {monstersOf} from './monsters.js';
 import {departmentSite} from '../shared/plaza-layout.js';
 import { randomUUID } from 'node:crypto';
-import { MAP, RULES, PLAZA_ID, PLANET, mapOf, interactionDistance, interactionReach } from '../shared/config.js';
+import { MAP, RULES, PLAZA_ID, DEPARTMENT_ID, PLANET, mapOf, interactionDistance, interactionReach } from '../shared/config.js';
 import {isDefeated} from './vitals.js';
 import {equipmentBonus} from '../shared/equipment.js';
 import {darkStarMap} from '../shared/dark-star.js';
@@ -52,7 +52,7 @@ export function arrivePosition(room, mapId, point, player) {
   return pos;
 }
 export function exitPosition(room, planet, player) {
-  const pos = nearestFree(room, planet.x, planet.y+planet.radius+RULES.radius+12, PLAZA_ID, player);
+  const pos = nearestFree(room, planet.x, planet.y+planet.radius+RULES.radius+12, DEPARTMENT_ID, player);
   if (!pos) throw new Error('안전하게 들어갈 자리가 없습니다.');
   return pos;
 }
@@ -63,13 +63,13 @@ export function isNear(player, object) {
 export function placementFree(room, x, y, ignorePlanetId=null) {
   const r = PLANET.radius + RULES.radius;
   if (!departmentSite(x,y,r)) return false;
-  if (x < r || y < r || x > MAP.width-r || y > MAP.height-r) return false;
+  if (x < r || y < r || x > mapOf(DEPARTMENT_ID).width-r || y > mapOf(DEPARTMENT_ID).height-r) return false;
   // 예약 구역(이동 버튼 자리)과 행성 원이 겹치면 안 됩니다. 원과 사각형의 가장 가까운 점 거리로 판정합니다.
   if ((PLANET.reserved||[]).some(z => {
     const cx = Math.max(z.x, Math.min(x, z.x+z.width)), cy = Math.max(z.y, Math.min(y, z.y+z.height));
     return Math.hypot(x-cx, y-cy) < PLANET.radius;
   })) return false;
-  const bodies = [...MAP.objects, ...[...room.planets.values()].filter(p=>p.id!==ignorePlanetId), ...room.proposals.values()];
+  const bodies = [...mapOf(DEPARTMENT_ID).objects, ...[...room.planets.values()].filter(p=>p.id!==ignorePlanetId), ...room.proposals.values()];
   return !bodies.some(o => Math.hypot(x-o.x, y-o.y) < PLANET.radius+o.radius+PLANET.minGap);
 }
 // 행성을 만들고 room.planets에 등록합니다. 방금 생긴 행성 자리에 서 있던 광장의 플레이어는 갇히지 않도록 밖으로 내보냅니다.
@@ -79,7 +79,7 @@ export function addPlanet(room, {name, description, x, y, color, rules, createdB
     rules: [...rules], createdBy, createdAt: Date.now(), rename: null, templateId, interiorDecor:{} };
   room.planets.set(planet.id, planet);
   for (const p of room.players.values())
-    if (p.mapId === PLAZA_ID && avatarTouchesObject(p,p.x,p.y,planet))
+    if (p.mapId === DEPARTMENT_ID && avatarTouchesObject(p,p.x,p.y,planet))
       Object.assign(p, exitPosition(room, planet, p));
   return planet;
 }
@@ -88,7 +88,7 @@ export function movePlanet(room,planet,x,y){
   const before={x:planet.x,y:planet.y},moved=[];
   Object.assign(planet,{x,y});
   try{
-    for(const p of room.players.values())if(p.mapId===PLAZA_ID&&avatarTouchesObject(p,p.x,p.y,planet)){
+    for(const p of room.players.values())if(p.mapId===DEPARTMENT_ID&&avatarTouchesObject(p,p.x,p.y,planet)){
       moved.push({player:p,x:p.x,y:p.y});Object.assign(p,exitPosition(room,planet,p));
     }
   }catch(error){

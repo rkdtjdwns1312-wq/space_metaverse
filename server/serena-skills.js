@@ -2,6 +2,7 @@ import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {RULES} from '../shared/config.js';
 import {ensureVitals,playerVitals,libraProtectors} from './vitals.js';
 import {playersInArea} from './area-combat.js';
+import {consumeTruthRecordShield} from './truth-record.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
@@ -63,10 +64,11 @@ export function trySerenaSkills(room,boss,target,now,random=Math.random){
   return Number.isFinite(roll)&&roll>=0&&roll<rule.chance&&beginSerenaSkill(room,boss,kind,now,random);
 }
 
-// 천칭 무적은 유지하며, 패턴 실패는 방어·방패·황소 면역·자동 부활을 무시합니다.
+// 천칭 무적·진리의 보호막은 유지하며, 패턴 실패는 나머지 방어·자동 부활을 무시합니다.
 function instantDefeat(room,player,now){
   if(libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const value=ensureVitals(player),damage=value.hp;
+  if(consumeTruthRecordShield(player,damage,now))return {damage:0,vitals:playerVitals(player),defeated:false,immune:true,truthRecordShield:true};
   value.hp=0;value.defeatedAt=now;player.input={x:0,y:0,at:0};
   (player.damageNumbers??=[]).push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage});
   if(player.damageNumbers.length>40)player.damageNumbers.shift();

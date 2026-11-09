@@ -72,6 +72,7 @@ test('수업 마치기/서버 재시작 후 코드·학생 id·행성·소속·�
   const j=await join(student,code);assert.equal(j.ok,true,j.error);
   let room=f.game.store.rooms.get(code),p=room.players.get(j.selfId);
   const planet=[...room.planets.values()][0];
+  p.mapId='department-plaza';
   assert.equal((await call(student,'planet:join',{planetId:planet.id})).ok,true);
   const board=mapOf(interiorIdOf(planet.id)).objects.find(o=>o.kind==='board');assert.ok(board);
   const teacherPlayer=[...room.players.values()].find(x=>x.role==='teacher');
@@ -162,6 +163,7 @@ test('저장 오류는 성공 응답/알림 없이 지급과 수업 마치기를
 test('학생 퇴장·만료가 행성 소속을 지우지 않고 교사 연결 만료도 저장된 교실을 보존한다',async t=>{
   const f=await fixture(t,{reconnectMs:140}),{teacher,code}=await classroom(f),s=await f.connect(),j=await join(s,code);
   const planet=[...f.game.store.rooms.get(code).planets.values()][0];
+  f.game.store.rooms.get(code).players.get(j.selfId).mapId='department-plaza';
   assert.ok((await call(s,'planet:join',{planetId:planet.id})).ok);
   s.disconnect();await sleep(230);
   const p=f.game.store.rooms.get(code).players.get(j.selfId);
@@ -181,7 +183,7 @@ test('상호 확정 거래의 재화·아이템·기록은 함께 저장되며 �
     const p=player(id);return structuredClone({shards:p.starShards,energy:p.cosmicEnergy,inventory:p.inventory});
   });
   f.game.store.transact(()=>{
-    for(const id of [ja.selfId,jb.selfId])Object.assign(player(id),{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y,starShards:20,cosmicEnergy:40});
+    for(const id of [ja.selfId,jb.selfId])Object.assign(player(id),{mapId:'star-market',x:MARKET.x,y:MARKET.y,starShards:20,cosmicEnergy:40});
     player(ja.selfId).inventory=[{id:'star-sticker',quantity:3}];
     player(jb.selfId).inventory=[{id:'firefly-lamp',quantity:2}];
   });
@@ -228,7 +230,7 @@ test('상호 확정 거래의 재화·아이템·기록은 함께 저장되며 �
   assert.equal(reopened.room.trades.length,0);assert.equal('tradeLog' in reopened.room,false);
   assert.deepEqual(balances(),changed);assert.deepEqual(room().tradeLog.map(tr=>tr.result),['completed','failed']);
   assert.equal((await call(teacher2,'trade:history')).ok,false);
-  Object.assign(room().players.get(reopened.selfId),{mapId:PLAZA_ID,x:MARKET.x,y:MARKET.y});
+  Object.assign(room().players.get(reopened.selfId),{mapId:'star-market',x:MARKET.x,y:MARKET.y});
   const history=await call(teacher2,'trade:history');assert.ok(history.ok,history.error);
   assert.deepEqual(history.entries.map(tr=>tr.result),['failed','completed']);
   assert.deepEqual(history.entries[1].give,give);assert.deepEqual(history.entries[1].want,want);
@@ -238,6 +240,7 @@ test('대기 행성 신청과 이름 투표 Map을 복원하며 수업 밖 소�
   const f=await fixture(t),{teacher,code}=await classroom(f),a=await f.connect(),b=await f.connect(),c=await f.connect();
   const ja=await join(a,code),jb=await join(b,code,'2','2222');await join(c,code,'3','3333');
   const planet=[...f.game.store.rooms.get(code).planets.values()][0];
+  for(const member of f.game.store.rooms.get(code).players.values())member.mapId='department-plaza';
   assert.ok((await call(a,'planet:join',{planetId:planet.id})).ok);
   assert.ok((await call(b,'planet:join',{planetId:planet.id})).ok);await approveJoinFixture(f.game,a,b,planet.id);
   assert.ok((await call(a,'planet:rename:propose',{planetId:planet.id,name:'책읽는행성'})).ok);

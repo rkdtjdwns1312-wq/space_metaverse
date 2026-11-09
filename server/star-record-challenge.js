@@ -1,4 +1,5 @@
 import {ensureVitals,playerVitals,libraProtectors} from './vitals.js';
+import {consumeTruthRecordShield} from './truth-record.js';
 
 export const STAR_RECORD_CHALLENGE=Object.freeze({mana:10,cooldownMs:40000,totalMs:10000,rounds:2,decisionMs:3000,chance:.55});
 export const RECORD_PLANETS=Object.freeze(['금성','지구','화성','목성','토성','천왕성','해왕성']);
@@ -8,6 +9,8 @@ const eligible=(room,boss)=>[...room.players.values()].filter(player=>player.con
 export function defeatRecordPlayer(room,player,now,{bypassProtection=false}={}){
   if(!bypassProtection&&libraProtectors(room,player,now).length)return {damage:0,vitals:playerVitals(player),defeated:false,immune:true};
   const value=ensureVitals(player),damage=value.hp;
+  // Even patterns that bypass timed invulnerability consume this one-hit shield.
+  if(consumeTruthRecordShield(player,damage,now))return {damage:0,vitals:playerVitals(player),defeated:false,immune:true,truthRecordShield:true};
   value.hp=0;value.defeatedAt=now;player.input={x:0,y:0,at:0};
   (player.damageNumbers??=[]).push({targetId:player.id,targetKind:'player',mapId:player.mapId,x:player.x,y:player.y,damage});
   if(player.damageNumbers.length>40)player.damageNumbers.shift();

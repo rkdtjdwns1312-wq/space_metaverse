@@ -1,4 +1,15 @@
 import {equipmentOf,equipmentBaseId} from '../shared/equipment.js';
+export const TRUTH_RECORD_SHIELD_COOLDOWN_MS=180000;
+export function truthRecordShieldReady(player,now){
+  return !!player?.equipmentSlots?.some(id=>equipmentBaseId(id)==='truth-record')&&now>=(player.truthRecordShieldNextAt||0);
+}
+// One charge shared by the base item and every enhancement. Unequipping does
+// not reset the deadline; snapshots never spend or accumulate charges.
+export function consumeTruthRecordShield(player,damage,now){
+  if(!(damage>0)||!truthRecordShieldReady(player,now))return false;
+  player.truthRecordShieldNextAt=now+TRUTH_RECORD_SHIELD_COOLDOWN_MS;
+  return true;
+}
 // Successful E skill use (or Lv5 transformation) rolls once, after mana and cast checks.
 const COOLDOWN_FIELD=Object.freeze({
   aquarius:'aquariusCooldownUntil',corvus:'corvusCooldownUntil',cancer:'waterCooldownUntil',

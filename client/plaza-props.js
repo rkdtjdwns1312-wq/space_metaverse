@@ -21,7 +21,7 @@ export function drawPlazaLandmark(ctx,o){
   const name=o.kind==='andromeda'?'andromeda':'black-hole';
   const w=o.kind==='andromeda'?360:290,h=o.kind==='andromeda'?330:330;
   sprite(ctx,name,o.x,o.y+110,w,h);
-  label(ctx,o.name,o.x,o.y+125,21);
+  if(!o.hideLabel)label(ctx,o.name,o.x,o.y+125,21);
 }
 export function drawMissionBoard(ctx,o){
   sprite(ctx,'mission-board',o.x,o.y+100,250,250);
@@ -42,12 +42,13 @@ export function drawPaintedStarShop(ctx,o){
   ctx.beginPath();ctx.roundRect(o.x-65,o.y-139,130,28,10);ctx.fill();ctx.stroke();ctx.restore();
   label(ctx,'별 상점',o.x,o.y-119,19);
 }
-const words={assignment:'과제별서고 가는길',market:'별 시장 가는길',department:'부서행성 가는길','black-hole':'블랙홀 가는길'};
+const words={assignment:'과제별서고 가는 길',market:'별 시장 가는길',department:'부서행성 가는길','black-hole':'블랙홀 가는길'};
 // 푯말 대신 중앙 마당에서 각 다리가 시작되는 지점의 바닥에 글씨만 표시합니다.
 export const PLAZA_SIGNS=L.islands.map(z=>{
   const c=L.center,dx=z.x-c.x,dy=z.y-c.y;
-  const t=.84/Math.hypot(dx/c.rx,dy/c.ry);
-  return {id:'sign-'+z.id,x:c.x+dx*t,y:c.y+dy*t,lines:[words[z.id]]};
+  const t=.55/Math.hypot(dx/c.rx,dy/c.ry);
+  const point=z.id==='assignment'?{x:1320,y:1090}:z.id==='black-hole'?{x:2280,y:1143}:{x:c.x+dx*t,y:c.y+dy*t};
+  return {id:'sign-'+z.id,...point,lines:[words[z.id]]};
 });
 export function drawPlazaSign(ctx,s){
   ctx.save();ctx.textBaseline='middle';label(ctx,s.lines.join(' '),s.x,s.y,26);ctx.restore();

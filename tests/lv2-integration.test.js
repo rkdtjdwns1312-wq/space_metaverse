@@ -229,7 +229,7 @@ test('crafting maxOwned rejection keeps ingredients and fee; successful acquisit
 test('mutually confirmed market trade rejects recipient maxOwned overflow without transferring items or either currency', async t => {
   const f = await fixture(t);
   f.seed((a, b) => {
-    for (const p of [a, b]) Object.assign(p, {mapId: PLAZA_ID, x: MARKET.x, y: MARKET.y, cosmicEnergy: 20});
+    for (const p of [a, b]) Object.assign(p, {mapId:'star-market',x:MARKET.x, y: MARKET.y, cosmicEnergy: 20});
     a.inventory = [{id: 'galaxy-card', quantity: 1}]; b.inventory = [{id: 'galaxy-card', quantity: 2}];
   });
   const proposed = await call(f.first, 'trade:propose', {targetId: f.friend.id});

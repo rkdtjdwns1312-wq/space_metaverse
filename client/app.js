@@ -79,7 +79,7 @@ import {createMissionUI} from './mission-ui.js';
 import {createInteriorDecorUI} from './interior-decor-ui.js';
 import {constellationOf} from '/shared/constellations.js';
 import { PROGRESSION, STATIC_MAPS, CHAT } from '/shared/config.js';
-import { PLAZA_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
+import { PLAZA_ID, DEPARTMENT_ID, STREET_ID, GARDEN_ID, VALLEY_ID, BLACK_HOLE_ID, WHALE_STOMACH_ID, PLANET, PLANET_COLORS, planetIdOfMap, interiorIdOf, SHOP, ITEM_TYPES, itemOf, ITEM_USE, TRADE, BAG, PLANET_TEMPLATES, templateOf } from '/shared/config.js';
 const $=id=>document.getElementById(id),world=createWorld($('world'));
 const learningStation=createLearningStation({request});
 const objectUpdates=createObjectUpdates();
@@ -145,7 +145,7 @@ $('world').addEventListener('pointerdown',e=>{
   $('world').focus({preventScroll:true});
   if(editing)return;
   // 광장의 행성 클릭·배치 조작은 기존 상호작용이 우선입니다.
-  if(e.button===0&&world.currentMapId()===PLAZA_ID&&world.planetAt(world.canvasPoint(e)))return;
+  if(e.button===0&&world.currentMapId()===DEPARTMENT_ID&&world.planetAt(world.canvasPoint(e)))return;
   e.preventDefault();combatControls.act(e.button===0?'attack':'skill');
 });
 $('world').addEventListener('contextmenu',e=>{if(selfId)e.preventDefault();});
@@ -543,11 +543,11 @@ function updateRoom(value){
   $('self-proposal').hidden=!myProposal;
   if(myProposal)$('self-proposal').textContent='"'+myProposal.name+'" 행성 신청 중 · 선생님 승인을 기다려요';
   $('leave').textContent=me?.role==='teacher'?(room.unattended?'선생님 나가기':room.persistent===true?'수업 마치기':'교실 종료하기'):'교실 나가기';
-  $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=myMapId!==PLAZA_ID;$('planet-info').hidden=!inPlanet;
+  $('planet-exit').hidden=!inPlanet;$('planet-new').hidden=myMapId!==DEPARTMENT_ID;$('planet-info').hidden=!inPlanet;
   // 자리 고르는 중에 문으로 다른 맵에 가면 '행성 만들기' 버튼이 사라져 취소할 방법이 보이지 않습니다.
   // 행성 자리는 광장 좌표이므로(서버도 광장에서만 허용) 광장을 벗어나면 자리 고르기를 끝냅니다.
-  if(placing&&myMapId!==PLAZA_ID)stopPlacement();
-  if(movingPlanetId&&(myMapId!==PLAZA_ID||me?.role!=='student'||me?.departmentId!==movingPlanetId||!planetById(movingPlanetId)||me?.avatar?.blackStar||me?.away)){
+  if(placing&&myMapId!==DEPARTMENT_ID)stopPlacement();
+  if(movingPlanetId&&(myMapId!==DEPARTMENT_ID||me?.role!=='student'||me?.departmentId!==movingPlanetId||!planetById(movingPlanetId)||me?.avatar?.blackStar||me?.away)){
     $('planet-move-dialog').close();stopPlacement();
   }
   $('teacher-tools').hidden=!isTeacher;
@@ -577,6 +577,9 @@ let shopSig='';
 function shopSignature(){const me=room?.players.find(p=>p.id===selfId);return myShards()+'|'+(me?.cosmicEnergy??0)+'|'+me?.role+'|'+myLevel()+'|'+JSON.stringify(myInventory())+'|'+JSON.stringify(room?.shopDiscounts||{});}
 function mapCaption(myMapId){
   if(myMapId===PLAZA_ID)return '✦ 같은 교실의 친구들과 함께하는 공간';
+  if(myMapId==='assignment-archive')return '✦ 과제별서고 · 과제와 별 미션을 확인해요';
+  if(myMapId==='star-market')return '✦ 별 시장 · 친구와 아이템과 재화를 거래해요';
+  if(myMapId===DEPARTMENT_ID)return '✦ 부서행성 광장 · 행성을 만들고 소속 부서에 들어가요';
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
   if(myMapId===WHALE_STOMACH_ID)return '🐋 고래자리의 배 속 · 함께 있는 친구와 대화하거나 언제든 탈출할 수 있어요';
   if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 상점과 꾸미기, 북쪽 발전소·남쪽 놀이터 입구가 있어요';
@@ -978,7 +981,7 @@ function renderPlanetDialog(planetId){
   $('planet-rules-list').replaceChildren(...rules.map(line=>{const li=document.createElement('li');li.textContent=line;return li;}));
   $('planet-rules-input').value=rules.join('\n');
   $('planet-rules-editor').hidden=true; // 외부/행성 정보는 읽기 전용, 내부 규칙판에서만 편집합니다.
-  $('planet-enter').hidden=!(isTeacher||me?.departmentId===planetId)||me?.mapId!==PLAZA_ID;
+  $('planet-enter').hidden=!(isTeacher||me?.departmentId===planetId)||me?.mapId!==DEPARTMENT_ID;
   $('planet-join').hidden=isTeacher||me?.departmentId===planetId;
   const mustLeave=!!me?.departmentId&&me.departmentId!==planetId;
   $('planet-join').textContent=mustLeave?'현재 부서에서 먼저 탈퇴해주세요':planet.joinPending?'가입 승인 대기 중':planet.memberCount?'가입 신청하기':'가입하기';
@@ -1012,7 +1015,7 @@ function renderPlanetRename(planet,me,isTeacher){
   }
   $('planet-rename-teacher-row').hidden=!isTeacher;
   $('planet-remove').hidden=!isTeacher;
-  $('planet-move').hidden=!(isMember&&me?.mapId===PLAZA_ID&&!me?.avatar?.blackStar&&!me?.away);
+  $('planet-move').hidden=!(isMember&&me?.mapId===DEPARTMENT_ID&&!me?.avatar?.blackStar&&!me?.away);
 }
 function openPlanetDialog(planetId){
   if(!planetById(planetId))return;
@@ -1187,7 +1190,7 @@ let movingPlanetId=null,movePoint=null;
 function startPlacement(planetId=null){
   movingPlanetId=planetId;movePoint=null;world.setPlacement(null,planetId);world.setPlacing(true);stop();
   placing=true;document.body.classList.add('placing');
-  $('map-caption').textContent=planetId?'✦ 행성을 옮길 자리를 골라주세요 (무료 · Esc 취소)':'✦ 오른쪽 아래 부서행성 광장에 자리를 골라주세요 (Esc 취소)';
+  $('map-caption').textContent=planetId?'✦ 행성을 옮길 자리를 골라주세요 (무료 · Esc 취소)':'✦ 부서행성 광장에 자리를 골라주세요 (Esc 취소)';
   $('planet-new').textContent='취소';
 }
 function stopPlacement(){
@@ -1200,7 +1203,7 @@ $('planet-new').onclick=()=>{placing?stopPlacement():startPlacement();$('world')
 // 생성과 동일한 광장 선택 화면을 쓰되, 이동은 종류/이름을 다시 입력하지 않습니다.
 $('planet-move').onclick=()=>{
   const id=planetDialogId;const me=room?.players.find(p=>p.id===selfId);
-  if(!id||me?.role!=='student'||me.departmentId!==id||me.mapId!==PLAZA_ID)return;
+  if(!id||me?.role!=='student'||me.departmentId!==id||me.mapId!==DEPARTMENT_ID)return;
   $('planet-dialog').close();startPlacement(id);$('world').focus();
 };
 $('planet-move-cancel').onclick=()=>$('planet-move-dialog').close();
@@ -1782,7 +1785,7 @@ document.addEventListener('close',e=>{if(e.target.tagName==='DIALOG'&&selfId&&!d
 $('world').addEventListener('click',e=>{
   $('world').focus();
   if(!placing){
-    if(world.currentMapId()===PLAZA_ID){
+    if(world.currentMapId()===DEPARTMENT_ID){
       const planet=world.planetAt(world.canvasPoint(e));
       if(planet)openPlanetDialog(planet.id);
     }

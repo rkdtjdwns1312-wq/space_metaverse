@@ -2,3 +2,4 @@
 
 .hunting-time:active{transform:translateX(-50%) translateY(1px)}
 @media(max-width:520px){body.joined .map-wrap:has(#hunting-time:not([hidden])) #world-navigation{top:calc(var(--hunting-bottom,82px) + 8px)}}
+.hunting-time-dialog{width:min(540px,calc(100vw - 24px))}.hunting-charge-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.hunting-charge-heading strong{font-size:15px;line-height:1.5}.hunting-charge-heading span{flex-shrink:0;font-size:12px;font-weight:400;line-height:1.5;color:#746681}@media(max-width:380px){.hunting-time-dialog{padding:16px}.hunting-charge-heading{gap:8px}.hunting-charge-heading strong{font-size:13px}.hunting-charge-heading span{font-size:11px;max-width:105px}}

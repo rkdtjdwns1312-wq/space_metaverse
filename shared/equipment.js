@@ -27,7 +27,7 @@ export const EQUIPMENT_ITEMS=Object.freeze([
   {id:'spirit-king-cloak',name:'성령왕의 망토',description:'성령의 왕이 남긴 푸른 기운이 몸을 감싸요.',level:5,price:null,craftOnly:true,bonus:{attack:3,defense:2,hp:20,mp:20}},
   {id:'primordial-star-gem',name:'시초의 별의 보석',description:'태초의 별빛이 회복과 스킬 피해를 높이지만 스킬 마나도 두 배로 소모해요.',level:5,price:null,craftOnly:true,bonus:{hpRegen:5,mpRegen:3,manaCostIncrease:1,skillDamage:.5}},
   {id:'infinite-star-bracelet',name:'무한의 별기운의 팔찌',description:'무한한 별의 파편 1개와 우주에너지 20,000개로 만드는 팔찌입니다.',art:'/assets/equipment/infinite-star-bracelet.webp',level:5,price:null,craftOnly:true,bonus:{attack:5},infiniteMaxStacks:3,infiniteDurationMs:5000,effectText:'공격력 +5 · 몬스터 명중 시 무한의기운 1중첩(공격력 +1). 최대 3중첩이며 명중할 때마다 지속시간이 5초로 갱신됩니다.'},
-  {id:'truth-record',name:'진리의 기록',description:'오래된 기록이 새로운 도전을 열어 줘요.',level:5,price:null,craftOnly:true,bonus:{attack:3},cooldownResetChance:.4,effectText:'공격력 +3 · 스킬 사용 시 40% 확률로 재사용 대기시간 초기화'},
+  {id:'truth-record',name:'진리의 기록',description:'장착하면 다음 피해를 즉사까지 한 번 막는 보호막이 준비돼요. 막은 뒤 180초 후 다시 준비되며, 여러 개 쌓이지 않아요.',level:5,price:null,craftOnly:true,bonus:{attack:3},cooldownResetChance:.4,effectText:'공격력 +3 · 스킬 사용 시 40% 확률로 재사용 대기시간 초기화 · 180초마다 모든 피해 1회 완전 차단'},
   {id:'truth-convergence',name:'진리의 결집체',description:'진리를 담은 보석의 별빛이 모인 목걸이입니다. 진리를 담은 보석 1개와 우주에너지 30,000개로 조합할 수 있어요.',level:5,price:null,craftOnly:true,bonus:{hp:10,mp:10,cooldownReduction:.5,skillDamage:.5}},
   {id:'primordial-star-sigil',name:'검은별의 인장',description:'검은 보석에 깃든 고요한 별빛이 몸을 지키고 5초마다 검은별을 발사해요.',art:'/assets/equipment/primordial-star-sigil.webp',level:5,price:null,craftOnly:true,bonus:{defense:2,hp:40},sigilDamageFactor:2.5,effectText:'방어력 +2 · 최대 체력 +40 · 5초마다 공격력 250% 검은별 발사'}
 ].map(item=>Object.freeze({...item,art:item.art||'/assets/equipment/'+item.id+'.png',icon:'✦',type:'equipment',mode:'equipment',currency:'cosmicEnergy',forSale:false,usable:false,targets:'self',secret:false,effect:{label:'장비 능력',icon:'✦',durationMs:0}})));
@@ -64,7 +64,7 @@ export function equipmentOf(id){
   const extra={};
   if(original.id==='primordial-star-sigil'){bonus.defense+=third;extra.sigilDamageFactor=(250+Math.min(stage,3)*50+Math.max(0,Math.min(stage-3,3))*100+Math.max(0,stage-6)*150)/100;extra.effectText=`방어력 +${bonus.defense} · 최대 체력 +40 · 5초마다 공격력 ${Math.round(extra.sigilDamageFactor*100)}% 검은별 발사`;}
   if(original.id==='infinite-star-bracelet'){extra.infiniteMaxStacks=3+Math.ceil(stage/2);extra.infiniteDurationMs=5000+Math.floor(stage/2)*1000;extra.effectText=`공격력 +5 · 몬스터 명중 시 무한의기운 1중첩(공격력 +1). 최대 ${extra.infiniteMaxStacks}중첩이며 명중할 때마다 지속시간이 ${extra.infiniteDurationMs/1000}초로 갱신됩니다.`;}
-  if(original.id==='truth-record'){const n=Math.max(0,stage-6);bonus.attack+=n*(n+1)/2;extra.cooldownResetChance=(40+Math.min(stage,6)*5)/100;extra.effectText=`공격력 +${bonus.attack} · 스킬 사용 시 ${Math.round(extra.cooldownResetChance*100)}% 확률로 재사용 대기시간 초기화`;}
+  if(original.id==='truth-record'){const n=Math.max(0,stage-6);bonus.attack+=n*(n+1)/2;extra.cooldownResetChance=(40+Math.min(stage,6)*5)/100;extra.effectText=`공격력 +${bonus.attack} · 스킬 사용 시 ${Math.round(extra.cooldownResetChance*100)}% 확률로 재사용 대기시간 초기화 · 180초마다 모든 피해 1회 완전 차단`;}
   const description=original.id==='primordial-star-gem'?'태초의 별빛이 회복과 스킬 피해를 높여요. 강화할수록 늘어나는 스킬 마나 소모량이 줄어들어요.':original.description;
   const item=Object.freeze({...original,...extra,id,baseId:original.id,enhancementStage:stage,name:original.name+' +'+stage,description,bonus:Object.freeze(bonus)});
   enhancedItems.set(id,item);return item;

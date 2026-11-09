@@ -1,8 +1,30 @@
-/* The title/help/close row stays in place; only the content below it scrolls. */
-dialog.has-pinned-dialog-close{padding-top:max(54px,var(--dialog-original-padding-top,0px))!important}
-dialog .dialog-pinned-close{position:fixed!important;top:var(--dialog-close-top)!important;left:var(--dialog-close-left)!important;right:auto!important;bottom:auto!important;z-index:100!important;margin:0!important;transform:none!important;flex:none!important;min-width:58px;min-height:34px;box-sizing:border-box;padding:7px 12px;border:1px solid #bfb0d1;border-radius:9px;background:#fffdfd!important;color:#51416b!important;box-shadow:0 2px 9px #30204025;font:700 14px/1.2 sans-serif;white-space:nowrap;cursor:pointer}
-dialog .dialog-pinned-close:focus-visible{outline:3px solid #8060bd;outline-offset:2px}
-dialog .dialog-pinned-close:disabled{cursor:default;opacity:.55}
+/* One natural title/help/action row, with space reserved by normal flow.
+   Sticky positioning follows the dialog's own scrollport, including zoom. */
+dialog.has-dialog-header .dialog-header-row{position:sticky!important;top:0;z-index:12;display:flex!important;align-items:center!important;justify-content:flex-start!important;flex-wrap:wrap!important;gap:10px 14px!important;flex:0 0 auto;min-width:0;margin:0 0 16px;padding:12px 0 14px;background:#fffdf8;border-bottom:1px solid #ded4e9;isolation:isolate}
+dialog.has-dialog-header > .dialog-header-direct{top:calc(-1 * var(--dialog-padding-top,0px))!important;margin:calc(-1 * var(--dialog-padding-top,0px)) calc(-1 * var(--dialog-padding-right,0px)) 16px calc(-1 * var(--dialog-padding-left,0px))!important;padding:18px max(16px,var(--dialog-padding-right,0px)) 14px max(16px,var(--dialog-padding-left,0px))!important;border-radius:0;order:-1}
+dialog.has-dialog-header .dialog-header-row h2{min-width:0;flex:1 1 140px;margin:0!important;font-family:inherit!important;font-size:24px!important;font-weight:400!important;line-height:1.35!important;overflow-wrap:anywhere}
+dialog.has-dialog-header .dialog-header-row > :is(.student-help-heading,div:has(h2)){flex:1 1 180px;min-width:0}
+dialog.has-dialog-header .dialog-header-row .student-help-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0}
+dialog.has-dialog-header .dialog-header-row .student-help-heading h2{flex:0 1 auto}
+dialog.has-dialog-header .dialog-header-row :is(.crafting-header-actions,.exploration-header-actions,.chat-window-actions){display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+dialog.has-dialog-header .dialog-header-row :is(button,[role="button"]){font-family:inherit!important;font-size:16px!important;font-weight:400!important;line-height:1.3!important;min-height:40px;white-space:normal}
+dialog.has-dialog-header .dialog-pinned-close{position:static!important;inset:auto!important;transform:none!important;flex:0 0 auto!important;align-self:center;margin:0 0 0 auto!important;min-width:60px;min-height:40px;box-sizing:border-box;padding:8px 14px!important;border:1px solid #cdbedb;border-radius:11px;background:linear-gradient(#fffdf7,#eee6f4)!important;color:#57446e!important;box-shadow:inset 0 1px #fff9;white-space:nowrap!important;cursor:pointer;text-align:center}
+dialog.has-dialog-header .dialog-pinned-close:focus-visible{outline:3px solid #8060bd;outline-offset:2px}
+dialog.has-dialog-header .dialog-pinned-close:is(:disabled,[aria-disabled="true"]){cursor:default;opacity:.55}
+dialog.has-dialog-header .dialog-close-source{display:none!important}
+dialog.has-dialog-header .dialog-actions:has(>.dialog-close-source):not(:has(>:not(.dialog-close-source):not([hidden]))){display:none}
+dialog.fixed-dialog-header.has-dialog-header > .dialog-header-row{position:relative!important;top:auto!important}
+/* These panels already own a separate scrollable body. */
+#inventory-dialog.has-dialog-header .inventory-heading .inventory-pages{flex:0 0 100%}
+#teacher-dialog.has-dialog-header .dialog-header-row h2{font-size:var(--teacher-heading-size,24px)!important}
+#avatar-dialog.has-dialog-header .card-title{top:calc(-1 * var(--dialog-padding-top,0px))!important;background:#463a72;padding:12px 14px}
+/* Clip the card's rounded artwork without creating a second scrollport that
+   would trap its sticky title while the surrounding dialog scrolls. */
+#avatar-dialog.has-dialog-header #avatar-card{overflow:clip}
+#chat-dialog.has-dialog-header .chat-titlebar{top:calc(-1 * var(--dialog-padding-top,0px))!important}
+.cozy-dialog.has-dialog-header .cozy-head{padding:20px 24px!important}
+dialog.boss-dialogue.has-dialog-header .dialog-header-row{background:#292445;color:#ffe6a5}
+@media(max-width:580px){dialog.has-dialog-header .dialog-header-row{gap:8px 10px!important}dialog.has-dialog-header .dialog-header-row h2{font-size:20px!important}dialog.has-dialog-header > .dialog-header-direct{padding:14px max(14px,var(--dialog-padding-right,0px)) 12px max(14px,var(--dialog-padding-left,0px))!important}}
 dialog.fixed-dialog-header{box-sizing:border-box;overflow:hidden;max-height:86dvh}
 dialog.fixed-dialog-header[open]{display:flex;flex-direction:column;gap:0}
 :is(#shop-dialog,#energy-shop-dialog,#teacher-equipment-catalog-dialog,#crafting-dialog,#department-work-dialog,#temple-dialog,#enhancement-dialog).fixed-dialog-header{overflow:hidden;max-height:86dvh}

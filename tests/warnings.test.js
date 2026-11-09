@@ -13,7 +13,7 @@ import {departmentSlots} from '../shared/plaza-layout.js';
 test('블랙홀은 별의 기원 오른쪽 위에 있고 부서행성 약 4배 크기다',()=>{
   const portal=MAP.objects.find(o=>o.kind==='black-hole');
   assert.equal(portal.radius,PLANET.radius*4);
-  assert.ok(portal.x>MAP.width*.75&&portal.y<MAP.height*.25);
+  assert.ok(portal.x>MAP.templeCenter.x&&portal.y<MAP.templeCenter.y);
 });
 
 test('행성 내부 경고 돌과 실적 게시판은 서로 다른 지정 위치에 있다',()=>{
@@ -46,6 +46,7 @@ test('소속 학생의 직접 경고가 누적되면 검은별로 이동하고 �
   const [site]=departmentSlots();const planet=addPlanet(room,{name:'규칙행성',description:'',...site,color:'#c5c9f7',rules:['공평하게'],templateId:'rules'});
   const warningRock=INTERIOR.objects.find(object=>object.kind==='warning-rock');
   actor.avatar.departmentId=planet.id;Object.assign(actor,{mapId:interiorIdOf(planet.id),x:warningRock.x,y:warningRock.y});
+  target.mapId='department-plaza';
   const pending=await call(targetSocket,'planet:propose',{name:'읽기행성',description:'',...departmentSlots()[1],color:PLANET_COLORS[0],templateId:'reading'});
   assert.equal(pending.ok,true);
   assert.equal((await call(targetSocket,'warning:teacher:list',{})).ok,false);

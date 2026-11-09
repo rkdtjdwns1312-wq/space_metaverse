@@ -28,6 +28,7 @@ export const STATUS_TYPES=Object.freeze({
   'libra-reflect':{name:'천칭의 무적',icon:'⚖',tone:'warm',description:'살아 있는 천칭 영역 안에서는 고정 피해를 포함한 모든 피해를 막아요.'},
   'hercules-shield':{name:'헤라클레스 방패',icon:'🛡',tone:'warm',description:'방패가 피해를 대신 받아요.'},
   'dream-guardian':{name:'수호',icon:'🛡',tone:'cool',description:'다음 즉사 외 피해를 한 번 막아요. 막은 뒤 30초가 지나면 다시 생겨요.'},
+  'truth-record-shield':{name:'진리의 보호막',icon:'🛡',tone:'violet',description:'다음 피해를 즉사까지 포함해 한 번 완전히 막아요. 막은 뒤 180초가 지나면 다시 생기며, 여러 개 쌓이지 않아요.'},
   'taurus-immunity':{name:'황소의 무적',icon:'♉',tone:'warm',description:'돌진 중에는 피해를 받지 않아요.'},
   'whale-defense':{name:'고래의 기운',icon:'🐋',tone:'cool',description:'10초 동안 공격력과 방어력이 함께 높아져요.'},
   'crab-empowerment':{name:'게의 힘',icon:'♋',tone:'cool',description:'일반 공격이 강화돼요.'},

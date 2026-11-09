@@ -7,6 +7,7 @@ import {attackPowerOf,defensePowerOf} from '../shared/combat.js';
 import {infiniteEnergyEffect} from '../shared/infinite-energy.js';
 import {playerVitals,libraProtectors} from './vitals.js';
 import {equipmentAuraOf} from '../shared/equipment.js';
+import {truthRecordShieldReady} from './truth-record.js';
 import {knownStatus} from '../shared/statuses.js';
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { RULES, PLAZA_ID, CHAT, EXAMPLE_PLANETS, createAvatar } from '../shared/config.js';
@@ -66,6 +67,8 @@ export function playerEffectsView(player,viewerIsTeacher,now=Date.now(),room=nul
   add('hercules-shield','헤라클레스 방패','🛡',player.herculesShield?.endsAt);
   if(player.equipmentSlots?.includes('dream-guardian-cloak')&&now>=(player.dreamGuardianNextAt||0))
     combat.push({statusId:'dream-guardian',label:'수호',icon:'🛡',style:'combat',until:null});
+  if(truthRecordShieldReady(player,now))
+    combat.push({statusId:'truth-record-shield',label:'진리의 보호막',icon:'🛡',style:'combat',until:null});
   add('taurus-immunity','황소의 무적','♉',player.taurusImmuneUntil);
   if(player.waterAura?.kind==='cetus')add('whale-defense','고래의 기운','🐋',player.waterAura.endsAt);
   if(player.waterAura?.kind==='cancer')add('crab-empowerment','게의 힘','♋',player.waterAura.endsAt);

@@ -1,3 +1,4 @@
+import {migrateLegacyPlazaPosition} from '../shared/plaza-layout.js';
 import {migrateLegacyStreetPosition} from '../shared/street-layout.js';
 import {TRUTH_CREATOR} from '../shared/truth-creator.js';
 import {huntingTimeView,huntingExempt,isHuntingMap} from './hunting-time.js';
@@ -122,7 +123,7 @@ function release(room,target,now,escaped){
     else state.cetusAfterglow={sourceId:stomach.sourceId,endsAt:now+7*DAY,claimed:false};
   }else{state.cetusPraise=null;state.cetusAfterglow=null;}
   if(target.mapId===WHALE_STOMACH_ID){
-    const returned=migrateLegacyStreetPosition({mapId:stomach.returnMapId,x:stomach.returnX,y:stomach.returnY});
+    const returned=migrateLegacyPlazaPosition(migrateLegacyStreetPosition({mapId:stomach.returnMapId,x:stomach.returnX,y:stomach.returnY}));
     let destination=STATIC_MAPS[returned.mapId]?returned.mapId:PLAZA_ID;
     if(destination===TRUTH_CREATOR.mapId)destination='sleeping-stars-3';
     if(isHuntingMap(destination)&&!huntingExempt(target)&&huntingTimeView(target,now).remainingMs<=0)destination='star-street';

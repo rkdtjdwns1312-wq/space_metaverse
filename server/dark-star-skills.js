@@ -6,6 +6,7 @@ import {ensureVitals,damagePlayer,playerVitals,libraProtectors} from './vitals.j
 import {reflectLibraDamage} from './area-combat.js';
 import {ensure} from './rooms.js';
 import {randomUUID} from 'node:crypto';
+import {consumeTruthRecordShield} from './truth-record.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
   !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
@@ -107,7 +108,9 @@ export function recordDarkStarDamage(boss){
 }
 function instantDefeat(room,boss,p,now,kind){
   if(libraProtectors(room,p,now).length)return {...visual(boss,kind,p.x,p.y),targetId:p.id,damage:0,vitals:playerVitals(p),defeated:false,immune:true};
-  const vitals=ensureVitals(p),damage=vitals.hp;vitals.hp=0;vitals.defeatedAt=now;p.input={x:0,y:0,at:0};
+  const vitals=ensureVitals(p),damage=vitals.hp;
+  if(consumeTruthRecordShield(p,damage,now))return {...visual(boss,kind,p.x,p.y),targetId:p.id,damage:0,vitals:playerVitals(p),defeated:false,immune:true,truthRecordShield:true};
+  vitals.hp=0;vitals.defeatedAt=now;p.input={x:0,y:0,at:0};
   (p.damageNumbers??=[]).push({targetId:p.id,targetKind:'player',mapId:p.mapId,x:p.x,y:p.y,damage});
   if(p.damageNumbers.length>40)p.damageNumbers.shift();
   return {...visual(boss,kind,p.x,p.y),targetId:p.id,damage,vitals:playerVitals(p),defeated:true};

@@ -79,7 +79,7 @@ test('master trades bounded currency and virtual crumbs only after both accounts
   const f=await fixture(t),master=await f.master(),a=await f.connect(),b=await f.connect();
   await call(a,'room:join',{code:f.code,nickname:'마스터',pin:'2468'});
   const joined=await call(b,'room:join',{code:f.code,nickname:'학생',pin:'1234'}),student=f.room.players.get(joined.selfId);
-  for(const p of [master,student])Object.assign(p,{mapId:'space-plaza',x:MARKET.x,y:MARKET.y});
+  for(const p of [master,student])Object.assign(p,{mapId:'star-market',x:MARKET.x,y:MARKET.y});
   const proposed=await call(a,'trade:propose',{targetId:student.id});assert.ok(proposed.ok,proposed.error);
   assert.ok((await call(b,'trade:respond',{tradeId:proposed.tradeId,accept:true})).ok);
   const offered=await call(a,'trade:offer',{tradeId:proposed.tradeId,revision:0,offer:{shards:12,energy:345,items:[{id:'star-crumb',quantity:5}]}});assert.ok(offered.ok,offered.error);

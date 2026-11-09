@@ -3,15 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomStore } from '../server/rooms.js';
 import { advance, isFree, spawnInside, exitPosition, isNear, placementFree, addPlanet, arrivePosition } from '../server/world.js';
-import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
+import { RULES, MAP, INTERACT, PLANET, EXAMPLE_PLANETS, PLAZA_ID, DEPARTMENT_ID, mapOf, interiorIdOf, STREET, STREET_ID, GARDEN, GARDEN_ID } from '../shared/config.js';
 import {departmentSlots} from '../shared/plaza-layout.js';
 const roomData={title:'테스트 교실',allowedNames:Array.from({length:35},(_,i)=>String(i+1))};
 test('the enlarged plaza exposes its real objects and department placement slots',()=>{
- assert.deepEqual([MAP.width,MAP.height],[3720,2640]);
+ assert.deepEqual([MAP.width,MAP.height],[2760,1970]);
  assert.deepEqual(MAP.spawn,{x:1800,y:1404});
  const {x,y}=MAP.templeCenter;assert.deepEqual({x,y},{x:1800,y:1320});
  assert.equal(departmentSlots().length,50);
- assert.ok(departmentSlots().every(p=>p.x>=0&&p.x<=MAP.width&&p.y>=0&&p.y<=MAP.height));
+ assert.ok(departmentSlots().every(p=>p.x>=0&&p.x<=mapOf(DEPARTMENT_ID).width&&p.y>=0&&p.y<=mapOf(DEPARTMENT_ID).height));
  for(const object of MAP.objects)assert.ok(object.x>=0&&object.x<=MAP.width&&object.y>=0&&object.y<=MAP.height);
 });
 test('garden uses its own map size and collision boundaries, not the enlarged plaza',()=>{
@@ -71,7 +71,7 @@ test('placementFree keeps new planets away from the star, other planets and pend
 });
 test('addPlanet pushes a plaza player standing where the new planet appears out to a free spot',()=>{
  const store=new RoomStore(),{room,player}=store.create(roomData,'t');
- const [slot]=departmentSlots();Object.assign(player,slot,{mapId:PLAZA_ID});
+ const [slot]=departmentSlots();Object.assign(player,slot,{mapId:DEPARTMENT_ID});
  const planet=addPlanet(room,{name:'새행성',description:'',...slot,color:'#98dfd2',rules:['규칙'],createdBy:null});
  assert.ok(Math.hypot(player.x-planet.x,player.y-planet.y) >= planet.radius+RULES.radius);
  assert.equal(planet.createdBy,null);
@@ -120,8 +120,8 @@ test('exitPosition lands just outside the planet, back inside the plaza',()=>{
  const planet=[...room.planets.values()].find(pl=>pl.name===EXAMPLE_PLANETS[0].name);
  const pos=exitPosition(room,planet);
  assert.ok(Math.hypot(pos.x-planet.x,pos.y-planet.y) > planet.radius+RULES.radius);
- assert.ok(isFree(room,pos.x,pos.y,null,PLAZA_ID));
- assert.ok(pos.x>=RULES.radius && pos.x<=MAP.width-RULES.radius && pos.y>=RULES.radius && pos.y<=MAP.height-RULES.radius);
+ assert.ok(isFree(room,pos.x,pos.y,null,DEPARTMENT_ID));
+ assert.ok(pos.x>=RULES.radius && pos.x<=mapOf(DEPARTMENT_ID).width-RULES.radius && pos.y>=RULES.radius && pos.y<=mapOf(DEPARTMENT_ID).height-RULES.radius);
 });
 test('isNear includes planet radius plus interact and player radius, inclusive at the boundary',()=>{
  const planet={x:190,y:175,radius:PLANET.radius}, limit=planet.radius+RULES.radius+INTERACT.radius;
@@ -187,9 +187,9 @@ test('mapOf resolves the star street as a fixed map with a shop and a passable g
 });
 test('the star street has no planets: shop blocks movement, decorative lamps and gate are passable, and the boundary holds',()=>{
  const store=new RoomStore(),{room}=store.create(roomData,'t');
- const shop=STREET.objects.find(o=>o.kind==='shop'), lamp=STREET.objects.find(o=>o.kind==='lamp'), gate=STREET.objects.find(o=>o.kind==='gate');
+ const shop=STREET.objects.find(o=>o.kind==='shop'), gate=STREET.objects.find(o=>o.kind==='gate');
  assert.equal(isFree(room, shop.x, shop.y, null, STREET_ID), false);
- assert.equal(isFree(room, lamp.x, lamp.y, null, STREET_ID), true);
+ assert.equal(STREET.objects.some(o=>o.kind==='lamp'),false);
  assert.ok(STREET.objects.filter(o=>o.kind==='lamp').every(o=>o.passable&&isFree(room,o.x,o.y,null,STREET_ID)));
  assert.equal(isFree(room, gate.x, gate.y, null, STREET_ID), true);
  assert.equal(isFree(room, RULES.radius-1, 400, null, STREET_ID), false);

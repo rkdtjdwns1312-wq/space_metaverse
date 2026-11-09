@@ -27,7 +27,7 @@ test('real pickup/craft/equip/trade records survive consumption and restart; for
  assert(ok(await call(f.student,'crafting:combine',recipe)).success);
  ok(await call(f.student,'equipment:equip',{itemId:'spirit-king-cloak',slot:1}));
  ok(await call(f.student,'equipment:unequip',{slot:1}));
- for(const p of [f.p,f.q])Object.assign(p,{mapId:'space-plaza',x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});
+ for(const p of [f.p,f.q])Object.assign(p,{mapId:'star-market',x:MARKET.x,y:MARKET.y,input:{x:0,y:0,at:0}});
  const tradeId=ok(await call(f.student,'trade:propose',{targetId:f.q.id})).tradeId;
  ok(await call(f.other,'trade:respond',{tradeId,accept:true}));
  const revision=ok(await call(f.student,'trade:offer',{tradeId,revision:0,offer:{shards:0,energy:0,items:[{id:'spirit-king-cloak',quantity:1}]}})).revision;
