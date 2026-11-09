@@ -260,7 +260,7 @@ const energyShopUI=createEnergyShopUI({getPlayer:()=>room?.players.find(p=>p.id=
   request:async(event,data)=>{const result=await request(event,data);if(event==='shop:energy:buy')audio.playSfx('shop-buy');return result;},stop,toast});
 const starCardUI=createStarCardUI({getRoom:()=>room,getSelfId:()=>selfId,request,stop,toast});
 const explorationUI=createExplorationUI({request,stop,toast});
-const recipeBook=createRecipeBookUI({request,toast});
+const recipeBook=createRecipeBookUI({request,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const inventoryPages=createInventoryPages({onChange:()=>{selectedSlotId=null;renderBag(myInventory());},onRecipes:()=>recipeBook.open()});
 // 가방을 계속 열어 둔 상태에서도 월요일 갱신 표시가 오래 남지 않게 합니다.
 setInterval(()=>{if(selfId&&$('inventory-dialog').open&&selectedSlotId)renderBag(myInventory());},30000);

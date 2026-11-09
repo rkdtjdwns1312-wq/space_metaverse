@@ -386,6 +386,7 @@ export function createWorld(canvas) {
   function drawGate(o){
     if(!intersectsView(view,gateVisualBox(o),200))return;
     drawPaintedGate(ctx,o);
+    if(myMapId===STREET_ID)return;
     ctx.font='600 19.5px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
     const box=gateVisualBox(o),labelX=o.x,labelY=o.id==='gate-sleeping-stars'?box.y+box.height+30:box.y-34;

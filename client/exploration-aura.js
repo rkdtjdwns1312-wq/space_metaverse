@@ -31,8 +31,5 @@ export function drawExplorationAura(ctx,o,time,reducedMotion=false,lowQuality=fa
     ctx.fillStyle='#fff9de';ctx.beginPath();ctx.arc(x,y,star.size*.55,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#fff5c4';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(x-star.size*2.7,y);ctx.lineTo(x+star.size*2.7,y);ctx.moveTo(x,y-star.size*2.7);ctx.lineTo(x,y+star.size*2.7);ctx.stroke();
   }
-  ctx.globalAlpha=1;ctx.fillStyle='#65431ef2';ctx.strokeStyle='#ffe6a0';ctx.lineWidth=2;
-  ctx.beginPath();ctx.roundRect(o.x-65,o.y-207,130,32,13);ctx.fill();ctx.stroke();
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='600 18px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#fff4c7';ctx.fillText('✦ 기운 가득! ✦',o.x,o.y-191);
   ctx.restore();
 }
