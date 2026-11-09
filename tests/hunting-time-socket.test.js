@@ -15,7 +15,7 @@ test('legacy five-stamp balance restarts without clipping; extra activity grants
  f.at('science');const opened=ok(await call(f.student,'science:open'));ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);
  ok(await call(f.student,'science:claim',{factId:opened.factId}));assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,92*60000);
  f.advance(huntingResetAt(f.now)-f.now+1);assert.equal(huntingTimeView(f.p,f.now).remainingMs,0);
- f.mutate(p=>{for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,f.now);});await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,80*60000);
+ f.mutate(p=>{for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,f.now);});await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,60*60000);
 });
 test('entrygate and fasttravel deny zero; actualclock runs in hunts, pauses safe, expires to shelter',async t=>{
  const f=await readingFixture(t);f.mutate(p=>{p.avatar.level=5;});

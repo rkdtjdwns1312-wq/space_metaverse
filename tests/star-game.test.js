@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {startStarRun,clickStar,starRanking,cancelStarRun,validateStarRanking} from '../server/star-game.js';
 import {currentWeekRecords,weekStartKst} from '../server/weekly-ranking.js';
 import {createClassroomServer} from '../server/app.js';
-import {STREET,STREET_ID} from '../shared/config.js';
+import {PLAYGROUND as STREET,PLAYGROUND_ID as STREET_ID} from '../shared/config.js';
 import {io} from 'socket.io-client';
 
 const player={id:'a',nickname:'1'};

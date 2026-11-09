@@ -47,7 +47,9 @@ function validRecipe(recipe, catalog, maxQuantity) {
   const outputLevel = levelOf(output);
   if (outputLevel === null || outputLevel < 2 || outputLevel > 5) return null;
   const levels = ingredients.map(part => levelOf(catalog.find(item => item?.id === part.id)));
-  if (levels.some(level => level === null || level >= outputLevel) || (!output.craftOnly && Math.max(...levels) + 1 !== outputLevel)) return null;
+  // Boss materials and their crafted equipment can share Lv4. Ordinary cards
+  // still require ingredients below the output and exactly one-level progress.
+  if (levels.some(level => level === null || (output.craftOnly ? level > outputLevel : level >= outputLevel)) || (!output.craftOnly && Math.max(...levels) + 1 !== outputLevel)) return null;
   return { ingredients, output };
 }
 

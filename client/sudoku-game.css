@@ -23,3 +23,5 @@
 #arcade-dialog #arcade-board .sudoku-game .sudoku-actions{display:grid;grid-template-columns:1fr}
 #arcade-dialog #arcade-board .sudoku-game .sudoku-given{cursor:default}
 @media(max-width:430px){.sudoku-game{gap:7px}#arcade-dialog #arcade-board .sudoku-game .sudoku-difficulty{font-size:12px}#arcade-dialog #arcade-board .sudoku-game .sudoku-help{font-size:12px}#arcade-dialog #arcade-board .sudoku-game .sudoku-grid{border-width:2px}#arcade-dialog #arcade-board .sudoku-game .sudoku-keypad{gap:4px}#arcade-dialog #arcade-board .sudoku-game .sudoku-key{min-height:34px}}
+
+.sudoku-setup{display:grid;gap:9px}.sudoku-setup[hidden]{display:none!important}

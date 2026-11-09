@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {createDuelArcade} from '../server/duel-arcade.js';
 import {DUEL_ARCADES,DUEL_MEMORY_SIZES,omokLine,isOmokDoubleThree} from '../shared/duel-arcade.js';
 import {onStreetFloor,STREET_LAYOUT} from '../shared/street-layout.js';
-import {STREET} from '../shared/config.js';
+import {PLAYGROUND as STREET} from '../shared/config.js';
 
-function fixture(){
+function fixture(options={}){
   let now=1000,failFinish=false;const events=[],finished=[];
-  const makeRoom=code=>({code,players:new Map(['a','b','c','t'].map(id=>[id,{id,nickname:id,role:id==='t'?'teacher':'student',connected:true,socketId:code+id,mapId:'star-street',x:DUEL_ARCADES[0].x,y:DUEL_ARCADES[0].y}]))});
+  const makeRoom=code=>({code,players:new Map(['a','b','c','t'].map(id=>[id,{id,nickname:id,role:id==='t'?'teacher':'student',connected:true,socketId:code+id,mapId:'star-playground',x:DUEL_ARCADES[0].x,y:DUEL_ARCADES[0].y}]))});
   const rooms=new Map(['one','two'].map(code=>[code,makeRoom(code)]));
-  const duel=createDuelArcade({getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,onFinished:value=>{if(failFinish)throw Error('simulated save failure');finished.push(value);},
+  const duel=createDuelArcade({...options,getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,onFinished:value=>{if(failFinish)throw Error('simulated save failure');finished.push(value);},
     emitPrivate:(code,id,event,value)=>events.push({code,id,event,value:structuredClone(value)})});
   const session=(id,code='one')=>({room:rooms.get(code),player:rooms.get(code).players.get(id)});
   const view=(id='a',code='one')=>events.findLast(e=>e.code===code&&e.id===id&&e.event==='duel:state')?.value;
@@ -57,7 +57,7 @@ test('both machines including radius fit inside the playground floor',()=>{
   assert.equal(DUEL_ARCADES[0].x,STREET.objects.find(o=>o.id==='arcade-baseball').x,'그림 짝 맞추기 기계는 숫자야구와 x를 맞춤');
   assert.equal(DUEL_ARCADES[1].x,STREET.objects.find(o=>o.id==='arcade-path').x,'오목 기계는 길 게임과 x를 맞춤');
   assert.ok(DUEL_ARCADES.every(m=>m.y<STREET.objects.find(o=>o.id==='arcade-memory').y-250),'큰 기계와 오락기 줄 사이에 시각적 간격을 둠');
-  for(const m of DUEL_ARCADES)assert.equal(onStreetFloor({id:'star-street'},m.x,m.y,m.radius),true,`${m.id} stays on lower playground island`);
+  for(const m of DUEL_ARCADES)assert.equal(onStreetFloor({id:'star-playground'},m.x,m.y,m.radius),true,`${m.id} stays on lower playground island`);
 });
 
 test('invitation is private; before consent no deck, moves, or resets exist',()=>{
@@ -77,7 +77,7 @@ test('invalid sizes, teacher invites, remote and cross-map targets are refused',
   for(const sizeId of [undefined,'4x4','100x100',{},null])assert.throws(()=>f.duel.invite(f.session('a'),{objectId:'duel-memory',targetId:'b',sizeId}),/크기/);
   for(const [from,to] of [['a','t'],['t','a'],['a','a']])assert.throws(()=>f.duel.invite(f.session(from),{objectId:'duel-memory',targetId:to,sizeId:'3x4'}),/학생/);
   f.session('b').player.mapId='space-plaza';assert.throws(()=>f.start(),/가까이/);
-  f.session('b').player.mapId='star-street';f.session('b').player.x=1000;
+  f.session('b').player.mapId='star-playground';f.session('b').player.x=1000;
   assert.throws(()=>f.duel.invite(f.session('a'),{objectId:'duel-memory',targetId:'b',sizeId:'3x4'}),/가까이/);
 });
 
@@ -270,4 +270,19 @@ test('a full 15x15 board with no line ends in a draw',()=>{
   for(let y=0;y<15;y++)for(let x=0;x<15;x++)((Math.floor(x/2)+y)%2===0?black:white).push(cell(x,y));
   for(let i=0;i<black.length;i++){f.move(black[i]);if(i<white.length)f.move(white[i]);}
   assert.equal(f.view().game.phase,'finished');assert.equal(f.view().game.reason,'draw');assert.equal(f.view().game.winnerId,null);
+});
+
+for(const kind of ['memory','omok'])test(kind+' completion credit save failure leaves the final move retryable',()=>{
+ let fail=true;const completions=[];
+ const f=fixture({onCompleted:value=>{if(fail)throw Error('credit save failed');completions.push(value);}}),g=f.start(kind),first=g.turnId,other=g.players.find(p=>p.id!==first).id;
+ let finalIndex;
+ if(kind==='memory'){for(let i=0;i<5;i++){f.move(i);f.move(i+6);}f.move(5);finalIndex=11;}
+ else{for(let x=3;x<7;x++){f.move(105+x,first);f.move(x,other);}finalIndex=112;}
+ assert.throws(()=>f.move(finalIndex,first),/credit save failed/);
+ f.duel.onTick();assert.equal(f.view().game.phase,'playing');assert.equal(completions.length,0);
+ if(kind==='memory'){assert.equal(f.view().game.cards.filter(c=>c.matched).length,10);assert.equal(f.view().game.cards[11].value,null);}
+ else assert.equal(f.view().game.board[finalIndex],0);
+ fail=false;f.move(finalIndex,first);assert.equal(f.view().game.phase,'finished');assert.equal(completions.length,1);
+ assert.deepEqual(new Set(completions[0].playerIds),new Set(['a','b']));
+ f.duel.onTick();assert.equal(completions.length,1);
 });

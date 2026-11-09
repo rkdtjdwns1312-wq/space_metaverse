@@ -23,20 +23,21 @@ try{
     assert.equal(await page.evaluate(()=>localStorage.getItem('woozooclass-render-quality-v1')),mode);
   }
   await page.waitForFunction(()=>document.querySelector('#world').dataset.artStatus==='ready');
-  for(const mode of ['normal','low','auto']){
+  for(const mode of ['high','medium','low','auto']){
     await selectMode(mode);
     const dimensions=await page.locator('#world').evaluate(c=>({css:c.getBoundingClientRect().width,pixels:c.width,dpr:+c.dataset.renderDpr}));
     if(mode==='low'){assert.equal(dimensions.dpr,1);assert.ok(Math.abs(dimensions.pixels-dimensions.css)<=1);}
-    if(mode==='normal'){assert.equal(dimensions.dpr,2);assert.ok(Math.abs(dimensions.pixels-dimensions.css*2)<=1);}
+    if(mode==='high'){assert.equal(dimensions.dpr,2);assert.ok(Math.abs(dimensions.pixels-dimensions.css*2)<=1);}
+    if(mode==='medium'){assert.equal(dimensions.dpr,1.5);assert.ok(Math.abs(dimensions.pixels-dimensions.css*1.5)<=1);}
   }
-  checks.push('PC gear settings auto/normal/low, saved values and DPR');
+  checks.push('PC gear settings auto/high/medium/low, saved values and DPR');
   const movement={};
-  for(const mode of ['normal','low']){
+  for(const mode of ['high','medium','low']){
     await selectMode(mode);Object.assign(teacher,{x:1800,y:1400,input:{x:0,y:0,at:0}});refresh();await page.waitForTimeout(250);
     const start=teacher.x;await page.locator('#world').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(500);await page.keyboard.up('ArrowRight');await page.waitForTimeout(100);
     movement[mode]=teacher.x-start;assert.ok(movement[mode]>100,`${mode} movement reached ${movement[mode]}`);
   }
-  assert.ok(Math.abs(movement.normal-movement.low)<100,JSON.stringify(movement));
+  assert.ok(Math.abs(movement.high-movement.low)<100&&Math.abs(movement.high-movement.medium)<100,JSON.stringify(movement));
   checks.push('keyboard movement remains independent of render FPS');
   const life=mapOf('space-plaza').objects.find(o=>o.kind==='life-star');Object.assign(teacher,{x:life.x+life.radius+30,y:life.y,input:{x:0,y:0,at:0}});refresh();
   await page.waitForFunction(()=>document.querySelector('#interact-prompt').dataset.objectId==='life-star');
@@ -71,7 +72,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#quality-fixture').dataset.artStatus==='ready');
   await page.waitForFunction(()=>document.querySelector('#quality-fixture').dataset.monsterWarningCount==='1');
   assert.equal(await page.locator('#quality-fixture').getAttribute('data-render-quality'),'low');checks.push('refresh restores actual world low-quality renderer');
-  for(const mode of ['normal','low']){
+  for(const mode of ['high','medium','low']){
     await page.evaluate(mode=>{window.__qualitySeen.clear();window.__qualityWorld.setQuality(mode);},mode);
     await page.waitForTimeout(350);
     const seen=await page.evaluate(()=>[...window.__qualitySeen]);
@@ -82,7 +83,7 @@ try{
     assert.ok(seen.includes('text:진리의 창조자'),`${mode}: boss label`);
     await page.screenshot({path:`.local/performance/quality-hazards-${mode}.png`});
   }
-  checks.push('normal/low retain truth path, four projectile classes, boss labels and both countdowns');
+  checks.push('high/medium/low retain truth path, four projectile classes, boss labels and both countdowns');
   const initial=await page.locator('#quality-fixture').getAttribute('data-self-render-x');
   await page.evaluate(({x,y})=>{
     const packet={mapId:'space-plaza',positions:[['fixture-self',x+40,y]],monsters:[],water:[]};window.__qualityWorld.positions(packet);window.__qualityWorld.monsters(packet);
@@ -90,9 +91,11 @@ try{
   await page.waitForTimeout(350);
   assert.equal(await page.locator('#quality-fixture').getAttribute('data-monster-count'),'1');
   assert.equal(await page.locator('#quality-fixture').getAttribute('data-water-aura-count'),'1');
-  assert.notEqual(await page.locator('#quality-fixture').getAttribute('data-self-render-x'),initial);
+  assert.equal(await page.locator('#quality-fixture').getAttribute('data-self-render-x'),initial);
+  await page.evaluate(({mapId,x,y})=>window.__qualityWorld.positions({mapId,positions:[['fixture-self',x+40,y]]}),fixture);
+  await page.waitForFunction(initial=>document.querySelector('#quality-fixture').dataset.selfRenderX!==initial,initial);
   await page.evaluate(({mapId})=>{const packet={mapId,positions:[],monsters:[],water:[]};window.__qualityWorld.positions(packet);window.__qualityWorld.monsters(packet);},fixture);
   await page.waitForFunction(()=>document.querySelector('#quality-fixture').dataset.monsterCount==='0'&&document.querySelector('#quality-fixture').dataset.waterAuraCount==='0');
-  checks.push('stale map packet cannot clear monsters/effects, positions still update; current full-empty packet clears');
+  checks.push('stale map packet cannot change positions or clear monsters/effects; current positions update and full-empty packet clears');
   assert.deepEqual(errors,[]);writeFileSync('.local/performance/quality-verification.json',JSON.stringify({checks,movement,errors},null,2));console.log(JSON.stringify({checks,movement,errors},null,2));
 }finally{await browser.close();await game.close();}

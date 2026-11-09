@@ -17,7 +17,7 @@ export function prepareMapPreviewArt(map,planet){
   const state={status:'loading',failed:0};states.set(key,state);
   let work;
   if(map.id==='space-plaza')work=preloadPlazaGroundArt();
-  else if(map.id==='star-street')work=preloadStreetGroundArt();
+  else if(map.theme==='starlight-street')work=preloadStreetGroundArt();
   else if(map.id==='milky-valley')work=preloadValleyGroundArt();
   else if(map.theme==='star-origin')work=preloadOriginGroundArt(map);
   else if(map.theme==='sleeping-stars')work=preloadSleepingStarsArt(map);

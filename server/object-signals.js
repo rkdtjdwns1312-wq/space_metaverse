@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {PLAZA_ID,STREET_ID,interiorIdOf} from '../shared/config.js';
+import {PLAZA_ID,PLAYGROUND_ID,interiorIdOf} from '../shared/config.js';
 
 // 내용 자체를 신호로 보내지 않습니다. 받은 학생이 내용을 볼 권한이 있는지와
 // 무관하게 해시만 비교하여 새 알림 표시를 정합니다.
@@ -24,8 +24,8 @@ export function objectSignals(room,viewer){
     put(inside,'warning-rock',pl.warnings||[]);
     put(inside,'department-control-machine',pl.interiorDecor||{});
   }
-  put(STREET_ID,'arcade-tetris',room.tetrisRanking||[]);
-  put(STREET_ID,'arcade-dodge',room.dodgeRanking||[]);
-  put(STREET_ID,'arcade-memory',room.memoryRanking||[]);
+  put(PLAYGROUND_ID,'arcade-tetris',room.tetrisRanking||[]);
+  put(PLAYGROUND_ID,'arcade-dodge',room.dodgeRanking||[]);
+  put(PLAYGROUND_ID,'arcade-memory',room.memoryRanking||[]);
   return signals;
 }

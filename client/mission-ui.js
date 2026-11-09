@@ -43,6 +43,10 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
   const rewardNames={'star-crumb':'별 부스러기','star-shard':'별 파편','cosmic-energy':'우주에너지'};
   const rewardText=mission=>mission.rewards?.length?mission.rewards.map(reward=>`${rewardNames[reward.type]} ${reward.quantity}개`).join(' · '):
     `${mission.rewardItem==='star-crumb'?'별 부스러기':'별 파편'} ${mission.rewardQuantity??mission.rewardShards}개`;
+  let selectedBoardMissionId=null,boardRevision=0;
+  const boardBack=document.createElement('button');boardBack.type='button';boardBack.id='mission-board-back';boardBack.className='secondary';boardBack.textContent='목록으로';boardBack.hidden=true;
+  $('mission-board-list-title').before(boardBack);
+  boardBack.onclick=()=>{selectedBoardMissionId=null;void refreshBoard().catch(error=>toast(error.message));};
   $('mission-auto-guide').insertAdjacentHTML('afterend','<div id="mission-auto-grade-row" hidden><label for="mission-auto-grade">수학 단계</label><select id="mission-auto-grade"><option value="1">기초 1학년</option><option value="2">기초 2학년</option><option value="3">중급 3학년</option><option value="4">중급 4학년</option><option value="5">고급 5학년</option><option value="6">고급 6학년</option></select></div><div id="mission-auto-item-level-row" hidden><label for="mission-auto-item-level">완성 아이템 레벨</label><select id="mission-auto-item-level"><option value="2">LV2</option><option value="3">LV3</option><option value="4">LV4</option><option value="5">LV5</option></select></div>');
   const mineDialog=$('student-missions-dialog'),mine=$('my-missions'),mineEmpty=$('my-missions-empty');
   const notice=document.createElement('button');notice.id='new-mission-notice';notice.type='button';notice.className='secondary';notice.hidden=true;
@@ -140,14 +144,31 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
     }
   }
   async function refreshBoard(){
+    const revision=++boardRevision;
     const me=getRoom()?.players.find(p=>p.id===getSelfId());
     const result=await request('mission:board:read',{});
+    if(revision!==boardRevision)return;
     $('mission-create').hidden=true;$('mission-auto-create').hidden=true;
     $('mission-board-create-open').hidden=me?.role!=='teacher';
-    $('mission-board-list-title').textContent=me?.role==='teacher'?'교실 미션':'받을 수 있는 미션';
+    const title=$('mission-board-list-title');
+    title.textContent=me?.role==='teacher'?(selectedBoardMissionId?'미션 내용':'교실 미션'):'받을 수 있는 미션';
     const list=$('mission-board-list');list.replaceChildren();
-    if(!result.missions.length){const p=document.createElement('p');p.className='muted';p.textContent=me?.role==='teacher'?'아직 만든 미션이 없어요.':'지금 받을 수 있는 미션이 없어요.';list.append(p);return;}
-    for(const mission of result.missions){
+    if(!result.missions.length){boardBack.hidden=true;list.classList.remove('mission-board-title-list');const p=document.createElement('p');p.className='muted';p.textContent=me?.role==='teacher'?'아직 만든 미션이 없어요.':'지금 받을 수 있는 미션이 없어요.';list.append(p);return;}
+    if(me?.role==='teacher'){
+      const selected=result.missions.find(mission=>mission.id===selectedBoardMissionId);
+      if(selectedBoardMissionId&&!selected)selectedBoardMissionId=null;
+      if(!selectedBoardMissionId){
+        boardBack.hidden=true;list.classList.add('mission-board-title-list');
+        for(const mission of result.missions){
+          const button=document.createElement('button');button.type='button';button.className='secondary mission-board-title';
+          const kind=mission.repeat==='daily'?'매일 반복':mission.objective?'자동미션':'일반 미션';
+          button.textContent=`${mission.title} · ${kind}`;button.title=mission.title;button.onclick=()=>{selectedBoardMissionId=mission.id;void refreshBoard().catch(error=>toast(error.message));};list.append(button);
+        }
+        return;
+      }
+      boardBack.hidden=false;list.classList.remove('mission-board-title-list');
+    }else{boardBack.hidden=true;list.classList.remove('mission-board-title-list');}
+    for(const mission of result.missions.filter(item=>me?.role!=='teacher'||item.id===selectedBoardMissionId)){
       const node=card(mission);
       if(me?.role==='teacher'){
         const tag=document.createElement('p');tag.className='mission-status';tag.textContent=(mission.repeat==='daily'?'매일 반복 · ':mission.objective?'자동미션 · ':'일반 미션 · ')+(mission.distribution==='all'?'전체 배포':'게시판에서 직접 받기');node.append(tag);
@@ -231,8 +252,8 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
     finally{button.disabled=false;}
   };
   $('mission-board-close').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>$('world')?.focus());
-  async function openBoard(mode){stop();$('mission-board-error').textContent='';try{await refreshBoard();
+  dialog.addEventListener('close',()=>{if(!dialog.open)boardRevision++;$('world')?.focus();});
+  async function openBoard(mode){stop();selectedBoardMissionId=null;$('mission-board-error').textContent='';try{await refreshBoard();
     if(mode==='manual')$('mission-create').hidden=false;
     if(mode==='auto')$('mission-auto-create').hidden=false;
     dialog.showModal();}catch(error){toast(error.message);}}

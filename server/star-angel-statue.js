@@ -1,4 +1,4 @@
-import {STREET,STREET_ID} from '../shared/config.js';
+import {STAR_STATION,STAR_STATION_ID} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
 import {ensureVitals,playerVitals} from './vitals.js';
@@ -7,8 +7,8 @@ import {STAR_GUARDIAN_MS} from './shelter-fountain.js';
 export const ANGEL_RECOVERY_MS=10000;
 const ID='star-angel-recovery';
 export function blessAtStarAngel(player,now=Date.now()){
- const statue=STREET.objects.find(o=>o.kind==='star-angel-statue');
- if(!player?.connected||player.away||player.mapId!==STREET_ID||!isNear(player,statue))throw new GameError('아기별 천사 석상 가까이에서 상호작용해 주세요.');
+ const statue=STAR_STATION.objects.find(o=>o.kind==='star-angel-statue');
+ if(!player?.connected||player.away||player.mapId!==STAR_STATION_ID||!isNear(player,statue))throw new GameError('아기별 천사 석상 가까이에서 상호작용해 주세요.');
  if(!ensureVitals(player)?.hp)throw new GameError('쓰러진 동안에는 석상을 사용할 수 없어요.');
  const existing=player.effects?.find(e=>e.itemId===ID&&e.until>now);
  const nextTickAt=existing?.nextTickAt>now?existing.nextTickAt:now+ANGEL_RECOVERY_MS;

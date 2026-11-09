@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
-import {MAP,STREET} from '../shared/config.js';
+import {MAP,PLAYGROUND} from '../shared/config.js';
 import {INTERACTION_SAVE_ACTIONS} from '../server/interaction-save-scope.js';
 test('audited interaction reads save only their classroom while retaining journey persistence',async t=>{
  const f=await readingFixture(t),store=f.game.store;
@@ -20,9 +20,9 @@ test('audited interaction reads save only their classroom while retaining journe
   ['temple:read',MAP.objects.find(o=>o.id==='pillar-notice'),{objectId:'pillar-notice'}],
   ['assignment:read',MAP.objects.find(o=>o.kind==='andromeda'),{}],
   ['mission:board:read',MAP.objects.find(o=>o.kind==='mission-board'),{}],
-  ['arcade:open',STREET.objects.find(o=>o.kind==='arcade'),null]
+  ['arcade:open',PLAYGROUND.objects.find(o=>o.kind==='arcade'),null]
  ]){
-  Object.assign(f.p,{mapId:event==='arcade:open'?STREET.id:MAP.id,x:object.x,y:object.y+object.radius+25});
+  Object.assign(f.p,{mapId:event==='arcade:open'?PLAYGROUND.id:MAP.id,x:object.x,y:object.y+object.radius+25});
   const start=scopes.length,expected=f.room;
   ok(await call(f.student,event,data??{objectId:object.id}));
   assert(scopes.slice(start).includes(expected),`${event} must use its classroom scope`);assert(INTERACTION_SAVE_ACTIONS.includes(event));

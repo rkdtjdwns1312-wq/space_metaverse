@@ -4,6 +4,8 @@ const FILE_BGM = Object.freeze({
   lobby:'/assets/audio/login-in-front-of-love.mp3',
   'lobby-violin':'/assets/audio/login-violin-layer.wav',
   'star-street':'/assets/audio/star-street-pposong.mp3',
+  'star-station':'/assets/audio/star-street-pposong.mp3',
+  'star-playground':'/assets/audio/star-street-pposong.mp3',
   'milky-valley':'/assets/audio/milky-valley-silent-morning.mp3',
   'space-plaza':'/assets/audio/space-plaza-my-captain.mp3',
   'moon-garden':'/assets/audio/moon-garden-picnic.mp3',

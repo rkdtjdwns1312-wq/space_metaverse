@@ -1,6 +1,6 @@
 import {JOURNEY_STEPS,JOURNEY_ITEM_IDS} from '/shared/tutorial-journey.js';
 import {avatarSizeOf} from '/shared/avatar-size.js';
-import {journeyDestination,journeyRoute,journeySegmentClear} from './tutorial-directions.js';
+import {journeyDestination,createJourneyGuide,tutorialButtonArrowPlacement} from './tutorial-directions.js';
 
 const HELP={
  moved:'방향키나 WASD로 걸어 보세요. 휴대전화에서는 조이스틱을 밀어요. 그다음 화살표를 따라 네 기둥을 각각 조사해요.',
@@ -14,9 +14,9 @@ const HELP={
  market:'별 시장: 친구와 서로 물건을 거래할 수 있는 공간이에요.',
  assignment:'과제별서고: 매일의 과제와 미션을 확인하는 공간이에요.',
  'world-map':'오른쪽 위 전체 우주 지도를 눌러 우리가 탐험할 곳들을 살펴봐요.',
- station:'별 발전소에는 나를 성장시킬 수 있는 다양한 발전소가 있어요. 발전소 활동으로 새로운 지식을 배우고, 추가 별 파편을 얻는 미션에도 도전할 수 있어요.',
- shops:'상점가에서는 별 파편과 우주에너지로 물건을 살펴보고 구입해요. 지금은 사지 않아도 돼요.',
- playground:'놀이터에는 여러 게임이 있어요. 추가 별 파편을 얻는 미션과 랭킹에도 도전할 수 있어요.',
+ station:'오색별빛 쉼터의 북쪽 문을 지나 별 발전소로 가요. 가운데 천사 석상 둘레에 여섯 발전소가 있어요.',
+ shops:'별 발전소의 남쪽 문으로 오색별빛 쉼터에 돌아와 상점가를 살펴봐요. 지금은 물건을 사지 않아도 돼요.',
+ playground:'오색별빛 쉼터의 남쪽 문을 지나 별 놀이터로 가요. 혼자 하는 게임과 친구와 함께 하는 경쟁 게임이 있어요.',
  'growth-star':'성장의 별은 별 파편으로 경험치를 얻는 곳이에요. 경험치가 가득 차도 자동으로 진화하지는 않아요. 지금은 살펴보기만 해요.',
  'evolution-star':'진화의 별은 모은 경험치로 별자리를 진화시키거나 모습을 바꾸는 곳이에요. 지금은 살펴보기만 해요.',
  'bag-1':'가방은 모두 3페이지예요. 1, 2, 3 버튼을 차례로 눌러 살펴보세요.',
@@ -42,7 +42,8 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
  const notice=document.createElement('dialog');notice.id='journey-place-dialog';notice.innerHTML='<h2>새로운 곳을 만났어요!</h2><p id="journey-place-text"></p><div class="dialog-actions"><button class="secondary" type="button">알겠어요</button></div>';document.body.append(notice);notice.querySelector('button').onclick=()=>notice.close();
  const practice=document.createElement('dialog');practice.id='journey-planet-practice-dialog';practice.setAttribute('aria-labelledby','journey-planet-practice-title');
  practice.innerHTML='<h2 id="journey-planet-practice-title">행성 만들기 연습</h2><p>지금은 연습시간이라 행성을 만들 수는 없어요</p><div class="dialog-actions"><button id="journey-planet-practice-close" class="secondary" type="button">닫기</button></div>';document.body.append(practice);
- let signature='',snapshot=null,goal=null,busy=false,hudDismissed=false,highlight=null,route=null,routeKey='',lastRouteAt=0,lastRouteCheck=0,announcement=[],pending=new Set(),lastObserved=new Map();
+ const guide=createJourneyGuide();
+ let signature='',snapshot=null,goal=null,busy=false,hudDismissed=false,highlight=null,route=null,announcement=[],pending=new Set(),lastObserved=new Map();
  function hideHud(){hudDismissed=true;hud.hidden=true;$('world').focus();}
  $('journey-hide').onclick=hideHud;
  hud.addEventListener('click',event=>{if(!event.target.closest('button'))hideHud();});
@@ -110,7 +111,8 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   if(!visible(el)){clearHighlight();return;}
   const modal=el.closest('dialog');if(modal&&arrow.parentNode!==modal)modal.append(arrow);else if(!modal&&arrow.parentNode!==document.body)document.body.append(arrow);
   if(highlight!==el){clearHighlight();highlight=el;el.classList.add('journey-target');}
-  const r=el.getBoundingClientRect();arrow.hidden=false;arrow.style.left=Math.max(5,Math.min(innerWidth-36,r.left+r.width/2-16))+'px';arrow.style.top=Math.max(5,r.top-36)+'px';arrow.style.transform='rotate(90deg)';
+  const placement=tutorialButtonArrowPlacement(el.getBoundingClientRect(),{width:innerWidth,height:innerHeight});
+  arrow.hidden=false;arrow.style.left=placement.left+'px';arrow.style.top=placement.top+'px';arrow.style.transform=`rotate(${placement.rotation}deg)`;
  }
  function frame(now){
   const p=me(),step=current();if(!step||p?.role!=='student'||document.body.classList.contains('placing')){clearHighlight();requestAnimationFrame(frame);return;}
@@ -119,15 +121,11 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   if(button&&(!modal||modal.contains(button)))pointButton(button);
   else if(modal){const close=modal.querySelector('button[data-close],button[id$="-close"],#tutorial-later');if(close&&visible(close))pointButton(close);else clearHighlight();}
   else if(journeyDestination(goal)){
-   const key=`${p.mapId}:${goal}`,planets=getRoom()?.planets;
-   const inspect=now-lastRouteCheck>250;if(inspect)lastRouteCheck=now;
-   const blocked=inspect&&route?.points[0]&&!journeySegmentClear(p,p,route.points[0],planets);
-   if(key!==routeKey||!route||blocked||now-lastRouteAt>2000){route=journeyRoute(p,goal,planets);routeKey=key;lastRouteAt=now;}
-   while(route?.points.length>1&&Math.hypot(p.x-route.points[0].x,p.y-route.points[0].y)<30&&journeySegmentClear(p,p,route.points[1],planets))route.points.shift();
+   route=guide.update(p,goal,getRoom()?.planets,now);
    const next=route?.points[0];if(next){
     const distance=Math.hypot(p.x-next.x,p.y-next.y);
     if(route.points.length===1&&distance<35&&route.target.interact&&visible($('touch-interact'))&&!$('touch-interact').disabled)pointButton($('touch-interact'));
-    else{clearHighlight();if(arrow.parentNode!==document.body)document.body.append(arrow);const pos=screenPoint({...p,kind:'player'});arrow.hidden=false;arrow.style.left=Math.max(8,Math.min(innerWidth-40,pos.x-16))+'px';arrow.style.top=Math.max(8,pos.y-avatarSizeOf(p)*pos.scale*.65-35)+'px';arrow.style.transform=`rotate(${Math.atan2(next.y-p.y,next.x-p.x)}rad)`;}
+    else{clearHighlight();if(arrow.parentNode!==document.body)document.body.append(arrow);const pos=screenPoint({...p,kind:'player'}),targetPos=screenPoint(next);arrow.hidden=false;arrow.style.left=Math.max(8,Math.min(innerWidth-40,pos.x-16))+'px';arrow.style.top=Math.max(8,pos.y-avatarSizeOf(p)*pos.scale*.65-35)+'px';arrow.style.transform=`rotate(${Math.atan2(targetPos.y-pos.y,targetPos.x-pos.x)}rad)`;}
    }else clearHighlight();
   }else clearHighlight();
   requestAnimationFrame(frame);
@@ -144,5 +142,5 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   if($('inventory-dialog').open){const tab=document.querySelector('.inventory-page-tab[aria-selected="true"]');if(tab)observe('bag-'+tab.textContent.trim());}
   if($('chat-dialog').open)observe('chat-open');if($('crew-dialog').open)observe('friends-open');
  },300);
- return {open,update:render,observe,steps:JOURNEY_STEPS.map(s=>s.title),startIfNeeded(result){const p=result.room.players.find(p=>p.id===result.selfId);if(p?.role!=='student'||p.journey?.stage===6)return;const offer=$('password-offer-dialog');if(offer.open)offer.addEventListener('close',()=>{if($('lobby').hidden)open();},{once:true});else open();},reset(){hudDismissed=false;signature='';snapshot=null;goal=null;route=null;routeKey='';announcement=[];pending.clear();lastObserved.clear();hud.hidden=true;clearHighlight();if(dialog.open)dialog.close();if(notice.open)notice.close();if(practice.open)practice.close();}};
+ return {open,update:render,observe,steps:JOURNEY_STEPS.map(s=>s.title),startIfNeeded(result){const p=result.room.players.find(p=>p.id===result.selfId);if(p?.role!=='student'||p.journey?.stage===6)return;const offer=$('password-offer-dialog');if(offer.open)offer.addEventListener('close',()=>{if($('lobby').hidden)open();},{once:true});else open();},reset(){hudDismissed=false;signature='';snapshot=null;goal=null;route=null;guide.reset();announcement=[];pending.clear();lastObserved.clear();hud.hidden=true;clearHighlight();if(dialog.open)dialog.close();if(notice.open)notice.close();if(practice.open)practice.close();}};
 }

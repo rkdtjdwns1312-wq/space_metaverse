@@ -141,7 +141,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     const theme=info.theme||({
       [PLAZA_ID]:'plaza',[STREET_ID]:'rainbow-space',[GARDEN_ID]:'paradise-crossroads',[VALLEY_ID]:'valley'
     }[info.id]||'default');
-    ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/info.width,h/info.height);
+    const bounds=info.viewBounds||{x:0,y:0,width:info.width,height:info.height};
+    ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(w/bounds.width,h/bounds.height);ctx.translate(-bounds.x,-bounds.y);
     if(theme==='plaza')drawPlazaGround(ctx,info);
     else if(theme==='starlight-street'||theme==='rainbow-space')drawStreetGround(ctx,info,{fountain:!thumbnail});
     else if(theme==='star-origin')drawOriginArt(ctx,info);
@@ -169,13 +170,14 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       ctx.fillStyle='#675881';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('별빛 지도 준비 중',w/2,h/2);
       canvas.dataset.mapId=mapId;return;
     }
-    const scale=Math.min((w-pad*2)/info.width,(h-pad*2)/info.height),ox=(w-info.width*scale)/2,oy=(h-info.height*scale)/2;
+    const bounds=info.viewBounds||{x:0,y:0,width:info.width,height:info.height};
+    const scale=Math.min((w-pad*2)/bounds.width,(h-pad*2)/bounds.height),left=(w-bounds.width*scale)/2,top=(h-bounds.height*scale)/2,ox=left-bounds.x*scale,oy=top-bounds.y*scale;
     const interiorPlanet=info.planetId?planets().find(p=>p.id===info.planetId):null;
     const cacheKey=mapId+':'+w+':'+h+':'+detailed+':'+thumbnail+':'+JSON.stringify(interiorPlanet?.interiorDecor||null);const cached=backgrounds.get(cacheKey);
     ctx.clearRect(0,0,w,h);
     if(cached){ctx.drawImage(cached,0,0);}else{
     ctx.fillStyle='#f2edfc';ctx.fillRect(0,0,w,h);
-    mapBackground(ctx,info,ox,oy,info.width*scale,info.height*scale,thumbnail);
+    mapBackground(ctx,info,left,top,bounds.width*scale,bounds.height*scale,thumbnail);
     // 실세계에는 사각 테두리가 없습니다. 지도에서도 인공적인 외곽선을 덧그리지 않습니다.
     const labels=[];
     // Object details stay in the selected large preview and live minimap.
@@ -192,7 +194,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
       const placed=[];
       for(const item of labels){
-        const maxWidth=Math.min(132,info.width*scale-24),fontSize=Math.max(10,Math.min(14,Math.round(w/68)));
+        const maxWidth=Math.min(132,bounds.width*scale-24),fontSize=Math.max(10,Math.min(14,Math.round(w/68)));
         ctx.font=`${fontSize}px Jua, "Malgun Gothic", sans-serif`;
         const words=item.text.split(/\s+/),lines=[];let line='';
         for(const word of words){const candidate=line?line+' '+word:word;if(line&&ctx.measureText(candidate).width>maxWidth){lines.push(line);line=word;}else line=candidate;}
@@ -203,8 +205,8 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
           lines.splice(index,1,text.slice(0,cut),text.slice(cut));
         }
         const lineHeight=fontSize+2,height=lines.length*lineHeight,width=Math.min(maxWidth,Math.max(...lines.map(text=>ctx.measureText(text).width)));
-        const clampX=x=>Math.max(ox+width/2+8,Math.min(ox+info.width*scale-width/2-8,x));
-        const clampY=y=>Math.max(oy+height/2+7,Math.min(oy+info.height*scale-height/2-7,y));
+        const clampX=x=>Math.max(left+width/2+8,Math.min(left+bounds.width*scale-width/2-8,x));
+        const clampY=y=>Math.max(top+height/2+7,Math.min(top+bounds.height*scale-height/2-7,y));
         const candidates=[
           [item.x,item.y+item.r+16+height/2],[item.x,item.y-item.r-15-height/2],
           [item.x+item.r+width/2+9,item.y],[item.x-item.r-width/2-9,item.y],
@@ -248,7 +250,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     if(next!==signature){signature=next;
       thumbnailObserver?.disconnect();
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
-      $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row);button.style.gridColumn=String(column);return button;}));
+      $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row-Math.min(...UNIVERSE_MAP_LAYOUT.map(item=>item.row))+1);button.style.gridColumn=String(column);return button;}));
       $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
       if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
     }

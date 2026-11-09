@@ -1,7 +1,7 @@
 import {enlargeParadise,paradisePoint} from './paradise-floor.js';
 import {PLAZA_LAYOUT,departmentSlots,plazaPoint,DEPARTMENT_RADIUS,DEPARTMENT_GAP} from './plaza-layout.js';
 import {VALLEY_LAYOUT} from './valley-layout.js';
-import {STREET_LAYOUT,STREET_PARK} from './street-layout.js';
+import {STREET_LAYOUT,STREET_PARK,STAR_STATION_LAYOUT,PLAYGROUND_LAYOUT,streetLayoutOf} from './street-layout.js';
 import {MARKET} from './market.js';
 import {LV2_ITEMS} from './lv2-items.js';
 import {LV4_ITEMS} from './lv4-items.js';
@@ -75,7 +75,7 @@ export const MAP = Object.freeze({ id: 'space-plaza', name: '별의 기원', wid
   ] });
 export const PLAZA_ID = MAP.id;
 // 두 번째 맵 '오색별빛 쉼터': 북쪽 발전소와 상점·놀이 마당을 잇는 공간입니다.
-export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 쉼터', theme:'starlight-street', width: STREET_LAYOUT.width, height: STREET_LAYOUT.height, spawn: STREET_LAYOUT.spawn,
+const LEGACY_STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 쉼터', theme:'starlight-street', width: STREET_LAYOUT.width, height: STREET_LAYOUT.height, spawn: STREET_LAYOUT.spawn,
   objects: [
     { id: 'gate-plaza', name: '별의 기원으로 가는 문', x: STREET_LAYOUT.westGate.x, y: STREET_LAYOUT.westGate.y, radius: 38, kind: 'gate', target: 'space-plaza',
       arrival: plazaPoint({x:5950,y:2200}), color: '#d9c6f2', passable: true },
@@ -88,13 +88,13 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     {id:'shelter-fountain',name:'별의 수호 분수대',x:STREET_PARK.fountain.x,y:STREET_PARK.fountain.y,radius:110,collisionRx:STREET_PARK.fountain.rx,collisionRy:STREET_PARK.fountain.ry,kind:'shelter-fountain'},
     { id: 'shop', name: '별 상점', x: 1290, y: 1450, radius: 72, kind: 'shop', color: '#ffe59b' },
     { id: 'energy-shop', name: '우주에너지 상점', x: 1290, y: 1980, radius: 84, kind: 'energy-shop', color: '#8fd5ff' },
-    {id:'math-station',name:'별 수학 발전소',x:250,y:650,radius:86,kind:'math-station'},
-    {id:'english-station',name:'별 영어 발전소',x:1550,y:650,radius:86,kind:'english-station'},
-    {id:'history-station',name:'별 역사 발전소',x:430,y:390,radius:86,kind:'history-station'},
-    {id:'science-station',name:'별 과학 발전소',x:820,y:280,radius:86,kind:'science-station'},
-    {id:'culture-station',name:'별 교양 발전소',x:1370,y:390,radius:86,kind:'culture-station'},
-    {id:'art-station',name:'별 예술 발전소',x:1200,y:850,radius:86,kind:'art-station'},
-    {id:'star-angel-statue',name:'아기별 천사 석상',x:900,y:650,radius:70,collisionRx:70,collisionRy:45,kind:'star-angel-statue'},
+    {id:'math-station',name:'별 수학 발전소',x:575,y:780,radius:86,kind:'math-station'},
+    {id:'english-station',name:'별 영어 발전소',x:1550,y:530,radius:86,kind:'english-station'},
+    {id:'history-station',name:'별 역사 발전소',x:250,y:530,radius:86,kind:'history-station'},
+    {id:'science-station',name:'별 과학 발전소',x:575,y:253,radius:86,kind:'science-station'},
+    {id:'culture-station',name:'별 교양 발전소',x:1225,y:253,radius:86,kind:'culture-station'},
+    {id:'art-station',name:'별 예술 발전소',x:1225,y:780,radius:86,kind:'art-station'},
+    {id:'star-angel-statue',name:'아기별 천사 석상',x:900,y:530,radius:70,collisionRx:70,collisionRy:45,kind:'star-angel-statue'},
     ...[
       ['memory','별 그림 짝 맞추기','#f2badb'],['baseball','숫자야구','#b8d6fa'],
       ['tetris','별 테트리스','#ffdfd5'],['sudoku','별빛 스도쿠','#bce8cd'],['dodge','별 피하기','#cfbcf1'],
@@ -108,7 +108,23 @@ export const STREET = Object.freeze({ id: STREET_LAYOUT.id, name: '오색별빛 
     {id:'station-sign',name:'별 발전소 가는길',x:900,y:1070,radius:24,kind:'street-sign',passable:true},
     { id: 'lamp-right', name: '별빛 가로등', x: 1110, y: 1290, radius: 22, kind: 'lamp', color: '#d8f5ff', passable: true }
   ] });
-export const STREET_ID = STREET.id;
+export const STREET_ID=STREET_LAYOUT.id;
+export const STAR_STATION_ID=STAR_STATION_LAYOUT.id;
+export const PLAYGROUND_ID=PLAYGROUND_LAYOUT.id;
+const streetGate=(id,name,x,y,target,arrival)=>({id,name,x,y,radius:38,kind:'gate',target,arrival,color:'#d9c6f2',passable:true});
+const stationObject=o=>o.kind?.endsWith('-station')||o.kind==='star-angel-statue'||o.id==='gate-sleeping-stars';
+const playgroundObject=o=>['arcade','duel-arcade','hall-of-fame'].includes(o.kind);
+export const STREET=Object.freeze({...LEGACY_STREET,viewBounds:streetLayoutOf(STREET_ID).viewBounds,objects:[
+  ...LEGACY_STREET.objects.filter(o=>!stationObject(o)&&!playgroundObject(o)&&o.kind!=='street-sign'),
+  streetGate('gate-station','별 발전소 ↑',900,1110,STAR_STATION_ID,{x:900,y:900}),
+  streetGate('gate-playground','별 놀이터 ↓',900,2350,PLAYGROUND_ID,{x:900,y:2510})
+]});
+export const STAR_STATION=Object.freeze({...LEGACY_STREET,id:STAR_STATION_ID,name:'별 발전소',spawn:STAR_STATION_LAYOUT.spawn,viewBounds:STAR_STATION_LAYOUT.viewBounds,objects:[
+  ...LEGACY_STREET.objects.filter(stationObject),streetGate('gate-street','오색별빛 쉼터 ↓',900,1040,STREET_ID,{x:900,y:1250})
+]});
+export const PLAYGROUND=Object.freeze({...LEGACY_STREET,id:PLAYGROUND_ID,name:'별 놀이터',spawn:PLAYGROUND_LAYOUT.spawn,viewBounds:PLAYGROUND_LAYOUT.viewBounds,objects:[
+  ...LEGACY_STREET.objects.filter(playgroundObject),streetGate('gate-street','오색별빛 쉼터 ↑',900,2410,STREET_ID,{x:900,y:2190})
+]});
 // 기존 저장 위치를 보존하기 위해 갈림길의 ID는 moon-garden 그대로 유지합니다.
 export const GARDEN = enlargeParadise({id:'moon-garden',name:'낙원의 갈림길',theme:'paradise-crossroads',width:1200,height:760,spawn:{x:1030,y:380},objects:[
   {id:'gate-plaza',name:'별의 기원',x:1120,y:380,radius:38,kind:'gate',target:PLAZA_ID,arrival:plazaPoint({x:250,y:2200}),color:'#d9c6f2',passable:true},
@@ -171,16 +187,16 @@ export const ORIGIN_MAPS=Object.freeze(Array.from({length:STAR_ORIGIN.maxStage},
       ...(n===4?[{id:'star-goddess-statue',name:'별의 여신 석상',x:width/2,y:height/2,radius:58,kind:'goddess-statue'}]:[])
     ]});
 }));
-export const SLEEPING_STARS_MAPS=createSleepingStarsMaps(ORIGIN_MAPS,STREET_LAYOUT);
-export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[WHALE_STOMACH.id]:WHALE_STOMACH,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...SLEEPING_STARS_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
+export const SLEEPING_STARS_MAPS=createSleepingStarsMaps(ORIGIN_MAPS,STAR_STATION_LAYOUT);
+export const STATIC_MAPS = Object.freeze({ [MAP.id]: MAP, [STREET.id]: STREET,[STAR_STATION.id]:STAR_STATION,[PLAYGROUND.id]:PLAYGROUND,[GARDEN.id]:GARDEN,[VALLEY.id]:VALLEY,[BLACK_HOLE.id]:BLACK_HOLE,[WHALE_STOMACH.id]:WHALE_STOMACH,[STAR_PARADISE.id]:STAR_PARADISE,...Object.fromEntries([...ORIGIN_MAPS,...SLEEPING_STARS_MAPS,...PARADISE_MAPS,...MOON_PARADISE_MAPS].map(m=>[m.id,m])) });
 // 우주 지도 선택 화면의 5열×6행 배치입니다. 각 맵은 서로 다른 칸을 사용합니다.
 export const UNIVERSE_MAP_LAYOUT=Object.freeze([
   ...[...ORIGIN_MAPS.map((map,i)=>({id:map.id,icon:'✧',row:4-i,column:4}))].reverse(),
-  ...SLEEPING_STARS_MAPS.map((map,i)=>({id:map.id,icon:'·',row:4-i,column:5})).reverse(),
+  ...SLEEPING_STARS_MAPS.map((map,i)=>({id:map.id,icon:'·',row:3-i,column:5})).reverse(),
   ...PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☀',row:4,column:3-i})),
   ...MOON_PARADISE_MAPS.map((map,i)=>({id:map.id,icon:'☾',row:6,column:3-i})),
   {id:STAR_PARADISE.id,icon:'✵',row:5,column:1},{id:GARDEN_ID,icon:'✧',row:5,column:3},
-  {id:PLAZA_ID,icon:'★',row:5,column:4},{id:STREET_ID,icon:'✦',row:5,column:5},
+  {id:PLAZA_ID,icon:'★',row:5,column:4},{id:STREET_ID,icon:'✦',row:5,column:5},{id:STAR_STATION_ID,icon:'✧',row:4,column:5},{id:PLAYGROUND_ID,icon:'☆',row:6,column:5},
   {id:VALLEY_ID,icon:'≋',row:6,column:4}
 ].map(Object.freeze));
 // 별 파편: 선생님이 나누어 주는 기본 재화(0 이상의 정수). 파밍으로는 얻지 않습니다.
@@ -200,8 +216,8 @@ export const SHOP = Object.freeze({ currency: 'starShards', sellRate: 0.5, maxSt
   {id:'infinite-star-fragment',name:'무한한 별의 파편',description:'별자리의 기원이 남긴 파편 안에서 작은 별들이 반짝입니다.',special:'무한한 별의 파편 1개와 우주에너지 20,000개를 별빛 조합기에 넣으면 무한의 별기운의 팔찌를 만들 수 있습니다.',art:'/assets/items/infinite-star-fragment.webp',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'truth-gem',name:'진리를 담은 보석',description:'진리의 창조자가 남긴 찬란한 별빛 보석입니다.',special:'진리를 담은 보석 1개와 우주에너지 30,000개를 가지고 별빛 조합기에서 진리의 결집체(Lv5 목걸이)를 만들 수 있습니다. 조합법을 미리 배우거나 별 파편을 준비할 필요는 없습니다.',art:'/assets/items/truth-gem.png',icon:'◆',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'radiant-star-origin',name:'찬란한 별의 근원',description:'별의 시초신 세레나가 남긴 찬란한 별의 근원입니다.',special:'찬란한 별의 근원 1개와 우주에너지 10,000개를 가지고 별빛 조합기에서 시초의 별의 보석(Lv5 장비)을 만들 수 있습니다.',art:'/assets/items/radiant-star-origin.png',icon:'✧',type:'tool',level:5,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
-  {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
-  {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:1,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'noksera-horn',name:'노크세라의 뿔',description:'노크세라의 뿔입니다.',special:'특별한 조합 재료',art:'/assets/items/noksera-horn.png',icon:'☾',type:'tool',level:4,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
+  {id:'leoon-claw',name:'레오온의 갈퀴',description:'레오온의 갈퀴입니다.',special:'특별한 조합 재료',art:'/assets/items/leoon-claw.png',icon:'☀',type:'tool',level:4,price:0,sellPrice:null,forSale:false,usable:false,targets:'self',secret:false,mode:'material'},
   {id:'exploration-ticket',name:'탐사권',forSale:false,usable:true,description:'우주 탐사 기회 1번을 얻어요. 선생님이 지급합니다.',special:'광장 제단 오른쪽의 우주 탐사 장치에서 사용할 수 있어요.',art:'/assets/items/exploration-ticket.svg',icon:'🎟️',type:'tool',level:1,price:0,targets:'self',secret:false,mode:'exploration-ticket',effect:{label:'우주 탐사 기회',icon:'✦',durationMs:0,style:'card'}},
   { id: 'star-sticker', shopHidden:true, name: '반짝 별 스티커', forSale: false, description: '친구 소행성에 붙여 주는 작은 별 스티커예요.', icon: '⭐', type: 'decoration', level: 1, price: 5,
     targets: 'any', secret: false, effect: { label: '반짝반짝', icon: '⭐', durationMs: 30 * 60_000, style: 'sparkle' } },

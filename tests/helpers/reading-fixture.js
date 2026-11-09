@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../../server/app.js';
-import {STREET} from '../../shared/config.js';
+import {STAR_STATION} from '../../shared/config.js';
 
 export const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
 export const ok=result=>{assert.equal(result.ok,true,result.error);return result;};
@@ -19,7 +19,7 @@ export async function readingFixture(t,options={}){
  await start();teacher=await connect();code=ok(await call(teacher,'room:create',{teacherKey:key,title:'발전소 보상 검사',allowedNames:['하나','둘']})).room.code;await join();
  const f={get game(){return game;},get room(){return game.store.rooms.get(code);},get p(){return f.room.players.get(id);},get q(){return f.room.players.get(otherId);},
   get student(){return student;},get other(){return other;},get teacher(){return teacher;},get teacherPlayer(){return [...f.room.players.values()].find(p=>p.role==='teacher');},get now(){return now;},get token(){return token;},connect,
-  advance(ms=86400000){now+=ms;},at(kind,p=f.p){const station=STREET.objects.find(o=>o.kind===kind+'-station');assert(station);Object.assign(p,{mapId:STREET.id,x:station.x,y:station.y+120,input:{x:0,y:0,at:0}});},
+  advance(ms=86400000){now+=ms;},at(kind,p=f.p){const station=STAR_STATION.objects.find(o=>o.kind===kind+'-station');assert(station);Object.assign(p,{mapId:STAR_STATION.id,x:station.x,y:station.y+120,input:{x:0,y:0,at:0}});},
   mutate(fn){return game.store.transact(()=>fn(f.p,f.room));},
   async restart(){sockets.forEach(s=>s.disconnect());await game.close();closed=true;await start();teacher=await connect();ok(await call(teacher,'room:open',{teacherKey:key,code}));await join();},
   async reconnect(){student.disconnect();for(let i=0;i<100&&f.p.connected;i++)await wait(20);assert.equal(f.p.connected,false);student=await connect();ok(await call(student,'session:resume',{token}));},

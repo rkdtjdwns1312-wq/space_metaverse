@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
-import {STREET} from '../shared/config.js';
+import {STAR_STATION} from '../shared/config.js';
 import {blessAtStarAngel,advanceStarAngelRecovery} from '../server/star-angel-statue.js';
 import {STAR_GUARDIAN_MS} from '../server/shelter-fountain.js';
 import {ensureVitals,playerVitals} from '../server/vitals.js';
 import {playerEffectsView} from '../server/rooms.js';
 
-const statue=STREET.objects.find(o=>o.kind==='star-angel-statue');
+const statue=STAR_STATION.objects.find(o=>o.kind==='star-angel-statue');
 function fixture(){
- const p={id:'angel-test',role:'student',avatar:{level:5,constellationId:'leo'},connected:true,away:false,mapId:STREET.id,x:statue.x,y:statue.y+100,effects:[]};
+ const p={id:'angel-test',role:'student',avatar:{level:5,constellationId:'leo'},connected:true,away:false,mapId:STAR_STATION.id,x:statue.x,y:statue.y+100,effects:[]};
  const value=ensureVitals(p);value.hp=5;value.mp=3;
  return {p,value,room:{players:new Map([[p.id,p]])},now:Date.now()};
 }
@@ -66,7 +66,7 @@ test('실제 상호작용 요청은 위치를 확인하고 축복 회복을 같�
  assert(created.ok,created.error);const joined=await call(student,'room:join',{code:created.room.code,nickname:'석상검사'});assert(joined.ok,joined.error);
  assert.equal((await call(student,'star-angel:bless')).ok,false);
  const p=game.store.rooms.get(created.room.code).players.get(joined.selfId);
- Object.assign(p,{mapId:STREET.id,x:statue.x,y:statue.y+100});p.avatar.level=2;
+ Object.assign(p,{mapId:STAR_STATION.id,x:statue.x,y:statue.y+100});p.avatar.level=2;
  const value=ensureVitals(p);value.hp=1;value.mp=0;value.nextPassiveRecoveryAt=now+600000;
  const blessed=await call(student,'star-angel:bless');assert(blessed.ok,blessed.error);
  const update=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('석상 회복 전송 없음')),3000);student.on('combat:vitals',data=>{if(data.playerId===p.id&&data.vitals.hp.current===2){clearTimeout(timer);resolve(data);}});});

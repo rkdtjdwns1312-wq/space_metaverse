@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {PersistentRoomStore} from '../server/persistent-rooms.js';
 import {startStarRun,clickStar} from '../server/star-game.js';
 import {startDodgeRun,completeDodgeRun} from '../server/dodge-game.js';
-import {STREET_ID} from '../shared/config.js';
+import {PLAYGROUND_ID as STREET_ID} from '../shared/config.js';
 
 test('두 랭킹은 재시작 후 복원되며 진행 중인 게임은 복원하지 않는다',()=>{
   const dir=mkdtempSync(join(tmpdir(),'ranking-save-'));let store;

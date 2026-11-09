@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STREET} from '../shared/config.js';
+import {STAR_STATION} from '../shared/config.js';
 import {HUNTING_STATION_MS,huntingResetAt} from '../shared/hunting-time.js';
 import {huntingTimeView} from '../server/hunting-time.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
-const at=(f,p=f.p)=>{const o=STREET.objects.find(o=>o.kind==='art-station');assert(o);Object.assign(p,{mapId:STREET.id,x:o.x,y:o.y+80,input:{x:0,y:0,at:0}});};
+const at=(f,p=f.p)=>{const o=STAR_STATION.objects.find(o=>o.kind==='art-station');assert(o);Object.assign(p,{mapId:STAR_STATION.id,x:o.x,y:o.y+80,input:{x:0,y:0,at:0}});};
 const draft=(n=0)=>({requestId:`socket-art-${n}`,title:`검증작품${n}`,drawing:{version:1,background:'#ffffff',strokes:[{tool:'brush',color:'#123456',width:10,points:[[20,20],[400,300]]}]}});
 test('art awards only a committed nonempty new drawing or drawing edit once per cycle and updates its owner',async t=>{
  const f=await readingFixture(t);at(f);at(f,f.q);at(f,f.teacherPlayer);

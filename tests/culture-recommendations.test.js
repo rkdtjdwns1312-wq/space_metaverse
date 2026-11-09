@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {io} from 'socket.io-client';
-import {createClassroomServer} from '../server/app.js';import {STREET} from '../shared/config.js';
+import {createClassroomServer} from '../server/app.js';import {STAR_STATION} from '../shared/config.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
 import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {validateCultureRecommendations,validateCultureRecommendationVotes} from '../server/culture-library.js';
@@ -17,7 +17,7 @@ async function fixture(t){
   const join=async()=>{student=await connect();id=ok(await call(student,'room:join',{code,nickname:'하나',pin:'1234'})).selfId;other=await connect();otherId=ok(await call(other,'room:join',{code,nickname:'둘',pin:'1234'})).selfId;};
   t.after(async()=>{sockets.forEach(s=>s.disconnect());if(!closed)await game.close();assert(path.resolve(directory).startsWith(path.resolve(os.tmpdir())+path.sep));fs.rmSync(directory,{recursive:true,force:true});});
   await start();teacher=await connect();code=ok(await call(teacher,'room:create',{teacherKey:key,title:'추천 검사',allowedNames:['하나','둘']})).room.code;await join();
-  const f={get game(){return game;},get room(){return game.store.rooms.get(code);},get p(){return f.room.players.get(id);},get q(){return f.room.players.get(otherId);},get student(){return student;},get other(){return other;},get teacher(){return teacher;},get now(){return now;},at(kind,p=f.p){const s=STREET.objects.find(o=>o.kind===kind+'-station');Object.assign(p,{mapId:STREET.id,x:s.x,y:s.y+120,input:{x:0,y:0,at:0}});},
+  const f={get game(){return game;},get room(){return game.store.rooms.get(code);},get p(){return f.room.players.get(id);},get q(){return f.room.players.get(otherId);},get student(){return student;},get other(){return other;},get teacher(){return teacher;},get now(){return now;},at(kind,p=f.p){const s=STAR_STATION.objects.find(o=>o.kind===kind+'-station');Object.assign(p,{mapId:STAR_STATION.id,x:s.x,y:s.y+120,input:{x:0,y:0,at:0}});},
     async restart(){sockets.forEach(s=>s.disconnect());await game.close();closed=true;await start();teacher=await connect();ok(await call(teacher,'room:open',{teacherKey:key,code}));await join();},
     async fail(work){const save=game.store.files.save.bind(game.store.files);game.store.files.save=()=>{throw Error('recommend disk failure');};try{await work();}finally{game.store.files.save=save;}}
   };f.at('culture');f.at('culture',f.q);return f;

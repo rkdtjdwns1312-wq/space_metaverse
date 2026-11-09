@@ -1,4 +1,8 @@
 /* The title/help/close row stays in place; only the content below it scrolls. */
+dialog.has-pinned-dialog-close{padding-top:max(54px,var(--dialog-original-padding-top,0px))!important}
+dialog .dialog-pinned-close{position:fixed!important;top:var(--dialog-close-top)!important;left:var(--dialog-close-left)!important;right:auto!important;bottom:auto!important;z-index:100!important;margin:0!important;transform:none!important;flex:none!important;min-width:58px;min-height:34px;box-sizing:border-box;padding:7px 12px;border:1px solid #bfb0d1;border-radius:9px;background:#fffdfd!important;color:#51416b!important;box-shadow:0 2px 9px #30204025;font:700 14px/1.2 sans-serif;white-space:nowrap;cursor:pointer}
+dialog .dialog-pinned-close:focus-visible{outline:3px solid #8060bd;outline-offset:2px}
+dialog .dialog-pinned-close:disabled{cursor:default;opacity:.55}
 dialog.fixed-dialog-header{box-sizing:border-box;overflow:hidden;max-height:86dvh}
 dialog.fixed-dialog-header[open]{display:flex;flex-direction:column;gap:0}
 :is(#shop-dialog,#energy-shop-dialog,#teacher-equipment-catalog-dialog,#crafting-dialog,#department-work-dialog,#temple-dialog,#enhancement-dialog).fixed-dialog-header{overflow:hidden;max-height:86dvh}

@@ -2,16 +2,16 @@ import {chargeHuntingStation} from './hunting-time.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
 import {HISTORY_LESSONS} from '../shared/history-lessons.js';
 import {stationReward} from '../shared/station-rewards.js';
-import {STREET,STREET_ID} from '../shared/config.js';
+import {STAR_STATION,STAR_STATION_ID} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
 import {advanceMissions} from './missions.js';
 
 export const CULTURE_DAILY_LIMIT=10;
 const culture={namespace:'culture',field:'cultureReading',ids:new Set(CULTURE_STORIES.map(story=>story.id)),
-  station:STREET.objects.find(object=>object.kind==='culture-station'),label:'별 교양 발전소',unit:'권'};
+  station:STAR_STATION.objects.find(object=>object.kind==='culture-station'),label:'별 교양 발전소',unit:'권'};
 const history={namespace:'history',field:'historyReading',ids:new Set(HISTORY_LESSONS.map(story=>story.id)),
-  station:STREET.objects.find(object=>object.kind==='history-station'),label:'별 역사 발전소',unit:'편'};
+  station:STAR_STATION.objects.find(object=>object.kind==='history-station'),label:'별 역사 발전소',unit:'편'};
 const requireThat=(condition,message)=>{if(!condition)throw new GameError(message);};
 export const cultureDay=(now=Date.now())=>new Date(now+9*60*60*1000).toISOString().slice(0,10);
 const validDay=day=>typeof day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(day)&&
@@ -77,7 +77,7 @@ export function registerReadingLibrary({socket,action,store,roster,clock=Date.no
     requireThat(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&
       ['student','teacher'].includes(player.role)&&store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,
       '현재 접속에서 교실에 다시 입장해주세요.');
-    requireThat(player.mapId===STREET_ID&&station&&isNear(player,station),`${label} 가까이에서 읽어주세요.`);
+    requireThat(player.mapId===STAR_STATION_ID&&station&&isNear(player,station),`${label} 가까이에서 읽어주세요.`);
     return {room,player};
   }
   function story(id){requireThat(typeof id==='string'&&library.ids.has(id),'읽을 이야기를 골라주세요.');}

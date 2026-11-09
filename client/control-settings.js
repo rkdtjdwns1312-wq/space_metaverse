@@ -13,11 +13,11 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
     dialog.querySelector('h2').textContent='조작 · 화면 설정';
     const row=document.createElement('label');row.className='render-quality-field';row.textContent='화면 품질';
     qualitySelect=document.createElement('select');qualitySelect.id='render-quality-select';
-    for(const [value,label] of [['auto','자동 (권장)'],['normal','일반'],['low','저사양']]){
+    for(const [value,label] of [['auto','자동 (권장)'],['low','저사양'],['medium','중사양'],['high','고사양']]){
       const option=document.createElement('option');option.value=value;option.textContent=label;qualitySelect.append(option);
     }
     row.append(qualitySelect);dialog.querySelector('footer').before(row);
-    const hint=document.createElement('p');hint.className='muted';hint.textContent='자동은 화면이 느릴 때 품질을 낮춰요. 저사양은 장식을 줄이고 초당 30장으로 표시해요. 이동·공격 속도와 위험 표시는 그대로예요.';
+    const hint=document.createElement('p');hint.className='muted';hint.textContent='자동은 화면이 느리면 단계별로 품질을 낮춰요. 저사양은 초당 30장으로 장식과 친구 걷기 모션을 줄여요. 중사양은 초당 60장으로 부드러운 이동을 유지하며 선명도와 장식을 조금 줄여요. 고사양은 초당 60장으로 가장 선명하고 풍부하게 표시해요. 이동·공격 속도와 위험 표시는 모든 설정에서 같아요.';
     row.after(hint);
     if(steadyWalk){
       const row=document.createElement('label');row.className='friend-walk-reduction-field';
@@ -31,7 +31,7 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
       const motionRow=document.createElement('label');motionRow.className='friend-walk-reduction-field';motionRow.htmlFor=friendWalkToggle.id;
       const motionText=document.createElement('span');motionText.textContent='친구 걷기 모션 줄이기';motionRow.append(motionText,friendWalkToggle);
       hint.after(motionRow);
-      const motionHint=document.createElement('p');motionHint.className='muted';motionHint.textContent='켜면 친구는 위치와 방향만 움직이고, 내 걷기 모션은 유지해요. 저사양에서도 내 걷기 모션을 볼 수 있어요.';
+      const motionHint=document.createElement('p');motionHint.className='muted';motionHint.textContent='켜면 친구는 위치와 방향만 움직이고, 내 걷기 모션은 유지해요. 저사양에서는 이 옵션과 관계없이 같은 방식으로 표시해요.';
       motionRow.after(motionHint);
     }
     const open=document.getElementById('control-settings-open');open.title='조작 · 화면 설정';open.setAttribute('aria-label','조작 키와 화면 품질 설정');

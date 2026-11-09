@@ -10,7 +10,7 @@ test('real mini-server socket actions: private invites, race, room isolation, 3-
   let now=1000;
   const http=createServer(),io=new Server(http),rooms=new Map();
   for(const code of ['one','two'])rooms.set(code,{code,players:new Map(['a','b','c','t'].map(id=>[id,{id,nickname:id,
-    role:id==='t'?'teacher':'student',connected:false,mapId:'star-street',x:duelMachine('duel-memory').x,y:duelMachine('duel-memory').y}]))});
+    role:id==='t'?'teacher':'student',connected:false,mapId:'star-playground',x:duelMachine('duel-memory').x,y:duelMachine('duel-memory').y}]))});
   const emissions=[],clients=[];
   const duel=createDuelArcade({getRoom:code=>rooms.get(code),clock:()=>now,random:n=>n-1,
     emitPrivate:(code,id,event,payload)=>{

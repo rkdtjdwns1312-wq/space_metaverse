@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {ARCHIVE_KINDS,ARCHIVE_LIMITS as L} from '../shared/starlight-archive.js';
-import {MAP,STREET} from '../shared/config.js';
+import {MAP,STAR_STATION} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
 import {isDefeated} from './vitals.js';
@@ -57,7 +57,7 @@ export function replyArchive(room,player,data,now){
  p.starlightArchive=state;return {entry:view(e)};
 }
 export function registerStarlightArchive({socket,action,store,clock=Date.now}){
- const access=(data,readingShortcut=false)=>{const {room,player}=socket.data.session||{};need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['teacher','student'].includes(player.role)&&store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');const prop=MAP.objects.find(o=>o.kind==='starlight-archive');const culture=STREET.objects.find(o=>o.kind==='culture-station'),atCulture=readingShortcut&&data?.kind==='reading'&&player.role==='student'&&player.mapId===STREET.id&&culture&&isNear(player,culture);need((player.mapId===MAP.id&&prop&&isNear(player,prop))||atCulture,'별빛 기록소 또는 독서 중인 별 교양 발전소 가까이에서 이용해주세요.');need(!isDefeated(player),'체력을 회복한 뒤 이용해주세요.');return {room,player};};
+ const access=(data,readingShortcut=false)=>{const {room,player}=socket.data.session||{};need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['teacher','student'].includes(player.role)&&store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');const prop=MAP.objects.find(o=>o.kind==='starlight-archive');const culture=STAR_STATION.objects.find(o=>o.kind==='culture-station'),atCulture=readingShortcut&&data?.kind==='reading'&&player.role==='student'&&player.mapId===STAR_STATION.id&&culture&&isNear(player,culture);need((player.mapId===MAP.id&&prop&&isNear(player,prop))||atCulture,'별빛 기록소 또는 독서 중인 별 교양 발전소 가까이에서 이용해주세요.');need(!isDefeated(player),'체력을 회복한 뒤 이용해주세요.');return {room,player};};
  action('archive:read',data=>{const {room,player}=access(data,true);return readArchive(room,player,data);},false);
  action('archive:get',data=>{const {room,player}=access(data,true);return getArchive(room,player,data);},false);
  action('archive:save',data=>saveArchive(access(data,true).player,data,clock()));

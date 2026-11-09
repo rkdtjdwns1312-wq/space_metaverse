@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STATIC_MAPS,MAP,STREET,RULES} from '../shared/config.js';
+import {STATIC_MAPS,MAP,STREET,STAR_STATION,PLAYGROUND,RULES} from '../shared/config.js';
 import {PLAZA_LAYOUT as P} from '../shared/plaza-layout.js';
 import {VALLEY_LAYOUT as V} from '../shared/valley-layout.js';
 import {STREET_LAYOUT as S} from '../shared/street-layout.js';
@@ -16,8 +16,11 @@ export const bridgeRoutes=[
   ...Object.values(P.gates).map(g=>({map:MAP,a:P.center,b:g,end:1-80/Math.hypot(g.x-P.center.x,g.y-P.center.y)})),
   ...V.temples.map(z=>({map:STATIC_MAPS['milky-valley'],a:V.center,b:z,end:.78})),
   {map:STATIC_MAPS['milky-valley'],a:V.center,b:V.gate,end:.76},
-  {map:STREET,a:S.upper,b:S.lower,end:.78},
-  {map:STREET,a:S.upper,b:S.north,end:.78},
+  {map:STREET,a:{x:900,y:2190},b:{x:900,y:2350},start:0,end:1},
+  {map:PLAYGROUND,a:{x:900,y:2510},b:{x:900,y:2410},start:0,end:1},
+  {map:STREET,a:{x:900,y:1250},b:{x:900,y:1110},start:0,end:1},
+  {map:STAR_STATION,a:{x:900,y:900},b:{x:900,y:1040},start:0,end:1},
+  {map:STAR_STATION,a:{x:900,y:350},b:S.northGate,start:0,end:1},
   // The enlarged fountain occupies the center; stop inside the clear west landing.
   {map:STREET,a:S.upper,b:S.westGate,start:.65,end:.91},
 ];
@@ -55,7 +58,7 @@ test('실제 서버 이동으로 LV5가 양방향 연결부를 통과하며 옆 
   assert.equal(isFree(room,3100,P.center.y+P.bridgeWidth/2+10,p.id,MAP.id,false),false,'광장 동쪽 다리 바깥');
   assert.equal(avatarFitsFloor(STREET,150,(S.upper.y+S.lower.y)/2,p),false,'중앙·남쪽 다리 바깥');
   const {offsetY}=avatarCollisionShape(p),sideX=S.upper.x+S.bridgeWidth/2+10;
-  assert.equal(avatarFitsFloor(STREET,sideX,710,p),true,'하반신이 북쪽 섬 안쪽에 있는 위치');
-  assert.equal(avatarFitsFloor(STREET,S.upper.x,S.north.y+S.north.ry+20-offsetY,p),true,'북쪽 발전소 다리 안쪽');
-  assert.equal(avatarFitsFloor(STREET,S.north.x+S.north.rx+10,S.north.y-offsetY,p),false,'확장된 바닥의 동쪽 끝 바깥 좌표');
+  assert.equal(avatarFitsFloor(STAR_STATION,sideX,710,p),true,'하반신이 북쪽 섬 안쪽에 있는 위치');
+  assert.equal(avatarFitsFloor(STAR_STATION,S.upper.x,S.north.y+S.north.ry+20-offsetY,p),true,'북쪽 발전소 다리 안쪽');
+  assert.equal(avatarFitsFloor(STAR_STATION,S.north.x+S.north.rx+10,S.north.y-offsetY,p),false,'확장된 바닥의 동쪽 끝 바깥 좌표');
 });

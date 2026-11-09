@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
-import {MAP,STREET,PLAZA_ID,STREET_ID,GARDEN_ID} from '../shared/config.js';
+import {MAP,PLAYGROUND as STREET,PLAZA_ID,PLAYGROUND_ID as STREET_ID,GARDEN_ID} from '../shared/config.js';
 const key='temple-test-private-not-real-key';
 test('seven arcade machines require an authenticated player on the correct map and nearby',async()=>{
  const game=createClassroomServer({teacherKey:key,studentHours:false}),address=await game.listen();

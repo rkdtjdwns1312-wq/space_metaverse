@@ -8,7 +8,7 @@ import {startMemoryRun,flipMemoryCard,memoryRanking,validateMemoryRanking,cancel
 import {resetWeeklyRanking,weekStartKst} from '../server/weekly-ranking.js';
 import {PersistentRoomStore} from '../server/persistent-rooms.js';
 import {createClassroomServer} from '../server/app.js';
-import {STREET,STREET_ID} from '../shared/config.js';
+import {PLAYGROUND,PLAYGROUND_ID} from '../shared/config.js';
 
 const player={id:'one',nickname:'별이',role:'student'};
 function pairs(run){const groups=new Map();run.cards.forEach((symbol,i)=>groups.set(symbol,[...(groups.get(symbol)||[]),i]));return [...groups.values()].flat();}
@@ -90,7 +90,7 @@ test('실제 소켓: 근접·학생 위조 거부·교실 격리·초기화 실�
   const created=await call(teacher,'room:create',{teacherKey:key,allowedNames:['1']}),joined=await call(student,'room:join',{code:created.room.code,nickname:'1',pin:'1234'});
   assert.equal(joined.ok,true);const otherCreated=await call(other,'room:create',{teacherKey:key,allowedNames:['2']});
   assert.equal((await call(student,'memory:start',{level:'high'})).ok,false);
-  const place=(code,id,gameId)=>{const room=game.store.rooms.get(code),p=room.players.get(id),m=STREET.objects.find(o=>o.gameId===gameId);Object.assign(p,{mapId:STREET_ID,x:m.x,y:m.y+60});return {room,p};};
+  const place=(code,id,gameId)=>{const room=game.store.rooms.get(code),p=room.players.get(id),m=PLAYGROUND.objects.find(o=>o.gameId===gameId);Object.assign(p,{mapId:PLAYGROUND_ID,x:m.x,y:m.y+60});return {room,p};};
   place(created.room.code,joined.selfId,'memory');assert.equal((await call(student,'memory:start',{level:'low'})).ok,false);
   let state=await call(student,'memory:start',{level:'high'});assert.equal(state.ok,true);assert.equal(state.cards,undefined);
   const run=game.store.rooms.get(created.room.code).memoryRuns.get(joined.selfId);

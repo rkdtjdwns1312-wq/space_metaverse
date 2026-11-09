@@ -150,7 +150,7 @@ export function createDuelArcadeUI({request,stop,toast,getRoom,getSelfId,socket}
   function reset(){generation++;busy=false;state=null;objectId=null;invite=null;warning='';lastResult=null;if(dialog.open)dialog.close();if(invitation.open)invitation.close();}
   async function update(){
     if(!getSelfId()){reset();return;}
-    if(objectId&&self()?.mapId!=='star-street'){reset();return;}
+    if(objectId&&self()?.mapId!=='star-playground'){reset();return;}
     if(reconnecting&&objectId&&socket.connected&&self()){
       reconnecting=false;const result=await act('duel:open',{objectId});if(!result)reconnecting=true;
     }

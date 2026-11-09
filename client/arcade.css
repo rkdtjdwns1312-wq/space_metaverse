@@ -103,6 +103,18 @@
 .tetris-control{display:grid;gap:5px;min-width:0;text-align:center}
 #arcade-board .tetris-control button{min-height:50px;padding:5px;font-size:15px}
 .tetris-control-down{grid-column:1/-1;justify-self:stretch}
+.tetris-play{grid-template-columns:minmax(120px,250px) minmax(135px,1fr);align-items:start}
+.tetris-grid{margin:0;width:100%}
+.tetris-side{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.tetris-side .tetris-controls{display:flex;flex-direction:column;gap:6px;width:100%}
+.tetris-side .tetris-control-down{width:100%}
+.tetris-side .arcade-ranking-actions{display:flex;flex-direction:column;align-items:stretch;width:100%}
+.tetris-side #arcade-restart{margin:0;width:100%}
+.tetris-side #arcade-close{width:100%}
+.dodge-toolbar-right{justify-content:flex-end;align-items:center}
+.dodge-toolbar-right #dodge-stopwatch{order:0}
+.dodge-toolbar-right #dodge-start{order:1}
+.dodge-toolbar-right #arcade-restart{order:2;margin:0}
 .tetris-keys{display:flex;align-items:center;justify-content:center;gap:5px}
 .tetris-keys kbd{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:29px;padding:0 4px;box-sizing:border-box;border:1px solid #a491c7;border-bottom:3px solid #7961a9;border-radius:7px;background:#fcfaff;color:#553783;box-shadow:0 2px 4px #5c497333;font-family:inherit;font-size:15px;font-weight:800;line-height:1}
 #baseball-attempts{box-sizing:border-box;max-height:190px;overflow:auto;margin:0;padding:0 0 0 30px}
@@ -110,6 +122,8 @@
 
 @media(max-width:430px){
   #arcade-dialog{padding:16px;border-radius:22px}
+  .tetris-play{grid-template-columns:minmax(105px,42%) minmax(0,1fr);gap:8px}
+  .tetris-side #arcade-dialog button,#arcade-board .tetris-control button{padding:5px 3px;font-size:12px;min-height:42px}
   #arcade-title{font-size:23px}
   #arcade-dialog button{min-height:48px;padding:9px 10px;font-size:17px}
   #arcade-board{min-width:0;padding:9px}
@@ -122,4 +136,23 @@
   .memory-grid{gap:4px}
   #arcade-board .memory-card{min-width:0;min-height:44px;padding:1px;font-size:clamp(19px,6vw,25px);border-width:2px;border-radius:11px}
   #arcade-board .memory-level,#arcade-board .memory-start,#arcade-board .baseball-level,#arcade-board .baseball-actions button{padding:6px 3px;font-size:14px}
+}
+
+/* Keep the playfield and every Tetris action in two stable columns. */
+#arcade-dialog[data-game=tetris]{width:min(760px,calc(100vw - 24px))}
+#arcade-dialog[data-game=tetris] .tetris-top:empty,#arcade-dialog[data-game=tetris] .arcade-footer:empty{display:none}
+#arcade-dialog[data-game=tetris] #arcade-score:empty{display:none}
+#arcade-dialog[data-game=tetris] .tetris-play{grid-template-columns:minmax(100px,1fr) minmax(150px,1fr)}
+#arcade-dialog[data-game=tetris] .tetris-grid{max-width:270px;margin:0 auto}
+#arcade-dialog[data-game=tetris] .tetris-control{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px}
+#arcade-dialog[data-game=tetris] .tetris-side button{min-height:38px;padding:5px 8px;font-size:15px!important;border-radius:12px}
+#arcade-dialog[data-game=tetris] .tetris-side p{margin:3px 0;font-size:14px}
+#arcade-dialog[data-game=tetris] .tetris-keys kbd{min-width:20px;height:23px;font-size:12px}
+@media(max-width:430px){
+ #arcade-dialog[data-game=tetris]{padding:12px}
+ #arcade-dialog[data-game=tetris] #arcade-board{padding:6px}
+ #arcade-dialog[data-game=tetris] .tetris-play{grid-template-columns:minmax(90px,1fr) minmax(135px,1fr);gap:6px}
+ #arcade-dialog[data-game=tetris] .tetris-control{grid-template-columns:minmax(0,1fr)}
+ #arcade-dialog[data-game=tetris] .tetris-keys{display:none}
+ #arcade-dialog[data-game=tetris] .tetris-side button{min-height:40px;font-size:13px!important;padding:4px}
 }

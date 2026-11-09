@@ -2,7 +2,7 @@ import {chargeHuntingStation} from './hunting-time.js';
 import {randomInt} from 'node:crypto';
 import {SCIENCE_FACTS} from '../shared/science-facts.js';
 import {stationReward} from '../shared/station-rewards.js';
-import {STREET,STREET_ID} from '../shared/config.js';
+import {STAR_STATION,STAR_STATION_ID} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
 import {cultureDay} from './culture-library.js';
@@ -10,7 +10,7 @@ import {advanceMissions} from './missions.js';
 
 export const SCIENCE_DAILY_LIMIT=2;
 const ids=SCIENCE_FACTS.map(fact=>fact.id),known=new Set(ids);
-const station=STREET.objects.find(o=>o.kind==='science-station');
+const station=STAR_STATION.objects.find(o=>o.kind==='science-station');
 const need=(condition,message)=>{if(!condition)throw new GameError(message);};
 const validDay=day=>typeof day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;
 export function validateScienceReading(raw){
@@ -50,7 +50,7 @@ export function registerScienceLibrary({socket,action,store,roster,clock=Date.no
   const session=socket.data.session,player=session?.player,room=session?.room;
   need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['student','teacher'].includes(player.role)&&
    store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');
-  need(player.mapId===STREET_ID&&station&&isNear(player,station),'별 과학 발전소 가까이에서 읽어주세요.');return {room,player};
+  need(player.mapId===STAR_STATION_ID&&station&&isNear(player,station),'별 과학 발전소 가까이에서 읽어주세요.');return {room,player};
  };
  action('science:status',()=>scienceStatus(access().player,clock()),false);
  action('science:open',()=>{

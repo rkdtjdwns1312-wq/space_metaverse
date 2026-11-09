@@ -86,13 +86,13 @@ function motif(ctx,kind,r,p,c,a){
 }
 export function drawSkillEffect(ctx,effect,progress,{reducedMotion=false,quality='full'}={}){
   if(!effect||!Number.isFinite(progress)||progress<0||progress>=1)return;
-  const p=reducedMotion ? .55 : clamp(progress),stage=effect.layers,low=quality==='low';
+  const p=reducedMotion ? .55 : clamp(progress),stage=effect.layers,low=quality==='low',reduced=low||quality==='medium';
   const fade=Math.min(1,progress*9,(1-progress)*5),c=effect.color,a=effect.accent;
   const travel=(.22+.52*(1-Math.pow(1-p,2)))*effect.extent,r=21+stage*4;
   ctx.save();ctx.globalAlpha*=fade;ctx.lineCap='round';ctx.lineJoin='round';
   // 최고 단계에는 은은한 성운을 더합니다. 화면 전체가 번쩍이는 효과는 사용하지 않습니다.
-  if(stage===4&&!low){const glow=ctx.createRadialGradient(travel,0,3,travel,0,r*1.95);glow.addColorStop(0,a+'45');glow.addColorStop(.5,c+'20');glow.addColorStop(1,c+'00');ctx.fillStyle=glow;ctx.fillRect(travel-r*2,-r*2,r*4,r*4);}
-  const count=low?Math.ceil(effect.particleCount/2):effect.particleCount;
+  if(stage===4&&!reduced){const glow=ctx.createRadialGradient(travel,0,3,travel,0,r*1.95);glow.addColorStop(0,a+'45');glow.addColorStop(.5,c+'20');glow.addColorStop(1,c+'00');ctx.fillStyle=glow;ctx.fillRect(travel-r*2,-r*2,r*4,r*4);}
+  const count=Math.ceil(effect.particleCount*(low?.5:reduced?.75:1));
   for(let i=0;i<count;i++){
     const phase=(i*.61803398875+effect.seed*.137)%1,angle=phase*TAU+p*(i%2?1:-1)*.8;
     const rad=(12+(i%5)*7+stage*4)*(.5+p*.6),x=travel*.7+Math.cos(angle)*rad,y=Math.sin(angle)*rad*.72;

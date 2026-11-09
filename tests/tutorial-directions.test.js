@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {journeyDestination,journeyRoute,journeySegmentClear} from '../client/tutorial-directions.js';
+import {journeyDestination,journeyRoute,journeySegmentClear,createJourneyGuide,tutorialButtonArrowPlacement} from '../client/tutorial-directions.js';
 import {JOURNEY_STEPS} from '../shared/tutorial-journey.js';
 import {mapOf} from '../shared/config.js';
 import {STREET_LAYOUT} from '../shared/street-layout.js';
@@ -21,7 +21,7 @@ function assertWalkablePath(player,route){
  assert(shape.radius>0);
 }
 
-test('tutorial route destinations resolve across all three tutorial maps',()=>{
+test('tutorial route destinations resolve across all five tutorial maps',()=>{
  const goals=JOURNEY_STEPS.flatMap(step=>step.goals.map(goal=>goal.id)).filter(id=>journeyDestination(id));
  assert(goals.some(id=>journeyDestination(id).mapId==='space-plaza'));
  assert(goals.some(id=>journeyDestination(id).mapId==='star-street'));
@@ -32,7 +32,9 @@ test('random valid starts and moving waypoints produce walkable routes to every 
  const rand=seeded(6232026),destinations=[...new Set(JOURNEY_STEPS.flatMap(step=>step.goals.map(g=>g.id)).filter(id=>journeyDestination(id)))];
  const plans={
   'space-plaza':[{x:1800,y:1320},{x:600,y:510},{x:600,y:2100},{x:2940,y:2070},{x:3090,y:510}],
-  'star-street':[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower],
+  'star-street':[STREET_LAYOUT.upper],
+  'star-station':[STREET_LAYOUT.north],
+  'star-playground':[STREET_LAYOUT.lower],
   'milky-valley':[{x:1200,y:420},{x:480,y:820},{x:1920,y:820}],
  };
  for(const [mapId,areas] of Object.entries(plans))for(const area of areas){
@@ -77,6 +79,7 @@ test('invalid starts overlapping an objective can follow a route out of the coll
 test('cross-map tutorial guidance selects a valid gate waypoint in either direction',()=>{
  for(const [mapId,x,y,goal] of [
   ['space-plaza',1800,1320,'station'],['star-street',900,1170,'black-hole'],
+  ['star-street',900,1250,'station'],['star-street',900,2190,'playground'],['star-station',900,900,'shops'],['star-playground',900,2510,'station'],
   ['space-plaza',1800,1320,'growth-star'],['milky-valley',1200,420,'market']
  ]){
   const p=playerAt(mapId,x,y),route=journeyRoute(p,goal);
@@ -89,4 +92,22 @@ test('the exported segment helper uses map floor, collision and live planet geom
  assert(journeySegmentClear(p,{x:p.x,y:p.y,mapId:p.mapId},safe));
  assert.equal(journeySegmentClear(p,{x:p.x,y:p.y,mapId:p.mapId},blocked),false);
  assert.equal(journeySegmentClear(p,{x:p.x,y:p.y,mapId:'star-street'},safe),false);
+});
+
+test('guide refreshes moving targets within half a second and skips clear corners within 100ms without per-frame pathfinding',()=>{
+ let calls=0,shortcut=false,blocked=false;
+ const guide=createJourneyGuide({routeFor:()=>{calls++;return {target:{},points:[{x:100,y:0},{x:200,y:0}]};},segmentClear:(_p,_from,to)=>!blocked&&(to.x===100||shortcut)});
+ const p=playerAt('star-street',0,0);
+ guide.update(p,'station',[],0);assert.equal(calls,1);
+ for(let t=16;t<500;t+=16)guide.update(p,'station',[],t);assert.equal(calls,1);
+ shortcut=true;assert.equal(guide.update(p,'station',[],600).points[0].x,200);assert.equal(calls,1);
+ p.x=60;guide.update(p,'station',[],700);assert.equal(calls,2);
+ blocked=true;guide.update(p,'station',[],800);assert.equal(calls,3);
+ blocked=false;p.mapId='star-station';guide.update(p,'shops',[],801);assert.equal(calls,4);
+ for(let t=817;t<2800;t+=16)guide.update(p,'shops',[],t);assert.equal(calls,4,'standing still does not reroute');
+});
+test('top edge tutorial buttons get an upward arrow below them with no overlap',()=>{
+ const rect={left:12,top:12,width:120,height:48,bottom:60},placement=tutorialButtonArrowPlacement(rect,{width:390,height:844});
+ assert.equal(placement.rotation,-90);assert(placement.top>=rect.bottom+8);assert(placement.left>=8&&placement.left+32<=382);
+ const lower=tutorialButtonArrowPlacement({...rect,top:200,bottom:248},{width:1440,height:1000});assert.equal(lower.rotation,90);assert(lower.top+32<=200-8);
 });

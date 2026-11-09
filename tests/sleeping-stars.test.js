@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
-import {SLEEPING_STARS_MAPS,ORIGIN_MAPS,STREET,STATIC_MAPS,MAP,BLACK_HOLE,UNIVERSE_MAP_LAYOUT} from '../shared/config.js';
+import {SLEEPING_STARS_MAPS,ORIGIN_MAPS,STAR_STATION as STREET,STATIC_MAPS,MAP,BLACK_HOLE,UNIVERSE_MAP_LAYOUT} from '../shared/config.js';
 import {darkStarMap} from '../shared/dark-star.js';
 import {truthCreatorMap} from '../shared/truth-creator.js';
 import {starRecordMap} from '../shared/star-record.js';
@@ -43,8 +43,8 @@ test('all sleeping-star arrivals and north shelter path fit every avatar without
   }
   const gate=STREET.objects.find(object=>object.target===SLEEPING_STARS_MAPS[0].id);
   assert(gate.y<Math.min(...STREET.objects.filter(object=>object.kind.endsWith('-station')).map(object=>object.y)));
-  for(let y=gate.y;y<=480;y+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,gate.x,y,avatar),'north approach '+y);
-  for(let x=gate.x;x<=660;x+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,x,480,avatar),'north approach turn '+x);
+  for(let y=gate.y;y<=400;y+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,gate.x,y,avatar),'north approach '+y);
+  for(let x=gate.x;x<=660;x+=5)for(const avatar of avatars)assert(avatarPositionIsClear(STREET,x,400,avatar),'north approach turn '+x);
   for(const original of SLEEPING_STARS_MAPS)for(const map of [forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(original,{state:'active'}),{state:'active'}),{state:'active'}),{state:'active'})])for(const gate of map.objects)for(let step=0;step<=40;step++){
     const t=step/40,x=map.width/2+(gate.x-map.width/2)*t,y=map.height/2+(gate.y-map.height/2)*t;
     for(const avatar of avatars)assert(avatarPositionIsClear(map,x,y,avatar),map.id+' bridge '+step);

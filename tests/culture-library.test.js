@@ -10,9 +10,9 @@ import {cultureDay,validateCultureReading} from '../server/culture-library.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
 import {CULTURE_STORIES_EXTRA} from '../shared/culture-stories-extra.js';
 import {CULTURE_STORIES_MORE} from '../shared/culture-stories-more.js';
-import {STREET,PLAZA_ID} from '../shared/config.js';
+import {STAR_STATION,PLAZA_ID} from '../shared/config.js';
 
-const ids=CULTURE_STORIES.map(story=>story.id),station=STREET.objects.find(o=>o.kind==='culture-station');
+const ids=CULTURE_STORIES.map(story=>story.id),station=STAR_STATION.objects.find(o=>o.kind==='culture-station');
 const call=(socket,event,data={})=>socket.timeout(4000).emitWithAck(event,data);
 const ok=r=>{assert.equal(r.ok,true,r.error);return r;};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -43,7 +43,7 @@ async function fixture(t){
     get game(){return game;},get room(){return game.store.rooms.get(code);},get p(){return f.room.players.get(id);},get q(){return f.room.players.get(otherId);},
     get teacher(){return teacher;},get student(){return student;},get other(){return other;},get now(){return now;},get token(){return token;},
     get teacherPlayer(){return [...f.room.players.values()].find(p=>p.role==='teacher');},connect,
-    advance(ms){now+=ms;},at(p=f.p){Object.assign(p,{mapId:STREET.id,x:station.x,y:station.y+120,input:{x:0,y:0,at:0}});},
+    advance(ms){now+=ms;},at(p=f.p){Object.assign(p,{mapId:STAR_STATION.id,x:station.x,y:station.y+120,input:{x:0,y:0,at:0}});},
     mutate(work){return game.store.transact(()=>work(f.p,f.room));},
     async open(storyId=ids[0],socket=student){return ok(await call(socket,'culture:open',{storyId}));},
     async claim(storyId=ids[0],socket=student,extra={}){return ok(await call(socket,'culture:claim',{storyId,...extra}));},

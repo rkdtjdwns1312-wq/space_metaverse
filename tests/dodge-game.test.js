@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {io} from 'socket.io-client';
 import {createClassroomServer} from '../server/app.js';
-import {STREET,STREET_ID} from '../shared/config.js';
+import {PLAYGROUND,PLAYGROUND_ID} from '../shared/config.js';
 import {
   DODGE_RULES,advanceDodgeRuns,cancelDodgeRun,completeDodgeRun,dodgeRanking,
   setDodgeInput,startDodgeRun,validateDodgeRanking,pauseDodgeRun,dodgeRunState
 } from '../server/dodge-game.js';
 
 function fixture(id='student-1',role='student'){
-  const player={id,nickname:role==='teacher'?'선생님':'별이',role,connected:true,away:false,mapId:'star-street'};
+  const player={id,nickname:role==='teacher'?'선생님':'별이',role,connected:true,away:false,mapId:'star-playground'};
   const room={players:new Map([[id,player]]),dodgeRanking:[]};
   return {room,player};
 }
@@ -149,7 +149,7 @@ test('ranking keeps this KST week only, orders longest first, caps at ten, and s
   const a=fixture(),b=fixture('student-b');a.room.dodgeRanking=[old,current];b.room.dodgeRanking=[];
   assert.deepEqual(dodgeRanking(a.room).map(r=>r.id),['current']);assert.equal(a.room.dodgeRanking.length,1);
   for(let i=0;i<11;i++){
-    const player={id:'rank-'+i,nickname:'별'+i,role:'student',connected:true,away:false,mapId:'star-street'};
+    const player={id:'rank-'+i,nickname:'별'+i,role:'student',connected:true,away:false,mapId:'star-playground'};
     a.room.players.set(player.id,player);const started=startDodgeRun(a.room,player,0),run=a.room.dodgeRuns.get(player.id);
     const duration=1000+i*100;
     for(let now=50;now<duration;now+=50){run.stars=[];advanceDodgeRuns(a.room,now);}
@@ -184,8 +184,8 @@ test('real socket wiring enforces arcade access, accepts no-ack input, broadcast
   await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});
   const created=await socketCall(socket,'room:create',{teacherKey:'dodge-socket-test-secret',title:'회피 테스트',allowedNames:['1']});
   assert.equal(created.ok,true);assert.equal((await socketCall(socket,'dodge:start',{})).ok,false);
-  const room=game.store.rooms.get(created.room.code),player=room.players.get(created.selfId),machine=STREET.objects.find(object=>object.gameId==='dodge');
-  Object.assign(player,{mapId:STREET_ID,x:machine.x,y:machine.y+50});
+  const room=game.store.rooms.get(created.room.code),player=room.players.get(created.selfId),machine=PLAYGROUND.objects.find(object=>object.gameId==='dodge');
+  Object.assign(player,{mapId:PLAYGROUND_ID,x:machine.x,y:machine.y+50});
   assert.deepEqual(await socketCall(socket,'dodge:ranking',{}),{ok:true,ranking:[],canReset:true});
   const started=await socketCall(socket,'dodge:start',{});assert.equal(started.ok,true);assert.equal(started.arenaWidth,600);assert.equal(started.stars.length,2);
   socket.emit('dodge:input',{runId:started.runId,x:20,y:0,elapsedMs:999999999});

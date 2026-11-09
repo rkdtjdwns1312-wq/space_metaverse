@@ -1,50 +1,47 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAP,RULES,STREET} from '../shared/config.js';
+import {MAP,RULES,STREET,STAR_STATION,PLAYGROUND,STATIC_MAPS} from '../shared/config.js';
 import {onParadiseFloor,isParadise} from '../shared/paradise-floor.js';
-import {STREET_EDGES,STREET_LAYOUT,STREET_POLYGONS,onStreetFloor} from '../shared/street-layout.js';
+import {STREET_EDGES,STREET_LAYOUT,STREET_POLYGONS,onStreetFloor,migrateLegacyStreetPosition} from '../shared/street-layout.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 
-test('오색별빛 쉼터의 발전소·상점·놀이터가 하나의 외곽 경계로 이어진다',()=>{
-  assert.equal(STREET.width,1800);assert.equal(STREET.height,3300);
-  assert.equal(STREET_LAYOUT.upper.rx,760);assert.equal(STREET_LAYOUT.lower.rx,800);
-  assert.equal(isParadise(STREET.id),false);assert.equal(STREET_POLYGONS.length,8);assert.ok(STREET_EDGES.length>0);
-  for(let x=STREET_LAYOUT.westGate.x;x<=STREET_LAYOUT.upper.x;x+=5)assert.ok(onStreetFloor(STREET,x,STREET_LAYOUT.upper.y,RULES.radius),`서쪽 다리 ${x}`);
-  for(let y=STREET_LAYOUT.north.y;y<=STREET_LAYOUT.upper.y;y+=5)assert.ok(onStreetFloor(STREET,STREET_LAYOUT.upper.x,y,RULES.radius),`북쪽 발전소 다리 ${y}`);
-  for(let y=STREET_LAYOUT.upper.y;y<=STREET_LAYOUT.lower.y;y+=5)assert.ok(onStreetFloor(STREET,STREET_LAYOUT.upper.x,y,RULES.radius),`중앙·남쪽 다리 ${y}`);
-  assert.ok(onParadiseFloor(STREET,STREET.spawn.x,STREET.spawn.y,RULES.radius));
-  for(const object of STREET.objects)assert.ok(onStreetFloor(STREET,object.x,object.y,RULES.radius),`${object.id} 바닥 위치`);
-  assert.equal(STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry-STREET_LAYOUT.north.y-STREET_LAYOUT.north.ry,100,'북쪽과 중앙 섬 사이에 분명한 간격이 있다');
-  assert.equal(STREET_LAYOUT.lower.y-STREET_LAYOUT.lower.ry-STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry,180,'중앙과 남쪽 섬 사이에 분명한 간격이 있다');
-  assert.equal(onStreetFloor(STREET,600,1070),false,'북쪽 다리 옆은 바닥으로 채우지 않는다');
-  assert.equal(onStreetFloor(STREET,150,2350),false,'남쪽 다리 옆은 바닥으로 채우지 않는다');
-  assert.equal(onStreetFloor(STREET,900,20),false);
-  assert.equal(onStreetFloor(STREET,900,3290),false);
-  const returnGate=MAP.objects.find(o=>o.id==='gate-street');
-  assert.deepEqual(returnGate.arrival,STREET.spawn);
-  assert.equal(onStreetFloor(STREET,returnGate.arrival.x,returnGate.arrival.y,RULES.radius),true);
-  assert.equal(onStreetFloor({...STREET,id:'unrelated-map'},NaN,NaN),true);
+test('쉼터와 발전소와 놀이터는 독립 바닥이며 모든 문과 도착점은 연결된다',()=>{
+  assert.equal(STREET_POLYGONS.length,4);assert.ok(STREET_EDGES.length>0);
+  for(const map of [STREET,STAR_STATION,PLAYGROUND]){
+    assert.equal(isParadise(map.id),false);
+    assert(onParadiseFloor(map,map.spawn.x,map.spawn.y,RULES.radius));
+    for(const object of map.objects)assert(onStreetFloor(map,object.x,object.y,RULES.radius),map.id+' '+object.id);
+    for(const gate of map.objects.filter(o=>o.kind==='gate')){
+      const target=STATIC_MAPS[gate.target];
+      for(const player of [{role:'student',avatar:{level:1}},{role:'student',avatar:{level:5}},{role:'teacher',avatar:{}}])assert(avatarPositionIsClear(target,gate.arrival.x,gate.arrival.y,player),map.id+' '+gate.id);
+    }
+  }
+  assert.equal(onStreetFloor(STREET,900,530),false);assert.equal(onStreetFloor(STREET,900,2795),false);
+  assert.equal(onStreetFloor(STAR_STATION,900,1690),false);assert.equal(onStreetFloor(PLAYGROUND,900,1690),false);
+  for(const y of [1110,1250,2190,2350])assert.equal(migrateLegacyStreetPosition({mapId:STREET.id,x:900,y}).mapId,STREET.id);
+  assert.equal(migrateLegacyStreetPosition({mapId:STREET.id,x:900,y:650}).mapId,STAR_STATION.id);
+  assert.equal(migrateLegacyStreetPosition({mapId:STREET.id,x:900,y:2900}).mapId,PLAYGROUND.id);
+  assert.deepEqual(MAP.objects.find(o=>o.id==='gate-street').arrival,STREET.spawn);
 });
 
 test('발전소·상점·조합기·오락기가 북·중앙·남쪽 마당에 배치된다',()=>{
-  const stations=STREET.objects.filter(o=>o.kind.endsWith('-station'));
+  const stations=STAR_STATION.objects.filter(o=>o.kind.endsWith('-station'));
   assert.equal(stations.length,6);
-  assert.deepEqual(stations.slice(0,2).map(o=>[o.x,o.y]),[[250,650],[1550,650]]);
-  const top=stations.slice(2);assert(top[1].y<top[0].y&&top[1].y<top[2].y);
-  for(const o of stations){assert(onStreetFloor(STREET,o.x,o.y,o.radius));assert(onStreetFloor(STREET,o.x,o.y+(o.kind==='art-station'?100:o.radius+60),30));}
+  assert.deepEqual(stations.slice(0,2).map(o=>[o.x,o.y]),[[575,780],[1550,530]]);
+  const top=stations.slice(2);assert(top[1].y<top[0].y&&top[1].y===top[2].y);
+  for(const o of stations){assert(onStreetFloor(STAR_STATION,o.x,o.y,o.radius));assert(onStreetFloor(STAR_STATION,o.x,o.y+(o.kind==='art-station'?100:o.radius+60),30));}
   assert(STREET_LAYOUT.north.rx*STREET_LAYOUT.north.ry>720*300*1.5);
   assert.deepEqual(STREET.objects.filter(o=>o.kind==='shop'||o.kind==='energy-shop').map(o=>[o.x,o.y]),[[1290,1450],[1290,1980]]);
-  assert.deepEqual(STREET.objects.filter(o=>o.kind==='arcade').map(o=>[o.x,o.y]),[[300,2900],[500,2900],[700,2900],[900,2900],[1100,2900],[1300,2900],[1500,2900]]);
+  assert.deepEqual(PLAYGROUND.objects.filter(o=>o.kind==='arcade').map(o=>[o.x,o.y]),[[300,2900],[500,2900],[700,2900],[900,2900],[1100,2900],[1300,2900],[1500,2900]]);
   assert.deepEqual(STREET.objects.find(o=>o.kind==='crafting')&&[STREET.objects.find(o=>o.kind==='crafting').x,STREET.objects.find(o=>o.kind==='crafting').y],[1450,1730]);
-  assert.equal(STREET.objects.find(o=>o.kind==='street-sign')?.name,'놀이터가는길');
-  assert.deepEqual([STREET.objects.find(o=>o.kind==='street-sign').x,STREET.objects.find(o=>o.kind==='street-sign').y],[900,2350]);
-  assert.equal(STREET.objects.find(o=>o.id==='station-sign')?.name,'별 발전소 가는길');
+  assert.equal(STREET.objects.find(o=>o.id==='gate-station').target,STAR_STATION.id);
+  assert.equal(STREET.objects.find(o=>o.id==='gate-playground').target,PLAYGROUND.id);
 });
 
 test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고 발전소 중심 여유가 늘어난다',()=>{
   const old={ 'math-station':[300,600], 'english-station':[1500,600], 'history-station':[550,370], 'science-station':[900,290], 'culture-station':[1250,370] };
-  for(const o of STREET.objects.filter(o=>Object.hasOwn(old,o.id))){
-    assert(Math.hypot(o.x-900,o.y-530)>Math.hypot(old[o.id][0]-900,old[o.id][1]-480),o.id+' 중앙에서 멀어짐');
+  for(const o of STAR_STATION.objects.filter(o=>Object.hasOwn(old,o.id))){
+    assert(Math.hypot(o.x-900,o.y-530)>300,o.id+' 중앙에서 멀어짐');
   }
   const shop=STREET.objects.find(o=>o.kind==='shop'),craft=STREET.objects.find(o=>o.kind==='crafting'),energy=STREET.objects.find(o=>o.kind==='energy-shop');
   assert(shop.y<craft.y&&craft.y<energy.y);assert(craft.x>shop.x&&craft.x>energy.x);
@@ -69,11 +66,11 @@ test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고
 });
 
 test('밤맵 입구는 과학·교양 사이 위쪽이며 모든 아바타의 왕복 통로가 열린다',()=>{
- const science=STREET.objects.find(o=>o.kind==='science-station'),culture=STREET.objects.find(o=>o.kind==='culture-station'),gate=STREET.objects.find(o=>o.id==='gate-sleeping-stars');
+ const science=STAR_STATION.objects.find(o=>o.kind==='science-station'),culture=STAR_STATION.objects.find(o=>o.kind==='culture-station'),gate=STAR_STATION.objects.find(o=>o.id==='gate-sleeping-stars');
  assert(science.x<gate.x&&gate.x<culture.x);assert(gate.y<science.y&&gate.y<culture.y);
  assert.deepEqual([gate.x,gate.y],[STREET_LAYOUT.entrance.x,STREET_LAYOUT.entrance.y]);
  for(const p of [...Array.from({length:5},(_,i)=>({role:'student',avatar:{level:i+1}})),{role:'teacher',avatar:{}}]){
-  for(let y=500;y>=gate.y;y-=5)assert(avatarPositionIsClear(STREET,gate.x,y,p),'입구 세로 통로 '+y);
-  assert(avatarPositionIsClear(STREET,STREET_LAYOUT.northArrival.x,STREET_LAYOUT.northArrival.y,p));
+  for(let y=400;y>=gate.y;y-=5)assert(avatarPositionIsClear(STAR_STATION,gate.x,y,p),'입구 세로 통로 '+y);
+  assert(avatarPositionIsClear(STAR_STATION,STREET_LAYOUT.northArrival.x,STREET_LAYOUT.northArrival.y,p));
  }
 });

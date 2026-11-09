@@ -54,7 +54,9 @@ export function createSudokuGame({board, request, toast = () => {}} = {}) {
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   const gameArea = element('div', undefined, 'sudoku-area');
-  root.append(levelLabel, levels, help, startButton, status, gameArea);
+  const setup = element('div', undefined, 'sudoku-setup');
+  setup.append(levelLabel, levels, help, startButton);
+  root.append(setup, status, gameArea);
   board.replaceChildren(root);
 
   for (const [value, label] of LEVELS) {
@@ -105,6 +107,7 @@ export function createSudokuGame({board, request, toast = () => {}} = {}) {
         }
         game = {...generated, values: [...generated.puzzle]};
         renderGame();
+        setup.hidden = true;
         status.textContent = `${config.size}×${config.size} 판이에요. 빈 칸을 고르고 숫자를 넣어 보세요.`;
       } catch {
         game = null;
@@ -301,6 +304,14 @@ export function createSudokuGame({board, request, toast = () => {}} = {}) {
   updateLevelSelection();
 
   return {
+    restart() {
+      if (destroyed || busy) return;
+      game = null; finished = false; selected = -1; conflicts = new Set(); answerCheckOn = false;
+      incorrectIndices = new Set(); checkToken++;
+      gameArea.replaceChildren(); setup.hidden = false; startButton.disabled = false;
+      status.textContent = '난이도를 고르고 시작을 눌러요.';
+      updateLevelSelection();
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;

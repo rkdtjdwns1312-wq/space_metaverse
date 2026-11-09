@@ -13,7 +13,7 @@ const online=p=>!!p?.connected&&!p.away;
  * room teardown call closeRoom(code). Optional playerLeft(code,id) is also
  * post-commit; otherwise tick detects removals/map changes. No own timers.
  */
-export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},clock=Date.now,random=randomInt}){
+export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},onCompleted=()=>{},clock=Date.now,random=randomInt}){
   const rooms=new Map();
   function bucket(code){
     if(!rooms.has(code))rooms.set(code,{games:new Map(),viewers:new Map()});
@@ -67,6 +67,7 @@ export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},clock=Da
   function finish(g,winnerId,reason,{recorded=false}={}){
     // Departure/timeout may clean up a completed game, but cannot decide it again.
     if(g.phase==='finished')return;
+    if(reason==='complete'||reason==='draw')onCompleted({roomCode:g.roomCode,gameId:g.gameId,playerIds:[...g.ids],matchId:g.id,winnerId});
     if(!recorded&&g.gameId==='omok'&&winnerId&&reason==='complete')onFinished({roomCode:g.roomCode,matchId:g.id,playerId:winnerId});
     g.phase='finished';g.winnerId=winnerId;g.reason=reason;g.proposal=null;g.flipped=[];g.revealUntil=0;g.revealRemaining=null;g.offline.clear();g.revision++;
   }
@@ -176,8 +177,12 @@ export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},clock=Da
         if(g.flipped.length===2){
           const [a,b]=g.flipped;
           if(g.deck[a]===g.deck[b]){
-            g.matched[a]=g.matched[b]=true;g.scores[g.turn]++;g.flipped=[];
-            if(g.scores[0]+g.scores[1]===g.deck.length/2)finish(g,g.scores[0]===g.scores[1]?null:g.ids[g.scores[0]>g.scores[1]?0:1],'complete');
+            const scores=[...g.scores];scores[g.turn]++;
+            if(scores[0]+scores[1]===g.deck.length/2){
+              try{finish(g,scores[0]===scores[1]?null:g.ids[scores[0]>scores[1]?0:1],'complete');}
+              catch(error){g.flipped.pop();throw error;}
+            }
+            g.matched[a]=g.matched[b]=true;g.scores=scores;g.flipped=[];
           }else g.revealUntil=clock()+DUEL_RULES.revealMs;
         }
       }else{
@@ -185,11 +190,10 @@ export function createDuelArcade({getRoom,emitPrivate,onFinished=()=>{},clock=Da
         const next=[...g.board];next[index]=g.turn+1;
         requireThat(g.turn!==0||!isOmokDoubleThree(next,index),'3·3 자리에는 놓을 수 없어요.');
         const winningLine=omokLine(next,index);
-        if(winningLine.length)onFinished({roomCode:g.roomCode,matchId:g.id,playerId:player.id});
-        g.board=next;g.winningLine=winningLine;
-        if(g.winningLine.length)finish(g,player.id,'complete',{recorded:true});
-        else if(g.board.every(Boolean))finish(g,null,'draw');
+        if(winningLine.length)finish(g,player.id,'complete');
+        else if(next.every(Boolean))finish(g,null,'draw');
         else g.turn=1-g.turn;
+        g.board=next;g.winningLine=winningLine;
       }
       g.revision++;publish(room,b);return {state:state(room,b,player.id,g.objectId)};
     },

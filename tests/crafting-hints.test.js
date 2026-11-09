@@ -15,6 +15,6 @@ test('hints sum quantities by ingredient level and deduplicate equivalent altern
     'Lv2 아이템 1개 + Lv3 아이템 2개'
   ]);
   assert.deepEqual(craftingHintViews('space-food-card',recipes),[]);
-  assert.deepEqual(craftingHintViews('sun-ring',BOSS_EQUIPMENT_RECIPES),['Lv1 아이템 2개']);
-  assert.deepEqual(craftingHintViews('burning-ice-necklace',BOSS_EQUIPMENT_RECIPES),['Lv1 아이템 2개']);
+  assert.deepEqual(craftingHintViews('sun-ring',BOSS_EQUIPMENT_RECIPES),['Lv4 아이템 2개']);
+  assert.deepEqual(craftingHintViews('burning-ice-necklace',BOSS_EQUIPMENT_RECIPES),['Lv4 아이템 2개']);
 });

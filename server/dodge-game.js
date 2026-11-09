@@ -11,7 +11,7 @@ export const DODGE_RULES=Object.freeze({
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const participant=(room,player)=>!!player&&room?.players instanceof Map&&room.players.get(player.id)===player&&
-  !player.away&&player.mapId==='star-street'&&
+  !player.away&&player.mapId==='star-playground'&&
   (player.role==='student'||player.role==='teacher');
 const eligible=(room,player)=>participant(room,player)&&player.connected;
 
@@ -98,7 +98,7 @@ export function validateDodgeRanking(value){
 }
 
 export function startDodgeRun(room,player,now=performance.now()){
-  ensure(eligible(room,player),'오색별빛 쉼터에서 연결된 상태로 이용해주세요.');
+  ensure(eligible(room,player),'별 놀이터에서 연결된 상태로 이용해주세요.');
   room.dodgeRuns??=new Map();
   ensure(room.dodgeRuns.get(player.id)?.status!=='pending','끝난 기록을 저장하는 중이에요. 잠시만 기다려주세요.');
   const run={

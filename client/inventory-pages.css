@@ -37,6 +37,13 @@
 
 /* 가방만 밝게 꾸미며 조합기 등에서 공유하는 칸의 모양은 유지합니다. */
 #inventory-dialog .panel { background: #fff; }
+#inventory-dialog{box-sizing:border-box;max-height:calc(100dvh - 28px);overflow:hidden;flex-direction:column;}
+#inventory-dialog[open]{display:flex}
+#inventory-dialog .inventory-heading{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:2px 0 8px;background:#fffdfd;}
+#inventory-dialog .inventory-heading h2{margin:0;}
+#inventory-dialog .inventory-heading [data-close]{flex:0 0 auto;min-height:42px;}
+#inventory-dialog .inventory-heading .inventory-pages{order:3;flex:0 0 100%;margin:0;}
+#inventory-dialog>.panel{min-height:0;overflow-y:auto;overscroll-behavior:contain;}
 #inventory-dialog #inventory-title { color: #7652a9; }
 #inventory-dialog .bag-grid {
   background: #fff;

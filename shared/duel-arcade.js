@@ -1,6 +1,6 @@
 // Only public rules live here. The shuffled deck never leaves the server.
 import {STREET_LAYOUT} from './street-layout.js';
-export const DUEL_MAP_ID='star-street';
+export const DUEL_MAP_ID='star-playground';
 export const DUEL_ARCADES=Object.freeze([
   Object.freeze({id:'duel-memory',kind:'duel-arcade',gameId:'memory',name:'별 그림 짝 맞추기 경쟁 게임',x:500,y:STREET_LAYOUT.lower.y-195,radius:65,color:'#edbddd'}),
   Object.freeze({id:'duel-omok',kind:'duel-arcade',gameId:'omok',name:'별 오목 경쟁 게임',x:1300,y:STREET_LAYOUT.lower.y-195,radius:65,color:'#b9d8f6'})

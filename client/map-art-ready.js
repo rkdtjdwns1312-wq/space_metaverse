@@ -24,9 +24,9 @@ import {preloadCozyArt} from './cozy-activities-art.js';
 // Each family is decoded once. Failed assets remain observable until refresh.
 const states=new Map();
 export function prepareMapArt(map,planets=[]){
-  const family=map.id==='space-plaza'?'plaza':map.id==='star-street'?'street':map.id==='milky-valley'?'valley':map.theme==='star-origin'?'origin':map.theme==='sleeping-stars'?'sleeping-stars':map.theme?.includes('paradise')?'paradise':map.id==='black-hole'?'black-hole':map.theme==='whale-stomach'?'whale':'interior';
+  const family=map.id==='space-plaza'?'plaza':map.theme==='starlight-street'?'street':map.id==='milky-valley'?'valley':map.theme==='star-origin'?'origin':map.theme==='sleeping-stars'?'sleeping-stars':map.theme?.includes('paradise')?'paradise':map.id==='black-hole'?'black-hole':map.theme==='whale-stomach'?'whale':'interior';
   const departments=family==='plaza'?[...new Set(planets.filter(p=>!p.customDesign).map(p=>p.templateId))].sort():[];
-  const key=family+':'+(family==='sleeping-stars'?map.id:departments.join(','));
+  const key=family+':'+(['sleeping-stars','street'].includes(family)?map.id:departments.join(','));
   if(states.has(key))return states.get(key);
   const state={key,status:'loading',failed:0};states.set(key,state);
   // A stalled connection must not leave an unusable loading screen forever.
@@ -36,7 +36,12 @@ export function prepareMapArt(map,planets=[]){
   const work=[preloadGateArt()];
   if(['plaza','street','valley','origin','sleeping-stars','paradise'].includes(family))work.push(preloadFloatingCliff().then(ok=>{if(!ok)throw Error('cliff');}));
   if(family==='plaza')work.push(preloadPlazaArt(),preloadPlazaProps(),preloadPaintedProps(['shop']),preloadDepartmentArt(departments));
-  else if(family==='street')work.push(preloadStreetArt(),preloadPaintedProps(),preloadHallOfFame(),preloadCozyArt(),preloadDuelArcades((map.objects||[]).filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
+  else if(family==='street'){
+    work.push(preloadStreetArt(),preloadPaintedProps((map.objects||[]).map(o=>o.kind)));
+    if(map.objects.some(o=>o.kind==='hall-of-fame'))work.push(preloadHallOfFame());
+    if(map.objects.some(o=>o.kind?.startsWith('cozy-')))work.push(preloadCozyArt());
+    work.push(preloadDuelArcades(map.objects.filter(o=>o.kind==='duel-arcade').map(o=>o.id)));
+  }
   else if(family==='valley')work.push(preloadValleyArt());
   else if(family==='origin')work.push(preloadOriginArt());
   else if(family==='sleeping-stars'){work.push(preloadSleepingStarsArt(map));if(map.id==='sleeping-stars-3')work.push(preloadForgottenArt());if(map.id==='sleeping-stars-4')work.push(preloadTruthCreatorArt());if(map.id==='sleeping-stars-1')work.push(preloadDarkStarArt(),preloadDarkStarSkillsArt());}

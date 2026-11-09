@@ -13,18 +13,26 @@ export function explorationAuraStars(frame,radius){
   }
   return stars;
 }
-export function drawExplorationAura(ctx,o,time,reducedMotion=false){
-  const radius=o.radius*3,frame=reducedMotion?12:explorationAuraFrame(time);
+export function drawExplorationAura(ctx,o,time,reducedMotion=false,lowQuality=false){
+  const still=reducedMotion||lowQuality;
+  const pulse=still?1:1+Math.sin(time/650)*.06;
+  const radius=o.radius*3.3*pulse,frame=still?12:explorationAuraFrame(time);
   ctx.save();
   const glow=ctx.createRadialGradient(o.x,o.y-69,8,o.x,o.y-69,radius);
-  glow.addColorStop(0,'#fff8d24d');glow.addColorStop(.44,'#ffedb921');glow.addColorStop(1,'#fff0b900');
+  glow.addColorStop(0,'#fffbeedb');glow.addColorStop(.35,'#ffe7a6a8');glow.addColorStop(.68,'#ffce574d');glow.addColorStop(1,'#fff0b900');
   ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(o.x,o.y-69,radius,radius*.72,0,0,Math.PI*2);ctx.fill();
-  for(const star of explorationAuraStars(frame,radius)){
+  // A full device remains recognizable at low quality: static light and four
+  // large glints, with no blur, particles, or animation buffers.
+  const stars=lowQuality?[{x:-72,y:-42,size:6,alpha:1},{x:72,y:-15,size:7,alpha:1},{x:-65,y:45,size:5,alpha:1},{x:30,y:-99,size:6,alpha:1}]:explorationAuraStars(frame,radius);
+  for(const star of stars){
     if(star.alpha<.02)continue;
     const x=o.x+star.x,y=o.y-69+star.y;
     ctx.globalAlpha=star.alpha;
     ctx.fillStyle='#fff9de';ctx.beginPath();ctx.arc(x,y,star.size*.55,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#fff0ac';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x-star.size*2.1,y);ctx.lineTo(x+star.size*2.1,y);ctx.moveTo(x,y-star.size*2.1);ctx.lineTo(x,y+star.size*2.1);ctx.stroke();
+    ctx.strokeStyle='#fff5c4';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(x-star.size*2.7,y);ctx.lineTo(x+star.size*2.7,y);ctx.moveTo(x,y-star.size*2.7);ctx.lineTo(x,y+star.size*2.7);ctx.stroke();
   }
+  ctx.globalAlpha=1;ctx.fillStyle='#65431ef2';ctx.strokeStyle='#ffe6a0';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(o.x-65,o.y-207,130,32,13);ctx.fill();ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='600 18px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#fff4c7';ctx.fillText('✦ 기운 가득! ✦',o.x,o.y-191);
   ctx.restore();
 }

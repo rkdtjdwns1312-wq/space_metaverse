@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {createMemoryGame} from './memory-game.js';
 import {createBaseballGame} from './baseball-game.js';
 import {createTetrisGame} from './tetris-game.js';
@@ -23,14 +24,15 @@ export function createArcadeUI({
 }={}){
   const dialog=document.createElement('dialog');dialog.id='arcade-dialog';dialog.setAttribute('aria-labelledby','arcade-title');
   const header=document.createElement('header'),title=document.createElement('h2');title.id='arcade-title';
-  const closeButton=document.createElement('button');closeButton.id='arcade-close';closeButton.type='button';closeButton.textContent='닫기';header.append(title);
+  const closeButton=document.createElement('button');closeButton.id='arcade-close';closeButton.type='button';closeButton.textContent='닫기';header.append(title,closeButton);
   const footer=document.createElement('footer');footer.className='arcade-footer';
-  const rankingActions=document.createElement('div');rankingActions.className='arcade-ranking-actions';footer.append(rankingActions,closeButton);
+  const rankingActions=document.createElement('div');rankingActions.className='arcade-ranking-actions';footer.append(rankingActions);
   const instructions=document.createElement('p');instructions.id='arcade-instructions';
   const score=document.createElement('p');score.id='arcade-score';score.setAttribute('aria-live','polite');
   const board=document.createElement('div');board.id='arcade-board';board.setAttribute('role','region');board.setAttribute('aria-label','미니게임판');
   const restartButton=document.createElement('button');restartButton.id='arcade-restart';restartButton.type='button';restartButton.textContent='다시하기';
-  dialog.append(header,instructions,score,board,restartButton,footer);document.body.append(dialog);
+  dialog.append(header,instructions,score,board,restartButton,footer);pinDialogHeader(dialog);document.body.append(dialog);
+  const scrollBody=dialog.querySelector(':scope > .dialog-scroll-body');
 
   let current=null,activeGame=null,connected=true;
   const cancelledDodgeRuns=new Set();
@@ -43,7 +45,8 @@ export function createArcadeUI({
     if(outcome&&outcome!==lastOutcome)onSound(current,outcome);
     if(outcome)lastOutcome=outcome;
   };
-  const cleanup=()=>{activeGame?.destroy();activeGame=null;board.replaceChildren();};
+  const restoreShared=()=>{header.append(closeButton);footer.append(rankingActions);scrollBody.append(restartButton,footer);};
+  const cleanup=()=>{restoreShared();activeGame?.destroy();activeGame=null;board.replaceChildren();};
   const factories={
     memory:()=>createMemoryGame({board,setScore,toast,request,footer:rankingActions,subscribeRanking:subscribeMemoryRanking}),
     baseball:()=>createBaseballGame({board,setScore,toast,request}),
@@ -56,16 +59,18 @@ export function createArcadeUI({
   board.addEventListener('click',event=>{if(event.target.closest('button,[role="button"],.cell,.card'))onSound(current,'move');});
   board.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')onSound(current,'move');});
   const render=id=>{
-    lastOutcome='';
+    lastOutcome='';dialog.dataset.game=id;
     const game=GAMES[id];title.textContent=game.title;instructions.textContent=game.instructions;setScore(game.score);board.replaceChildren();
     activeGame=factories[id]();
+    if(id==='tetris'){const side=board.querySelector('.tetris-side');if(side){const start=board.querySelector('#tetris-start'),status=board.querySelector('#tetris-status');if(start)side.prepend(start);if(status)side.prepend(status);side.append(restartButton,rankingActions);}}
+    if(id==='dodge'){const toolbar=board.querySelector('.dodge-toolbar');if(toolbar){toolbar.classList.add('dodge-toolbar-right');toolbar.append(restartButton);}}
   };
   const close=()=>{cleanup();if(dialog.open)dialog.close();stop();};
 
   closeButton.addEventListener('click',close);
-  restartButton.addEventListener('click',()=>{onSound(current,'start');cleanup();render(current);});
+  restartButton.addEventListener('click',()=>{onSound(current,'start');if(activeGame?.restart){activeGame.restart();return;}cleanup();render(current);});
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
-  dialog.addEventListener('close',cleanup);
+  dialog.addEventListener('close',()=>{if(!dialog.open)cleanup();});
 
   return {
     setConnected(value){connected=!!value;flushDodgeCancels();activeGame?.setConnected?.(connected);},

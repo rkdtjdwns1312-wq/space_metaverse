@@ -1,6 +1,6 @@
 import {MAP,STREET,VALLEY,STATIC_MAPS,PLAZA_ID,STREET_ID,VALLEY_ID,mapOf} from '../shared/config.js';
 import {PLAZA_LAYOUT} from '../shared/plaza-layout.js';
-import {STREET_LAYOUT} from '../shared/street-layout.js';
+import {STREET_LAYOUT,streetLayoutOf,isStarlightStreet} from '../shared/street-layout.js';
 import {VALLEY_LAYOUT} from '../shared/valley-layout.js';
 import {avatarPositionIsClear,avatarCollisionShape} from '../shared/avatar-boundary.js';
 
@@ -10,9 +10,34 @@ export function journeyDestination(goal){
  const island=PLAZA_LAYOUT.islands.find(i=>i.id===goal);
  if(island)return {...island,mapId:PLAZA_ID};
  const zones={station:STREET_LAYOUT.north,shops:STREET_LAYOUT.upper,playground:STREET_LAYOUT.lower};
- if(zones[goal])return {...zones[goal],name:{station:'별 발전소',shops:'상점가',playground:'놀이터'}[goal],mapId:STREET_ID};
+ if(zones[goal])return {...zones[goal],name:{station:'별 발전소',shops:'상점가',playground:'놀이터'}[goal],mapId:goal==='station'?'star-station':goal==='playground'?'star-playground':STREET_ID};
  const star=VALLEY.objects.find(o=>o.id===goal);
  return star?{...star,mapId:VALLEY_ID,interact:true}:null;
+}
+// Follow the current route every frame; expensive routing is only repeated
+// after movement, a blocked segment, or a changed destination/map.
+export function createJourneyGuide({routeFor=journeyRoute,segmentClear=journeySegmentClear}={}){
+ let route=null,key='',checkedAt=-Infinity,routedAt=-Infinity,origin=null;
+ return {update(player,goal,planets,now){
+  const nextKey=player.mapId+':'+goal,changed=key!==nextKey;
+  const inspect=changed||now-checkedAt>=100;
+  if(inspect)checkedAt=now;
+  const moved=origin?Math.hypot(player.x-origin.x,player.y-origin.y):Infinity;
+  const blocked=inspect&&route?.points[0]&&!segmentClear(player,player,route.points[0],planets);
+  if(changed||(!route&&inspect&&now-routedAt>=500)||blocked||(inspect&&moved>=48&&now-routedAt>=500)){
+   route=routeFor(player,goal,planets);key=nextKey;routedAt=now;origin={x:player.x,y:player.y};
+  }
+  if(inspect&&route?.points.length>1){
+   // Prefer the furthest already-known clear waypoint when rounding a corner.
+   for(let i=route.points.length-1;i>0;i--)if(segmentClear(player,player,route.points[i],planets)){route.points.splice(0,i);break;}
+  }
+  return route;
+ },reset(){route=null;key='';checkedAt=-Infinity;routedAt=-Infinity;origin=null;}};
+}
+export function tutorialButtonArrowPlacement(rect,viewport,size=32,gap=8){
+ const below=rect.top-size-gap<8;
+ return {left:Math.max(8,Math.min(viewport.width-size-8,rect.left+rect.width/2-size/2)),
+  top:below?rect.bottom+gap:rect.top-size-gap,rotation:below?-90:90};
 }
 function nextGate(mapId,targetId,planets){
  const map=mapOf(mapId,planets),queue=[{map,first:null}],seen=new Set([mapId]);
@@ -65,7 +90,7 @@ export function journeyRoute(player,goal,planets=[]){
  const ends=goalCandidates(map,target,player,shape);if(!ends.length)return {target,points:[],reachable:false};
  const end=ends[0];
  if(clear(map,player,end,player))return {target,points:[end],reachable:true};
- const hubs=map.id===PLAZA_ID?[PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands]:map.id===STREET_ID?[STREET_LAYOUT.north,STREET_LAYOUT.upper,STREET_LAYOUT.lower,{x:STREET_LAYOUT.upper.x,y:STREET_LAYOUT.upper.y-300},{x:STREET_LAYOUT.upper.x,y:STREET_LAYOUT.upper.y+300}]:map.id===VALLEY_ID?[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples]:[];
+ const hubs=map.id===PLAZA_ID?[PLAZA_LAYOUT.center,...PLAZA_LAYOUT.islands]:isStarlightStreet(map.id)?[...streetLayoutOf(map).islands,...map.objects.filter(o=>o.kind==='gate')].map(o=>({x:o.x,y:o.y})):map.id===VALLEY_ID?[VALLEY_LAYOUT.center,...VALLEY_LAYOUT.temples]:[];
  const nodes=[{x:player.x,y:player.y},...ends,...hubs];
  for(const object of map.objects.filter(o=>!o.passable))for(let i=0;i<8;i++){
   const a=i*Math.PI/4,rx=(object.collisionRx??object.radius)+shape.radius+26,ry=(object.collisionRy??object.radius)+shape.radius+26;

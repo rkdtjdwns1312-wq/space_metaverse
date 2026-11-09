@@ -39,12 +39,12 @@ test('별의 시작점 네 맵은 20%씩 커지는 중앙 원형 마당과 문 �
   assert.equal(onOriginFloor(ORIGIN_MAPS[0],NaN,100),false);
 });
 
-test('전체 지도 선택 칸은 6행 안에서 중복되지 않고 모두 등록 맵을 가리킨다',()=>{
+test('전체 지도 선택 칸은 일곱 행 안에서 중복되지 않고 모두 등록 맵을 가리킨다',()=>{
   const occupied=new Set();
   for(const {id,row,column} of UNIVERSE_MAP_LAYOUT){
     const slot=`${row}:${column}`;
     assert.ok(!occupied.has(slot),`지도 칸 중복 ${slot} (${id})`);occupied.add(slot);
-    assert.ok(row>=1&&row<=6&&column>=1&&column<=5,`${id}의 그리드 위치`);
+    assert.ok(row>=0&&row<=6&&column>=1&&column<=5,`${id}의 그리드 위치`);
     assert.ok(STATIC_MAPS[id],`${id}가 선택 가능한 맵으로 등록됨`);
   }
   assert.equal(UNIVERSE_MAP_LAYOUT.find(item=>item.id==='space-plaza').row,5);

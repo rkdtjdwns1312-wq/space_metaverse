@@ -32,6 +32,8 @@ test('제공된 파일 배경음악은 맵마다 반복하고 태양 낙원 1·2
     assert.equal(violin.paused,true);assert.equal(violin.currentTime,0);
     assert.equal(shelter.src,'/assets/audio/star-street-pposong.mp3');
     assert.equal(shelter.loop,true);assert.equal(shelter.paused,false);
+    shelter.currentTime=19;
+    for(const id of ['star-station','star-playground','star-street']){assert.equal(await audio.playBgm(id),true);assert.equal(shelter.currentTime,19);assert.equal(shelter.paused,false);}
     assert.equal(await audio.playBgm('milky-valley'),true);
     const valley=players.get('milky-valley');
     assert.equal(shelter.paused,true);

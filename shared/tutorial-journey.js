@@ -17,9 +17,9 @@ export const JOURNEY_STEPS=Object.freeze([
   {stage:2,title:'우주를 살펴볼까요?',description:'광장 네 모서리의 원형 구역을 방문하고 전체 우주 지도를 열어 보세요.',goals:[
     ...['black-hole','department','market','assignment'].flatMap(id=>{const area=PLAZA_LAYOUT.islands.find(a=>a.id===id),goal=zone(id,area.name+' 구역 방문하기','space-plaza',{x:area.x,y:area.y,rx:area.rx,ry:area.ry});return id==='department'?[goal,{...ui('department-menu','메뉴에서 행성 만들기 버튼 확인하기'),requires:['department']}]:[goal];}),
     ui('world-map','전체 우주 지도 열기')]},
-  {stage:3,title:'특수맵을 탐험해볼까요?',description:'북쪽 발전소 → 상점가 → 남쪽 놀이터 → 성장의 별 → 진화의 별 순서로 살펴보세요.',ordered:true,goals:[
-    zone('station','북쪽 발전소 방문하기','star-street',STREET_LAYOUT.north),zone('shops','상점가 방문하기','star-street',STREET_LAYOUT.upper),
-    zone('playground','남쪽 놀이터 방문하기','star-street',STREET_LAYOUT.lower),
+  {stage:3,title:'특수맵을 탐험해볼까요?',description:'쉼터 북쪽 문으로 별 발전소를 방문한 뒤, 쉼터 상점가로 돌아오세요. 남쪽 문으로 별 놀이터를 방문하고 성장의 별과 진화의 별을 차례로 살펴보세요.',ordered:true,goals:[
+    zone('station','북쪽 문으로 별 발전소 방문하기','star-station',STREET_LAYOUT.north),zone('shops','상점가 방문하기','star-street',STREET_LAYOUT.upper),
+    zone('playground','남쪽 문으로 별 놀이터 방문하기','star-playground',STREET_LAYOUT.lower),
     {id:'growth-star',label:'성장의 별 살펴보기',source:'info',objectId:'growth-star',mapId:'milky-valley',x:VALLEY_LAYOUT.temples[1].x,y:VALLEY_LAYOUT.temples[1].y-40},
     {id:'evolution-star',label:'진화의 별 살펴보기',source:'info',objectId:'evolution-star',mapId:'milky-valley',x:VALLEY_LAYOUT.temples[0].x,y:VALLEY_LAYOUT.temples[0].y-40}]},
   {stage:4,title:'가방 살펴보기',description:'가방 3페이지와 아이템 정보를 보고 연습용 소모품을 사용한 뒤, 사용 중인 아이템 기둥에서 효과를 확인하고 연습 장비를 장착해 보세요.',goals:[

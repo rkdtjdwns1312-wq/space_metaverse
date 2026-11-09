@@ -282,7 +282,7 @@ export function createWorld(canvas) {
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
-    if(exploration?.festival&&!quality.low){
+    if(exploration?.festival&&!quality.reducedEffects){
       // 바닥 위에만 나타나는 축제 별빛. 움직임과 충돌 판정은 건드리지 않습니다.
       for(const [index,[x,y]] of [[1310,1050],[1470,1580],[1700,900],[2020,930],[2280,1190],[2220,1570],[1850,1700],[1150,1310],[1800,1320],[600,510],[600,2100],[2940,2070]].entries()){
         const pulse=1+Math.sin(time/530+index*1.7)*.17;
@@ -312,7 +312,7 @@ export function createWorld(canvas) {
       if(o.kind==='life-star'){
         drawLifeStar(ctx,o,time,reducedMotion.matches);
       } else if(o.kind==='exploration'){
-        if(exploration?.festival&&!quality.low)drawExplorationAura(ctx,o,time,reducedMotion.matches);
+        if(exploration?.festival)drawExplorationAura(ctx,o,time,reducedMotion.matches,quality.low);
         drawExplorationFlask(ctx,o,time);
       } else if(o.kind==='star'){
         const glow=ctx.createRadialGradient(o.x,o.y,10,o.x,o.y,110);glow.addColorStop(0,'#ffe9a970');glow.addColorStop(1,'#ffe9a900');
@@ -493,8 +493,8 @@ export function createWorld(canvas) {
     const point=points.get(p.id)||{x:p.x,y:p.y};
     const x=point.x,y=point.y,aura=waterAuras.find(c=>c.playerId===p.id),swan=swanAuras.find(c=>c.playerId===p.id),dash=taurusDashes.find(c=>c.playerId===p.id),shield=herculesShields.find(c=>c.playerId===p.id),libra=libraAuras.find(c=>c.playerId===p.id),corona=coronaAuras.find(c=>c.playerId===p.id),blessing=capricornBlessings.find(c=>c.playerId===p.id);
     const size=avatarSizeOf(p)*(aura?.kind==='cetus'?2:1);
-    const trackWalkMotion=!friendWalkReduction||p.id===selfId;
-    const allowWalkFrames=trackWalkMotion&&!reducedMotion.matches&&(!quality.low||(friendWalkReduction&&p.id===selfId));
+    const trackWalkMotion=(!friendWalkReduction&&!quality.low)||p.id===selfId;
+    const allowWalkFrames=trackWalkMotion&&!reducedMotion.matches;
     if(p.id===selfId)canvas.dataset.equipmentAura=p.equipmentAura||'';
     const effects=(p.effects||[]).slice(0,3);
     ctx.save();ctx.globalAlpha=p.connected?1:.45;
@@ -511,7 +511,7 @@ export function createWorld(canvas) {
     }else if(aura)drawWaterAura(ctx,{...aura,elapsedMs:time-aura.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
     const swanVisual=swanVisualFor(p.id,swan,time);
     if(swanVisual)drawSwanAura(ctx,{...swanVisual,elapsedMs:time-swanVisual.startsAt},x,y,avatarSizeOf(p),reducedMotion.matches);
-    if(!quality.low&&effects.some(e=>e.style==='glow')){
+    if(!quality.reducedEffects&&effects.some(e=>e.style==='glow')){
       const glow=ctx.createRadialGradient(x,y,4,x,y,40);glow.addColorStop(0,'#fff2b880');glow.addColorStop(1,'#fff2b800');
       ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);
     }
@@ -522,12 +522,12 @@ export function createWorld(canvas) {
     if(corona)drawCoronaAura(ctx,corona,time-corona.startsAt,reducedMotion.matches);
     if(shield){ctx.save();ctx.translate(-(p.facingX||1)*size*.16,-size*.34);drawHerculesShield(ctx,shield,time-shield.startsAt,reducedMotion.matches);ctx.restore();}
     if(p.role==='teacher'&&!p.avatar?.teacherPreview){
-      if(!quality.low)celestialAura(ctx,'#e9c77b',58,time);
+      if(!quality.reducedEffects)celestialAura(ctx,'#e9c77b',58,time);
       const sprite=loadedAvatarSprite(TEACHER_SPRITE);
       if(sprite){
         const pose=trackWalkMotion?extraLocomotion.sample(p.id,`${myMapId}:teacher`,x,y,time,115/2,reducedMotion.matches):{moving:false,index:0};
         const visible=pose.moving&&allowWalkFrames?constellationWalkFrame(sprite,'teacher',1,pose.index)||sprite:sprite;
-        ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);drawEquipmentAura(ctx,visible,p,96,time,reducedMotion.matches,quality.low);ctx.drawImage(visible,-48,-48,96,96);ctx.restore();
+        ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);drawEquipmentAura(ctx,visible,p,96,time,reducedMotion.matches,quality.reducedEffects);ctx.drawImage(visible,-48,-48,96,96);ctx.restore();
       }
       else star(0,0,26,'#e9c77b');
     }else if(p.avatar?.blackStar){
@@ -538,7 +538,7 @@ export function createWorld(canvas) {
       drawTaurusDash(ctx,dash,time-dash.startsAt,reducedMotion.matches);
     }else if(constellation){
       const sprite=loadedAvatarSprite(constellation.sprite);
-      if(constellation.celestial&&!quality.low)celestialAura(ctx,constellation.color,size*.63,time);
+      if(constellation.celestial&&!quality.reducedEffects)celestialAura(ctx,constellation.color,size*.63,time);
       // 몸 그림만 반전합니다. 이름표·말풍선·HP 글자는 원래 방향을 유지합니다.
       if(sprite){
         let visible= sprite;
@@ -658,10 +658,10 @@ export function createWorld(canvas) {
           if(p.id===selfId){canvas.dataset.locomotionId=constellation.id;canvas.dataset.locomotionLevel=String(constellation.assetLevel);canvas.dataset.locomotionFrame=String(pose.index);canvas.dataset.locomotionMoving=String(pose.moving);}
         }else if(p.id===selfId){delete canvas.dataset.locomotionId;delete canvas.dataset.locomotionLevel;delete canvas.dataset.locomotionFrame;delete canvas.dataset.locomotionMoving;}
         ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);ctx.scale((p.facingX===-1?-1:1)*(constellation.spriteFacingX||1),1);
-        drawEquipmentAura(ctx,visible,p,size,time,reducedMotion.matches,quality.low);
+        drawEquipmentAura(ctx,visible,p,size,time,reducedMotion.matches,quality.reducedEffects);
         if(corona)drawCoronaBodyAura(ctx,visible,corona,time-corona.startsAt,size,reducedMotion.matches);
         ctx.drawImage(visible,-size/2,-size/2,size,size);
-        if(constellation.celestial&&!quality.low)drawTranscendentStars(ctx,constellation.id,size,time,reducedMotion.matches,sprite);
+        if(constellation.celestial&&!quality.reducedEffects)drawTranscendentStars(ctx,constellation.id,size,time,reducedMotion.matches,sprite);
         ctx.restore();
       }
       else{const radius=size*.4;
@@ -679,7 +679,7 @@ export function createWorld(canvas) {
     ctx.strokeStyle='#66577e';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,5,3,.15,Math.PI-.15);ctx.stroke();
     }
     }
-    if(!quality.low&&effects.some(e=>e.style==='sparkle')){
+    if(!quality.reducedEffects&&effects.some(e=>e.style==='sparkle')){
       for(let i=0;i<3;i++){
         const phase=(time||0)/260+i*2.1,r=24+i*3;
         const sx=Math.cos(phase)*r,sy=Math.sin(phase*1.4)*r*.6-14;
@@ -753,14 +753,15 @@ export function createWorld(canvas) {
     const w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     const zone=placing&&myMapId===PLAZA_ID?DEPARTMENT_ZONE:null;
-    const scale=zone?Math.min(rect.width/(zone.rx*2+300),rect.height/(zone.ry*2+300)):(placing||overview)?Math.min(rect.width/map.width,rect.height/map.height):Math.max(rect.width/1200,rect.height/760)||1;
+    const bounds=map.viewBounds||{x:0,y:0,width:map.width,height:map.height};
+    const scale=zone?Math.min(rect.width/(zone.rx*2+300),rect.height/(zone.ry*2+300)):(placing||overview)?Math.min(rect.width/bounds.width,rect.height/bounds.height):Math.max(rect.width/1200,rect.height/760)||1;
     const me=points.get(selfId),cw=rect.width/scale,ch=rect.height/scale;
     const following=steadyWalk&&me&&!placing&&!overview;
     const previous=followView?.width===cw&&followView.height===ch?followView:null;
-    const x=following?walkCameraAxis(me.x,cw,map.width,previous?.x,dpr*scale):
-      cw>=map.width?(map.width-cw)/2:Math.max(0,Math.min(map.width-cw,(zone?.x??me?.x??map.width/2)-cw/2));
-    const y=following?walkCameraAxis(me.y,ch,map.height,previous?.y,dpr*scale):
-      ch>=map.height?(map.height-ch)/2:Math.max(0,Math.min(map.height-ch,(zone?.y??me?.y??map.height/2)-ch/2));
+    const x=bounds.x+(following?walkCameraAxis(me.x-bounds.x,cw,bounds.width,previous?previous.x-bounds.x:undefined,dpr*scale):
+      cw>=bounds.width?(bounds.width-cw)/2:Math.max(0,Math.min(bounds.width-cw,(zone?.x??me?.x??bounds.x+bounds.width/2)-bounds.x-cw/2)));
+    const y=bounds.y+(following?walkCameraAxis(me.y-bounds.y,ch,bounds.height,previous?previous.y-bounds.y:undefined,dpr*scale):
+      ch>=bounds.height?(bounds.height-ch)/2:Math.max(0,Math.min(bounds.height-ch,(zone?.y??me?.y??bounds.y+bounds.height/2)-bounds.y-ch/2)));
     view={x,y,scale,width:cw,height:ch};
     followView=following?view:null;
     interiorBoard.update({map,planet:planets.find(p=>p.id===map.planetId),view,rect,visible:!!selfId&&document.body.classList.contains('joined')});
@@ -768,7 +769,7 @@ export function createWorld(canvas) {
     if(me){canvas.dataset.selfRenderX=me.x;canvas.dataset.selfRenderY=me.y;}
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle=map.theme==='sleeping-stars'?'#010203':'#e5e5f5';ctx.fillRect(0,0,w,h);
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
-    if(myMapId===PLAZA_ID)drawMap(map,t);else if(myMapId===STREET_ID)drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
+    if(myMapId===PLAZA_ID)drawMap(map,t);else if(map.theme==='starlight-street')drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
@@ -840,7 +841,7 @@ export function createWorld(canvas) {
       const monsterStatuses=[m.poisoned&&'poison',m.sleeping&&'sleep',m.stunned&&'stun',m.cursed&&'curse'].filter(Boolean);
       monsterStatuses.forEach((id,index)=>{
         const icon=loadedAvatarSprite('/assets/status/'+id+'.svg');
-        if(icon){ctx.save();ctx.shadowColor='#f7efff';ctx.shadowBlur=quality.low?0:7;
+        if(icon){ctx.save();ctx.shadowColor='#f7efff';ctx.shadowBlur=quality.reducedEffects?0:7;
           ctx.drawImage(icon,pos.x-(monsterStatuses.length*22)/2+index*22,type.boss?bossBounds.top-(type.id==='star-record'&&m.starRecordEffects?.challenge?185:120):pos.y-visualRadius*barScale-61,20,20);ctx.restore();}
       });
       if(m===firstMonster){canvas.dataset.monsterVisualScale=String(monsterVisualScale(m.mapId,m.typeId));canvas.dataset.monsterHp=String(m.hp);canvas.dataset.monsterMaxHp=String(m.maxHp);canvas.dataset.monsterMp=String(m.mp??'');canvas.dataset.monsterMaxMp=String(m.maxMp??'');}
@@ -848,7 +849,7 @@ export function createWorld(canvas) {
       // 보스 이름은 머리 위 월드 좌표에 고정합니다. 화면 위 경계에서 따로 내려오지 않습니다.
       if(type.boss){
         ctx.font='bold 30px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle=type.id==='leoon'?'#fff0b2':'#edf3ff';
-        ctx.shadowColor=type.id==='leoon'?'#ff9d32':'#89a5f8';ctx.shadowBlur=quality.low?0:15;
+        ctx.shadowColor=type.id==='leoon'?'#ff9d32':'#89a5f8';ctx.shadowBlur=quality.reducedEffects?0:15;
         ctx.strokeStyle='#29264e';ctx.lineWidth=8;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x+2,nameY+3);
         ctx.fillText(type.name,pos.x,nameY);
         if(type.id==='forgotten-constellation'&&m.constellationGather&&gatherRemaining>0){
@@ -882,29 +883,29 @@ export function createWorld(canvas) {
                 const unit=1/scale;ctx.font=`bold ${12*unit}px "Jua","Malgun Gothic",sans-serif`;
                 for(const [line,index] of [['별자리에게',0],['새겨진 이름',1]]){const lineY=sideY+(index?15:0)*unit;ctx.strokeText(line,hudX,lineY);ctx.fillText(line,hudX,lineY);}
                 ctx.font=`bold ${11*unit}px "Jua","Malgun Gothic",sans-serif`;const shortTimer=`맵 채팅 · ${remaining}초`;ctx.strokeText(shortTimer,hudX,sideY+32*unit);ctx.fillText(shortTimer,hudX,sideY+32*unit);
-                const gap=36*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+66*unit,30*unit);ctx.restore();});
+                const gap=36*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.reducedEffects?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+66*unit,30*unit);ctx.restore();});
               }else{
                 const unit=1/scale;ctx.font=`bold ${13*unit}px "Jua","Malgun Gothic",sans-serif`;ctx.strokeText(header,hudX,sideY+16*unit);ctx.fillText(header,hudX,sideY+16*unit);
                 ctx.font=`bold ${12*unit}px "Jua","Malgun Gothic",sans-serif`;const shortTimer=`맵 채팅 · ${remaining}초`;ctx.strokeText(shortTimer,hudX,sideY+34*unit);ctx.fillText(shortTimer,hudX,sideY+34*unit);
-                const gap=44*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+69*unit,36*unit);ctx.restore();});
+                const gap=44*unit,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.reducedEffects?0:8;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,sideY+69*unit,36*unit);ctx.restore();});
               }
             }else{
               const clamped=Math.max(half+5,Math.min(canvas.clientWidth-half-5,screenX)),hudX=x+clamped/scale;
               ctx.strokeText(timer,hudX,centerY-22);ctx.fillText(timer,hudX,centerY-22);ctx.strokeText(header,hudX,centerY-42);ctx.fillText(header,hudX,centerY-42);
-              const gap=66,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:12;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,centerY+12,50);ctx.restore();});
+              const gap=66,start=hudX-gap/2;slots.forEach(entry=>{ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.reducedEffects?0:12;drawNamePortrait(ctx,entry.constellationId,start+entry.slot*gap,centerY+12,50);ctx.restore();});
             }
             ctx.restore();
           }else{
             ctx.strokeText(timer,pos.x,centerY-22);ctx.fillText(timer,pos.x,centerY-22);
             const gap=66,start=pos.x-gap/2;
-          slots.forEach(entry=>{const x=start+entry.slot*gap,y=centerY+12;ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.low?0:12;
+          slots.forEach(entry=>{const x=start+entry.slot*gap,y=centerY+12;ctx.save();ctx.shadowColor='#a98cff';ctx.shadowBlur=quality.reducedEffects?0:12;
             drawNamePortrait(ctx,entry.constellationId,x,y,50);ctx.restore();
             });ctx.restore();}
           }
         }
         if(type.id==='star-record'&&(m.starRecordEffects?.challenge||m.starRecordEffects?.math||m.starRecordEffects?.flow)){
           const line=m.starRecordEffects.challenge?.line||m.starRecordEffects.math?.line||m.starRecordEffects.flow?.line;
-          ctx.shadowColor='#f4ca68';ctx.shadowBlur=quality.low?0:12;ctx.fillStyle='#ffe7a0';ctx.font='bold 21px "Jua","Malgun Gothic",sans-serif';
+          ctx.shadowColor='#f4ca68';ctx.shadowBlur=quality.reducedEffects?0:12;ctx.fillStyle='#ffe7a0';ctx.font='bold 21px "Jua","Malgun Gothic",sans-serif';
           ctx.strokeText(line,pos.x,nameY-40);ctx.fillText(line,pos.x,nameY-40);
         }
       }else{ctx.strokeStyle='#554762';ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeText(type.name,pos.x,nameY);ctx.fillText(type.name,pos.x,nameY);}
@@ -915,7 +916,7 @@ export function createWorld(canvas) {
       if(!intersectsView(view,{x:drop.x-250,y:drop.y-70,width:500,height:150}))continue;
       if(drop.kind==='recipe'||drop.kind==='item'){
         const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
-        ctx.save();ctx.translate(drop.x,drop.y+bob);ctx.shadowColor=drop.kind==='item'?'#ffdd9e':'#cfabff';ctx.shadowBlur=quality.low?0:12;
+        ctx.save();ctx.translate(drop.x,drop.y+bob);ctx.shadowColor=drop.kind==='item'?'#ffdd9e':'#cfabff';ctx.shadowBlur=quality.reducedEffects?0:12;
         const icon=drop.kind==='item'&&loadedAvatarSprite(itemOf(drop.itemId)?.art);
         if(icon)ctx.drawImage(icon,-22,-26,44,44);
         else{ctx.fillStyle='#fff4db';ctx.strokeStyle='#8d69b2';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-15,-23,30,37,5);ctx.fill();ctx.stroke();
@@ -927,7 +928,7 @@ export function createWorld(canvas) {
       const amount=drop.publicAt<=Date.now()?drop.remaining:drop.shares.find(s=>s.playerId===selfId)?.amount??0;
       const bob=reducedMotion.matches?0:Math.sin(t/350+drop.x)*3;
       const icon=loadedAvatarSprite('/assets/currencies/cosmic-energy.svg');
-      ctx.save();ctx.shadowColor='#62cfff';ctx.shadowBlur=quality.low?0:15;ctx.fillStyle='#8adfff35';
+      ctx.save();ctx.shadowColor='#62cfff';ctx.shadowBlur=quality.reducedEffects?0:15;ctx.fillStyle='#8adfff35';
       ctx.beginPath();ctx.ellipse(drop.x,drop.y+14,22,9,0,0,Math.PI*2);ctx.fill();
       if(icon)ctx.drawImage(icon,drop.x-18,drop.y-22+bob,36,36);
       ctx.shadowBlur=0;ctx.textAlign='center';ctx.font='14px "Jua","Malgun Gothic",sans-serif';ctx.fillStyle='#e7faff';ctx.strokeStyle='#294776';ctx.lineWidth=3;
@@ -1002,7 +1003,7 @@ export function createWorld(canvas) {
         ...map.objects.filter(o=>o.kind==='forgotten-constellation-statue').map(o=>({y:o.y+30,draw:()=>drawForgottenStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='star-record-statue').map(o=>({y:o.y+30,draw:()=>drawStarRecordStatue(ctx,o)})),
         ...map.objects.filter(o=>o.kind==='shelter-fountain').map(o=>({y:o.y,draw:()=>drawStreetFountain(ctx,t,reducedMotion.matches)})),
-        ...map.objects.filter(o=>myMapId===STREET_ID&&(o.kind?.endsWith('-station')||o.kind==='star-angel-statue')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
+        ...map.objects.filter(o=>map.theme==='starlight-street'&&(o.kind?.endsWith('-station')||o.kind==='star-angel-statue')&&streetPropVisible(o)).map(o=>({y:o.y+PAINTED_PROPS[o.kind].foot,draw:()=>{if(!drawCachedStreetProp(ctx,o,mapArt?.status==='ready'))drawPaintedProp(ctx,o);}})),
         ...map.objects.filter(o=>o.kind?.startsWith('cozy-')).map(o=>({y:o.y,draw:()=>drawCozyProp(ctx,o,t,reducedMotion.matches)}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }
@@ -1015,7 +1016,7 @@ export function createWorld(canvas) {
         const player=visiblePlayers.find(p=>p.id===result.playerId);if(!player)continue;
         const point=points.get(player.id)||player,x=point.x,y=point.y-avatarSizeOf(player)/2-34;
         ctx.save();ctx.fillStyle=roll.winnerId===player.id?'#fff0b8':'#f5edff';
-        ctx.strokeStyle='#694c91';ctx.lineWidth=3;ctx.shadowColor='#a388de';ctx.shadowBlur=quality.low?0:10;
+        ctx.strokeStyle='#694c91';ctx.lineWidth=3;ctx.shadowColor='#a388de';ctx.shadowBlur=quality.reducedEffects?0:10;
         ctx.beginPath();ctx.roundRect(x-21,y-15,42,28,9);ctx.fill();ctx.stroke();
         ctx.shadowBlur=0;ctx.fillStyle='#493a71';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.font='bold 16px "Jua","Malgun Gothic",sans-serif';ctx.fillText('⚄ '+result.value,x,y);ctx.restore();
@@ -1025,7 +1026,7 @@ export function createWorld(canvas) {
       if(!objectUpdateIds.has(myMapId+':'+o.id))continue;
       const visual=o.kind==='planet'?o.radius*2.1:o.kind==='pillar'?o.radius*4:o.radius*1.6;
       const size=Math.max(18,Math.min(34,o.radius*.32+9)),x=o.x+Math.min(visual*.55,110),y=o.y-visual;
-      ctx.save();ctx.shadowColor='#fff4a9';ctx.shadowBlur=quality.low?0:size*.65;
+      ctx.save();ctx.shadowColor='#fff4a9';ctx.shadowBlur=quality.reducedEffects?0:size*.65;
       ctx.fillStyle='#fff6c9';ctx.strokeStyle='#a77941';ctx.lineWidth=2.5;
       ctx.beginPath();ctx.arc(x,y,size*.55,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.shadowBlur=0;ctx.fillStyle='#7b4c82';ctx.font=`${Math.round(size*.8)}px "Jua","Malgun Gothic",sans-serif`;
@@ -1063,7 +1064,7 @@ export function createWorld(canvas) {
       if(drawCorvus(ctx,hit,progress,reducedMotion.matches))continue;
       if(effect){
         ctx.save();ctx.translate(hit.x+hit.dx*(hit.originOffset||0),hit.y+hit.dy*(hit.originOffset||0));ctx.rotate(Math.atan2(hit.dy,hit.dx));
-        drawSkillEffect(ctx,effect,progress,{reducedMotion:reducedMotion.matches,quality:quality.low||hits.length>18?'low':'full'});ctx.restore();continue;
+        drawSkillEffect(ctx,effect,progress,{reducedMotion:reducedMotion.matches,quality:hits.length>18?'low':quality.effectQuality});ctx.restore();continue;
       }
       const reach=hit.reach??ATTACK_VISUAL.reach;
       const hx=hit.x+hit.dx*reach,hy=hit.y+hit.dy*reach;

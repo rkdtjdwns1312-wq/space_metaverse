@@ -1,30 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HUNTING_STATIONS,HUNTING_STATION_MS,HUNTING_MAX_MS,isHuntingMap,huntingCycle,huntingResetAt} from '../shared/hunting-time.js';
-import {validateHuntingTime,huntingTimeView,settleHuntingTime,chargeHuntingStation,requireHuntingEntry} from '../server/hunting-time.js';
+import {HUNTING_STATIONS,HUNTING_STATION_LIMIT,HUNTING_PLAYGROUNDS,HUNTING_PLAYGROUND_MS,HUNTING_STATION_MS,HUNTING_MAX_MS,isHuntingMap,huntingCycle,huntingResetAt} from '../shared/hunting-time.js';
+import {validateHuntingTime,huntingTimeView,settleHuntingTime,chargeHuntingStation,chargeHuntingPlayground,completedHuntingPlayground,requireHuntingEntry} from '../server/hunting-time.js';
 import {awardLearningReward} from '../server/learning-rewards.js';
 const now=Date.parse('2026-10-29T03:00:00Z');
 const player=()=>({role:'student',avatar:{level:2},cosmicEnergy:0,mapId:'star-street',connected:true,away:false});
 test('hunting maps classified explicitly and legacy zero budget rejects all hunt entry but permits safe maps',()=>{
- const p=player();assert.deepEqual(validateHuntingTime(),{cycle:null,remainingMs:0,chargedStations:[]});
+ const p=player();assert.deepEqual(validateHuntingTime(),{cycle:null,remainingMs:0,chargedStations:[],chargedPlaygrounds:[]});
  for(const id of ['star-origin-1','star-origin-4','sleeping-stars-1','sleeping-stars-4','moon-garden','sun-paradise','sun-paradise-3','moon-paradise-2','star-paradise']){assert(isHuntingMap(id));assert.throws(()=>requireHuntingEntry(p,id,now));}
  for(const id of ['space-plaza','star-street','milky-valley','planet:one','black-hole','whale-stomach','star-origin-99']){assert(!isHuntingMap(id));assert.doesNotThrow(()=>requireHuntingEntry(p,id,now));}
  for(const raw of [null,{}, {cycle:1,remainingMs:-1,chargedStations:[]},{cycle:1,remainingMs:1,chargedStations:[]},{cycle:1,remainingMs:0,chargedStations:['math','math']},{cycle:1,remainingMs:0,chargedStations:['fake']}])assert.throws(()=>validateHuntingTime(raw));
 });
-test('any four distinct stations earn 20 minutes once per 22KST cycle; midnight does not reset',()=>{
+test('any three distinct stations earn 20 minutes once per 22KST cycle; midnight does not reset',()=>{
  assert.deepEqual(HUNTING_STATIONS,['math','english','culture','history','science','art']);
  assert.equal(HUNTING_STATION_MS,20*60000);assert.equal(HUNTING_MAX_MS,80*60000);
  const p=player();
- for(const station of ['art','science','culture','english']){
+ for(const station of ['art','science','culture']){
   assert.equal(chargeHuntingStation(p,station,now),HUNTING_STATION_MS);
   assert.equal(chargeHuntingStation(p,station,now),0);
  }
- assert.equal(p.huntingTime.remainingMs,HUNTING_MAX_MS);
+ assert.equal(p.huntingTime.remainingMs,3*HUNTING_STATION_MS);
  p.huntingTime.remainingMs=0;
  for(const station of HUNTING_STATIONS)assert.equal(chargeHuntingStation(p,station,now),0);
  assert.equal(p.huntingTime.remainingMs,0);
- p.huntingTime.remainingMs=HUNTING_MAX_MS;
- const boundary=Date.parse('2026-10-29T13:00:00Z');assert.equal(huntingResetAt(now),boundary);assert.equal(huntingTimeView(p,boundary-1).remainingMs,HUNTING_MAX_MS);assert.equal(huntingTimeView(p,boundary).remainingMs,0);
+ p.huntingTime.remainingMs=3*HUNTING_STATION_MS;
+ const boundary=Date.parse('2026-10-29T13:00:00Z');assert.equal(huntingResetAt(now),boundary);assert.equal(huntingTimeView(p,boundary-1).remainingMs,3*HUNTING_STATION_MS);assert.equal(huntingTimeView(p,boundary).remainingMs,0);
  settleHuntingTime(p,boundary);assert.deepEqual(p.huntingTime.chargedStations,[]);chargeHuntingStation(p,'math',boundary+1);assert.equal(chargeHuntingStation(p,'math',Date.parse('2026-10-29T15:00:00Z')),0);
 });
 test('countdown tracks connected active hunt time only; pause,resume,offline,restart and safe maps preserve balance',()=>{
@@ -54,25 +54,44 @@ test('old three to five stamps preserve exact balances, accept only available sl
  for(const count of [3,4,5])for(const minutes of [15,20]){
   const old={cycle:huntingCycle(now),remainingMs:count*minutes*60000-45000,chargedStations:HUNTING_STATIONS.slice(0,count)};
   const p={...player(),huntingTime:validateHuntingTime(structuredClone(old))};
-  assert.deepEqual(p.huntingTime,old);
-  const credit=count===3?HUNTING_STATION_MS:0;
+  assert.deepEqual(p.huntingTime,{...old,chargedPlaygrounds:[]});
+  const credit=0;
   assert.equal(chargeHuntingStation(p,'art',now),credit);
   assert.equal(p.huntingTime.remainingMs,old.remainingMs+credit);
   assert.deepEqual(validateHuntingTime(p.huntingTime),p.huntingTime);
   const next=huntingResetAt(now);
   assert.equal(huntingTimeView(p,next).remainingMs,0);
   for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,next+1);
-  assert.equal(p.huntingTime.remainingMs,HUNTING_MAX_MS);
+  assert.equal(p.huntingTime.remainingMs,3*HUNTING_STATION_MS);
  }
  for(const [remainingMs,chargedStations]of [[100*60000+1,HUNTING_STATIONS.slice(0,5)],[0,HUNTING_STATIONS.slice(1)],[0,HUNTING_STATIONS],[20*60000+1,['math']]])assert.throws(()=>validateHuntingTime({cycle:huntingCycle(now),remainingMs,chargedStations}));
 });
-test('uninitialized records with five proven completions migrate to four stamps once',()=>{
+test('uninitialized records with five proven completions migrate to three stamps once',()=>{
  const p=player(),day='2026-10-29';
  p.learningRewards={math:day,english:day};
  for(const subject of ['culture','history','science'])p[subject+'Reading']={day,claimedIds:['completed']};
  settleHuntingTime(p,now);
- assert.deepEqual(p.huntingTime.chargedStations,['math','english','culture','history']);
- assert.equal(p.huntingTime.remainingMs,HUNTING_MAX_MS);
+ assert.deepEqual(p.huntingTime.chargedStations,['math','english','culture']);
+ assert.equal(p.huntingTime.remainingMs,3*HUNTING_STATION_MS);
  assert.equal(chargeHuntingStation(p,'art',now),0);
  settleHuntingTime(p,huntingResetAt(now));assert.deepEqual(p.huntingTime.chargedStations,[]);
+});
+
+
+test('playgrounds have an independent two-place limit, once each, persist and reset with stations',()=>{
+ const p=player();for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,now);
+ assert.equal(p.huntingTime.remainingMs,60*60000);
+ for(const game of ['dodge','sudoku']){assert.equal(chargeHuntingPlayground(p,game,now),10*60000);assert.equal(chargeHuntingPlayground(p,game,now),0);}
+ assert.equal(p.huntingTime.remainingMs,HUNTING_MAX_MS);
+ for(const game of HUNTING_PLAYGROUNDS)assert.equal(chargeHuntingPlayground(p,game,now),0);
+ assert.equal(p.huntingTime.remainingMs,HUNTING_MAX_MS);
+ const restored={...player(),huntingTime:validateHuntingTime(JSON.parse(JSON.stringify(p.huntingTime)))};
+ assert.deepEqual(restored.huntingTime,p.huntingTime);assert.equal(chargeHuntingPlayground(restored,'tetris',now),0);
+ settleHuntingTime(restored,huntingResetAt(now));assert.deepEqual(restored.huntingTime.chargedPlaygrounds,[]);assert.equal(restored.huntingTime.remainingMs,0);
+ assert.equal(chargeHuntingPlayground(restored,'tetris',huntingResetAt(now)),HUNTING_PLAYGROUND_MS);
+ for(const games of [['fake'],['dodge','dodge'],['dodge','tetris','sudoku']])assert.throws(()=>validateHuntingTime({cycle:huntingCycle(now),remainingMs:0,chargedStations:[],chargedPlaygrounds:games}));
+ for(const role of [{role:'teacher'},{role:'student',accountKind:'master'}])assert.equal(chargeHuntingPlayground({...player(),...role},'dodge',now),0);
+});
+test('only validated completed solo rounds are eligible for hunting playground credit',()=>{
+ for(const [event,result,expected]of [['arcade:open',{},null],['memory:flip',{won:false},null],['memory:flip',{won:true},'memory'],['baseball:submit',{won:true},'baseball'],['signal:choose',{stageCleared:1},'signal'],['sudoku:complete',{},'sudoku'],['one-stroke:complete',{},'path'],['tetris:finish',{},'tetris']])assert.equal(completedHuntingPlayground(event,result),expected);
 });
