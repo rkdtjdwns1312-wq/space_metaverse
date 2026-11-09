@@ -923,7 +923,9 @@ function updateChatUI(me,isTeacher){
   const nameChallenge=forgottenNamesPrompt&&performance.now()<forgottenNamesDeadline&&me?.mapId==='sleeping-stars-3'&&social.scope().channel==='map';
   $('chat-teacher-controls').hidden=!isTeacher;
   $('chat-toggle').textContent=enabled?'채팅 끄기':'채팅 켜기';
-  if(isTeacher){
+  if(social.scope().channel==='system'){
+    $('chat-input').disabled=true;$('chat-status').textContent='안내 보기';
+  }else if(isTeacher){
     $('chat-input').disabled=false;$('chat-input').placeholder='친구들에게 말해요 (Enter)';$('chat-status').textContent=enabled?'켜짐':'꺼짐 · 선생님만 말할 수 있어요';
   }else if(starRecordPlanetPrompt){
     $('chat-input').disabled=false;$('chat-input').placeholder=`별 기록 답: ${starRecordPlanetPrompt}`;$('chat-status').textContent='보스 문제 답하기';
@@ -1724,7 +1726,7 @@ function updateChatCount(){
 $('chat-input').addEventListener('input',e=>{if($('chat-input').value&&forgottenNamesPrompt&&social.scope().channel==='map')forgottenNameDraftCastId=forgottenNamesCastId;else if(!$('chat-input').value)forgottenNameDraftCastId=null;if(!e.isComposing)updateChatCount();});
 $('chat-input').addEventListener('compositionend',updateChatCount);
 $('chat-form').onsubmit=async e=>{
-  e.preventDefault();const text=$('chat-input').value.trim();if(!text||chatBusy)return;
+  e.preventDefault();const text=$('chat-input').value.trim();if(!text||chatBusy||social.scope().channel==='system')return;
   if(Array.from(text).length>CHAT.maxLength){$('chat-feedback').textContent='채팅은 1~100자로 입력해주세요.';return;}
   $('chat-feedback').textContent='';
   chatBusy=true;$('chat-send').disabled=true;

@@ -37,7 +37,10 @@ async function rejoinStudentAfterReload(page,code){
  catch(error){throw new Error('새로고침 후 학생 재입장 실패: '+await page.locator('#form-message').textContent(),{cause:error});}
  await dismissTutorial(page);
 }
-const newContext=async options=>{const context=await browser.newContext(options);context.setDefaultTimeout(10000);return context;};
+const newContext=async options=>{const context=await browser.newContext(options);context.setDefaultTimeout(10000);
+ // This suite asserts decorative canvas changes; automatic quality may omit
+ // them on a busy test PC. Low-quality rendering has its own targeted checks.
+ await context.addInitScript(()=>localStorage.setItem('woozooclass-render-quality-v1','normal'));return context;};
 mkdirSync('.local',{recursive:true});
 // Polls the chat input's live state instead of a fixed sleep, since room:state
 // broadcasts asynchronously after a teacher action's ack resolves.
@@ -274,7 +277,9 @@ try{
  await muteButton.click();
  await waitForChatInput(student,{disabled:true,placeholder:'선생님이 내 채팅을 잠시 멈췄어요'});
  await openChatFromDock(teacher);
+ await teacher.locator('[data-chat-tab="system"]').click();
  await teacher.locator('#chat-log li').filter({hasText:'1 친구의 채팅이 잠시 멈췄어요.'}).waitFor({state:'attached'});
+ await teacher.locator('[data-chat-tab="map"]').click();
  await closeOpenDialogs(teacher);await teacher.locator('#dock-chat').click();await teacher.locator('#social-dialog').waitFor({state:'visible'});await openSocialFromDock(teacher);await teacher.locator('#crew-button').click();await teacher.locator('#crew-dialog').waitFor({state:'visible'});
  await muteButton.filter({hasText:'허용'}).waitFor({state:'attached'});
  await muteButton.click();
@@ -354,6 +359,7 @@ try{
  const cafeteria=[...room.planets.values()][0],cafeteriaId=cafeteria.id;
  assert.equal(cafeteria.name,'급식행성');
  check('Teacher approves the proposal; the room gains exactly one planet named 급식행성');
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'첫 멤버'}).waitFor({state:'attached'});
  check('Student chat log shows the approval announcement mentioning the first member');
  await teacher.locator('#proposals-empty').waitFor({state:'visible'});
@@ -419,6 +425,7 @@ try{
  await teacher.waitForFunction(()=>document.querySelectorAll('#planet-rules-list li').length===2,{timeout:5000});
  assert.equal(await teacher.locator('#planet-rules-list li').count(),2);
  check('Outside rules are read-only; a member edits two lines at the interior rules board');
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'규칙을 바꿨어요'}).waitFor({state:'attached'});
  check('Students are notified in chat that the planet rules changed');
  await teacher.locator('#planet-close').click();
@@ -435,6 +442,7 @@ try{
  await student.locator('#planet-rename-propose').click();
  await student.locator('#planet-title').filter({hasText:'급식별'}).waitFor({state:'attached'});
  check('A sole member\'s rename proposal passes immediately');
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'"급식행성" 행성의 이름이 "급식별"로 바뀌었어요!'}).waitFor({state:'attached'});
  check('Chat log announces the automatic single-member rename');
  await student.locator('#planet-close').click();
@@ -480,7 +488,9 @@ try{
  await clickMenuAction(student,'planet-info');
  await student.locator('#planet-dialog').waitFor({state:'visible'});
  await student.locator('#planet-vote-no').click();
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'"급식나라" 이름 바꾸기가 부결되었어요.'}).waitFor({state:'attached'});
+ await student2.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student2.locator('#chat-log li').filter({hasText:'"급식나라" 이름 바꾸기가 부결되었어요.'}).waitFor({state:'attached'});
  check('A member voting no defeats the 2-member rename proposal; both members see the rejection announcement');
  await student2.locator('#planet-rename-input').fill('급식나라');
@@ -488,6 +498,7 @@ try{
  await student2.locator('#planet-rename-status').filter({hasText:'찬성 1'}).waitFor({state:'attached'});
  await student.locator('#planet-vote-yes').click();
  await student.locator('#planet-title').filter({hasText:'급식나라'}).waitFor({state:'attached'});
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'"급식별" 행성의 이름이 "급식나라"로 바뀌었어요!'}).waitFor({state:'attached'});
  check('Unanimous agreement passes the rename; both members\' dialogs and chat logs reflect the new name');
  await student.locator('#planet-close').click();await student.locator('#planet-dialog').waitFor({state:'hidden'});
@@ -533,6 +544,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#shards-feedback').filter({hasText:'지급되었습니다'}).waitFor({state:'visible'});
  await student.locator('#self-shards').filter({hasText:'20'}).waitFor({state:'attached'});
  // 별 파편 지급은 공개 채팅이 아니라 받는 학생에게만 가는 개인 안내(whisper, li.private)입니다(server/app.js shards:give).
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li.private').filter({hasText:'선생님이 나에게 별 파편 20개를 주었어요.'}).waitFor({state:'attached'});
  await student.locator('#chat-log li.private .private-badge').filter({hasText:'나에게만'}).first().waitFor({state:'attached'});
  check('Teacher gives 20 star shards to student 1 by id; the student (not the public chat) gets a private "나에게만" whisper naming the amount');
@@ -541,6 +553,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#shards-give').click();
  await teacher.locator('#shards-feedback').filter({hasText:'지급되었습니다'}).waitFor({state:'visible'});
  await student.locator('#self-shards').filter({hasText:'25'}).waitFor({state:'attached'});
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li.private').filter({hasText:'선생님이 나에게 별 파편 5개를 주었어요.'}).waitFor({state:'attached'});
  check('Teacher gives 5 star shards to everyone; student 1 now has 25 and receives the same private whisper wording, not a public announcement');
  await teacher.locator('#shards-amount').fill('0');
@@ -705,6 +718,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#proposals-empty').waitFor({state:'visible'});
  await teacher.locator('#teacher-close').click();
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
+ await student2.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student2.locator('#chat-log li').filter({hasText:'돌려보냈어요'}).waitFor({state:'attached'});
  check('Teacher rejects a second student\'s new proposal; the panel hides and the student is notified');
 
@@ -718,6 +732,7 @@ await expandTeacherSection(teacher,'자원 지급');
  assert.equal(room.planets.size,0);
  await student.locator('#self-department').filter({hasText:'아직 소속 행성이 없어요'}).waitFor({state:'attached'});
  await student2.locator('#self-department').filter({hasText:'아직 소속 행성이 없어요'}).waitFor({state:'attached'});
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'없앴어요'}).waitFor({state:'attached'});
  check('Teacher removes the planet; both students lose membership and see the removal announcement');
 
@@ -830,10 +845,11 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#use-confirm').click();
  await student.locator('#use-dialog').waitFor({state:'hidden'});
  await student.locator('#self-effects li').filter({hasText:'반짝반짝'}).waitFor({state:'attached'});
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'1 친구가 반짝 별 스티커를 썼어요.'}).waitFor({state:'attached'});
  await student.waitForTimeout(150);
  const studentCanvasAfterUse=await student.locator('#world').evaluate(c=>c.toDataURL());
- assert.notEqual(studentCanvasBeforeUse,studentCanvasAfterUse);
+ assert.ok(studentCanvasBeforeUse!==studentCanvasAfterUse,'sticker sparkle changes the normal-quality canvas');
  await clickMenuAction(teacher,'teacher-tools');
  await teacher.locator('#teacher-dialog').waitFor({state:'visible'});
  await teacher.locator('#item-log li').filter({hasText:'반짝 별 스티커'}).waitFor({state:'attached'});
@@ -853,8 +869,11 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#use-target').selectOption({value:p2.id});
  await student.locator('#use-confirm').click();
  await student.locator('#use-dialog').waitFor({state:'hidden'});
+ await student2.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student2.locator('#chat-log li').filter({hasText:'누군가 2 친구에게 우주 간식을 썼어요.'}).waitFor({state:'attached'});
+ await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'누군가 2 친구에게 우주 간식을 썼어요.'}).waitFor({state:'attached'});
+ await teacher.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await teacher.locator('#chat-log li.private').filter({hasText:'(선생님만) 1 친구가 2 친구에게 우주 간식을 썼어요.'}).waitFor({state:'attached'});
  await student2.locator('#self-effects li').filter({hasText:'냠냠 행복'}).waitFor({state:'attached'});
  check('Student 1 uses a previously owned secret space snack on student 2: the public chat only says "누군가" (not naming student 1), the teacher alone gets a private whisper naming student 1, and student 2\'s passport shows the effect');

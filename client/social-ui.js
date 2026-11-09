@@ -33,7 +33,7 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   $('chat-window-toggle').onclick=()=>{$('chat-dialog').open?$('chat-dialog').close():openChat();};
   function render(){
     const channel=$('chat-channel').value,target=$('chat-recipient').value;
-    const visible=messages.filter(msg=>msg.role==='system'||channel==='map'||msg.channel===channel);
+    const visible=messages.filter(msg=>channel==='system'?msg.role==='system':msg.role!=='system'&&(channel==='map'||msg.channel===channel));
     const signature=channel+'|'+target+'|'+visible.map(m=>m.id).join(',');
     if(signature===renderedIds)return;
     const scroll=chatWindow.capture();clearMessages();for(const msg of visible)renderMessage(msg);
@@ -46,14 +46,17 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   }
   function routing(){
     const channel=$('chat-channel').value,room=getRoom();
+    const notices=channel==='system';
+    for(const id of ['chat-form','chat-count','chat-rate-hint','chat-feedback'])$(id).hidden=notices;
+    $('chat-empty').textContent=notices?'아직 안내가 없어요.':'아직 대화가 없어요. 인사해볼까요?';
     $('chat-recipient').hidden=channel!=='direct';
     for(const tab of document.querySelectorAll('[data-chat-tab]'))tab.setAttribute('aria-pressed',String(tab.dataset.chatTab===channel));
     const department=room?.planets.find(p=>p.id===me()?.departmentId);
-    $('chat-context').textContent=channel==='map'?'전체·행성·귓속말을 함께 봐요. 보내는 글은 같은 맵의 친구에게 전달돼요.':channel==='department'?(department?department.name+' 소속 친구끼리 다른 맵에서도 대화해요.':'부서행성에 가입하면 사용할 수 있어요.'):'귓속말은 나와 상대만 볼 수 있어요. 아래에서 보낼 친구를 골라요.';
+    $('chat-context').textContent=notices?'게임 안내를 모아서 볼 수 있어요.':channel==='map'?'전체·행성·귓속말을 함께 봐요. 안내는 안내 탭에서 확인해요. 보내는 글은 같은 맵의 친구에게 전달돼요.':channel==='department'?(department?department.name+' 소속 친구끼리 다른 맵에서도 대화해요.':'부서행성에 가입하면 사용할 수 있어요.'):'귓속말은 나와 상대만 볼 수 있어요. 아래에서 보낼 친구를 골라요.';
     render();
   }
   function openChat(targetId){
-    if(targetId){$('chat-channel').value='direct';$('chat-recipient').value=targetId;}
+    if(targetId){$('chat-channel').value='direct';$('chat-recipient').value=targetId;$('chat-channel').dispatchEvent(new Event('change'));}
     routing();closeRoots();chatWindow.open();unread=0;syncUnread();$('chat-input').focus();refresh();
   }
   $('chat-channel').onchange=routing;$('chat-recipient').onchange=routing;

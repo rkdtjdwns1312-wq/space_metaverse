@@ -88,7 +88,9 @@ export async function verifyPersistence(browser){
     const returned=game.store.rooms.get(code).players.get(id);
     assert.deepEqual({mapId:returned.mapId,x:returned.x,y:returned.y},exitLocation);
     assert.ok(game.store.rooms.get(code).chat.history.some(m=>m.text==='다음 수업에도 만나요'&&m.mapId===STREET_ID));
+    await nextStudent.locator('[data-chat-tab=system]').evaluate(button=>button.click());
     await nextStudent.locator('#chat-log li.private').filter({hasText:'40개'}).waitFor({state:'attached'});
+    await nextStudent.locator('[data-chat-tab=map]').evaluate(button=>button.click());
     assert.equal([...game.store.rooms.get(code).players.values()].find(p=>p.nickname==='1').id,id);
     // Re-entry now restores the shop map. Move to the plaza for the separate planet UI check.
     Object.assign(returned,{mapId:'space-plaza',...MAP.spawn});
