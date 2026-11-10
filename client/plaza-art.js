@@ -1,7 +1,7 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {visualFloor,visualFloorPath} from './visual-floor.js';
 import {PLAZA_LAYOUT as L,plazaLayoutOf,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
-import {drawStoneRim} from './stone-rim.js';
+import {drawStoneRim,openMapRimEdges} from './stone-rim.js';
 import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 // 원화는 로드 후 재사용합니다. 3720px 전체 배경 캔버스를 만들지 않고 화면에 보이는
 // 768px 조각만 캐시하여 크롬북에서도 거대한 이미지 버퍼를 매번 다시 만들지 않습니다.
@@ -19,10 +19,10 @@ function geometry(map){if(geometries.has(map.id))return geometries.get(map.id);c
 const visual=visualFloor(L.polygons,L.edges,L,[]);
 const floorPath=visualFloorPath(visual.polygons);
 const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
-const result={L,visual,floorPath,edgePath};geometries.set(map.id,result);return result;}
+const result={L,visual,floorPath,edgePath,rimEdges:openMapRimEdges(visual.edges,L.viewBounds)};geometries.set(map.id,result);return result;}
 function ground(ctx,map){
-  const {L,visual,floorPath}=geometry(map);
-  drawRockSupports(ctx,visual.edges,'plaza',L.height);
+  const {L,visual,floorPath,rimEdges}=geometry(map);
+  drawRockSupports(ctx,rimEdges,'plaza',L.height);
   drawFloatingIslands(ctx,[L.center,...L.islands].filter(Boolean),'plaza',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
@@ -32,7 +32,7 @@ function ground(ctx,map){
   if(map.id==='department-plaza')ctx.fillText('부서행성 광장',DEPARTMENT_ZONE.x,DEPARTMENT_ZONE.y-DEPARTMENT_ZONE.ry+84);
   // 원형 장식선 대신 단정한 사각 신전 원화 바닥을 놓습니다.
   const c=L.center;if(c&&ready(images.temple))ctx.drawImage(images.temple,c.x-360,c.y-250,720,480);
-  ctx.restore();drawStoneRim(ctx,visual.edges);
+  ctx.restore();drawStoneRim(ctx,rimEdges);
 }
 function tile(tx,ty,map){const key=map.id+':'+tx+':'+ty;let canvas=tiles.get(key);if(canvas){tiles.delete(key);tiles.set(key,canvas);return canvas;}
   canvas=document.createElement('canvas');canvas.width=SIZE+4;canvas.height=SIZE+4;const c=canvas.getContext('2d');c.translate(-tx*SIZE+2,-ty*SIZE+2);ground(c,map);tiles.set(key,canvas);

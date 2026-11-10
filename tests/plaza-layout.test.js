@@ -9,6 +9,9 @@ test('중앙 광장과 짧아진 네 방향 출입구가 연결된다',()=>{
   assert.equal(MAP.width,2760);assert.equal(MAP.height,1970);
   for(const to of Object.values(L.gates))for(let t=0;t<=1;t+=.01)
     assert.ok(onPlazaFloor(MAP,L.center.x+(to.x-L.center.x)*t,L.center.y+(to.y-L.center.y)*t,RULES.radius),JSON.stringify({to,t}));
+  const b=MAP.viewBounds,margin=RULES.radius+L.wall/2+1;
+  for(const [x,y] of [[b.x+margin,1320],[b.x+b.width-margin,1320],[1800,b.y+margin],[1800,b.y+b.height-margin]])
+    assert.ok(onPlazaFloor(MAP,x,y,RULES.radius),'네 방향 다리는 표시 영역 끝까지 걸을 수 있어야 한다');
   assert.ok(L.islands.find(i=>i.id==='assignment').x<L.center.x);
   for(const source of Object.values(STATIC_MAPS))for(const g of source.objects||[])if(g.target===PLAZA_ID)assert.ok(isFree(room(),g.arrival.x,g.arrival.y,null,PLAZA_ID,false),source.id);
 });

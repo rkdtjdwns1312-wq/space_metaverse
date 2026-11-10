@@ -54,7 +54,8 @@ export const PLANET_COLORS = Object.freeze(['#98dfd2', '#f5bace', '#b5c6f6', '#f
 export const STAR_ORIGIN = Object.freeze({baseWidth:1440,baseHeight:1080,scale:1.2,maxStage:4});
 const LEGACY_PLAZA = Object.freeze({ id: 'space-plaza', name: '별의 기원', width: PLAZA_LAYOUT.width, height: PLAZA_LAYOUT.height, spawn:plazaPoint({x:3000,y:2340}),templeCenter:PLAZA_LAYOUT.center,
   objects: [
-    {id:'life-star',name:'생명의별',x:1800,y:1310,radius:26,kind:'life-star',color:'#ffffff',passable:true},
+    // 신전 원화의 계단 위 평평한 단상(원본 y=220~700)의 중심입니다.
+    {id:'life-star',name:'생명의별',x:1800,y:1285,radius:26,kind:'life-star',color:'#ffffff',passable:true},
     {id:'exploration-flask',name:'우주 탐사 장치',x:2280,y:1320,radius:56,kind:'exploration',color:'#dbb5ff',interactionBox:{left:-36,right:36,top:-160,bottom:20}},
     {id:'starlight-archive',name:'별빛 기록소',x:1320,y:1320,radius:56,kind:'starlight-archive',color:'#d7c6ee',passable:true,interactionBox:{left:-90,right:90,top:-170,bottom:30}},
     {id:'pillar-notice',name:'오늘의 알림장',x:1540,y:1180,radius:30,kind:'pillar',service:'notice',color:'#f4d9ea'},
@@ -74,10 +75,10 @@ const LEGACY_PLAZA = Object.freeze({ id: 'space-plaza', name: '별의 기원', w
     MARKET
   ] });
 export {ASSIGNMENT_ID,MARKET_ID,DEPARTMENT_ID};
-const routeGate=(route,back=false)=>({id:back?'gate-plaza':'gate-'+route.id,name:(back?'별의 기원':route.name)+' 가는 길',...(back?route.returnGate:{x:route.x,y:route.y}),radius:38,kind:'gate',target:back?'space-plaza':route.target,arrival:back?route.back:route.arrival,passable:true,hideLabel:true});
+const routeGate=(route,back=false)=>({id:back?'gate-plaza':'gate-'+route.id,name:back?'별의 기원':route.name,...(back?route.returnGate:{x:route.x,y:route.y}),radius:38,kind:'gate',target:back?'space-plaza':route.target,arrival:back?route.back:route.arrival,passable:true});
 export const MAP=Object.freeze({...LEGACY_PLAZA,theme:'plaza',viewBounds:plazaLayoutOf('space-plaza').viewBounds,objects:[
- ...LEGACY_PLAZA.objects.filter(o=>!['andromeda','mission-board','market','black-hole'].includes(o.kind)).map(o=>o.kind==='gate'?{...o,...PLAZA_LAYOUT.gates[{'gate-street':'east','gate-garden':'west','gate-valley':'south','gate-origin':'north'}[o.id]],hideLabel:true}:o),
- ...PLAZA_ROUTES.map(route=>route.id==='black-hole'?{...LEGACY_PLAZA.objects.find(o=>o.kind==='black-hole'),x:route.x,y:route.y,hideLabel:true}:routeGate(route))
+ ...LEGACY_PLAZA.objects.filter(o=>!['andromeda','mission-board','market','black-hole'].includes(o.kind)).map(o=>o.kind==='gate'?{...o,...PLAZA_LAYOUT.gates[{'gate-street':'east','gate-garden':'west','gate-valley':'south','gate-origin':'north'}[o.id]],destinationLabel:({'gate-street':'오색 쉼터','gate-garden':'낙원의 갈림길','gate-valley':'은하수 계곡','gate-origin':'별의 시작점 1'})[o.id]}:o),
+ ...PLAZA_ROUTES.map(route=>route.id==='black-hole'?{...LEGACY_PLAZA.objects.find(o=>o.kind==='black-hole'),x:route.x,y:route.y,radius:86.4,visualScale:.6,labelAbove:true}:routeGate(route))
 ]});
 export const PLAZA_ID=MAP.id;
 export const PLAZA_SUBMAPS=Object.freeze(PLAZA_ROUTES.filter(r=>r.returnGate).map(route=>{
@@ -177,7 +178,7 @@ export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',wi
 export const VALLEY_ID=VALLEY.id;
 export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
   {id:'black-hole-star',name:'검은별',x:600,y:250,radius:80,kind:'black-star',passable:true},
-  {id:'black-hole-exit',hideLabel:true,name:'별의 기원 가는 길',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:2170,y:1090},passable:true}
+  {id:'black-hole-exit',name:'별의 기원',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:2170,y:1090},passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 고래자리 배 속은 초대받은 학생에게만 열리는 공간이며 우주 지도에는 표시하지 않습니다.

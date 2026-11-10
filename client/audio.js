@@ -32,6 +32,16 @@ const FILE_BGM = Object.freeze({
   'planet:':'/assets/audio/planet-interior-waddle.mp3'
 });
 const bgmUrlFor=id=>FILE_BGM[id]||(id.startsWith('planet:')?FILE_BGM['planet:']:undefined);
+// One entry per recording; the login violin is a layer, not a separate song.
+export const MUSIC_TRACKS=Object.freeze([
+  ['lobby','접속 화면'],['space-plaza','별의 기원 · 과제별 서고 · 별 시장 · 부서 행성 광장'],
+  ['star-street','오색별빛 쉼터 · 별 발전소 · 별 놀이터'],['milky-valley','은하수계곡'],
+  ['moon-garden','낙원의 갈림길'],['moon-paradise-1','달의 낙원'],['moon-paradise-3','달의 낙원 3 · 보스'],
+  ['sun-paradise','태양의 낙원'],['sun-paradise-3','태양의 낙원 3 · 보스'],['star-paradise','별들의 낙원'],
+  ['star-origin-1','별의 시작점'],['serena-dormant','별의 시작점 4 · 세레나의 석상'],
+  ['serena-battle','세레나 · 전투'],['sleeping-stars-1','별들이 잠드는 곳'],['planet:','행성 내부'],
+  ['black-hole','블랙홀 내부'],['whale-stomach','고래자리의 배 속']
+].map(([id,name])=>Object.freeze({id,name,source:bgmUrlFor(id)||`synth:${id}`})));
 const MAP_THEMES = {
   plaza: { notes: [60, 64, 67, 71, 67, 64, 62, 65, 69, 72, 69, 65], bass: [36, 43, 40, 35] },
   street: { notes: [62, 65, 69, 74, 72, 69, 65, 67, 71, 74, 71, 67], bass: [38, 45, 41, 36] },
@@ -65,10 +75,11 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   } catch { settings = { muted: false, volume: 0.35 }; }
   const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
   let context = null, master = null, timer = null, theme = MAP_THEMES.default, step = 0, currentMap='';
-  const fileMedia=new Map();
+  const fileMedia=new Map(),bgmVoices=new Set();
   const sourceMap=id=>id==='serena-battle'?FILE_BGM['serena-battle']:id==='serena-dormant'?FILE_BGM['serena-dormant']:bgmUrlFor(id);
   let lobbySyncAttached=false;
   let started = false;
+  let mapBgm='',listening=false,repeatMusic=true,playRevision=0,onMusicEnded=null;
 
   function ensureFileMedia(id) {
     const url=sourceMap(id);
@@ -77,6 +88,9 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
       const media=mediaFactory?mediaFactory(id,url):typeof globalThis.Audio==='function'?new globalThis.Audio(url):null;
       if(!media)return null;
       media.loop=true;media.preload='auto';media.volume=settings.volume;media.muted=settings.muted;
+      media.addEventListener?.('ended',()=>{
+        if(listening&&!repeatMusic&&sourceMap(currentMap)===url){haltBgm();onMusicEnded?.();}
+      });
       fileMedia.set(url,media);return media;
     } catch { return null; }
   }
@@ -108,45 +122,51 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
   function persist() {
     try { storage?.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* Private browsing may deny storage. */ }
   }
-  function tone(midi, duration = 0.28, { wave = 'sine', gain = 0.12, delay = 0, detune = 0, attack = 0.025 } = {}) {
+  function tone(midi, duration = 0.28, { wave = 'sine', gain = 0.12, delay = 0, detune = 0, attack = 0.025, bgm = false } = {}) {
     const ctx = ensureContext(); if (!ctx || !master) return;
     const at = ctx.currentTime + delay, osc = ctx.createOscillator(), amp = ctx.createGain();
     osc.type = wave; osc.frequency.setValueAtTime(440 * 2 ** ((midi - 69) / 12), at); osc.detune.value = detune;
     amp.gain.setValueAtTime(0.0001, at); amp.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), at + attack);
     amp.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+    if(bgm){bgmVoices.add(osc);osc.onended=()=>bgmVoices.delete(osc);}
     osc.connect(amp); amp.connect(master); osc.start(at); osc.stop(at + duration + 0.03);
   }
+  function bgmTone(midi,duration,options){tone(midi,duration,{...options,bgm:true});}
+  function stopSynthVoices(){for(const osc of bgmVoices){try{osc.stop();}catch{}}bgmVoices.clear();}
   function scheduleStep() {
     if (!started || !context || context.state !== 'running') return;
+    if(listening&&!repeatMusic&&step>=theme.notes.length){haltBgm();onMusicEnded?.();return;}
     const i = step++ % theme.notes.length;
     if(theme.plaza){
       const note=theme.notes[i],chord=theme.chords[Math.floor(i/10)],beat=i%10;
       // 부드러운 피아노·목관 선율, 하프의 분산화음, 현악의 긴 숨결과 낮은 현.
       if(beat===0){
-        tone(chord[0]-12,3.8,{wave:'sine',gain:.025,attack:.12});
-        for(const pitch of chord.slice(1))tone(pitch+12,4.6,{wave:'triangle',gain:.007,attack:.9});
+        bgmTone(chord[0]-12,3.8,{wave:'sine',gain:.025,attack:.12});
+        for(const pitch of chord.slice(1))bgmTone(pitch+12,4.6,{wave:'triangle',gain:.007,attack:.9});
       }
-      if(beat%2===0)tone(chord[(beat/2)%4]+12,.9,{wave:'triangle',gain:.012,attack:.025});
+      if(beat%2===0)bgmTone(chord[(beat/2)%4]+12,.9,{wave:'triangle',gain:.012,attack:.025});
       if(note!==null){
-        tone(note,beat>=7?1.15:.82,{wave:'sine',gain:.031,attack:.018});
-        if(beat===2||beat===6)tone(note+12,.72,{wave:'triangle',gain:.009,attack:.06});
+        bgmTone(note,beat>=7?1.15:.82,{wave:'sine',gain:.031,attack:.018});
+        if(beat===2||beat===6)bgmTone(note+12,.72,{wave:'triangle',gain:.009,attack:.06});
       }
-      if(beat===4)tone(chord[2]+24,1.5,{wave:'sine',gain:.006,attack:.12});
+      if(beat===4)bgmTone(chord[2]+24,1.5,{wave:'sine',gain:.006,attack:.12});
       return;
     }
-    tone(theme.notes[i], 0.42, { wave: 'triangle', gain: 0.045 });
-    tone(theme.notes[i]+12, 0.19, { wave: 'sine', gain: 0.025, delay: .004 });
-    if (i % 3 === 0) tone(theme.notes[i] - 12, 0.62, { wave: 'triangle', gain: 0.03, delay: 0.015 });
-    if (i % 4 === 0) tone(theme.bass[(i / 3 | 0) % theme.bass.length], 0.78, { wave: 'sine', gain: 0.055 });
+    bgmTone(theme.notes[i], 0.42, { wave: 'triangle', gain: 0.045 });
+    bgmTone(theme.notes[i]+12, 0.19, { wave: 'sine', gain: 0.025, delay: .004 });
+    if (i % 3 === 0) bgmTone(theme.notes[i] - 12, 0.62, { wave: 'triangle', gain: 0.03, delay: 0.015 });
+    if (i % 4 === 0) bgmTone(theme.bass[(i / 3 | 0) % theme.bass.length], 0.78, { wave: 'sine', gain: 0.055 });
   }
   async function resume() {
     const ctx = ensureContext(); if (!ctx) return false;
     try { if (ctx.state !== 'running') await ctx.resume(); return ctx.state === 'running'; } catch { return false; }
   }
-  async function playBgm(mapId = 'default') {
+  async function playTrack(mapId = 'default') {
     const id = String(mapId || 'default').toLowerCase();
+    const revision=++playRevision;
     const url=sourceMap(id);
     if(currentMap!==id){
+      stopSynthVoices();
       pauseFileMedia(id==='lobby'?[url,FILE_BGM['lobby-violin']]:url?[url]:[]);
       currentMap=id;step=0;
       if(timer!==null){clearInterval(timer);timer=null;}
@@ -155,11 +175,14 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
       started=true;
       const media=ensureFileMedia(id);
       if(!media)return false;
+      media.loop=listening?repeatMusic:true;
       try {
         if(media.paused)await media.play();
+        if(revision!==playRevision){if(sourceMap(currentMap)!==url||!started)media.pause();return false;}
         if(id==='lobby'&&!media.paused){
           const violin=ensureFileMedia('lobby-violin');
           if(violin){
+            violin.loop=listening?repeatMusic:true;
             if(violin.paused){
               try { violin.currentTime=media.currentTime; } catch { /* 아직 파일을 읽는 중일 수 있습니다. */ }
             }else syncLobbyViolin(media,violin);
@@ -175,6 +198,7 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
               lobbySyncAttached=true;
             }
             try {if(violin.paused)await violin.play();} catch { /* 원곡은 계속 재생합니다. */ }
+            if(revision!==playRevision){if(currentMap!=='lobby'||!started)violin.pause();return false;}
           }
         }
         return !media.paused;
@@ -188,10 +212,28 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
       theme=base.plaza?base:{notes:base.notes.map((_,i)=>base.notes[(i+rotate)%base.notes.length]+octave*2),bass:base.bass};
       started=true;timer=setInterval(scheduleStep,base.plaza?500:520);
     }
-    await resume(); if(step===0)scheduleStep();
+    await resume(); if(revision!==playRevision)return false;if(step===0)scheduleStep();
     return true;
   }
-  function stopBgm() { started = false; if (timer !== null) clearInterval(timer); timer = null; pauseFileMedia(); }
+  function haltBgm() { stopSynthVoices();++playRevision;started = false; if (timer !== null) clearInterval(timer); timer = null; pauseFileMedia();currentMap=''; }
+  function stopBgm() { listening=false;onMusicEnded=null;haltBgm(); }
+  function playBgm(mapId='default') {
+    const id=String(mapId||'default').toLowerCase(),changed=mapBgm!==id;mapBgm=id;
+    if(listening&&!changed)return Promise.resolve(true);
+    if(listening){listening=false;onMusicEnded=null;haltBgm();}
+    return playTrack(id);
+  }
+  function beginMusic({onEnded}={}) {haltBgm();listening=true;onMusicEnded=onEnded||null;}
+  function playMusic(id,{repeat=true}={}) {
+    if(!listening||!MUSIC_TRACKS.some(track=>track.id===id))return Promise.resolve(false);
+    haltBgm();repeatMusic=Boolean(repeat);return playTrack(id);
+  }
+  function stopMusic(){if(listening)haltBgm();}
+  function setMusicRepeat(value){repeatMusic=Boolean(value);if(listening)for(const media of fileMedia.values())media.loop=repeatMusic;}
+  function endMusic({restore=true}={}) {
+    if(!listening)return Promise.resolve(false);
+    listening=false;onMusicEnded=null;haltBgm();return restore&&mapBgm?playTrack(mapBgm):Promise.resolve(false);
+  }
   function setMuted(muted) { settings.muted = Boolean(muted); persist(); for(const media of fileMedia.values())media.muted=settings.muted; if (master) master.gain.setTargetAtTime(settings.muted ? 0 : settings.volume, context.currentTime, 0.025); }
   function setVolume(volume) { settings.volume = clamp(volume, 0, 1); persist(); for(const media of fileMedia.values())media.volume=settings.volume; if (master && !settings.muted) master.gain.setTargetAtTime(settings.volume, context.currentTime, 0.025); }
   function playSfx(name, detail = {}) {
@@ -221,6 +263,6 @@ export function createAudio({ storage = globalThis.localStorage, contextFactory,
     for (const [note, delay] of notes) tone(note+variation+gameVariation, 0.19, { wave, gain: 0.07, delay });
   }
   function dispose() { stopBgm(); if (context) { try { context.close(); } catch { /* Best effort cleanup. */ } } context = master = null; }
-  return { resume, playBgm, stopBgm, playSfx, setMuted, setVolume, dispose,
+  return { resume, playBgm, stopBgm, beginMusic,playMusic,stopMusic,setMusicRepeat,endMusic,playSfx, setMuted, setVolume, dispose,
     get muted() { return settings.muted; }, get volume() { return settings.volume; } };
 }

@@ -3,6 +3,7 @@ import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const PLAZA_SCALE=.6;
 export const plazaPoint=({x,y})=>({x:Math.round(x*PLAZA_SCALE),y:Math.round(y*PLAZA_SCALE)});
 export const DEPARTMENT_RADIUS=36,DEPARTMENT_GAP=48,DEPARTMENT_SPACING=132;
+export const PLAZA_VIEW_BOUNDS=Object.freeze({x:840,y:660,width:1920,height:1310});
 export const PLAZA_LAYOUT=Object.freeze({width:2760,height:1970,wall:10,bridgeWidth:156*BRIDGE_WIDTH_SCALE,
   center:{x:1800,y:1320,rx:780,ry:480},
   islands:[
@@ -11,14 +12,17 @@ export const PLAZA_LAYOUT=Object.freeze({width:2760,height:1970,wall:10,bridgeWi
     {id:'department',name:'부서행성 광장',x:2940,y:2070,rx:732,ry:504,color:'#e5f5ed'},
     {id:'black-hole',name:'블랙홀 입구',x:3090,y:510,rx:480,ry:336,color:'#e1dcf7'}
   ],
-  gates:{west:{x:930,y:1320},east:{x:2670,y:1320},north:{x:1800,y:770},south:{x:1800,y:1870}}
+  gates:{west:{x:930,y:1320},east:{x:2670,y:1320},north:{x:1800,y:810},south:{x:1800,y:1870}}
 });
 export const DEPARTMENT_ZONE=PLAZA_LAYOUT.islands.find(i=>i.id==='department');
 const ellipse=p=>Array.from({length:128},(_,i)=>{const a=i*Math.PI/64;return {x:p.x+p.rx*Math.cos(a),y:p.y+p.ry*Math.sin(a)};});
 function bridge(a,b){const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy),nx=-dy/l*PLAZA_LAYOUT.bridgeWidth/2,ny=dx/l*PLAZA_LAYOUT.bridgeWidth/2;
   return [{x:a.x+nx,y:a.y+ny},{x:a.x-nx,y:a.y-ny},{x:b.x-nx,y:b.y-ny},{x:b.x+nx,y:b.y+ny}];}
 export const PLAZA_POLYGONS=[ellipse(PLAZA_LAYOUT.center),
-  ...[...Object.entries(PLAZA_LAYOUT.gates).map(([direction,p])=>({x:p.x+(direction==='west'?-36:direction==='east'?36:0),y:p.y+(direction==='north'?-36:direction==='south'?36:0)}))].map(p=>bridge(PLAZA_LAYOUT.center,p))];
+  ...Object.entries(PLAZA_LAYOUT.gates).map(([direction,p])=>bridge(PLAZA_LAYOUT.center,{
+    x:direction==='west'?PLAZA_VIEW_BOUNDS.x:direction==='east'?PLAZA_VIEW_BOUNDS.x+PLAZA_VIEW_BOUNDS.width:p.x,
+    y:direction==='north'?PLAZA_VIEW_BOUNDS.y:direction==='south'?PLAZA_VIEW_BOUNDS.y+PLAZA_VIEW_BOUNDS.height:p.y
+  }))];
 function inPolygon(p,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){
   const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
 const cross=(a,b)=>a.x*b.y-a.y*b.x;
@@ -60,12 +64,12 @@ export function departmentSlots(){const z=DEPARTMENT_ZONE,points=[];
 export const ASSIGNMENT_ID='assignment-archive',MARKET_ID='star-market',DEPARTMENT_ID='department-plaza';
 export const PLAZA_AREA_IDS=Object.freeze({assignment:ASSIGNMENT_ID,market:MARKET_ID,department:DEPARTMENT_ID});
 export const PLAZA_ROUTES=Object.freeze([
- {id:'assignment',name:'과제별서고',x:1320,y:1020,target:ASSIGNMENT_ID,arrival:{x:600,y:700},returnGate:{x:780,y:730},back:{x:1430,y:1090}},
- {id:'market',name:'별 시장',x:1200,y:1580,target:MARKET_ID,arrival:{x:800,y:2050},returnGate:{x:900,y:1950},back:{x:1430,y:1550}},
- {id:'department',name:'부서행성 광장',x:2400,y:1580,target:DEPARTMENT_ID,arrival:{x:2850,y:1680},returnGate:{x:2874,y:1620},back:{x:2170,y:1550}},
- {id:'black-hole',name:'블랙홀',x:2280,y:1020,target:'black-hole',arrival:{x:600,y:390},back:{x:2170,y:1090}}
+ {id:'assignment',name:'과제별 서고',x:1400,y:1100,target:ASSIGNMENT_ID,arrival:{x:600,y:700},returnGate:{x:780,y:730},back:{x:1430,y:1090}},
+ {id:'market',name:'별 시장',x:1400,y:1540,target:MARKET_ID,arrival:{x:800,y:2050},returnGate:{x:900,y:1950},back:{x:1430,y:1550}},
+ {id:'department',name:'부서 행성 광장',x:2200,y:1540,target:DEPARTMENT_ID,arrival:{x:2850,y:1680},returnGate:{x:2874,y:1620},back:{x:2170,y:1550}},
+ {id:'black-hole',name:'블랙홀',x:2200,y:1100,target:'black-hole',arrival:{x:600,y:390},back:{x:2170,y:1090}}
 ]);
-const mainLayout={...PLAZA_LAYOUT,islands:[],polygons:PLAZA_POLYGONS,edges:PLAZA_EDGES,viewBounds:{x:840,y:660,width:1920,height:1310}};
+const mainLayout={...PLAZA_LAYOUT,islands:[],polygons:PLAZA_POLYGONS,edges:PLAZA_EDGES,viewBounds:PLAZA_VIEW_BOUNDS};
 const satelliteLayouts=Object.fromEntries(PLAZA_LAYOUT.islands.filter(z=>PLAZA_AREA_IDS[z.id]).map(z=>{
  const polygons=[ellipse(z)];return [PLAZA_AREA_IDS[z.id],{...PLAZA_LAYOUT,width:z.x+z.rx+80,height:z.y+z.ry+100,center:null,islands:[z],gates:{},polygons,edges:outerEdges(polygons),viewBounds:{x:z.x-z.rx-80,y:z.y-z.ry-100,width:z.rx*2+160,height:z.ry*2+200}}];
 }));

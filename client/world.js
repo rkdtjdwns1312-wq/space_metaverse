@@ -39,7 +39,7 @@ import {avatarRenderPoint} from '/shared/avatar-boundary.js';
 import {equipmentBonus} from '/shared/equipment.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {marketInteraction} from '/shared/market.js';
-import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,PLAZA_SIGNS,drawPlazaSign} from './plaza-props.js';
+import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,drawPlazaSign} from './plaza-props.js';
 import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
 import {drawExplorationAura} from './exploration-aura.js';
@@ -291,7 +291,6 @@ export function createWorld(canvas) {
         star(x,y,11*pulse,index%3===0?'#fff0af':'#fffefa');ctx.restore();
       }
     }
-    for(const sign of map.id===PLAZA_ID?PLAZA_SIGNS:[])drawPlazaSign(ctx,sign);
     for(const sign of map.id===PLAZA_ID?campaignSigns:[]){
       ctx.save();ctx.translate(sign.x,sign.y);
       ctx.fillStyle='#64507c55';ctx.beginPath();ctx.ellipse(0,30,52,15,0,0,Math.PI*2);ctx.fill();
@@ -392,7 +391,7 @@ export function createWorld(canvas) {
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
     const box=gateVisualBox(o),labelX=o.x,labelY=o.id==='gate-sleeping-stars'?box.y+box.height+30:box.y-34;
     const width=Math.max(78,Math.min(345,2*Math.min(o.x,bounds.width-o.x)-12));
-    const label=destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
+    const label=o.destinationLabel||destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
     ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.
@@ -858,7 +857,7 @@ export function createWorld(canvas) {
           const headerY=nameY-169,timerY=nameY-147;
           ctx.save();ctx.textAlign='center';ctx.font='bold 19px "Jua","Malgun Gothic",sans-serif';
           ctx.fillStyle='#fffdf8';ctx.strokeStyle='#25252b';ctx.lineWidth=5;ctx.lineJoin='round';
-          ctx.strokeText('별을 힘을 모아',pos.x,headerY);ctx.fillText('별을 힘을 모아',pos.x,headerY);
+          ctx.strokeText('별의 힘을 모아',pos.x,headerY);ctx.fillText('별의 힘을 모아',pos.x,headerY);
           ctx.font='bold 15px "Jua","Malgun Gothic",sans-serif';ctx.strokeText(gatherRemaining+'초',pos.x,timerY);ctx.fillText(gatherRemaining+'초',pos.x,timerY);ctx.restore();
         }
         if(type.id==='forgotten-constellation'&&m.constellationNames?.remaining?.length){

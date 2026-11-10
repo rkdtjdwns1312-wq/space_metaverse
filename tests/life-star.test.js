@@ -12,8 +12,8 @@ function fixture(){
   Object.assign(ensureVitals(player),{hp:10,mp:0});
   return {player,room:{players:new Map([[player.id,player]])}};
 }
-test('생명의별은 광장 정중앙의 작은 통과 가능한 흰 별이다',()=>{
-  assert.deepEqual([star.x,star.y],[MAP.templeCenter.x,MAP.templeCenter.y+Math.round(-16*.6)]);
+test('생명의별은 계단을 제외한 단상 중심의 작은 통과 가능한 흰 별이다',()=>{
+  assert.deepEqual([star.x,star.y],[MAP.templeCenter.x,1285]);
   assert.equal(star.name,'생명의별');assert.equal(star.color,'#ffffff');assert.equal(star.passable,true);
 });
 test('서버 시간 5초에 걸쳐 HP/MP 회복, 5초 직전은 미완료',()=>{

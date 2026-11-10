@@ -112,6 +112,7 @@ try{
   Object.assign(player,{mapId:PLAZA_ID,x:star.x+(star.radius||0)+35,y:star.y});publish();
   await page.locator('#interact-prompt').filter({hasText:star.name}).waitFor({state:'visible'});
   await page.locator('#world').focus();await page.keyboard.press('f');
+  await page.locator('#life-star-dialog [data-recover]').click();
   await page.locator('#toast').filter({hasText:/회복|가득/}).waitFor();
   assert.equal(player.mapId,PLAZA_ID,'life-star interaction keeps the player in the plaza');
   check('생명의 별 실제 F 상호작용과 광장 위치 유지');

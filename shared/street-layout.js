@@ -31,7 +31,7 @@ function ellipse(z,steps=160){return Array.from({length:steps},(_,i)=>{const a=i
 const half=STREET_LAYOUT.bridgeWidth/2;
 const rect=(left,top,right,bottom)=>[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}];
 const polygonsById={
-  'star-street':[ellipse(STREET_LAYOUT.upper),rect(900-half,1060,900+half,1170),rect(900-half,2215,900+half,2430),rect(40,1690-half,180,1690+half)],
+  'star-street':[ellipse(STREET_LAYOUT.upper),rect(900-half,shelterLayout.viewBounds.y,900+half,1170),rect(900-half,2215,900+half,shelterLayout.viewBounds.y+shelterLayout.viewBounds.height),rect(40,1690-half,180,1690+half)],
   'star-station':[ellipse(STREET_LAYOUT.entrance),rect(830,0,970,250),ellipse(STREET_LAYOUT.north),rect(900-half,970,900+half,1130)],
   'star-playground':[ellipse(STREET_LAYOUT.lower),rect(900-half,2360,900+half,2485)]
 };

@@ -1,0 +1,13 @@
+#life-star-dialog{width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 32px)}
+#life-star-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#life-star-dialog h2{margin:0;font-size:1.25rem}
+#life-star-dialog .life-star-options{display:flex;flex-direction:column;gap:14px;padding:16px 0}
+#life-star-dialog .life-star-options[hidden],#life-star-dialog .life-star-music[hidden]{display:none}
+#life-star-dialog .life-star-options button{min-height:60px;font-size:1.15rem}
+#life-star-dialog .life-star-controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#life-star-dialog button{min-height:44px;white-space:normal;overflow-wrap:anywhere}
+#life-star-dialog .life-star-tracks{list-style:none;padding:0;margin:12px 0;display:flex;flex-direction:column;gap:9px}
+#life-star-dialog .life-star-tracks button{width:100%;text-align:left;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+#life-star-dialog .life-star-play{flex:none;font-size:.9em;color:#7a5a28}
+#life-star-dialog button[aria-pressed=true]{outline:2px solid #d6b76c;outline-offset:-2px}
+#life-star-dialog .life-star-status{min-height:1.5em;margin:12px 0}

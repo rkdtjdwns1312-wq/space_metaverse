@@ -7,6 +7,9 @@ import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 
 test('쉼터와 발전소와 놀이터는 독립 바닥이며 모든 문과 도착점은 연결된다',()=>{
   assert.equal(STREET_POLYGONS.length,4);assert.ok(STREET_EDGES.length>0);
+  const bounds=STREET.viewBounds,margin=RULES.radius+STREET_LAYOUT.wallWidth/2+1;
+  for(const y of [bounds.y+margin,bounds.y+bounds.height-margin])
+    assert(onStreetFloor(STREET,900,y,RULES.radius),'쉼터 남북 다리는 표시 영역 끝까지 걸을 수 있어야 한다');
   for(const map of [STREET,STAR_STATION,PLAYGROUND]){
     assert.equal(isParadise(map.id),false);
     assert(onParadiseFloor(map,map.spawn.x,map.spawn.y,RULES.radius));

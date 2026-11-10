@@ -8,7 +8,9 @@ import {darkStarMap} from '../shared/dark-star.js';
 import {truthCreatorMap} from '../shared/truth-creator.js';
 import {starRecordMap} from '../shared/star-record.js';
 import {SLEEPING_STARS_SKY} from '../shared/sleeping-stars.js';
-import {originFloor} from '../shared/origin-floor.js';
+import {originFloor,onOriginFloor,ORIGIN_FLOOR_RULES} from '../shared/origin-floor.js';
+import {gateFloorGeometry,insideGateFloor} from '../shared/floor-geometry.js';
+import {visualGateFloor} from '../client/visual-floor.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 import {MONSTER_TYPES} from '../shared/monsters.js';
 
@@ -20,12 +22,31 @@ test('sleeping stars share stage-three dimensions and central floor with one sum
     assert.deepEqual([map.width,map.height,map.spawn],[origin.width,origin.height,origin.spawn]);
     const floor=originFloor(map),base=originFloor(origin);
     for(const key of ['cx','cy','rx','ry','half'])assert.equal(floor[key],base[key]);
-    if(index<3)assert.deepEqual(floor,base);
+    assert.notDeepEqual(floor.points,base.points);
     assert.equal(map.objects.filter(o=>o.kind==='gate').length,index===3?1:2);
     const statue=map.objects.find(o=>o.kind==='dark-star-statue');if(statue)assert.deepEqual([statue.x,statue.y],[map.width/2,map.height/2]);
     assert(map.objects.every(object=>object.kind==='gate'||index===0&&object.kind==='dark-star-statue'||index===1&&object.kind==='star-record-statue'||index===2&&object.kind==='forgotten-constellation-statue'||index===3&&object.kind==='truth-creator-statue'));
     assert.equal(Object.values(MONSTER_TYPES).filter(type=>type.mapId===map.id).length,index===3?2:1);
     assert.equal(STATIC_MAPS[map.id],map);
+  }
+});
+
+test('meteor outlines are deterministic, preserve the playable arena and meet visual bridge caps exactly',()=>{
+  for(const map of SLEEPING_STARS_MAPS){
+    const floor=originFloor(map),r=ORIGIN_FLOOR_RULES;
+    const base=gateFloorGeometry(map,{rx:map.width*r.rx,ry:map.height*r.ry,bridgeWidth:map.width*r.bridgeWidth,landing:Math.min(map.width,map.height)*r.landing});
+    assert.equal(originFloor(map),floor);
+    assert.deepEqual(originFloor({...map}).points,floor.points);
+    assert.deepEqual(visualGateFloor(floor,map).points,floor.points);
+    assert(floor.points.every(p=>p.x>=0&&p.x<=map.width&&p.y>=0&&p.y<=map.height));
+    for(let x=0;x<map.width;x+=47)for(let y=0;y<map.height;y+=53){
+      if(insideGateFloor(base,x,y,50,r.wallWidth))assert(onOriginFloor(map,x,y,50),`${map.id} preserves ${x},${y}`);
+    }
+    const flank=floor.points.filter(p=>p.y>floor.cy-floor.ry*.5&&p.y<floor.cy+floor.ry*.5&&p.x>floor.cx);
+    const offsets=flank.map(p=>Math.hypot((p.x-floor.cx)/floor.rx,(p.y-floor.cy)/floor.ry)-1);
+    assert(Math.max(...offsets)-Math.min(...offsets)>.005,'irregular central meteor edge');
+    const bridge=floor.points.filter(p=>p.y>floor.cy+floor.ry+80&&p.y<map.height-80);
+    assert(new Set(bridge.map(p=>Math.round(Math.abs(p.x-floor.cx)))).size>2,'irregular bridge sides');
   }
 });
 

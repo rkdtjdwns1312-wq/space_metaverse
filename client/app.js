@@ -41,6 +41,7 @@ import {createTeacherGhostUI} from './teacher-ghost-ui.js';
 import { createWorld, renderPortrait } from './world.js';
 import { startClassroomClock } from './classroom-clock.js';
 import {createAudio} from './audio.js';
+import {createLifeStarUI} from './life-star-ui.js';
 import {createTutorialUI} from './tutorial-ui.js';
 import { createSocialUI } from './social-ui.js';
 import {createPartyUI} from './party-ui.js';
@@ -113,6 +114,7 @@ updateControlAlignment();
 startClassroomClock($('classroom-clock'));
 const huntingTime=createHuntingTimeUI({clock:$('classroom-clock'),stop});
 const audio=createAudio();
+const lifeStarUI=createLifeStarUI({audio,request,stop,toast,onClose:()=>$('world').focus({preventScroll:true})});
 const cetusUI=createCetusUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
 const mobileAudioMute=document.createElement('button');mobileAudioMute.id='mobile-audio-mute';mobileAudioMute.type='button';mobileAudioMute.className='secondary';$('mobile-hunting-row').append(mobileAudioMute);mobileAudioMute.onclick=()=>audioMute.click();
@@ -437,6 +439,7 @@ const starRecordMathUI=createStarRecordMathUI({request,onClose:()=>$('world').fo
 const serenaUI=createSerenaUI({request,onClose:()=>$('world').focus({preventScroll:true})});
 const bossDialogueUI=createBossDialogueUI({getMapId:()=>room?.players.find(p=>p.id===selfId)?.mapId,onOpen:()=>stop(),onClose:()=>$('world').focus({preventScroll:true})});
 function updateBgm(mapId,serenaOverride){
+  lifeStarUI.updateMap(mapId);
   const serena=serenaOverride||serenaWorldState||room?.serena;
   const statueMap=mapId==='star-origin-4';
   const state=serena?.state||serenaWorldState?.state;
@@ -1102,7 +1105,7 @@ function doInteract(){
   const n=world.nearby();if(!n)return;
   if(n.id){objectUpdates.acknowledge(world.currentMapId(),n.id);world.setObjectUpdates(objectUpdates.pending());}
   if(n.kind==='energy-drop')request('energy:collect',{dropId:n.id}).then(r=>toast(r.pendingRoll?'파티 주사위를 굴렸어요. 같은 최고 눈은 R로 다시 굴려요.':['recipe','item'].includes(r.kind)?(itemOf(r.itemId)?.name||'아이템')+'을 주웠어요.':'우주에너지 '+r.amount+'을 주웠어요.')).catch(e=>toast(e.message));
-  else if(n.kind==='life-star')request('life-star:recover',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
+  else if(n.kind==='life-star')lifeStarUI.open(room?.players.find(p=>p.id===selfId)?.mapId);
   else if(n.kind==='shelter-fountain')request('shelter-fountain:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='star-angel-statue')request('star-angel:bless',{}).then(r=>toast(r.message)).catch(e=>toast(e.message));
   else if(n.kind==='dark-star-card')interactDarkCard(n);
@@ -1573,6 +1576,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
+  lifeStarUI.reset();
   arcade.reset();
   showReconnect(false);classroomHelp.reset();teacherUpdates.reset();mouseAim=null;aimMap=null;
   clearTeacherActiveItems();
@@ -1684,7 +1688,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{arcade.setConnected(false);truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{lifeStarUI.reset();arcade.setConnected(false);truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('hunting:state',data=>{if(selfId)huntingTime.update(data);});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});

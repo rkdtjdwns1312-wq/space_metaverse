@@ -25,7 +25,7 @@ import {mapOf,PLAZA_ID,STREET_ID,GARDEN_ID,VALLEY_ID,ORIGIN_MAPS,UNIVERSE_MAP_LA
 // Single selection previews a map; double activation opens a confirmation before server-authorized travel.
 export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,request,toast=()=>{}}) {
   const $=id=>document.getElementById(id),dialog=$('universe-dialog');
-  let position=null,selected=null,signature='';
+  let position=null,selected=null,signature='',pageView='general';
   let lastTap=null,lastDraw=0,artSignature='';const backgrounds=new Map(),watchedArt=new WeakSet();
   const visibleThumbnails=new WeakSet();
   const thumbnailObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
@@ -64,7 +64,7 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   function refreshArt(){
     backgrounds.clear();
     if(me()&&minimapOpen)draw($('minimap'),me().mapId);
-    if(dialog.open)draw($('universe-preview'),selected||me()?.mapId,true);
+    if(dialog.open&&selected)draw($('universe-preview'),selected,true);
     if(dialog.open){for(const canvas of $('universe-links').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);
     for(const canvas of $('universe-planets').querySelectorAll('canvas[data-map-id]'))draw(canvas,canvas.dataset.mapId);}
   }
@@ -74,9 +74,12 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
   function close(){dialog.close();}
   $('universe-close').onclick=close;
   $('universe-footer-close').onclick=close;
+  function selectPage(page){pageView=page;selected=null;signature='';lastTap=null;dialog.scrollTop=0;render();}
+  $('universe-general-view').onclick=()=>selectPage('general');
+  $('universe-department-view').onclick=()=>selectPage('department');
   $('minimap-toggle').onclick=()=>{setMinimapOpen(!minimapOpen);if(minimapOpen&&me())draw($('minimap'),me().mapId);};
   $('map-overview').onclick=()=>{
-    if(!me())return;stop();selected=me().mapId;signature='';
+    if(!me())return;stop();pageView='general';selected=me().mapId;signature='';lastTap=null;
     if(!dialog.open)dialog.showModal();render();
   };
   $('map-area-view').onclick=()=>{close();onAreaView();};
@@ -244,20 +247,23 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     const p=me();if(!p)return;
     $('minimap-title').textContent=map(p.mapId).name;if(minimapOpen)draw($('minimap'),p.mapId);
     if(!dialog.open)return;
-    const selectable=[...UNIVERSE_MAP_LAYOUT.map(item=>item.id),...planets().map(planet=>interiorIdOf(planet.id))];
-    if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:PLAZA_ID;
-    const next=JSON.stringify([p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,getRoom()?.forgottenConstellation?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
+    const general=pageView==='general';
+    $('universe-general-page').hidden=!general;$('universe-department-page').hidden=general;
+    $('universe-general-view').setAttribute('aria-pressed',String(general));$('universe-department-view').setAttribute('aria-pressed',String(!general));
+    const selectable=general?UNIVERSE_MAP_LAYOUT.map(item=>item.id):planets().map(planet=>interiorIdOf(planet.id));
+    if(!selectable.includes(selected))selected=selectable.includes(p.mapId)?p.mapId:general?PLAZA_ID:selectable[0]||null;
+    $('universe-detail').hidden=!selected;
+    const next=JSON.stringify([pageView,p.mapId,getRoom()?.serena?.state,getRoom()?.darkStar?.state,getRoom()?.starRecord?.state,getRoom()?.forgottenConstellation?.state,planets().map(p=>[p.id,p.name,p.color,p.x,p.y,p.customDesign])]);
     if(next!==signature){signature=next;
       thumbnailObserver?.disconnect();
       $('universe-current').textContent='내가 있는 곳: '+map(p.mapId).name;
-      $('universe-links').replaceChildren(...UNIVERSE_MAP_LAYOUT.map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row-Math.min(...UNIVERSE_MAP_LAYOUT.map(item=>item.row))+1);button.style.gridColumn=String(column);return button;}));
-      $('universe-planets').replaceChildren(...planets().map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
-      if(!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
+      $('universe-links').replaceChildren(...(general?UNIVERSE_MAP_LAYOUT:[]).map(({id,icon,row,column})=>{const button=node(id,icon);button.style.gridRow=String(row-Math.min(...UNIVERSE_MAP_LAYOUT.map(item=>item.row))+1);button.style.gridColumn=String(column);return button;}));
+      $('universe-planets').replaceChildren(...(general?[]:planets()).map(p=>node(interiorIdOf(p.id),templateOf(p.templateId)?.icon||'●')));
+      if(!general&&!planets().length)$('universe-planets').textContent='아직 만들어진 부서행성이 없어요.';
     }
     // Keep the same button between taps: replacing it interrupts native double activation.
     for(const button of dialog.querySelectorAll('.universe-node')){const active=button.dataset.mapId===selected;button.classList.toggle('is-selected',active);button.querySelector('.universe-node-select').setAttribute('aria-pressed',String(active));}
-    $('universe-preview-title').textContent=map(selected).name;
-    if(dialog.open)draw($('universe-preview'),selected,true);
+    if(selected){$('universe-preview-title').textContent=map(selected).name;draw($('universe-preview'),selected,true);}
   }
   // showModal 직후에도 첫 프레임을 그립니다. 열린 동안에만 큰 지도를 갱신합니다.
   return {

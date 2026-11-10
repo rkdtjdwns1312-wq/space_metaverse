@@ -1,7 +1,7 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {visualFloor,visualFloorPath} from './visual-floor.js';
 import {STREET_LAYOUT,streetGeometryOf,streetLayoutOf} from '/shared/street-layout.js';
-import {drawStoneRim} from './stone-rim.js';
+import {drawStoneRim,openMapRimEdges} from './stone-rim.js';
 import {drawStreetPark} from './street-park-art.js';
 import {drawFloatingIslands,drawRockSupports,onFloatingCliffReady} from './floating-island.js';
 
@@ -27,7 +27,7 @@ function sceneOf(map){
     // stubs already include a visible floor cap behind their gate.
     const visual=visualFloor(geometry.polygons,geometry.edges,map,map.id===STREET_LAYOUT.id?[STREET_LAYOUT.westGate]:[]);
     const edgePath=new Path2D();for(const [a,b] of visual.edges){edgePath.moveTo(a.x,a.y);edgePath.lineTo(b.x,b.y);}
-    scenes.set(map.id,{visual,layout,shape:visualFloorPath(visual.polygons),edgePath});
+    scenes.set(map.id,{visual,layout,shape:visualFloorPath(visual.polygons),edgePath,rimEdges:openMapRimEdges(visual.edges,layout.viewBounds)});
   }
   return scenes.get(map.id);
 }
@@ -47,16 +47,16 @@ function routeLabel(ctx,labels){
   ctx.restore();
 }
 function paint(ctx,map){
-  const {visual,shape,layout}=sceneOf(map);
+  const {visual,shape,layout,rimEdges}=sceneOf(map);
   backdrop(ctx,map);
-  drawRockSupports(ctx,visual.edges,'shelter',map.height);
+  drawRockSupports(ctx,rimEdges,'shelter',map.height);
   drawFloatingIslands(ctx,layout.islands,'shelter',map.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#34304d88';ctx.shadowColor='#25243b77';ctx.shadowBlur=28;ctx.shadowOffsetY=14;ctx.fill(shape);ctx.restore();
   ctx.save();ctx.clip(shape);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,map.width,map.height);
   if(ready('paving')){const pattern=ctx.createPattern(images.paving,'repeat');if(pattern){pattern.setTransform(new DOMMatrix().scale(.3));ctx.globalAlpha=.88;ctx.fillStyle=pattern;ctx.fillRect(0,0,map.width,map.height);ctx.globalAlpha=1;}}
   const wash=ctx.createLinearGradient(STREET_LAYOUT.upper.x-STREET_LAYOUT.upper.rx,0,STREET_LAYOUT.upper.x+STREET_LAYOUT.upper.rx,map.height);
   wash.addColorStop(0,'#ffd8eb30');wash.addColorStop(.5,'#fff6dc18');wash.addColorStop(1,'#bde6ff3d');ctx.fillStyle=wash;ctx.fillRect(0,0,map.width,map.height);ctx.restore();
-  drawStoneRim(ctx,visual.edges);
+  drawStoneRim(ctx,rimEdges);
   routeLabel(ctx,layout.routeLabels);
 }
 export function drawStreetFountain(ctx,time=0,reducedMotion=true){drawStreetPark(ctx,images,time,reducedMotion);}

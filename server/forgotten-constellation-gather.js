@@ -2,14 +2,15 @@ import {randomUUID} from 'node:crypto';
 import {FORGOTTEN_CONSTELLATION as spec,forgottenConstellationMap} from '../shared/forgotten-constellation.js';
 import {mapOf,interactionDistance,interactionReach} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
-import {avatarFootprint,avatarPositionIsClear} from '../shared/avatar-boundary.js';
+import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
 import {vulnerable} from './forgotten-constellation-links.js';
-import {defeatRecordPlayer} from './star-record-challenge.js';
+import {damagePlayer,ensureVitals,playerVitals} from './vitals.js';
+import {monsterType} from '../shared/monsters.js';
 import {GameError} from './pin-auth.js';
 import {playerVisibleTo} from './teacher-ghost.js';
 
-export const CONSTELLATION_GATHER=Object.freeze({mana:20,cooldownMs:60000,durationMs:20000,lifeMs:4000,
-  total:15,radius:16,contactGap:34,decisionMs:3000,chance:.45});
+export const CONSTELLATION_GATHER=Object.freeze({mana:20,cooldownMs:60000,durationMs:20000,lifeMs:5000,
+  total:15,radius:16,decisionMs:3000,chance:.45});
 const rule=CONSTELLATION_GATHER;
 const take=(pool,random)=>pool.splice(Math.max(0,Math.min(pool.length-1,Math.floor(random()*pool.length))),1)[0];
 
@@ -24,7 +25,8 @@ function schedule(room,boss,now,random){
   }
   if(points.length<rule.total)return null;
   const gaps=Array.from({length:rule.total-1},(_,i)=>i+1),longGaps=new Set();
-  const extras=Math.min(2,Math.floor(random()*3));
+  // Fit all 15 spawns plus the final full 5s lifetime within the 20s cast.
+  const extras=Math.min(1,Math.floor(random()*2));
   for(let i=0;i<extras;i++)longGaps.add(take(gaps,random));
   let appearsAt=now;
   return Array.from({length:rule.total},(_,i)=>{
@@ -81,18 +83,13 @@ export function tickConstellationGather(room,boss,now){
   for(const star of cast.stars){
     if(star.resolved||now<star.expiresAt)continue;
     star.resolved=true;
+    for(const player of room.players.values()){
+      if(!vulnerable(player,boss))continue;
+      hits.push(hitInfo(boss,player,'forgotten-gather-expire',
+        damagePlayer(player,monsterType(spec.typeId).power,now,{room})));
+    }
   }
-  if(now<cast.endsAt)return hits;
-  // Snapshot before applying any final defeats. Use the
-  // same feet circles as server movement, allowing its 2px gap plus one step.
-  const group=[...room.players.values()].filter(p=>vulnerable(p,boss)).map(p=>({
-    player:p,count:cast.counts.get(p.id)||0,foot:avatarFootprint(p)
-  }));
-  const defeated=group.filter(a=>!a.count||!group.some(b=>b!==a&&b.count===a.count&&
-    Math.hypot(a.foot.x-b.foot.x,a.foot.y-b.foot.y)<=a.foot.radius+b.foot.radius+rule.contactGap));
-  boss.gather=null;
-  for(const {player} of defeated)hits.push(hitInfo(boss,player,'forgotten-gather-finish',
-    defeatRecordPlayer(room,player,now,{bypassProtection:true})));
+  if(now>=cast.endsAt)boss.gather=null;
   return hits;
 }
 
@@ -108,5 +105,7 @@ export function collectConstellationGather(room,player,data,now,onHit=()=>{}){
   star.resolved=true;
   const count=(cast.counts.get(player.id)||0)+1;
   cast.counts.set(player.id,count);
-  return {count,message:'하얀 별을 모았어요. 현재 '+count+'개예요.'};
+  const vitals=ensureVitals(player),maxHp=playerVitals(player).hp.max,healed=maxHp-vitals.hp;
+  vitals.hp=maxHp;
+  return {count,healed,vitals:playerVitals(player),message:'하얀 별을 모아 체력을 100% 회복했어요.'};
 }

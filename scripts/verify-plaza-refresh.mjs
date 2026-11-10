@@ -112,9 +112,25 @@ try{
   Object.assign(player,{mapId:PLAZA_ID,x:star.x+(star.radius||0)+35,y:star.y});publish();
   await page.locator('#interact-prompt').filter({hasText:star.name}).waitFor({state:'visible'});
   await page.locator('#world').focus();await page.keyboard.press('f');
+  await page.locator('#life-star-dialog').waitFor({state:'visible'});
+  assert.deepEqual(await page.locator('#life-star-dialog .life-star-options button').allTextContents(),['회복하기','노래듣기']);
+  await page.locator('#life-star-dialog [data-recover]').click();
   await page.locator('#toast').filter({hasText:/회복|가득/}).waitFor();
   assert.equal(player.mapId,PLAZA_ID,'life-star interaction keeps the player in the plaza');
   check('생명의 별 실제 F 상호작용과 광장 위치 유지');
+  await page.locator('#life-star-dialog').waitFor({state:'hidden'});
+  await page.locator('#world').focus();await page.keyboard.press('f');
+  await page.locator('#life-star-dialog [data-music]').click();
+  const songs=page.locator('#life-star-dialog [data-track]');
+  assert.ok(await songs.count()>=15);
+  assert.equal(await page.locator('#life-star-dialog [data-track="star-origin-1"]').textContent(),'별의 시작점재생');
+  await page.locator('#life-star-dialog [data-repeat]').click();
+  assert.equal(await page.locator('#life-star-dialog [data-repeat]').getAttribute('aria-pressed'),'false');
+  await songs.first().click();
+  await page.locator('#life-star-dialog [data-stop]').click();
+  assert.match(await page.locator('#life-star-dialog [role=status]').textContent(),/멈췄/);
+  await page.keyboard.press('Escape');await page.locator('#life-star-dialog').waitFor({state:'hidden'});
+  check('생명의별 음악 세로 목록·재생·정지·반복·키보드 닫기');
 
   const gate=MAP.objects.find(object=>object.kind==='gate'&&object.target!==PLAZA_ID&&STATIC_MAPS[object.target]);
   assert.ok(gate,'the plaza has an existing outbound gate');

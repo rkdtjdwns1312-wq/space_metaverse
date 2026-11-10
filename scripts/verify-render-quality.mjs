@@ -42,7 +42,7 @@ try{
   const life=mapOf('space-plaza').objects.find(o=>o.kind==='life-star');Object.assign(teacher,{x:life.x+life.radius+30,y:life.y,input:{x:0,y:0,at:0}});refresh();
   await page.waitForFunction(()=>document.querySelector('#interact-prompt').dataset.objectId==='life-star');
   const hint=await page.locator('#interact-prompt').boundingBox();assert.ok(hint.x>=0&&hint.y>=0&&hint.x+hint.width<=1280&&hint.y+hint.height<=800);
-  await page.locator('#touch-interact').click();checks.push('nearby hint remains onscreen and interaction is clickable after DPR change');
+  await page.locator('#touch-interact').click();await page.locator('#life-star-dialog [data-recover]').click();await page.locator('#life-star-dialog').waitFor({state:'hidden'});checks.push('nearby hint remains onscreen and interaction is clickable after DPR change');
   for(const size of [{width:390,height:844},{width:844,height:390}]){
     await page.setViewportSize(size);await page.locator('#control-settings-open').click();
     await page.locator('#render-quality-select').scrollIntoViewIfNeeded();
