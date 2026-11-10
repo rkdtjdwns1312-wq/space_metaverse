@@ -10,6 +10,7 @@ import {cultureDay,validateCultureReading} from '../server/culture-library.js';
 import {CULTURE_STORIES} from '../shared/culture-stories.js';
 import {CULTURE_STORIES_EXTRA} from '../shared/culture-stories-extra.js';
 import {CULTURE_STORIES_MORE} from '../shared/culture-stories-more.js';
+import {CULTURE_STORIES_CLASSICS} from '../shared/culture-stories-classics.js';
 import {STAR_STATION,PLAZA_ID} from '../shared/config.js';
 
 const ids=CULTURE_STORIES.map(story=>story.id),station=STAR_STATION.objects.find(o=>o.kind==='culture-station');
@@ -95,9 +96,9 @@ test('culture save schema accepts legacy absence and rejects malformed dates, un
 
 test('30 new public-domain retellings appear in the catalog and award one daily reading reward',async t=>{
   assert.equal(CULTURE_STORIES_MORE.length,30);
-  assert.equal(CULTURE_STORIES.length,86);
-  assert.equal(new Set(CULTURE_STORIES.map(story=>story.id)).size,86);
-  assert.equal(new Set(CULTURE_STORIES.map(story=>story.title)).size,86);
+  assert.equal(CULTURE_STORIES.length,126);
+  assert.equal(new Set(CULTURE_STORIES.map(story=>story.id)).size,126);
+  assert.equal(new Set(CULTURE_STORIES.map(story=>story.title)).size,126);
   for(const story of CULTURE_STORIES_MORE){
     assert(story.paragraphs.length>=3 && story.paragraphs.every(paragraph=>paragraph.length>=35));
     assert(story.lesson && story.source.url.startsWith('https://www.gutenberg.org/'));
@@ -109,6 +110,22 @@ test('30 new public-domain retellings appear in the catalog and award one daily 
   assert.equal(first.amount,1);
   assert((await f.status()).claimedIds.includes(newBook.id));
   assert.equal((await f.claim(newBook.id)).awarded,false);
+});
+
+test('new myth and Talmud books award once and retain claims across restart',async t=>{
+  const f=await fixture(t),books=[CULTURE_STORIES_CLASSICS[0],CULTURE_STORIES_CLASSICS.at(-1)];
+  for(const book of books){
+    await f.open(book.id);
+    const reward=await f.claim(book.id);
+    assert.equal(reward.awarded,true);assert.equal(reward.amount,1);
+    assert.equal((await f.claim(book.id)).awarded,false);
+  }
+  await f.restart();
+  const status=await f.status();
+  for(const book of books){
+    assert(status.claimedIds.includes(book.id));
+    await f.open(book.id);assert.equal((await f.claim(book.id)).awarded,false);
+  }
 });
 
 test('claims award current server Lv1-5 rewards 1/2/5/30/100 once, ignore forged reward/identity, and teachers read without reward',async t=>{

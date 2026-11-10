@@ -6,7 +6,7 @@ class Element{
   children=[];hidden=false;disabled=false;textContent='';value='';
   classList={add(){},remove(){}};
   replaceChildren(...children){this.children=children;}
-  querySelector(){return new Element();}
+  querySelector(selector){return selector===':scope > header'?null:new Element();}
   insertAdjacentElement(){}before(){}focus(){}showModal(){}close(){}addEventListener(){}
 }
 test('math and English correct counts update immediately after every answer, including the tenth',async()=>{
@@ -16,6 +16,7 @@ test('math and English correct counts update immediately after every answer, inc
   try{
     let source=await readFile(new URL('../client/learning-station.js',import.meta.url),'utf8');
     source=source.replace("'/shared/english-vocabulary.js'",JSON.stringify(new URL('../shared/english-vocabulary.js',import.meta.url).href));
+    source=source.replace("'./dialog-layout.js'",JSON.stringify(new URL('../client/dialog-layout.js',import.meta.url).href));
     const {createLearningStation}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
     let correct=0,round=0,answerButton;
     const ui=createLearningStation({request:async event=>{

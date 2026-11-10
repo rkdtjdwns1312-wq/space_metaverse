@@ -52,7 +52,7 @@ import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp,PAINTED_PROPS} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
-import {drawPaintedGate,gateVisualBox} from './gate-art.js';
+import {drawPaintedGate,gateVisualBox,gateLabelBaseline} from './gate-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
@@ -195,6 +195,7 @@ export function createWorld(canvas) {
   const linksHint=document.getElementById('constellation-links-hint');
   function setMonsters(data){
     monsters=data;const now=performance.now();
+    for(const m of monsters)if(m.serenaSkillEffects)m.serenaSkillEffects={...m.serenaSkillEffects,receivedAt:now};
     for(const m of monsters)if(m.darkStarEffects)m.darkStarEffects={...m.darkStarEffects,receivedAt:now};
     for(const m of monsters)if(m.truthCreatorEffects)m.truthCreatorEffects={...m.truthCreatorEffects,receivedAt:now};
     for(const m of monsters)if(m.homingStar)m.homingStar={...m.homingStar,receivedAt:now};
@@ -384,15 +385,17 @@ export function createWorld(canvas) {
   // 모든 정적 맵과 부서 출구에 공통 원화를 적용합니다.
   function drawGate(o){
     if(!intersectsView(view,gateVisualBox(o),200))return;
-    drawPaintedGate(ctx,o);
+    const box=drawPaintedGate(ctx,o);
     if(o.hideLabel){if(myMapId!==PLAZA_ID||!['gate-assignment','gate-market','gate-department'].includes(o.id))drawPlazaSign(ctx,{x:o.x,y:o.y+65,lines:[(STATIC_MAPS[o.target]?.name||o.name)+' 가는 길']});return;}
     if(myMapId===STREET_ID)return;
     ctx.font='600 19.5px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillStyle='#6a5f8a';
     const destination=STATIC_MAPS[o.target],bounds=mapOf(myMapId);
-    const box=gateVisualBox(o),labelX=o.x,labelY=o.id==='gate-sleeping-stars'?box.y+box.height+30:box.y-34;
+    const labelX=o.x;
     const width=Math.max(78,Math.min(345,2*Math.min(o.x,bounds.width-o.x)-12));
     const label=o.destinationLabel||destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
-    ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
+    ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;
+    const labelY=gateLabelBaseline(ctx,label,box,o.labelBelow||o.id==='gate-sleeping-stars');
+    ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.
   function drawShop(o){drawPaintedStarShop(ctx,o);}
@@ -953,10 +956,10 @@ export function createWorld(canvas) {
       ctx.restore();
     }
     const visiblePlayers=players.filter(p=>!p.away&&(p.mapId||PLAZA_ID)===myMapId);
-    const serenaEffects=visibleMonsters.filter(m=>m.serenaSkillEffects).map(m=>m.serenaSkillEffects),serenaNow=Date.now();
-    canvas.dataset.serenaMarkCount=String(serenaEffects.reduce((n,e)=>n+(e.marks||[]).filter(m=>m.endsAt>serenaNow).length,0));
-    canvas.dataset.serenaWarningCount=String(serenaEffects.reduce((n,e)=>n+(e.warnings||[]).filter(w=>w.endsAt>serenaNow).length,0));
-    for(const effects of serenaEffects)drawSerenaGround(ctx,effects,visiblePlayers,points,serenaNow,reducedMotion.matches);
+    const serenaEffects=visibleMonsters.filter(m=>m.serenaSkillEffects).map(m=>m.serenaSkillEffects);
+    canvas.dataset.serenaMarkCount=String(serenaEffects.reduce((n,e)=>n+(e.marks||[]).filter(m=>m.endsAt>starRecordNow(e)).length,0));
+    canvas.dataset.serenaWarningCount=String(serenaEffects.reduce((n,e)=>n+(e.warnings||[]).filter(w=>w.endsAt>starRecordNow(e)).length,0));
+    for(const effects of serenaEffects)drawSerenaGround(ctx,effects,visiblePlayers,points,starRecordNow(effects),reducedMotion.matches);
     canvas.dataset.waterAuraCount=String(waterAuras.length);
     canvas.dataset.waterAuraKind=waterAuras[0]?.kind||'';
     canvas.dataset.waterAuraFrame=waterAuras[0]?String(waterFrameAt(t-waterAuras[0].startsAt,waterAuras[0].durationMs)):'';
@@ -1010,7 +1013,7 @@ export function createWorld(canvas) {
     }
     for(const m of visibleMonsters){const shots=Array.isArray(m.homingStars)?m.homingStars:m.homingStar?[m.homingStar]:[];for(const shot of shots)drawHomingStar(ctx,shot,starRecordNow(shot),quality.low||reducedMotion.matches);}
     for(const {boss,e,now} of darkEffects)drawDarkStarPuzzleHint(ctx,e,boss.x,boss.y+boss.radius+70,now);
-    for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,serenaNow,reducedMotion.matches);
+    for(const effects of serenaEffects)drawSerenaMarks(ctx,effects,visiblePlayers,points,avatarSizeOf,starRecordNow(effects),reducedMotion.matches);
     // 파티 아이템은 한 개만 지급됩니다. 주사위 눈을 각 참여자의 머리 위에 보여 줍니다.
     for(const roll of lootRolls)if(roll.mapId===myMapId&&roll.expiresAt>Date.now())
       for(const result of roll.rolls||[]){

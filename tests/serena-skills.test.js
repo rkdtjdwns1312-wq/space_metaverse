@@ -203,7 +203,7 @@ test('normal AI casts probabilistically only in combat, integrates snapshots, an
   const f=fixture(1),p=f.players[0];moveMonsters(f.room,3000,()=>0);assert.equal(f.boss.serenaSkills,undefined);
   f.boss.attackers.set(p.id,1);f.boss.targetId=p.id;
   moveMonsters(f.room,3100,()=>0);assert.equal(f.boss.mp,90);
-  const effects=monsterViews(f.room,3100)[0].serenaSkillEffects;assert.equal(effects.marks[0].kind,'yellow');assert.doesNotThrow(()=>JSON.stringify(effects));
+  const effects=monsterViews(f.room,3100)[0].serenaSkillEffects;assert.equal(effects.serverNow,3100);assert.equal(effects.marks[0].kind,'yellow');assert.doesNotThrow(()=>JSON.stringify(effects));
   damageMonster(f.room,f.boss,p,10000,3200);assert.equal(f.boss.serenaSkills,null);
   const fail=fixture(1);assert.equal(trySerenaSkills(fail.room,fail.boss,fail.players[0],1000,()=>1),false);assert.equal(fail.boss.mp,100);
   assert.equal(trySerenaSkills(fail.room,fail.boss,fail.players[0],1001,()=>0),false);assert.equal(fail.boss.mp,100);

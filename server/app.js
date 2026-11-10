@@ -126,7 +126,7 @@ import {constellationOf} from '../shared/constellations.js';
 import {lifeAbilityModifiers,lifeAbilityUsage,lifeAbilityDescription} from '../shared/supernova-life.js';
 import {addTask,completeTask,setTaskStatus} from './tasks.js';
 import {createMission,acceptMission,completeMission,claimMission,advanceMissions,missionBoardViews,findMission} from './missions.js';
-import {ensureDailyMissions,dailyMissionDay} from './daily-missions.js';
+import {ensureDailyMissions,dailyMissionDay,settleDailyHunt} from './daily-missions.js';
 import {createEnglishStation} from './english-station.js';
 import {createMathStation} from './math-station.js';
 import {createBaseballRuns} from './baseball-game.js';
@@ -2362,7 +2362,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(!constellationChangedThisWeek(p,clock()),'별자리를 바꾼 주에는 능력을 사용할 수 없어요.');
       ensure(p.avatar.constellationId==='corvus'&&['dice-item','value-item'].includes(pending?.mode)&&pending.week===weekStart(clock()),'진행 중인 까마귀자리 아이템 생성이 없어요.');
       const item=itemOf(data.itemId);
-      ensure(item&&item.level<=pending.maxLevel,'주사위 눈으로 만들 수 있는 Lv 아이템을 골라주세요.');
+      ensure(item&&!item.shopHidden&&item.level<=pending.maxLevel,'주사위 눈으로 만들 수 있는 Lv 아이템을 골라주세요.');
       ensure(Number.isSafeInteger(item.price)&&item.price>=0,'아직 제작 가치가 정해지지 않은 아이템이에요.');
       if(pending.mode==='value-item'){
         ensure(item.price<=pending.budget,'남은 제작 가치보다 비싼 아이템이에요.');
@@ -2376,7 +2376,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       if(owned)owned.quantity+=quantity;else p.inventory.push({id:item.id,quantity});
       if(pending.mode==='value-item'){
         pending.budget-=item.price;pending.picks--;pending.selected.push(item.id);
-        if(!pending.picks||!SHOP.items.some(value=>Number.isSafeInteger(value.price)&&value.price>=0&&value.level<=pending.maxLevel&&value.price<=pending.budget&&!pending.selected.includes(value.id)))state.pending=null;
+        if(!pending.picks||!SHOP.items.some(value=>!value.shopHidden&&Number.isSafeInteger(value.price)&&value.price>=0&&value.level<=pending.maxLevel&&value.price<=pending.budget&&!pending.selected.includes(value.id)))state.pending=null;
       }else state.pending=null;
       whisper(room,p,item.name+' '+quantity+'개를 만들었어요.');roster(room);
       return {itemName:item.name,quantity,inventory:[...p.inventory]};
@@ -2776,9 +2776,9 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       // 실수로 받은 피해를 클라이언트가 위조해 띄우지 않도록 서버 피해 함수의 큐만 전송합니다.
       const bossNow=clock();
-      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||needsTemporaryBossRespawnShortening(room,bossNow)||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt||room.forgottenConstellation?.state==='recovering'&&bossNow>=room.forgottenConstellation.respawnAt||room.truthCreator?.state==='recovering'&&bossNow>=room.truthCreator.respawnAt)){
+      if(bossNow>=(room.bossSaveRetryAt||0)&&(room.pendingBossDeaths?.size||room.pendingHuntProgress?.size||needsTemporaryBossRespawnShortening(room,bossNow)||room.serena?.state==='recovering'&&bossNow>=room.serena.respawnAt||room.darkStar?.state==='recovering'&&bossNow>=room.darkStar.respawnAt||room.starRecord?.state==='recovering'&&bossNow>=room.starRecord.respawnAt||room.forgottenConstellation?.state==='recovering'&&bossNow>=room.forgottenConstellation.respawnAt||room.truthCreator?.state==='recovering'&&bossNow>=room.truthCreator.respawnAt)){
         try{transaction(()=>{
-          settleBossDeaths(room,bossNow);shortenTemporaryBossRespawns(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);restoreForgottenConstellationStatue(room,bossNow);restoreTruthCreatorStatue(room,bossNow);roster(room);
+          settleBossDeaths(room,bossNow);settleDailyHunt(room,bossNow);shortenTemporaryBossRespawns(room,bossNow);restoreSerenaStatue(room,bossNow);restoreDarkStarStatue(room,bossNow);restoreStarRecordStatue(room,bossNow);restoreForgottenConstellationStatue(room,bossNow);restoreTruthCreatorStatue(room,bossNow);roster(room);
           deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,bossNow)}));
         });}catch(error){
           const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;

@@ -57,6 +57,11 @@ export function corvusChoices(recipes=[]){
   };
   return SHOP.items.filter(item=>!item.shopHidden).map(item=>({id:item.id,value:valueOf(item.id)})).filter(v=>v.value!==null&&v.value>0);
 }
+// Preserve the original budget and single grant when all saved choices retired.
+function supportedPendingChoices(pending){
+  const choices=pending.choices.filter(({id})=>{const item=SHOP.items.find(item=>item.id===id);return item&&!item.shopHidden;});
+  return choices.length?choices:corvusChoices().filter(choice=>choice.value<=pending.budget);
+}
 export function validateConstellationAbilityState(value){
   if(value===undefined)return freshConstellationAbilityState();
   const bad=()=>{throw Error('별자리 주간 능력 저장 데이터가 올바르지 않습니다.');};
@@ -273,7 +278,7 @@ export function constellationAbilityStatus(player,now=Date.now()){
         return {fromId:copied.fromId,constellationId:copied.constellationId,level:copied.level,used:copied.used,endsAt:copied.endsAt,
           usedLevels:copied.constellationId==='ophiuchus'?[...copied.usedLevels]:[],
           description:weeklyAbilityFor(copied.constellationId,copied.level).description,
-          pending:pending?{mode:pending.mode,choices:pending.choices.map(({id,value})=>({id,name:SHOP.items.find(item=>item.id===id)?.name||id,value}))}:null};})():null}:null,
+          pending:pending?{mode:pending.mode,choices:supportedPendingChoices(pending).map(({id,value})=>({id,name:SHOP.items.find(item=>item.id===id)?.name||id,value}))}:null};})():null}:null,
     paralysis:state.paralysis?.endsAt>now?{level:state.paralysis.level,endsAt:state.paralysis.endsAt,cost:state.paralysis.level===2?1:state.paralysis.level===3?2:3}:null,
     remindUnused:ability.configured&&!ability.passive&&!used&&!blockedByChange&&player.role==='student'&&!player.avatar?.teacherPreview&&(!player.avatar?.blackStar||!!ability.warningHunter)&&player.connected&&!player.away&&(day===5||day===6),
     description:ability.description,level,constellationId,nextResetAt:Math.max(week,state.usedWeek??week,state.changedWeek??week,state.warningWeek??week,state.blackWeek??week)+CONSTELLATION_WEEK_MS,
@@ -281,7 +286,7 @@ export function constellationAbilityStatus(player,now=Date.now()){
     coronaTrial:state.coronaTrial?{endsAt:state.coronaTrial.endsAt}:null,coronaUnclaimed:state.coronaUnclaimed,
     ariesSleep:state.ariesSleep?.endsAt>now?{endsAt:state.ariesSleep.endsAt,wakeCost:state.ariesSleep.wakeCost,reward:state.ariesSleep.reward}:null,ariesUnclaimed:state.ariesUnclaimed,
     lastResult,pending:pending?{budget:pending.budget,roll:pending.roll,mode:pending.mode,expiresAt:pending.week+CONSTELLATION_WEEK_MS}:null,
-    choices:pending?pending.choices.map(({id,value})=>{const item=SHOP.items.find(i=>i.id===id),owned=player.inventory?.find(i=>i.id===id);
+    choices:pending?supportedPendingChoices(pending).map(({id,value})=>{const item=SHOP.items.find(i=>i.id===id),owned=player.inventory?.find(i=>i.id===id);
       return {id,name:item.name,level:item.level,value,icon:item.icon,art:item.art,available:!blockedByChange&&player.role==='student'&&!player.avatar?.teacherPreview&&player.connected&&!player.away&&!player.avatar?.blackStar&&(pending.mode!=='copy'||owned?.quantity>0)&&(owned?owned.quantity<Math.min(SHOP.maxStack,item.maxOwned??Infinity):player.inventory.length<SHOP.maxKinds)};
     }):[],message:pending&&!blockedByChange?`아이템 1개를 골라 ${pending.mode==='copy'?'복사':'제작'}를 마쳐 주세요. 다음 일요일에는 선택 대기가 만료돼요.`:message};
 }
@@ -391,8 +396,8 @@ export function chooseConstellationItem(player,itemId,now=Date.now()){
   if(state.abilitySeal?.endsAt>now)fail('뱀주인자리의 고급 마비로 별자리 능력이 봉인됐어요.');
   if(constellationChangedThisWeek(player,now))fail('별자리를 바꾼 주에는 능력을 사용할 수 없어요. 다음 일요일에 다시 사용할 수 있어요.');
   if(!pending||pending.week!==constellationWeekStart(now))fail('진행 중인 별자리 아이템 선택이 없어요.');
-  const choice=pending.choices.find(i=>i.id===itemId),item=SHOP.items.find(i=>i.id===itemId);
-  if(!choice||!item)fail('주사위 가치로 만들 수 있는 아이템을 골라주세요.');
+  const choice=supportedPendingChoices(pending).find(i=>i.id===itemId),item=SHOP.items.find(i=>i.id===itemId);
+  if(!choice||!item||item.shopHidden)fail('주사위 가치로 만들 수 있는 아이템을 골라주세요.');
   const owned=player.inventory.find(i=>i.id===itemId);
   if(pending.mode==='copy'&&!(owned?.quantity>0))fail('복사할 원본 아이템을 지금 가지고 있어야 해요.');
   if((owned?.quantity??0)>=Math.min(SHOP.maxStack,item.maxOwned??Infinity))fail('그 아이템을 더 담을 수 없어요.');

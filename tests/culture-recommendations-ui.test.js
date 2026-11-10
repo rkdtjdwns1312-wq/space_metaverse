@@ -9,12 +9,14 @@ test('actual culture reader supports recommendation sort, consonant filter, vote
   const root=process.cwd(),files={
     '/client/culture-library.js':'client/culture-library.js','/client/history-library.js':'client/history-library.js',
     '/client/reading-refresh.js':'client/reading-refresh.js','/client/culture-library.css':'client/culture-library.css',
+    '/client/dialog-layout.js':'client/dialog-layout.js','/client/dialog-layout.css':'client/dialog-layout.css',
     '/shared/station-rewards.js':'shared/station-rewards.js','/shared/culture-stories.js':'shared/culture-stories.js','/shared/culture-stories-extra.js':'shared/culture-stories-extra.js','/shared/culture-stories-more.js':'shared/culture-stories-more.js','/shared/history-lessons.js':'shared/history-lessons.js',
-    '/shared/history-keywords.js':'shared/history-keywords.js'
+    '/shared/history-keywords.js':'shared/history-keywords.js',
+    '/shared/culture-stories-classics.js':'shared/culture-stories-classics.js'
   };
   const server=createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
-    if(url.pathname==='/'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'}).end('<!doctype html><html lang="ko"><meta charset="utf-8"><link rel="stylesheet" href="/client/culture-library.css"><body></body></html>');return;}
+    if(url.pathname==='/'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'}).end('<!doctype html><html lang="ko"><meta charset="utf-8"><link rel="stylesheet" href="/client/culture-library.css"><link rel="stylesheet" href="/client/dialog-layout.css"><body></body></html>');return;}
     const file=files[url.pathname];if(!file){res.writeHead(404).end();return;}
     res.writeHead(200,{'content-type':url.pathname.endsWith('.css')?'text/css':'text/javascript'}).end(await readFile(resolve(root,file)));
   });

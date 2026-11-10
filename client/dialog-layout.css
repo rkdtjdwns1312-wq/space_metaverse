@@ -36,6 +36,11 @@ dialog.fixed-dialog-header > header h2{margin:0;min-width:0;overflow-wrap:anywhe
 dialog.fixed-dialog-header > header > button{flex:0 0 auto;white-space:nowrap}
 dialog.fixed-dialog-header > header .student-help-heading{margin:0;gap:6px 10px}
 dialog.fixed-dialog-header > .dialog-scroll-body{flex:1 1 auto;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;padding:3px 4px 5px;scrollbar-width:thin;scrollbar-color:#b9accb transparent}
+/* Station titles and their original close controls share one full-width row. */
+:is(#learning-station-dialog,#history-library-dialog,#science-library-dialog,#culture-library-dialog,#art-studio-dialog).fixed-dialog-header{overflow:hidden;max-height:calc(100dvh - 32px)}
+:is(#learning-station-dialog,#history-library-dialog,#science-library-dialog,#culture-library-dialog,#art-studio-dialog).has-dialog-header > .dialog-header-row{flex-wrap:nowrap!important}
+#learning-station-dialog .learning-head{background:transparent}
+#learning-station-dialog [hidden]{display:none!important}
 #shop-dialog #shop-shards{max-width:none;margin:0 0 12px}
 #shop-dialog #shop-buy-list,#shop-dialog #shop-sell-list,#energy-shop-dialog #energy-shop-list,#teacher-equipment-catalog-dialog #teacher-equipment-catalog-list{max-height:none;overflow:visible}
 #shop-dialog .item-art{object-fit:contain}

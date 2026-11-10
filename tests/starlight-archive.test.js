@@ -47,7 +47,7 @@ test('archive creation retries are idempotent; revision protects signs/edits and
  p.accountKind='master';assert.equal(saveArchive(p,data({kind:'reading',bookTitle:'별 이야기',author:'글쓴이'}),204).entry.bookTitle,'별 이야기');
  assert.equal(readArchive(room,t,{kind:'reading'}).roster.find(student=>student.id===p.id).hasNew,true);
 });
-test('teacher reply stays private, survives student edits, and rejects student, stale, reading, and oversized submissions',()=>{
+test('teacher reply stays private, survives student edits, and rejects student, stale, wrong-kind IDs, and oversized submissions',()=>{
  const {p,q,t,room}=setup(),first=saveArchive(p,data(),100).entry;
  assert.throws(()=>replyArchive(room,p,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'위조'},110));
  assert.throws(()=>replyArchive(room,q,{kind:'diary',studentId:p.id,id:first.id,revision:1,text:'위조'},110));
@@ -73,4 +73,21 @@ test('archive capacity rejects only new entries without deleting history; existi
  p.starlightArchive.diary=Array.from({length:1000},(_,i)=>({...e,id:'record-'+String(i).padStart(4,'0'),requestId:'request-'+String(i).padStart(4,'0')}));
  const before=structuredClone(p.starlightArchive);assert.throws(()=>saveArchive(p,data({requestId:'new-request-overflow'}),200),/가득/);assert.deepEqual(p.starlightArchive,before);
  const edited=saveArchive(p,data({id:before.diary[999].id,revision:1,body:'마지막 글 수정'}),201).entry;assert.equal(edited.body,'마지막 글 수정');assert.equal(p.starlightArchive.diary.length,1000);
+});
+
+test('reading replies coexist with diary notices, preserve fields and only acknowledge the selected kind',()=>{
+ const {p,q,t,room}=setup(),diary=saveArchive(p,data(),100).entry,book=saveArchive(p,data({kind:'reading',bookTitle:'별 이야기',author:'작가'}),100).entry;
+ const reply=(e,kind)=>replyArchive(room,t,{kind,studentId:p.id,id:e.id,revision:e.revision,text:'생각을 잘 썼어요'},110).entry;
+ const d=reply(diary,'diary'),b=reply(book,'reading');assert.equal(b.replyUnread,true);
+ const ack={kind:'reading',id:b.id,replyVersion:1};
+ assert.throws(()=>replyArchive(room,p,{kind:'reading',id:b.id,revision:2,text:'위조'},120));
+ assert.throws(()=>acknowledgeArchiveReply(room,q,{...ack,studentId:p.id}));
+ assert.throws(()=>acknowledgeArchiveReply(room,p,{...ack,kind:'diary'}));
+ acknowledgeArchiveReply(room,p,{kind:'diary',id:d.id,replyVersion:1});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ const restored=validateArchive(JSON.parse(JSON.stringify(p.starlightArchive)));assert.equal(restored.reading[0].reply.text,b.reply.text);assert.equal(restored.reading[0].bookTitle,'별 이야기');
+ readArchive(room,p,{kind:'reading'});getArchive(room,p,{kind:'reading',id:b.id});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ acknowledgeArchiveReply(room,p,ack);assert.equal(hasUnreadArchiveReplies(p.starlightArchive),false);
+ const changed=replyArchive(room,t,{kind:'reading',studentId:p.id,id:b.id,revision:2,text:'추가 답글'},130).entry;
+ assert.equal(changed.reply.version,2);assert.equal(acknowledgeArchiveReply(room,p,ack).acknowledged,false);assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ acknowledgeArchiveReply(room,p,{...ack,replyVersion:2});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),false);
 });

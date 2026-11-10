@@ -1,6 +1,7 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
 import {PLAZA_LAYOUT as L} from '/shared/plaza-layout.js';
 import {drawPaintedProp} from './painted-props.js';
+import {gateLabelBaseline} from './gate-art.js';
 export {drawDepartmentHome} from './department-art.js';
 // 원화는 파일로 교체 가능하고, 한글 이름은 게임 글꼴로 선명하게 얹습니다.
 const art={};
@@ -28,7 +29,13 @@ export function drawPlazaLandmark(ctx,o){
   const name=o.kind==='andromeda'?'andromeda':'black-hole';
   const scale=o.visualScale||1,w=(o.kind==='andromeda'?360:290)*scale,h=330*scale;
   sprite(ctx,name,o.x,o.y+110*scale,w,h);
-  if(!o.hideLabel)label(ctx,o.name,o.x,o.labelAbove?o.y+110*scale-h-22:o.y+125*scale,21);
+  if(!o.hideLabel){
+    if(o.kind==='black-hole'){
+      ctx.save();ctx.font='21px "Jua","Malgun Gothic",sans-serif';ctx.lineWidth=5;
+      // Visible alpha rows 34..1210 of the existing 1254px black-hole art.
+      const y=gateLabelBaseline(ctx,o.name,{y:o.y+110*scale-h+h*34/1254,height:h*1177/1254},!!o.labelBelow);ctx.restore();label(ctx,o.name,o.x,y,21);
+    }else label(ctx,o.name,o.x,o.labelAbove?o.y+110*scale-h-22:o.y+125*scale,21);
+  }
 }
 export function drawMissionBoard(ctx,o){
   sprite(ctx,'mission-board',o.x,o.y+100,250,250);

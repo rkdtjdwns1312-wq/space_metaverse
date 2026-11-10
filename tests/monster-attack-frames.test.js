@@ -15,7 +15,11 @@ test('새 시트 9종의 프레임 영역과 발 기준점이 실제 PNG 셀 범
  for(const [id,art]of Object.entries(MONSTER_ATTACK_ART)){
   const png=readFileSync('client'+(art.src||`/assets/monsters/${id}-attack.png`));
   assert.equal(png.readUInt32BE(16),1774);assert.equal(png.readUInt32BE(20),887);
-  assert.equal(art.bounds.length,8);for(const [l,t,r,b]of art.bounds)assert(l>=0&&t>=0&&r>l&&b>t&&r<=443&&b<=443,id);
+  assert.equal(art.bounds.length,8);for(const [i,[l,t,r,b]]of art.bounds.entries()){
+   const [sourceY,sourceHeight]=art.rows?.[Math.floor(i/4)]||[Math.floor(i/4)*443,443];
+   assert(l>=0&&t>=0&&r>l&&b>t&&r<=443&&b<=sourceHeight,id);
+   assert(sourceY>=0&&sourceY+sourceHeight<=png.readUInt32BE(20),id);
+  }
  }
  assert.equal(drawPaintedMonsterFrame({},'unknown',0,40),false);
 });
@@ -26,4 +30,20 @@ test('성령왕 이름 기준은 공격/보행의 가장 높은 지팡이보다 
   for(const [,top,,bottom]of art.bounds)assert(b.top<=b.bottom-(bottom-top)*scale);
  }
  assert.deepEqual(b,bossMonsterBounds({shape:'spirit-king',radius:r,y:200},true));
+});
+
+
+test('성령왕 공격 상단 발끝과 하단 머리가 서로 다른 소스 행을 사용한다',()=>{
+ const previousImage=globalThis.Image;
+ try{
+  globalThis.Image=class{complete=true;naturalWidth=1774;};
+  const calls=[],ctx={drawImage:(...args)=>calls.push(args)};
+  for(let i=0;i<8;i++)drawPaintedMonsterFrame(ctx,'spirit-king',i,80);
+  for(const [i,args]of calls.entries()){
+   assert.equal(args[2],i<4?0:480);assert.equal(args[4],i<4?480:407);
+   assert.equal(args[2]+args[4],i<4?480:887);
+  }
+  assert(MONSTER_ATTACK_ART['spirit-king'].bounds.slice(0,4).every(b=>b[3]>443));
+  assert(MONSTER_ATTACK_ART['spirit-king'].bounds.slice(4).every(b=>b[1]>40));
+ }finally{globalThis.Image=previousImage;}
 });

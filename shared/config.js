@@ -75,10 +75,10 @@ const LEGACY_PLAZA = Object.freeze({ id: 'space-plaza', name: '별의 기원', w
     MARKET
   ] });
 export {ASSIGNMENT_ID,MARKET_ID,DEPARTMENT_ID};
-const routeGate=(route,back=false)=>({id:back?'gate-plaza':'gate-'+route.id,name:back?'별의 기원':route.name,...(back?route.returnGate:{x:route.x,y:route.y}),radius:38,kind:'gate',target:back?'space-plaza':route.target,arrival:back?route.back:route.arrival,passable:true});
+const routeGate=(route,back=false)=>({id:back?'gate-plaza':'gate-'+route.id,name:back?'별의 기원':route.name,...(back?route.returnGate:{x:route.x,y:route.y}),labelBelow:!back&&!!route.labelBelow,radius:38,kind:'gate',target:back?'space-plaza':route.target,arrival:back?route.back:route.arrival,passable:true});
 export const MAP=Object.freeze({...LEGACY_PLAZA,theme:'plaza',viewBounds:plazaLayoutOf('space-plaza').viewBounds,objects:[
  ...LEGACY_PLAZA.objects.filter(o=>!['andromeda','mission-board','market','black-hole'].includes(o.kind)).map(o=>o.kind==='gate'?{...o,...PLAZA_LAYOUT.gates[{'gate-street':'east','gate-garden':'west','gate-valley':'south','gate-origin':'north'}[o.id]],destinationLabel:({'gate-street':'오색 쉼터','gate-garden':'낙원의 갈림길','gate-valley':'은하수 계곡','gate-origin':'별의 시작점 1'})[o.id]}:o),
- ...PLAZA_ROUTES.map(route=>route.id==='black-hole'?{...LEGACY_PLAZA.objects.find(o=>o.kind==='black-hole'),x:route.x,y:route.y,radius:86.4,visualScale:.6,labelAbove:true}:routeGate(route))
+ ...PLAZA_ROUTES.map(route=>route.id==='black-hole'?{...LEGACY_PLAZA.objects.find(o=>o.kind==='black-hole'),x:route.x,y:route.y,radius:86.4,visualScale:.6,labelBelow:true}:routeGate(route))
 ]});
 export const PLAZA_ID=MAP.id;
 export const PLAZA_SUBMAPS=Object.freeze(PLAZA_ROUTES.filter(r=>r.returnGate).map(route=>{
@@ -178,7 +178,7 @@ export const VALLEY = Object.freeze({id:'milky-valley',name:'은하수계곡',wi
 export const VALLEY_ID=VALLEY.id;
 export const BLACK_HOLE = Object.freeze({id:'black-hole',name:'블랙홀 내부',theme:'black-hole',width:1200,height:760,spawn:{x:600,y:390},objects:[
   {id:'black-hole-star',name:'검은별',x:600,y:250,radius:80,kind:'black-star',passable:true},
-  {id:'black-hole-exit',name:'별의 기원',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:{x:2170,y:1090},passable:true}
+  {id:'black-hole-exit',name:'별의 기원',x:600,y:680,radius:42,kind:'gate',target:PLAZA_ID,arrival:PLAZA_ROUTES.find(r=>r.id==='black-hole').back,passable:true}
 ]});
 export const BLACK_HOLE_ID=BLACK_HOLE.id;
 // 고래자리 배 속은 초대받은 학생에게만 열리는 공간이며 우주 지도에는 표시하지 않습니다.

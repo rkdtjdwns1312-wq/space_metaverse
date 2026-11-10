@@ -18,12 +18,20 @@ test('legacy five-stamp balance restarts without clipping; extra activity grants
  f.mutate(p=>{for(const station of HUNTING_STATIONS)chargeHuntingStation(p,station,f.now);});await f.restart();assert.equal(huntingTimeView(f.p,f.now).remainingMs,60*60000);
 });
 test('entrygate and fasttravel deny zero; actualclock runs in hunts, pauses safe, expires to shelter',async t=>{
- const f=await readingFixture(t);f.mutate(p=>{p.avatar.level=5;});
+ const f=await readingFixture(t);f.mutate(p=>{p.avatar.level=5;p.avatar.constellationId='hercules';});
  assert.equal((await call(f.student,'map:fast-travel',{to:'moon-garden',remainingMs:999999})).ok,false);
  credit(f);ok(await call(f.student,'map:fast-travel',{to:'moon-garden'}));assert.equal(f.p.mapId,'moon-garden');
  f.advance(5000);await wait(200);assert.equal(huntingTimeView(f.p,f.now).remainingMs,HUNTING_STATION_MS-5000);
  ok(await call(f.student,'map:fast-travel',{to:'star-street'}));const paused=huntingTimeView(f.p,f.now).remainingMs;f.advance(5000);await wait(200);assert.equal(huntingTimeView(f.p,f.now).remainingMs,paused);
- ok(await call(f.student,'map:fast-travel',{to:'sleeping-stars-1'}));f.advance(paused);assert.equal((await call(f.student,'combat:attack',{})).ok,false);await wait(250);assert.equal(f.p.mapId,'star-street');assert.equal(huntingTimeView(f.p,f.now).remainingMs,0);
+ ok(await call(f.student,'map:fast-travel',{to:'sleeping-stars-1'}));
+ const hits=[];f.student.on('combat:hit',hit=>hits.push(hit));f.advance(paused);
+ const attack=await call(f.student,'combat:attack',{});
+ // The expiry tick may return the student before this socket request arrives.
+ // A rejected hunt attack and an empty shelter swing are both correct outcomes.
+ if(attack.ok){assert.equal(attack.hit.mapId,'star-street');assert.deepEqual(attack.targets,[]);}
+ else assert.match(attack.error,/사냥 시간이/);
+ await wait(250);assert(hits.every(hit=>hit.mapId==='star-street'),'no attack may execute in the expired hunting map');
+ assert.equal(f.p.mapId,'star-street');assert.equal(huntingTimeView(f.p,f.now).remainingMs,0);
  assert.equal((await call(f.student,'map:fast-travel',{to:'star-origin-1'})).ok,false);
 });
 test('qualifiedscience claim charges once transactionally, private snapshot, offline/restart retain remaining',async t=>{

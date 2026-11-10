@@ -23,7 +23,7 @@ const result={L,visual,floorPath,edgePath,rimEdges:openMapRimEdges(visual.edges,
 function ground(ctx,map){
   const {L,visual,floorPath,rimEdges}=geometry(map);
   drawRockSupports(ctx,rimEdges,'plaza',L.height);
-  drawFloatingIslands(ctx,[L.center,...L.islands].filter(Boolean),'plaza',L.height);
+  drawFloatingIslands(ctx,[L.center,...L.islands,...(L.gateLandings||[])].filter(Boolean),'plaza',L.height);
   ctx.save();ctx.translate(0,12);ctx.fillStyle='#968ba7';ctx.shadowColor='#17193377';ctx.shadowBlur=24;ctx.shadowOffsetY=12;ctx.fill(floorPath);ctx.restore();
   ctx.save();ctx.clip(floorPath);ctx.fillStyle='#eee8f4';ctx.fillRect(0,0,L.width,L.height);
   if(ready(images.floor)){const pattern=ctx.createPattern(images.floor,'repeat');pattern.setTransform(new DOMMatrix().scale(.30));ctx.fillStyle=pattern;ctx.fillRect(0,0,L.width,L.height);}

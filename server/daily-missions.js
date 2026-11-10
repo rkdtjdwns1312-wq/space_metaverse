@@ -1,4 +1,5 @@
-import {validateMissions,missionExpired} from './missions.js';
+import {monsterType} from '../shared/monsters.js';
+import {validateMissions,missionExpired,advanceMissions} from './missions.js';
 
 export const DAILY_HISTORY_LIMIT=100;
 const rewardTypes=new Set(['star-crumb','star-shard','cosmic-energy']);
@@ -12,13 +13,17 @@ const defaultTemplate={id:'builtin-timetable',title:'시간표 확인하기',des
  objective:'timetable-read',goal:1,distribution:'all',repeat:'daily',rewardItem:'star-crumb',rewardQuantity:1,rewardShards:0,
  maxRecipients:null,validityHours:null,at:0};
 
+export const isBuiltinDaily=id=>['builtin-timetable','builtin-hunt'].includes(id);
+const huntTemplate={...defaultTemplate,id:'builtin-hunt',title:'내 레벨 이하 몬스터 10마리 잡기',
+ description:'오늘 내 현재 레벨 이하의 몬스터 10마리를 잡아요. 피해를 준 몬스터의 처치를 인정해요.',objective:'monster-hunt',goal:10};
+
 export function dailyInstances(room,now=Date.now()){
  return room.dailyMissions?.day===dailyMissionDay(now)?room.dailyMissions.instances:[];
 }
 export function validateDailyMissions(raw){
  if(raw===undefined)return {day:null,instances:[]};
- if(!raw||typeof raw!=='object'||Array.isArray(raw)||!(raw.day===null||validDay(raw.day))||!Array.isArray(raw.instances)||raw.instances.length>31||raw.day===null&&raw.instances.length)throw Error('Invalid daily missions');
- const instances=validateMissions(raw.instances,{limit:31,instances:true}),templates=new Set();
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||!(raw.day===null||validDay(raw.day))||!Array.isArray(raw.instances)||raw.instances.length>32||raw.day===null&&raw.instances.length)throw Error('Invalid daily missions');
+ const instances=validateMissions(raw.instances,{limit:32,instances:true}),templates=new Set();
  for(const m of instances){
   if(m.repeat!=='daily'||m.day!==raw.day||typeof m.templateId!=='string'||!m.templateId||templates.has(m.templateId)||m.id!==idFor(m.templateId,raw.day)||
    m.at<dayStart(raw.day)||m.at>=dayStart(raw.day)+86400000||m.expiresAt==null||m.expiresAt>dayStart(raw.day)+86400000||
@@ -54,7 +59,7 @@ export function ensureDailyMissions(room,now=Date.now()){
   }
   state=room.dailyMissions={day,instances:[]};changed=true;
  }
- for(const template of [defaultTemplate,...(room.missions||[]).filter(m=>m.repeat==='daily')]){
+ for(const template of [defaultTemplate,huntTemplate,...(room.missions||[]).filter(m=>m.repeat==='daily')]){
   const id=idFor(template.id,day);let instance=state.instances.find(m=>m.id===id);
   if(!instance){
    const at=Math.max(dayStart(day),template.at);if(at>=dayStart(day)+86400000)continue;
@@ -74,4 +79,34 @@ export function ensureDailyMissions(room,now=Date.now()){
 export function dailyHistoryViews(player){
  return (player.dailyMissionHistory||[]).map(m=>({...m,repeat:'daily',rewardShards:m.rewards?.find(reward=>reward.type==='star-shard')?.quantity||0,
   distribution:'all',status:'claimed',archived:true,expired:true}));
+}
+
+
+// Capture eligibility at death, before contributor maps are cleared. Only the
+// common positive-HP -> zero-HP transition calls this, including periodic hits.
+export function queueDailyHunt(room,monster,contributors,now){
+ const level=monsterType(monster.typeId)?.level??monster.level;
+ if(!Number.isInteger(level)||level<1)return;
+ const day=dailyMissionDay(now),mission=dailyInstances(room,now).find(m=>m.templateId==='builtin-hunt');
+ for(const [id,damage] of contributors){
+  const player=room.players.get(id);
+  if(!(damage>0)||player?.role!=='student'||!Number.isInteger(player.avatar?.level)||player.avatar.level<level||mission?.completedIds.includes(id))continue;
+  room.pendingHuntProgress??=new Map();
+  // Expired days cannot become progress for today's mission after a save retry.
+  for(const [key,value] of room.pendingHuntProgress)if(value.day<day)room.pendingHuntProgress.delete(key);
+  const key=day+':'+id,previous=room.pendingHuntProgress.get(key);
+  room.pendingHuntProgress.set(key,{day,playerId:id,count:Math.min(10,(previous?.count||0)+1)});
+ }
+}
+// Called in the same persisted transaction as pending boss deaths. Failed saves
+// restore both the unconsumed queue and the old progress for an exact retry.
+export function settleDailyHunt(room,now){
+ let changed=false;const day=dailyMissionDay(now);
+ for(const [key,value] of room.pendingHuntProgress||[]){
+  const player=room.players.get(value.playerId);
+  if(value.day===day&&player?.role==='student')for(let i=0;i<value.count;i++)
+   changed=advanceMissions(room,player,'monster-hunt',undefined,now)||changed;
+  room.pendingHuntProgress.delete(key);
+ }
+ return changed;
 }

@@ -2,11 +2,11 @@ import {randomUUID} from 'node:crypto';
 import {ensure} from './rooms.js';
 import {RULES} from '../shared/config.js';
 import {journeyComplete,journeyMissions} from './tutorial-journey.js';
-import {dailyInstances,ensureDailyMissions,dailyHistoryViews} from './daily-missions.js';
+import {dailyInstances,ensureDailyMissions,dailyHistoryViews,isBuiltinDaily} from './daily-missions.js';
 
 export const MISSION_LIMITS=Object.freeze({count:30,title:40,description:240,reward:10,recipients:RULES.maxStudents,hours:8760});
 export const MISSION_REWARD_TYPES=Object.freeze(['star-crumb','star-shard','cosmic-energy']);
-export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read','culture-read','history-read','science-read','one-stroke-win']);
+export const AUTO_OBJECTIVES=Object.freeze(['map-travel','energy-collect','tetris-lines','dodge-record','memory-win','english-success','math-correct','craft-level','baseball-win','sudoku-win','signal-stage','tutorial-complete','life-star-complete','timetable-read','culture-read','history-read','science-read','one-stroke-win','monster-hunt']);
 const autoObjectives=new Set(AUTO_OBJECTIVES);
 const difficulties=new Set(['low','medium','high']);
 const uniqueIds=value=>Array.isArray(value)&&value.every(id=>typeof id==='string'&&id.length>0)&&new Set(value).size===value.length;
@@ -94,7 +94,7 @@ export function createMission(room,data,now=Date.now()){
     if(['tutorial-complete','life-star-complete','timetable-read'].includes(data.objective))ensure(data.goal===1,'이 조건은 한 번 완료하면 달성돼요.');
   }
   room.missions??=[];ensure(room.missions.length<MISSION_LIMITS.count,'미션은 교실당 30개까지 만들 수 있어요.');
-  if(daily)ensure(dailyInstances(room,now).filter(m=>m.templateId!=='builtin-timetable').length<MISSION_LIMITS.count,'오늘 배정한 반복 미션은 중지한 미션을 포함해 30개까지 만들 수 있어요.');
+  if(daily)ensure(dailyInstances(room,now).filter(m=>!isBuiltinDaily(m.templateId)).length<MISSION_LIMITS.count,'오늘 배정한 반복 미션은 중지한 미션을 포함해 30개까지 만들 수 있어요.');
   const mission={id:randomUUID(),title,description,rewardShards:shardReward,...(rewards?{rewards}:{}),distribution:data.distribution,at:now,maxRecipients,
     ...(daily?{repeat:'daily',...(rewards?{}:{rewardItem:'star-crumb',rewardQuantity:legacyQuantity}),validityHours}:{}),
     expiresAt:daily||validityHours===null?null:now+validityHours*3600000,
@@ -173,7 +173,7 @@ export function missionViews(room,viewer,now=Date.now()){
   if(!viewer)return [];
   const missions=activeMissionRecords(room,now).filter(m=>viewer.role==='teacher'||m.acceptedIds.includes(viewer.id)).map(m=>({
     id:m.id,title:m.title,description:m.description,rewardShards:m.rewardShards,distribution:m.distribution,at:m.at,
-    ...rewardView(m),...(m.repeat==='daily'?{repeatStopped:m.templateId!=='builtin-timetable'&&!(room.missions||[]).some(t=>t.id===m.templateId)}:{}),
+    ...rewardView(m),...(m.repeat==='daily'?{repeatStopped:!isBuiltinDaily(m.templateId)&&!(room.missions||[]).some(t=>t.id===m.templateId)}:{}),
     ...missionLimitsView(m,now),
     ...(m.objective?{objective:m.objective,goal:m.goal,progress:m.progress[viewer.id]||0,
       ...(m.grade?{grade:m.grade}:{}),...(m.itemLevel?{itemLevel:m.itemLevel}:{}),
@@ -189,7 +189,7 @@ export function missionViews(room,viewer,now=Date.now()){
 export function missionBoardViews(room,viewer,now=Date.now()){
   const missions=activeMissionRecords(room,now).filter(m=>viewer.role==='teacher'||m.distribution==='board'&&!m.acceptedIds.includes(viewer.id));
   return missions.map(m=>({id:m.id,title:m.title,description:m.description,rewardShards:m.rewardShards,distribution:m.distribution,
-    ...missionLimitsView(m,now),...rewardView(m),...(m.repeat==='daily'?{repeatStopped:m.templateId!=='builtin-timetable'&&!(room.missions||[]).some(t=>t.id===m.templateId)}:{}),
+    ...missionLimitsView(m,now),...rewardView(m),...(m.repeat==='daily'?{repeatStopped:!isBuiltinDaily(m.templateId)&&!(room.missions||[]).some(t=>t.id===m.templateId)}:{}),
     ...(m.objective?{objective:m.objective,goal:m.goal,
       ...(m.grade?{grade:m.grade}:{}),...(m.itemLevel?{itemLevel:m.itemLevel}:{}),
       ...(m.difficulty?{difficulty:m.difficulty}:{}),...(m.stage?{stage:m.stage}:{})}:{}),

@@ -1,3 +1,4 @@
+import {queueDailyHunt} from './daily-missions.js';
 import {tickHomingStar,homingStarView,homingStarsView,homingVolleyView,tryHomingVolley} from './forgotten-homing-star.js';
 import {tryConstellationLinks,tickConstellationLinks} from './forgotten-constellation-links.js';
 import {tryConstellationNames,tickConstellationNames,constellationNamesView} from './forgotten-constellation-names.js';
@@ -214,6 +215,7 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
   if(!silent){room.damageNumbers??=[];room.damageNumbers.push({targetId:target.id,targetKind:'monster',mapId:target.mapId,x:target.x,y:target.y,damage:dealt});
     if(room.damageNumbers.length>200)room.damageNumbers.shift();}
   if(target.hp===0){
+    queueDailyHunt(room,target,target.contributors,now);
     if(target.typeId==='truth-creator-star')room.monsters.delete(target.id);
     if(target.typeId==='truth-creator')clearTruthCreatorAttack(target,room);
     if(target.typeId==='dark-star')clearDarkStarSkills(room,target);

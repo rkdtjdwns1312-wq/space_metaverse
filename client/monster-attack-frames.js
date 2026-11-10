@@ -1,4 +1,5 @@
-// 실제로 그린 8포즈 시트. 좌표는 443px 셀 안의 몸체 범위이며 원본은 1774×887입니다.
+// 실제로 그린 8포즈 시트(원본 1774×887). 몸체 범위는 각 소스 셀 내부 좌표입니다.
+// 기본 셀은 443px이며, 행 경계가 다른 시트는 rows=[시작Y,높이]를 지정합니다.
 // 모든 프레임은 같은 배율을 사용하고 발 아래를 고정합니다. 그림을 겹쳐 잔상을 만들지 않습니다.
 export const MONSTER_ATTACK_ART=Object.freeze({
   'baby-energy-star':{height:1.95,face:1,bounds:[[59,83,391,386],[81,122,393,399],[86,108,379,399],[88,86,421,399],[57,77,435,390],[66,77,408,389],[76,89,397,389],[61,85,393,388]]},
@@ -6,7 +7,7 @@ export const MONSTER_ATTACK_ART=Object.freeze({
   'water-star':{height:2.55,face:1,bounds:[[114,157,383,387],[112,158,368,376],[112,159,373,383],[105,157,360,382],[106,107,374,321],[100,103,377,314],[103,109,374,327],[106,107,377,331]]},
   leoon:{height:1.86,face:1,bounds:[[82,140,344,380],[94,163,370,380],[74,142,342,380],[66,143,348,378],[74,83,379,320],[74,88,366,322],[63,79,355,328],[65,77,352,326]]},
   noksera:{height:1.85,face:-1,bounds:[[104,136,355,389],[104,153,383,386],[108,132,342,388],[67,193,346,391],[95,143,397,333],[137,83,370,332],[96,86,360,337],[107,84,356,337]]},
-  'spirit-king':{height:2.35,face:1,src:'/assets/monsters/spirit-king-attack-v4.png',bounds:[[58,135,326,443],[71,143,371,443],[63,141,400,443],[98,71,394,443],[74,0,437,383],[65,0,437,383],[72,0,401,384],[123,0,374,386]]},
+  'spirit-king':{height:2.35,face:1,src:'/assets/monsters/spirit-king-attack-v4.png',rows:[[0,480],[480,407]],bounds:[[57,134,327,448],[71,142,373,448],[62,140,402,449],[98,69,396,448],[73,57,439,347],[65,59,441,346],[71,61,403,347],[123,54,374,349]]},
   'spirit-king-walk':{height:2.35,face:1,src:'/assets/monsters/spirit-king-walk-v3.png',bounds:[[44,80,360,437],[56,79,376,435],[49,80,362,438],[58,80,381,438],[51,38,356,392],[63,41,376,393],[50,42,364,394],[64,39,381,393]]},
   'star-guardian':{height:2.5,face:1,src:'/assets/monsters/star-guardian-attack.png',bounds:[[38,69,403,421],[42,101,421,420],[37,89,410,427],[54,96,429,420],[39,67,443,394],[0,73,443,391],[0,76,443,394],[0,68,403,398]]},
   'star-guardian-walk':{height:2.5,face:1,src:'/assets/monsters/star-guardian-walk.png',bounds:[[25,46,424,426],[33,48,437,431],[35,48,435,431],[30,48,434,431],[33,25,443,408],[0,27,441,408],[24,24,434,408],[26,29,442,402]]}
@@ -36,6 +37,9 @@ export function drawPaintedMonsterFrame(ctx,shape,frame,radius,x=0,y=0){
   const index=Math.max(0,Math.min(7,Math.floor(frame)||0)),b=art.bounds[index],base=art.bounds[0];
   const scale=radius*art.height/(base[3]-base[1]),cell=443;
   const ax=(b[0]+b[2])/2,ay=b[3];
-  ctx.drawImage(image,index%4*cell,Math.floor(index/4)*cell,cell,cell,x-ax*scale,y-ay*scale,cell*scale,cell*scale);
+  // The spirit king's upper-row boots extend past y443. Split that sheet in
+  // its empty gutter, so lower poses never inherit the preceding boots.
+  const row=Math.floor(index/4),[sourceY,sourceHeight]=art.rows?.[row]||[row*cell,cell];
+  ctx.drawImage(image,index%4*cell,sourceY,cell,sourceHeight,x-ax*scale,y-ay*scale,cell*scale,sourceHeight*scale);
   return true;
 }

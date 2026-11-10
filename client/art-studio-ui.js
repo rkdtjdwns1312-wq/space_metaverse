@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {ART_LIMITS as L,ART_TEACHER_OWNER,ART_SHAPE_TOOLS,artDrawingPointCount,createArtFill,blankArtDrawing,normalizeArtDrawing,paintArtDrawing} from '/shared/art-studio.js';
 
 export function createArtStudioUI({request,stop,getPlayer,toast}){
@@ -10,7 +11,7 @@ export function createArtStudioUI({request,stop,getPlayer,toast}){
  <div data-art="tools" class="art-studio-tools"><div role="group" aria-label="그리기 도구"><button type="button" data-art-tool="brush" aria-pressed="true">붓</button><button type="button" data-art-tool="eraser" aria-pressed="false">지우개</button><button type="button" data-art-tool="fill" aria-pressed="false">🪣 페인트통</button></div><div role="group" aria-label="도형 넣기"><button type="button" data-art-tool="rectangle" aria-pressed="false">□ 네모</button><button type="button" data-art-tool="ellipse" aria-pressed="false">○ 원</button><button type="button" data-art-tool="triangle" aria-pressed="false">△ 삼각형</button><button type="button" data-art-tool="star" aria-pressed="false">☆ 별</button></div><label>색상<input type="color" data-art="color" value="#7258a3"></label><label>굵기<input type="range" data-art="width" min="1" max="40" value="8"><output data-art="width-label">8</output></label><button type="button" data-art="undo">되돌리기</button><button type="button" data-art="clear">모두 지우기</button></div><p data-art="tool-hint" class="art-studio-capacity"></p>
  <p data-art="view-note" class="art-studio-view-note" hidden>친구의 작품을 감상하고 있어요.</p><canvas width="600" height="400" data-art="canvas" aria-label="600×400 그림판"></canvas><p data-art="capacity" class="art-studio-capacity"></p>
  <div class="art-studio-actions"><button type="button" data-art="save" class="primary">새 작품 저장</button><button type="button" data-art="delete" class="secondary" hidden>작품 삭제</button><button type="button" data-art="download" class="secondary">PNG 내려받기</button></div></section></div></div><p data-art="status" class="art-studio-status" role="status" aria-live="polite"></p>`;
- document.body.append(dialog);const $=name=>dialog.querySelector(`[data-art="${name}"]`),canvas=$('canvas'),ctx=canvas.getContext('2d');
+ document.body.append(dialog);pinDialogHeader(dialog);const $=name=>dialog.querySelector(`[data-art="${name}"]`),canvas=$('canvas'),ctx=canvas.getContext('2d');
  let epoch=0,busy=false,tab=null,ownerId=null,roster=[],list=[],work=null,drawing=blankArtDrawing(),dirty=false,tool='brush',history=[],stroke=null,pointerId=null,pointerType=null,pointBudget=0,requestId=crypto.randomUUID(),paintFrame=null;
  const ownId=()=>getPlayer()?.role==='teacher'?ART_TEACHER_OWNER:getPlayer()?.id;
  const editable=()=>tab==='mine'&&['student','teacher'].includes(getPlayer()?.role);

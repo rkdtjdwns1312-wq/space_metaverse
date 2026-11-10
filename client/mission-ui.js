@@ -172,7 +172,7 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
       const node=card(mission);
       if(me?.role==='teacher'){
         const tag=document.createElement('p');tag.className='mission-status';tag.textContent=(mission.repeat==='daily'?'매일 반복 · ':mission.objective?'자동미션 · ':'일반 미션 · ')+(mission.distribution==='all'?'전체 배포':'게시판에서 직접 받기');node.append(tag);
-        if(mission.repeat==='daily'&&mission.templateId&&mission.templateId!=='builtin-timetable'&&!mission.repeatStopped){
+        if(mission.repeat==='daily'&&mission.templateId&&!['builtin-timetable','builtin-hunt'].includes(mission.templateId)&&!mission.repeatStopped){
           const pause=document.createElement('button');pause.type='button';pause.className='small secondary';pause.textContent='내일부터 반복 중지';
           pause.onclick=async()=>{pause.disabled=true;try{await request('mission:repeat:stop',{templateId:mission.templateId});await refreshBoard();toast('오늘 미션은 유지하고 내일부터 반복을 중지했어요.');}catch(error){toast(error.message);pause.disabled=false;}};node.append(pause);
         }

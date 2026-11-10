@@ -138,6 +138,7 @@ export function serenaSkillViews(room,boss,now){
   const state=boss.serenaSkills;
   if(!state||boss.hp<=0||state.mapId!==boss.mapId)return null;
   return {
+    serverNow:now,
     marks:state.marks.filter(m=>m.endsAt>now&&valid(boss,room.players.get(m.playerId))).map(({id,kind,playerId,startsAt,endsAt,remaining,radiusX,radiusY,requiredFriends,nearbyFriends})=>({id,kind,playerId,startsAt,endsAt,...(kind==='black'?{remaining}:{}),...(kind==='red'?{radiusX,radiusY,requiredFriends,nearbyFriends}:{})})),
     warnings:state.warnings.filter(w=>valid(boss,room.players.get(w.playerId))).map(({id,x,y,radius,startsAt,endsAt})=>({id,x,y,radius,startsAt,endsAt})),
     bursts:state.bursts.filter(b=>b.endsAt>now).map(b=>({...b}))

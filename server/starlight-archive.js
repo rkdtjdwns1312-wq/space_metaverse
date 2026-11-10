@@ -17,7 +17,7 @@ export function validateArchive(raw){
   out[kind]=raw[kind].map(e=>{need(e&&e.kind===kind&&key(e.id)&&key(e.requestId)&&!ids.has(e.id)&&!requests.has(e.requestId)&&integer(e.revision)&&e.revision>=1&&integer(e.createdAt)&&integer(e.updatedAt)&&e.updatedAt>=e.createdAt);ids.add(e.id);requests.add(e.requestId);
    const content=fields(e,kind);for(const [k,v] of Object.entries(content))need(e[k]===v);
    let stamp=null;if(e.stamp!==null){need(e.stamp&&e.stamp.text==='참 잘했어요'&&integer(e.stamp.signedAt)&&e.stamp.signedAt>=e.createdAt);stamp={text:'참 잘했어요',teacherName:text(e.stamp.teacherName,100,true),signedAt:e.stamp.signedAt};}
-   let reply=null;if(e.reply!==undefined&&e.reply!==null){need(kind==='diary'&&e.reply&&integer(e.reply.updatedAt)&&e.reply.updatedAt>=e.createdAt);const version=e.reply.version??1;need(integer(version)&&version>=1);reply={text:text(e.reply.text,L.reply,true),teacherName:text(e.reply.teacherName,100,true),updatedAt:e.reply.updatedAt,version};}
+   let reply=null;if(e.reply!==undefined&&e.reply!==null){need(e.reply&&integer(e.reply.updatedAt)&&e.reply.updatedAt>=e.createdAt);const version=e.reply.version??1;need(integer(version)&&version>=1);reply={text:text(e.reply.text,L.reply,true),teacherName:text(e.reply.teacherName,100,true),updatedAt:e.reply.updatedAt,version};}
    const replySeenVersion=e.replySeenVersion??0;need(integer(replySeenVersion)&&replySeenVersion<=(reply?.version||0));
    return {id:e.id,kind,requestId:e.requestId,revision:e.revision,...content,createdAt:e.createdAt,updatedAt:e.updatedAt,stamp,reply,replySeenVersion};
   });
@@ -50,16 +50,16 @@ export function signArchive(room,player,data,now){
 export function replyArchive(room,player,data,now){
  need(player.role==='teacher','선생님만 답글을 남길 수 있어요.');
  const p=target(room,player,data.studentId);need(p,'학생을 선택해주세요.');
- need(data.kind==='diary','일기에만 답글을 남길 수 있어요.');
- const state=validateArchive(p.starlightArchive),e=state.diary.find(row=>row.id===data.id);need(e,'일기를 찾을 수 없어요.');
+ need(ARCHIVE_KINDS.includes(data.kind),'기록 종류를 확인해주세요.');
+ const state=validateArchive(p.starlightArchive),e=state[data.kind].find(row=>row.id===data.id);need(e,'기록을 찾을 수 없어요.');
  need(data.revision===e.revision,'학생의 글이 바뀌었어요. 다시 읽은 뒤 답글을 남겨주세요.');
  const replyText=text(data.text,L.reply,true);
  if(e.reply?.text!==replyText){need(e.revision<Number.MAX_SAFE_INTEGER&&(e.reply?.version||0)<Number.MAX_SAFE_INTEGER);e.reply={text:replyText,teacherName:text(player.nickname,100,true),updatedAt:now,version:(e.reply?.version||0)+1};e.revision++;e.updatedAt=now;}
  p.starlightArchive=state;return {entry:view(e)};
 }
 export function acknowledgeArchiveReply(room,player,data){
- need(player.role==='student','학생 본인이 답글을 확인할 수 있어요.');need(data.kind==='diary'&&integer(data.replyVersion)&&data.replyVersion>=1);
- const p=target(room,player,data.studentId),state=validateArchive(p.starlightArchive),entry=state.diary.find(e=>e.id===data.id);need(entry,'일기를 찾을 수 없어요.');
+ need(player.role==='student','학생 본인이 답글을 확인할 수 있어요.');need(ARCHIVE_KINDS.includes(data.kind)&&integer(data.replyVersion)&&data.replyVersion>=1);
+ const p=target(room,player,data.studentId),state=validateArchive(p.starlightArchive),entry=state[data.kind].find(e=>e.id===data.id);need(entry,'기록을 찾을 수 없어요.');
  // A late acknowledgement must never hide a reply edited after the student opened it.
  if(!entry.reply||entry.reply.version!==data.replyVersion)return {acknowledged:false};
  entry.replySeenVersion=data.replyVersion;p.starlightArchive=state;return {acknowledged:true};
@@ -71,5 +71,5 @@ export function registerStarlightArchive({socket,action,store,roster=()=>{},cloc
  action('archive:save',data=>saveArchive(access(data,true).player,data,clock()));
  action('archive:sign',data=>{const {room,player}=access();return signArchive(room,player,data,clock());});
  action('archive:reply',data=>{const {room,player}=access();const result=replyArchive(room,player,data,clock());roster(room);return result;});
- action('archive:reply:read',data=>{const {room,player}=access();const result=acknowledgeArchiveReply(room,player,data);if(result.acknowledged)roster(room);return result;});
+ action('archive:reply:read',data=>{const {room,player}=access(data,true);const result=acknowledgeArchiveReply(room,player,data);if(result.acknowledged)roster(room);return result;});
 }

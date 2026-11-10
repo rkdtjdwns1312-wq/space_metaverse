@@ -56,7 +56,7 @@ test('teacher daily templates renew at Korean midnight with independent progress
  assert.equal((await call(f.student,'mission:auto:create',template)).ok,false);
  ok(await call(f.teacher,'mission:auto:create',template));
  const old=daily(f).id;ok(await read(f));ok(await call(f.student,'mission:claim',{missionId:old}));
- const oldCustom=f.room.dailyMissions.instances.find(m=>m.templateId!=='builtin-timetable').id;
+ const oldCustom=f.room.dailyMissions.instances.find(m=>!['builtin-timetable','builtin-hunt'].includes(m.templateId)).id;
  f.advance(1000);ok(await call(f.teacher,'mission:board:read'));
  assert.notEqual(daily(f).id,old);assert.equal(daily(f).completedIds.length,0);
  assert.equal((await call(f.student,'mission:claim',{missionId:oldCustom})).ok,false);
@@ -101,7 +101,7 @@ test('thirty definitions stay bounded across months, offline/new students enroll
  const {room}=store.create({title:'일일 검사',allowedNames:['하나','둘']},'teacher');
  const {player:p}=store.join({code:room.code,nickname:'하나'},'student');
  for(let i=0;i<30;i++)createMission(room,template,now);
- assert.throws(()=>createMission(room,template,now));assert.equal(room.dailyMissions.instances.length,31);
+ assert.throws(()=>createMission(room,template,now));assert.equal(room.dailyMissions.instances.length,32);
  for(let day=0;day<110;day++){
   ensureDailyMissions(room,now);advanceMissions(room,p,'timetable-read',undefined,now);
   claimMission(room,p,room.dailyMissions.instances[0].id,now);now+=86400000;
@@ -112,7 +112,7 @@ test('thirty definitions stay bounded across months, offline/new students enroll
  assert.equal(p.dailyMissionHistory.length,100);validateDailyMissionHistory(p.dailyMissionHistory);validateDailyMissions(room.dailyMissions);
  const day=room.dailyMissions.day;ensureDailyMissions(room,now-86400000);assert.equal(room.dailyMissions.day,day);
  assert.equal(missionViews(room,p,now-86400000).filter(m=>m.repeat==='daily'&&!m.archived).length,0);
- assert.equal(room.missions.length,30);assert.equal(room.dailyMissions.instances.length,31);
+ assert.equal(room.missions.length,30);assert.equal(room.dailyMissions.instances.length,32);
  room.missions=[];
  assert.throws(()=>createMission(room,template,now),/오늘 배정/,'stopping templates cannot exceed the current day instance cap');
 });
@@ -145,7 +145,7 @@ test('stopping a teacher template preserves today, survives restart and blocks t
  assert(missionViews(f.room,f.p,f.now).find(m=>m.id===instance.id).repeatStopped);
  ok(await read(f));ok(await call(f.student,'mission:claim',{missionId:instance.id}));
  await f.restart();assert(f.room.dailyMissions.instances.some(m=>m.id===instance.id));
- f.advance(1000);ok(await call(f.teacher,'mission:board:read'));assert.equal(f.room.dailyMissions.instances.length,1);
+ f.advance(1000);ok(await call(f.teacher,'mission:board:read'));assert.equal(f.room.dailyMissions.instances.length,2);
  assert(f.p.dailyMissionHistory.some(m=>m.id===instance.id));
 });
 

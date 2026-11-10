@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {CULTURE_STORIES} from '/shared/culture-stories.js';
 import {stationReward} from '/shared/station-rewards.js';
 import {createReadingRefresh} from './reading-refresh.js';
@@ -24,7 +25,7 @@ export function createReadingLibrary({request,stop,getSelf,stories,onWriteReadin
  const reader=node('section','culture-reader'),back=node('button','secondary culture-back',history?'제목 목록':'책 목록'),paper=node('article','culture-paper'),category=node('p','culture-category'),bookTitle=node('h3','culture-book-title'),paragraphs=node('div','culture-paragraphs'),lesson=node('p','culture-lesson'),source=node('details','culture-source'),sourceTitle=node('summary','',history?'참고한 역사 자료':'이야기의 바탕'),sourceInfo=node('p'),sourceLink=node('a');
  sourceLink.target='_blank';sourceLink.rel='noopener noreferrer';source.append(sourceTitle,sourceInfo,sourceLink);paper.append(category,bookTitle,paragraphs,lesson,source);
  const footer=node('footer','culture-reader-footer'),reward=node('p','culture-reward'),recommend=node('button','secondary culture-recommend','추천해요'),done=node('button','secondary culture-done','다 읽음');done.type='button';back.type='button';recommend.type='button';const writeReading=node('button','secondary culture-write-reading','독서록 쓰기');writeReading.type='button';writeReading.onclick=()=>{if(!busy&&selected&&getSelf()?.role!=='teacher')onWriteReading?.(selected);};footer.append(reward,...(history?[]:[writeReading,recommend]),done);reader.append(back,paper,footer);reader.hidden=true;
- dialog.append(header,progress,notice,catalog,reader);document.body.append(dialog);
+ dialog.append(header,progress,notice,catalog,reader);document.body.append(dialog);pinDialogHeader(dialog);const scrollBody=dialog.querySelector(':scope > .dialog-scroll-body');
  let status=null,selected=null,letter=chapters?.[0].id??'전체',generation=0,busy=false,recommendedSort=false;
  const dailyRefresh=createReadingRefresh({dialog,refresh:async()=>{
   if(!dialog.open||busy)return false;
@@ -59,11 +60,11 @@ export function createReadingLibrary({request,stop,getSelf,stories,onWriteReadin
    category.textContent=book.category||book.period;bookTitle.textContent=book.title;paragraphs.replaceChildren(...book.paragraphs.map(text=>history?historyText(node('p'),text,book.id):node('p','',text)));lesson.textContent=`${history?'기억해요':'함께 생각해요'} · ${book.lesson||book.summary}`;
    if(history)historyText(lesson,lesson.textContent,book.id);
    sourceInfo.textContent=book.adaptation||'어린이 눈높이로 새롭게 풀어쓴 이야기';sourceLink.textContent=book.source?.title||'원전';sourceLink.href=book.source?.url||'#';source.hidden=!book.source?.url;source.open=false;
-   catalog.hidden=true;reader.hidden=false;notice.textContent='';dialog.scrollTop=0;bookTitle.tabIndex=-1;bookTitle.focus({preventScroll:true});
+   catalog.hidden=true;reader.hidden=false;notice.textContent='';scrollBody.scrollTop=0;bookTitle.tabIndex=-1;bookTitle.focus({preventScroll:true});
   }catch(error){if(current===generation)notice.textContent=error.message;}
   finally{if(current===generation){busy=false;renderStatus();}}
  }
- back.onclick=()=>{if(busy)return;selected=null;reader.hidden=true;catalog.hidden=false;notice.textContent='';renderList();dialog.scrollTop=0;tabs.querySelector('button[aria-pressed="true"]')?.focus();};
+ back.onclick=()=>{if(busy)return;selected=null;reader.hidden=true;catalog.hidden=false;notice.textContent='';renderList();scrollBody.scrollTop=0;tabs.querySelector('button[aria-pressed="true"]')?.focus();};
  done.onclick=async()=>{
   if(busy||!selected)return;busy=true;renderStatus();const current=generation,storyId=selected.id;
   try{const result=await request(`${namespace}:claim`,{storyId});if(current!==generation)return;status=result;notice.textContent=result.message||(result.awarded?`잘 읽었어요! 우주에너지 ${result.amount}개를 받았어요.`:'오늘의 보상을 확인했어요.');}

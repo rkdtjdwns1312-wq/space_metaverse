@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {SCIENCE_FACTS} from '/shared/science-facts.js';
 import {createReadingRefresh} from './reading-refresh.js';
 const node=(tag,className,text)=>{const el=document.createElement(tag);if(className)el.className=className;if(text)el.textContent=text;return el;};
@@ -8,7 +9,7 @@ export function createScienceLibrary({request,stop}){
  const menu=node('section','science-menu'),bulb=node('img','science-bulb');bulb.src='/assets/maps/science-idea-bulb.png';bulb.alt='별빛이 담긴 과학 전구';bulb.width=170;bulb.height=170;
  const explain=node('p','',`하루에 두 가지 과학 이야기를 만나요. ${SCIENCE_FACTS.length}개를 모두 읽을 때까지 중복 없이 만나고, 다 읽으면 처음부터 다시 볼 수 있어요.`),start=node('button','secondary science-start','오늘의 과학상식 보기');start.type='button';menu.append(bulb,explain,start);
  const memo=node('article','science-memo'),memoTitle=node('h3'),body=node('div','culture-paragraphs'),source=node('details','culture-source'),summary=node('summary','','참고한 과학 자료'),sourceLink=node('a');sourceLink.target='_blank';sourceLink.rel='noopener noreferrer';source.append(summary,sourceLink);
- const actions=node('footer','culture-reader-footer'),reward=node('p','culture-reward'),done=node('button','secondary science-done','읽음'),again=node('button','secondary science-next','다음 과학상식 보기');done.type='button';again.type='button';again.hidden=true;actions.append(reward,done,again);memo.append(memoTitle,body,source,actions);memo.hidden=true;dialog.append(header,progress,notice,menu,memo);document.body.append(dialog);
+ const actions=node('footer','culture-reader-footer'),reward=node('p','culture-reward'),done=node('button','secondary science-done','읽음'),again=node('button','secondary science-next','다음 과학상식 보기');done.type='button';again.type='button';again.hidden=true;actions.append(reward,done,again);memo.append(memoTitle,body,source,actions);memo.hidden=true;dialog.append(header,progress,notice,menu,memo);document.body.append(dialog);pinDialogHeader(dialog);const scrollBody=dialog.querySelector(':scope > .dialog-scroll-body');
  let generation=0,status=null,busy=false,active=null,read=false;
  const dailyRefresh=createReadingRefresh({dialog,refresh:async()=>{
   if(!dialog.open||busy)return false;
@@ -27,7 +28,7 @@ export function createScienceLibrary({request,stop}){
   if(busy)return;busy=true;read=false;render();memo.hidden=true;menu.hidden=false;notice.textContent='새로운 발견에 불을 켜요…';const current=generation;
   try{const result=await request('science:open',{});if(current!==generation)return;status=result;const fact=SCIENCE_FACTS.find(f=>f.id===result.factId);if(!fact)throw new Error('이야기를 불러오지 못했어요. 다시 열어 주세요.');
    bulb.classList.remove('is-glowing');void bulb.offsetWidth;bulb.classList.add('is-glowing');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)await new Promise(r=>setTimeout(r,750));if(current!==generation)return;
-   active=fact.id;memoTitle.textContent=fact.title;body.replaceChildren(...fact.paragraphs.map(text=>node('p','',text)));sourceLink.textContent=fact.source?.title||'과학 자료';sourceLink.href=fact.source?.url||'#';source.hidden=!fact.source?.url;source.open=false;menu.hidden=true;memo.hidden=false;notice.textContent='';dialog.scrollTop=0;memoTitle.tabIndex=-1;memoTitle.focus({preventScroll:true});
+   active=fact.id;memoTitle.textContent=fact.title;body.replaceChildren(...fact.paragraphs.map(text=>node('p','',text)));sourceLink.textContent=fact.source?.title||'과학 자료';sourceLink.href=fact.source?.url||'#';source.hidden=!fact.source?.url;source.open=false;menu.hidden=true;memo.hidden=false;notice.textContent='';scrollBody.scrollTop=0;memoTitle.tabIndex=-1;memoTitle.focus({preventScroll:true});
   }catch(error){if(current===generation)notice.textContent=error.message;}
   finally{if(current===generation){busy=false;bulb.classList.remove('is-glowing');render();}}
  }

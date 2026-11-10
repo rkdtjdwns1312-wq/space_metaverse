@@ -665,7 +665,7 @@ body:has(.lobby:not([hidden])) #world{width:100%;height:100%;max-height:none;min
 #learning-progress{margin:20px 0 8px;font-size:16px}.learning-question-label{font-size:16px;color:#675784;margin:0 0 6px}
 .learning-prompt{display:block;min-height:52px;font-size:31px;line-height:1.4;color:#3f3561;overflow-wrap:anywhere}
 .learning-choices{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:17px}.learning-answer{min-height:59px;border:2px solid #bba6dc;border-radius:14px;background:#fff;color:#55437b;font-size:21px;font-weight:800}
-.learning-answer:hover:not(:disabled),.learning-answer:focus-visible{background:#ece2fa;border-color:#8062b4}.learning-answer.correct{background:#dff5e7;border-color:#66aa82;color:#276943}.learning-answer.incorrect{background:#fce5e9;border-color:#d78c9d;color:#964559}
+.learning-answer:hover:not(:disabled),.learning-answer:focus-visible{background:#ece2fa;border-color:#8062b4}.learning-answer.correct{background:#e0efff;border-color:#5388ce;color:#235394;opacity:1}.learning-answer.incorrect{background:#fce5e9;border-color:#d78c9d;color:#964559;opacity:1}
 #learning-feedback{min-height:27px;font-size:18px;font-weight:700;color:#604292;margin:15px 0 0}
 .lobby[data-step="details"]{width:min(620px,calc(100% - 28px));padding:24px 32px 20px}
 .lobby[data-step="details"] h2{font-size:clamp(37px,4vw,49px);margin:0 0 8px}

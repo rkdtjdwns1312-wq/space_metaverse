@@ -1,3 +1,4 @@
+import {pinDialogHeader} from './dialog-layout.js';
 import {ENGLISH_LEVELS,ENGLISH_WORDS} from '/shared/english-vocabulary.js';
 
 export function createLearningStation({request}){
@@ -10,11 +11,9 @@ export function createLearningStation({request}){
   const vocabularyCount=document.createElement('p');vocabularyCount.className='muted';vocabularyCount.hidden=true;
   const rewardInfo=document.createElement('p');rewardInfo.className='learning-reward-info';rewardInfo.textContent='10문제 중 9문제 이상 맞히면 하루 한 번 보상!\n별자리 캐릭터 Lv에 따라 보상을 다르게 받아요.\n단계가 달라도 같은 발전소 보상은 하루에 한 번이에요.';intro.insertAdjacentElement('afterend',rewardInfo);
   const start=document.createElement('button');start.id='learning-start';start.type='button';start.className='secondary';start.textContent='확인 · 시작하기';next.before(start);
-  const changeLevel=document.createElement('button');changeLevel.id='learning-change-level';changeLevel.type='button';changeLevel.className='secondary';changeLevel.textContent='단계 다시 선택';changeLevel.hidden=true;start.before(changeLevel);
-  changeLevel.onclick=()=>{prepare();levelSelect.focus();};
   const questionElements=[$('learning-progress'),$('learning-question-label'),prompt,choices];
   function prepare(){
-    dialog.classList.remove('learning-focus');changeLevel.hidden=true;
+    dialog.classList.remove('learning-focus');
     generation++;round=0;correct=0;question=null;answered=false;learningReward=null;
     choices.replaceChildren();prompt.textContent='';feedback.textContent='단계를 고른 뒤 시작하기를 눌러 주세요.';
     for(const el of questionElements)el.hidden=true;
@@ -54,7 +53,7 @@ export function createLearningStation({request}){
           if(current!==generation)return;
           right=result.right;answer=result.answer;correct=result.correct;updateProgress();if(result.learningReward)learningReward=result.learningReward;
         }catch(error){if(current===generation){answered=false;feedback.textContent=error.message;}return;}
-        feedback.textContent=[right?'정답이에요! ✨':`아쉬워요. 정답은 ${answer}예요.`,round===9?learningReward?.message:null].filter(Boolean).join(' ');
+        feedback.textContent=[right?'정답이에요! ✨':`오답이에요. 정답은 ${answer}예요.`,round===9?learningReward?.message:null].filter(Boolean).join(' ');
         for(const option of choices.children){option.disabled=true;if(option.textContent===String(answer))option.classList.add('correct');else if(option===button)option.classList.add('incorrect');}
         next.textContent=round===9?'결과 보기':'다음 문제';next.hidden=false;next.focus();
       };
@@ -69,7 +68,7 @@ export function createLearningStation({request}){
     catch(error){if(current===generation){feedback.textContent=error.message;start.disabled=false;}return;}
     if(current!==generation)return;
     question=result;
-    dialog.classList.add('learning-focus');changeLevel.hidden=false;
+    dialog.classList.add('learning-focus');
     start.hidden=true;start.disabled=false;for(const el of questionElements)el.hidden=false;
     renderQuestion();
   }
@@ -90,6 +89,7 @@ export function createLearningStation({request}){
   };
   $('learning-close').onclick=()=>dialog.close();
   dialog.addEventListener('close',()=>{generation++;document.getElementById('world')?.focus();});
+  pinDialogHeader(dialog);
   return {open(kind){
     subject=kind==='english-station'?'english':'math';
     title.textContent=subject==='math'?'별 수학 발전소':'별 영어 발전소';

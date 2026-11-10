@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {monstersOf} from '../server/monsters.js';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+const key='isolated-daily-hunt-browser',game=createClassroomServer({teacherKey:key,studentHours:false,teacherManagedAccounts:false}),{port}=await game.listen(),url='http://127.0.0.1:'+port;
+const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})}),socket=io(url,{transports:['websocket'],reconnection:false});mkdirSync('.local',{recursive:true});
+try{
+ await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});
+ const created=await socket.timeout(5000).emitWithAck('room:create',{teacherKey:key,title:'매일 사냥 검사',allowedNames:['사냥검사']});assert(created.ok);
+ const room=game.store.rooms.get(created.room.code),page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(url);
+ await page.locator('#student-tab').click();await page.locator('#join-code').fill(room.code);await page.locator('#nickname').fill('사냥검사');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ for(let i=0;i<14&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');
+ const p=[...room.players.values()].find(p=>p.role==='student');Object.assign(p.avatar,{level:2,constellationId:'hercules'});chargeHuntingStation(p,'math',Date.now());Object.assign(p,{mapId:'star-origin-1',x:500,y:500,facing:{x:1,y:0},input:{x:0,y:0,at:0}});
+ const example=[...monstersOf(room).values()].find(m=>m.typeId==='star-crab');room.monsters=new Map(Array.from({length:10},(_,i)=>{const m={...example,id:'hunt-browser-'+i,mapId:p.mapId,x:560,y:500,hp:1,maxHp:1,contributors:new Map(),attackers:new Map(),stunUntil:Date.now()+60000};return [m.id,m];}));
+ game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ const open=async()=>{await page.locator('#dock-chat').click();await page.locator('#open-missions').click();await page.locator('#missions-active').click();};
+ await open();assert.equal(await page.locator('#my-missions button').filter({hasText:'시간표 확인하기'}).count(),1);await page.locator('#my-missions button').filter({hasText:'내 레벨 이하 몬스터 10마리 잡기'}).click();
+ assert((await page.locator('#mission-detail').textContent()).includes('0 / 10'));await page.keyboard.press('Escape');
+ await page.locator('#world').focus();await page.keyboard.press('q');
+ for(let i=0;i<100&&!room.dailyMissions.instances.find(m=>m.templateId==='builtin-hunt').completedIds.includes(p.id);i++)await page.waitForTimeout(30);
+ assert(room.dailyMissions.instances.find(m=>m.templateId==='builtin-hunt').completedIds.includes(p.id));
+ await open();await page.locator('#my-missions button').filter({hasText:'내 레벨 이하 몬스터 10마리 잡기'}).click();await page.locator('#mission-claim').waitFor({state:'visible'});await page.screenshot({path:'.local/daily-hunt-ready-desktop.png'});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.local/daily-hunt-ready-mobile.png'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.locator('#mission-claim').click();await page.waitForFunction(()=>document.querySelector('#mission-detail').textContent.includes('완료한날짜'));
+ assert.equal(p.inventory.find(i=>i.id==='star-crumb').quantity,1);assert.equal(await page.locator('#mission-claim').count(),0);assert.deepEqual(errors,[]);
+ console.log('PASS real student UI: timetable+hunt present, 0/10, real Q kills ten low-level monsters, ready on desktop/mobile, claim one crumb, completion date, no repeat claim, errors0');
+}finally{socket.disconnect();await browser.close();await game.close();}

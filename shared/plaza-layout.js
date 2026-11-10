@@ -15,14 +15,22 @@ export const PLAZA_LAYOUT=Object.freeze({width:2760,height:1970,wall:10,bridgeWi
   gates:{west:{x:930,y:1320},east:{x:2670,y:1320},north:{x:1800,y:810},south:{x:1800,y:1870}}
 });
 export const DEPARTMENT_ZONE=PLAZA_LAYOUT.islands.find(i=>i.id==='department');
+// Small destinations at the ends of four diagonal branches, separate from the
+// saved coordinates of the full satellite maps above.
+export const PLAZA_GATE_LANDINGS=Object.freeze([
+ {id:'assignment',x:1020,y:850,rx:150,ry:150},
+ {id:'black-hole',x:2580,y:850,rx:150,ry:150},
+ {id:'department',x:2580,y:1790,rx:150,ry:150},
+ {id:'market',x:1020,y:1790,rx:150,ry:150}
+].map(Object.freeze));
 const ellipse=p=>Array.from({length:128},(_,i)=>{const a=i*Math.PI/64;return {x:p.x+p.rx*Math.cos(a),y:p.y+p.ry*Math.sin(a)};});
-function bridge(a,b){const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy),nx=-dy/l*PLAZA_LAYOUT.bridgeWidth/2,ny=dx/l*PLAZA_LAYOUT.bridgeWidth/2;
+function bridge(a,b,width=PLAZA_LAYOUT.bridgeWidth){const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy),nx=-dy/l*width/2,ny=dx/l*width/2;
   return [{x:a.x+nx,y:a.y+ny},{x:a.x-nx,y:a.y-ny},{x:b.x-nx,y:b.y-ny},{x:b.x+nx,y:b.y+ny}];}
 export const PLAZA_POLYGONS=[ellipse(PLAZA_LAYOUT.center),
   ...Object.entries(PLAZA_LAYOUT.gates).map(([direction,p])=>bridge(PLAZA_LAYOUT.center,{
     x:direction==='west'?PLAZA_VIEW_BOUNDS.x:direction==='east'?PLAZA_VIEW_BOUNDS.x+PLAZA_VIEW_BOUNDS.width:p.x,
     y:direction==='north'?PLAZA_VIEW_BOUNDS.y:direction==='south'?PLAZA_VIEW_BOUNDS.y+PLAZA_VIEW_BOUNDS.height:p.y
-  }))];
+  })),...PLAZA_GATE_LANDINGS.flatMap(z=>[bridge(PLAZA_LAYOUT.center,z,156),ellipse(z)])];
 function inPolygon(p,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){
   const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
 const cross=(a,b)=>a.x*b.y-a.y*b.x;
@@ -64,21 +72,23 @@ export function departmentSlots(){const z=DEPARTMENT_ZONE,points=[];
 export const ASSIGNMENT_ID='assignment-archive',MARKET_ID='star-market',DEPARTMENT_ID='department-plaza';
 export const PLAZA_AREA_IDS=Object.freeze({assignment:ASSIGNMENT_ID,market:MARKET_ID,department:DEPARTMENT_ID});
 export const PLAZA_ROUTES=Object.freeze([
- {id:'assignment',name:'과제별 서고',x:1400,y:1100,target:ASSIGNMENT_ID,arrival:{x:600,y:700},returnGate:{x:780,y:730},back:{x:1430,y:1090}},
- {id:'market',name:'별 시장',x:1400,y:1540,target:MARKET_ID,arrival:{x:800,y:2050},returnGate:{x:900,y:1950},back:{x:1430,y:1550}},
- {id:'department',name:'부서 행성 광장',x:2200,y:1540,target:DEPARTMENT_ID,arrival:{x:2850,y:1680},returnGate:{x:2874,y:1620},back:{x:2170,y:1550}},
- {id:'black-hole',name:'블랙홀',x:2200,y:1100,target:'black-hole',arrival:{x:600,y:390},back:{x:2170,y:1090}}
+ {id:'assignment',name:'과제별 서고',x:1020,y:880,labelBelow:true,target:ASSIGNMENT_ID,arrival:{x:600,y:700},returnGate:{x:780,y:730},back:{x:1110,y:900}},
+ {id:'market',name:'별 시장',x:1020,y:1820,target:MARKET_ID,arrival:{x:800,y:2050},returnGate:{x:900,y:1950},back:{x:1110,y:1740}},
+ {id:'department',name:'부서 행성 광장',x:2580,y:1820,target:DEPARTMENT_ID,arrival:{x:2850,y:1680},returnGate:{x:2874,y:1620},back:{x:2490,y:1740}},
+ {id:'black-hole',name:'블랙홀',x:2580,y:885,labelBelow:true,target:'black-hole',arrival:{x:600,y:390},back:{x:2490,y:900}}
 ]);
-const mainLayout={...PLAZA_LAYOUT,islands:[],polygons:PLAZA_POLYGONS,edges:PLAZA_EDGES,viewBounds:PLAZA_VIEW_BOUNDS};
+const mainLayout={...PLAZA_LAYOUT,islands:[],gateLandings:PLAZA_GATE_LANDINGS,polygons:PLAZA_POLYGONS,edges:PLAZA_EDGES,viewBounds:PLAZA_VIEW_BOUNDS};
 const satelliteLayouts=Object.fromEntries(PLAZA_LAYOUT.islands.filter(z=>PLAZA_AREA_IDS[z.id]).map(z=>{
  const polygons=[ellipse(z)];return [PLAZA_AREA_IDS[z.id],{...PLAZA_LAYOUT,width:z.x+z.rx+80,height:z.y+z.ry+100,center:null,islands:[z],gates:{},polygons,edges:outerEdges(polygons),viewBounds:{x:z.x-z.rx-80,y:z.y-z.ry-100,width:z.rx*2+160,height:z.ry*2+200}}];
 }));
 export function plazaLayoutOf(map){return (typeof map==='string'?map:map?.id)==='space-plaza'?mainLayout:satelliteLayouts[typeof map==='string'?map:map?.id]||null;}
 export function migrateLegacyPlazaPosition(position){
  if(position?.mapId!=='space-plaza')return position;
+ // A new southeast landing overlaps the historical department ellipse. Valid
+ // current plaza saves must stay here instead of migrating into that old map.
+ if(onPlazaFloor({id:'space-plaza'},position.x,position.y))return position;
  const zone=PLAZA_LAYOUT.islands.find(z=>PLAZA_AREA_IDS[z.id]&&((position.x-z.x)/z.rx)**2+((position.y-z.y)/z.ry)**2<=1);
  if(zone)return {...position,mapId:PLAZA_AREA_IDS[zone.id]};
- if(onPlazaFloor({id:'space-plaza'},position.x,position.y))return position;
  const dx=position.x-1800,dy=position.y-1320;
  const point=Math.abs(dx)/780>Math.abs(dy)/480?{x:dx<0?1050:2550,y:1320}:{x:1800,y:dy<0?890:1750};
  return {...position,...point};

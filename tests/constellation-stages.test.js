@@ -89,10 +89,12 @@ test('Lv3/4 까마귀 제작은 가격·Lv·종류 수·중복 제작 제한과 
   assert.ok((await call(f.student,'ability:choose-item',{itemId:'space-food-card'})).ok);assert.equal(f.p.abilityState.pending,null);
   f.as('corvus',4);savedPending(f,{mode:'value-item',budget:12,maxLevel:5,picks:2,roll:6,selected:[]});assert.equal(f.p.abilityState.pending.budget,12);
   assert.equal((await call(f.student,'ability:choose-item',{itemId:'starlight-cape'})).ok,false);
-  assert.ok((await call(f.student,'ability:choose-item',{itemId:'star-sticker'})).ok);
-  assert.equal(f.p.abilityState.pending.budget,7);assert.equal(f.p.abilityState.pending.picks,1);
   assert.equal((await call(f.student,'ability:choose-item',{itemId:'star-sticker'})).ok,false);
-  assert.ok((await call(f.student,'ability:choose-item',{itemId:'asteroid-helmet'})).ok);assert.equal(f.p.abilityState.pending,null);
+  assert.equal((await call(f.student,'ability:choose-item',{itemId:'asteroid-helmet'})).ok,false);
+  assert.ok((await call(f.student,'ability:choose-item',{itemId:'alien-card'})).ok);
+  assert.equal(f.p.abilityState.pending.budget,8);assert.equal(f.p.abilityState.pending.picks,1);
+  assert.equal((await call(f.student,'ability:choose-item',{itemId:'alien-card'})).ok,false);
+  assert.ok((await call(f.student,'ability:choose-item',{itemId:'space-suit-card'})).ok);assert.equal(f.p.abilityState.pending,null);
   assert.equal((await call(f.student,'ability:choose-item',{itemId:'little-sun-card'})).ok,false);
   f.as('corvus',4);savedPending(f,{mode:'value-item',budget:4,maxLevel:5,picks:2,roll:2,selected:[]});f.setNow(Date.parse('2026-09-20T15:00:00Z'));
   assert.equal((await call(f.student,'ability:choose-item',{itemId:'little-sun-card'})).ok,false);

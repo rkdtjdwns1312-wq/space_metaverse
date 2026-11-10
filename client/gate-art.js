@@ -14,7 +14,11 @@ export function drawPaintedGate(ctx,o){
   const box=gateVisualBox(o);ctx.save();
   if(mapImageReady(image)){
     const scale=Math.min(box.width/image.naturalWidth,box.height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;
-    ctx.drawImage(image,box.x+(box.width-w)/2,box.y+box.height-h,w,h);
+    const painted={x:box.x+(box.width-w)/2,y:box.y+box.height-h,width:w,height:h};
+    ctx.drawImage(image,painted.x,painted.y,w,h);ctx.restore();
+    // star-gate.png's visible alpha bounds (1145×1374); exclude transparent
+    // margins when placing its name, without changing rendering or collision.
+    return {x:painted.x+w*33/1145,y:painted.y+h*43/1374,width:w*1081/1145,height:h*1249/1374};
   }else{
     // 원화 로딩 중에도 위치를 알 수 있는 열린 아치. 이동 판정은 서버의 o.x/y를 사용합니다.
     ctx.strokeStyle='#c9b8e2';ctx.lineWidth=9;ctx.beginPath();
@@ -23,4 +27,10 @@ export function drawPaintedGate(ctx,o){
     ctx.lineTo(box.x+box.width-10,box.y+box.height);ctx.stroke();
   }
   ctx.restore();return box;
+}
+// Position the baseline using actual text bounds so above/below labels have
+// the same small visible gap, regardless of font size or gate artwork scale.
+export function gateLabelBaseline(ctx,text,box,below=false){
+  const metrics=ctx.measureText(text),gap=6+ctx.lineWidth/2;
+  return below?box.y+box.height+gap+(metrics.actualBoundingBoxAscent||16):box.y-gap-(metrics.actualBoundingBoxDescent||0);
 }
