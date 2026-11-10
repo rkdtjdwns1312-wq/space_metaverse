@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {MAP} from '../shared/config.js';
+import {saveArchive} from '../server/starlight-archive.js';
+import {hasUnreadArchiveReplies} from '../shared/starlight-archive.js';
+const key='archive-notice-browser-test',game=createClassroomServer({teacherKey:key,studentHours:false});
+const {port}=await game.listen(),url=`http://127.0.0.1:${port}`;let browser,socket;
+const call=async(event,data)=>{const result=await socket.timeout(5000).emitWithAck(event,data);assert.ok(result.ok,result.error);return result;};
+try{
+ browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+ socket=io(url,{transports:['websocket'],reconnection:false});await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});
+ const created=await call('room:create',{teacherKey:key,title:'댓글 알림 검사',allowedNames:['댓글 학생','다른 학생']});
+ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{window.archiveNoticePaints=0;const original=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){if(text==='선생님 댓글 확인')window.archiveNoticePaints++;return original.call(this,text,...args);};});
+ await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(created.room.code);await page.locator('#nickname').fill('댓글 학생');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ if(await page.locator('#tutorial-later').isVisible())await page.locator('#tutorial-later').click();
+ const room=game.store.rooms.get(created.room.code),student=[...room.players.values()].find(p=>p.role==='student'),teacher=[...room.players.values()].find(p=>p.role==='teacher'),archive=MAP.objects.find(o=>o.kind==='starlight-archive');
+ for(const p of [student,teacher])Object.assign(p,{mapId:MAP.id,x:archive.x,y:archive.y+80,input:{x:0,y:0,at:0}});
+ const entries=[1,2].map(n=>saveArchive(student,{kind:'diary',requestId:'notice-entry-'+n,date:'2026-11-10',title:'답글 일기 '+n,body:'오늘 배운 별 이야기. '.repeat(100)},Date.now()).entry);
+ for(const entry of entries)await call('archive:reply',{kind:'diary',studentId:student.id,id:entry.id,revision:entry.revision,text:'잘 읽었어요! '+entry.title});
+ await page.waitForFunction(()=>window.archiveNoticePaints>0);if(await page.locator('#journey-hide').isVisible())await page.locator('#journey-hide').click();await mkdir('.local/archive-reply-notice',{recursive:true});await page.screenshot({path:'.local/archive-reply-notice/object-desktop.png'});
+ await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('.star-archive[open]').waitFor();await page.locator('[data-archive-unread]').first().waitFor();assert.equal(await page.locator('[data-archive-unread]').count(),2);assert.equal(hasUnreadArchiveReplies(student.starlightArchive),true);
+ await page.locator('[data-archive-kind=reading]').click();await page.locator('[data-archive-kind=reading][aria-selected=true]').waitFor();assert.equal(hasUnreadArchiveReplies(student.starlightArchive),true);
+ await page.locator('[data-archive-kind=diary]').click();await page.locator('[data-archive-unread]').first().waitFor();
+ await page.locator(`[data-archive-entry="${entries[0].id}"]`).click();await page.locator('.archive-teacher-reply').filter({hasText:'답글 일기 1'}).scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelectorAll('[data-archive-unread]').length===1);
+ assert.equal(hasUnreadArchiveReplies(student.starlightArchive),true);assert.equal(student.starlightArchive.diary.find(e=>e.id===entries[0].id).replySeenVersion,1);
+ await page.setViewportSize({width:390,height:844});await page.locator(`[data-archive-entry="${entries[1].id}"]`).click();await page.locator('.archive-teacher-reply').filter({hasText:'답글 일기 2'}).scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelectorAll('[data-archive-unread]').length===0);
+ assert.equal(hasUnreadArchiveReplies(student.starlightArchive),false);await page.screenshot({path:'.local/archive-reply-notice/confirmed-mobile.png'});
+ await page.locator('[data-archive-close]').click();await page.locator('.star-archive').waitFor({state:'hidden'});
+ await page.evaluate(()=>window.archiveNoticePaints=0);await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>window.archiveNoticePaints),0);
+ const current=student.starlightArchive.diary.find(e=>e.id===entries[0].id);await call('archive:reply',{kind:'diary',studentId:student.id,id:current.id,revision:current.revision,text:'다시 남기는 답글'});await page.waitForFunction(()=>window.archiveNoticePaints>0);assert.equal(hasUnreadArchiveReplies(student.starlightArchive),true);
+ assert.deepEqual(errors,[]);console.log('PASS real app: canvas notice, list/reading-tab preserve notice, two visible replies acknowledged separately, mobile, revised reply alerts again');
+}finally{socket?.disconnect();await browser?.close();await game.close();}

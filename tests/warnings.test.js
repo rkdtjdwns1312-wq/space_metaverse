@@ -10,9 +10,9 @@ import {BLACK_HOLE_ID,PLAZA_ID,interiorIdOf,INTERIOR,MAP,PLANET,PLANET_COLORS} f
 import {validateWarnings,validateBlackStar,warningCount} from '../server/warnings.js';
 import {departmentSlots} from '../shared/plaza-layout.js';
 
-test('블랙홀은 별의 기원 오른쪽 위에 있고 부서행성 약 4배 크기다',()=>{
+test('블랙홀은 별의 기원 오른쪽 위에 있고 기존 크기의 60%다',()=>{
   const portal=MAP.objects.find(o=>o.kind==='black-hole');
-  assert.equal(portal.radius,PLANET.radius*4);
+  assert.ok(Math.abs(portal.radius-PLANET.radius*4*.6)<1e-9);
   assert.ok(portal.x>MAP.templeCenter.x&&portal.y<MAP.templeCenter.y);
 });
 

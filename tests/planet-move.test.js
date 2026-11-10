@@ -92,7 +92,7 @@ test('현재 위치 선택은 저장·안내 없이 무변경, 저장 실패는 
   const f=await fixture(t),save=f.game.store.files.save.bind(f.game.store.files);let saves=0,states=0;
   f.game.store.files.save=record=>{saves++;return save(record);};
   const same=await f.move(site(0));assert.equal(same.ok,true);assert.equal(same.moved,false);assert.equal(saves,0);
-  Object.assign(f.person('visitor'),site(2));
+  Object.assign(f.person('visitor'),{...site(2),mapId:DEPARTMENT_ID});
   const before=structuredClone(f.planet()),visitor={x:f.person('visitor').x,y:f.person('visitor').y},chat=structuredClone(f.room().chat.history);
   const disk=fs.readFileSync(path.join(f.dir,f.code+'.json'),'utf8');
   f.clients.visitor.on('room:state',()=>states++);

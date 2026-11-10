@@ -10,9 +10,16 @@ for(const name of ['market','bazaar','andromeda','mission-board','black-hole']){
 }
 const ready=name=>mapImageReady(art[name]);
 export async function preloadPlazaProps(){await decodeMapImages(Object.values(art));}
-export function drawStarlightArchive(ctx,o){
+export function drawStarlightArchive(ctx,o,{replyUnread=false}={}){
   if(ready('archive')){const w=235,h=w*art.archive.naturalHeight/art.archive.naturalWidth;sprite(ctx,'archive',o.x,o.y+36,w,h);}
   label(ctx,o.name,o.x,o.y+60,18);
+  if(replyUnread){
+    const badgeY=o.y+36-(ready('archive')?235*art.archive.naturalHeight/art.archive.naturalWidth:235)-34;
+    ctx.save();ctx.font='16px "Jua","Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    const text='선생님 댓글 확인',width=ctx.measureText(text).width+20;
+    ctx.fillStyle='#fff1bf';ctx.beginPath();ctx.roundRect(o.x-width/2,badgeY,width,28,12);ctx.fill();
+    ctx.fillStyle='#805218';ctx.fillText(text,o.x,badgeY+19);ctx.restore();
+  }
 }
 function sprite(ctx,name,x,y,w,h){if(!ready(name))return false;ctx.drawImage(art[name],x-w/2,y-h,w,h);return true;}
 function label(ctx,text,x,y,size=18){ctx.save();ctx.font=`${size}px "Jua","Malgun Gothic",sans-serif`;ctx.textAlign='center';ctx.lineJoin='round';ctx.strokeStyle='#fffaf4';ctx.lineWidth=5;ctx.strokeText(text,x,y);ctx.fillStyle='#67537f';ctx.fillText(text,x,y);ctx.restore();}

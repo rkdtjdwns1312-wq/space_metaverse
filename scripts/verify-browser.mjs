@@ -12,7 +12,7 @@ import { createClassroomServer } from '../server/app.js';
 import { verifyPersistence } from './verify-persistence.mjs';
 import {fillNewClass} from './class-setup.mjs';
 import { BLOCKED_WORDS } from '../server/chat-filter.js';
-import { PLAZA_ID, STREET_ID, STREET, MAP, INTERIOR, SHOP, BAG, PLANET_TEMPLATES, RULES } from '../shared/config.js';
+import { PLAZA_ID, DEPARTMENT_ID, MARKET_ID, mapOf, STREET_ID, STREET, MAP, INTERIOR, SHOP, BAG, PLANET_TEMPLATES, RULES } from '../shared/config.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
@@ -66,11 +66,11 @@ async function worldClick(page,mx,my){
   await page.waitForFunction(()=>{const d=document.getElementById('world')?.dataset;return d&&Number.isFinite(Number(d.viewX))&&Number.isFinite(Number(d.viewY))&&Number(d.viewScale)>0;});
   // A previously rendered normal/overview camera can still be present after opening placement.
   // Wait for the actual department camera, rather than assuming two animation frames were enough.
-  if(await page.evaluate(()=>document.body.classList.contains('placing')))await page.waitForFunction(({zone,width,height})=>{
+  if(await page.evaluate(()=>document.body.classList.contains('placing')))await page.waitForFunction(({zone,bounds})=>{
     const c=document.getElementById('world'),r=c.getBoundingClientRect(),scale=Math.min(r.width/(zone.rx*2+300),r.height/(zone.ry*2+300));
-    const cw=r.width/scale,ch=r.height/scale,x=cw>=width?(width-cw)/2:Math.max(0,Math.min(width-cw,zone.x-cw/2)),y=ch>=height?(height-ch)/2:Math.max(0,Math.min(height-ch,zone.y-ch/2));
+    const cw=r.width/scale,ch=r.height/scale,x=bounds.x+(cw>=bounds.width?(bounds.width-cw)/2:Math.max(0,Math.min(bounds.width-cw,zone.x-bounds.x-cw/2))),y=bounds.y+(ch>=bounds.height?(bounds.height-ch)/2:Math.max(0,Math.min(bounds.height-ch,zone.y-bounds.y-ch/2)));
     return Math.abs(+c.dataset.viewScale-scale)<.000001&&Math.abs(+c.dataset.viewX-x)<.01&&Math.abs(+c.dataset.viewY-y)<.01;
-  },{zone:DEPARTMENT_ZONE,width:MAP.width,height:MAP.height});
+  },{zone:DEPARTMENT_ZONE,bounds:mapOf(DEPARTMENT_ID).viewBounds});
   let view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
   let box=await page.locator('#world').boundingBox();
   const placing=await page.evaluate(()=>document.body.classList.contains('placing'));
@@ -79,7 +79,7 @@ async function worldClick(page,mx,my){
     if(!(await page.locator('#map-overview').isVisible()))await page.locator('#minimap-toggle').click();
     await page.locator('#map-overview').click();
     if((await page.locator('#map-area-view').textContent()).includes('한눈에 보기'))await page.locator('#map-area-view').click();
-    else await page.locator('#universe-close').click();
+    else await clickDialogClose(page,'#universe-close');
     await page.waitForTimeout(100);
     view=await page.locator('#world').evaluate(c=>({x:+c.dataset.viewX,y:+c.dataset.viewY,scale:+c.dataset.viewScale}));
     box=await page.locator('#world').boundingBox();
@@ -151,6 +151,21 @@ async function clearShopPath(page,p,shop){
   // 상점 아래로 빠져나온 뒤 확대 분수의 위쪽 통로를 돌아갑니다.
   await walkNear(page,p,{x:p.x,y:shop.y+shop.radius+100},{waypoint:true});
   for(const point of [{x:1100,y:1460},{x:430,y:1460},{x:430,y:1690}])await walkNear(page,p,point,{waypoint:true});
+}
+// Set up a nearby gate approach in the isolated fixture, then exercise real UI travel.
+async function travelGate(page,room,actor,target){
+ await closeOpenDialogs(page);await page.bringToFront();
+ const gate=mapOf(actor.mapId).objects.find(o=>o.kind==='gate'&&o.target===target);assert(gate,actor.mapId+' -> '+target);
+ Object.assign(actor,{x:gate.x,y:gate.y,input:{x:0,y:0,at:Date.now()}});
+ game.io.to(actor.socketId).emit('room:state',game.store.snapshot(room,actor));
+ await page.locator('#interact-object').filter({hasText:gate.name}).waitFor();
+ await page.locator('#touch-interact').click();
+ await page.waitForFunction(name=>document.getElementById('minimap-title').textContent===name,mapOf(target).name);
+ assert.equal(actor.mapId,target);
+}
+async function clickDialogClose(page,source){
+ const dialog=page.locator(source).locator("xpath=ancestor::dialog");
+ await dialog.locator(".dialog-pinned-close").click();
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}
 async function openChatFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
@@ -286,7 +301,7 @@ try{
  await waitForChatInput(student,{disabled:false,placeholder:'친구들에게 말해요 (Enter)'});
  await muteButton.filter({hasText:'금지'}).waitFor({state:'attached'});
  check('Teacher mute toggle disables/enables one student\'s chat input and announces it by nickname');
- await teacher.locator('#crew-close').click();
+ await clickDialogClose(teacher,'#crew-close');
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
 
  await rejoinStudentAfterReload(student,code);
@@ -312,6 +327,8 @@ try{
  // Reset the student viewport (left at 390px after the mobile/chat checks) so map clicks below use
  // normal desktop coordinates; item 13 switches back to 390px once this scenario is done.
  await student.setViewportSize({width:1440,height:1000});
+ await travelGate(student,room,p,DEPARTMENT_ID);
+ await travelGate(teacher,room,[...room.players.values()].find(v=>v.role==='teacher'),DEPARTMENT_ID);
  await closeOpenDialogs(teacher);await teacher.locator('#map-overview').click();await teacher.locator('#map-area-view').click();await teacher.waitForTimeout(100);
  const teacherCanvasBeforePropose=await teacher.locator('#world').evaluate(c=>c.toDataURL());
  await clickMenuAction(student,'planet-new');
@@ -364,7 +381,7 @@ try{
  check('Student chat log shows the approval announcement mentioning the first member');
  await teacher.locator('#proposals-empty').waitFor({state:'visible'});
  check('Teacher proposals list shows the empty state once no proposals remain');
- await teacher.locator('#teacher-close').click();
+ await clickDialogClose(teacher,'#teacher-close');
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  await teacher.screenshot({path:'.local/05-planets.png',fullPage:true});
 
@@ -402,7 +419,7 @@ try{
  await openSocialFromDock(teacher);await teacher.locator('#crew-button').click();
  await teacher.locator('#crew-dialog').waitFor({state:'visible'});
  await teacher.locator('#players li').filter({hasText:'급식행성 안'}).waitFor({state:'attached'});
- await teacher.locator('#crew-close').click();
+ await clickDialogClose(teacher,'#crew-close');
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
  await student.waitForTimeout(150);
  const studentCanvasAfterEnter=await student.locator('#world').evaluate(c=>c.toDataURL());
@@ -428,7 +445,7 @@ try{
  await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'규칙을 바꿨어요'}).waitFor({state:'attached'});
  check('Students are notified in chat that the planet rules changed');
- await teacher.locator('#planet-close').click();
+ await clickDialogClose(teacher,'#planet-close');
  await teacher.locator('#planet-dialog').waitFor({state:'hidden'});
 
  // Item 8: from inside the planet, "우리 행성 정보" opens the same dialog with entry hidden; a
@@ -445,7 +462,7 @@ try{
  await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'"급식행성" 행성의 이름이 "급식별"로 바뀌었어요!'}).waitFor({state:'attached'});
  check('Chat log announces the automatic single-member rename');
- await student.locator('#planet-close').click();
+ await clickDialogClose(student,'#planet-close');
  await student.locator('#planet-dialog').waitFor({state:'hidden'});
 
  // Item 9: a second student joins by clicking the planet directly (no walking), then the two
@@ -460,6 +477,7 @@ try{
  await student2.locator('#lobby').waitFor({state:'hidden'});
  await dismissTutorial(student2);
  check('A second student (nickname 2) joins the same classroom');
+ await travelGate(student2,room,[...room.players.values()].find(v=>v.nickname==='2'),DEPARTMENT_ID);
  await worldClick(student2,cafeteria.x,cafeteria.y);
  if(!(await student2.locator('#planet-dialog').isVisible())){
    await student2.waitForTimeout(150);
@@ -475,7 +493,7 @@ try{
  game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
  await student.locator('#interact-object').filter({hasText:'가입 신청 우체통'}).waitFor();await student.locator('#touch-interact').click();
  await student.locator('#mailbox-requests li').filter({hasText:'2'}).getByRole('button',{name:'가입 승인',exact:true}).click();
- await student.locator('#mailbox-close').click();Object.assign(p,priorPosition);game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
+ await clickDialogClose(student,'#mailbox-close');Object.assign(p,priorPosition);game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p));
  await student2.locator('#self-department').filter({hasText:'소속: 🍱 급식별'}).waitFor({state:'attached'});
  check('Second student applies from planet info and an existing member approves at the interior mailbox');
  assert.equal([...room.players.values()].filter(pl=>pl.avatar.departmentId===cafeteriaId).length,2);
@@ -501,16 +519,17 @@ try{
  await student.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student.locator('#chat-log li').filter({hasText:'"급식별" 행성의 이름이 "급식나라"로 바뀌었어요!'}).waitFor({state:'attached'});
  check('Unanimous agreement passes the rename; both members\' dialogs and chat logs reflect the new name');
- await student.locator('#planet-close').click();await student.locator('#planet-dialog').waitFor({state:'hidden'});
- await student2.locator('#planet-close').click();await student2.locator('#planet-dialog').waitFor({state:'hidden'});
+ await clickDialogClose(student,'#planet-close');await student.locator('#planet-dialog').waitFor({state:'hidden'});
+ await clickDialogClose(student2,'#planet-close');await student2.locator('#planet-dialog').waitFor({state:'hidden'});
 
  // Item 10: student 1 exits back to the plaza, landing below the planet.
  await clickMenuAction(student,'planet-exit');
- await student.locator('#map-caption').filter({hasText:'같은 교실의 친구들과 함께하는 공간'}).waitFor({state:'attached'});
+ await student.locator('#minimap-title').filter({hasText:mapOf(DEPARTMENT_ID).name}).waitFor({state:'attached'});
  await student.locator('#planet-exit').waitFor({state:'hidden'});
- assert.equal(p.mapId,PLAZA_ID);
+ assert.equal(p.mapId,DEPARTMENT_ID);
  assert.ok(p.y>600+60);
- check('Student exits the planet back to the plaza, landing below it');
+ check('Student exits the planet back to its department plaza, landing below it');
+ await travelGate(student,room,p,PLAZA_ID);
 
  // --- STEP 7: star shards, star-street travel and the star shop ---------------------------------
  // Precondition matches the plan: student 1 is back in the plaza and still belongs to a planet
@@ -521,7 +540,7 @@ try{
  await student.locator('#crew-dialog').waitFor({state:'visible'});
  assert.ok(await student.locator('#players li').count()>=2);
  check('New layout: #crew-button opens #crew-dialog listing the teacher and the students');
- await student.locator('#crew-close').click();
+ await clickDialogClose(student,'#crew-close');
  await student.locator('#crew-dialog').waitFor({state:'hidden'});
  assert.equal((await student.locator('#self-shards').innerText()).trim(),'0');
  await openInventoryFromDock(student);assert.ok(await student.locator('#bag-empty').isVisible());
@@ -562,7 +581,7 @@ await expandTeacherSection(teacher,'자원 지급');
  assert.doesNotMatch(await teacher.locator('#shards-feedback').innerText(),/지급되었습니다/);
  await teacher.locator('#toast').filter({hasText:'별 파편 개수는 1~999 사이 정수로 적어주세요.'}).waitFor({state:'attached'});
  check('Giving 0 star shards is rejected with the exact validation message');
- await teacher.locator('#teacher-close').click();
+ await clickDialogClose(teacher,'#teacher-close');
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
 
  // Item 3: student walks to the plaza's star-street gate and travels there. Standing right next
@@ -591,7 +610,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await openSocialFromDock(teacher);await teacher.locator('#crew-button').click();
  await teacher.locator('#crew-dialog').waitFor({state:'visible'});
  assert.equal((await teacher.locator('#crew-count').innerText()).trim(),rosterBeforeTravel);
- await teacher.locator('#crew-close').click();
+ await clickDialogClose(teacher,'#crew-close');
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
  check('Teacher crew roster count ('+rosterBeforeTravel+') is unchanged while the student is away on another map');
  await student.waitForTimeout(150);
@@ -618,7 +637,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#shop-buy-list li[data-item-id="little-sun-card"] .item-info').click();
  await student.locator('#item-info-dialog').waitFor({state:'visible'});
  assert.ok((await student.locator('#item-info-text').innerText()).includes('자외선'));
- await student.locator('[data-close="item-info-dialog"]').click();
+ await clickDialogClose(student,'[data-close="item-info-dialog"]');
  check('Lv1 카드 8종 그림과 감성 문구·상점 정보보기의 효과 설명');
  await student.screenshot({path:'.local/06-street-shop.png',fullPage:true});
  await student.locator('#shop-buy-list').evaluate(list=>list.scrollTop=list.scrollHeight);
@@ -654,7 +673,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#toast').filter({hasText:'팔았어요'}).waitFor({state:'attached'});
  await student.locator('#shop-shards').filter({hasText:'22'}).waitFor({state:'attached'});
  check('Selling 1 space food card back refunds 1 shard, leaving 22');
- await student.locator('#shop-close').click();
+ await clickDialogClose(student,'#shop-close');
  await student.locator('#shop-dialog').waitFor({state:'hidden'});
  await openInventoryFromDock(student);
  // #bag-list li only holds an icon + count (see renderBag in client/app.js) - the item name is
@@ -677,8 +696,8 @@ await expandTeacherSection(teacher,'자원 지급');
  assert.equal(p.mapId,PLAZA_ID);
  assert.ok(Math.hypot(p.x-gateBack.arrival.x,p.y-gateBack.arrival.y)<100,
    'expected the student near the plaza arrival point '+JSON.stringify(gateBack.arrival)+' but landed at '+p.x+','+p.y);
- await student.waitForFunction(id=>!document.getElementById(id).hidden,'planet-new');
- check('Walking back through the street gate returns the student to the plaza near its arrival point, with #planet-new visible again');
+ await student.locator('#planet-new').waitFor({state:'hidden'});
+ check('Walking back through the street gate returns to the plaza; planet creation stays in the department map');
 
  // Item 6: the plan's direct-socket cross-room shop check is already covered by the server unit
  // tests (star shards/purchases stay isolated per classroom), so this checks the 390px layout
@@ -716,7 +735,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#proposals li').filter({hasText:'놀이행성'}).waitFor({state:'attached'});
  await teacher.locator('#proposals li').filter({hasText:'놀이행성'}).locator('button.reject').click();
  await teacher.locator('#proposals-empty').waitFor({state:'visible'});
- await teacher.locator('#teacher-close').click();
+ await clickDialogClose(teacher,'#teacher-close');
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  await student2.locator('[data-chat-tab=system]').evaluate(button=>button.click());
  await student2.locator('#chat-log li').filter({hasText:'돌려보냈어요'}).waitFor({state:'attached'});
@@ -737,6 +756,7 @@ await expandTeacherSection(teacher,'자원 지급');
  check('Teacher removes the planet; both students lose membership and see the removal announcement');
 
  // Item 13: 390px layout still holds up after all this planet activity.
+ await travelGate(student,room,p,DEPARTMENT_ID);
  await student.setViewportSize({width:390,height:844});
  await student.waitForFunction(id=>!document.getElementById(id).hidden,'planet-new');
  assert.ok(await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -764,7 +784,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#proposals li').filter({hasText:'손가락행성'}).waitFor({state:'attached'});
  await teacher.locator('#proposals li').filter({hasText:'손가락행성'}).locator('button.reject').click();
  await teacher.locator('#proposals-empty').waitFor({state:'visible'});
- await teacher.locator('#teacher-close').click();
+ await clickDialogClose(teacher,'#teacher-close');
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  // --- End STEP 6 ----------------------------------------------------------------------------
  // --- STEP 7-2: planet templates, avatar card/bag, shard secrecy, item use, and trades -----------
@@ -800,7 +820,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#planet-dialog').waitFor({state:'visible'});
  await teacher.locator('#planet-title').filter({hasText:'⚽'}).waitFor({state:'attached'});
  check('Opening a template-created planet shows its template icon (⚽ for the pe template) in the #planet-title dialog heading');
- await teacher.locator('#planet-close').click();
+ await clickDialogClose(teacher,'#planet-close');
  await teacher.locator('#planet-dialog').waitFor({state:'hidden'});
 
  // Scenario 2: avatar card and bag grid (student 1, reset to a normal desktop viewport since Item 14
@@ -823,14 +843,14 @@ await expandTeacherSection(teacher,'자원 지급');
  assert.equal(await student2.locator('#players li[data-name="1"] .shards-badge').count(),0);
  assert.equal(await student2.locator('#players li[data-name="2"] .shards-badge').count(),1);
  check('Student 2\'s crew dialog shows no star-shards badge on student 1\'s row but shows one on their own row');
- await student2.locator('#crew-close').click();
+ await clickDialogClose(student2,'#crew-close');
  await student2.locator('#crew-dialog').waitFor({state:'hidden'});
  await openSocialFromDock(teacher);await teacher.locator('#crew-button').click();
  await teacher.locator('#crew-dialog').waitFor({state:'visible'});
  assert.equal(await teacher.locator('#players li').nth(1).locator('.shards-badge').count(),1);
  assert.equal(await teacher.locator('#players li').nth(2).locator('.shards-badge').count(),1);
  check('Teacher\'s crew dialog shows the star-shards badge on both students\' rows');
- await teacher.locator('#crew-close').click();
+ await clickDialogClose(teacher,'#crew-close');
  await teacher.locator('#crew-dialog').waitFor({state:'hidden'});
 
  // 판매 중단 전 보유품은 삭제되지 않고 계속 사용할 수 있습니다. 시험용 기존 인벤토리를 준비합니다.
@@ -855,7 +875,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await teacher.locator('#item-log li').filter({hasText:'반짝 별 스티커'}).waitFor({state:'attached'});
  await expandTeacherSection(teacher,'아이템 사용 기록');
  await teacher.locator('#item-log li').filter({hasText:'반짝 별 스티커'}).waitFor({state:'visible'});
- await teacher.locator('#teacher-close').click();
+ await clickDialogClose(teacher,'#teacher-close');
  await teacher.locator('#teacher-dialog').waitFor({state:'hidden'});
  check('Student 1 uses the star sticker on themself: the effect appears in their passport and avatar canvas, a public chat line announces it, and the teacher item log records it');
 
@@ -881,7 +901,7 @@ await expandTeacherSection(teacher,'자원 지급');
  // 별 시장: 요청 수락 → 각자 제시 → 양쪽 확정. 실제 학급과 무관한 시험 서버입니다.
  for(const page of [student,student2,teacher])await closeOpenDialogs(page);
  const marketTeacher=[...room.players.values()].find(v=>v.role==='teacher');
- for(const actor of [p,p2,marketTeacher]){actor.mapId=PLAZA_ID;actor.x=MARKET.x;actor.y=MARKET.y;actor.input={x:0,y:0,at:Date.now()};}
+ for(const actor of [p,p2,marketTeacher]){actor.mapId=MARKET_ID;actor.x=MARKET.x;actor.y=MARKET.y;actor.input={x:0,y:0,at:Date.now()};}
  p.cosmicEnergy=10;p2.cosmicEnergy=6;
  const marketPublish=()=>{for(const actor of [p,p2,marketTeacher])game.io.sockets.sockets.get(actor.socketId).emit('room:state',game.store.snapshot(room,actor));};
  marketPublish();
@@ -893,7 +913,7 @@ await expandTeacherSection(teacher,'자원 지급');
  assert.equal(p.starShards,preTradeS1Shards);
  await student2.locator('#market-confirm').click();await student.locator('#market-dialog').waitFor({state:'hidden'});await student2.locator('#market-dialog').waitFor({state:'hidden'});
  assert.equal(p.starShards,preTradeS1Shards-3);assert.equal(p2.starShards,preTradeS2Shards+3);assert.equal(p.cosmicEnergy,8);assert.equal(p2.cosmicEnergy,8);
- await enterMarket(teacher);await teacher.locator('#market-history').filter({hasText:'완료'}).waitFor();await teacher.locator('#market-history').filter({hasText:'우주에너지 2'}).waitFor();await teacher.locator('#market-close').click();
+ await enterMarket(teacher);await teacher.locator('#market-history').filter({hasText:'완료'}).waitFor();await teacher.locator('#market-history').filter({hasText:'우주에너지 2'}).waitFor();await clickDialogClose(teacher,'#market-close');
  check('별 시장에서 학생 양쪽 수락으로 별 파편3·우주에너지2 교환, 교사 승인 없이 완료·시장 내 교사 기록 조회');
 
  const beforeDecline=[p.starShards,p2.starShards,p.cosmicEnergy,p2.cosmicEnergy];
@@ -915,7 +935,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#draw-spread .draw-deck').waitFor({state:'visible'});
  assert.equal(await student.locator('#draw-spread .draw-card').count(),1);
  assert.equal(p.inventory.find(entry=>entry.id==='moon-rabbit-card').quantity,1);
- await student.locator('#draw-close').click();
+ await clickDialogClose(student,'#draw-close');
  await rejoinStudentAfterReload(student,code);
  await openInventoryFromDock(student);
  await student.locator('#bag-list .slot-btn[aria-label="달토끼 × 1"]').click();
@@ -924,7 +944,7 @@ await expandTeacherSection(teacher,'자원 지급');
  await student.locator('#draw-spread .draw-card.revealed').waitFor({state:'visible'});
  assert.equal(p.rabbitDraw,null);
  assert.equal(p.inventory.some(entry=>entry.id==='moon-rabbit-card'),false);
- await student.locator('#draw-close').click();
+ await clickDialogClose(student,'#draw-close');
  await student.locator('#draw-resume').waitFor({state:'hidden'});
  check('달토끼 단일 카드 더미: 열기·닫기·재접속은 소모 없음, 더미 클릭 한 번으로 카드1개 소모와 무작위 보상 지급');
 

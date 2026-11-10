@@ -1,4 +1,5 @@
 import {studentReminders} from './student-reminders.js';
+import {hasUnreadArchiveReplies} from '../shared/starlight-archive.js';
 import {activeHazardView} from './boss-map-hazards.js';
 import {huntingTimeView} from './hunting-time.js';
 import {normalizePlanetDesign} from '../shared/planet-design.js';
@@ -208,7 +209,7 @@ export class RoomStore {
           transformation:p.transformation?{active:p.transformation.active,endsAt:p.transformation.endsAt,cooldownUntil:p.transformation.cooldownUntil}:null,effects:playerEffectsView(p,isTeacher,now,room),equipmentAura:equipmentAuraOf(p),combat:{attackPower:attackPowerOf(p.avatar.level,p.avatar.constellationId,p,now),defensePower:defensePowerOf(p.avatar.level,p.avatar.constellationId,p)},vitals:playerVitals(p)};
         if(isTeacher || (viewer && viewer.id===p.id)){ out.starShards=p.starShards; out.cosmicEnergy=p.cosmicEnergy??0;out.statGrowth=structuredClone(p.statGrowth||{bonuses:{hp:0,mp:0,attack:0,defense:0},lastPurchaseDay:null}); out.inventory=[...p.inventory];out.equipmentSlots=[...(p.equipmentSlots||[null,null,null])];out.explorationChances=p.explorationChances||0; }
         if(viewer && viewer.id===p.id){out.herculesNextStance=p.herculesNextStance==='attack'?'attack':'shield';out.huntingTime=huntingTimeView(p,now);out.serenaEligible=serenaEligible(p);out.serenaEligibility=serenaEligibility(p);out.tasks=structuredClone(p.tasks||[]);out.tutorialCompleted=!!p.tutorialCompleted;out.tutorialRewardClaimed=!!p.tutorialRewardClaimed;out.tutorialCompletedAt=p.tutorialCompletedAt??null;out.tutorialRewardClaimedAt=p.tutorialRewardClaimedAt??null;out.rabbitDrawPending=!!p.rabbitDraw;out.superclusterEnergy=p.lv4State?.stacks||0;
-          if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);}
+          if(p.role==='student'){out.journey=journeyView(p);out.practiceItems=practiceItems(p);out.archiveReplyUnread=hasUnreadArchiveReplies(p.starlightArchive);}
           out.eclipseFeeDue=(p.cardMarkers||[]).some(marker=>marker.itemId==='total-eclipse-card'&&marker.until>Date.now()&&marker.fromId!==p.id);
           out.abilityUsedWeek=p.abilityState?.usedWeek||null;out.abilityPending=structuredClone(p.abilityState?.pending||null);out.constellationAbility={...constellationAbilityStatus(p,now),swanCardOffer:swanCardOffer(room,p,now)};}
         if(p.role==='teacher'&&isTeacher)out.teacherGhost=p.teacherGhost===true;

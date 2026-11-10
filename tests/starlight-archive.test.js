@@ -1,8 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateArchive,saveArchive,signArchive,replyArchive,getArchive,readArchive} from '../server/starlight-archive.js';
+import {validateArchive,saveArchive,signArchive,replyArchive,getArchive,readArchive,acknowledgeArchiveReply} from '../server/starlight-archive.js';
+import {hasUnreadArchiveReplies} from '../shared/starlight-archive.js';
 const setup=()=>{const p={id:'student-one',role:'student',nickname:'하나'},q={id:'student-two',role:'student',nickname:'둘'},t={id:'teacher-one',role:'teacher',nickname:'선생님'};return {p,q,t,room:{allowedNames:new Set(['둘','하나']),players:new Map([p,q,t].map(p=>[p.id,p]))}};};
 const data=(extra={})=>({kind:'diary',requestId:'request-001',date:'2026-10-30',title:'오늘의 발견',body:'<script>평문으로 보관</script>\n즐거웠어요.',...extra});
+test('reply alerts require each visible reply version, survive list/get/student edits, and reject foreign acknowledgement',()=>{
+ const {p,q,t,room}=setup(),first=saveArchive(p,data(),100).entry,second=saveArchive(p,data({requestId:'request-002'}),100).entry;
+ const reply=e=>replyArchive(room,t,{kind:'diary',studentId:p.id,id:e.id,revision:e.revision,text:'답글'},110).entry;
+ const a=reply(first),b=reply(second),ack={kind:'diary',id:a.id,replyVersion:1};
+ assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);assert.equal(readArchive(room,p,{kind:'diary'}).records.every(e=>e.replyUnread),true);
+ getArchive(room,p,{kind:'diary',id:a.id});getArchive(room,t,{kind:'diary',studentId:p.id,id:a.id});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ for(const actor of [q,t])assert.throws(()=>acknowledgeArchiveReply(room,actor,{...ack,studentId:p.id}));
+ assert.equal(acknowledgeArchiveReply(room,p,ack).acknowledged,true);assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ acknowledgeArchiveReply(room,p,{...ack,id:b.id});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),false);
+ const edited=saveArchive(p,data({id:a.id,revision:a.revision,body:'학생이 고친 일기'}),120).entry;assert.equal(edited.replyUnread,false);
+ const next=replyArchive(room,t,{kind:'diary',studentId:p.id,id:a.id,revision:edited.revision,text:'수정한 답글'},110).entry;
+ assert.equal(next.reply.version,2);assert.equal(next.replyUnread,true);
+ assert.equal(acknowledgeArchiveReply(room,p,ack).acknowledged,false);assert.equal(hasUnreadArchiveReplies(p.starlightArchive),true);
+ acknowledgeArchiveReply(room,p,{...ack,replyVersion:2});assert.equal(hasUnreadArchiveReplies(p.starlightArchive),false);
+ const same=replyArchive(room,t,{kind:'diary',studentId:p.id,id:a.id,revision:next.revision,text:'수정한 답글'},130).entry;assert.equal(same.reply.version,2);assert.equal(same.replyUnread,false);
+});
+test('legacy replies migrate unread and persisted reply acknowledgement metadata is validated',()=>{
+ const {p,t,room}=setup(),e=saveArchive(p,data(),100).entry;replyArchive(room,t,{kind:'diary',studentId:p.id,id:e.id,revision:1,text:'답글'},110);
+ const legacy=structuredClone(p.starlightArchive);delete legacy.diary[0].reply.version;delete legacy.diary[0].replySeenVersion;
+ const migrated=validateArchive(legacy);assert.equal(migrated.diary[0].reply.version,1);assert.equal(migrated.diary[0].replySeenVersion,0);assert.equal(hasUnreadArchiveReplies(migrated),true);
+ for(const change of [e=>e.reply.version=0,e=>e.reply.version=1.2,e=>e.replySeenVersion=2,e=>e.replySeenVersion=-1,e=>{e.reply=null;e.replySeenVersion=1;}]){const corrupt=structuredClone(migrated);change(corrupt.diary[0]);assert.throws(()=>validateArchive(corrupt));}
+});
 test('archive entries are private, ordered, paginated, and teacher roster follows roster order',()=>{
  const {p,q,t,room}=setup();for(let i=0;i<25;i++)saveArchive(p,data({requestId:'request-'+String(i).padStart(3,'0')}),100+i);
  const read=readArchive(room,p,{kind:'diary'});assert.equal(read.total,25);assert.equal(read.records.length,20);assert.equal(read.records[0].createdAt,124);assert.equal(read.records[0].body,undefined);assert.equal(read.records[0].requestId,undefined);assert.equal(read.roster,undefined);assert.equal(readArchive(room,p,{kind:'diary',page:1}).records.length,5);

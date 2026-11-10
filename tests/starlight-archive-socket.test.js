@@ -5,6 +5,24 @@ import {toRecord,fromRecord} from '../server/persistent-rooms.js';
 import {readingFixture,call,ok} from './helpers/reading-fixture.js';
 const at=(f,p=f.p)=>{const o=MAP.objects.find(o=>o.kind==='starlight-archive');assert(o);Object.assign(p,{mapId:MAP.id,x:o.x,y:o.y+80,input:{x:0,y:0,at:0}});};
 const draft=(extra={})=>({kind:'diary',requestId:'request-socket-001',date:'2026-10-30',title:'나의 하루',body:'비밀 기록 <b>평문</b>',...extra});
+test('reply notifications are owner-only, durable through reconnect/restart and transactional read failures',async t=>{
+ const f=await readingFixture(t);at(f);at(f,f.q);at(f,f.teacherPlayer);
+ const e=ok(await call(f.student,'archive:save',draft())).entry;
+ const reply=ok(await call(f.teacher,'archive:reply',{kind:'diary',studentId:f.p.id,id:e.id,revision:e.revision,text:'선생님 답글'})).entry;
+ const unread=()=>f.game.store.snapshot(f.room,f.p,f.now).players.find(p=>p.id===f.p.id).archiveReplyUnread;
+ assert.equal(unread(),true);
+ for(const viewer of [f.q,f.teacherPlayer,null])assert.equal(f.game.store.snapshot(f.room,viewer,f.now).players.find(p=>p.id===f.p.id).archiveReplyUnread,undefined);
+ ok(await call(f.student,'archive:read',{kind:'diary'}));ok(await call(f.student,'archive:get',{kind:'diary',id:e.id}));assert.equal(unread(),true);
+ const ack={kind:'diary',id:e.id,replyVersion:reply.reply.version};
+ for(const actor of [f.other,f.teacher])assert.equal((await call(actor,'archive:reply:read',{...ack,studentId:f.p.id})).ok,false);
+ f.p.x=0;assert.equal((await call(f.student,'archive:reply:read',ack)).ok,false);at(f);
+ await f.fail(async()=>assert.equal((await call(f.student,'archive:reply:read',ack)).ok,false));assert.equal(unread(),true);
+ await f.reconnect();assert.equal(unread(),true);await f.restart();at(f);at(f,f.teacherPlayer);assert.equal(unread(),true);
+ ok(await call(f.student,'archive:reply:read',ack));assert.equal(unread(),false);await f.restart();at(f);at(f,f.teacherPlayer);assert.equal(unread(),false);
+ const next=ok(await call(f.teacher,'archive:reply',{kind:'diary',studentId:f.p.id,id:e.id,revision:reply.revision,text:'수정된 선생님 답글'})).entry;
+ assert.equal(unread(),true);assert.equal(ok(await call(f.student,'archive:reply:read',ack)).acknowledged,false);assert.equal(unread(),true);
+ ok(await call(f.student,'archive:reply:read',{...ack,replyVersion:next.reply.version}));assert.equal(unread(),false);
+});
 
 test('culture station lets students submit their own reading logs, while diary and teacher permissions stay at archive',async t=>{
  const f=await readingFixture(t),o=STAR_STATION.objects.find(o=>o.kind==='culture-station');

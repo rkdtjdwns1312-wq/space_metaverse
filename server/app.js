@@ -479,7 +479,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     registerHistoryLibrary({socket,action,store,roster,clock});
     registerScienceLibrary({socket,action,store,roster,clock});
     registerCozyActivities({socket,action,store,roster,clock});
-    registerStarlightArchive({socket,action,store,clock});
+    registerStarlightArchive({socket,action,store,roster,clock});
     registerArtStudio({socket,action,store,clock});
     action('dark-star:summon',()=>{
       const session=socket.data.session;ensure(session,'먼저 교실에 입장해주세요.');

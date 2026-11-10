@@ -981,7 +981,7 @@ export function createWorld(canvas) {
     if(myMapId===PLAZA_ID){
       const layers=[...visiblePlayers.map(p=>({y:points.get(p.id)?.y??p.y,draw:()=>drawAvatar(p,t,gatherRemaining?gather.counts?.[p.id]:0)})),
         ...map.objects.filter(o=>o.kind==='pillar'&&intersectsView(view,{x:o.x-180,y:o.y-220,width:360,height:280})).map(o=>({y:o.y,draw:()=>drawPlazaPillar(ctx,o)})),
-        ...map.objects.filter(o=>o.kind==='starlight-archive').map(o=>({y:o.y,draw:()=>drawStarlightArchive(ctx,o)}))];
+        ...map.objects.filter(o=>o.kind==='starlight-archive').map(o=>({y:o.y,draw:()=>drawStarlightArchive(ctx,o,{replyUnread:players.some(p=>p.id===selfId&&p.role==='student'&&p.archiveReplyUnread)})}))];
       for(const layer of layers.sort((a,b)=>a.y-b.y))layer.draw();
     }else{
       const visibleOrbs=spiritOrbs.filter(orb=>orb.mapId===myMapId&&Date.now()>=(orb.startsAt??0)&&Date.now()<(orb.endsAt??Infinity));

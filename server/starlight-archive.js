@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {ARCHIVE_KINDS,ARCHIVE_LIMITS as L} from '../shared/starlight-archive.js';
+import {ARCHIVE_KINDS,ARCHIVE_LIMITS as L,archiveReplyUnread} from '../shared/starlight-archive.js';
 import {MAP,STAR_STATION} from '../shared/config.js';
 import {GameError} from './pin-auth.js';
 import {isNear} from './world.js';
@@ -17,12 +17,13 @@ export function validateArchive(raw){
   out[kind]=raw[kind].map(e=>{need(e&&e.kind===kind&&key(e.id)&&key(e.requestId)&&!ids.has(e.id)&&!requests.has(e.requestId)&&integer(e.revision)&&e.revision>=1&&integer(e.createdAt)&&integer(e.updatedAt)&&e.updatedAt>=e.createdAt);ids.add(e.id);requests.add(e.requestId);
    const content=fields(e,kind);for(const [k,v] of Object.entries(content))need(e[k]===v);
    let stamp=null;if(e.stamp!==null){need(e.stamp&&e.stamp.text==='참 잘했어요'&&integer(e.stamp.signedAt)&&e.stamp.signedAt>=e.createdAt);stamp={text:'참 잘했어요',teacherName:text(e.stamp.teacherName,100,true),signedAt:e.stamp.signedAt};}
-   let reply=null;if(e.reply!==undefined&&e.reply!==null){need(kind==='diary'&&e.reply&&integer(e.reply.updatedAt)&&e.reply.updatedAt>=e.createdAt);reply={text:text(e.reply.text,L.reply,true),teacherName:text(e.reply.teacherName,100,true),updatedAt:e.reply.updatedAt};}
-   return {id:e.id,kind,requestId:e.requestId,revision:e.revision,...content,createdAt:e.createdAt,updatedAt:e.updatedAt,stamp,reply};
+   let reply=null;if(e.reply!==undefined&&e.reply!==null){need(kind==='diary'&&e.reply&&integer(e.reply.updatedAt)&&e.reply.updatedAt>=e.createdAt);const version=e.reply.version??1;need(integer(version)&&version>=1);reply={text:text(e.reply.text,L.reply,true),teacherName:text(e.reply.teacherName,100,true),updatedAt:e.reply.updatedAt,version};}
+   const replySeenVersion=e.replySeenVersion??0;need(integer(replySeenVersion)&&replySeenVersion<=(reply?.version||0));
+   return {id:e.id,kind,requestId:e.requestId,revision:e.revision,...content,createdAt:e.createdAt,updatedAt:e.updatedAt,stamp,reply,replySeenVersion};
   });
  }return out;
 }
-const view=e=>{const {requestId,...safe}=e;return structuredClone(safe);};
+const view=e=>{const {requestId,replySeenVersion,...safe}=e;return {...structuredClone(safe),replyUnread:archiveReplyUnread(e)};};
 function entries(player,kind){need(ARCHIVE_KINDS.includes(kind));return player.starlightArchive?.[kind]??[];}
 export function archiveRoster(room,kind='diary'){need(ARCHIVE_KINDS.includes(kind));const order=[...room.allowedNames];return [...room.players.values()].filter(p=>p.role==='student').map(p=>({id:p.id,number:order.indexOf(p.nickname)+1,nickname:p.nickname,hasNew:!!p.starlightArchive?.[kind]?.some(e=>!e.stamp)})).sort((a,b)=>a.number-b.number||a.nickname.localeCompare(b.nickname));}
 function target(room,player,studentId){
@@ -53,14 +54,22 @@ export function replyArchive(room,player,data,now){
  const state=validateArchive(p.starlightArchive),e=state.diary.find(row=>row.id===data.id);need(e,'일기를 찾을 수 없어요.');
  need(data.revision===e.revision,'학생의 글이 바뀌었어요. 다시 읽은 뒤 답글을 남겨주세요.');
  const replyText=text(data.text,L.reply,true);
- if(e.reply?.text!==replyText){need(e.revision<Number.MAX_SAFE_INTEGER);e.reply={text:replyText,teacherName:text(player.nickname,100,true),updatedAt:now};e.revision++;e.updatedAt=now;}
+ if(e.reply?.text!==replyText){need(e.revision<Number.MAX_SAFE_INTEGER&&(e.reply?.version||0)<Number.MAX_SAFE_INTEGER);e.reply={text:replyText,teacherName:text(player.nickname,100,true),updatedAt:now,version:(e.reply?.version||0)+1};e.revision++;e.updatedAt=now;}
  p.starlightArchive=state;return {entry:view(e)};
 }
-export function registerStarlightArchive({socket,action,store,clock=Date.now}){
+export function acknowledgeArchiveReply(room,player,data){
+ need(player.role==='student','학생 본인이 답글을 확인할 수 있어요.');need(data.kind==='diary'&&integer(data.replyVersion)&&data.replyVersion>=1);
+ const p=target(room,player,data.studentId),state=validateArchive(p.starlightArchive),entry=state.diary.find(e=>e.id===data.id);need(entry,'일기를 찾을 수 없어요.');
+ // A late acknowledgement must never hide a reply edited after the student opened it.
+ if(!entry.reply||entry.reply.version!==data.replyVersion)return {acknowledged:false};
+ entry.replySeenVersion=data.replyVersion;p.starlightArchive=state;return {acknowledged:true};
+}
+export function registerStarlightArchive({socket,action,store,roster=()=>{},clock=Date.now}){
  const access=(data,readingShortcut=false)=>{const {room,player}=socket.data.session||{};need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['teacher','student'].includes(player.role)&&store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');const prop=MAP.objects.find(o=>o.kind==='starlight-archive');const culture=STAR_STATION.objects.find(o=>o.kind==='culture-station'),atCulture=readingShortcut&&data?.kind==='reading'&&player.role==='student'&&player.mapId===STAR_STATION.id&&culture&&isNear(player,culture);need((player.mapId===MAP.id&&prop&&isNear(player,prop))||atCulture,'별빛 기록소 또는 독서 중인 별 교양 발전소 가까이에서 이용해주세요.');need(!isDefeated(player),'체력을 회복한 뒤 이용해주세요.');return {room,player};};
  action('archive:read',data=>{const {room,player}=access(data,true);return readArchive(room,player,data);},false);
  action('archive:get',data=>{const {room,player}=access(data,true);return getArchive(room,player,data);},false);
  action('archive:save',data=>saveArchive(access(data,true).player,data,clock()));
  action('archive:sign',data=>{const {room,player}=access();return signArchive(room,player,data,clock());});
- action('archive:reply',data=>{const {room,player}=access();return replyArchive(room,player,data,clock());});
+ action('archive:reply',data=>{const {room,player}=access();const result=replyArchive(room,player,data,clock());roster(room);return result;});
+ action('archive:reply:read',data=>{const {room,player}=access();const result=acknowledgeArchiveReply(room,player,data);if(result.acknowledged)roster(room);return result;});
 }
