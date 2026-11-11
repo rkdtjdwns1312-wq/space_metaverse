@@ -5,6 +5,7 @@ const fable = (number, title, original, paragraphs, lesson) => Object.freeze({
   id: 'aesop-' + String(number).padStart(2, '0'),
   title,
   category: '이솝 우화',
+  author: '이솝 (원전)',
   paragraphs: Object.freeze(paragraphs),
   lesson,
   source: Object.freeze({

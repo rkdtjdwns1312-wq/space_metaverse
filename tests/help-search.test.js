@@ -4,6 +4,7 @@ import {searchHelp} from '../client/help-search.js';
 import {STUDENT_QUESTIONS} from '../client/student-help-data.js';
 test('children find relevant answers using questions, aliases and joined Korean words',()=>{
  for(const [query,id] of [
+  ['매일 몬스터 10마리','daily-hunt'],['석상 다시소환','sleeping-boss-reset'],['노래듣기','life-star-music'],
   ['숙제는 어떻게 내요?','homework'],['레벨은 어떻게 올려요?','level'],['렙업','level'],
   ['장비는 어떻게 껴요?','equipment'],['별부스러기','crumbs'],['미션 보상','mission-reward'],
   ['조합법 없어도','craft'],['조합 실패','craft-failed'],['키변경','keys'],['키','keys'],['Q','keys'],['E','keys'],['F','keys'],['게임이 버벅거려요','connection'],['비번','password'],['그림 로딩 실패','monster-picture']

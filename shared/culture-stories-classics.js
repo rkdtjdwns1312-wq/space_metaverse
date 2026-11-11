@@ -1,8 +1,18 @@
 // 고대 원전의 서로 다른 사건 40편. 현대 번역문을 옮기지 않고 새로 재서술한다.
 // 세 번째 문단·교훈·생각 질문은 원전의 발언이 아닌 오늘의 수업 해석이다.
+// 출전의 저자와 전승을 구분한다. 호메로스 찬가는 호메로스의 저작으로 단정하지 않는다.
+const originalAuthor = passage => {
+  if(passage.startsWith('오비디우스,'))return '오비디우스 (원전: 변신 이야기)';
+  if(passage.startsWith('호메로스, 오디세이아'))return '호메로스 (원전: 오디세이아)';
+  if(passage.startsWith('헤로도토스,'))return '헤로도토스 (원전: 역사)';
+  if(passage.startsWith('아폴로도로스,'))return '작자 미상 (원전: 도서관·아폴로도로스 전승)';
+  if(passage.startsWith('호메로스 찬가'))return '작자 미상 (원전: 호메로스 찬가)';
+  return '작자 미상 (탈무드 전승)';
+};
 const classic = (kind, number, title, passage, url, events, reflection, lesson, question, scope = '') => Object.freeze({
   id: `${kind}-learning-${String(number).padStart(2, '0')}`,
   title,
+  author: originalAuthor(passage),
   category: kind === 'myth' ? '그리스·로마 신화' : '탈무드',
   paragraphs: Object.freeze([...events, `오늘의 생각: ${reflection}`, `함께 생각해요: ${question}`]),
   lesson,

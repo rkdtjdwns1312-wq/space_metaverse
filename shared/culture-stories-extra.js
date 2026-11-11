@@ -3,8 +3,24 @@
 const source = (title, url, type = '공공기관 설화·고전 해설') => Object.freeze({
   title, url, checked: '2026-10-16', type,
 });
+// 기존 출전에서 확인되는 원전 저자만 표시하고, 채록·편집자와 전승의 작자를 구분한다.
+const originalAuthor = (citation, category) => {
+  const title=citation.title;
+  if(title.includes('Hans Christian Andersen,'))return '한스 크리스티안 안데르센 (원전)';
+  if(title.includes('Jonathan Swift,'))return '조너선 스위프트 (원전)';
+  if(title.includes('Daniel Defoe,'))return '대니얼 디포 (원전)';
+  if(title.includes('Nathaniel Hawthorne,'))return '너새니얼 호손 (원전 재서술)';
+  if(title.startsWith('Ovid,'))return '오비디우스 (원전: 변신 이야기)';
+  if(title.includes('Æsop’s Fables'))return '이솝 (원전)';
+  if(title.includes('Grimm’s Fairy Stories'))return '작자 미상 (전승·그림 형제 채록)';
+  if(title.includes('Andrew Lang ed.,'))return '작자 미상 (전승·앤드루 랭 편)';
+  if(title.includes('Joseph Jacobs,'))return '작자 미상 (영국 전승·조지프 제이콥스 채록)';
+  if(title.includes('Charles Perrault,'))return '작자 미상 (유럽 전승·샤를 페로 판본)';
+  if(title.includes('Arthur Ransome,'))return '작자 미상 (러시아 전승·아서 랜섬 판본)';
+  return `작자 미상 (${category})`;
+};
 const story = (id, title, category, paragraphs, lesson, citation, adaptation = null) => Object.freeze({
-  id, title, category, paragraphs: Object.freeze(paragraphs), lesson,
+  id, title, category, author: originalAuthor(citation, category), paragraphs: Object.freeze(paragraphs), lesson,
   source: citation,
   adaptation: adaptation || (citation.type.includes('새롭게 각색')
     ? '원작의 핵심 줄거리를 바탕으로 초등 3~6학년에게 맞게 결말·세부 사건을 새롭게 각색'

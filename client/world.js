@@ -52,7 +52,7 @@ import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp,PAINTED_PROPS} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
-import {drawPaintedGate,gateVisualBox,gateLabelBaseline} from './gate-art.js';
+import {drawPaintedGate,gateVisualBox,gateLabelBaseline,gateLabelBelow} from './gate-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
@@ -394,7 +394,7 @@ export function createWorld(canvas) {
     const width=Math.max(78,Math.min(345,2*Math.min(o.x,bounds.width-o.x)-12));
     const label=o.destinationLabel||destination?.name||String(o.name).replace(/[←↑→↓↔↕⬅⬆➡⬇]/gu,'').trim();
     ctx.strokeStyle='#fff9fc';ctx.lineWidth=5;
-    const labelY=gateLabelBaseline(ctx,label,box,o.labelBelow||o.id==='gate-sleeping-stars');
+    const labelY=gateLabelBaseline(ctx,label,box,gateLabelBelow(o,bounds));
     ctx.strokeText(label,labelX,labelY,width);ctx.fillText(label,labelX,labelY,width);
   }
   // 맵 아래쪽의 작은 집 상점. 지붕 위에 간판을 붙입니다.

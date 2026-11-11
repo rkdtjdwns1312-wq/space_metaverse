@@ -50,7 +50,7 @@ import {validateExploration,validateExplorationChances} from './exploration.js';
 import {equipmentOf,validateEquipmentSlots} from '../shared/equipment.js';
 import {validateSerenaProgress} from './serena-progress.js';
 import {restoreBossItemHistory,captureBossItemHistory,commitBossItemHistory} from './boss-item-history.js';
-import {validateSerenaState,validateDarkStarState,validateStarRecordState,validateForgottenConstellationState,validateTruthCreatorState,validateBossRespawns,settleBossDeaths} from './boss-lifecycle.js';
+import {validateSerenaState,validateDarkStarState,validateStarRecordState,validateForgottenConstellationState,validateTruthCreatorState,validateBossRespawns,settleBossDeaths,restoreSavedSleepingBosses} from './boss-lifecycle.js';
 
 // 학생의 종료 위치는 별도 lastLocation에 보존하고 접속 토큰은 저장하지 않습니다.
 function offline(p) {
@@ -209,6 +209,7 @@ export function fromRecord(r,now=Date.now()) {
   room.summonCooldowns=new Map((r.summonCooldowns||[]).filter(([,until])=>until>Date.now()));
   room.summons=new Map(); // 답을 기다리는 호출은 다음 수업에 자동 재생하지 않습니다.
   relocateDepartments(room);
+  restoreSavedSleepingBosses(room,now);
   return room;
 }
 
@@ -219,7 +220,7 @@ export class PersistentRoomStore extends RoomStore {
       const restored=fromRecord(r,this.clock());
       // 이전 파일의 새 기본 필드를 메모리 기준에도 정규화합니다. 다른 교실의
       // 첫 저장이 다중 교실 변경으로 오인되지 않으며 파일은 실제 변경 때 저장합니다.
-      this.records.set(r.code,{...r,teacherArtStudio:restored.teacherArtStudio,serena:restored.serena,darkStar:restored.darkStar,starRecord:restored.starRecord,forgottenConstellation:restored.forgottenConstellation,truthCreator:restored.truthCreator,bossRespawns:restored.bossRespawns,
+      this.records.set(r.code,{...r,teacherArtStudio:restored.teacherArtStudio,serena:restored.serena,darkStar:validateDarkStarState(r.darkStar),starRecord:validateStarRecordState(r.starRecord),forgottenConstellation:validateForgottenConstellationState(r.forgottenConstellation),truthCreator:validateTruthCreatorState(r.truthCreator),bossRespawns:validateBossRespawns(r.bossRespawns),
         students:r.students.map(p=>{const {lastLocation,...rest}=p;const saved=validateLastLocation(lastLocation);
           return {...rest,serenaProgress:restored.players.get(p.id).serenaProgress,artStudio:restored.players.get(p.id).artStudio,...(saved?{lastLocation:saved}:{})};})});
     }}

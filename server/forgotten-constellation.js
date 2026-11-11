@@ -1,6 +1,6 @@
 import {mapOf,interactionDistance,interactionReach} from '../shared/config.js';
 import {FORGOTTEN_CONSTELLATION as boss} from '../shared/forgotten-constellation.js';
-import {forgottenConstellationView,restoreForgottenConstellationStatue} from './boss-lifecycle.js';
+import {forgottenConstellationView,restoreForgottenConstellationStatue,nextSleepingBossResetAt} from './boss-lifecycle.js';
 import {monstersOf} from './monsters.js';
 import {requireHuntingEntry} from './hunting-time.js';
 import {ensure} from './rooms.js';
@@ -13,7 +13,7 @@ export function summonForgottenConstellation(room,player,now=Date.now()){
  requireHuntingEntry(player,boss.mapId,now);
  restoreForgottenConstellationStatue(room,now);
  ensure(forgottenConstellationView(room).state==='dormant'&&!(room.monsters?.get(boss.monsterId)?.hp>0)&&!room.pendingBossDeaths?.has(boss.monsterId),'이미 깨어났거나 다시 깨어날 준비 중이에요.');
- room.forgottenConstellation={state:'active',respawnAt:null,monsterId:boss.monsterId};
+ room.forgottenConstellation={state:'active',respawnAt:null,monsterId:boss.monsterId,resetAt:nextSleepingBossResetAt(now)};
  monstersOf(room,now);
  return {forgottenConstellation:forgottenConstellationView(room)};
 }

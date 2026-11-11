@@ -53,8 +53,23 @@ try{
     await page.locator('#interact-object').filter({hasText:'생명의별'}).waitFor();await page.locator('#world').focus();await page.keyboard.press('f');
     await page.locator('#life-star-dialog').waitFor({state:'visible'});await page.locator('[data-recover]').click();await page.locator('#life-star-dialog').waitFor({state:'hidden'});
     assert.ok(player.battleVitals.lifeRecovery,'actual app requests server life-star recovery');
-    await page.locator('#world').focus();await page.keyboard.press('f');await page.locator('[data-music]').click();await page.locator('[data-track="star-origin-1"]').click();
-    await page.locator('[role=status]').filter({hasText:'별의 시작점 · 재생 중'}).waitFor();await page.keyboard.press('Escape');await page.locator('#life-star-dialog').waitFor({state:'hidden'});
-    assert.deepEqual(errors,[]);console.log('PASS actual app student login → F → recovery server request, F → music playback → Escape');
+    for(const size of [{width:1280,height:800},{width:390,height:844},{width:844,height:390}]){
+      await page.setViewportSize(size);
+      await page.locator('#world').focus();await page.keyboard.press('f');
+      await page.locator('#life-star-dialog [data-close]').click();
+      assert.equal(await page.locator('#life-star-dialog').evaluate(d=>d.open),false,'actual app options close button');
+      await page.waitForFunction(()=>document.activeElement.id==='world');
+      await page.keyboard.press('f');await page.locator('[data-music]').click();await page.locator('[data-track="star-origin-1"]').click();
+      await page.locator('[role=status]').filter({hasText:'별의 시작점 · 재생 중'}).waitFor();
+      await page.locator('#life-star-dialog .dialog-scroll-body').evaluate(e=>e.scrollTop=e.scrollHeight);
+      await page.locator('#life-star-dialog [data-close]').click();
+      assert.equal(await page.locator('#life-star-dialog').evaluate(d=>d.open),false,'actual app music close button after scrolling');
+      await page.waitForFunction(()=>document.activeElement.id==='world');
+      await page.keyboard.press('f');await page.locator('[data-music]').click();await page.locator('[data-back]').click();
+      await page.locator('#life-star-dialog [data-close]').click();await page.locator('#life-star-dialog').waitFor({state:'hidden'});
+    }
+    await page.locator('#dock-inventory').click();await page.locator('#inventory-dialog [data-close="inventory-dialog"]').click();
+    assert.equal(await page.locator('#inventory-dialog').evaluate(d=>d.open),false,'static ID-based close remains functional');
+    assert.deepEqual(errors,[]);console.log('PASS actual app student recovery; options/music/back close buttons on desktop/mobile/landscape; focus restored; inventory close preserved');
   }finally{socket.disconnect();}
 }finally{await browser?.close();await game.close();}

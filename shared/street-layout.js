@@ -32,8 +32,8 @@ const half=STREET_LAYOUT.bridgeWidth/2;
 const rect=(left,top,right,bottom)=>[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}];
 const polygonsById={
   'star-street':[ellipse(STREET_LAYOUT.upper),rect(900-half,shelterLayout.viewBounds.y,900+half,1170),rect(900-half,2215,900+half,shelterLayout.viewBounds.y+shelterLayout.viewBounds.height),rect(40,1690-half,180,1690+half)],
-  'star-station':[ellipse(STREET_LAYOUT.entrance),rect(830,0,970,250),ellipse(STREET_LAYOUT.north),rect(900-half,970,900+half,1130)],
-  'star-playground':[ellipse(STREET_LAYOUT.lower),rect(900-half,2360,900+half,2485)]
+  'star-station':[ellipse(STREET_LAYOUT.entrance),rect(830,0,970,250),ellipse(STREET_LAYOUT.north),rect(900-half,970,900+half,STAR_STATION_LAYOUT.viewBounds.y+STAR_STATION_LAYOUT.viewBounds.height)],
+  'star-playground':[ellipse(STREET_LAYOUT.lower),rect(900-half,PLAYGROUND_LAYOUT.viewBounds.y,900+half,2485)]
 };
 export const STREET_POLYGONS=Object.freeze(polygonsById['star-street']);
 function inPolygon(p,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){

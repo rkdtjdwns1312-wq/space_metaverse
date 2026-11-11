@@ -10,7 +10,7 @@ const aesopSource = (title) => ({
 const talmudSource = (title, url) => ({ title: `탈무드 ${title} — Sefaria 원문`, url });
 const jewishSource = (title, url) => ({ title: `유대 전승 「${title}」 — Sefaria에 수록된 출전`, url });
 const story = (id, title, category, paragraphs, lesson, source, sourceType = '공개 고전 원전') => Object.freeze({
-  id, title, category, paragraphs: Object.freeze(paragraphs), lesson,
+  id, title, category, author: category === '이솝 우화' ? '이솝 (원전)' : `작자 미상 (${category === '탈무드' ? '탈무드 전승' : '유대 전승'})`, paragraphs: Object.freeze(paragraphs), lesson,
   source: Object.freeze({ ...source, checked: '2026-10-13', type: sourceType }),
   adaptation: '어린이 눈높이로 새롭게 풀어쓴 이야기',
 });

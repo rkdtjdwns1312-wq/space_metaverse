@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {MAP,RULES,STREET,STAR_STATION,PLAYGROUND,STATIC_MAPS} from '../shared/config.js';
 import {onParadiseFloor,isParadise} from '../shared/paradise-floor.js';
 import {STREET_EDGES,STREET_LAYOUT,STREET_POLYGONS,onStreetFloor,migrateLegacyStreetPosition} from '../shared/street-layout.js';
-import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
+import {avatarPositionIsClear,avatarFootprint} from '../shared/avatar-boundary.js';
 
 test('쉼터와 발전소와 놀이터는 독립 바닥이며 모든 문과 도착점은 연결된다',()=>{
   assert.equal(STREET_POLYGONS.length,4);assert.ok(STREET_EDGES.length>0);
@@ -39,6 +39,27 @@ test('발전소·상점·조합기·오락기가 북·중앙·남쪽 마당에 �
   assert.deepEqual(STREET.objects.find(o=>o.kind==='crafting')&&[STREET.objects.find(o=>o.kind==='crafting').x,STREET.objects.find(o=>o.kind==='crafting').y],[1450,1730]);
   assert.equal(STREET.objects.find(o=>o.id==='gate-station').target,STAR_STATION.id);
   assert.equal(STREET.objects.find(o=>o.id==='gate-playground').target,PLAYGROUND.id);
+});
+
+test('놀이터 북쪽 다리는 화면 끝부터 입구와 마당까지 끊김 없이 이어진다',()=>{
+  const top=PLAYGROUND.viewBounds.y;
+  const players=[...Array.from({length:5},(_,i)=>({role:'student',avatar:{level:i+1,constellationId:'sagittarius'}})),{role:'teacher',avatar:{}}];
+  for(const player of players)for(const x of [840,900,960]){
+    for(let y=top+6;y<=PLAYGROUND.spawn.y;y+=2)
+      assert(avatarPositionIsClear(PLAYGROUND,x,y,player),`북쪽 연결 ${player.role} Lv${player.avatar.level||0} (${x},${y})`);
+  }
+  assert.equal(onStreetFloor(PLAYGROUND,900,top-1),false,'표시 영역 위로는 바닥을 늘리지 않는다');
+});
+
+test('발전소 남쪽 다리는 마당에서 화면 끝까지 이어지고 큰 아바타도 통과한다',()=>{
+  const bottom=STAR_STATION.viewBounds.y+STAR_STATION.viewBounds.height;
+  const players=[...Array.from({length:5},(_,i)=>({role:'student',avatar:{level:i+1,constellationId:'sagittarius'}})),{role:'teacher',avatar:{}}];
+  for(const player of players)for(const x of [840,900,960]){
+    const foot=avatarFootprint(player,0,0),lastY=bottom-foot.offsetY-foot.radius-6;
+    for(let y=lastY;y>=STAR_STATION.spawn.y;y-=2)
+      assert(avatarPositionIsClear(STAR_STATION,x,y,player),`남쪽 연결 ${player.role} Lv${player.avatar.level||0} (${x},${y})`);
+  }
+  assert.equal(onStreetFloor(STAR_STATION,900,bottom+1),false,'표시 영역 아래로는 바닥을 늘리지 않는다');
 });
 
 test('쉼터 공원 분수를 돌아가는 통로·상점 진입로가 열리고 발전소 중심 여유가 늘어난다',()=>{

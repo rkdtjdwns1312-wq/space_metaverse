@@ -106,7 +106,7 @@ import {answerStarRecordMath} from './star-record-math.js';
 import {recordStarRecordMovement} from './star-record-flow.js';
 import {revealDarkStarCard} from './dark-star-skills.js';
 import {summonSerena} from './serena.js';
-import {settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreForgottenConstellationStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns} from './boss-lifecycle.js';
+import {settleBossDeaths,restoreSerenaStatue,restoreDarkStarStatue,restoreStarRecordStatue,restoreForgottenConstellationStatue,restoreTruthCreatorStatue,needsTemporaryBossRespawnShortening,shortenTemporaryBossRespawns,needsSleepingBossReset,restoreSleepingBossStatues} from './boss-lifecycle.js';
 import {damagePlayersInArea,playersInArea} from './area-combat.js';
 import {isDefeated} from './vitals.js';
 import {recoverDefeated} from './battle-recovery.js';
@@ -2656,6 +2656,19 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       }
       if(!store.rooms.has(room.code)){previous.delete(room.code);continue;}
       if(changed)roster(room);
+      // 07시 복귀를 전투보다 먼저 저장합니다. 실패 시 다음 재시도까지 해당 교실의 전투를 보류합니다.
+      const sleepingBossNow=clock();
+      if(needsSleepingBossReset(room,sleepingBossNow)){
+        if(sleepingBossNow<(room.bossSaveRetryAt||0))continue;
+        try{transaction(()=>{
+          settleBossDeaths(room,sleepingBossNow);settleDailyHunt(room,sleepingBossNow);restoreSleepingBossStatues(room,sleepingBossNow);roster(room);
+          deliver(()=>io.to(room.code).emit('energy:drops',{drops:energyDropViews(room,sleepingBossNow)}));
+        });}catch(error){
+          const restored=store.rooms.get(room.code);if(restored)restored.bossSaveRetryAt=clock()+1000;
+          // 전체 롤백은 room Map을 교체하므로 다음 교실도 다음 틱의 새 참조로 처리합니다.
+          console.error('잠든 별 석상 복원 저장 실패:',error.message);break;
+        }
+      }
       // 맵/위치 변경으로 시장을 떠난 거래는 바닥 보정 전에 종료합니다.
       if(pruneMarketTrades(room,clock(),whisper))roster(room);
       const combatEffectsBefore=[...room.players.values()].map(p=>({player:p,

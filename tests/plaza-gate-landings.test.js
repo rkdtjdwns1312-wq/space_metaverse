@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {MAP,STATIC_MAPS} from '../shared/config.js';
 import {PLAZA_GATE_LANDINGS,PLAZA_ROUTES,PLAZA_VIEW_BOUNDS,PLAZA_LAYOUT,onPlazaFloor,migrateLegacyPlazaPosition} from '../shared/plaza-layout.js';
 import {avatarPositionIsClear} from '../shared/avatar-boundary.js';
-import {gateLabelBaseline} from '../client/gate-art.js';
+import {gateLabelBaseline,gateLabelBelow} from '../client/gate-art.js';
 
 test('four diagonal gate landings fit the map and join the central floor for large avatars',()=>{
  const bounds=PLAZA_VIEW_BOUNDS,c=PLAZA_LAYOUT.center,player={role:'student',avatar:{level:5},transformation:{active:true}};
@@ -29,4 +29,12 @@ test('gate names have six pixels of visible separation above or below artwork',(
  const above=gateLabelBaseline(ctx,'목적지',box),below=gateLabelBaseline(ctx,'목적지',box,true);
  assert.equal(box.y-(above+3+2.5),6);
  assert.equal(below-17-2.5-(box.y+box.height),6);
+});
+
+test('northern gate labels move below within cropped map bounds without flipping side and southern gates',()=>{
+ const north=MAP.objects.find(o=>o.id==='gate-origin');assert.equal(gateLabelBelow(north,MAP),true);
+ for(const id of ['gate-street','gate-garden','gate-valley','gate-market','gate-department'])assert.equal(gateLabelBelow(MAP.objects.find(o=>o.id===id),MAP),false,id);
+ for(const map of Object.values(STATIC_MAPS))for(const o of map.objects||[]){
+  if(o.kind==='gate'&&o.y-(map.viewBounds?.y??0)<=100)assert.equal(gateLabelBelow(o,map),true,map.id);
+ }
 });

@@ -4,7 +4,7 @@ import {ensure} from './rooms.js';
 import {isDefeated} from './vitals.js';
 import {monstersOf} from './monsters.js';
 import {requireHuntingEntry} from './hunting-time.js';
-import {truthCreatorView,restoreTruthCreatorStatue} from './boss-lifecycle.js';
+import {truthCreatorView,restoreTruthCreatorStatue,nextSleepingBossResetAt} from './boss-lifecycle.js';
 
 export function requireTruthCreatorEntry(player,to,{gate=false}={}){
   if(to!==TRUTH_CREATOR.mapId)return;
@@ -20,7 +20,7 @@ export function summonTruthCreator(room,player,now=Date.now()){
   ensure(statue&&interactionDistance(player,statue)<=interactionReach(statue),'진리의 별 석상 가까이 가주세요.');
   restoreTruthCreatorStatue(room,now);
   ensure(truthCreatorView(room).state==='dormant'&&!((room.monsters?.get(TRUTH_CREATOR.monsterId)?.hp||0)>0)&&!room.pendingBossDeaths?.has(TRUTH_CREATOR.monsterId),'진리의 창조자가 이미 깨어났거나 다시 깨어날 준비 중입니다.');
-  room.truthCreator={state:'active',respawnAt:null,monsterId:TRUTH_CREATOR.monsterId};
+  room.truthCreator={state:'active',respawnAt:null,monsterId:TRUTH_CREATOR.monsterId,resetAt:nextSleepingBossResetAt(now)};
   monstersOf(room,now);
   return {truthCreator:truthCreatorView(room)};
 }

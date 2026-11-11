@@ -14,7 +14,11 @@ export function createSocialUI({getRoom,getSelfId,request,stop,toast,renderMessa
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const closeRoots=()=>{for(const id of ['social-dialog','menu-dialog','friend-dialog'])if($(id).open)$(id).close();};
   function open(id){stop();closeRoots();if(!$(id).open)$(id).showModal();}
-  for(const button of document.querySelectorAll('[data-close]'))button.onclick=()=>$(button.dataset.close).close();
+  // Empty data-close marks a module-owned button, not an ID to bind here.
+  for(const button of document.querySelectorAll('[data-close]')){
+    const target=button.dataset.close&&$(button.dataset.close);
+    if(target&&typeof target.close==='function'&&!button.onclick)button.onclick=()=>target.close();
+  }
   // 프로필의 스킬 4칸은 index.html에서 상태·효과와 함께 구성합니다.
   $('dock-avatar').onclick=()=>open('avatar-dialog');
   $('dock-inventory').onclick=()=>open('inventory-dialog');

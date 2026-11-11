@@ -4,6 +4,10 @@ export const GATE_ART_SRC='/assets/maps/star-gate.png';
 const image=mapImage(GATE_ART_SRC);
 
 export async function preloadGateArt(){await decodeMapImages([image]);}
+export function gateLabelBelow(o,map){
+  // Keep names inside the visible map at northern entrances, including cropped maps.
+  return !!o.labelBelow||o.id==='gate-sleeping-stars'||o.y-(map.viewBounds?.y??0)<=(Number(o.radius)||36)*4;
+}
 export function gateVisualBox(o){
   const radius=Number(o.radius)||36,width=radius*2.8,height=radius*3.5;
   // 북쪽 문 위의 목적지 이름이 맵 밖으로 잘리지 않게 합니다.
