@@ -10,8 +10,10 @@ import {truthCreatorMap} from '../shared/truth-creator.js';
 import {forgottenConstellationMap} from '../shared/forgotten-constellation.js';
 import {starRecordMap} from '../shared/star-record.js';
 import {serenaMap} from '../shared/serena.js';
+import {tryBossWallEscape,endBossWallEscapeInput} from './boss-wall-escape.js';
+const movementMap=(room,mapId)=>forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(mapId,room.planets.values()),room.serena),room.darkStar),room.starRecord),room.truthCreator),room.forgottenConstellation);
 export function isFree(room, x, y, ignoreId = null, mapId = PLAZA_ID, avoidPlayers = true, boundaryPlayer = room.players.get(ignoreId), ignoreMonsters=false) {
-  const map = forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(mapId, room.planets.values()),room.serena),room.darkStar),room.starRecord),room.truthCreator),room.forgottenConstellation);
+  const map = movementMap(room,mapId);
   if(!avatarPositionIsClear(map,x,y,boundaryPlayer,monstersOf(room).values(),avoidPlayers?null:boundaryPlayer,ignoreMonsters))return false;
   if (!avoidPlayers) return true;
   const foot=avatarFootprint(boundaryPlayer,x,y);
@@ -104,9 +106,13 @@ export function advance(room, now) {
     if(p.connected&&!isDefeated(p)&&!avatarFitsFloor(mapOf(p.mapId,room.planets.values()),p.x,p.y,p)){
       const safe=nearestFree(room,p.x,p.y,p.mapId,p);if(safe)Object.assign(p,safe);
     }
-    if (!p.connected || isDefeated(p) || p.constellationAbilityState?.ariesSleep?.endsAt>now || p.taurusDash?.endsAt>now || now-p.input.at>RULES.inputExpiryMs) continue;
+    if (!p.connected || isDefeated(p) || p.constellationAbilityState?.ariesSleep?.endsAt>now || p.taurusDash?.endsAt>now || now-p.input.at>RULES.inputExpiryMs){
+      if(p.wallEscapeBossId)endBossWallEscapeInput(room,p);continue;
+    }
     const length=Math.hypot(p.input.x,p.input.y);
-    if (!length) continue;
+    if (!length){if(p.wallEscapeBossId)endBossWallEscapeInput(room,p);continue;}
+    const escape=room.monsters?.get(p.wallEscapeBossId)?.wallEscape;
+    if(escape&&(escape.dx*p.input.x/length+escape.dy*p.input.y/length<=.999||escape.playerId!==p.id))endBossWallEscapeInput(room,p);
     const step=RULES.speed*(1+equipmentBonus(p).speed)*RULES.tickMs/1000;
     const dx=p.input.x/length*step, dy=p.input.y/length*step;
     const beforeX=p.x,beforeY=p.y;
@@ -116,8 +122,10 @@ export function advance(room, now) {
       if (isFree(room,p.x+dx/steps,p.y,p.id,p.mapId,false)) p.x+=dx/steps;
       if (isFree(room,p.x,p.y+dy/steps,p.id,p.mapId,false)) p.y+=dy/steps;
     }
+    if(p.x===beforeX&&p.y===beforeY)tryBossWallEscape(room,movementMap(room,p.mapId),p,p.input.x/length,p.input.y/length,now);
     // 벽에 막힌 입력이 아니라 실제로 움직인 마지막 방향을 보관합니다.
     const movedX=p.x-beforeX,movedY=p.y-beforeY,moved=Math.hypot(movedX,movedY);
+    if(moved>0&&p.wallEscapeBossId)endBossWallEscapeInput(room,p);
     if(moved>0)p.facing={x:movedX/moved,y:movedY/moved};
     if(moved>0)movedIds.push(p.id);
     if(Math.abs(movedX)>1e-6)p.facingX=movedX<0?-1:1;

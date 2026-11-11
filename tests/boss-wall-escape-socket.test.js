@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+import {chargeHuntingStation} from '../server/hunting-time.js';
+import {monstersOf} from '../server/monsters.js';
+import {ensureVitals} from '../server/vitals.js';
+import {avatarRenderPoint} from '../shared/avatar-boundary.js';
+import {mapOf} from '../shared/config.js';
+import {WALL_CASES} from './helpers/boss-wall-fixture.js';
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const call=(s,event,data={})=>s.timeout(3000).emitWithAck(event,data);
+async function until(check){for(let i=0;i<150&&!check();i++)await wait(20);assert(check(),'서버 위치 전파 제한 시간');}
+test('실제 소켓: 정지/위조 입력은 밀지 않고 벽 끼임 이동입력만 보스를 조금 밀며 관전자와 화면도 같은 탈출좌표를 받는다',async t=>{
+  const sockets=[],key='wall-escape-test',game=createClassroomServer({teacherKey:key,dataDir:null,studentHours:false});
+  const {port}=await game.listen();let heartbeat;
+  t.after(async()=>{clearInterval(heartbeat);for(const socket of sockets)socket.disconnect();await game.close();});
+  async function connect(){const socket=io(`http://127.0.0.1:${port}`,{transports:['websocket'],reconnection:false,forceNew:true});sockets.push(socket);
+    await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('connect_error',reject);});return socket;}
+  const teacher=await connect(),created=await call(teacher,'room:create',{teacherKey:key,title:'벽 끼임 검사',allowedNames:['1','2']});
+  assert(created.ok,created.error);const code=created.room.code,student=await connect(),observer=await connect();
+  const joined=await call(student,'room:join',{code,nickname:'1'}),observed=await call(observer,'room:join',{code,nickname:'2'});
+  assert(joined.ok,joined.error);assert(observed.ok,observed.error);
+  const room=game.store.rooms.get(code),player=room.players.get(joined.selfId),friend=room.players.get(observed.selfId);
+  const boss=monstersOf(room).get('leoon-boss'),place=WALL_CASES.leoon,map=mapOf(boss.mapId);
+  room.monsters=new Map([[boss.id,boss]]);
+  Object.assign(boss,place.boss,{dx:0,dy:0,patrolStartedAt:Date.now(),patrolCycle:0,nextDirectionAt:Infinity,nextManaRegenAt:Infinity});
+  Object.assign(player,place.player,{mapId:boss.mapId,avatar:{...player.avatar,level:5,constellationId:'taurus'},input:{x:0,y:0,at:Date.now()}});
+  Object.assign(friend,{mapId:boss.mapId,x:map.width/2,y:map.height/2,input:{x:0,y:0,at:Date.now()}});
+  ensureVitals(player);chargeHuntingStation(player,'math',Date.now());chargeHuntingStation(friend,'math',Date.now());
+  let mine,other;student.on('world:positions',data=>{mine=data;});observer.on('world:positions',data=>{other=data;});
+  await wait(150);assert.equal(boss.y,place.boss.y);assert.equal(player.y,place.player.y);
+  student.emit('player:input',{x:10000,y:-10000,bossX:0,bossY:0});await wait(100);
+  assert.equal(boss.y,place.boss.y);assert.equal(player.y,place.player.y);
+  const send=()=>student.emit('player:input',{x:0,y:-1,bossX:0,bossY:0});send();heartbeat=setInterval(send,50);
+  await until(()=>player.y<place.player.y);clearInterval(heartbeat);student.emit('player:input',{x:0,y:0});
+  assert.equal(place.boss.y-boss.y,32);assert.equal(player.y,place.player.y-7.75);
+  await until(()=>[mine,other].every(frame=>frame?.monsters.some(m=>m.id===boss.id&&m.y===boss.y)&&frame.positions.some(p=>p[0]===player.id&&p[2]===player.y)));
+  const visual=avatarRenderPoint(map,player,player,player,mine.monsters,place.player);
+  assert.equal(visual.y,player.y);assert.equal(boss.wallEscape.used,32);
+  const y=boss.y;await wait(150);assert.equal(boss.y,y);assert.equal(boss.wallEscape.used,32);
+});

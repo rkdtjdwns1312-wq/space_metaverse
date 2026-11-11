@@ -6,6 +6,8 @@ import {tryConstellationGather,tickConstellationGather,constellationGatherView} 
 import {gainInfiniteEnergy} from './infinite-energy.js';
 import {MONSTER_SPAWNS,monsterType,MONSTER_HP,MONSTER_COMBAT,MONSTER_LEVEL_STATS} from '../shared/monsters.js';
 import {nearbyMonsterBodies,bodyBlocksStep,monsterDetour} from './monster-navigation.js';
+import {monsterMovementTerrainBlocked} from '../shared/monster-movement-boundary.js';
+import {releaseBossWallEscapeBudget} from './boss-wall-escape.js';
 import {ATTACK_VISUAL,attackGeometryOf} from '../shared/combat.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals,playerVitals,damagePlayer} from './vitals.js';
@@ -300,6 +302,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
   const hits=[...tickSpiritOrbs(room,now,mapFor),...tickSpiritBlueStars(room,now,mapFor)];
   const cycleMs=MONSTER_RULES.walkMs+MONSTER_RULES.restMs;
   for(const m of monsters.values()){
+    if(m.wallEscape)releaseBossWallEscapeBudget(room,m,now);
     if(m.typeId==='dark-star-card')continue;
     if(m.typeId==='truth-creator-star'){
       const boss=monsters.get(m.summonerId);if(m.hp<=0||!boss||boss.hp<=0||boss.mapId!==m.mapId)monsters.delete(m.id);
@@ -317,6 +320,7 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
       if(now<m.respawnAt)continue;
       if(!monstersMayOverlap(m.mapId)&&[...monsters.values()].some(o=>o!==m&&o.hp>0&&o.mapId===m.mapId&&Math.hypot(m.spawnX-o.x,m.spawnY-o.y)<m.radius+o.radius+10))continue;
       const patrolPhaseOffset=randomPatrolOffset(random),patrolStartedAt=now+patrolPhaseOffset;
+      delete m.wallEscape; // 새로 태어난 보스는 지난 생명의 끼임 예산을 이어받지 않습니다.
       Object.assign(m,{hp:m.maxHp,respawnAt:null,targetId:null,pendingAttack:null,leoonSkill:null,attackers:new Map(),teacherRetaliation:new Set(),contributors:new Map(),meleePresence:new Map(),attackOrder:0,mapExitCount:0,nextAttackAt:0,x:m.spawnX,y:m.spawnY,lastMoveAt:now,patrolStartedAt,patrolPhaseOffset,patrolCycle:-1,nextDirectionAt:patrolStartedAt});
       if(monsterType(m.typeId)?.boss)Object.assign(m,{mp:BOSS_MANA.max,maxMp:BOSS_MANA.max,nextManaRegenAt:now+BOSS_MANA.regenMs,hornReadyAt:0,hornDecisionAt:now+NOKSERA_HORN_BURST.decisionMs,moonReadyAt:0,moonDecisionAt:now+NOKSERA_MOON_PHASE.decisionMs,roarReadyAt:0,roarDecisionAt:now+LEOON_ROAR.decisionMs,chargeReadyAt:0,chargeDecisionAt:now+LEOON_CHARGE.decisionMs,summonReadyAt:0,summonDecisionAt:now+2000,orbReadyAt:0,orbDecisionAt:now+2000,blueStarReadyAt:0,blueStarDecisionAt:now+2000});
     }
@@ -471,12 +475,12 @@ export function moveMonsters(room,now=Date.now(),random=Math.random){
         m.patrolCycle=cycle;m.nextDirectionAt=m.patrolStartedAt+(cycle+1)*cycleMs;
       }
     }
-    const travel=target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):resting?0:MONSTER_RULES.speed*factor*dt;
+    const travel=now<(m.wallEscape?.holdUntil||0)?0:target?Math.min(MONSTER_RULES.speed*factor*dt,Math.max(0,distance-(m.radius+RULES.radius+8))):resting?0:MONSTER_RULES.speed*factor*dt;
     let x=m.x+m.dx*travel,y=m.y+m.dy*travel;
     // 문 주변은 비워 둡니다. 1·2구역은 겹침 허용, 3구역만 서로 간격을 둡니다.
     const map=mapOf(m.mapId,room.planets?.values?.()||[]);
     const spiritGroup=type.id==='spirit-king'||!!m.summonerId;
-    const terrainBlockedAt=(x,y)=>!onParadiseFloor(map,x,y,m.radius)||([SERENA.typeId,DARK_STAR.typeId,STAR_RECORD.typeId,FORGOTTEN_CONSTELLATION.typeId].includes(m.typeId)&&!onOriginFloor(map,x,y,m.radius))||x<Math.max(120,m.radius)||x>map.width-Math.max(120,m.radius)||y<Math.max(190,m.radius)||y>map.height-Math.max(190,m.radius);
+    const terrainBlockedAt=(x,y)=>monsterMovementTerrainBlocked(map,m,x,y);
     const terrainBlocked=terrainBlockedAt(x,y);
     const bodies=travel<=0||monstersMayOverlap(m.mapId)?[]:nearbyMonsterBodies(monsters,m,travel);
     if(m.recordMath)bodies.push(...starRecordNumberBodies(m));
