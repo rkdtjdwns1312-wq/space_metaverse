@@ -6,7 +6,7 @@ import {infiniteEnergyEffect} from '../shared/infinite-energy.js';
 import {socketRateMiddleware} from './socket-rate-limit.js';
 import {INTERACTION_SAVE_ACTIONS} from './interaction-save-scope.js';
 import {reminderTarget} from './student-reminders.js';
-import {worldBroadcastFrame} from './world-broadcast.js';
+import {worldBroadcastFrame,emitWorldPositions} from './world-broadcast.js';
 import {registerStarlightArchive} from './starlight-archive.js';
 import {registerArtStudio} from './art-studio.js';
 import {createConnectionHealth} from './connection-health.js';
@@ -2931,7 +2931,8 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
         // 소환/지대는 같은 맵에만, 쿨타임은 본인에게만 보냅니다.
         for(const viewer of room.players.values())if(viewer.connected&&!viewer.away){
           const positions=visiblePositions(room,allPositions,viewer);
-          io.to(viewer.socketId).volatile.emit('world:positions',worldFrame(viewer,positions));
+          emitWorldPositions(io.sockets.sockets.get(viewer.socketId),points=>worldFrame(viewer,points),positions,
+            ()=>visiblePositions(room,[...next.values()],viewer));
         }
         previous.set(room.code,next);
       }

@@ -30,6 +30,19 @@ const effectViews={spiritOrbs:spiritOrbViews,spiritBlueStars:spiritBlueStarViews
   aries:ariesCloudViews,taurus:taurusDashViews,hercules:herculesShieldViews,libra:libraAuraViews,
   corona:coronaAuraViews,capricorn:capricornBlessingViews};
 
+// reliable 상태 전송 직후에는 volatile 패킷이 버려질 수 있습니다. 델타를 큐에 쌓지 않고,
+// 다음 전송 가능한 틱에 그 관찰자에게 허용된 최신 전체 좌표로 한 번 복구합니다.
+// 소켓에 붙은 플래그라 접속 종료/재접속 시 이전 연결의 재전송 상태가 남지 않습니다.
+export function emitWorldPositions(socket,makeFrame,positions,fullPositions){
+  if(!socket?.connected)return false;
+  if(!socket.conn.transport.writable){socket.data.worldPositionResync=true;return false;}
+  const frame=makeFrame(socket.data.worldPositionResync?fullPositions():positions);
+  if(!socket.conn.transport.writable){socket.data.worldPositionResync=true;return false;}
+  socket.volatile.emit('world:positions',frame);
+  socket.data.worldPositionResync=false;
+  return true;
+}
+
 // A frame lives for one broadcast only. Each occupied map shares its immutable views;
 // every packet still contains a complete replacement, including empty arrays.
 export function worldBroadcastFrame(room,now){
