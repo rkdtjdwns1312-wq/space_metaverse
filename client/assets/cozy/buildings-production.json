@@ -1,0 +1,32 @@
+{
+  "created": "2026-11-12",
+  "generator": "built-in image_gen",
+  "assets": [
+    {
+      "file": "baby-star-nursery.webp",
+      "source": "exec-45bf50a3-42eb-4897-aecf-5bebe663fa02.png",
+      "prompt": "Use case: stylized-concept. Create ONE production-ready transparent-background game sprite replacing a cradle prop with a small star-baby daycare building. Reference images are STYLE references only: match their hand-painted Korean fantasy MMORPG / richly illustrated storybook aesthetic, gentle outlined forms, warm ivory, lavender drapery, antique gold star details, soft teal accents. A compact single-storey nursery cottage seen from slightly above in a front three-quarter game-map view, readable at only 220 pixels wide. A low rounded lavender tiled roof with one small golden star finial, sturdy cream plaster walls, wide open arched front doorway through which ONE little smiling or sleeping golden baby star under a blanket is clearly visible in a built-in cot, small star-shaped window and a tiny star mobile convey a caring nursery. Must read as an enclosed childcare FACILITY with roof and walls, not a freestanding pram, crib, tent, kiosk or cutaway room. Keep detailing coherent and bold enough at small size. Whole building and compact stone threshold visible, no detached landscape, no people, no lettering, no sign text, no rectangular background, no cast shadow beyond compact footprint. Silhouette width:height roughly 1.1:1, comparable footprint to original cradle, not a tall tower. Center isolated building with minimal transparent margin; authentic alpha transparency."
+    },
+    {
+      "file": "star-interior-shop.webp",
+      "source": "exec-24826811-b983-463e-afe3-f8a0cf8d3934.png",
+      "prompt": "Use case: stylized-concept. Create ONE production-ready transparent-background game sprite: a small star-themed interior-design shop BUILDING replacing an open furniture booth. Reference images are STYLE references only: match their hand-painted Korean fantasy MMORPG / illustrated storybook rendering, gently outlined detailed ivory plaster and wood, lavender fabric, antique gold celestial ornament, warm inviting lighting. Slightly elevated front three-quarter game-map view, compact one-storey storefront readable at 240 pixels wide. An actual roof and enclosing sidewalls, a welcoming curved front door on one side, a LARGE showroom display window on the other side with a little plush lavender sofa, round side table and glowing star lamp clearly recognizable inside. Roof is pale lavender with cream and gold trim, small decorative star emblem integrated above window, window display has cozy warm light. Boutique furniture/interior shop with architectural silhouette, not an open tent, pavilion, dollhouse cutaway or standalone furniture cluster. Entire building and small stone doorstep visible, roughly square slightly taller silhouette, minimal transparent padding. No text, no people, no extra outside clutter, no map/background, no large ground platform. Authentic transparent alpha background."
+    }
+  ],
+  "references": [
+    "baby-star-bed.webp",
+    "star-room-booth.webp",
+    "../maps/star-shop-front.png"
+  ],
+  "processing": "Proportional resize to longest side 768, WebP quality 0.92, original alpha retained; no creative image modifications",
+  "renderBoxes": {
+    "pet": {
+      "width": 220,
+      "height": 200
+    },
+    "room": {
+      "width": 240,
+      "height": 246
+    }
+  }
+}

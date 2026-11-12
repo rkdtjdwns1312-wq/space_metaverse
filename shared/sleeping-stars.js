@@ -4,6 +4,8 @@ import {FORGOTTEN_CONSTELLATION as forgotten} from './forgotten-constellation.js
 export const SLEEPING_STARS_THEME='sleeping-stars';
 export const sleepingStarsId=stage=>'sleeping-stars-'+stage;
 export const isSleepingStars=id=>/^sleeping-stars-[1234]$/.test(id||'');
+export const SLEEPING_STARS_ENTRY_MESSAGE='별들이 잠드는 곳은 Lv4부터 입장할 수 있어요.';
+export const sleepingStarsEligible=(player,mapId)=>!isSleepingStars(mapId)||player?.role==='teacher'||player?.accountKind==='master'||player?.avatar?.level>=4;
 export const SLEEPING_STARS_SKY=Object.freeze([
   {stars:96,brightness:.76,background:'#07080d',floor:'#77787d'},
   {stars:58,brightness:.60,background:'#050609',floor:'#626469'},

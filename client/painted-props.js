@@ -5,7 +5,7 @@ export const PAINTED_PROPS=Object.freeze({
   'star-angel-statue':{file:'star-angel-statue.webp',width:240,height:300,foot:45},
   shop:{file:'star-shop-front.png',width:300,height:300,foot:70,signY:.35,signWidth:.34},
   'energy-shop':{file:'energy-shop-front.png',width:290,height:310,foot:75,signY:.455,signWidth:.34},
-  crafting:{file:'crafting-front.png',width:245,height:280,foot:70,signY:.59,signWidth:.34},
+  crafting:{file:'crafting-front.png',width:147,height:168,foot:42,signY:.59,signWidth:.34},
   arcade:{file:'arcade-front.png',width:110,height:155,foot:42},
   'math-station':{file:'math-station-front.png',width:330,height:330,foot:80,signY:.45,signWidth:.44},
   'english-station':{file:'english-station-front.png',width:330,height:330,foot:80,signY:.505,signWidth:.44,signInk:'#435d93'},

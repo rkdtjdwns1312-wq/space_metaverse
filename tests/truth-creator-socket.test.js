@@ -14,7 +14,7 @@ test('socket ignores forged qualifications, blocks fast travel, and opens gate o
   const made=await call(teacher,'room:create',{teacherKey,title:'보스문검사',allowedNames:['검사']});assert(made.ok,made.error);
   const student=await connect(),joined=await call(student,'room:join',{code:made.room.code,nickname:'검사',pin:'1234'});assert(joined.ok,joined.error);
   const room=game.store.rooms.get(made.room.code),p=[...room.players.values()].find(p=>p.role==='student'),gate=mapOf('sleeping-stars-3').objects.find(o=>o.target===TRUTH_CREATOR.mapId);
-  chargeHuntingStation(p,'math',now);Object.assign(p,{mapId:'sleeping-stars-3',x:gate.x,y:gate.y});
+  p.avatar.level=4;chargeHuntingStation(p,'math',now);Object.assign(p,{mapId:'sleeping-stars-3',x:gate.x,y:gate.y});
   assert.equal((await call(student,'map:fast-travel',{to:TRUTH_CREATOR.mapId})).ok,false);
   const forged=await call(student,'map:travel',{to:TRUTH_CREATOR.mapId,serenaProgress:{highestLevel:5,bossKills:TRUTH_CREATOR_REQUIRED_BOSSES}});
   assert.equal(forged.error,TRUTH_CREATOR_ENTRY_MESSAGE);assert.equal(p.mapId,'sleeping-stars-3');

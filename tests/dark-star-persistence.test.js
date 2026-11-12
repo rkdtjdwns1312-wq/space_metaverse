@@ -24,7 +24,7 @@ function fixture(t){
       store.transact(()=>store.join({code,nickname:'1',pin:'1234'},'student'));},
     disk(){return JSON.parse(readFileSync(join(dir,code+'.json'),'utf8'));}};
 }
-function qualify(f){f.store.transact(()=>chargeHuntingStation(f.player,'math',Date.now()));locate(f.player);}
+function qualify(f){f.player.avatar.level=4;f.store.transact(()=>chargeHuntingStation(f.player,'math',Date.now()));locate(f.player);}
 const locate=p=>Object.assign(p,{mapId:DARK_STAR.mapId,x:statue.x,y:statue.y+90});
 
 test('소환 저장 실패는 상태와 보스를 롤백하고 성공 뒤 재시작은 같은 한 마리만 복구한다',t=>{

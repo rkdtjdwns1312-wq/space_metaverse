@@ -1,3 +1,4 @@
+import {sleepingStarsEligible,SLEEPING_STARS_ENTRY_MESSAGE} from '../shared/sleeping-stars.js';
 import {HUNTING_STATIONS,HUNTING_STATION_LIMIT,HUNTING_STATION_MS,HUNTING_PLAYGROUNDS,HUNTING_PLAYGROUND_LIMIT,HUNTING_PLAYGROUND_MS,isHuntingMap,huntingCycle,huntingResetAt} from '../shared/hunting-time.js';
 import {GameError} from './pin-auth.js';
 export {isHuntingMap};
@@ -65,5 +66,6 @@ export function completedHuntingPlayground(event,result){
  return null;
 }
 export function requireHuntingEntry(p,mapId,now=Date.now()){
+ if(!sleepingStarsEligible(p,mapId))throw new GameError(SLEEPING_STARS_ENTRY_MESSAGE);
  if(isHuntingMap(mapId)&&!huntingExempt(p)&&huntingTimeView(p,now).remainingMs<=0)throw new GameError('사냥 시간이 없어요. 발전소 최대 3곳에서 각 20분, 놀이터 최대 2곳에서 각 10분을 충전할 수 있어요.');
 }

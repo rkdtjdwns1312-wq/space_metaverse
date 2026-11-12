@@ -2,7 +2,7 @@ import {createRoomVisits} from './room-visits-ui.js';
 import {createRoomDecor} from './room-decor-ui.js';
 import {renderGardenGame,bindGardenGame} from './garden-minigame-ui.js';
 import {renderStarHome,renderStarSetup,renderStarBook,renderStarRaising} from './star-raising-ui.js';
-const TYPES={pet:{title:'아기별 돌보기',art:'/assets/cozy/baby-star-bed.webp'},room:{title:'별방 꾸미기',art:'/assets/cozy/star-room-booth.webp'},garden:{title:'우주 식물 가꾸기',art:'/assets/cozy/cosmic-garden.webp'}};
+const TYPES={pet:{title:'아기별 돌보기',art:'/assets/cozy/baby-star-nursery.webp'},room:{title:'별방 꾸미기',art:'/assets/cozy/star-interior-shop.webp'},garden:{title:'우주 식물 가꾸기',art:'/assets/cozy/cosmic-garden.webp'}};
 const SEEDS=[{id:'stardaisy',name:'별 데이지',emoji:'🌼',minutes:5},{id:'moonbell',name:'달빛 초롱꽃',emoji:'🌙',minutes:10},{id:'cloudtulip',name:'구름 튤립',emoji:'☁️',minutes:15},{id:'sunrose',name:'햇살 장미',emoji:'🌹',minutes:20},{id:'galaxylily',name:'은하 백합',emoji:'✨',minutes:30}];
 const FURNITURE=[{id:'bed',name:'달 침대',emoji:'🛏️'},{id:'desk',name:'작은 책상',emoji:'🪑'},{id:'chair',name:'별 의자',emoji:'💺'},{id:'sofa',name:'구름 소파',emoji:'🛋️'},{id:'rug',name:'동그란 러그',emoji:'🌼'},{id:'lamp',name:'별빛 조명',emoji:'💡'},{id:'shelf',name:'책장',emoji:'📚'},{id:'plant',name:'화분',emoji:'🪴'},{id:'window',name:'창문',emoji:'🪟'},{id:'clock',name:'달 시계',emoji:'⏰'},{id:'cushion',name:'쿠션',emoji:'☁️'},{id:'telescope',name:'망원경',emoji:'🔭'}];
 const THEMES=[{id:'moon',name:'달빛 방',emoji:'🌙'},{id:'cloud',name:'구름 방',emoji:'☁️'},{id:'study',name:'책 읽는 방',emoji:'📚'}];

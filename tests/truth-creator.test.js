@@ -1,3 +1,4 @@
+import {damageAfterDefense,defensePowerOf} from '../shared/combat.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TRUTH_CREATOR,TRUTH_CREATOR_REQUIRED_BOSSES,truthCreatorEligible,truthCreatorMap} from '../shared/truth-creator.js';
@@ -14,7 +15,7 @@ import {requestSummon,respondSummon} from '../server/social.js';
 const now=Date.parse('2026-11-02T12:00:00+09:00'),statue=mapOf(TRUTH_CREATOR.mapId).objects.find(o=>o.id===TRUTH_CREATOR.statueId);
 function fixture(){
   const player={id:'a',role:'student',connected:true,away:false,mapId:TRUTH_CREATOR.mapId,x:statue.x,y:statue.y+90,
-    avatar:{level:1},inventory:[],equipmentSlots:[null,null,null],serenaProgress:{highestLevel:1,bossKills:[...TRUTH_CREATOR_REQUIRED_BOSSES]}};
+    avatar:{level:4},inventory:[],equipmentSlots:[null,null,null],serenaProgress:{highestLevel:1,bossKills:[...TRUTH_CREATOR_REQUIRED_BOSSES]}};
   chargeHuntingStation(player,'math',now);
   return {player,room:{players:new Map([['a',player]]),planets:new Map(),unattended:true}};
 }
@@ -59,7 +60,7 @@ test('summon validates presence, life and hunting time, then Lv7 30000HP 40attac
   assert.equal(monsterViews(room,now)[0].truthCreatorEffects.aim,undefined);
   assert.equal(moveMonsters(room,now+2999,()=>0).length,0);
   assert(moveMonsters(room,now+3000,()=>0).some(hit=>hit.attackOnly));
-  assert(moveMonsters(room,now+3500,()=>0).some(hit=>hit.damage===40));
+  assert(moveMonsters(room,now+3500,()=>0).some(hit=>hit.damage===damageAfterDefense(40,defensePowerOf(player.avatar.level,player.avatar.constellationId,player))));
   assert.equal(boss.serenaSkill,undefined);assert.equal(boss.darkStarSkills,undefined);assert.equal(boss.recordChallenge,undefined);
 });
 test('defeat grants one truth gem with baseline rewards and restores only the statue next day',()=>{

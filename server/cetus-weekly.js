@@ -1,3 +1,4 @@
+import {sleepingStarsEligible} from '../shared/sleeping-stars.js';
 import {migrateLegacyPlazaPosition} from '../shared/plaza-layout.js';
 import {migrateLegacyStreetPosition} from '../shared/street-layout.js';
 import {TRUTH_CREATOR} from '../shared/truth-creator.js';
@@ -126,6 +127,7 @@ function release(room,target,now,escaped){
     const returned=migrateLegacyPlazaPosition(migrateLegacyStreetPosition({mapId:stomach.returnMapId,x:stomach.returnX,y:stomach.returnY}));
     let destination=STATIC_MAPS[returned.mapId]?returned.mapId:PLAZA_ID;
     if(destination===TRUTH_CREATOR.mapId)destination='sleeping-stars-3';
+    if(!sleepingStarsEligible(target,destination))destination=PLAZA_ID;
     if(isHuntingMap(destination)&&!huntingExempt(target)&&huntingTimeView(target,now).remainingMs<=0)destination='star-street';
     const pos=destination!==returned.mapId?spawnInside(room,destination,target):arrivePosition(room,destination,returned,target);
     Object.assign(target,pos,

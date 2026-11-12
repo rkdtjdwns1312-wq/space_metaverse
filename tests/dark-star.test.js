@@ -1,3 +1,4 @@
+import {damageAfterDefense,defensePowerOf} from '../shared/combat.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DARK_STAR,darkStarMap} from '../shared/dark-star.js';
@@ -12,11 +13,11 @@ import {onOriginFloor} from '../shared/origin-floor.js';
 import {isFree} from '../server/world.js';
 const now=Date.parse('2026-10-29T12:00:00+09:00'),statue=mapOf(DARK_STAR.mapId).objects.find(o=>o.id===DARK_STAR.statueId);
 function fixture(){
- const player={id:'a',role:'student',connected:true,away:false,mapId:DARK_STAR.mapId,x:statue.x,y:statue.y+90,avatar:{level:1},inventory:[],equipmentSlots:[null,null,null]};
+ const player={id:'a',role:'student',connected:true,away:false,mapId:DARK_STAR.mapId,x:statue.x,y:statue.y+90,avatar:{level:4},inventory:[],equipmentSlots:[null,null,null]};
  chargeHuntingStation(player,'math',now);
  return {player,room:{players:new Map([['a',player]]),planets:new Map()}};
 }
-test('manual statue summon validates proximity, connection, life and hunting time, without a level gate',()=>{
+test('manual statue summon validates proximity, connection, life and hunting time, and the Lv4 entry requirement',()=>{
  for(const change of [{mapId:'space-plaza'},{x:0,y:0},{connected:false},{away:true},{huntingTime:undefined,huntingTimer:undefined}]){
   const {room,player}=fixture();Object.assign(player,change);assert.throws(()=>summonDarkStar(room,player,now));assert.equal(room.darkStar,undefined);
  }
@@ -63,7 +64,7 @@ test('basic projectile deals power 30 after aiming and travel; patrol stays on t
  boss.mp=0;boss.nextManaRegenAt=now+100000;
  const hp=ensureVitals(player).hp;moveMonsters(room,now,()=>0);assert.equal(moveMonsters(room,now+1999,()=>0).length,0);assert.equal(ensureVitals(player).hp,hp);
  moveMonsters(room,now+2000,()=>0);assert.equal(ensureVitals(player).hp,hp);
- const hits=moveMonsters(room,now+2500,()=>0);assert(hits.some(h=>h.targetId===player.id&&h.damage===30));assert.equal(ensureVitals(player).hp,Math.max(0,hp-30));
+ const hits=moveMonsters(room,now+2500,()=>0);assert(hits.some(h=>h.targetId===player.id&&h.damage===damageAfterDefense(30,defensePowerOf(player.avatar.level,player.avatar.constellationId,player))));assert.equal(ensureVitals(player).hp,Math.max(0,hp-damageAfterDefense(30,defensePowerOf(player.avatar.level,player.avatar.constellationId,player))));
  for(const angle of [0,Math.PI/4,Math.PI/2,Math.PI,Math.PI*1.25,Math.PI*1.5]){
   const f=fixture();summonDarkStar(f.room,f.player,now);const m=f.room.monsters.get(DARK_STAR.monsterId);f.room.monsters=new Map([[m.id,m]]);m.patrolStartedAt=now;m.lastMoveAt=now;
   for(let tick=now+100;tick<now+60000;tick+=100){moveMonsters(f.room,tick,()=>angle/(Math.PI*2));assert(onOriginFloor(mapOf(DARK_STAR.mapId),m.x,m.y,m.radius));}

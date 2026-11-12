@@ -32,7 +32,7 @@ function fixture(t,initial=before){
 function summonAll(f){
   f.store.transact(()=>{
     f.player.serenaProgress={highestLevel:5,bossKills:[...TRUTH_CREATOR_REQUIRED_BOSSES]};
-    chargeHuntingStation(f.player,'math',f.now);
+    f.player.avatar.level=4;chargeHuntingStation(f.player,'math',f.now);
     for(const [,spec,summon] of bosses){const statue=mapOf(spec.mapId).objects.find(o=>o.id===spec.statueId);
       Object.assign(f.player,{mapId:spec.mapId,x:statue.x,y:statue.y+90});summon(f.room,f.player,f.now);}
   });

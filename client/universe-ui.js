@@ -191,7 +191,11 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
       if(o.kind?.startsWith('cozy-')){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);painted=drawCozyProp(ctx,o);ctx.restore();}
       if(interiorPlanet){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);painted=drawInteriorProp(ctx,o,interiorPlanet);ctx.restore();}
       if(!painted)drawSilhouette(ctx,o,x,y,Math.max(detailed?5:2.5,o.radius*scale),info.theme,scale);
-      if(detailed&&o.name)labels.push({text:o.name,x,y,r:Math.max(detailed?5:2.5,o.radius*scale)});
+      // Interior props already paint their own Korean captions in drawInteriorProp.
+      // Repainting the map object's name here makes the detail view show the same
+      // caption twice on top of itself.
+      const interiorCaption=painted&&interiorPlanet&&['mailbox','report-board','warning-rock','interior-decor-machine'].includes(o.kind);
+      if(detailed&&o.name&&!interiorCaption)labels.push({text:o.name,x,y,r:Math.max(detailed?5:2.5,o.radius*scale)});
     }
     if(detailed){
       ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';

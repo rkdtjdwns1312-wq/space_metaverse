@@ -1,3 +1,4 @@
+import {sleepingStarsEligible,SLEEPING_STARS_ENTRY_MESSAGE} from '../shared/sleeping-stars.js';
 import {requireTruthCreatorEntry} from './truth-creator.js';
 import {requireHuntingEntry} from './hunting-time.js';
 import { randomUUID } from 'node:crypto';
@@ -39,6 +40,7 @@ function state(room,now) {
   for(const [key,until] of room.summonCooldowns)if(until<=now)room.summonCooldowns.delete(key);
 }
 function canTravel(room,target,host) {
+  ensure(sleepingStarsEligible(target,host.mapId),SLEEPING_STARS_ENTRY_MESSAGE);
   if(target.mapId!==host.mapId)requireTruthCreatorEntry(target,host.mapId);
   ensure(target.mapId!==WHALE_STOMACH_ID&&host.mapId!==WHALE_STOMACH_ID,'고래 배 속에 있는 동안은 친구를 부르거나 이동할 수 없어요.');
   ensure(!target.avatar.blackStar || host.mapId===BLACK_HOLE_ID,'현재 검은별 상태입니다');

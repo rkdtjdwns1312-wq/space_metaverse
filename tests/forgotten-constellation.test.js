@@ -13,7 +13,7 @@ import {readingFixture,call} from './helpers/reading-fixture.js';
 const map=mapOf(spec.mapId),statue=map.objects.find(o=>o.id===spec.statueId);
 const locate=p=>Object.assign(p,{mapId:spec.mapId,x:statue.x,y:statue.y+100});
 test('stage three only summons at its statue, then uses basic combat and next morning restoration',()=>{
- const now=Date.parse('2026-11-05T12:00:00+09:00'),p={id:'p',role:'student',avatar:{level:3},connected:true},room={players:new Map([['p',p]]),planets:new Map()};
+ const now=Date.parse('2026-11-05T12:00:00+09:00'),p={id:'p',role:'student',avatar:{level:4},connected:true},room={players:new Map([['p',p]]),planets:new Map()};
  assert.equal(MONSTER_SPAWNS.some(m=>m.typeId===spec.typeId),false);assert(!TRUTH_CREATOR_REQUIRED_BOSSES.includes(spec.typeId));
  assert.equal(validateForgottenConstellationState().state,'dormant');assert.equal(monstersOf(room,now).has(spec.monsterId),false);
  locate(p);assert.throws(()=>summonForgottenConstellation(room,p,now));chargeHuntingStation(p,'math',now);
@@ -32,7 +32,7 @@ test('stage three only summons at its statue, then uses basic combat and next mo
 });
 
 test('socket summon checks hunting time, map, distance, session and competing requests; persistence survives failed commits and restart',async t=>{
- const f=await readingFixture(t),guest=await f.connect();const event='forgotten-constellation:summon';
+ const f=await readingFixture(t),guest=await f.connect();f.p.avatar.level=4;const event='forgotten-constellation:summon';
  assert.equal((await call(guest,event)).ok,false);assert.equal((await call(f.student,event)).ok,false);
  locate(f.p);assert.equal((await call(f.student,event)).ok,false);chargeHuntingStation(f.p,'math',f.now);f.p.x=map.width/2-600;
  assert.equal((await call(f.student,event)).ok,false);locate(f.p);

@@ -34,7 +34,7 @@ async function fixture(t){
     get room(){return game.store.rooms.get(code);},get pa(){return game.store.rooms.get(code).players.get(ja.selfId);},
     get pb(){return game.store.rooms.get(code).players.get(jb.selfId);},disk:()=>JSON.parse(readFileSync(join(dir,code+'.json'),'utf8'))};
 }
-function qualify(f,p){f.game.store.transact(()=>chargeHuntingStation(p,'math',f.now));Object.assign(p,{mapId:DARK_STAR.mapId,x:statue.x,y:statue.y+90});}
+function qualify(f,p){p.avatar.level=4;f.game.store.transact(()=>chargeHuntingStation(p,'math',f.now));Object.assign(p,{mapId:DARK_STAR.mapId,x:statue.x,y:statue.y+90});}
 test('server ignores forged summon position, serializes concurrent confirmations, and broadcasts persisted state',async t=>{
  const f=await fixture(t);assert.equal((await call(f.a,'dark-star:summon',{mapId:DARK_STAR.mapId,x:statue.x,y:statue.y})).ok,false);
  qualify(f,f.pa);qualify(f,f.pb);let snapshot,tick;f.a.on('room:state',r=>snapshot=r);f.a.on('world:positions',r=>tick=r);

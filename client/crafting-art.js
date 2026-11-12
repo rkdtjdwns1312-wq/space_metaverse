@@ -23,7 +23,7 @@ export function drawCraftingMachine(ctx, o, time = 0) {
   if (!ctx || !o) return;
   const x = Number(o.x) || 1080;
   const y = Number(o.y) || 380;
-  const radius = Number(o.radius) || 62;
+  const radius = (Number(o.radius) || 62) * 0.6;
   const pulse = 1 + Math.sin(time * 0.004) * 0.035;
   const orbit = time * 0.0007;
 

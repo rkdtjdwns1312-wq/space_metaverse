@@ -20,7 +20,7 @@ function fixture(t){
     restart(){store.close();store=new PersistentRoomStore(dir,{clock:()=>now});store.transact(()=>store.open({code},'teacher'));store.transact(()=>store.join({code,nickname:'1',pin:'1234'},'student'));},
     disk(){return JSON.parse(readFileSync(path,'utf8'));}};
 }
-function locate(f){const statue=mapOf(TRUTH_CREATOR.mapId).objects.find(o=>o.id===TRUTH_CREATOR.statueId);Object.assign(f.player,{mapId:TRUTH_CREATOR.mapId,x:statue.x,y:statue.y+90});chargeHuntingStation(f.player,'math',now);}
+function locate(f){f.player.avatar.level=4;const statue=mapOf(TRUTH_CREATOR.mapId).objects.find(o=>o.id===TRUTH_CREATOR.statueId);Object.assign(f.player,{mapId:TRUTH_CREATOR.mapId,x:statue.x,y:statue.y+90});chargeHuntingStation(f.player,'math',now);}
 test('old saves acquire a dormant boss without fabricating missing victory records',t=>{
   const f=fixture(t);f.store.transact(()=>{f.player.serenaProgress={highestLevel:1,bossKills:['leoon','noksera']};});
   const record=f.disk();delete record.truthCreator;writeFileSync(f.path,JSON.stringify(record));f.restart();

@@ -40,7 +40,11 @@ import {equipmentBonus} from '/shared/equipment.js';
 import {createInteriorBoardUI} from './interior-board-ui.js';
 import {marketInteraction} from '/shared/market.js';
 import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHome,drawBazaar,drawPaintedStarShop,drawPlazaSign} from './plaza-props.js';
-import {departmentSite,DEPARTMENT_ZONE} from '/shared/plaza-layout.js';
+import {departmentSite,DEPARTMENT_ZONE,plazaLayoutOf} from '/shared/plaza-layout.js';
+import {streetGeometryOf} from '/shared/street-layout.js';
+import {originFloor} from '/shared/origin-floor.js';
+import {VALLEY_POLYGONS} from '/shared/valley-layout.js';
+import {propShadowProfile,drawPropShadow,clipPropShadowFloor} from './prop-shadows.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
 import {drawExplorationAura} from './exploration-aura.js';
 import {drawLifeStar} from './life-star-art.js';
@@ -283,6 +287,9 @@ export function createWorld(canvas) {
   }
   function drawMap(map,time){
     drawPlazaGround(ctx,map,time);
+    ctx.save();clipPropShadowFloor(ctx,plazaLayoutOf(map).polygons);
+    for(const o of map.objects)if(streetPropVisible(o))drawPropShadow(ctx,propShadowProfile(o));
+    ctx.restore();
     if(map.id===PLAZA_ID&&exploration?.festival&&!quality.reducedEffects){
       // 바닥 위에만 나타나는 축제 별빛. 움직임과 충돌 판정은 건드리지 않습니다.
       for(const [index,[x,y]] of [[1310,1050],[1470,1580],[1700,900],[2020,930],[2280,1190],[2220,1570],[1850,1700],[1150,1310],[1800,1320],[600,510],[600,2100],[2940,2070]].entries()){
@@ -307,8 +314,6 @@ export function createWorld(canvas) {
       // Known building bounds include labels, the roof and pending-report badge.
       // Unknown art and every combat layer remain uncropped by this predicate.
       if(o.kind==='planet'&&!intersectsView(view,departmentVisualBox(o),220))continue;
-      const shadowY=o.kind==='exploration'?o.y+7:o.y+o.radius*.8;
-      ctx.fillStyle='#9387b017';ctx.beginPath();ctx.ellipse(o.x,shadowY,o.radius*1.08,o.radius*.4,0,0,Math.PI*2);ctx.fill();
       if(o.kind==='life-star'){
         drawLifeStar(ctx,o,time,reducedMotion.matches);
       } else if(o.kind==='exploration'){
@@ -412,6 +417,10 @@ export function createWorld(canvas) {
   const streetPropVisible=o=>!(o.x+300<view.x||o.x-300>view.x+view.width||o.y+150<view.y||o.y-360>view.y+view.height);
   function drawStreet(map,time){
     drawStreetGround(ctx,map,{fountain:false});
+    // Ground shadows precede every prop/avatar, including depth-sorted stations.
+    ctx.save();clipPropShadowFloor(ctx,streetGeometryOf(map).polygons);
+    for(const o of map.objects)if(streetPropVisible(o))drawPropShadow(ctx,propShadowProfile(o,PAINTED_PROPS[o.kind]));
+    ctx.restore();
     for(const o of map.objects){
       // Include the complete roof, sign and glow, even with the foot offscreen.
       // The old loop repainted every station and arcade at the opposite end.
@@ -440,6 +449,9 @@ export function createWorld(canvas) {
     if(map.theme==='whale-stomach')return drawWhaleStomach(map,time);
     const planet=planets.find(p=>p.id===map.planetId);
     drawInteriorFloor(ctx,map,planet);
+    ctx.save();ctx.beginPath();ctx.rect(0,0,map.width,map.height);ctx.clip();
+    for(const o of map.objects)drawPropShadow(ctx,propShadowProfile(o));
+    ctx.restore();
     for(const o of map.objects){
       if(o.kind==='door'){drawGate({...o,target:DEPARTMENT_ID});drawInteriorDecoration(ctx,o,interiorDecorStyle(planet?.interiorDecor,o.id));}
       else drawInteriorProp(ctx,o,planet);
@@ -775,8 +787,13 @@ export function createWorld(canvas) {
     ctx.setTransform(dpr*scale,0,0,dpr*scale,-x*dpr*scale,-y*dpr*scale);
     if(map.theme==='plaza')drawMap(map,t);else if(map.theme==='starlight-street')drawStreet(map,t);else if(map.theme==='sleeping-stars'){drawSleepingStars(ctx,map);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(map.theme==='star-origin'){drawStarOrigin(ctx,map,t);for(const o of map.objects.filter(o=>o.kind==='gate'))drawGate(o);}else if(myMapId===GARDEN_ID||myMapId===VALLEY_ID||['sun-paradise','moon-paradise','star-paradise'].includes(map.theme)){
       if(myMapId===GARDEN_ID)drawCrossroads(ctx,map);else if(myMapId===VALLEY_ID)drawValley(ctx,map,t);else if(map.theme==='star-paradise')drawStarParadise(ctx,map);else drawParadise(ctx,map);
+      if(myMapId===VALLEY_ID){ctx.save();clipPropShadowFloor(ctx,VALLEY_POLYGONS);for(const o of map.objects)drawPropShadow(ctx,propShadowProfile(o));ctx.restore();}
       for(const o of map.objects){if(o.kind==='gate')drawGate(o);else if(o.kind==='evolution'||o.kind==='growth')drawValleyAltar(ctx,o,t);}
     }else drawInterior(map,t);
+    if(map.theme==='sleeping-stars'||map.theme==='star-origin'){
+      const floor=originFloor(map);
+      if(floor){ctx.save();clipPropShadowFloor(ctx,floor.points);for(const o of map.objects)if(streetPropVisible(o))drawPropShadow(ctx,propShadowProfile(o));ctx.restore();}
+    }
     // 물의 영역은 바닥 위·캐릭터 아래에 깔아 얼굴과 몸을 가리지 않습니다.
     aquarius.draw(ctx,t,reducedMotion.matches);
     poisonZones.draw(ctx,t,reducedMotion.matches);

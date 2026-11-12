@@ -1,3 +1,4 @@
+import {sleepingStarsEligible} from '../shared/sleeping-stars.js';
 import {migrateLegacyPlazaPosition} from '../shared/plaza-layout.js';
 import {migrateLegacyStreetPosition} from '../shared/street-layout.js';
 import {PLAZA_ID,STREET_ID,BLACK_HOLE_ID,WHALE_STOMACH_ID,STATIC_MAPS,mapOf,planetIdOfMap} from '../shared/config.js';
@@ -29,7 +30,7 @@ export function studentReturnPosition(room,player,now,location=player.lastLocati
     if((departmentId?(!department||player.avatar.departmentId!==departmentId):!Object.hasOwn(STATIC_MAPS,mapId))||
       mapId===BLACK_HOLE_ID||mapId===WHALE_STOMACH_ID)mapId=PLAZA_ID;
     const map=mapOf(mapId,room.planets.values());
-    if((map.minLevel&&player.avatar.level<map.minLevel)||
+    if(!sleepingStarsEligible(player,mapId)||(map.minLevel&&player.avatar.level<map.minLevel)||
       (mapId===TRUTH_CREATOR.mapId&&!truthCreatorEligible(player)))mapId=PLAZA_ID;
     if(isHuntingMap(mapId)&&!huntingExempt(player)&&huntingTimeView(player,now).remainingMs<=0)mapId=STREET_ID;
   }
