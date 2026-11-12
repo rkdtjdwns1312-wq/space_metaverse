@@ -9,9 +9,9 @@ import {advanceMissions} from './missions.js';
 
 export const CULTURE_DAILY_LIMIT=10;
 const culture={namespace:'culture',field:'cultureReading',ids:new Set(CULTURE_STORIES.map(story=>story.id)),
-  station:STAR_STATION.objects.find(object=>object.kind==='culture-station'),label:'별 교양 발전소',unit:'권'};
+  station:STAR_STATION.objects.find(object=>object.kind==='culture-station'),label:'별 교양 제작소',unit:'권'};
 const history={namespace:'history',field:'historyReading',ids:new Set(HISTORY_LESSONS.map(story=>story.id)),
-  station:STAR_STATION.objects.find(object=>object.kind==='history-station'),label:'별 역사 발전소',unit:'편'};
+  station:STAR_STATION.objects.find(object=>object.kind==='history-station'),label:'별 역사 제작소',unit:'편'};
 const requireThat=(condition,message)=>{if(!condition)throw new GameError(message);};
 export const cultureDay=(now=Date.now())=>new Date(now+9*60*60*1000).toISOString().slice(0,10);
 const validDay=day=>typeof day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(day)&&

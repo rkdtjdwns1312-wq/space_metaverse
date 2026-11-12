@@ -24,7 +24,7 @@ export function createSleepingStarsMaps(originMaps,streetLayout){
       objects:[...(stage===1?[Object.freeze({id:'dark-star-statue',name:'돌이 된 별 석상',kind:'dark-star-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===2?[Object.freeze({id:'star-record-statue',name:'별 기록의 석상',kind:'star-record-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===3?[Object.freeze({id:forgotten.statueId,name:forgotten.statueName,kind:forgotten.statueId,x:origin.width/2,y:origin.height/2,radius:58})]:[]),...(stage===4?[Object.freeze({id:'truth-creator-statue',name:'진리의 별 석상',kind:'truth-creator-statue',x:origin.width/2,y:origin.height/2,radius:58})]:[]),...origin.objects.filter(object=>object.kind==='gate'&&(object.id==='gate-back'||stage<originMaps.length)).map(gate=>{
         const back=gate.id==='gate-back',targetStage=stage+(back?-1:1);
         return Object.freeze({...gate,
-          name:(back&&stage===1?'별 발전소':'별들이 잠드는 곳 '+targetStage)+(back?' ↓':' ↑'),
+          name:(back&&stage===1?'별 제작소':'별들이 잠드는 곳 '+targetStage)+(back?' ↓':' ↑'),
           target:back&&stage===1?streetLayout.id:sleepingStarsId(targetStage),
           arrival:Object.freeze(back&&stage===1?{...streetLayout.northArrival}:back?{x:origin.width/2,y:175*factor}:{...origin.spawn}),
           color:'#a6a8b4'});

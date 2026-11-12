@@ -20,9 +20,9 @@ export function drawCachedStreetProp(ctx,o,artReady){
   let entry=entries.get(key);
   if(!entry){
     const canvas=document.createElement('canvas'),c=canvas.getContext('2d');
-    c.font=`${duel||o.kind==='arcade'?16:19}px "Jua","Malgun Gothic",sans-serif`;
+    c.font=`${duel||o.kind==='arcade'||spec?.captionBelow?16:19}px "Jua","Malgun Gothic",sans-serif`;
     const width=Math.ceil(Math.max(duel?210:spec.width,c.measureText(o.name||'').width+32)+12);
-    const top=duel?-146:spec.foot-spec.height-6,bottom=duel?116:Math.max(spec.foot+6,o.kind==='arcade'?78:0),height=bottom-top;
+    const top=duel?-146:spec.foot-spec.height-6,bottom=duel?116:Math.max(spec.foot+(spec.captionBelow?38:6),o.kind==='arcade'?78:0),height=bottom-top;
     // Never retain (or paint) an entry larger than the whole cache budget.
     const pixelWidth=Math.ceil(width*scale),pixelHeight=Math.ceil(height*scale),entryBytes=pixelWidth*pixelHeight*4;
     if(entryBytes>LIMIT)return false;

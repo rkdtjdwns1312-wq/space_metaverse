@@ -25,7 +25,7 @@ export function bindGardenGame(panel,{getPots,act,isActive=()=>true}){
   else if(b?.dataset.gardenWater==='release')send(selected,'water-release');
  },opts);
  panel.addEventListener('focusin',e=>{const area=e.target.closest('[data-garden-pot]');if(area)selected=Number(area.dataset.gardenPot);},opts);
- const key=e=>{if(e.type==='keyup'&&(e.code==='Space'||e.key==='Enter')&&holding!==null){e.preventDefault();e.stopImmediatePropagation();release();return;}if(!isActive()||!panel.closest('dialog')?.open)return;const arrow={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key];const g=getPots()?.[selected]?.game;if(!g)return;
+ const key=e=>{if(e.type==='keyup'&&(e.code==='Space'||e.key==='Enter')&&holding!==null){e.preventDefault();e.stopImmediatePropagation();release();return;}if(!isActive()||!panel.closest('dialog')?.open)return;const target=e.target,typing=target instanceof HTMLElement&&(target.isContentEditable||target.matches('input,textarea,select,[role="textbox"]'));if(typing)return;const arrow={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyD:'right',KeyS:'down',KeyA:'left'}[e.code]||{ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key];const g=getPots()?.[selected]?.game;if(!g)return;
   if(arrow){e.preventDefault();e.stopImmediatePropagation();if(e.type==='keydown'&&!e.repeat&&g.phase==='sunlight')send(selected,'sunlight',{arrow});}
   if((e.code==='Space'||e.key==='Enter')&&g.phase==='water'&&panel.contains(document.activeElement)){e.preventDefault();e.stopImmediatePropagation();if(e.type==='keyup')release();else if(!e.repeat){if(g.waterStartedAt===null)start(selected);else if(holding===null)send(selected,'water-release');}}
  };

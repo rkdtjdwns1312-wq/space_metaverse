@@ -97,15 +97,12 @@ export function drawCraftingMachine(ctx, o, time = 0) {
   ctx.fillStyle = '#ffd86d';
   [[-0.94,-0.42,0.07],[0.92,-0.3,0.06],[-0.65,0.24,0.045],[0.68,0.36,0.05]].forEach(([dx,dy,dr]) => { starPath(ctx, dx * radius, dy * radius, dr * radius); ctx.fill(); });
 
-  ctx.fillStyle = '#fff5d9';
-  ctx.strokeStyle = '#4b3d67';
-  ctx.lineWidth = Math.max(2, radius * 0.045);
-  ctx.font = '700 15px "Jua", "Malgun Gothic", sans-serif';
+  ctx.strokeStyle = '#fff9ed';
+  ctx.lineWidth = 5;
+  ctx.font = '16px "Jua", "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // 두 상점과 같은 글씨체이며 간판 너비는 글자 길이에 맞춰 확보합니다.
-  const signWidth = Math.max(radius * 1.28, ctx.measureText('별빛 조합기').width + 18);
-  ctx.beginPath(); ctx.roundRect(-signWidth / 2, -radius * 0.99 - 12.5, signWidth, 25, radius * 0.12); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#594a78';
-  ctx.fillText('별빛 조합기', 0, -radius * 0.99);
+  ctx.strokeText('별빛 조합기',0,65);
+  ctx.fillStyle = '#665080';
+  ctx.fillText('별빛 조합기', 0, 65);
   ctx.restore();
 }

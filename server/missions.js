@@ -87,7 +87,7 @@ export function createMission(room,data,now=Date.now()){
   if(data?.objective!==undefined){
     ensure(autoObjectives.has(data.objective),'자동미션 조건을 골라 주세요.');
     ensure(Number.isSafeInteger(data.goal)&&data.goal>=1&&data.goal<=100,'목표 횟수는 1~100회로 정해 주세요.');
-    if(data.objective==='math-correct')ensure(Number.isSafeInteger(data.grade)&&data.grade>=1&&data.grade<=6,'수학 발전소 학년을 골라 주세요.');
+    if(data.objective==='math-correct')ensure(Number.isSafeInteger(data.grade)&&data.grade>=1&&data.grade<=6,'수학 제작소 학년을 골라 주세요.');
     if(data.objective==='craft-level')ensure(Number.isSafeInteger(data.itemLevel)&&data.itemLevel>=2&&data.itemLevel<=5,'조합할 아이템 레벨을 골라 주세요.');
     if(['baseball-win','sudoku-win','one-stroke-win'].includes(data.objective))ensure(difficulties.has(data.difficulty),'게임 난이도를 골라 주세요.');
     if(data.objective==='signal-stage')ensure(Number.isSafeInteger(data.stage)&&data.stage>=1&&data.stage<=6&&data.goal===1,'우주 신호 단계를 골라 주세요.');

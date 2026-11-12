@@ -43,7 +43,7 @@ export function settleHuntingTime(p,now=Date.now()){
 }
 export function chargeHuntingStation(p,station,now=Date.now()){
  if(huntingExempt(p))return 0;
- if(p?.role!=='student'||!HUNTING_STATIONS.includes(station))throw new GameError('발전소 학습 기록을 확인해주세요.');
+ if(p?.role!=='student'||!HUNTING_STATIONS.includes(station))throw new GameError('제작소 학습 기록을 확인해주세요.');
  settleHuntingTime(p,now);if(p.huntingTime.chargedStations.length>=HUNTING_STATION_LIMIT||p.huntingTime.chargedStations.includes(station))return 0;
  p.huntingTime.chargedStations.push(station);p.huntingTime.remainingMs+=HUNTING_STATION_MS;
  settleHuntingTime(p,now);return HUNTING_STATION_MS;
@@ -67,5 +67,5 @@ export function completedHuntingPlayground(event,result){
 }
 export function requireHuntingEntry(p,mapId,now=Date.now()){
  if(!sleepingStarsEligible(p,mapId))throw new GameError(SLEEPING_STARS_ENTRY_MESSAGE);
- if(isHuntingMap(mapId)&&!huntingExempt(p)&&huntingTimeView(p,now).remainingMs<=0)throw new GameError('사냥 시간이 없어요. 발전소 최대 3곳에서 각 20분, 놀이터 최대 2곳에서 각 10분을 충전할 수 있어요.');
+ if(isHuntingMap(mapId)&&!huntingExempt(p)&&huntingTimeView(p,now).remainingMs<=0)throw new GameError('사냥 시간이 없어요. 제작소 최대 3곳에서 각 20분, 놀이터 최대 2곳에서 각 10분을 충전할 수 있어요.');
 }

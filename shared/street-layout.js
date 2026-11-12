@@ -1,11 +1,11 @@
-// 오색별빛 쉼터: 북쪽 발전소와 아래로 넓힌 중앙·남쪽 섬을 분리된 다리로 잇습니다.
+// 오색별빛 쉼터: 북쪽 제작소와 아래로 넓힌 중앙·남쪽 섬을 분리된 다리로 잇습니다.
 import {BRIDGE_WIDTH_SCALE} from './floor-geometry.js';
 export const STREET_LAYOUT=Object.freeze({
   id:'star-street',width:1800,height:3300,wallWidth:10,bridgeWidth:180*BRIDGE_WIDTH_SCALE,
   north:Object.freeze({x:900,y:530,rx:870,ry:490}),
   upper:Object.freeze({x:900,y:1690,rx:760,ry:570}),
   lower:Object.freeze({x:900,y:2795,rx:800,ry:355}),
-  // 과학·교양 발전소 사이 위쪽에 입구와 연결 길을 둡니다.
+  // 과학·교양 제작소 사이 위쪽에 입구와 연결 길을 둡니다.
   entrance:Object.freeze({x:900,y:80,rx:140,ry:85}),
   entranceBridge:Object.freeze({x:900,top:0,bottom:250,halfWidth:70}),
   northGate:Object.freeze({x:900,y:80}),northArrival:Object.freeze({x:900,y:200}),
@@ -18,7 +18,7 @@ export const STREET_PARK=Object.freeze({
 });
 export const STAR_STATION_LAYOUT=Object.freeze({...STREET_LAYOUT,id:'star-station',spawn:{x:900,y:900},viewBounds:{x:0,y:0,width:1800,height:1160},islands:[STREET_LAYOUT.entrance,STREET_LAYOUT.north],routeLabels:[]});
 export const PLAYGROUND_LAYOUT=Object.freeze({...STREET_LAYOUT,id:'star-playground',spawn:{x:900,y:2510},viewBounds:{x:0,y:2320,width:1800,height:980},islands:[STREET_LAYOUT.lower],routeLabels:[]});
-const shelterLayout=Object.freeze({...STREET_LAYOUT,viewBounds:{x:0,y:1020,width:1800,height:1450},islands:[STREET_LAYOUT.upper],routeLabels:[{text:'별 발전소 가는길',x:900,y:1200},{text:'놀이터 가는길',x:900,y:2220}]});
+const shelterLayout=Object.freeze({...STREET_LAYOUT,viewBounds:{x:0,y:1020,width:1800,height:1450},islands:[STREET_LAYOUT.upper],routeLabels:[{text:'별 제작소 가는길',x:900,y:1200},{text:'놀이터 가는길',x:900,y:2220}]});
 const layouts=Object.freeze({'star-street':shelterLayout,'star-station':STAR_STATION_LAYOUT,'star-playground':PLAYGROUND_LAYOUT});
 export const streetLayoutOf=value=>layouts[typeof value==='string'?value:value?.id]||null;
 export const isStarlightStreet=id=>Boolean(streetLayoutOf(id));

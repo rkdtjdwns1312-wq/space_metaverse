@@ -35,7 +35,7 @@ const bgmUrlFor=id=>FILE_BGM[id]||(id.startsWith('planet:')?FILE_BGM['planet:']:
 // One entry per recording; the login violin is a layer, not a separate song.
 export const MUSIC_TRACKS=Object.freeze([
   ['lobby','접속 화면'],['space-plaza','별의 기원 · 과제별 서고 · 별 시장 · 부서 행성 광장'],
-  ['star-street','오색별빛 쉼터 · 별 발전소 · 별 놀이터'],['milky-valley','은하수계곡'],
+  ['star-street','오색별빛 쉼터 · 별 제작소 · 별 놀이터'],['milky-valley','은하수계곡'],
   ['moon-garden','낙원의 갈림길'],['moon-paradise-1','달의 낙원'],['moon-paradise-3','달의 낙원 3 · 보스'],
   ['sun-paradise','태양의 낙원'],['sun-paradise-3','태양의 낙원 3 · 보스'],['star-paradise','별들의 낙원'],
   ['star-origin-1','별의 시작점'],['serena-dormant','별의 시작점 4 · 세레나의 석상'],

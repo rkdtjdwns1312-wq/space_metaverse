@@ -4,7 +4,7 @@ import {createReadingRefresh} from './reading-refresh.js';
 const node=(tag,className,text)=>{const el=document.createElement(tag);if(className)el.className=className;if(text)el.textContent=text;return el;};
 export function createScienceLibrary({request,stop}){
  const dialog=node('dialog','culture-library science-library');dialog.id='science-library-dialog';dialog.setAttribute('aria-labelledby','science-library-title');
- const header=node('header','culture-header'),title=node('h2','','별 과학 발전소'),close=node('button','secondary','닫기');title.id='science-library-title';close.type='button';close.onclick=()=>dialog.close();header.append(title,close);
+ const header=node('header','culture-header'),title=node('h2','','별 과학 제작소'),close=node('button','secondary','닫기');title.id='science-library-title';close.type='button';close.onclick=()=>dialog.close();header.append(title,close);
  const progress=node('p','culture-progress'),notice=node('p','culture-notice');notice.setAttribute('role','status');
  const menu=node('section','science-menu'),bulb=node('img','science-bulb');bulb.src='/assets/maps/science-idea-bulb.png';bulb.alt='별빛이 담긴 과학 전구';bulb.width=170;bulb.height=170;
  const explain=node('p','',`하루에 두 가지 과학 이야기를 만나요. ${SCIENCE_FACTS.length}개를 모두 읽을 때까지 중복 없이 만나고, 다 읽으면 처음부터 다시 볼 수 있어요.`),start=node('button','secondary science-start','오늘의 과학상식 보기');start.type='button';menu.append(bulb,explain,start);

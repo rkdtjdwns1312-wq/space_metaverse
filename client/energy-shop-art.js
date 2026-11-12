@@ -141,19 +141,14 @@ export function drawEnergyShop(ctx, object) {
   ctx.closePath();
   ctx.fill();
 
-  // 간판은 한국어 한 줄로 또렷하게 표시
-  ctx.fillStyle = '#edfaff';
-  ctx.strokeStyle = '#7899a8';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x - 78, top + 39, 156, 25, 8);
-  ctx.fill();
-  ctx.stroke();
-  ctx.font = '700 15px "Jua", "Malgun Gothic", sans-serif';
+  // 이름은 건물 아래에 표시합니다.
+  ctx.font = '16px "Jua", "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#315d70';
-  ctx.fillText('우주에너지 상점', x, top + 52, 150);
+  ctx.lineJoin='round';ctx.lineWidth=5;ctx.strokeStyle='#fff9ed';
+  ctx.strokeText('우주에너지 상점',x,y+98);
+  ctx.fillStyle = '#665080';
+  ctx.fillText('우주에너지 상점', x, y+98);
 
   ctx.restore();
 }

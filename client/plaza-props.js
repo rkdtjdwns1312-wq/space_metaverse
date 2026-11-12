@@ -51,10 +51,7 @@ export function drawBazaar(ctx,o){
 export function drawPaintedStarShop(ctx,o){
   if(drawPaintedProp(ctx,{...o,kind:'shop'}))return;
   sprite(ctx,'market',o.x,o.y+66,224,224);
-  // 별상점 위치와 기능은 그대로, 사용자가 지정한 생성 원화만 적용합니다.
-  ctx.save();ctx.fillStyle='#fff7fc';ctx.strokeStyle='#b78ca8';ctx.lineWidth=2;
-  ctx.beginPath();ctx.roundRect(o.x-65,o.y-139,130,28,10);ctx.fill();ctx.stroke();ctx.restore();
-  label(ctx,'별 상점',o.x,o.y-119,19);
+  label(ctx,'별 상점',o.x,o.y+93,16);
 }
 export function drawPlazaSign(ctx,s){
   ctx.save();ctx.textBaseline='middle';label(ctx,s.lines.join(' '),s.x,s.y,26);ctx.restore();

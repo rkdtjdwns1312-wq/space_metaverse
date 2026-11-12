@@ -18,7 +18,7 @@ export function awardLearningReward(player,subject,result,now=Date.now()){
  if(result.correct<9)return skipped('9문제 이상 맞히면 오늘의 보상을 받을 수 있어요. 다시 도전해 보세요.');
  chargeHuntingStation(player,subject,now);
  const saved=validateLearningRewards(player.learningRewards),day=cultureDay(now),label=subject==='math'?'수학':'영어';
- if(saved[subject]===day)return skipped(`오늘의 ${label} 발전소 보상은 이미 받았어요. 내일 다시 도전해 보세요.`);
+ if(saved[subject]===day)return skipped(`오늘의 ${label} 제작소 보상은 이미 받았어요. 내일 다시 도전해 보세요.`);
  const amount=stationReward(player.avatar?.level),before=player.cosmicEnergy??0;
  if(amount<=0)throw new GameError('현재 레벨을 확인해주세요.');
  if(!Number.isSafeInteger(before)||before<0||!Number.isSafeInteger(before+amount))throw new GameError('우주에너지를 더 담을 수 없어요.');

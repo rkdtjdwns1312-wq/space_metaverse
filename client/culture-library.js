@@ -13,7 +13,7 @@ function historyText(element,text,id){element.replaceChildren(...historyTextPart
 export function createCultureLibrary({request,stop,getSelf,onWriteReading}){
  return createReadingLibrary({request,stop,getSelf,onWriteReading,stories:CULTURE_STORIES});
 }
-export function createReadingLibrary({request,stop,getSelf,stories,onWriteReading,chapters=null,namespace='culture',titleText='별 교양 발전소'}){
+export function createReadingLibrary({request,stop,getSelf,stories,onWriteReading,chapters=null,namespace='culture',titleText='별 교양 제작소'}){
  const history=namespace==='history',unit=history?'편':'권',item=history?'글':'책';
  const dialog=node('dialog',`culture-library${history?' history-library':''}`);dialog.id=`${namespace}-library-dialog`;dialog.setAttribute('aria-labelledby',`${namespace}-library-title`);
  const header=node('header','culture-header'),title=node('h2','',titleText);title.id=`${namespace}-library-title`;

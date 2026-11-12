@@ -443,7 +443,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
           }
           if(save&&session&&!huntingExempt(session.player)&&isHuntingMap(session.player.mapId)&&huntingTimeView(session.player,clock()).remainingMs<=0){
             returnHuntingPlayer(session.room,session.player,clock());roster(session.room);
-            const error=new GameError('사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.');error.commitOnError=true;throw error;
+            const error=new GameError('사냥 시간이 끝나 쉼터로 돌아왔어요. 제작소 학습으로 시간을 충전해주세요.');error.commitOnError=true;throw error;
           }
           let result=handler(data);
           const current=socket.data.session;
@@ -458,7 +458,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
             settleHuntingTime(p,clock());
             if(before&&(p.huntingTime.chargedStations.length>before.charged||p.huntingTime.chargedPlaygrounds.length>before.played)){
               const isPlay=p.huntingTime.chargedPlaygrounds.length>before.played;
-              deliver(()=>io.to(p.socketId).emit('item:notice',{text:`${isPlay?"놀이터 이용":"발전소 학습"} 완료! 오늘의 사냥 시간 ${(isPlay?HUNTING_PLAYGROUND_MS:HUNTING_STATION_MS)/60000}분을 받았어요.`}));
+              deliver(()=>io.to(p.socketId).emit('item:notice',{text:`${isPlay?"놀이터 이용":"제작소 학습"} 완료! 오늘의 사냥 시간 ${(isPlay?HUNTING_PLAYGROUND_MS:HUNTING_STATION_MS)/60000}분을 받았어요.`}));
               deliver(()=>io.to(p.socketId).emit('hunting:state',huntingTimeView(p,clock())));
             }
           }
@@ -657,7 +657,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
       ensure(socket.connected&&player.connected&&!player.away&&player.socketId===socket.id&&
         ['student','teacher'].includes(player.role)&&store.rooms.get(room.code)===room&&room.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');
       const station=STAR_STATION.objects.find(object=>object.kind===kind+'-station');
-      ensure(player.mapId===STAR_STATION_ID&&isNear(player,station),`별 ${label} 발전소 가까이에서 풀어 주세요.`);
+      ensure(player.mapId===STAR_STATION_ID&&isNear(player,station),`별 ${label} 제작소 가까이에서 풀어 주세요.`);
       return session;
     };
     const englishStationAccess=()=>learningStationAccess('english','영어');
@@ -2571,7 +2571,7 @@ export function createClassroomServer({teacherKey, adminPassword=randomBytes(24)
     clearBossMapHazard(room,p.id);p.herculesSlam=null;
     Object.assign(p,spawnInside(room,STREET_ID,p),{mapId:STREET_ID,input:{x:0,y:0,at:0},taurusDash:null});
     settleHuntingTime(p,at);
-    deliver(()=>io.to(p.socketId).emit('item:notice',{text:'사냥 시간이 끝나 쉼터로 돌아왔어요. 발전소 학습으로 시간을 충전해주세요.'}));
+    deliver(()=>io.to(p.socketId).emit('item:notice',{text:'사냥 시간이 끝나 쉼터로 돌아왔어요. 제작소 학습으로 시간을 충전해주세요.'}));
   }
   const huntingCheckpoints=new Map(),huntingDirty=new Set();
   let step=0; const previous=new Map();

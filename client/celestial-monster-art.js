@@ -12,32 +12,43 @@ export const CELESTIAL_MONSTER_ART=Object.freeze({
   'cool-star':{src:'/assets/monsters/cool-star-poses.png',effect:'moon',scale:1,
     frames:[[0,0,640,640,330,590],[640,0,640,640,335,586],[0,640,700,640,290,510],[700,640,580,640,280,530]]},
   'grown-cool-star':{src:'/assets/monsters/grown-cool-star-poses.png',effect:'moon',scale:.9,
+    attackSrc:'/assets/monsters/grown-cool-star-attack.webp',
+    attackFrames:[[0,0,640,640,347,596],[640,0,640,640,347,596],[0,640,640,640,347,596],[640,640,640,640,347,596]],
+    mouths:[[476,393],[477,396],[474,418],[477,399]],
     frames:[[0,0,640,640,355,590],[640,0,640,640,350,600],[0,640,700,640,290,510],[700,640,580,640,265,510]]},
 });
 const images=new Map();
-function sprite(shape){
-  if(!images.has(shape)&&typeof Image!=='undefined'){const image=new Image();image.src=CELESTIAL_MONSTER_ART[shape].src;images.set(shape,image);}
-  return images.get(shape);
+function sprite(shape,attack=false){
+  const art=CELESTIAL_MONSTER_ART[shape],src=attack&&art.attackSrc?art.attackSrc:art.src;
+  if(!images.has(src)&&typeof Image!=='undefined'){const image=new Image();image.src=src;images.set(src,image);}
+  return images.get(src);
 }
-export async function preloadCelestialArt(shape){await Promise.all((shape?(CELESTIAL_MONSTER_ART[shape]?[shape]:[]):Object.keys(CELESTIAL_MONSTER_ART)).map(id=>sprite(id)?.decode()));}
+export async function preloadCelestialArt(shape){await Promise.all((shape?(CELESTIAL_MONSTER_ART[shape]?[shape]:[]):Object.keys(CELESTIAL_MONSTER_ART)).flatMap(id=>[sprite(id)?.decode(),...(CELESTIAL_MONSTER_ART[id].attackSrc?[sprite(id,true)?.decode()]:[])]));}
 // 성장한 서늘한 별의 근접 냉기 숨결: 입 앞에서 자라고 잦아드는 16프레임.
 export const GROWN_COOL_BREATH_FRAMES=Object.freeze([
   [0,0],[0,0],[0,0],[.08,.34],[.2,.52],[.38,.72],[.6,.91],[.82,1],
   [1,1],[.94,.9],[.78,.74],[.55,.55],[.32,.37],[.12,.19],[0,0],[0,0]
 ].map(([length,width])=>Object.freeze({length,width})));
-function grownCoolBreath(ctx,m,r,dx,dy,face,progress){
+export function grownCoolMouth(m,r,face,frame){
+  const art=CELESTIAL_MONSTER_ART['grown-cool-star'];
+  const [,,,,ax,ay]=art.attackFrames[frame];
+  const [mx,my]=art.mouths[frame];
+  const scale=r*3/640;
+  return {x:m.x+face*(mx-ax)*scale,y:m.y+r+(my-ay)*scale};
+}
+function grownCoolBreath(ctx,m,r,dx,dy,face,progress,frame){
   const position=Math.max(0,Math.min(15,progress*16)),index=Math.floor(position);
   const a=GROWN_COOL_BREATH_FRAMES[index],b=GROWN_COOL_BREATH_FRAMES[Math.min(15,index+1)],blend=position-index;
   const length=r*.82*(a.length+(b.length-a.length)*blend);
   const width=r*.29*(a.width+(b.width-a.width)*blend);
   if(length<=0)return;
-  // 공격 포즈의 열린 입은 발 기준점에서 오른쪽 115px, 위쪽 155px에 있습니다.
-  const mouthX=m.x+face*r*.54,mouthY=m.y+r*.27;
+  // Match the currently drawn pose rather than a fixed point between the eyes.
+  const {x:mouthX,y:mouthY}=grownCoolMouth(m,r,face,frame);
   ctx.save();ctx.translate(mouthX,mouthY);ctx.rotate(Math.atan2(dy,dx));
   ctx.globalAlpha*=Math.min(1,length/(r*.32));
   const glow=ctx.createRadialGradient(length*.35,0,r*.02,length*.35,0,length+width);
   glow.addColorStop(0,'#f7ffff9c');glow.addColorStop(.48,'#89e9ff73');glow.addColorStop(1,'#789bff00');
-  ctx.fillStyle=glow;ctx.fillRect(-width,-length-width,length+width*2,(length+width)*2);
+  ctx.fillStyle=glow;ctx.beginPath();ctx.arc(length*.35,0,length+width,0,Math.PI*2);ctx.fill();
   ctx.shadowColor='#8ceaff';ctx.shadowBlur=r*.16;
   for(const [scale,color] of [[1,'#81caff'],[.77,'#b9f2ff'],[.5,'#f1ffff']]){
     const tip=length*scale,w=width*scale;
@@ -79,17 +90,17 @@ function effect(ctx,m,attack,pose,art,r,dx,dy){
 }
 export function drawCelestialMonster(ctx,m,time=0,attack){
   const art=CELESTIAL_MONSTER_ART[m?.shape];if(!art)return false;if(!ctx)return true;
-  const image=sprite(m.shape);if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   const pose=lv2MonsterPose(time,attack),r=Math.max(1,Number(m.radius)||48)*art.scale;
+  const image=sprite(m.shape,pose.active);if(!image?.complete||!image.naturalWidth)return drawMonsterArtLoading(ctx,m,image);
   let dx=Number(attack?.dx)||0,dy=Number(attack?.dy)||0,len=Math.hypot(dx,dy);
   if(len){dx/=len;dy/=len;}else{dx=m.facingX<0?-1:1;dy=0;}
   const face=pose.active&&Math.abs(dx)>.05?Math.sign(dx):m.facingX<0?-1:1;
   const bob=m.moving&&!pose.active?Math.sin(time*.011)*r*.035:0;
-  const [sx,sy,sw,sh,ax,ay]=art.frames[pose.frame],scale=r*3/640;
+  const [sx,sy,sw,sh,ax,ay]=(pose.active&&art.attackFrames?art.attackFrames:art.frames)[pose.frame],scale=r*3/640;
   ctx.save();ctx.fillStyle='#29223d33';ctx.beginPath();ctx.ellipse(m.x,m.y+r,r*.85,r*.2,0,0,Math.PI*2);ctx.fill();
   ctx.translate(m.x,m.y+r+bob);ctx.scale(face,1);
   if(m.moving&&!pose.active)ctx.rotate(Math.sin(time*.011)*.018);
-  if(pose.frame===3&&m.shape!=='cool-star'){
+  if(pose.frame===3&&m.shape!=='cool-star'&&!art.attackSrc){
     // 회복 칸의 빈 왼쪽 여백으로 번진 이웃 타격 칸 빛만 제외합니다. 꼬리와 발은 보존합니다.
     const outline=[[40,0],[sw,0],[sw,sh],[0,sh],[0,460],[40,400]];
     ctx.beginPath();outline.forEach(([px,py],i)=>{const x=(px-ax)*scale,y=(py-ay)*scale;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.clip();
@@ -98,7 +109,7 @@ export function drawCelestialMonster(ctx,m,time=0,attack){
     ctx.drawImage(image,sx*image.naturalWidth/1280,sy*image.naturalHeight/1280,sw*image.naturalWidth/1280,sh*image.naturalHeight/1280,-ax*scale,-ay*scale,sw*scale,sh*scale);
   ctx.restore();
   if(pose.active){
-    if(m.shape==='grown-cool-star')grownCoolBreath(ctx,m,r,dx,dy,face,pose.progress);
+    if(m.shape==='grown-cool-star')grownCoolBreath(ctx,m,r,dx,dy,face,pose.progress,pose.frame);
     else effect(ctx,m,attack,pose,art,r,dx,dy);
   }
   return true;

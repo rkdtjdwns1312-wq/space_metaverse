@@ -49,7 +49,9 @@ function grownWarmBreath(ctx, x, y, r, direction, face, progress) {
   ctx.globalAlpha*=Math.min(1,frame.length*2.5);
   const glow=ctx.createRadialGradient(length*.34,0,r*.03,length*.34,0,length+width);
   glow.addColorStop(0,'#fff6bd88');glow.addColorStop(.5,'#ffb23b5c');glow.addColorStop(1,'#ef643800');
-  ctx.fillStyle=glow;ctx.fillRect(-width,-length-width,length+width*2,(length+width)*2);
+  // Paint the entire radial support: a tight rectangle cuts the nonzero
+  // left edge of the gradient into a visible translucent panel.
+  ctx.fillStyle=glow;ctx.beginPath();ctx.arc(length*.34,0,length+width,0,Math.PI*2);ctx.fill();
   ctx.shadowColor='#ff9b39';ctx.shadowBlur=r*.2;
   // 불꽃 세 겹의 굽은 윤곽이 프레임마다 길이와 폭을 바꾸며 입에서 피어납니다.
   for(const [scale,color] of [[1,'#f37a2b'],[.78,'#ffc653'],[.53,'#fff3ad']]){

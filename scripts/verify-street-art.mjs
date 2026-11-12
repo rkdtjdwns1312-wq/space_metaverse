@@ -39,7 +39,7 @@ try{
   assert.deepEqual(loaded.duelMachines,[{id:'duel-memory',name:'별 그림 짝 맞추기 경쟁 게임',x:500,y:STREET_LAYOUT.lower.y-195},{id:'duel-omok',name:'별 오목 경쟁 게임',x:1300,y:STREET_LAYOUT.lower.y-195}]);
   assert.equal(await page.locator('#minimap').getAttribute('data-map-id'),STREET_ID);
   const routeLabels=loaded.routeLabels;assert.deepEqual(routeLabels,[
-    {text:'별 발전소 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry+STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry)/2)},
+    {text:'별 제작소 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.north.y+STREET_LAYOUT.north.ry+STREET_LAYOUT.upper.y-STREET_LAYOUT.upper.ry)/2)},
     {text:'놀이터 가는길',x:STREET_LAYOUT.upper.x,y:Math.round((STREET_LAYOUT.upper.y+STREET_LAYOUT.upper.ry+STREET_LAYOUT.lower.y-STREET_LAYOUT.lower.ry)/2)}
   ]);
   assert.ok(routeLabels.every(label=>onStreetFloor(STREET,label.x,label.y)),'길 안내 글자는 길목 바닥 안에 렌더링합니다.');

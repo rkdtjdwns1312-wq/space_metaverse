@@ -10,7 +10,7 @@ export function journeyDestination(goal){
  const island=PLAZA_LAYOUT.islands.find(i=>i.id===goal);
  if(island)return goal==='black-hole'?{...island,...PLAZA_ROUTES.find(r=>r.id===goal),rx:170,ry:170,mapId:PLAZA_ID}:{...island,mapId:PLAZA_AREA_IDS[goal]};
  const zones={station:STREET_LAYOUT.north,shops:STREET_LAYOUT.upper,playground:STREET_LAYOUT.lower};
- if(zones[goal])return {...zones[goal],name:{station:'별 발전소',shops:'상점가',playground:'놀이터'}[goal],mapId:goal==='station'?'star-station':goal==='playground'?'star-playground':STREET_ID};
+ if(zones[goal])return {...zones[goal],name:{station:'별 제작소',shops:'상점가',playground:'놀이터'}[goal],mapId:goal==='station'?'star-station':goal==='playground'?'star-playground':STREET_ID};
  const star=VALLEY.objects.find(o=>o.id===goal);
  return star?{...star,mapId:VALLEY_ID,interact:true}:null;
 }

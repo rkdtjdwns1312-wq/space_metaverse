@@ -50,7 +50,7 @@ export function registerScienceLibrary({socket,action,store,roster,clock=Date.no
   const session=socket.data.session,player=session?.player,room=session?.room;
   need(socket.connected&&player?.connected&&!player.away&&player.socketId===socket.id&&['student','teacher'].includes(player.role)&&
    store.rooms.get(room?.code)===room&&room?.players.get(player.id)===player,'현재 접속에서 교실에 다시 입장해주세요.');
-  need(player.mapId===STAR_STATION_ID&&station&&isNear(player,station),'별 과학 발전소 가까이에서 읽어주세요.');return {room,player};
+  need(player.mapId===STAR_STATION_ID&&station&&isNear(player,station),'별 과학 제작소 가까이에서 읽어주세요.');return {room,player};
  };
  action('science:status',()=>scienceStatus(access().player,clock()),false);
  action('science:open',()=>{

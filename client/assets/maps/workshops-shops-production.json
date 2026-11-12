@@ -1,0 +1,88 @@
+{
+  "created": "2026-11-12",
+  "generator": "built-in image_gen",
+  "assets": [
+    {
+      "file": "math-workshop.webp",
+      "source": "exec-f511bc21-bb0e-4a6f-9e80-158b63e873ff.png",
+      "references": [
+        "math-station-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A cozy mathematics workshop/shop. A warm ivory and muted lavender sloped-roof cottage, recessed open entrance, neat colorful wooden abacus visible in a display window and several geometric solid models (sphere cube pyramid) on interior shelves. Golden star roof finial, compact tasteful architecture, no giant symbols or calculating machine facade."
+    },
+    {
+      "file": "history-workshop.webp",
+      "source": "exec-1d7fb2ee-454d-43ea-96e8-388b99368766.png",
+      "references": [
+        "history-station-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A cozy history/heritage workshop shop. Warm cream stone and muted dusty blue sloped roof, arched front entrance, small round antique clock structurally inset near roof gable, scrolls old maps and replica pottery displayed in its large recessed window. Read as a small heritage artisan bookstore, not a cathedral."
+    },
+    {
+      "file": "science-workshop.webp",
+      "source": "exec-2e042fad-c2f3-492e-815b-3ea071529efe.png",
+      "references": [
+        "science-station-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A cozy science discovery workshop shop. Cream stone, muted teal-blue roof, small attached telescope above modest roof section (not a giant observatory), recessed doorway, large glass display window with safe pastel glass experiment bottles, tiny atom-model and microscope. Little gold star ornament. No hazards, smoke, chemicals spilling or flames."
+    },
+    {
+      "file": "culture-workshop.webp",
+      "source": "exec-011277f9-a8b3-4777-b388-b432c39a34d1.png",
+      "references": [
+        "culture-station-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A cozy literature/story workshop bookstore. Cream stone, warm brown wood, soft pastel lilac roof, one inviting arched door and deeply recessed warm glowing bookshop display window with bookshelves, open book on reading desk and small golden star lamp. A small carved open-book motif integrated into architecture, no giant rooftop book or castle. No text."
+    },
+    {
+      "file": "english-workshop.webp",
+      "source": "exec-6f3b6bd7-5dbe-45e6-9fa6-19c9c2202a55.png",
+      "references": [
+        "english-station-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A welcoming English/language workshop bookstore. Cream stone, gentle powder-blue sloped roof, warm wooden door, large recessed display window with an open book, small feather quill in inkpot, speech-bubble-shaped glass ornament without text. Cozy tiny reading studio with a single integrated gold star motif. Not an academy palace."
+    },
+    {
+      "file": "art-workshop.webp",
+      "source": "exec-be62e73d-4728-4e7a-9c2a-4f386535e270.png",
+      "references": [
+        "art-station-front.webp",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A cozy art studio shop, warm cream stone and pastel rose/coral pitched tile roof with a small sage accent, open door showing easel and neatly arranged brushes/paint pots, bay display window with a small framed abstract star painting. One small palette motif integrated at roof gable. Friendly artisan shop, not palace or huge art-symbol facade."
+    },
+    {
+      "file": "star-shop-depth.webp",
+      "source": "exec-aa5b50fb-60bc-4d37-9ee8-5ea5027059f7.png",
+      "references": [
+        "star-shop-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. An actual enclosed small star-item SHOP BUILDING, emphatically not a market stall, tent, booth or canopy. Warm cream walls and solid dusty rose sloped tiled roof, carved wood door on one side and large recessed curved display window on the other. Inside window are pastel star-shaped merchandise, little purple crystals and a golden star lamp on shelves. Side wall visibly recedes for dimensional depth. Tiny gold celestial architectural ornaments. Compact solid boutique. No sign or empty plaque anywhere."
+    },
+    {
+      "file": "energy-shop-depth.webp",
+      "source": "exec-05839089-205b-4898-b615-df1ef7b177eb.png",
+      "references": [
+        "energy-shop-front.png",
+        "../cozy/star-interior-shop.webp"
+      ],
+      "prompt": "Use case: precise-object-edit / stylized-concept. Image 1 is the old subject to redesign, image 2 is our approved visual style reference (mint furniture boutique). Create ONE game-map sprite, genuine alpha transparent background. User explicitly wants a compact specialty SHOPPING-STREET WORKSHOP rather than a castle or palace. Strong dimensional form via slightly elevated three-quarter view, visible side wall, substantial eaves, recessed doorway/display windows, warm interiors and believable painted material shading. Match polished hand-painted Korean fantasy MMORPG storybook graphics, cream stone and warm wood, delicate gold star details, pastel colors. No photorealistic 3D render, no flat vector. Keep readable at 330 pixels; whole single-storey compact building including doorway step visible, roughly square proportions, tightly framed with little transparent margin. REMOVE ALL SIGNBOARDS and ALL blank name plaques. No hanging banners/signs, no lettering/text/numbers. Never replace old blank sign with another plaque. Fill those areas with actual architecture. No towers, palace wings, battlements, tall turrets, huge domed castle, oversized podium, people, ground scene, detached props, cast shadow outside the base. Preserve subject identity through tiny well-integrated visual tools rather than writing. A compact enclosed cosmic-energy crystal boutique SHOP BUILDING. Pale ivory stone and silver-gold trim, powder-blue tiled/slightly curved roof, arched doorway, a deep rounded front display window with blue glowing crystals and small celestial energy orb. Visible side wall and deep roof eaves to read as dimensional little shopping-street boutique. A small blue spiral-glass ornament integrated in roof gable, not a giant orb on top of a dome. No palace or towers. No sign or empty plaque."
+    },
+    {
+      "file": "crafting-no-sign.webp",
+      "source": "exec-811bb6d6-2216-4661-ae91-21515118ab61.png",
+      "references": [
+        "crafting-front.png"
+      ],
+      "prompt": "Use case: precise-object-edit. Input image is the exact existing game crafting machine to edit. REMOVE ONLY the blank horizontal cream/gold NAME SIGNBOARD/PLAQUE mounted across its center/front. Reconstruct the machine's actual structure behind it so no board-like flat empty area remains: continuous mechanical arm/base supporting the central celestial crafting apparatus, coherent small gears and gold/ivory detailing. Preserve the recognizable silhouette, colors, composition, dimensions, viewpoint, blue purple crystal lights, circular celestial mechanism, base and high-quality hand-painted Korean fantasy MMORPG art. No text, no new plate or banner, no additional background or ground shadow. Entire object remains visible on genuine transparent alpha background. Do not redesign as a building."
+    }
+  ],
+  "processing": "Proportional resize to longest side 768, WebP quality 0.92, alpha preserved; originals retained. No creative postprocessing.",
+  "rendering": "Existing world footprints and interaction ranges retained. Object names rendered below at foot+23, 16px Jua, cream outline. No sign panels."
+}

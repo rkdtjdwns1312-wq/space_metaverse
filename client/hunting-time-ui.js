@@ -1,5 +1,5 @@
 import {HUNTING_STATION_LIMIT,HUNTING_STATION_MS,HUNTING_PLAYGROUND_LIMIT,HUNTING_PLAYGROUND_MS} from '/shared/hunting-time.js';
-const STATIONS={math:'별 수학 발전소',english:'별 영어 발전소',history:'별 역사 발전소',science:'별 과학 발전소',culture:'별 교양 발전소',art:'별 예술 발전소'};
+const STATIONS={math:'별 수학 제작소',english:'별 영어 제작소',history:'별 역사 제작소',science:'별 과학 제작소',culture:'별 교양 제작소',art:'별 예술 제작소'};
 const PLAYGROUNDS={memory:'별 그림 짝 맞추기',path:'별 길 한번에 그리기',baseball:'숫자야구',signal:'우주 신호',sudoku:'별빛 스도쿠',tetris:'별 테트리스',dodge:'별 피하기','duel-memory':'별 그림 짝 맞추기 경쟁 게임','duel-omok':'별 오목 경쟁 게임'};
 export function createHuntingTimeUI({clock,stop=()=>{}}){
  const button=document.createElement('button');button.id='hunting-time';button.className='hunting-time';button.type='button';button.hidden=true;button.setAttribute('aria-haspopup','dialog');const row=document.createElement('div');row.id='mobile-hunting-row';clock.after(row);row.append(button);
@@ -8,7 +8,7 @@ export function createHuntingTimeUI({clock,stop=()=>{}}){
  const remaining=()=>{if(!state)return 0;const elapsed=Math.max(0,performance.now()-received);if(Number.isFinite(state.resetAt)&&Number.isFinite(state.serverNow)&&state.serverNow+elapsed>=state.resetAt)return 0;return Math.max(0,(Number(state.remainingMs)||0)-(state.running&&connected?elapsed:0));};
  function details(){
   const expired=state&&Number.isFinite(state.resetAt)&&state.serverNow+Math.max(0,performance.now()-received)>=state.resetAt;
-  const groups=[['station','발전소',expired?[]:state?.chargedStations??[],HUNTING_STATION_LIMIT,STATIONS,HUNTING_STATION_MS,'stations'],['playground','놀이터',expired?[]:state?.chargedPlaygrounds??[],HUNTING_PLAYGROUND_LIMIT,PLAYGROUNDS,HUNTING_PLAYGROUND_MS,'playgrounds']];
+  const groups=[['station','제작소',expired?[]:state?.chargedStations??[],HUNTING_STATION_LIMIT,STATIONS,HUNTING_STATION_MS,'stations'],['playground','놀이터',expired?[]:state?.chargedPlaygrounds??[],HUNTING_PLAYGROUND_LIMIT,PLAYGROUNDS,HUNTING_PLAYGROUND_MS,'playgrounds']];
   for(const [id,label,charged,limit,names,ms,listId]of groups){
    dialog.querySelector('[data-'+id+'-count]').textContent='오늘 충전한 '+label+' '+Math.min(charged.length,limit)+'/'+limit;
    dialog.querySelector('[data-'+listId+']').replaceChildren(...charged.filter(key=>names[key]).map(key=>{

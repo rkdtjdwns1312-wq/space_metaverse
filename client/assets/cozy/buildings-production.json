@@ -13,6 +13,14 @@
       "prompt": "Use case: stylized-concept. Create ONE production-ready transparent-background game sprite: a small star-themed interior-design shop BUILDING replacing an open furniture booth. Reference images are STYLE references only: match their hand-painted Korean fantasy MMORPG / illustrated storybook rendering, gently outlined detailed ivory plaster and wood, lavender fabric, antique gold celestial ornament, warm inviting lighting. Slightly elevated front three-quarter game-map view, compact one-storey storefront readable at 240 pixels wide. An actual roof and enclosing sidewalls, a welcoming curved front door on one side, a LARGE showroom display window on the other side with a little plush lavender sofa, round side table and glowing star lamp clearly recognizable inside. Roof is pale lavender with cream and gold trim, small decorative star emblem integrated above window, window display has cozy warm light. Boutique furniture/interior shop with architectural silhouette, not an open tent, pavilion, dollhouse cutaway or standalone furniture cluster. Entire building and small stone doorstep visible, roughly square slightly taller silhouette, minimal transparent padding. No text, no people, no extra outside clutter, no map/background, no large ground platform. Authentic transparent alpha background."
     }
   ],
+  "edits": [{
+    "date": "2026-11-12",
+    "file": "star-interior-shop.webp",
+    "source": "exec-ed388272-bd33-4591-b177-60f922b88e26.png",
+    "generator": "built-in image_gen edit",
+    "target": "previous star-interior-shop.webp from exec-24826811-b983-463e-afe3-f8a0cf8d3934.png",
+    "prompt": "Use case: precise-object-edit. Edit target: the supplied transparent sprite of the star interior-design boutique. Change ONLY its pink/lavender/purple accent colors to a coordinated soft pastel green palette (mint and sage green). This includes roof tiles, ribbons, awning, curtains, hanging banner, upholstery and small purple fabric details. Preserve the exact same architecture, silhouette, size, framing, perspective, doors, display window, sofa, star lamp, gold star ornament, cream ivory walls, wood colors, warm lighting, hand-painted Korean fantasy MMORPG storybook art and all details. Keep gold/ivory neutral surfaces their original colors; no global green tint. No added objects or text. Keep the whole building visible and isolated with genuine alpha transparency, no background or additional shadow."
+  }],
   "references": [
     "baby-star-bed.webp",
     "star-room-booth.webp",

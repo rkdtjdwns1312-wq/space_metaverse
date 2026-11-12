@@ -585,8 +585,8 @@ function mapCaption(myMapId){
   if(myMapId===DEPARTMENT_ID)return '✦ 부서행성 광장 · 행성을 만들고 소속 부서에 들어가요';
   if(myMapId===BLACK_HOLE_ID)return '✦ 블랙홀 내부 · 검은별은 선생님이 해제할 때까지 밖으로 나갈 수 없어요';
   if(myMapId===WHALE_STOMACH_ID)return '🐋 고래자리의 배 속 · 함께 있는 친구와 대화하거나 언제든 탈출할 수 있어요';
-  if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 상점과 꾸미기, 북쪽 발전소·남쪽 놀이터 입구가 있어요';
-  if(myMapId==='star-station')return '✦ 별 발전소 · 여섯 발전소에서 배우고 사냥 시간을 충전해요';
+  if(myMapId===STREET_ID)return '✦ 오색별빛 쉼터 · 상점과 꾸미기, 북쪽 제작소·남쪽 놀이터 입구가 있어요';
+  if(myMapId==='star-station')return '✦ 별 제작소 · 여섯 제작소에서 배우고 사냥 시간을 충전해요';
   if(myMapId==='star-playground')return '✦ 별 놀이터 · 놀이기구와 경쟁 게임을 즐겨요';
   if(myMapId===VALLEY_ID)return '✦ 은하수계곡 · 위쪽 문으로 별의 기원';
   if(myMapId===GARDEN_ID)return '✦ 낙원의 갈림길 · 위로 태양, 아래로 달, 오른쪽으로 별의 기원';

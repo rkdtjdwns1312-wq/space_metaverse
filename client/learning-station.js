@@ -9,7 +9,7 @@ export function createLearningStation({request}){
   const choices=$('learning-choices'),feedback=$('learning-feedback'),next=$('learning-next');
   const levelSelect=$('learning-level'),levelLabel=$('learning-level-row').querySelector('label');
   const vocabularyCount=document.createElement('p');vocabularyCount.className='muted';vocabularyCount.hidden=true;
-  const rewardInfo=document.createElement('p');rewardInfo.className='learning-reward-info';rewardInfo.textContent='10문제 중 9문제 이상 맞히면 하루 한 번 보상!\n별자리 캐릭터 Lv에 따라 보상을 다르게 받아요.\n단계가 달라도 같은 발전소 보상은 하루에 한 번이에요.';intro.insertAdjacentElement('afterend',rewardInfo);
+  const rewardInfo=document.createElement('p');rewardInfo.className='learning-reward-info';rewardInfo.textContent='10문제 중 9문제 이상 맞히면 하루 한 번 보상!\n별자리 캐릭터 Lv에 따라 보상을 다르게 받아요.\n단계가 달라도 같은 제작소 보상은 하루에 한 번이에요.';intro.insertAdjacentElement('afterend',rewardInfo);
   const start=document.createElement('button');start.id='learning-start';start.type='button';start.className='secondary';start.textContent='확인 · 시작하기';next.before(start);
   const questionElements=[$('learning-progress'),$('learning-question-label'),prompt,choices];
   function prepare(){
@@ -92,7 +92,7 @@ export function createLearningStation({request}){
   pinDialogHeader(dialog);
   return {open(kind){
     subject=kind==='english-station'?'english':'math';
-    title.textContent=subject==='math'?'별 수학 발전소':'별 영어 발전소';
+    title.textContent=subject==='math'?'별 수학 제작소':'별 영어 제작소';
     intro.textContent=subject==='math'?'10문제를 풀어 봐요. 맞힌 문제는 해당 학년 자동미션에 반영돼요.':'기초 영단어 10문제 중 7문제 이상 맞히면 성공이에요.';
     $('learning-level-row').hidden=false;
     levelLabel.textContent=subject==='math'?'연산 단계':'영어 단어 단계';
