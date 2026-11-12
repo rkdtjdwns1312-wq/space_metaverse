@@ -12,7 +12,7 @@ import { createClassroomServer } from '../server/app.js';
 import { verifyPersistence } from './verify-persistence.mjs';
 import {fillNewClass} from './class-setup.mjs';
 import { BLOCKED_WORDS } from '../server/chat-filter.js';
-import { PLAZA_ID, DEPARTMENT_ID, MARKET_ID, mapOf, STREET_ID, STREET, MAP, INTERIOR, SHOP, BAG, PLANET_TEMPLATES, RULES } from '../shared/config.js';
+import { PLAZA_ID, DEPARTMENT_ID, MARKET_ID, mapOf, STREET_ID, STREET, MAP, INTERIOR, SHOP, BAG, PLANET_TEMPLATES, RULES, interactionReach } from '../shared/config.js';
 const teacherKey=randomBytes(32).toString('hex'),game=createClassroomServer({teacherKey,studentHours:false});
 const address=await game.listen(),url='http://127.0.0.1:'+address.port;
 const browser=await chromium.launch({headless:true,args:['--no-proxy-server'],...(process.platform==='win32'?{channel:'msedge'}:{})});
@@ -127,7 +127,9 @@ async function walkNear(page,player,target,{timeoutMs=20000,waypoint=false}={}){
       for(const code of need)if(!held.has(code)){await page.keyboard.down(code);held.add(code);}
       for(const code of [...held])if(!need.has(code)){await page.keyboard.up(code);held.delete(code);}
       const distance=Math.hypot(player.x-target.x,player.y-target.y);
-      if(waypoint?distance<45:distance<130&&await page.evaluate(name=>{const el=document.getElementById('interact-prompt');return !el.hidden&&(!name||el.textContent.includes(name));},target.name))return;
+      // The predicted client prompt can appear just before the authoritative
+      // server position reaches the object. Stop inside both ranges before F.
+      if(waypoint?distance<45:distance<Math.min(130,interactionReach(target)-2)&&await page.evaluate(name=>{const el=document.getElementById('interact-prompt');return !el.hidden&&(!name||el.textContent.includes(name));},target.name))return;
       await page.waitForTimeout(25);
     }
     throw new Error('걷기 경로를 확인해주세요: '+JSON.stringify({at:{x:player.x,y:player.y,mapId:player.mapId},target}));

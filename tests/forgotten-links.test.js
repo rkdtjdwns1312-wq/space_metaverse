@@ -50,7 +50,7 @@ test('empty map cancels the run and stale ids cannot affect a later cast',()=>{
 });
 test('two sockets share ordered progress, reject forged/stale/far checks, survive reconnect and finish only once',async t=>{
  const f=await readingFixture(t),guest=await f.connect();
- for(const p of [f.p,f.q]){chargeHuntingStation(p,'math',f.now);Object.assign(p,{mapId:spec.mapId,...center});}
+ for(const p of [f.p,f.q]){p.avatar={...p.avatar,level:4};chargeHuntingStation(p,'math',f.now);Object.assign(p,{mapId:spec.mapId,...center});}
  f.room.forgottenConstellation={state:'active',monsterId:spec.monsterId,respawnAt:null};
  const boss=monstersOf(f.room,f.now).get(spec.monsterId);assert(tryConstellationLinks(f.room,boss,f.now,()=>0));
  const cast=boss.links,{stars}=cast,send=(s,n,id=cast.id)=>call(s,'forgotten-constellation:link',{number:n,castId:id});
