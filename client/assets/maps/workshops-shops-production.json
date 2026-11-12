@@ -84,5 +84,31 @@
     }
   ],
   "processing": "Proportional resize to longest side 768, WebP quality 0.92, alpha preserved; originals retained. No creative postprocessing.",
-  "rendering": "Existing world footprints and interaction ranges retained. Object names rendered below at foot+23, 16px Jua, cream outline. No sign panels."
+  "rendering": "Existing world footprints and interaction ranges retained. Object names rendered below at foot+23, 16px Jua, cream outline. No sign panels.",
+  "paletteEdits": [
+    {
+      "file": "history-workshop.webp",
+      "source": "exec-520c45f1-e6e9-44d1-bfde-d9695fde711d.png",
+      "mainColor": "caramel brown",
+      "prompt": "Use case: precise-object-edit. Edit this existing transparent history workshop sprite for a Korean children's storybook RPG. Change ONLY its main roof-tile color from blue to rich warm CARAMEL BROWN with cinnamon/toffee highlights and chestnut shadows, clearly brown not yellow, red, purple or blue. Preserve the identical building silhouette, perspective, clock, historical books/map/pottery, gold and ivory trims, small green vine, lighting, dimensions and placement. Keep its refined hand-painted dimensional storybook style. No signboards, no text, no new objects. Actual transparent background, clean alpha edge; retain all original details and framing. This is a palette variation of the exact supplied building, not a redesign.",
+      "date": "2026-11-12",
+      "processing": "Preserved alpha, proportional resize to 768x768, Canvas WebP quality 0.92; no recoloring outside image_gen."
+    },
+    {
+      "file": "culture-workshop.webp",
+      "source": "exec-ae9b1e29-7b81-4a3e-b3ac-1050f6542706.png",
+      "mainColor": "lemon yellow",
+      "prompt": "Use case: precise-object-edit. Edit this existing transparent culture/book workshop sprite for a Korean children's storybook RPG. Change ONLY the lavender roof tiles, lavender curtains and purple door ribbon to a distinct sunny pastel LEMON YELLOW theme, with clear yellow midtones and pale butter highlights, ochre shadows. These main colored surfaces must no longer be blue or purple. Preserve the identical building silhouette, perspective, open-book crest, books, plants, gold and ivory trims, lighting, dimensions and placement. Keep its refined hand-painted dimensional storybook style. Do not tint the whole building yellow: retain neutral ivory stone and natural wood, green plants and diverse small book spines. No signboards, no text, no new objects. Actual transparent background, clean alpha edge; retain all original framing. This is a palette variation of the exact supplied building, not a redesign.",
+      "date": "2026-11-12",
+      "processing": "Preserved alpha, proportional resize to 768x768, Canvas WebP quality 0.92; no recoloring outside image_gen."
+    }
+  ],
+  "workshopPalette": {
+    "math": "lavender purple",
+    "history": "caramel brown",
+    "science": "teal",
+    "culture": "lemon yellow",
+    "english": "sky blue",
+    "art": "coral"
+  }
 }
