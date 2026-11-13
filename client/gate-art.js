@@ -1,4 +1,5 @@
 import {mapImage,mapImageReady,decodeMapImages} from './map-image.js';
+import {spriteShadowProfile} from './prop-shadows.js';
 // 광장·낙원·사냥터·은하수·부서 출구가 같은 원화를 공유합니다.
 export const GATE_ART_SRC='/assets/maps/star-gate.png';
 const image=mapImage(GATE_ART_SRC);
@@ -13,6 +14,11 @@ export function gateVisualBox(o){
   // 북쪽 문 위의 목적지 이름이 맵 밖으로 잘리지 않게 합니다.
   const y=Math.max(76,o.y+radius*.9-height);
   return {x:o.x-width/2,y,width,height};
+}
+export function gateShadowProfile(o){
+  if(!mapImageReady(image))return null;
+  const box=gateVisualBox(o),scale=Math.min(box.width/image.naturalWidth,box.height/image.naturalHeight),width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+  return spriteShadowProfile(image,{x:box.x+(box.width-width)/2,y:box.y+box.height-height,width,height});
 }
 export function drawPaintedGate(ctx,o){
   const box=gateVisualBox(o);ctx.save();

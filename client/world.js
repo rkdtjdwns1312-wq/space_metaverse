@@ -43,6 +43,8 @@ import {drawStarlightArchive,drawPlazaLandmark,drawMissionBoard,drawDepartmentHo
 import {departmentSite,DEPARTMENT_ZONE,plazaLayoutOf} from '/shared/plaza-layout.js';
 import {streetGeometryOf} from '/shared/street-layout.js';
 import {originFloor} from '/shared/origin-floor.js';
+import {paradiseFloor} from '/shared/paradise-floor.js';
+import {visualGateFloor} from './visual-floor.js';
 import {VALLEY_POLYGONS} from '/shared/valley-layout.js';
 import {propShadowProfile,drawPropShadow,clipPropShadowFloor} from './prop-shadows.js';
 import {drawPlazaGround,drawPlazaPillar,drawDepartmentGuide,drawExplorationFlask} from './plaza-art.js';
@@ -56,7 +58,7 @@ import {prepareMapArt} from './map-art-ready.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp,PAINTED_PROPS} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
-import {drawPaintedGate,gateVisualBox,gateLabelBaseline,gateLabelBelow} from './gate-art.js';
+import {drawPaintedGate,gateVisualBox,gateLabelBaseline,gateLabelBelow,gateShadowProfile} from './gate-art.js';
 import {drawWaterMonster} from './water-monster-art.js';
 import {drawLv2Monster} from './lv2-monster-art.js';
 import {drawSunMonster} from './sun-monster-art.js';
@@ -390,6 +392,10 @@ export function createWorld(canvas) {
   // 모든 정적 맵과 부서 출구에 공통 원화를 적용합니다.
   function drawGate(o){
     if(!intersectsView(view,gateVisualBox(o),200))return;
+    const map=mapOf(myMapId),floor=map.theme==='plaza'?plazaLayoutOf(map).polygons:map.theme==='starlight-street'?streetGeometryOf(map).polygons:myMapId===VALLEY_ID?VALLEY_POLYGONS:visualGateFloor(originFloor(map)||paradiseFloor(map),map)?.points;
+    // Gates own this one shadow; the shared prop pass intentionally skips them.
+    // On irregular islands only draw where a known floor mask is available.
+    if(floor){ctx.save();clipPropShadowFloor(ctx,floor);drawPropShadow(ctx,gateShadowProfile(o));ctx.restore();}
     const box=drawPaintedGate(ctx,o);
     if(o.hideLabel){if(myMapId!==PLAZA_ID||!['gate-assignment','gate-market','gate-department'].includes(o.id))drawPlazaSign(ctx,{x:o.x,y:o.y+65,lines:[(STATIC_MAPS[o.target]?.name||o.name)+' 가는 길']});return;}
     if(myMapId===STREET_ID)return;
