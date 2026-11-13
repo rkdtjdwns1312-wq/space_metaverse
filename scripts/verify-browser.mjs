@@ -170,12 +170,17 @@ async function clickDialogClose(page,source){
  await dialog.locator(".dialog-pinned-close").click();
 }
 async function closeOpenDialogs(page){for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));}
-async function openChatFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
-async function openSocialFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-chat').click();await page.locator('#social-dialog').waitFor({state:'visible'});}
-async function openInventoryFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-inventory').click();await page.locator('#inventory-dialog').waitFor({state:'visible'});}
-async function openAvatarFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-avatar').click();await page.locator('#avatar-dialog').waitFor({state:'visible'});}
+async function clickDock(page,selector){
+ const button=page.locator(selector);
+ if(!await button.isVisible())await page.locator('#mobile-functions-toggle').click();
+ await button.click();
+}
+async function openChatFromDock(page){await closeOpenDialogs(page);await clickDock(page,'#dock-chat');await page.locator('#social-dialog').waitFor({state:'visible'});await page.locator('#open-chat').click();await page.locator('#chat-dialog').waitFor({state:'visible'});}
+async function openSocialFromDock(page){await closeOpenDialogs(page);await clickDock(page,'#dock-chat');await page.locator('#social-dialog').waitFor({state:'visible'});}
+async function openInventoryFromDock(page){await closeOpenDialogs(page);await clickDock(page,'#dock-inventory');await page.locator('#inventory-dialog').waitFor({state:'visible'});}
+async function openAvatarFromDock(page){await closeOpenDialogs(page);await clickDock(page,'#dock-avatar');await page.locator('#avatar-dialog').waitFor({state:'visible'});}
 async function clickMenuAction(page,id){await openMenuFromDock(page);await page.locator('#'+id).click();}
-async function openMenuFromDock(page){await closeOpenDialogs(page);await page.locator('#dock-menu').click();await page.locator('#menu-dialog').waitFor({state:'visible'});}
+async function openMenuFromDock(page){await closeOpenDialogs(page);await clickDock(page,'#dock-menu');await page.locator('#menu-dialog').waitFor({state:'visible'});}
 async function submitTemplatePlanet(page,templateId){
  const template=PLANET_TEMPLATES.find(t=>t.id===templateId);
  await page.locator(`input[name="planet-type"][value="${templateId}"]`).check();
