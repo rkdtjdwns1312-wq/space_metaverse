@@ -58,5 +58,3 @@ try{
  assert.deepEqual(errors,[]);
  console.log('PASS browser errors 0');
 }finally{await browser?.close();teacher?.disconnect();await game.close();}
-
-
