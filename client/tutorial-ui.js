@@ -3,7 +3,7 @@ import {avatarSizeOf} from '/shared/avatar-size.js';
 import {journeyDestination,createJourneyGuide,tutorialButtonArrowPlacement} from './tutorial-directions.js';
 
 const HELP={
- moved:'방향키나 WASD로 걸어 보세요. 휴대전화에서는 조이스틱을 밀어요. 그다음 화살표를 따라 네 기둥을 각각 조사해요.',
+ moved:'방향키나 WASD로 걸어 보세요. 휴대전화에서는 조이스틱을 밀거나 바닥을 짧게 눌러요. 그다음 화살표를 따라 네 기둥을 각각 조사해요.',
  'pillar-notice':'오늘의 알림장이에요. 기둥 가까이에서 F 또는 조사하기를 눌러요.',
  'pillar-effects':'사용 중인 아이템을 확인하는 기둥이에요. 가까이에서 조사해 보세요.',
  'pillar-timetable':'오늘의 시간표를 볼 수 있어요. 기둥 가까이에서 조사해 보세요.',
@@ -118,7 +118,7 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
   const p=me(),step=current();if(!step||p?.role!=='student'||document.body.classList.contains('placing')){clearHighlight();requestAnimationFrame(frame);return;}
   if(announcement.length&&!document.querySelector('dialog[open]')){const id=announcement.shift();$('journey-place-text').textContent=HELP[id];stop();notice.showModal();}
   const modal=practice.open?practice:[...document.querySelectorAll('dialog[open]')].at(-1),button=buttonForGoal();
-  if(button&&(!modal||modal.contains(button)))pointButton(button);
+  if(button&&(!modal||modal.contains(button))){const functions=$('mobile-functions-toggle');pointButton(!visible(button)&&button.classList.contains('dock-button')&&functions&&visible(functions)?functions:button);}
   else if(modal){const close=modal.querySelector('button[data-close],button[id$="-close"],#tutorial-later');if(close&&visible(close))pointButton(close);else clearHighlight();}
   else if(journeyDestination(goal)){
    route=guide.update(p,goal,getRoom()?.planets,now);

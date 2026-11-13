@@ -1,0 +1,62 @@
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+import {chromium} from 'playwright';
+import {io} from 'socket.io-client';
+import {createClassroomServer} from '../server/app.js';
+const key='isolated-portrait-review',game=createClassroomServer({teacherKey:key,studentHours:false,dataDir:null});let browser,teacher;
+try{
+ const {port}=await game.listen(),url='http://127.0.0.1:'+port;
+ teacher=io(url,{transports:['websocket']});await new Promise(r=>teacher.once('connect',r));
+ const made=await teacher.timeout(3000).emitWithAck('room:create',{teacherKey:key,allowedNames:['모바일검사']});assert(made.ok);
+ const room=game.store.rooms.get(made.room.code);browser=await chromium.launch({headless:true,channel:'msedge'});
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(made.room.code);await page.locator('#nickname').fill('모바일검사');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});
+ for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');
+ const p=[...room.players.values()].find(p=>p.role==='student');Object.assign(p.avatar,{level:2,constellationId:'hercules'});p.battleVitals=null;
+ game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p,Date.now()));
+ mkdirSync('.local/mobile-portrait',{recursive:true});
+ const box=async s=>page.locator(s).boundingBox();
+ for(const [width,height]of [[390,844],[320,568],[430,932],[768,1024]]){
+  await page.setViewportSize({width,height});await page.waitForTimeout(250);
+  if(await page.locator('#minimap-toggle').getAttribute('aria-expanded')==='true')await page.locator('#minimap-toggle').click();
+  const c=await box('#classroom-clock'),mute=await box('#mobile-audio-mute'),chat=await box('#chat-window-toggle'),hunt=await box('#hunting-time'),map=await box('#minimap-toggle');
+  assert(c.y<chat.y&&mute.x>=c.x&&mute.x+mute.width<=c.x+c.width+1);
+  assert(Math.abs(chat.y-hunt.y)<1&&Math.abs(hunt.y-map.y)<1);assert(chat.x+chat.width<hunt.x&&hunt.x+hunt.width<map.x);assert.equal(chat.height,44);
+  const hp=await box('.vitals-hp'),mp=await box('.vitals-mp'),hud=await box('#vitals-hud'),attack=await box('#touch-attack'),skill=await box('#touch-skill'),interact=await box('#touch-interact'),settings=await box('#control-settings-open'),stick=await box('#joystick');
+  assert.equal(hp.y,mp.y);assert(hp.x<mp.x);assert(hud.y+hud.height<=height-7&&hud.y+hud.height>=height-10);
+  const centers=[attack,skill,interact,settings,stick].map(b=>b.y+b.height/2);assert(Math.max(...centers)-Math.min(...centers)<1);
+  assert(attack.x+attack.width<skill.x&&skill.x+skill.width<interact.x&&settings.x+settings.width<stick.x);
+  assert(Math.abs(interact.width-26.4)<.1&&Math.abs(settings.width-26.4)<.1);assert.equal(stick.width,96);assert(stick.x+stick.width<=width-11);
+  if(width>=390)assert.equal(attack.width,88);
+  assert(await page.locator('.combat-key-badge').first().isHidden());assert(await page.locator('#interact-key').isHidden());assert(await page.locator('#dock-avatar').isHidden());
+  const original=await page.locator('#mobile-audio-mute').getAttribute('aria-pressed');await page.locator('#mobile-audio-mute').click();assert.notEqual(await page.locator('#mobile-audio-mute').getAttribute('aria-pressed'),original);await page.locator('#mobile-audio-mute').click();
+  await page.screenshot({path:`.local/mobile-portrait/${width}-closed.png`});
+  await page.locator('#mobile-functions-toggle').click();assert.equal(await page.locator('#mobile-functions-toggle').getAttribute('aria-expanded'),'true');
+  const labels=await page.locator('#bottom-dock>.dock-button').allTextContents();assert.equal(labels.length,6);const menu=await box('#bottom-dock'),lastMenu=await box('#dock-menu');assert(lastMenu.y+lastMenu.height<=menu.y+menu.height+1,'all six menu buttons visible');
+  await page.screenshot({path:`.local/mobile-portrait/${width}-open.png`});
+  await page.locator('#dock-inventory').click();assert(await page.locator('#inventory-dialog').isVisible());assert(await page.locator('#dock-avatar').isHidden());await page.keyboard.press('Escape');
+  console.log('PASS portrait '+width+' clock/3 buttons/speaker/HP MP/action row/sizes/function menu');
+ }
+
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150);
+ await page.locator('#new-mission-notice').click();assert(await page.locator('#student-missions-dialog').isVisible());await page.keyboard.press('Escape');
+ const snooze=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.endsWith(':snoozed-until')).map(k=>Number(localStorage.getItem(k))));assert(snooze.some(t=>t>Date.now()+29*60*1000));
+ const sendState=()=>game.io.to(p.socketId).emit('room:state',game.store.snapshot(room,p,Date.now()));
+ await page.evaluate(()=>{window.originalNow=Date.now;Date.now=()=>window.originalNow()+29*60*1000;});sendState();await page.waitForTimeout(150);assert(await page.locator('#new-mission-notice').isHidden());
+ await page.evaluate(()=>{Date.now=()=>window.originalNow()+31*60*1000;});sendState();await page.waitForTimeout(150);assert(await page.locator('#new-mission-notice').isVisible());
+ await page.evaluate(()=>{Date.now=window.originalNow;});
+ const inputs=[];game.io.sockets.sockets.get(p.socketId).on('player:input',v=>inputs.push(v));
+ const beforeTap={x:p.x,y:p.y};await page.touchscreen.tap(260,410);await page.waitForTimeout(250);assert(inputs.some(v=>Math.hypot(v.x,v.y)>0),'floor touch sends movement');assert(Math.hypot(p.x-beforeTap.x,p.y-beforeTap.y)>1,'server moves avatar after floor touch');
+ await page.locator('#mobile-functions-toggle').tap();await page.waitForTimeout(150);assert.equal(p.input.x,0);assert.equal(p.input.y,0);
+ await page.locator('#mobile-functions-toggle').tap();
+ const joy=await box('#joystick');await page.mouse.move(joy.x+joy.width/2,joy.y+joy.height/2);await page.mouse.down();await page.mouse.move(joy.x+joy.width-4,joy.y+joy.height/2);await page.waitForTimeout(120);await page.mouse.up();await page.waitForTimeout(100);assert(inputs.some(v=>v.x>0));assert.equal(p.input.x,0);
+ await page.locator('#touch-attack').tap();await page.locator('#control-settings-open').tap();assert(await page.locator('#control-settings-dialog').isVisible());await page.keyboard.press('Escape');
+ console.log('PASS mission notice 30-minute snooze, floor touch, UI cancellation, joystick release and settings');
+ await page.setViewportSize({width:844,height:390});await page.waitForTimeout(150);assert(await page.locator('#mobile-functions-toggle').isHidden());assert(await page.locator('#dock-avatar').isVisible());assert.equal(await page.locator('#dock-statuses').evaluate(el=>el.parentElement.id),'bottom-dock');
+ const desktop=await browser.newContext({viewport:{width:1280,height:900}}),d=await desktop.newPage();await d.goto(url);await d.evaluate(()=>document.body.classList.add('joined'));assert(await d.locator('#mobile-functions-toggle').isHidden());assert(await d.locator('#mobile-audio-mute').isHidden());assert(await d.locator('#audio-toggle').isVisible());
+ console.log('PASS landscape menu restored and desktop controls unchanged');
+ assert.deepEqual(errors,[]);
+ console.log('PASS browser errors 0');
+}finally{await browser?.close();teacher?.disconnect();await game.close();}
+
+

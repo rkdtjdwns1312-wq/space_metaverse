@@ -52,20 +52,20 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
   const notice=document.createElement('button');notice.id='new-mission-notice';notice.type='button';notice.className='secondary';notice.hidden=true;
   notice.innerHTML='<span role="status" aria-live="polite"></span>';document.body.append(notice);
   const newBadge=document.createElement('span');newBadge.className='mission-new-badge';newBadge.hidden=true;newBadge.textContent='새 미션';$('dock-chat').append(newBadge);
-  let seenKey='',seen=new Set();
+  let seenKey='',seen=new Set(),snoozedUntil=0;
   function missionNotice(markRead=false){
     const room=getRoom(),me=room?.players.find(p=>p.id===getSelfId());
     if(me?.role!=='student'){notice.hidden=true;newBadge.hidden=true;return;}
     const key=`space-class-missions-seen:${room.code}:${me.id}`;
-    if(seenKey!==key){seenKey=key;seen=new Set();try{const saved=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(saved))seen=new Set(saved.filter(id=>typeof id==='string'));}catch{}}
+    if(seenKey!==key){seenKey=key;seen=new Set();snoozedUntil=0;try{snoozedUntil=Number(localStorage.getItem(key+':snoozed-until'))||0;const saved=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(saved))seen=new Set(saved.filter(id=>typeof id==='string'));}catch{}}
     const missions=room.missions||[],current=missions.filter(m=>['active','ready'].includes(m.status));
     if(markRead){
       seen=new Set(missions.filter(m=>seen.has(m.id)||current.some(n=>n.id===m.id)).map(m=>m.id));
       try{localStorage.setItem(key,JSON.stringify([...seen]));}catch{}
     }
     const count=current.filter(m=>!seen.has(m.id)).length;
-    notice.hidden=!count;newBadge.hidden=!count;
-    const text=`새 미션 ${count}개가 있어요 · 확인하기`;
+    notice.hidden=!current.length||Date.now()<snoozedUntil||mineDialog.open;newBadge.hidden=!count;
+    const text=count?`새 미션 ${count}개가 있어요 · 확인하기`:`완료하지 않은 미션 ${current.length}개 · 확인하기`;notice.setAttribute('aria-label',text);notice.title=text;
     if(notice.firstElementChild.textContent!==text)notice.firstElementChild.textContent=text;
   }
   notice.onclick=()=>{openMine();category='active';selectedId=null;update();};
@@ -75,7 +75,7 @@ export function createMissionUI({request,stop,toast,getRoom,getSelfId,onTutorial
   function openMine(){
     if(getRoom()?.players.find(p=>p.id===getSelfId())?.role!=='student')return;
     stop();category=null;selectedId=null;lastView='';
-    missionNotice(true);
+    missionNotice(true);snoozedUntil=Date.now()+30*60*1000;try{localStorage.setItem(seenKey+':snoozed-until',String(snoozedUntil));}catch{}notice.hidden=true;
     if(!mineDialog.open)mineDialog.showModal();update();
   }
   for(const [id,value] of [['missions-completed','claimed'],['missions-active','active']])$(id).onclick=()=>{category=value;selectedId=null;update();};

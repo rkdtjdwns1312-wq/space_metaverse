@@ -25,8 +25,12 @@ test('stage three only summons at its statue, then uses basic combat and next mo
  damageMonster(room,boss,p,20000,now+4000);const due=nextBossRespawnAt(now+4000);
  assert.equal(room.forgottenConstellation.respawnAt,due);
  const prizes=[...room.energyDrops.values()];
- assert.deepEqual(prizes.map(d=>d.itemId),['infinite-star-fragment']);
- assert.equal(prizes[0].shares.get(p.id),1);
+ const energy=prizes.find(d=>!d.itemId),items=prizes.filter(d=>d.itemId);
+ assert(energy.total>=1400&&energy.total<=1600);
+ assert.equal(items.filter(d=>d.itemId==='infinite-star-fragment').length,1);
+ assert.equal(items.filter(d=>d.itemId==='gold-big-bang-card').length,1);
+ const tickets=items.filter(d=>d.itemId==='exploration-ticket').length;assert(tickets===1||tickets===2);
+ assert(items.every(d=>d.shares.get(p.id)===1));
  assert.equal(restoreForgottenConstellationStatue(room,due-1),false);assert.equal(restoreForgottenConstellationStatue(room,due),true);
  assert(!room.monsters.has(boss.id));assert(forgottenConstellationMap(map,room.forgottenConstellation).objects.includes(statue));
 });

@@ -1,3 +1,4 @@
+import {createTapMove} from './tap-move.js';
 import {pinDialogHeader} from './dialog-layout.js';
 import './dialog-close-bootstrap.js';
 import {createStudentReminders} from './student-reminders.js';
@@ -107,6 +108,10 @@ function updateControlAlignment(){
     style.setProperty('--vitals-top',vitalBox.top+'px');
   }
 }
+const mobileFunctions=document.createElement('button');mobileFunctions.id='mobile-functions-toggle';mobileFunctions.type='button';mobileFunctions.textContent='기능';mobileFunctions.setAttribute('aria-controls','bottom-dock');mobileFunctions.setAttribute('aria-expanded','false');document.body.append(mobileFunctions);
+const closeMobileFunctions=()=>{document.body.classList.remove('mobile-menu-open');mobileFunctions.setAttribute('aria-expanded','false');};
+mobileFunctions.onclick=()=>{stop();const open=document.body.classList.toggle('mobile-menu-open');mobileFunctions.setAttribute('aria-expanded',String(open));};
+$('bottom-dock').addEventListener('click',e=>{if(e.target.closest('.dock-button'))closeMobileFunctions();});
 const dockResizeObserver=new ResizeObserver(updateControlAlignment);
 dockResizeObserver.observe($('bottom-dock'));
 window.addEventListener('resize',updateControlAlignment);
@@ -117,14 +122,17 @@ const audio=createAudio();
 const lifeStarUI=createLifeStarUI({audio,request,stop,toast,onClose:()=>$('world').focus({preventScroll:true})});
 const cetusUI=createCetusUI({request,getPlayer:()=>room?.players.find(p=>p.id===selfId),getRoom:()=>room,stop,toast});
 const audioPanel=$('audio-panel'),audioToggle=$('audio-toggle'),audioMute=$('audio-mute'),audioVolume=$('audio-volume');
-const mobileAudioMute=document.createElement('button');mobileAudioMute.id='mobile-audio-mute';mobileAudioMute.type='button';mobileAudioMute.className='secondary';$('mobile-hunting-row').append(mobileAudioMute);mobileAudioMute.onclick=()=>audioMute.click();
+const mobileAudioMute=document.createElement('button');mobileAudioMute.id='mobile-audio-mute';mobileAudioMute.type='button';mobileAudioMute.className='secondary';$('mobile-hunting-row').append(mobileAudioMute);mobileAudioMute.onclick=()=>{const silent=audio.muted||audio.volume===0;if(silent&&audio.volume===0)audio.setVolume(.35);audio.setMuted(!silent);audio.resume();syncAudioControls();};
 function syncAudioControls(){
   audioVolume.value=Math.round(audio.volume*100);
   $('audio-volume-value').textContent=audioVolume.value+'%'+(audio.muted?' · 음소거':'');
   audioVolume.setAttribute('aria-valuetext',audioVolume.value+'%'+(audio.muted?' · 음소거':''));
   audioToggle.textContent=audio.muted||audio.volume===0?'🔇':'🔊';
   audioToggle.setAttribute('aria-label',audio.muted||audio.volume===0?'소리 꺼짐 · 소리 설정':'소리 켜짐 · 소리 설정');
-  audioMute.textContent=audio.muted?'소리 켜기':'음소거';mobileAudioMute.textContent=audioMute.textContent;mobileAudioMute.setAttribute('aria-pressed',String(audio.muted));
+  audioMute.textContent=audio.muted?'소리 켜기':'음소거';
+  const silent=audio.muted||audio.volume===0;
+  mobileAudioMute.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5Z"/>'+(silent?'<path d="m16 9 6 6m0-6-6 6"/>':'<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>')+'</svg>';
+  mobileAudioMute.setAttribute('aria-pressed',String(silent));mobileAudioMute.setAttribute('aria-label',silent?'소리 켜기':'소리 끄기');mobileAudioMute.title=silent?'소리 꺼짐 · 눌러 켜기':'소리 켜짐 · 눌러 끄기';
 }
 syncAudioControls();
 audioToggle.addEventListener('click',()=>{audio.resume();audioPanel.hidden=!audioPanel.hidden;audioToggle.setAttribute('aria-expanded',String(!audioPanel.hidden));});
@@ -136,6 +144,7 @@ document.addEventListener('keydown',unlockLobbyAudio,{once:true});
 const socket=window.io({autoConnect:false,reconnectionDelay:500,reconnectionDelayMax:2000});
 let selfId=null,room=null,busy=false,toastTimer,mode='student',held=new Set(),touch={x:0,y:0},last={x:0,y:0},chatBusy=false,starRecordPlanetPrompt=null,forgottenNamesPrompt=false,forgottenNamesDeadline=0,forgottenNamesCastId=null,forgottenNamesExpiryTimer=null,forgottenNameDraftCastId=null,planetDialogId=null,placing=false,createPoint=null,useItem=null,selectedSlotId=null;
 let reconnectAttempt=null,sessionResumePromise=null,finishReconnectAttempt=null;
+const tapMove=createTapMove();let tapStart=null;
 let mouseAim=null,aimMap=null,customPlanetDesign=null;
 $('world').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouseAim={clientX:e.clientX,clientY:e.clientY};});
 $('world').addEventListener('pointerleave',()=>{mouseAim=null;});
@@ -252,7 +261,7 @@ document.querySelector('.top-right').append($('connection'));
 $('connection').setAttribute('role','status');
 let overview=false;
 const universe=createUniverseUI({getRoom:()=>room,getSelfId:()=>selfId,stop,request,toast,onMapInfo:(mapId,opener)=>classroomHelp.openMapGuide(mapId,opener),onAreaView:()=>{overview=!overview;world.setOverview(overview);$('map-area-view').textContent=overview?'내 주변으로 돌아가기':'현재 맵 한눈에 보기';$('world').focus();}});
-const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
+const joystick=createJoystick({onMove:value=>{if(!selfId||placing||document.querySelector('dialog:modal'))return;tapMove.cancel();touch=value;input();},onStop:()=>{touch={x:0,y:0};input();}});
 const temple=createTempleUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId});
 const teacherInventory=createTeacherInventoryUI({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
 const teacherCardCatalog=createTeacherCardCatalog({request,stop,toast,getPlayer:()=>room?.players.find(p=>p.id===selfId)});
@@ -291,6 +300,12 @@ const mailboxUI=createMailboxUI({request,stop,toast});
 const warningUI=createWarningUI({request,stop,toast,getSelfId:()=>selfId});
 const assignmentUI=createAssignmentUI({request,stop,toast});
 const missionUI=createMissionUI({request,stop,toast,getRoom:()=>room,getSelfId:()=>selfId,onTutorial:()=>tutorial.open(),onCreateMenu:()=>social.openMissionCreate()});
+const mobileStatusRail=document.createElement('aside');mobileStatusRail.id='mobile-status-rail';mobileStatusRail.setAttribute('aria-label','알림과 현재 효과');document.body.append(mobileStatusRail);
+const statusHomes=['new-mission-notice','student-reminders','dock-statuses'].map(id=>{const node=$(id),slot=document.createComment(id+' original position');node.before(slot);return {node,slot};});
+const portraitUI=matchMedia('(max-width:520px) and (orientation:portrait),(max-width:960px) and (pointer:coarse) and (orientation:portrait)');
+function syncMobileStatusRail(){closeMobileFunctions();for(const {node,slot}of statusHomes){if(portraitUI.matches)mobileStatusRail.append(node);else slot.after(node);}}
+portraitUI.addEventListener('change',syncMobileStatusRail);syncMobileStatusRail();
+
 socket.on('department:changed',event=>departmentWork.changed(event));
 const departmentButton=document.createElement('button');departmentButton.id='planet-work';departmentButton.className='small primary';departmentButton.textContent='부서실적 · 분배하기 · 분배결과';
 $('planet-rename').after(departmentButton);
@@ -1576,6 +1591,7 @@ function enter(result){
   if($('use-dialog').open)$('use-dialog').close();
 }
 function reset(message){
+  tapMove.cancel();tapStart=null;closeMobileFunctions();
   lifeStarUI.reset();
   arcade.reset();
   showReconnect(false);classroomHelp.reset();teacherUpdates.reset();mouseAim=null;aimMap=null;
@@ -1688,7 +1704,7 @@ socket.on('connect',async()=>{
 socket.on('connect_error',()=>{if(selfId)showReconnect(true);finishReconnectAttempt?.();$('connection').textContent='서버 연결을 기다리는 중…';$('connection').classList.remove('is-connected');controls();});
 socket.on('planet:mailbox:changed',()=>mailboxUI.refresh());
 socket.on('combat:boss-defeated',event=>bossDialogueUI.receive(event));
-socket.on('disconnect',()=>{lifeStarUI.reset();arcade.setConnected(false);truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
+socket.on('disconnect',()=>{tapMove.cancel();tapStart=null;lifeStarUI.reset();arcade.setConnected(false);truthCreatorBlueUI.reset();huntingTime.pause();if(selfId)showReconnect(true);finishReconnectAttempt?.();bossDialogueUI.reset();held.clear();touch={x:0,y:0};mouseAim=null;$('connection').textContent='다시 연결 중… 60초 안에 돌아올 수 있어요';$('connection').classList.remove('is-connected');controls();});
 socket.on('hunting:state',data=>{if(selfId)huntingTime.update(data);});
 socket.on('room:state',data=>{if(selfId){updateRoom(data);duelArcade.update();}});
 socket.on('cancer-duel:result',data=>{if(selfId)cancerDuelUI.result(data);});
@@ -1769,11 +1785,14 @@ const keys={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],Key
 function input(){
   if(!selfId||!socket.connected)return;
   let x=touch.x,y=touch.y;for(const code of held){x+=keys[code][0];y+=keys[code][1];}
+  if(x||y)tapMove.cancel();
+  else if(placing||document.hidden||document.querySelector('dialog:modal'))tapMove.cancel();
+  else {const direction=tapMove.steer(room?.players.find(p=>p.id===selfId),performance.now());x=direction.x;y=direction.y;}
   const magnitude=Math.hypot(x,y);if(magnitude>1){x/=magnitude;y/=magnitude;}
   if(x||y||last.x||last.y)socket.volatile.emit('player:input',{x,y});
   last={x,y};
 }
-function stop(){held.clear();touch={x:0,y:0};joystick.reset();input();}
+function stop(){tapMove.cancel();tapStart=null;held.clear();touch={x:0,y:0};joystick.reset();input();}
 window.addEventListener('keydown',e=>{
   if(!selfId||!keys[e.code]||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog:modal')||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.target.isContentEditable)return;
   if(e.repeat){e.preventDefault();return;}
@@ -1786,6 +1805,20 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
 // 네이티브 dialog는 닫히면 열었던 메뉴 버튼으로 초점을 돌립니다.
 // 마지막 창이 닫힌 뒤에는 맵으로 복귀해 방향키/Enter가 이전 메뉴를 다시 누르지 않게 합니다.
 document.addEventListener('close',e=>{if(e.target.tagName==='DIALOG'&&selfId&&!document.querySelector('dialog:modal'))$('world').focus({preventScroll:true});},true);
+$('world').addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
+  if(!e.isPrimary){tapStart=null;tapMove.cancel();return;}
+  tapStart={id:e.pointerId,x:e.clientX,y:e.clientY,at:performance.now()};
+});
+$('world').addEventListener('pointercancel',()=>{tapStart=null;});
+$('world').addEventListener('pointerup',e=>{
+  const start=tapStart;tapStart=null;
+  if(!start||start.id!==e.pointerId||performance.now()-start.at>400||Math.hypot(e.clientX-start.x,e.clientY-start.y)>12||!selfId||!socket.connected||placing||document.querySelector('dialog:modal'))return;
+  const point=world.canvasPoint(e),me=room?.players.find(p=>p.id===selfId);
+  if(world.currentMapId()===DEPARTMENT_ID&&world.planetAt(point))return;
+  closeMobileFunctions();tapMove.start(point,me,performance.now());input();
+});
+document.addEventListener('pointerdown',e=>{if(e.target.closest('button,input,select,textarea,dialog,[role="button"],#joystick')){tapMove.cancel();if(last.x||last.y)input();}},true);
 $('world').addEventListener('click',e=>{
   $('world').focus();
   if(!placing){

@@ -6,6 +6,7 @@ import {fillNewClass} from './class-setup.mjs';
 const key='isolated-student-help',game=createClassroomServer({teacherKey:key,studentHours:false});
 const {port}=await game.listen(),url=`http://127.0.0.1:${port}`,errors=[];
 const browser=await chromium.launch({headless:true,channel:process.platform==='win32'?'msedge':undefined,args:['--no-proxy-server']});
+const openDock=async(page,id)=>{if(await page.locator(id).isHidden())await page.locator('#mobile-functions-toggle').click();await page.locator(id).click();};
 const close=async page=>{for(let i=0;i<12&&await page.locator('dialog[open]').count();i++)await page.keyboard.press('Escape');};
 try{
  await mkdir('.local/student-help',{recursive:true});
@@ -14,7 +15,7 @@ try{
  const code=await teacher.locator('#room-code').textContent(),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(12000);
  await page.goto(url);await page.locator('#student-tab').click();await page.locator('#join-code').fill(code);await page.locator('#nickname').fill('도움검증');await page.locator('#student-pin').fill('1234');await page.locator('#student-form .submit').click();await page.locator('#lobby').waitFor({state:'hidden'});await close(page);
  for(const viewport of [{width:1280,height:900},{width:390,height:844},{width:320,height:568},{width:640,height:360}]){
-  await page.setViewportSize(viewport);await page.locator('#dock-help').click();
+  await page.setViewportSize(viewport);await openDock(page,'#dock-help');
   assert.equal(await page.locator('#classroom-help-dialog').getAttribute('data-page'),'topics');
   const topics=await page.locator('#classroom-help-tabs button').evaluateAll(buttons=>buttons.map(b=>b.getAttribute('aria-label')));
   assert.equal(topics.length,16);assert.deepEqual(topics,[...topics].sort((a,b)=>a.localeCompare(b,'ko')));
@@ -41,8 +42,8 @@ try{
   await page.locator('#classroom-help-search').fill('퀀텀바나나');assert.equal(await page.locator('.help-question').count(),0);
   await page.locator('#classroom-help-search').fill('<script>alert(42)</script>');assert.equal(await page.locator('#classroom-help-dialog script').count(),0);await page.locator('#classroom-help-clear').click();assert.equal(await page.locator('#classroom-help-search').inputValue(),'');
   await page.locator('#classroom-help-back').click();assert.equal(await page.locator('#classroom-help-dialog').getAttribute('data-page'),'topics');
-  await page.locator('#classroom-help-back').click();assert(await page.locator('#classroom-help-dialog').isHidden());assert.equal(await page.evaluate(()=>document.activeElement.id),'dock-help');
-  await page.locator('#dock-inventory').click();await page.locator('#inventory-dialog [data-student-help]').click();assert.equal(await page.locator('#classroom-help-title').innerText(),'가방과 아이템');
+  await page.locator('#classroom-help-back').click();assert(await page.locator('#classroom-help-dialog').isHidden());await page.waitForFunction(id=>document.activeElement.id===id,await page.locator('#mobile-functions-toggle').isVisible()?'mobile-functions-toggle':'dock-help');
+  await openDock(page,'#dock-inventory');await page.locator('#inventory-dialog [data-student-help]').click();assert.equal(await page.locator('#classroom-help-title').innerText(),'가방과 아이템');
   await page.locator('.help-question').first().click();await page.locator('#classroom-help-dialog .dialog-pinned-close').click();assert(await page.locator('#inventory-dialog').isVisible());assert.equal(await page.evaluate(()=>document.activeElement.dataset.studentHelp),'items');await close(page);
   console.log(`PASS ${viewport.width}: sorted topic grid, large question-only list, separate answer, back history/focus/search preservation, no tags, manual search, text safety, bounds and context return`);
  }

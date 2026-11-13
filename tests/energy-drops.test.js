@@ -11,6 +11,26 @@ const makeRoom=(players=[])=>({players:new Map(players.map(p=>[p.id,p]))});
 const monster=typeId=>({id:'monster-1',typeId,mapId:'star-origin-1',x:100,y:100});
 const fixedRoll=value=>(min,max)=>{assert.ok(value>=min&&value<max);return value;};
 
+test('별자리의 기원은 고유 재료와 보스 공통 보상을 떨어뜨리고 한 번만 수령한다',()=>{
+  for(const [energy,tickets] of [[1400,1],[1600,2]]){
+    const p=makePlayer('p',{inventory:[]}),room=makeRoom([p]);
+    const m=monster('forgotten-constellation'),contributions=new Map([['p',20000]]);
+    const drop=addEnergyDrop(room,m,contributions,100,fixedRoll(energy));
+    assert.equal(drop.total,energy);
+    const items=addBossDrops(room,m,contributions,100,fixedRoll(tickets));
+    assert.deepEqual(items.map(d=>d.itemId),['infinite-star-fragment','gold-big-bang-card',...Array(tickets).fill('exploration-ticket')]);
+    for(const d of [drop,...items]){
+      p.x=d.x;p.y=d.y;collectEnergyDrop(room,p,d.id,101);
+      assert.throws(()=>collectEnergyDrop(room,p,d.id,102));
+    }
+    assert.equal(p.cosmicEnergy,energy);
+    assert.deepEqual(p.inventory.map(i=>[i.id,i.quantity]),[['infinite-star-fragment',1],['gold-big-bang-card',1],['exploration-ticket',tickets]]);
+  }
+  const room=makeRoom([]),m=monster('forgotten-constellation');
+  assert.equal(addEnergyDrop(room,m,new Map()),null);
+  assert.deepEqual(addBossDrops(room,m,new Map()),[]);
+});
+
 test('각 몬스터 단계 보상의 양끝을 만들고 0이면 드랍하지 않는다',()=>{
   const cases=[['star-crab',1,2],['star-scorpion',6,10],['star-dragon',24,40],['grown-cool-star',60,100]];
   for(const [typeId,min,max] of cases)for(const total of [min,max]){

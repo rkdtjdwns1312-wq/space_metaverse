@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 export async function verifyControlsLayout(page,width){
  await page.setViewportSize({width,height:844});await page.waitForTimeout(120);
  assert.equal(await page.locator('#touch-controls').count(),0);
+ if(await page.locator('#mobile-functions-toggle').isVisible()){
+  const ids=['#touch-attack','#touch-skill','#touch-interact','#control-settings-open','#joystick','#vitals-hud'];
+  const boxes=await Promise.all(ids.map(id=>page.locator(id).boundingBox()));
+  for(let i=0;i<boxes.length;i++){const b=boxes[i];assert(b.x>=0&&b.y>=0&&b.x+b.width<=width+1&&b.y+b.height<=845,ids[i]);}
+  const [a,s,f,c,j,h]=boxes;assert(a.x+a.width<=s.x&&s.x+s.width<=f.x&&c.x+c.width<=j.x);assert(j.y+j.height<h.y);assert(Math.abs(a.y+a.height/2-c.y-c.height/2)<1);
+  assert.equal(await page.locator('.vitals-hp').evaluate(el=>el.getBoundingClientRect().top),await page.locator('.vitals-mp').evaluate(el=>el.getBoundingClientRect().top));
+  return;
+ }
+
  const ids=['.combat-buttons','#touch-interact','#joystick','.bottom-dock','#vitals-hud'];
  const boxes=[];
  for(const id of ids){if(await page.locator(id).isVisible())boxes.push([id,await page.locator(id).boundingBox()]);}
