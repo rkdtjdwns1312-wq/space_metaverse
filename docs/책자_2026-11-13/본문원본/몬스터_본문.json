@@ -1,0 +1,683 @@
+{
+  "monsters": [
+    {
+      "id": "baby-energy-star",
+      "name": "기운을 품은 아기별",
+      "mapName": "낙원의 갈림길",
+      "level": 2,
+      "hp": 100,
+      "mana": 0,
+      "power": 6,
+      "defense": 1,
+      "kind": "일반 몬스터",
+      "description": "따뜻한 빛과 서늘한 빛 사이에서 자신의 힘을 찾아가는 아기별. 반짝이며 몸을 굴려 가까이 다가와요.",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 6~10개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "warm-star",
+      "name": "따뜻한별",
+      "mapName": "태양의 낙원 1",
+      "level": 3,
+      "hp": 300,
+      "mana": 0,
+      "power": 10,
+      "defense": 2,
+      "kind": "일반 몬스터",
+      "description": "작은 햇살을 나누는 따뜻한별. 공격받으면 금빛으로 몸을 부딪쳐 반격해요.",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 24~40개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "grown-warm-star",
+      "name": "성장한따뜻한별",
+      "mapName": "태양의 낙원 2",
+      "level": 4,
+      "hp": 1000,
+      "mana": 0,
+      "power": 15,
+      "defense": 4,
+      "kind": "일반 몬스터",
+      "description": "별의 궤도를 품고 성장한 따뜻한별. 입에서 짧은 황금 불꽃을 내뿜어 반격해요.",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 60~100개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "cool-star",
+      "name": "서늘한별",
+      "mapName": "달의 낙원 1",
+      "level": 3,
+      "hp": 300,
+      "mana": 0,
+      "power": 10,
+      "defense": 2,
+      "kind": "일반 몬스터",
+      "description": "달빛을 머금은 서늘한별. 차분한 빛으로 가까운 모험가를 밀어내요.",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 24~40개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "grown-cool-star",
+      "name": "성장한서늘한별",
+      "mapName": "달의 낙원 2",
+      "level": 4,
+      "hp": 1000,
+      "mana": 0,
+      "power": 15,
+      "defense": 4,
+      "kind": "일반 몬스터",
+      "description": "달의 궤도에서 자라난 서늘한별. 입에서 짧은 푸른 냉기 숨결을 내뿜어 반격해요.",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 60~100개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "star-crab",
+      "name": "별게",
+      "mapName": "별의 시작점 1",
+      "level": 1,
+      "hp": 50,
+      "mana": 0,
+      "power": 3,
+      "defense": 0,
+      "kind": "일반 몬스터",
+      "description": "달과 별을 품은 파란 등껍질, 집게에서 작은 물결을 일으키는 별게",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 0~2개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "water-star",
+      "name": "물별이",
+      "mapName": "별의 시작점 1",
+      "level": 1,
+      "hp": 50,
+      "mana": 0,
+      "power": 3,
+      "defense": 0,
+      "kind": "일반 몬스터",
+      "description": "별무늬 물병을 메고 물보라를 뿌리는 작은 물별이",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 0~2개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "star-scorpion",
+      "name": "별전갈",
+      "mapName": "별의 시작점 2",
+      "level": 2,
+      "hp": 100,
+      "mana": 0,
+      "power": 6,
+      "defense": 1,
+      "kind": "일반 몬스터",
+      "description": "보랏빛 별가루를 품은 별전갈",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 6~10개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "chameleon-star",
+      "name": "카멜레별",
+      "mapName": "별의 시작점 2",
+      "level": 2,
+      "hp": 100,
+      "mana": 0,
+      "power": 6,
+      "defense": 1,
+      "kind": "일반 몬스터",
+      "description": "파스텔 초록빛으로 반짝이는 카멜레별",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 6~10개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "star-dragon",
+      "name": "별용이",
+      "mapName": "별의 시작점 3",
+      "level": 3,
+      "hp": 300,
+      "mana": 0,
+      "power": 10,
+      "defense": 2,
+      "kind": "일반 몬스터",
+      "description": "별빛 비늘을 두른 용이",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 24~40개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "star-phoenix",
+      "name": "별사조",
+      "mapName": "별의 시작점 3",
+      "level": 3,
+      "hp": 300,
+      "mana": 0,
+      "power": 10,
+      "defense": 2,
+      "kind": "일반 몬스터",
+      "description": "별의 불꽃을 품은 사조",
+      "attack": "공격받으면 가까이 다가와 반격해요. 공격할 때는 거리를 살펴요.",
+      "patterns": [],
+      "reward": "우주에너지 24~40개가 바닥 보상으로 나올 수 있어요. 개인마다 받는 양은 아니에요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js"
+      ]
+    },
+    {
+      "id": "noksera",
+      "name": "노크세라",
+      "mapName": "달의 낙원 3",
+      "level": 1,
+      "hp": 5000,
+      "mana": 100,
+      "power": 20,
+      "defense": 0,
+      "kind": "보스",
+      "description": "달빛의 뿔로 별의 꿈을 지키는 보스예요. 특수 공격은 뿔의 폭발과 달의 변화 두 가지예요.",
+      "attack": "가까이 2초 머무른 상대에게 기본 공격을 해요. 공격력 20이에요.",
+      "patterns": [
+        {
+          "name": "기본 공격",
+          "text": "몸 앞 공격 범위에 2초 머무르면 공격받아요. 그 뒤에도 붙어 있으면 1초 간격으로 공격할 수 있어요.",
+          "tip": "처음 2초는 공격 예고 원이 아니라 머문 시간이에요."
+        },
+        {
+          "name": "특수 공격 1 · 뿔의 폭발",
+          "text": "3초 예고 뒤 넓은 범위를 공격력 200%로 공격해요.",
+          "tip": "예고 원 밖으로 나가요."
+        },
+        {
+          "name": "특수 공격 2 · 달의 변화",
+          "text": "2초 시전 뒤 7초 차오름→6초 보름달→7초 기울어짐으로 바뀌어요. 보름달은 공격 피해를 돌려줘요.",
+          "tip": "보름달 동안 공격·스킬을 쉬고 끝난 뒤 다시 공격해요."
+        },
+        {
+          "name": "공통 규칙 · 마나",
+          "text": "특수 공격에는 마나가 필요해요. 최대 100이고 10초마다 10씩 회복해요.",
+          "tip": "마나가 다시 차면 특수 공격이 나올 수 있어요."
+        }
+      ],
+      "reward": "노크세라의 뿔 1개가 떨어져요. 우주에너지 400~600개, 1% 확률로 Lv4 아이템 1개도 나와요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "shared/boss-skills.js"
+      ]
+    },
+    {
+      "id": "leoon",
+      "name": "레오온",
+      "mapName": "태양의 낙원 3",
+      "level": 1,
+      "hp": 5000,
+      "mana": 100,
+      "power": 20,
+      "defense": 0,
+      "kind": "보스",
+      "description": "태양의 갈퀴로 낙원을 지키는 보스예요. 특수 공격은 포효와 연속 돌진 두 가지예요.",
+      "attack": "가까이 2초 머무른 상대에게 기본 공격을 해요. 공격력 20이에요.",
+      "patterns": [
+        {
+          "name": "기본 공격",
+          "text": "몸 앞 공격 범위에 2초 머무르면 공격받아요. 그 뒤에도 붙어 있으면 1초 간격으로 공격할 수 있어요.",
+          "tip": "처음 2초는 공격 예고 원이 아니라 머문 시간이에요."
+        },
+        {
+          "name": "특수 공격 1 · 포효",
+          "text": "몸이 1초 빛난 뒤 공격할 원들을 2초 보여 줘요. 원 안은 공격력 200% 피해예요.",
+          "tip": "빛나기 시작하면 바닥을 보고 원 밖으로 나가요."
+        },
+        {
+          "name": "특수 공격 2 · 연속 돌진",
+          "text": "발 구르기→2초 길 예고→돌진을 세 번 이어 해요. 돌진은 공격력 200% 피해예요.",
+          "tip": "길의 옆으로 피하고 다음 예고도 확인해요."
+        },
+        {
+          "name": "공통 규칙 · 마나",
+          "text": "특수 공격에는 마나가 필요해요. 최대 100이고 10초마다 10씩 회복해요.",
+          "tip": "마나가 다시 차면 특수 공격이 나올 수 있어요."
+        }
+      ],
+      "reward": "레오온의 갈퀴 1개가 떨어져요. 우주에너지 400~600개, 1% 확률로 Lv4 아이템 1개도 나와요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "shared/boss-skills.js",
+        "server/leoon-boss-skills.js"
+      ]
+    },
+    {
+      "id": "spirit-king",
+      "name": "성령의 왕",
+      "mapName": "별들의 낙원",
+      "level": 6,
+      "hp": 10000,
+      "mana": 100,
+      "power": 30,
+      "defense": 0,
+      "kind": "보스",
+      "description": "별들의 낙원을 지키는 Lv6 성령왕",
+      "attack": "2초 예고 뒤 공격력 30의 범위 공격을 해요.",
+      "patterns": [
+        {
+          "name": "기본 공격",
+          "text": "공격할 곳을 2초 예고한 뒤 공격력 100%로 공격해요.",
+          "tip": "바닥 예고 밖으로 이동해요."
+        },
+        {
+          "name": "별 지킴이",
+          "text": "지킴이를 최대 5마리 불러요. 지킴이는 왕의 체력을 한 번에 500 회복시켜요.",
+          "tip": "지킴이도 함께 상대해요."
+        },
+        {
+          "name": "튕기는 구슬",
+          "text": "구슬이 30초 동안 바닥 가장자리에서 튕겨요. 닿으면 바로 쓰러질 수 있어요.",
+          "tip": "구슬의 다음 방향을 보고 피하세요."
+        },
+        {
+          "name": "푸른 별 5개",
+          "text": "20초 안에 해체하지 않은 별 하나마다 같은 맵에 공격력 200% 피해를 줘요.",
+          "tip": "친구와 나누어 가까이 가서 조사해요."
+        }
+      ],
+      "reward": "성령왕의 영혼 1개가 떨어져요. 우주에너지 1,400~1,600개, 금색 카드 ‘빅뱅’ 1개, 탐사권 1~2개도 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/spirit-king-skills.js",
+        "server/spirit-blue-stars.js"
+      ]
+    },
+    {
+      "id": "dark-star",
+      "name": "태초의 검은별",
+      "mapName": "별들이 잠드는 곳 1",
+      "level": 6,
+      "hp": 10000,
+      "mana": 100,
+      "power": 30,
+      "defense": 0,
+      "kind": "보스",
+      "description": "돌이 된 별 석상에서 깨어난 검은 별",
+      "attack": "2초 조준 뒤 공격력 30의 구체를 날려요.",
+      "patterns": [
+        {
+          "name": "조준 구체",
+          "text": "2초 동안 방향을 겨눈 뒤 구체를 날려요. 맞으면 공격력 100% 피해예요.",
+          "tip": "발사 방향의 옆으로 피하세요."
+        },
+        {
+          "name": "무지개 길",
+          "text": "길은 30초 동안 남아요. 닿자마자, 계속 서 있으면 1초마다 공격력 100% 피해예요.",
+          "tip": "예뻐도 길 위에 서 있지 않아요."
+        },
+        {
+          "name": "다른 색 카드",
+          "text": "30초 안에 혼자 색이 다른 카드를 찾아요. 가까이서 F로 3초간 색을 보고, F를 한 번 더 누르면 바로 제거해요.",
+          "tip": "틀린 카드를 제거하면 본인, 시간 안에 못 찾으면 같은 맵의 전투 대상 모두가 쓰러질 수 있어요."
+        },
+        {
+          "name": "흡수와 위성",
+          "text": "체력 8천·6천·4천·2천에서 3초 흡수 예고가 나와요. 범위 안은 즉시 쓰러질 수 있고, 남은 위성은 접촉 즉시·1초마다 공격력 100% 피해예요.",
+          "tip": "큰 예고 원과 위성을 모두 피해요."
+        }
+      ],
+      "reward": "검은 보석 1개가 떨어져요. 우주에너지 1,400~1,600개, 금색 카드 ‘빅뱅’ 1개, 탐사권 1~2개도 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "shared/dark-star-skills.js",
+        "server/dark-star-skills.js",
+        "client/app.js"
+      ]
+    },
+    {
+      "id": "star-record",
+      "name": "별 기록의 근원",
+      "mapName": "별들이 잠드는 곳 2",
+      "level": 6,
+      "hp": 15000,
+      "mana": 100,
+      "power": 30,
+      "defense": 0,
+      "kind": "보스",
+      "description": "별 기록의 석상에서 깨어난 펼쳐진 황금 책",
+      "attack": "3초 간격으로 1초 예고 뒤 공격력 30의 세 갈래 빛을 쏴요.",
+      "patterns": [
+        {
+          "name": "세 갈래 빛",
+          "text": "1초 예고 뒤 세 방향으로 공격력 100%의 빛을 쏴요. 다른 문제 중에도 나올 수 있어요.",
+          "tip": "문제만 보지 말고 바닥도 살펴요."
+        },
+        {
+          "name": "행성 이름",
+          "text": "10초 안에 내게 나온 행성 이름을 두 번 차례로 입력해요.",
+          "tip": "채팅 입력창에 보이는 이름을 정확히 써요. 시간 초과는 쓰러질 수 있어요."
+        },
+        {
+          "name": "숫자 별",
+          "text": "30초 안에 다섯 별의 빈칸에 맞는 계산 기호를 골라요.",
+          "tip": "가까이 가서 조사해요. 오답은 본인, 미완성은 맵의 친구들이 쓰러질 수 있어요."
+        },
+        {
+          "name": "동서남북",
+          "text": "10초 안에 표시된 네 방향대로 움직여요. 틀리면 공격력 100% 피해와 함께 처음부터예요.",
+          "tip": "대각선 대신 한 방향씩 눌러요. 시간 초과는 쓰러질 수 있어요."
+        }
+      ],
+      "reward": "근원의 별 기록지 1개가 떨어져요. 우주에너지 1,400~1,600개, 금색 카드 ‘빅뱅’ 1개, 탐사권 1~2개도 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/star-record-challenge.js",
+        "server/star-record-math.js",
+        "server/star-record-flow.js"
+      ]
+    },
+    {
+      "id": "forgotten-constellation",
+      "name": "별자리의 기원",
+      "mapName": "별들이 잠드는 곳 3",
+      "level": 6,
+      "hp": 20000,
+      "mana": 100,
+      "power": 30,
+      "defense": 0,
+      "kind": "보스",
+      "description": "무한대 모양으로 이어진 별들이 석상에서 깨어난 태초의 별자리",
+      "attack": "5초마다 노란 별탄을 쏴요. 세 번 방향을 다시 겨누며, 맞으면 공격력 30의 피해예요.",
+      "patterns": [
+        {
+          "name": "별 잇기",
+          "text": "15초 안에 점이 1~5개인 별을 차례대로 이어요.",
+          "tip": "가까이 가서 조사해요. 미완성으로 끝나면 같은 맵에서 쓰러질 수 있어요."
+        },
+        {
+          "name": "별자리 이름",
+          "text": "10초 안에 두 초상의 별자리 이름을 맞혀요. 오답은 공격력 100% 피해예요.",
+          "tip": "채팅의 ‘전체’에서 답해요. 시간 초과는 같은 맵에서 쓰러질 수 있어요."
+        },
+        {
+          "name": "흰 별 모으기",
+          "text": "20초 동안 총 15개가 나와요. 각각 5초 안에 모으면 수집자 체력 완전 회복! 놓친 별마다 모두 공격력 100% 피해예요.",
+          "tip": "친구와 흩어져 가까이서 조사해요."
+        },
+        {
+          "name": "노랑·파랑 별탄",
+          "text": "30초 동안 2.5초마다 별탄을 쏴요. 노랑은 닿으면 공격력 100%, 파랑은 아무도 받지 않으면 모두 200% 피해예요.",
+          "tip": "노랑은 피하고 파랑은 몸으로 받아요. 다른 문제와 겹칠 수 있어요."
+        }
+      ],
+      "reward": "무한한 별의 파편 1개가 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/forgotten-constellation-links.js",
+        "server/forgotten-constellation-names.js",
+        "server/forgotten-constellation-gather.js",
+        "server/forgotten-homing-star.js",
+        "client/app.js",
+        "client/index.html",
+        "client/student-help-data.js"
+      ]
+    },
+    {
+      "id": "truth-creator",
+      "name": "진리의 창조자",
+      "mapName": "별들이 잠드는 곳 4",
+      "level": 7,
+      "hp": 30000,
+      "mana": 100,
+      "power": 40,
+      "defense": 0,
+      "kind": "보스",
+      "description": "찬란한 별들이 하나로 모여 깨어난 위엄 있는 창조자",
+      "attack": "3초 조준 뒤 공격력 40의 구체를 쏴요. 지나간 빛은 10초 남고 접촉 즉시·1초마다 피해를 줘요.",
+      "patterns": [
+        {
+          "name": "은하 구체",
+          "text": "큰 구체 8개가 차례로 맵을 가로질러요. 닿으면 바로 쓰러질 수 있어요.",
+          "tip": "들어오는 방향을 살펴 옆으로 피하세요."
+        },
+        {
+          "name": "파란 구체",
+          "text": "착지 뒤 20초 안에 3개를 모두 해제해요. 가까이서 조사하고 공격·스킬 8칸을 순서대로 눌러요.",
+          "tip": "처음 해제창을 열면 6초간 기본 구체·빛의 길·은하 구체 피해를 막아요. 틀리면 처음부터, 시간 초과는 모두 위험해요."
+        },
+        {
+          "name": "노란 결집체",
+          "text": "20초마다 체력 1,000인 결집체가 늘어요. 2초마다 남은 수만큼 체력이 줄고 방어로 줄일 수 없어요.",
+          "tip": "쌓이지 않게 공격해서 없애요."
+        },
+        {
+          "name": "붉은 추적 구체",
+          "text": "친구들을 따라오는 구체가 10초 유지돼요. 닿으면 바로 쓰러질 수 있어요.",
+          "tip": "계속 거리를 벌리고 다른 친구의 구체도 피해요."
+        }
+      ],
+      "reward": "진리를 담은 보석 1개가 떨어져요. 우주에너지 1,400~1,600개, 금색 카드 ‘빅뱅’ 1개, 탐사권 1~2개도 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/truth-creator-attack.js",
+        "server/truth-creator-galaxy.js",
+        "server/truth-creator-blue.js",
+        "shared/truth-creator-blue.js",
+        "server/truth-creator-sentries.js",
+        "server/truth-creator-chasers.js"
+      ]
+    },
+    {
+      "id": "truth-creator-star",
+      "name": "노란 별의 결집체",
+      "mapName": "별들이 잠드는 곳 4",
+      "level": 2,
+      "hp": 1000,
+      "mana": 0,
+      "power": 0,
+      "defense": 0,
+      "kind": "소환 몬스터",
+      "description": "진리의 창조자가 소환한 별빛 구체",
+      "attack": "표시 공격력은 0이지만, 남은 결집체 한 마리마다 2초에 체력 1씩 줄어요. 방어로 줄일 수 없어요.",
+      "patterns": [],
+      "reward": "처치 보상은 없어요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/truth-creator-sentries.js"
+      ]
+    },
+    {
+      "id": "star-guardian",
+      "name": "별 지킴이",
+      "mapName": "별들의 낙원",
+      "level": 3,
+      "hp": 300,
+      "mana": 10,
+      "power": 10,
+      "defense": 2,
+      "kind": "소환 몬스터",
+      "description": "성령의 왕이 부른 별빛 수호자. 가까운 대상을 따라가 먼저 공격해요.",
+      "attack": "먼저 다가와 공격해요. 마나 5를 써서 성령의 왕 체력을 최대 500 회복시키며, 다시 회복하려면 20초 기다려요.",
+      "patterns": [],
+      "reward": "처치 보상은 없어요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "server/spirit-king-skills.js"
+      ]
+    },
+    {
+      "id": "serena",
+      "name": "별의 시초신 세레나",
+      "mapName": "별의 시작점 4",
+      "level": 6,
+      "hp": 10000,
+      "mana": 100,
+      "power": 30,
+      "defense": 0,
+      "kind": "보스",
+      "description": "별의 여신 석상에서 깨어난 별의 시초신",
+      "attack": "2초 예고 뒤 공격력 30의 범위 공격을 해요.",
+      "patterns": [
+        {
+          "name": "기본 공격",
+          "text": "공격할 곳을 2초 예고한 뒤 공격력 100%로 공격해요.",
+          "tip": "예고 원 밖으로 나가요."
+        },
+        {
+          "name": "노란 별",
+          "text": "20초 동안 2초마다 서 있던 곳에 예고가 남고, 2초 뒤 터져요. 맞으면 바로 쓰러질 수 있어요.",
+          "tip": "멈추지 말고 지나간 자리로 바로 돌아가지 않아요."
+        },
+        {
+          "name": "검은 별",
+          "text": "10초 안에 친구와 다섯 번 닿아야 풀려요. 계속 붙어 있으면 한 번만 세어요.",
+          "tip": "같은 친구라도 떨어졌다 다시 닿을 수 있어요. 남은 횟수를 봐요."
+        },
+        {
+          "name": "빨간 별",
+          "text": "5초 안에 표시된 수만큼 친구 1~2명이 내 원 안에 동시에 모이면 풀려요.",
+          "tip": "본인은 인원에 안 들어가요. 시간이 끝나기 전에 모여요."
+        }
+      ],
+      "reward": "찬란한 별의 근원 1개가 떨어져요. 우주에너지 1,400~1,600개, 금색 카드 ‘빅뱅’ 1개, 탐사권 1~2개도 떨어져요.",
+      "sourceFiles": [
+        "shared/monsters.js",
+        "shared/config.js",
+        "server/monsters.js",
+        "server/energy-drops.js",
+        "shared/energy-drops.js",
+        "shared/serena-skills.js",
+        "server/serena-skills.js"
+      ]
+    }
+  ],
+  "general": [
+    "공격력 100%는 공격력만큼, 200%는 그 두 배예요. 실제 줄어드는 체력은 방어와 보호 효과에 따라 달라질 수 있어요.",
+    "보스는 마나 최대 100이며 10초마다 10을 회복해요. 마나와 기다리는 시간이 충분해야 특수 공격을 써요.",
+    "일반 몬스터는 Lv1~2가 10초, Lv3가 15초, Lv4가 20초 뒤 다시 나타나요.",
+    "노크세라·레오온·성령의 왕은 처치 다음 날 한국 시각 오전 7시에 돌아와요. 세레나는 다음 날 오전 7시에 석상으로 돌아와요. 잠드는 곳 1~4 보스는 소환·처치 뒤 처음 오는 오전 7시에 석상으로 돌아와요.",
+    "보상 수량은 처치 한 번에 바닥으로 나오는 총량이며, 모든 친구에게 각각 보장되는 양이 아니에요. 가장 많은 피해를 준 친구가 우선권을 얻고, 파티라면 같은 맵에 접속 중인 파티원에게 에너지를 나눠요. 아이템은 파티 주사위로 한 명이 받아요. 30초 뒤에는 누구나 주울 수 있고, 60초 뒤 사라져요.",
+    "조건에 맞는 공개 조합법 아이템이 준비된 레벨에서는 1% 확률로 조합법이 떨어질 수 있어요. 비밀 조합 재료는 이 책에 싣지 않아요.",
+    "별들이 잠드는 곳 1~4는 학생 Lv4부터 들어가요. 4번은 3번 문으로만 가며 노크세라·레오온·성령의 왕·태초의 검은별·별 기록의 근원·세레나의 처치 기록 등이 필요해요.",
+    "조사는 기본 F 키예요. 키를 바꾸었다면 바꾼 키를 사용하고, 화면의 조사 단추로도 할 수 있어요."
+  ],
+  "cautions": [
+    "노크세라·레오온의 내부 level 값은 1입니다. client/world.js는 보스 이름만 출력하므로 화면에 Lv1 또는 Lv5가 보인다고 쓰면 안 됩니다. 본문 레벨은 보스(화면 레벨 미표시)로 설명하는 편이 정확합니다.",
+    "별자리의 기원은 server/energy-drops.js와 shared/energy-drops.js상 우주에너지 보상 항목이 없어 현재 재료 1개만 확정 보상입니다. 다른 Lv6 보스와 동일 보상을 추정하지 마세요.",
+    "즉시 쓰러지는 패턴도 천칭 보호·진리의 기록 1회 보호막 등 예외가 있습니다. 그래서 본문은 쓰러질 수 있어요로 표현했습니다. 별자리 잇기·이름 시간 초과는 천칭 보호를 건너뛰지만 진리의 기록 보호막은 적용됩니다.",
+    "별 지킴이 MP는 일반 몬스터 기본값 0이 아니라 소환 시 10입니다. 노란 결집체 공격력 0과 별개로 방어 무시 맵 피해가 있습니다.",
+    "일반 몬스터의 외형 설명은 현재 MONSTER_TYPES 문구를 사용했습니다. 보스 설명의 Lv6 표기는 내부 데이터와 일치합니다.",
+    "2026-11-13 작업 폴더 공개 소스 기준이며 비공개 교실 자료·조합 재료표는 읽지 않았습니다.",
+    "행성 이름 문제는 채팅 입력창으로 답하며 채널 제한은 없습니다. 별자리 이름 문제는 표시명 ‘전체’(channel=map)를 사용합니다. 표시명 ‘행성’은 channel=department로 정답 채널이 아닙니다. general의 입장·재등장 근거는 shared/sleeping-stars.js, shared/truth-creator.js, server/boss-lifecycle.js입니다.",
+    "레오온·노크세라는 특수 공격이 각각 2개입니다. 4개 안내칸은 기본 공격·특수 공격 2개·공통 마나 규칙으로 나누었으며 스킬 4종이 아닙니다. 2초는 몸 앞 공격 범위 체류 조건이고 이후 공격 간격은 1초입니다(server/monsters.js).",
+    "검은별 퍼즐 카드의 두 번째 F는 확인창 없이 즉시 제거합니다(client/app.js interactDarkCard). 별도의 client/star-card-ui.js 종료 확인창·예는 플레이어 별카드 기능이므로 혼동하지 마세요."
+  ]
+}

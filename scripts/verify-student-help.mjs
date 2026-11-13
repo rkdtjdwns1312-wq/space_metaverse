@@ -29,21 +29,21 @@ try{
   await page.locator('#classroom-help-back').click();assert.equal(await page.evaluate(()=>document.activeElement.id),questionId);
   await page.locator('#classroom-help-back').click();assert.equal(await page.locator('#classroom-help-dialog').getAttribute('data-page'),'topics');assert.equal(await page.evaluate(()=>document.activeElement.id),'help-tab-craft');
   await page.locator('#classroom-help-find').click();
-  for(const [query,id] of [['숙제는 어떻게 내요?','homework'],['레벨업','level'],['장비는 어떻게 껴요?','equipment'],['별부스러기','crumbs'],['미션 보상','mission-reward'],['조합 실패','craft-failed']]){
+  for(const [query,id] of [['숙제는 어떻게 내요?','homework'],['레벨업','level'],['장비는 어떻게 껴요?','equipment'],['별부스러기','crumbs'],['미션 보상','mission-reward'],['조합 실패','craft-failed'],['다른 색 카드','dark-star-card'],['파란 구체','truth-blue-input'],['댓글 확인','star-record-reply'],['별 제작소','station-playground-route']]){
    await page.locator('#classroom-help-search').fill(query);
    const results=await page.locator('.help-question').evaluateAll(els=>els.slice(0,3).map(e=>e.dataset.answerId));assert(results.includes(id),JSON.stringify({query,results}));
    await page.locator(`button[data-answer-id="${id}"]`).click();assert(await page.locator('.help-answer-body').isVisible());
    await page.locator('#classroom-help-back').click();assert.equal(await page.locator('#classroom-help-search').inputValue(),query);
   }
-  for(const id of ['classroom-help-back','classroom-help-close']){const bounds=await page.locator('#'+id).boundingBox();assert(bounds.x>=0&&bounds.y>=0&&bounds.y+bounds.height<=viewport.height);}
-  const back=await page.locator('#classroom-help-back').boundingBox(),closeButton=await page.locator('#classroom-help-close').boundingBox();assert(back.x<closeButton.x);
+  for(const id of ['classroom-help-back','classroom-help-dialog .dialog-pinned-close']){const bounds=await page.locator('#'+id).boundingBox();assert(bounds.x>=0&&bounds.y>=0&&bounds.y+bounds.height<=viewport.height);}
+  const back=await page.locator('#classroom-help-back').boundingBox(),closeButton=await page.locator('#classroom-help-dialog .dialog-pinned-close').boundingBox();assert(back.x<closeButton.x||back.y>closeButton.y);
   assert(await page.locator('#classroom-help-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   await page.locator('#classroom-help-search').fill('퀀텀바나나');assert.equal(await page.locator('.help-question').count(),0);
   await page.locator('#classroom-help-search').fill('<script>alert(42)</script>');assert.equal(await page.locator('#classroom-help-dialog script').count(),0);await page.locator('#classroom-help-clear').click();assert.equal(await page.locator('#classroom-help-search').inputValue(),'');
   await page.locator('#classroom-help-back').click();assert.equal(await page.locator('#classroom-help-dialog').getAttribute('data-page'),'topics');
   await page.locator('#classroom-help-back').click();assert(await page.locator('#classroom-help-dialog').isHidden());assert.equal(await page.evaluate(()=>document.activeElement.id),'dock-help');
   await page.locator('#dock-inventory').click();await page.locator('#inventory-dialog [data-student-help]').click();assert.equal(await page.locator('#classroom-help-title').innerText(),'가방과 아이템');
-  await page.locator('.help-question').first().click();await page.locator('#classroom-help-close').click();assert(await page.locator('#inventory-dialog').isVisible());assert.equal(await page.evaluate(()=>document.activeElement.dataset.studentHelp),'items');await close(page);
+  await page.locator('.help-question').first().click();await page.locator('#classroom-help-dialog .dialog-pinned-close').click();assert(await page.locator('#inventory-dialog').isVisible());assert.equal(await page.evaluate(()=>document.activeElement.dataset.studentHelp),'items');await close(page);
   console.log(`PASS ${viewport.width}: sorted topic grid, large question-only list, separate answer, back history/focus/search preservation, no tags, manual search, text safety, bounds and context return`);
  }
  await page.setViewportSize({width:1280,height:900});await page.locator('#map-overview').click();await page.locator('#map-info-current').click();await page.screenshot({path:'.local/student-help/map-guide.png'});
