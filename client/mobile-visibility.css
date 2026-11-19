@@ -1,0 +1,61 @@
+/* Mobile-only refinements: preserve the clock, combat and joystick anchors. */
+#tutorial-current-hint{display:none}
+@media(max-width:520px),(max-width:960px) and (pointer:coarse){
+ body.joined #journey-hud{width:min(370px,calc(100vw - 16px));min-width:0;padding:6px 9px;max-height:none}
+ body.joined #journey-hud .journey-heading{flex-wrap:nowrap;gap:6px}
+ body.joined #journey-hud .journey-heading strong{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+ body.joined #journey-hud .journey-heading button{flex:0 0 auto;min-width:44px;min-height:44px;padding:6px;font-size:13px}
+ body.joined #journey-instruction{display:none}
+ body.joined #tutorial-current-hint{display:block;padding:10px;border-radius:10px;background:#f2eaf8;line-height:1.6}
+ body.joined #tutorial-current-hint:empty{display:none}
+ body.joined #journey-claim:not([hidden]){display:block;min-height:44px;margin-top:6px}
+ body.joined #inventory-dialog #bag-panel,body.joined #inventory-dialog #hint{flex:0 0 auto}
+ body.joined #inventory-dialog #hint{margin-top:12px}
+ body.joined dialog.has-dialog-header .dialog-header-row{gap:6px 8px!important;margin-bottom:10px;padding-top:8px!important;padding-bottom:8px!important}
+ body.joined dialog.has-dialog-header .dialog-header-row h2{flex:1 1 0!important;min-width:0;font-size:19px!important}
+ body.joined dialog.has-dialog-header .dialog-header-row > :is(.student-help-heading,div:has(h2)){flex:1 1 0!important;min-width:0}
+ body.joined dialog.has-dialog-header .dialog-header-row :is(button,[role="button"]){min-height:44px}
+ body.joined dialog.has-dialog-header .dialog-pinned-close{min-width:60px;min-height:44px;padding:8px 12px!important}
+ body.joined #chat-dialog .chat-titlebar{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:6px!important;margin:0 0 8px;padding:0 0 8px!important}
+ body.joined #chat-dialog[open]{z-index:40}
+ body.joined #chat-dialog .chat-titlebar h2{grid-row:1;grid-column:1;font-size:17px!important}
+ body.joined #chat-dialog .chat-window-actions{grid-row:1;grid-column:2;flex-wrap:nowrap;gap:4px}
+ body.joined #chat-dialog .chat-window-actions button{min-width:44px;padding:4px}
+ body.joined #chat-dialog .chat-tabs{grid-row:2;grid-column:1 / -1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ body.joined #chat-dialog .chat-tabs button{font-size:14px!important;padding:6px 2px;min-width:0}
+ body.joined #chat-dialog #chat-status{display:none}
+ body.joined #chat-dialog #chat-input{font-size:16px;min-height:44px}
+ body.joined #chat-dialog #chat-panel{padding:10px}
+ body.joined #control-keyboard-options{margin:12px 0;border:1px solid #d7c8e3;border-radius:10px;padding:10px}
+ body.joined #control-keyboard-options summary{display:list-item;min-height:44px;box-sizing:border-box;padding:10px 0;cursor:pointer}
+ body.joined #control-keyboard-options p{font-size:14px}
+ body.joined #control-settings-dialog:has(#control-keyboard-options:not([open])) #control-settings-default{display:none}
+ body.joined #control-settings-dialog .render-quality-field{margin-top:8px}
+ body.joined #control-settings-message:empty{display:none}
+ body.joined #control-settings-dialog .control-setting-help>summary{display:list-item;min-height:44px;padding:10px 0;box-sizing:border-box;color:#70578b;cursor:pointer}
+ body.joined #control-settings-dialog footer{position:sticky;bottom:-16px;padding:10px 0;background:#f3edf7;z-index:3}
+ body.joined .toast{pointer-events:none}
+ /* The keyboard must not cover writing controls. Pinch zoom stays untouched. */
+ body.joined.mobile-keyboard-open dialog[open]{top:calc(var(--mobile-viewport-top) + 8px)!important;bottom:auto!important;margin-top:0!important;max-height:calc(var(--mobile-viewport-height) - 16px)!important}
+ body.joined.mobile-keyboard-open #chat-dialog{height:calc(var(--mobile-viewport-height) - 16px)!important}
+ body.joined.mobile-keyboard-open :is(#journey-hud,#joystick,.combat-buttons,#interaction-controls,#mobile-functions-toggle,#mobile-status-rail){visibility:hidden}
+}
+@media(max-width:520px) and (orientation:portrait),(max-width:960px) and (pointer:coarse) and (orientation:portrait){
+ /* Compact art, full finger targets; a short column avoids joystick overlap. */
+ body.joined #interaction-controls{flex-direction:column;gap:6px}
+ body.joined #interaction-controls #touch-interact,body.joined #control-settings-open{width:44px;min-width:44px;max-width:44px;height:44px;min-height:44px;padding:10px}
+ body.joined.mobile-menu-open #bottom-dock>.dock-button{flex:0 0 44px;min-height:44px}
+ body.joined #bottom-dock{overscroll-behavior:contain;touch-action:pan-y}
+ body.joined #mobile-status-rail{width:44px;gap:6px;overscroll-behavior:contain;touch-action:pan-y}
+ body.joined #mobile-status-rail :is(.dock-status-button,#student-reminders-toggle,#new-mission-notice){width:44px;height:44px;min-width:44px;min-height:44px;max-width:44px}
+ body.joined #mobile-status-rail #student-reminders-list{left:60px;width:min(280px,calc(100vw - 76px))}
+ body.joined .combat-buttons>.auxiliary-skills{--aux-size:44px}
+ body.joined .combat-buttons>.auxiliary-skills>.auxiliary-skill{left:calc(var(--portrait-action-size)*1.5 + 6px)!important;top:-30px!important;font-size:12px}
+ body.joined #interact-prompt:not([hidden]){left:60px!important;top:auto!important;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 218px);transform:none!important;width:calc(100vw - 136px);max-width:280px;min-height:44px;padding:7px 9px;box-sizing:border-box}
+ body.joined #interact-prompt small{font-size:14px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;max-width:none;margin:0}
+ body.joined #interact-prompt span{display:none}
+}
+@media(orientation:landscape) and (max-height:600px) and (pointer:coarse){
+ body.joined #chat-dialog{top:8px;max-height:calc(100dvh - 16px);height:calc(100dvh - 16px)}
+ body.joined #chat-dialog #chat-context,body.joined #chat-dialog #chat-rate-hint{display:none}
+}

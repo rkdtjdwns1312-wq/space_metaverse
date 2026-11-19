@@ -47,7 +47,9 @@ export function createJoystick({onMove, onStop} = {}) {
   }
 
   joystick.addEventListener('pointerdown', event => {
-    if (activePointerId !== null || event.isPrimary === false || event.button !== 0) return;
+    // A second finger may steer while the first is on attack/skill.
+    // The joystick still owns only one pointer and ignores other releases.
+    if (activePointerId !== null || event.button !== 0) return;
     event.preventDefault();
     activePointerId = event.pointerId;
     joystick.setPointerCapture(event.pointerId);

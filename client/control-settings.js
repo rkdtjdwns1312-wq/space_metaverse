@@ -8,6 +8,12 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
   const dialog=document.createElement('dialog');dialog.id='control-settings-dialog';dialog.setAttribute('aria-labelledby','control-settings-title');
   dialog.innerHTML='<header><h2 id="control-settings-title">조작 키 설정</h2><button type="button" class="secondary" id="control-settings-close">닫기</button></header><p>자주 쓰는 세 가지 키를 알파벳 또는 키보드 윗줄 1~6으로 바꿔 보세요.</p><div id="control-key-fields"></div><p class="muted">컴퓨터에서 게임 화면 왼쪽 클릭은 기본공격, 오른쪽 클릭은 스킬이에요.<br>이동 W·A·S·D와 파티 R은 그대로 사용해요. 1을 선택하면 별자리초월은 화면 버튼으로 사용할 수 있어요.<br>설정은 이 기기의 현재 브라우저에 저장돼요.</p><p id="control-settings-message" role="status"></p><footer><button type="button" class="secondary" id="control-settings-default">기본값 Q · E · F</button><button type="button" class="primary" id="control-settings-save">저장</button></footer>';
   document.body.append(dialog);
+  const keyboard=document.createElement('details');keyboard.id='control-keyboard-options';keyboard.open=true;
+  const keyboardTitle=document.createElement('summary');keyboardTitle.textContent='키보드를 사용할 때 · 키 설정';keyboard.append(keyboardTitle);
+  keyboard.append(dialog.querySelector('header+p'),dialog.querySelector('#control-key-fields'),dialog.querySelector('p.muted'));
+  dialog.querySelector('header').after(keyboard);
+  const mobile=matchMedia('(max-width:520px),(max-width:960px) and (pointer:coarse)');
+  const syncKeyboard=()=>{keyboard.open=!mobile.matches;for(const help of dialog.querySelectorAll('.control-setting-help'))help.open=!mobile.matches;};mobile.addEventListener('change',syncKeyboard);syncKeyboard();
   let qualitySelect,friendWalkToggle,steadyWalkToggle;
   if(quality){
     dialog.querySelector('h2').textContent='조작 · 화면 설정';
@@ -18,7 +24,8 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
     }
     row.append(qualitySelect);dialog.querySelector('footer').before(row);
     const hint=document.createElement('p');hint.className='muted';hint.textContent='자동은 화면이 느리면 단계별로 품질을 낮춰요. 저사양은 초당 30장으로 장식과 친구 걷기 모션을 줄여요. 중사양은 초당 60장으로 부드러운 이동을 유지하며 선명도와 장식을 조금 줄여요. 고사양은 초당 60장으로 가장 선명하고 풍부하게 표시해요. 이동·공격 속도와 위험 표시는 모든 설정에서 같아요.';
-    row.after(hint);
+    const qualityHelp=document.createElement('details');qualityHelp.className='control-setting-help';qualityHelp.open=!mobile.matches;
+    const qualityHelpTitle=document.createElement('summary');qualityHelpTitle.textContent='화면 품질 설명';qualityHelp.append(qualityHelpTitle,hint);row.after(qualityHelp);
     if(steadyWalk){
       const row=document.createElement('label');row.className='friend-walk-reduction-field';
       steadyWalkToggle=document.createElement('input');steadyWalkToggle.type='checkbox';steadyWalkToggle.id='steady-walk-toggle';
@@ -30,7 +37,7 @@ export function createControlSettings({stop,onChange=()=>{},quality,friendWalkRe
       friendWalkToggle=document.createElement('input');friendWalkToggle.type='checkbox';friendWalkToggle.id='friend-walk-reduction-toggle';
       const motionRow=document.createElement('label');motionRow.className='friend-walk-reduction-field';motionRow.htmlFor=friendWalkToggle.id;
       const motionText=document.createElement('span');motionText.textContent='친구 걷기 모션 줄이기';motionRow.append(motionText,friendWalkToggle);
-      hint.after(motionRow);
+      qualityHelp.after(motionRow);
       const motionHint=document.createElement('p');motionHint.className='muted';motionHint.textContent='켜면 친구는 위치와 방향만 움직이고, 내 걷기 모션은 유지해요. 저사양에서는 이 옵션과 관계없이 같은 방식으로 표시해요.';
       motionRow.after(motionHint);
     }

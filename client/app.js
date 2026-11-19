@@ -1,4 +1,5 @@
 import {createTapMove} from './tap-move.js';
+import {installMobileViewport} from './mobile-viewport.js';
 import {pinDialogHeader} from './dialog-layout.js';
 import './dialog-close-bootstrap.js';
 import {createStudentReminders} from './student-reminders.js';
@@ -109,6 +110,7 @@ function updateControlAlignment(){
   }
 }
 const mobileFunctions=document.createElement('button');mobileFunctions.id='mobile-functions-toggle';mobileFunctions.type='button';mobileFunctions.textContent='기능';mobileFunctions.setAttribute('aria-controls','bottom-dock');mobileFunctions.setAttribute('aria-expanded','false');document.body.append(mobileFunctions);
+installMobileViewport();
 const closeMobileFunctions=()=>{document.body.classList.remove('mobile-menu-open');mobileFunctions.setAttribute('aria-expanded','false');};
 mobileFunctions.onclick=()=>{stop();const open=document.body.classList.toggle('mobile-menu-open');mobileFunctions.setAttribute('aria-expanded',String(open));};
 $('bottom-dock').addEventListener('click',e=>{if(e.target.closest('.dock-button'))closeMobileFunctions();});

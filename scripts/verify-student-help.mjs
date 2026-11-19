@@ -47,7 +47,7 @@ try{
   await page.locator('.help-question').first().click();await page.locator('#classroom-help-dialog .dialog-pinned-close').click();assert(await page.locator('#inventory-dialog').isVisible());assert.equal(await page.evaluate(()=>document.activeElement.dataset.studentHelp),'items');await close(page);
   console.log(`PASS ${viewport.width}: sorted topic grid, large question-only list, separate answer, back history/focus/search preservation, no tags, manual search, text safety, bounds and context return`);
  }
- await page.setViewportSize({width:1280,height:900});await page.locator('#map-overview').click();await page.locator('#map-info-current').click();await page.screenshot({path:'.local/student-help/map-guide.png'});
+ await page.setViewportSize({width:1280,height:900});if(await page.locator('#map-overview').isHidden())await page.locator('#minimap-toggle').click();await page.locator('#map-overview').click();await page.locator('#map-info-current').click();await page.screenshot({path:'.local/student-help/map-guide.png'});
  await page.locator('#map-guide-dialog .map-help-links button').first().click();assert(await page.locator('#classroom-help-dialog').isVisible());assert.equal(await page.locator('#map-guide-dialog').isVisible(),false);await page.keyboard.press('Escape');
  assert.deepEqual(errors,[]);console.log('PASS map-context link and browser errors 0; no real class data used');
 }finally{await browser.close();await game.close();}

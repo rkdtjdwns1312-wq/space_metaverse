@@ -35,6 +35,7 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
  const dialog=document.createElement('dialog');dialog.id='tutorial-dialog';dialog.setAttribute('aria-labelledby','tutorial-title');
  dialog.innerHTML='<p id="tutorial-progress"></p><h2 id="tutorial-title"></h2><p id="tutorial-body"></p><ol id="tutorial-goals"></ol><p class="journey-reward">미션 보상 · 별 파편 1개</p><p id="tutorial-error" role="alert"></p><div class="dialog-actions"><button id="tutorial-later" class="secondary" type="button">게임에서 진행하기</button><button id="tutorial-next" class="secondary" type="button">안내 시작하기</button></div>';
  document.body.append(dialog);
+ const currentHint=document.createElement('p');currentHint.id='tutorial-current-hint';$('tutorial-body').after(currentHint);
  const hud=document.createElement('aside');hud.id='journey-hud';hud.hidden=true;hud.setAttribute('aria-label','첫 여행 미션 안내');
  hud.innerHTML='<div class="journey-heading"><strong id="journey-heading"></strong><button id="journey-details" class="small secondary" type="button">미션 보기</button><button id="journey-hide" class="small secondary" type="button" aria-label="미션 안내 숨기기" title="미션 안내 숨기기">×</button></div><p id="journey-instruction" aria-live="polite"></p><button id="journey-claim" class="secondary" type="button" hidden>완료 · 별 파편 1개 받기</button>';
  document.querySelector('.map-wrap').append(hud);
@@ -70,12 +71,13 @@ export function createTutorialUI({request,stop,toast,getRoom,getSelfId,screenPoi
  $('journey-claim').onclick=claim;$('journey-details').onclick=()=>open();
  $('tutorial-later').onclick=()=>dialog.close();$('tutorial-next').onclick=()=>{const step=current();if(step&&step.goals.every(g=>done(g.id)))claim();else dialog.close();};
  function render(){
-  const p=me(),step=current(),journey=p?.journey;hud.hidden=hudDismissed||p?.role!=='student'||!step;
+  const p=me(),step=current(),journey=p?.journey;hud.hidden=hudDismissed||p?.role!=='student'||!step;if(!step)currentHint.textContent='';
   if(!step){clearHighlight();if(dialog.open){$('tutorial-progress').textContent='첫 여행 미션 · 모두 완료';$('tutorial-title').textContent='우주 교실의 탐험가가 되었어요!';$('tutorial-body').textContent='다섯 미션을 모두 마쳤어요. 이제 배운 기능으로 친구들과 즐겁게 활동해 보세요.';$('tutorial-goals').replaceChildren();$('tutorial-next').hidden=true;dialog.querySelector('.journey-reward').hidden=true;}return;}
   const ready=step.goals.every(g=>done(g.id));goal=step.goals.find(g=>!done(g.id))?.id||null;
   const key=JSON.stringify([journey,busy]);if(signature===key)return;signature=key;
   $('journey-heading').textContent=`첫 여행 ${step.stage}/5 · ${step.title}`;
   $('journey-instruction').textContent=ready?'조건을 모두 달성했어요. 완료 버튼으로 보상을 받으면 다음 미션이 열려요.':HELP[goal]||step.description;
+  currentHint.textContent=$('journey-instruction').textContent;
   $('journey-claim').hidden=!ready;$('journey-claim').disabled=busy;
   $('tutorial-progress').textContent=`첫 여행 미션 · ${step.stage} / 5`;$('tutorial-title').textContent=step.title;$('tutorial-body').textContent=step.description;
   $('tutorial-goals').replaceChildren(...step.goals.map(g=>{const li=document.createElement('li');li.textContent=(done(g.id)?'완료 · ':'도전 · ')+g.label;li.classList.toggle('is-done',done(g.id));return li;}));

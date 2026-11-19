@@ -7,7 +7,7 @@ export async function verifyControlsLayout(page,width){
   const ids=['#touch-attack','#touch-skill','#touch-interact','#control-settings-open','#joystick','#vitals-hud'];
   const boxes=await Promise.all(ids.map(id=>page.locator(id).boundingBox()));
   for(let i=0;i<boxes.length;i++){const b=boxes[i];assert(b.x>=0&&b.y>=0&&b.x+b.width<=width+1&&b.y+b.height<=845,ids[i]);}
-  const [a,s,f,c,j,h]=boxes;assert(a.x+a.width<=s.x&&s.x+s.width<=f.x&&c.x+c.width<=j.x);assert(j.y+j.height<h.y);assert(Math.abs(a.y+a.height/2-c.y-c.height/2)<1);
+  const [a,s,f,c,j,h]=boxes;assert(a.x+a.width<=s.x&&s.x+s.width<=f.x&&c.x+c.width<=j.x);assert(j.y+j.height<h.y);assert(f.y+f.height<c.y);assert.equal(f.x,c.x);assert.equal(f.width,44);assert.equal(c.height,44);
   assert.equal(await page.locator('.vitals-hp').evaluate(el=>el.getBoundingClientRect().top),await page.locator('.vitals-mp').evaluate(el=>el.getBoundingClientRect().top));
   return;
  }

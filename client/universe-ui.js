@@ -49,6 +49,9 @@ export function createUniverseUI({getRoom,getSelfId,stop,onAreaView,onMapInfo,re
     $('minimap-toggle').textContent=open?'맵 닫기':'지도 보기';
     $('minimap-toggle').setAttribute('aria-expanded',String(open));
   }
+  const compactMap=matchMedia('(max-width:520px),(max-width:960px) and (pointer:coarse)');
+  if(compactMap.matches)setMinimapOpen(false);
+  compactMap.addEventListener('change',event=>{if(event.matches)setMinimapOpen(false);});
   const me=()=>getRoom()?.players.find(p=>p.id===getSelfId());
   const planets=()=>getRoom()?.planets||[];
   const map=id=>forgottenConstellationMap(truthCreatorMap(starRecordMap(darkStarMap(serenaMap(mapOf(id,planets()),getRoom()?.serena),getRoom()?.darkStar),getRoom()?.starRecord),getRoom()?.truthCreator),getRoom()?.forgottenConstellation);
