@@ -1,5 +1,11 @@
 /* Mobile-only refinements: preserve the clock, combat and joystick anchors. */
 #tutorial-current-hint{display:none}
+@media(max-width:520px),(pointer:coarse),(any-pointer:coarse){
+ /* Game surfaces are controls, not selectable text; writing fields stay native. */
+ body.joined :is(.map-wrap,#classroom-clock,#mobile-hunting-row,#world-navigation,#journey-hud,#interact-prompt,#interaction-controls,.combat-buttons,#joystick,#vitals-hud,#bottom-dock,#mobile-functions-toggle,#mobile-status-rail,#chat-window-toggle,#mobile-audio-mute),
+ body.joined :is(.map-wrap,#classroom-clock,#mobile-hunting-row,#world-navigation,#journey-hud,#interact-prompt,#interaction-controls,.combat-buttons,#joystick,#vitals-hud,#bottom-dock,#mobile-functions-toggle,#mobile-status-rail,#chat-window-toggle,#mobile-audio-mute) *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+ body.joined :is(input,textarea,[contenteditable="true"]){-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default}
+}
 @media(max-width:520px),(max-width:960px) and (pointer:coarse){
  body.joined #journey-hud{width:min(370px,calc(100vw - 16px));min-width:0;padding:6px 9px;max-height:none}
  body.joined #journey-hud .journey-heading{flex-wrap:nowrap;gap:6px}
