@@ -1,4 +1,5 @@
 import {drawPlanetDesign} from '/shared/planet-design.js';
+import {mapImage,startMapImage,decodeMapImages} from './map-image.js';
 // 부서의 고정 종류 ID로 그림을 고릅니다. 이름을 바꿔도 소속·규칙·기존 그림 계열은 유지됩니다.
 export const DEPARTMENT_VISUAL_SCALE=Math.SQRT2; // 화면 면적 200% = 가로·세로 각각 √2.
 export const DEPARTMENT_ART=Object.freeze(Object.fromEntries([
@@ -19,12 +20,12 @@ function customSurface(design){
 function imageFor(id){
   if(!DEPARTMENT_ART[id])return null;
   if(!images.has(id)&&typeof Image!=='undefined'){
-    const image=new Image();image.src=DEPARTMENT_ART[id].src;images.set(id,image);
+    images.set(id,mapImage(DEPARTMENT_ART[id].src));
   }
-  return images.get(id);
+  return startMapImage(images.get(id));
 }
 export async function preloadDepartmentArt(ids=Object.keys(DEPARTMENT_ART)){
-  await Promise.all(ids.map(id=>imageFor(id)?.decode()));
+  await decodeMapImages(ids.map(imageFor));
 }
 export function departmentVisualBox(o){
   const radius=Number(o.radius)||36,width=radius*2.65*DEPARTMENT_VISUAL_SCALE,height=radius*3.15*DEPARTMENT_VISUAL_SCALE;

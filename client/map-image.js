@@ -1,5 +1,11 @@
 // Keep the renderer's Image, but defer network/decode work until its map is used.
 const sources=new WeakMap();
+const failedImages=new Set();
+// Only an explicit foreground retry calls this. Do not retry from drawing loops.
+export function resetFailedMapImages(){
+  for(const image of failedImages){const state=sources.get(image);if(state){state.promise=null;state.started=false;}}
+  failedImages.clear();
+}
 export function mapImage(src,onload){
   if(typeof Image==='undefined')return null;
   const image=new Image();image.decoding='async';if(onload)image.onload=onload;
@@ -22,7 +28,7 @@ function decodeMapImage(image){
     for(let attempt=0;attempt<3;attempt++){
       try{await image.decode();return;}
       catch(error){
-        if(attempt===2)throw error;
+        if(attempt===2){failedImages.add(image);throw error;}
         await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
         const [path,fragment]=state.src.split('#',2);
         image.src=path+(path.includes('?')?'&':'?')+'mapRetry='+(attempt+1)+(fragment===undefined?'':'#'+fragment);

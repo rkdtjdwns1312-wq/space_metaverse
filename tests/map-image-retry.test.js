@@ -1,6 +1,6 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import {mapImage,startMapImage,mapImageReady,decodeMapImages} from '../client/map-image.js';
+import {mapImage,startMapImage,mapImageReady,decodeMapImages,resetFailedMapImages} from '../client/map-image.js';
 
 class TestImage{
   static failures=0;
@@ -41,4 +41,14 @@ test('a failed image first noticed during drawing also recovers',async t=>{
   TestImage.failures=1;const image=mapImage('/draw-only.png');startMapImage(image);image.complete=true;
   assert.equal(mapImageReady(image),false);
   await decodeMapImages([image]);assert.equal(mapImageReady(image),true);assert.equal(image.urls.length,2);
+});
+
+test('explicit foreground recovery retries failed images and retains good decodes',async()=>{
+  TestImage.failures=0;const good=mapImage('/good.png');await decodeMapImages([good]);
+  TestImage.failures=3;const bad=mapImage('/interrupted-prefetch.png');
+  await assert.rejects(decodeMapImages([bad]));assert.equal(bad.decodes,3);
+  resetFailedMapImages();await decodeMapImages([good,bad]);
+  assert.equal(good.decodes,1);assert.equal(bad.decodes,4);assert.equal(mapImageReady(bad),true);
+  for(let i=0;i<100;i++)mapImageReady(bad);
+  assert.equal(bad.urls.length,4);
 });

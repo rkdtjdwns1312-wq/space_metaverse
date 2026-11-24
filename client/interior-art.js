@@ -1,17 +1,18 @@
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
+import {mapImage,startMapImage,decodeMapImages} from './map-image.js';
 import {INTERIOR_VARIANT_ART,INTERIOR_PROP_GEOMETRY,interiorVisual} from './interior-visuals.js';
 
 export const INTERIOR_ART={...Object.fromEntries(Object.keys(INTERIOR_VARIANT_ART).filter(k=>k!=='room').map(k=>[k,interiorVisual(k)])),
   'interior-decor-machine':'/assets/interior/control.png'};
 export const INTERIOR_UPGRADE_ART=Object.freeze(Object.fromEntries(Object.entries(INTERIOR_VARIANT_ART).filter(([k])=>k!=='room').map(([k,v])=>[k,Object.fromEntries(['tier1','tier2','tier3'].map(id=>[id,v[id]]))])));
 const images=new Map(),floors=new Map(),tints=new Map();
-function asset(src){if(!images.has(src)){const image=new Image();image.src=src;images.set(src,image);}return images.get(src);}
+function asset(src){if(!images.has(src))images.set(src,mapImage(src));return startMapImage(images.get(src));}
 const ready=image=>image?.complete&&image.naturalWidth>0;
 // Compressed assets are decoded once; changing a room's style never shows old generic shapes.
-export async function preloadInteriorArt(){await Promise.all([...Object.values(INTERIOR_VARIANT_ART).flatMap(Object.values),INTERIOR_ART['interior-decor-machine']].map(src=>asset(src).decode()));}
+export async function preloadInteriorArt(){await decodeMapImages([...Object.values(INTERIOR_VARIANT_ART).flatMap(Object.values),INTERIOR_ART['interior-decor-machine']].map(asset));}
 export async function preloadInteriorFloorArt(planet){
   const style=interiorDecorStyle(planet?.interiorDecor,'room');
-  await Promise.all([...new Set([interiorVisual('room',style.shapeId),interiorVisual('room')])].map(src=>asset(src).decode()));
+  await decodeMapImages([...new Set([interiorVisual('room',style.shapeId),interiorVisual('room')])].map(asset));
 }
 function cachedPut(cache,key,value,limit){if(cache.size>=limit)cache.delete(cache.keys().next().value);cache.set(key,value);return value;}
 export function drawInteriorFloor(ctx,map,planet){

@@ -52,10 +52,22 @@ function outerEdges(polygons=PLAZA_POLYGONS){const result=[];
 }
 export const PLAZA_EDGES=outerEdges();
 function edgeDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(l||1)));return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);}
+const floorBounds=new WeakMap();
+function floorBoundsOf(layout){
+  if(!floorBounds.has(layout)){
+    const bounds=points=>({minX:Math.min(...points.map(p=>p.x)),maxX:Math.max(...points.map(p=>p.x)),minY:Math.min(...points.map(p=>p.y)),maxY:Math.max(...points.map(p=>p.y))});
+    floorBounds.set(layout,{polygons:layout.polygons.map(poly=>({poly,...bounds(poly)})),edges:layout.edges.map(([a,b])=>({a,b,...bounds([a,b])}))});
+  }
+  return floorBounds.get(layout);
+}
 export function onPlazaFloor(map,x,y,radius=0){
   const layout=plazaLayoutOf(map);if(!layout)return true;
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;
-  const p={x,y};return layout.polygons.some(poly=>inPolygon(p,poly))&&!layout.edges.some(([a,b])=>edgeDistance(p,a,b)<radius+PLAZA_LAYOUT.wall/2);
+  const p={x,y},margin=radius+PLAZA_LAYOUT.wall/2,bounds=floorBoundsOf(layout);
+  // Exact polygon/distance tests are unchanged; distant edges cannot touch this
+  // footprint. Reuse bounds instead of measuring every edge for every avatar.
+  return bounds.polygons.some(b=>x>=b.minX&&x<=b.maxX&&y>=b.minY&&y<=b.maxY&&inPolygon(p,b.poly))&&
+    !bounds.edges.some(b=>x>=b.minX-margin&&x<=b.maxX+margin&&y>=b.minY-margin&&y<=b.maxY+margin&&edgeDistance(p,b.a,b.b)<margin);
 }
 export function departmentSite(x,y,radius=52){
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;

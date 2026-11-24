@@ -55,6 +55,7 @@ import {drawInteriorFloor,drawInteriorProp,drawInteriorDecoration} from './inter
 import {drawStreetGround,drawStreetFountain} from './street-art.js';
 import {drawCachedStreetProp} from './street-prop-cache.js';
 import {prepareMapArt} from './map-art-ready.js';
+import {createMapTransitionPreload} from './map-transition-preload.js';
 import {whaleMapImage,mapImageReady} from './map-image.js';
 import {drawPaintedProp,PAINTED_PROPS} from './painted-props.js';
 import {departmentVisualBox} from './department-art.js';
@@ -113,6 +114,18 @@ import {avatarSizeOf} from '/shared/avatar-size.js';
 const TEACHER_SPRITE=TEACHER_AVATAR.sprite;
 const ASTEROID_SPRITE='/assets/avatars/little-asteroid.png';
 const ASTEROID_CROP=Object.freeze({x:310,y:347,width:633,height:613});
+const asteroidDrawings=new WeakMap();
+function asteroidDrawing(sprite){
+  if(!asteroidDrawings.has(sprite)){
+    // Keep a small oversampled drawing for ordinary world views instead of
+    // rescaling its 633x613 original for every student, every frame.
+    const drawing=document.createElement('canvas');drawing.width=drawing.height=128;
+    const c=drawing.getContext('2d');c.imageSmoothingQuality='high';
+    c.drawImage(sprite,ASTEROID_CROP.x,ASTEROID_CROP.y,ASTEROID_CROP.width,ASTEROID_CROP.height,0,0,128,128);
+    asteroidDrawings.set(sprite,drawing);
+  }
+  return asteroidDrawings.get(sprite);
+}
 import {interiorDecorStyle,interiorDecorColor} from '/shared/interior-decor.js';
 const avatarSprites=new Map();
 const AVATAR_SPRITE_LIMIT=96;
@@ -215,6 +228,7 @@ export function createWorld(canvas) {
     for(const id of monsterTracks.keys())if(!monsters.some(m=>m.id===id)){monsterTracks.delete(id);monsterPoints.delete(id);}
   }
   let view={x:0,y:0,scale:1},overview=false,mapArt=null;
+  const mapPreload=createMapTransitionPreload({prepare:prepareMapArt,mapOf});
   function recordPosition(p,now,options){
     if(!tracks.has(p.id))tracks.set(p.id,createMotionTrack());
     tracks.get(p.id).push(p.x,p.y,p.mapId||PLAZA_ID,now,options);
@@ -691,7 +705,11 @@ export function createWorld(canvas) {
         ctx.fillStyle='#fff';ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(constellation.icon,0,1);ctx.textBaseline='alphabetic';}
     }else{
     const sprite=loadedAvatarSprite(ASTEROID_SPRITE);
-    if(sprite){ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);ctx.scale(p.facingX===-1?-1:1,1);ctx.drawImage(sprite,ASTEROID_CROP.x,ASTEROID_CROP.y,ASTEROID_CROP.width,ASTEROID_CROP.height,-size/2,-size/2,size,size);ctx.restore();}
+    if(sprite){ctx.save();ctx.translate(0,bodyPose.y);ctx.rotate(bodyPose.angle);ctx.scale(p.facingX===-1?-1:1,1);
+      const transform=ctx.getTransform(),pixels=size*Math.max(Math.hypot(transform.a,transform.b),Math.hypot(transform.c,transform.d));
+      if(pixels<=128)ctx.drawImage(asteroidDrawing(sprite),-size/2,-size/2,size,size);
+      else ctx.drawImage(sprite,ASTEROID_CROP.x,ASTEROID_CROP.y,ASTEROID_CROP.width,ASTEROID_CROP.height,-size/2,-size/2,size,size);
+      ctx.restore();}
     else{
     ctx.beginPath();for(let i=0;i<9;i++){const a=i*2*Math.PI/9,r=16+[1,0,2,-1,1,0,1,-1,0][i];
       i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
@@ -742,7 +760,7 @@ export function createWorld(canvas) {
     requestAnimationFrame(frame);
     // The lobby and hidden tabs have no visible world. Do not run collision,
     // canvas allocation or background rendering there.
-    if(!selfId||document.hidden){quality.pause();return;}
+    if(!selfId||document.hidden){mapPreload.cancel();quality.pause();return;}
     if(!quality.shouldRender(t))return;
     avatarLabels.beginFrame();
     const renderStarted=performance.now();
@@ -758,6 +776,7 @@ export function createWorld(canvas) {
     canvas.dataset.artStatus=mapArt?.status||'ready';
     // Resolve unchanged geometry once per draw, not once per nearby avatar.
     const map=currentMap();
+    mapPreload.update({map,player:players.find(p=>p.id===selfId),planets,ready:mapArt?.status==='ready',time:t});
     // 도착한 위치를 시간순으로 재생합니다. 화면 프레임 수와 관계없이 같은 시각은
     // 같은 위치가 되며, 카메라의 추적 범위도 이 좌표를 기준으로 계산합니다.
     for(const p of players){
@@ -1139,7 +1158,7 @@ export function createWorld(canvas) {
       serena=room?.serena||dormantSerena();darkStar=room?.darkStar||dormantDarkStar();starRecord=room?.starRecord||dormantStarRecord();forgottenConstellation=room?.forgottenConstellation||dormantForgottenConstellation();truthCreator=room?.truthCreator||dormantTruthCreator();
       linksHint.hidden=true;
       const nextMap=room?.players.find(p=>p.id===id)?.mapId||PLAZA_ID;
-      if(nextMap!==myMapId||id!==selfId){extraLocomotion.clear();bodyMotion.clear();positionTime=createPositionClock();followView=null;}
+      if(nextMap!==myMapId||id!==selfId){mapPreload.cancel();extraLocomotion.clear();bodyMotion.clear();positionTime=createPositionClock();followView=null;}
       if(nextMap!==myMapId||id!==selfId){aquarius.clear();poisonZones.clear();projectiles.clear();damageNumbers.clear();points.clear();tracks.clear();cetusLastPoint.clear();cetusMovingUntil.clear();geminiLastPoint.clear();geminiMovingUntil.clear();geminiMovingSince.clear();aquariusLastPoint.clear();aquariusMovingUntil.clear();aquariusMovingSince.clear();capricornLastPoint.clear();capricornMovingUntil.clear();capricornMovingSince.clear();taurusLastPoint.clear();taurusMovingUntil.clear();taurusMovingSince.clear();libraLastPoint.clear();libraMovingUntil.clear();libraMovingSince.clear();herculesLastPoint.clear();herculesMovingUntil.clear();herculesMovingSince.clear();corvusLastPoint.clear();corvusMovingUntil.clear();corvusMovingSince.clear();monsterTracks.clear();monsterPoints.clear();monsterAttacks.clear();bubbles.clear();hits=[];sagittariusCasts=[];sagittariusEffects=[];waterAuras=[];waterPulses=[];swanAuras=[];lastSwanAura.clear();ariesClouds=[];taurusDashes=[];herculesShields=[];herculesBursts=[];libraAuras=[];coronaAuras=[];capricornBlessings=[];leoRoars=[];}
       players=(room?.players||[]).map(p=>({...p,renderSpeed:(config.RULES?.speed||620)*(1+equipmentBonus(p).speed)}));selfId=id;
       extraLocomotion.retain(players.filter(p=>p.mapId===nextMap).map(p=>p.id));

@@ -1,4 +1,5 @@
 // 요청305: artwork only. Geometry, gates, labels and interaction belong to world.js.
+import {mapImage,startMapImage,decodeMapImages} from './map-image.js';
 const groundUrl = new URL('./assets/maps/black-hole-interior.png', import.meta.url).href;
 const starUrl = new URL('./assets/maps/black-star-sanctuary.png', import.meta.url).href;
 let groundImage;
@@ -8,17 +9,14 @@ let groundCacheKey = '';
 let reducedMotion;
 
 function loadImage(url) {
-  const image = new Image();
-  image.decoding = 'async';
-  image.src = url;
-  return image;
+  return startMapImage(mapImage(url));
 }
 
 function loaded(image) {
   return image?.complete && image.naturalWidth > 0;
 }
-export async function preloadBlackHoleArt(){groundImage ||= loadImage(groundUrl);starImage ||= loadImage(starUrl);await Promise.all([groundImage.decode(),starImage.decode()]);}
-export async function preloadBlackHoleGroundArt(){groundImage ||= loadImage(groundUrl);await groundImage.decode();}
+export async function preloadBlackHoleArt(){groundImage ||= loadImage(groundUrl);starImage ||= loadImage(starUrl);await decodeMapImages([groundImage,starImage]);}
+export async function preloadBlackHoleGroundArt(){groundImage ||= loadImage(groundUrl);await decodeMapImages([groundImage]);}
 
 function mapDimension(value, fallback) {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;

@@ -12,7 +12,7 @@ const results=[],errors=[];
 try{
   const page=await browser.newPage({viewport:{width:1200,height:760},deviceScaleFactor:1});
   page.on('pageerror',e=>errors.push(e.message));
-  await page.route('**/render-benchmark',route=>route.fulfill({contentType:'text/html',body:'<body class="joined" style="margin:0"><canvas style="width:1200px;height:760px"></canvas>'}));
+  await page.route('**/render-benchmark',route=>route.fulfill({contentType:'text/html',body:'<body class="joined" style="margin:0"><div id="constellation-links-hint" hidden></div><canvas style="width:1200px;height:760px"></canvas>'}));
   await page.goto(`http://127.0.0.1:${port}/render-benchmark`);
   const cdp=await page.context().newCDPSession(page);await cdp.send('Performance.enable');
   await page.evaluate(async()=>{
@@ -22,9 +22,10 @@ try{
     window.requestAnimationFrame=fn=>raf(t=>{const start=performance.now();fn(t);if(recording)frameData.push({ms:performance.now()-start,gap:previous?t-previous:0});previous=t;});
     window.world=createWorld(document.querySelector('canvas'));
   });
-  for(const count of [1,35])for(const [id,x,y] of [['space-plaza',1800,1320],['star-street',900,1690],['star-street',900,700],['star-street',900,2810]]){
+  const scenes=await page.evaluate(async()=>{const {mapOf}=await import('/shared/config.js');return ['space-plaza','star-street','star-station','star-playground'].map(id=>{const m=mapOf(id);return [m.id,m.spawn.x,m.spawn.y];});});
+  for(const count of [1,35])for(const [id,x,y] of scenes){
     await page.evaluate(({id,x,y,count})=>{
-      clearInterval(window.moving);window.room={players:Array.from({length:count},(_,i)=>({id:'p'+i,role:'student',nickname:'측정'+i,mapId:id,x:x+(i%7-3)*42,y:y+Math.floor(i/7)*38,avatar:{level:1},effects:[]})),planets:[],monsters:[]};
+      clearInterval(window.moving);window.room={players:Array.from({length:count},(_,i)=>({id:'p'+i,role:'student',connected:true,nickname:'측정'+i,mapId:id,x:x+(i%7-3)*42,y:y+Math.floor(i/7)*38,avatar:{level:1},effects:[]})),planets:[],monsters:[]};
       room.players[0].x=x;room.players[0].y=y;world.setRoom(room,'p0');
       let tick=0;window.moving=setInterval(()=>{tick++;world.positions({positions:room.players.map((p,i)=>[p.id,x+(i?i%7-3:0)*42+Math.sin(tick/18)*55,y+(i?Math.floor(i/7)*38:0),1])});},50);
     },{id,x,y,count});

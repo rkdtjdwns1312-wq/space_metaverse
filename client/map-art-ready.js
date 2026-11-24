@@ -13,7 +13,7 @@ import {preloadGateArt} from './gate-art.js';
 import {preloadInteriorArt} from './interior-art.js';
 import {preloadDepartmentArt} from './department-art.js';
 import {preloadBlackHoleArt} from './black-hole-art.js';
-import {preloadWhaleArt} from './map-image.js';
+import {preloadWhaleArt,resetFailedMapImages} from './map-image.js';
 import {preloadDuelArcades} from './duel-arcade-art.js';
 import {preloadHallOfFame} from './hall-of-fame-art.js';
 import {preloadDarkStarArt} from './dark-star-art.js';
@@ -21,14 +21,25 @@ import {preloadDarkStarSkillsArt} from './dark-star-skills-art.js';
 import {preloadCozyArt} from './cozy-activities-art.js';
 
 // Wait for the actual renderer's Image objects, not duplicate HTTP preloads.
-// Each family is decoded once. Failed assets remain observable until refresh.
+// Each family is decoded once. Foreground errors remain observable; a failed
+// speculative load gets one foreground retry when the player actually enters.
 const states=new Map();
-export function prepareMapArt(map,planets=[]){
+export function prepareMapArt(map,planets=[],{speculative=false}={}){
   const family=map.theme==='plaza'||map.id==='space-plaza'?'plaza':map.theme==='starlight-street'?'street':map.id==='milky-valley'?'valley':map.theme==='star-origin'?'origin':map.theme==='sleeping-stars'?'sleeping-stars':map.theme?.includes('paradise')?'paradise':map.id==='black-hole'?'black-hole':map.theme==='whale-stomach'?'whale':'interior';
   const departments=family==='plaza'?[...new Set(planets.filter(p=>!p.customDesign).map(p=>p.templateId))].sort():[];
   const key=family+':'+(['sleeping-stars','street'].includes(family)?map.id:departments.join(','));
-  if(states.has(key))return states.get(key);
-  const state={key,status:'loading',failed:0};states.set(key,state);
+  const cached=states.get(key);
+  if(cached){
+    if(!speculative&&cached.speculative&&cached.status==='error'){
+      // A temporary failure before the player entered must not poison entry.
+      // Retry failed Images once on foreground adoption, retaining good decodes.
+      resetFailedMapImages();states.delete(key);
+    }else{
+      if(!speculative)cached.speculative=false;
+      return cached;
+    }
+  }
+  const state={key,status:'loading',failed:0,speculative};states.set(key,state);
   // A stalled connection must not leave an unusable loading screen forever.
   // The renderer keeps its existing fallback and an explicit failure notice.
   let timeout;

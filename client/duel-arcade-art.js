@@ -1,6 +1,7 @@
+import {mapImage,startMapImage,decodeMapImages} from './map-image.js';
 const images=new Map();
-function imageFor(id){let image=images.get(id);if(!image){image=new Image();image.src=`/assets/arcade/${id}.png`;images.set(id,image);}return image;}
-export async function preloadDuelArcades(ids){await Promise.all(ids.map(id=>imageFor(id).decode()));}
+function imageFor(id){let image=images.get(id);if(!image){image=mapImage(`/assets/arcade/${id}.png`);images.set(id,image);}return startMapImage(image);}
+export async function preloadDuelArcades(ids){await decodeMapImages(ids.map(imageFor));}
 export function drawDuelArcade(ctx,object){
  const image=imageFor(object.id);
  ctx.save();
