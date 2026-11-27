@@ -23,6 +23,21 @@ const player = (overrides = {}) => ({
 const room = (...players) => ({ players: new Map(players.map(value => [value.id, value])) });
 const atGrowth = value => Object.assign(value, { x: growthStar.x, y: growthStar.y });
 
+test('all 35 students can choose one constellation; xp, legacy and change-cost rules still apply',()=>{
+  const students=Array.from({length:35},()=>player({avatar:{...createAvatar(),xp:15}}));
+  const classroom=room(...students);
+  for(const student of students)evolveConstellation(classroom,student,{constellationId:'hercules'});
+  const info=JSON.parse(JSON.stringify(evolutionInfo(classroom,students[0])));
+  assert.equal(info.constellationLimit,null);
+  assert.equal(info.options.find(o=>o.id==='hercules').count,35);
+  assert.equal(info.options.find(o=>o.id==='hercules').available,true);
+  const noXp=player();classroom.players.set(noXp.id,noXp);
+  assert.throws(()=>evolveConstellation(classroom,noXp,{constellationId:'hercules'}),/경험치/);
+  assert.throws(()=>changeConstellation(classroom,students[0],{constellationId:'gemini'}),/별 파편/);
+  const invalid=player({avatar:{...createAvatar(),xp:15}});classroom.players.set(invalid.id,invalid);
+  assert.throws(()=>evolveConstellation(classroom,invalid,{constellationId:'not-a-constellation'}));
+});
+
 test('진화의 별은 계곡 왼쪽, 성장의 별은 오른쪽 끝에 서로 떨어져 배치된다', () => {
   assert.ok(evolutionStar.x < VALLEY.width / 4);
   assert.ok(growthStar.x > VALLEY.width * 3 / 4);
@@ -47,7 +62,7 @@ test('16 canonical constellations have unique ids and complete display metadata'
   assert.ok(LEGACY_CONSTELLATIONS.every(value=>constellationOf(value.id)?.legacy));
 });
 
-test('quota counts LV2 through transcendent students, including offline players', () => {
+test('selection counts LV2 through transcendent students including offline players without limiting availability', () => {
   const me = player();
   const low = player({ connected: false, avatar: { ...createAvatar(), level: 1, constellationId: 'aries' } });
   const level2 = player({ connected: false, avatar: { ...createAvatar(), level: 2, constellationId: 'aries' } });
@@ -56,10 +71,10 @@ test('quota counts LV2 through transcendent students, including offline players'
   const classroom=room(me, low, level2, level5,level4),info = evolutionInfo(classroom, me);
   const aries = info.options.find(value => value.id === 'aries');
   assert.equal(aries.count, 3);
-  assert.equal(aries.available, false);
+  assert.equal(aries.available, true);
 });
 
-test('quota is isolated per room and teachers never occupy a slot', () => {
+test('selection count is isolated per room and excludes teachers', () => {
   const me = player();
   const teacher = player({ role: 'teacher', avatar: { ...createAvatar(), level: 5, constellationId: 'taurus' } });
   const otherRoomPlayers = [player({ avatar: { ...createAvatar(), level: 2, constellationId: 'taurus' } }), player({ avatar: { ...createAvatar(), level: 5, constellationId: 'taurus' } })];
@@ -67,7 +82,7 @@ test('quota is isolated per room and teachers never occupy a slot', () => {
   assert.equal(evolutionInfo(room(me, ...otherRoomPlayers), me).options.find(value => value.id === 'taurus').count, 2);
 });
 
-test('master accounts keep counting as students toward the three-person quota',()=>{
+test('master accounts are counted but do not block further selections',()=>{
   const me=player({avatar:{...createAvatar(),xp:15}});
   const classmates=[
     player({accountKind:'master',avatar:{...createAvatar(),level:5,form:'transcendent',constellationId:'gemini'}}),
@@ -79,10 +94,10 @@ test('master accounts keep counting as students toward the three-person quota',(
   evolveConstellation(classroom,me,{constellationId:'gemini'});
   const fourth=player({avatar:{...createAvatar(),xp:15}});
   classroom.players.set(fourth.id,fourth);
-  assert.throws(()=>evolveConstellation(classroom,fourth,{constellationId:'gemini'}),/이미 세 친구/);
+  evolveConstellation(classroom,fourth,{constellationId:'gemini'});assert.equal(fourth.avatar.constellationId,'gemini');
 });
 
-test('three sequential first evolutions fill a constellation and the next request rechecks quota', () => {
+test('four sequential first evolutions may choose the same constellation', () => {
   const first = player({ avatar: { ...createAvatar(), xp: 15 } });
   const second = player({ avatar: { ...createAvatar(), xp: 15 } });
   const third = player({ avatar: { ...createAvatar(), xp: 15 } });
@@ -91,42 +106,41 @@ test('three sequential first evolutions fill a constellation and the next reques
   evolveConstellation(classroom, first, { constellationId: 'gemini' });
   evolveConstellation(classroom, second, { constellationId: 'gemini' });
   evolveConstellation(classroom, third, { constellationId: 'gemini' });
-  const before = structuredClone(fourth.avatar);
-  assert.throws(() => evolveConstellation(classroom, fourth, { constellationId: 'gemini' }), /이미 세 친구/);
-  assert.deepEqual(fourth.avatar, before);
+  evolveConstellation(classroom, fourth, { constellationId: 'gemini' });
+  assert.equal(fourth.avatar.level,2);assert.equal(fourth.avatar.constellationId,'gemini');
 });
 
-for (const size of [1,2,32,33,34,35]) test(`registered roster ${size} keeps the same three-student constellation limit`, () => {
+for (const size of [1,2,32,33,34,35]) test(`registered roster ${size} has no constellation selection cap`, () => {
   const me=player({avatar:{...createAvatar(),xp:15}});
   const chosen=Array.from({length:2},()=>player({connected:false,avatar:{...createAvatar(),level:2,constellationId:'gemini'}}));
   const teacher=player({role:'teacher'});
   const classroom=room(me,teacher,...chosen);
   classroom.allowedNames=new Set(Array.from({length:size},(_,i)=>'학생'+i));
   const info=evolutionInfo(classroom,me);
-  assert.equal(info.constellationLimit,3);
+  assert.equal(info.constellationLimit,null);
   assert.equal(info.options.find(value=>value.id==='gemini').available,true);
   evolveConstellation(classroom,me,{constellationId:'gemini'});
   const fourth=player({avatar:{...createAvatar(),xp:15}});
   classroom.players.set(fourth.id,fourth);
-  assert.throws(()=>evolveConstellation(classroom,fourth,{constellationId:'gemini'}),/이미 세 친구/);
-  assert.equal(fourth.avatar.level,1);
+  evolveConstellation(classroom,fourth,{constellationId:'gemini'});assert.equal(fourth.avatar.constellationId,'gemini');
+  assert.equal(fourth.avatar.level,2);
 });
 
-test('three-person quota applies to paid changes and does not depend on roster size',()=>{
+test('paid changes stay available above three selections and retain normal cost',()=>{
   const me=player({starShards:20,avatar:{...createAvatar(),level:2,constellationId:'aries'}});
   const peers=Array.from({length:2},()=>player({connected:false,avatar:{...createAvatar(),level:2,constellationId:'gemini'}}));
   const classroom=room(me,...peers);
   classroom.allowedNames=new Set(Array.from({length:32},(_,i)=>'학생'+i));
   changeConstellation(classroom,me,{constellationId:'gemini'});
   assert.equal(me.starShards,16);
-  assert.equal(evolutionInfo(classroom,me).constellationLimit,3);
+  assert.equal(evolutionInfo(classroom,me).constellationLimit,null);
   classroom.allowedNames.add('추가학생');
   const fourth=player({starShards:20,avatar:{...createAvatar(),level:2,constellationId:'aries'}});
   classroom.players.set(fourth.id,fourth);
-  assert.throws(()=>changeConstellation(classroom,fourth,{constellationId:'gemini'}),/이미 세 친구/);
-  assert.equal(fourth.starShards,20);
+  changeConstellation(classroom,fourth,{constellationId:'gemini'});assert.equal(fourth.avatar.constellationId,'gemini');
+  assert.equal(fourth.starShards,16);
   classroom.allowedNames.delete('추가학생');
-  assert.equal(evolutionInfo(classroom,me).constellationLimit,3);
+  assert.equal(evolutionInfo(classroom,me).constellationLimit,null);
   me.avatar.xp=20;
   evolveConstellation(classroom,me,{});
   assert.equal(me.avatar.level,3);

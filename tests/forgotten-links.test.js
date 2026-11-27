@@ -39,7 +39,7 @@ test('timeout defeats protected students too, excluding ghosts, other maps and n
  p.avatar.constellationId='libra';p.libraAura={mapId:p.mapId,endsAt:start+60000,size:40,radius:200};p.taurusImmuneUntil=start+60000;
  boss.teacherRetaliation=new Set([combatTeacher.id]);assert(tryConstellationLinks(room,boss,start,()=>0));const until=boss.links.endsAt;
  const late=actor('late');room.players.set(late.id,late);
- assert.deepEqual(new Set(tickConstellationLinks(room,boss,until).map(h=>h.targetId)),new Set([p.id,combatTeacher.id,late.id]));assert.equal(ensureVitals(p).hp,0);assert.equal(ensureVitals(p).defeatedAt,until);assert(ensureVitals(q).hp>0);assert.deepEqual(tickConstellationLinks(room,boss,until+1),[]);
+ assert.deepEqual(new Set(tickConstellationLinks(room,boss,until).map(h=>h.targetId)),new Set([p.id,combatTeacher.id,preview.id,late.id]));assert.equal(ensureVitals(p).hp,0);assert.equal(ensureVitals(p).defeatedAt,until);assert(ensureVitals(q).hp>0);assert.deepEqual(tickConstellationLinks(room,boss,until+1),[]);
 });
 test('empty map cancels the run and stale ids cannot affect a later cast',()=>{
  const {room,boss,p,q}=create();assert(tryConstellationLinks(room,boss,start,()=>0));const old=boss.links.id;

@@ -45,7 +45,7 @@ test('swept orb collision deals 40 once, and the passed path stays for exactly t
 test('orb and light respect immunity and invalid participants, and death/map change clear every effect',()=>{
   const f=fixture();fire(f);f.player.taurusImmuneUntil=now+10000;
   assert.equal(tickTruthCreatorAttack(f.room,f.boss,now+5000)[0].immune,true);
-  for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.avatar.blackStar=true,p=>p.battleVitals.hp=0,p=>{p.role='teacher';p.avatar.teacherPreview=true;}]){
+  for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.avatar.blackStar=true,p=>p.battleVitals.hp=0]){
     const g=fixture();fire(g);change(g.player);assert.deepEqual(tickTruthCreatorAttack(g.room,g.boss,now+4000),[]);assert.equal(g.boss.truthCreatorAttack,null);
   }
   for(const change of [boss=>boss.hp=0,boss=>boss.mapId='space-plaza']){const g=fixture();fire(g);change(g.boss);tickTruthCreatorAttack(g.room,g.boss,now+4000);assert.equal(g.boss.truthCreatorAttack,null);}
@@ -55,11 +55,11 @@ test('chaser cast snapshots one safe orb per eligible character, spends ten mana
   const b={...f.player,id:'b',x:f.player.x+100,battleVitals:{...f.player.battleVitals},avatar:{level:1}};f.room.players.set(b.id,b);
   for(const [id,change] of [['teacher',{role:'teacher'}],['offline',{connected:false}],['away',{away:true}],['other',{mapId:'space-plaza'}],['black',{avatar:{level:1,blackStar:true}}],['ghost',{role:'teacher',avatar:{level:6,teacherPreview:true}}]])f.room.players.set(id,{...b,id,...change});
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),true);assert.equal(f.boss.mp,90);assert.equal(CHASER.speed,RULES.speed*.3);
-  assert.equal(f.boss.truthCreatorChasers.orbs.length,2);
+  assert.equal(f.boss.truthCreatorChasers.orbs.length,3);
   for(const orb of f.boss.truthCreatorChasers.orbs){assert.equal(orb.endsAt-now,10000);for(const p of [f.player,b])assert(Math.hypot(orb.x-p.x,orb.y-p.y)>orb.radius+RULES.radius+80);}
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+1),false);assert.equal(f.boss.mp,90);
-  const late={...b,id:'late'};f.room.players.set(late.id,late);assert.equal(f.boss.truthCreatorChasers.orbs.length,2);
-  assert.equal(truthCreatorChaserViews(f.boss,now+9999).length,2);
+  const late={...b,id:'late'};f.room.players.set(late.id,late);assert.equal(f.boss.truthCreatorChasers.orbs.length,3);
+  assert.equal(truthCreatorChaserViews(f.boss,now+9999).length,3);
   assert.deepEqual(tickTruthCreatorChasers(f.room,f.boss,now+10000),[]);assert.equal(truthCreatorChaserViews(f.boss,now+10000).length,0);
   assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+29999),false);assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now+30000),true);
 });
@@ -71,12 +71,12 @@ test('red orb kills a bystander while pursuing its assigned target, respects Lib
   const g=fixture();g.player.x=g.boss.x;tryTruthCreatorChasers(g.room,g.boss,g.player,now);
   g.player.avatar.constellationId='libra';g.player.libraAura={mapId:g.player.mapId,endsAt:now+10000,size:100,radius:200};
   const immune=tickTruthCreatorChasers(g.room,g.boss,now+3000);assert(immune.some(hit=>hit.immune));assert(g.player.battleVitals.hp>0);
-  for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.battleVitals.hp=0,p=>p.avatar.blackStar=true,p=>{p.role='teacher';p.avatar.teacherPreview=true;},p=>{p.role='teacher';p.teacherGhost=true;}]){
+  for(const change of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>p.battleVitals.hp=0,p=>p.avatar.blackStar=true,p=>{p.role='teacher';p.teacherGhost=true;}]){
     const h=fixture();tryTruthCreatorChasers(h.room,h.boss,h.player,now);change(h.player);assert.deepEqual(tickTruthCreatorChasers(h.room,h.boss,now+100),[]);assert.equal(h.boss.truthCreatorChasers.orbs.length,0);
   }
   clearTruthCreatorAttack(g.boss);assert.equal(g.boss.truthCreatorChasers,null);
 });
-test('visual teacher ghost never changes retaliation: ordinary teachers are exempt until attacking, preview stays exempt',()=>{
+test('visual teacher ghost never changes retaliation: ordinary teachers are exempt until attacking, preview participates',()=>{
   for(const ghost of [false,true]){
     const f=fixture();f.player.role='teacher';f.player.avatar={level:6};f.player.teacherGhost=ghost;f.boss.teacherRetaliation=new Set([f.player.id]);
     aimTruthCreator(f.room,f.boss,f.player,now);assert(f.boss.truthCreatorAttack.aim);
@@ -85,9 +85,9 @@ test('visual teacher ghost never changes retaliation: ordinary teachers are exem
   }
   for(const preview of [false,true]){
     const f=fixture();f.player.role='teacher';f.player.avatar={level:6,teacherPreview:preview};f.player.teacherGhost=true;
-    if(preview)f.boss.teacherRetaliation=new Set([f.player.id]);
-    aimTruthCreator(f.room,f.boss,f.player,now);assert.equal(f.boss.truthCreatorAttack.aim,null);
-    assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),false);assert.equal(tryTruthCreatorSentry(f.room,f.boss,f.player,now),false);
+    // Preview participates even without ordinary teacher opt-in.
+    aimTruthCreator(f.room,f.boss,f.player,now);assert.equal(!!f.boss.truthCreatorAttack.aim,preview);
+    assert.equal(tryTruthCreatorChasers(f.room,f.boss,f.player,now),preview);assert.equal(!!tryTruthCreatorSentry(f.room,f.boss,f.player,now),preview);
   }
 });
 

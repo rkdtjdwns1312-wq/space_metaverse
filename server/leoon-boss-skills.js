@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {RULES} from '../shared/config.js';
 import {LEOON_ROAR,LEOON_CHARGE} from '../shared/boss-skills.js';
 import {playersInArea,reflectLibraDamage} from './area-combat.js';
@@ -7,7 +8,7 @@ const TAU=Math.PI*2;
 export function leoonRoarAreas(room,monster,target,map,random=Math.random){
   const radius=monster.radius*LEOON_ROAR.areaRadiusFactor,range=monster.radius*LEOON_ROAR.rangeFactor;
   const eligible=player=>player?.connected&&!player.away&&!player.avatar?.blackStar&&player.mapId===monster.mapId&&
-    (player.role!=='teacher'||(!player.avatar?.teacherPreview&&monster.teacherRetaliation?.has(player.id)))&&ensureVitals(player)?.hp>0;
+    canReceiveMonsterDamage(player,monster.teacherRetaliation)&&ensureVitals(player)?.hp>0;
   const attackers=[...monster.attackers].sort((a,b)=>b[1]-a[1]).map(([id])=>room.players.get(id));
   const selected=[target,...attackers].filter((player,index,list)=>eligible(player)&&list.findIndex(other=>other?.id===player.id)===index).slice(0,LEOON_ROAR.targetAreas);
   const areas=selected.map(player=>({x:player.x,y:player.y,radius}));
@@ -83,7 +84,7 @@ function chargeHits(room,monster,skill,now){
   const candidates=[];
   for(const player of room.players.values()){
     if(!player.connected||player.away||player.avatar?.blackStar||player.mapId!==monster.mapId||
-      (player.role==='teacher'&&(player.avatar?.teacherPreview||!monster.teacherRetaliation?.has(player.id)))||ensureVitals(player)?.hp<=0)continue;
+      !canReceiveMonsterDamage(player,monster.teacherRetaliation)||ensureVitals(player)?.hp<=0)continue;
     const ax=skill.toX-skill.fromX,ay=skill.toY-skill.fromY,denom=ax*ax+ay*ay;
     const ratio=denom?Math.max(0,Math.min(1,((player.x-skill.fromX)*ax+(player.y-skill.fromY)*ay)/denom)):0;
     const x=skill.fromX+ax*ratio,y=skill.fromY+ay*ratio;

@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {randomUUID} from 'node:crypto';
 import {FORGOTTEN_CONSTELLATION as spec} from '../shared/forgotten-constellation.js';
 import {mapOf,interactionDistance,interactionReach} from '../shared/config.js';
@@ -9,9 +10,9 @@ import {GameError} from './pin-auth.js';
 
 export const CONSTELLATION_LINKS=Object.freeze({mana:10,cooldownMs:40000,durationMs:15000,decisionMs:3000,chance:.45});
 const roll=random=>Math.max(0,Math.min(.999999,Number(random())||0));
-export const present=(p,boss)=>p?.connected&&!p.away&&p.mapId===boss.mapId&&!p.avatar?.blackStar&&!p.avatar?.teacherPreview&&
+export const present=(p,boss)=>p?.connected&&!p.away&&p.mapId===boss.mapId&&!p.avatar?.blackStar&&
  ['student','teacher'].includes(p.role)&&ensureVitals(p)?.hp>0;
-export const vulnerable=(p,boss)=>present(p,boss)&&(p.role==='student'||boss.teacherRetaliation?.has(p.id));
+export const vulnerable=(p,boss)=>present(p,boss)&&canReceiveMonsterDamage(p,boss.teacherRetaliation);
 
 function positions(boss,random){
  const map=mapOf(spec.mapId),wall=monsterFootprint(boss),points=[],rotation=roll(random)*2*Math.PI,reverse=roll(random)<.5?-1:1;

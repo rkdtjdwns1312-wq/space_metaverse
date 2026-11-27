@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {collisionDistance} from './projectile-collision.js';
 import {clearTruthCreatorGalaxy,truthCreatorGalaxyViews} from './truth-creator-galaxy.js';
 import {clearTruthCreatorBlue,truthCreatorBlueViews,truthCreatorBlueProtected} from './truth-creator-blue.js';
@@ -10,7 +11,7 @@ import {reflectLibraDamage} from './area-combat.js';
 
 export const TRUTH_CREATOR_ATTACK=Object.freeze({aimMs:3000,speed:420,radius:22,flightMs:5000,trailMs:10000,trailWidth:28,contactMs:1000});
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
-  !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
+  canReceiveMonsterDamage(p,boss.teacherRetaliation);
 const stateOf=boss=>boss.truthCreatorAttack??={mapId:boss.mapId,sequence:0,aim:null,shots:[],trails:[],contacts:new Map()};
 export function clearTruthCreatorAttack(boss,room){boss.truthCreatorAttack=null;clearTruthCreatorGalaxy(boss);clearTruthCreatorBlue(boss);clearTruthCreatorChasers(boss);clearTruthCreatorSentries(room,boss);}
 const visual=(boss,kind,x,y)=>({monsterId:boss.id,mapId:boss.mapId,x,y,dx:0,dy:0,reach:0,skillKind:`truth-creator-${kind}`,durationMs:450,noEffect:true});

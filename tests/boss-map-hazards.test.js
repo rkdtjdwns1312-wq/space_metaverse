@@ -63,7 +63,7 @@ test('room/map isolation, master eligibility and teacher retaliation/ghost rules
   a.p.role='teacher';assert.deepEqual(activeHazardView(a.room,a.p,5000),[]);
   a.boss.teacherRetaliation=new Set([a.p.id]);assert.equal(activeHazardView(a.room,a.p,5000).length,1);
   a.p.teacherGhost=true;assert.deepEqual(activeHazardView(a.room,a.p,5000),[]);
-  a.p.teacherGhost=false;a.p.avatar.teacherPreview=true;assert.deepEqual(activeHazardView(a.room,a.p,5000),[]);
+  a.p.teacherGhost=false;a.p.avatar.teacherPreview=true;a.boss.teacherRetaliation.clear();assert.equal(activeHazardView(a.room,a.p,5000).length,1);
 });
 test('stalled loop does not stack missed ticks, and lethal tick clears state',()=>{
   const {room,p}=fixture();tick(room,0);assert.equal(tick(room,50000).hits.length,1);

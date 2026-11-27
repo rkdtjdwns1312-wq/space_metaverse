@@ -1,10 +1,11 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {mapOf} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
 import {ensureVitals,damagePlayer} from './vitals.js';
 
 export const TRUTH_CREATOR_SENTRIES=Object.freeze({mana:1,cooldownMs:20000,pulseMs:2000,hp:1000,radius:48,typeId:'truth-creator-star'});
 const eligible=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
-  !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
+  canReceiveMonsterDamage(p,boss.teacherRetaliation);
 const stateOf=boss=>boss.truthCreatorSentries??={mapId:boss.mapId,sequence:0,readyAt:0,nextPulseAt:null,ids:new Set()};
 export function clearTruthCreatorSentries(room,boss){
   for(const id of boss.truthCreatorSentries?.ids||[])room?.monsters?.delete(id);

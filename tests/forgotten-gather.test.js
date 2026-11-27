@@ -54,12 +54,12 @@ test('each expired star deals boss power once to eligible players, including lat
   assert.deepEqual(tickConstellationGather(room,boss,start+4999),[]);
   const hits=[];Object.assign(q,{x:cast.stars[0].x,y:cast.stars[0].y});
   assert.throws(()=>collectConstellationGather(room,q,{castId:cast.id,starId:1},start+5000,h=>hits.push(h)));
-  assert.equal(hits.length,2);assert(hits.every(h=>h.damage===expected&&h.skillKind==='forgotten-gather-expire'));
+  assert.equal(hits.length,3);assert(hits.every(h=>h.skillKind==='forgotten-gather-expire'));assert(hits.filter(h=>h.targetId!==preview.id).every(h=>h.damage===expected));assert(hits.find(h=>h.targetId===preview.id).damage>0);
   assert.equal(ensureVitals(p).hp,initialHp.get(p.id)-expected);
-  for(const a of [teacher,other,dead,ghost,away,preview])assert.equal(ensureVitals(a).hp,initialHp.get(a.id));
+  for(const a of [teacher,other,dead,ghost,away])assert.equal(ensureVitals(a).hp,initialHp.get(a.id));
   assert.deepEqual(tickConstellationGather(room,boss,start+5000),[]);
   const delayed=tickConstellationGather(room,boss,start+7100);
-  assert.equal(delayed.length,4);assert(cast.stars.slice(0,3).every(s=>s.resolved));
+  assert.equal(delayed.length,6);assert(cast.stars.slice(0,3).every(s=>s.resolved));
   assert.deepEqual(tickConstellationGather(room,boss,start+7100),[]);
 });
 

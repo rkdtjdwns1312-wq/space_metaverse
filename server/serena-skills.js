@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {SERENA_SKILLS,serenaRedRadii} from '../shared/serena-skills.js';
 import {RULES} from '../shared/config.js';
 import {ensureVitals,playerVitals,libraProtectors} from './vitals.js';
@@ -5,10 +6,10 @@ import {playersInArea} from './area-combat.js';
 import {consumeTruthRecordShield} from './truth-record.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
-  !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
+  canReceiveMonsterDamage(p,boss.teacherRetaliation);
 const candidates=(room,boss)=>[...room.players.values()].filter(p=>valid(boss,p)&&(p.role==='teacher'||p.avatar?.level>=2));
 const redFriends=(room,boss,carrier,mark)=>new Set([...room.players.values()]
-  .filter(other=>other.id!==carrier.id&&other.role==='student'&&valid(boss,other)&&
+  .filter(other=>other.id!==carrier.id&&(other.role==='student'||(other.role==='teacher'&&other.avatar?.teacherPreview===true))&&valid(boss,other)&&
     ((other.x-carrier.x)/mark.radiusX)**2+((other.y-carrier.y)/mark.radiusY)**2<=1+1e-9)
   .map(other=>other.id));
 function randomFriends(rule,random){

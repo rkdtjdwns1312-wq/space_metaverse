@@ -67,7 +67,7 @@ test('지킴이 최근접 후보는 접속·맵·생존·유령·교사 규칙�
   const p={...f.player,id:'invalid',avatar:{...f.player.avatar},x:g.x+1,battleVitals:undefined};mutate(p);f.room.players.set(p.id,p);assert.equal(selectMonsterTarget(f.room,g),f.player);f.room.players.delete(p.id);
  }
  const teacher={...f.player,id:'teacher',role:'teacher',avatar:{...f.player.avatar},x:g.x+1,battleVitals:undefined};f.room.players.set(teacher.id,teacher);g.teacherRetaliation=new Set([teacher.id]);assert.equal(selectMonsterTarget(f.room,g),teacher);
- teacher.avatar.teacherPreview=true;assert.equal(selectMonsterTarget(f.room,g),f.player);f.room.players.delete(teacher.id);
+ teacher.avatar.teacherPreview=true;g.teacherRetaliation.clear();assert.equal(selectMonsterTarget(f.room,g),teacher);f.room.players.delete(teacher.id);
  const friend={...f.player,id:'friend',avatar:{...f.player.avatar},x:g.x+400,battleVitals:undefined};f.room.players.set(friend.id,friend);assert.equal(selectMonsterTarget(f.room,g),f.player);
  friend.x=g.x+10;assert.equal(selectMonsterTarget(f.room,g),friend);friend.away=true;f.player.away=true;g.hp=123;assert.equal(selectMonsterTarget(f.room,g),null);assert.equal(g.hp,123);
 });

@@ -24,7 +24,7 @@ test('swept hit stops at first eligible body, respects teacher combat and cannot
  const {tick,p,boss,room}=fixture();const preview=actor('preview','teacher'),teacher=actor('teacher','teacher'),ghost=actor('ghost'),other=actor('other'),near=actor('near'),far=actor('far');
  preview.avatar.teacherPreview=true;ghost.avatar.blackStar=true;other.mapId='space-plaza';
  for(const [i,a] of [preview,teacher,ghost,other,far,near].entries()){a.x=i<4?60+i*10:a.id==='near'?120:180;room.players.set(a.id,a);}
- tick(5000);const hp=ensureVitals(near).hp;const hits=tick(5700);assert.equal(hits.length,1);assert.equal(hits[0].targetId,near.id);assert(hits[0].damage>0);assert.equal(ensureVitals(near).hp,hp-hits[0].damage);assert.equal(boss.homing.shots.length,0);
+ tick(5000);const hp=ensureVitals(preview).hp;const hits=tick(5700);assert.equal(hits.length,1);assert.equal(hits[0].targetId,preview.id);assert(hits[0].damage>0);assert.equal(ensureVitals(preview).hp,hp-hits[0].damage);assert.equal(boss.homing.shots.length,0);preview.connected=false;
  assert.deepEqual(tick(5800),[]);tick(10000);boss.teacherRetaliation=new Set([teacher.id]);assert.equal(tick(10700)[0].targetId,teacher.id);
  tick(15000);p.mapId='space-plaza';assert.deepEqual(tick(15200),[]);assert.equal(homingStarView(boss),null);
  p.mapId=spec.mapId;tick(15300);tick(18300);boss.hp=0;tick(18500);assert.equal(boss.homing,null);

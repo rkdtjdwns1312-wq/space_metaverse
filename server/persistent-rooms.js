@@ -259,7 +259,7 @@ export class PersistentRoomStore extends RoomStore {
     const selected=constellationOf(data.constellationId,MASTER_BASE.level);
     ensure(selected&&!selected.legacy,'마스터 계정의 첫 별자리를 골라주세요.');
     const count=[...room.players.values()].filter(p=>p.role==='student'&&p.avatar.level>=2&&p.avatar.constellationId===selected.id).length;
-    ensure(count<CONSTELLATION_LIMIT,'이 별자리는 이미 정원이 찼어요. 다른 별자리를 골라주세요.');
+    ensure(CONSTELLATION_LIMIT===null||count<CONSTELLATION_LIMIT,'이 별자리는 이미 정원이 찼어요. 다른 별자리를 골라주세요.');
     const player=this.createStudent(room,data);
     player.accountKind='master';
     player.avatar={...player.avatar,level:MASTER_BASE.level,xp:0,form:'transcendent',constellationId:selected.id};

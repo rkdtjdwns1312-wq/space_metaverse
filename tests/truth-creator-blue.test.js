@@ -48,14 +48,14 @@ test('all three are individually disarmed; concurrent final packets complete onc
   assert.equal(tryTruthCreatorBlue(f.room,f.boss,f.player,now+29999),false);cast(f,now+30000);
   assert(!f.boss.truthCreatorBlue.orbs.some(orb=>orb.id===oldId));assert.throws(()=>openTruthCreatorBlue(f.room,f.player,oldId,now+32000));
 });
-test('per-player/socket tokens, distance, map, life, presence and preview authority are checked on every input',()=>{
+test('per-player/socket tokens, distance, map, life, presence and role authority are checked on every input',()=>{
   const f=fixture(),[orb]=cast(f),opened=open(f,orb),data=payload(opened);
   const stranger={...f.player,id:'b',socketId:'socket-b',battleVitals:{...f.player.battleVitals}};f.room.players.set(stranger.id,stranger);
   assert.throws(()=>inputTruthCreatorBlue(f.room,stranger,data,orb.landsAt));
   const second=openTruthCreatorBlue(f.room,stranger,orb.id,orb.landsAt);assert.notEqual(second.interactionToken,opened.interactionToken);
   inputTruthCreatorBlue(f.room,f.player,data,orb.landsAt);
   const concurrent=inputTruthCreatorBlue(f.room,stranger,{...payload(second)},orb.landsAt);assert.equal(concurrent.stale,true);assert.equal(orb.progress,1);
-  for(const alter of [p=>p.x+=500,p=>p.mapId='space-plaza',p=>p.connected=false,p=>p.away=true,p=>p.avatar.blackStar=true,p=>p.battleVitals.hp=0,p=>p.socketId='new-socket',p=>p.avatar.teacherPreview=true]){
+  for(const alter of [p=>p.x+=500,p=>p.mapId='space-plaza',p=>p.connected=false,p=>p.away=true,p=>p.avatar.blackStar=true,p=>p.battleVitals.hp=0,p=>p.socketId='new-socket',p=>p.role='visitor']){
     const g=fixture(),[o]=cast(g),read=open(g,o);alter(g.player);assert.throws(()=>inputTruthCreatorBlue(g.room,g.player,payload(read),o.landsAt));assert.equal(o.progress,0);}
   assert.throws(()=>inputTruthCreatorBlue(f.room,f.player,{...data,revision:orb.revision},orb.endsAt),'exact deadline is too late');
 });
@@ -66,7 +66,7 @@ test('one unresolved deadline defeats the whole eligible map once, respects Libr
   const immune=f.room.players.get('immune');immune.x+=1000;immune.libraAura={mapId:immune.mapId,endsAt:orb.endsAt+1000,size:20,radius:20};
   f.boss.teacherRetaliation=new Set(['retaliating','preview']);
   assert.deepEqual(tickTruthCreatorBlue(f.room,f.boss,orb.endsAt-1),[]);
-  const hits=tickTruthCreatorBlue(f.room,f.boss,orb.endsAt);assert.equal(hits.length,3);assert(hits.find(hit=>hit.targetId==='immune').immune);assert(hits.find(hit=>hit.targetId==='retaliating').defeated);
+  const hits=tickTruthCreatorBlue(f.room,f.boss,orb.endsAt);assert.equal(hits.length,4);assert(hits.find(hit=>hit.targetId==='preview').defeated);assert(hits.find(hit=>hit.targetId==='immune').immune);assert(hits.find(hit=>hit.targetId==='retaliating').defeated);
   assert.equal(f.player.battleVitals.hp,0);assert(f.room.players.get('teacher').battleVitals.hp>0);assert.deepEqual(tickTruthCreatorBlue(f.room,f.boss,orb.endsAt+1),[]);
   for(const change of [g=>g.boss.hp=0,g=>g.boss.mapId='space-plaza',g=>g.player.mapId='space-plaza',g=>g.player.connected=false,g=>g.player.battleVitals.hp=0]){const g=fixture();cast(g);change(g);assert.deepEqual(tickTruthCreatorBlue(g.room,g.boss,now+1),[]);assert.equal(g.boss.truthCreatorBlue,null);}
   const g=fixture();cast(g);clearTruthCreatorAttack(g.boss,g.room);assert.equal(g.boss.truthCreatorBlue,null);

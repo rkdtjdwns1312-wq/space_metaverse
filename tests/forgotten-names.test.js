@@ -64,12 +64,12 @@ test('deadline defeats eligible map occupants once even under protection; late, 
   const late=actor('late'),ghost=actor('ghost'),preview=actor('preview','teacher'),dead=actor('dead'),away=actor('away');
   ghost.avatar.blackStar=true;preview.avatar.teacherPreview=true;ensureVitals(dead).hp=0;away.away=true;
   for(const player of [late,ghost,preview,dead,away])room.players.set(player.id,player);
-  for(const player of [observer,ghost,preview,dead,away,q])assert.equal(answerConstellationName(room,player,'쌍둥이자리',start+100),null);
-  assert.equal(answerConstellationName(room,p,'쌍둥이자리',start+100).status,'correct');
+  for(const player of [observer,ghost,dead,away,q])assert.equal(answerConstellationName(room,player,'쌍둥이자리',start+100),null);
+  assert.equal(answerConstellationName(room,preview,'쌍둥이자리',start+100).status,'correct');
   assert.equal(answerConstellationName(room,p,'까마귀자리',start+10000),null);
   p.avatar.constellationId='libra';p.libraAura={mapId:p.mapId,endsAt:start+60000,size:40,radius:200};
   const hits=tickConstellationNames(room,boss,start+10000);
-  assert.deepEqual(new Set(hits.map(h=>h.targetId)),new Set([p.id,combat.id,late.id]));
+  assert.deepEqual(new Set(hits.map(h=>h.targetId)),new Set([p.id,combat.id,preview.id,late.id]));
   assert(hits.every(h=>h.defeated));assert.deepEqual(tickConstellationNames(room,boss,start+10001),[]);
 });
 

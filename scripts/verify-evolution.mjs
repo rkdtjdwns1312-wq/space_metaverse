@@ -140,8 +140,18 @@ try {
   assert.match(await page.locator('[data-constellation-id="gemini"]').getAttribute('title'),/3명의 친구/);
   await page.screenshot({path:'.local/evolution-quota-three.png'});
   await page.evaluate(()=>{
+    window.evolutionInfo.constellationLimit=null;
+    const gemini=window.evolutionInfo.options.find(option=>option.id==='gemini');gemini.count=35;gemini.available=true;
+  });
+  await page.locator('#evolution-refresh').click();
+  await geminiCard.locator('.constellation-count').filter({hasText:'35명 선택 중'}).waitFor();
+  assert.equal(await page.locator('[data-constellation-id="gemini"]').isDisabled(),false);
+  assert(!(await geminiCard.textContent()).includes('/null'));
+  check('임시 인원 제한 해제: 35명 선택 상태에서도 선택 버튼 활성·정상 문구');
+  await page.evaluate(()=>{
     window.evolutionInfo.constellationLimit=2;
     window.evolutionInfo.options.find(option=>option.id==='gemini').count=2;
+    window.evolutionInfo.options.find(option=>option.id==='gemini').available=false;
   });
   await page.locator('#evolution-refresh').click();
   await geminiCard.locator('.constellation-count').filter({hasText:'2/2명'}).waitFor();
@@ -276,6 +286,7 @@ try {
   await page.locator('#evolution-yes').click();
   await page.locator('#evolution-summary').filter({hasText:'LV5'}).waitFor();
   await page.locator('#evolution-summary').filter({hasText:'평소 LV4 모습, 변신 중 LV5 모습'}).waitFor();
+  await page.locator('#evolution-summary').filter({hasText:'피해를 받을 수 있어요'}).waitFor();
   assert.deepEqual((await page.evaluate(()=>window.calls.findLast(value=>value.event==='evolution:teacher-select'))).data,
     {level:5,constellationId:'gemini'});
   await page.locator('#evolution-levels [data-level="1"]').click();

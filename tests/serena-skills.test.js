@@ -179,13 +179,13 @@ test('red cleanup handles victim departure/KO and boss defeat/map change without
   assert.deepEqual(p.input,{x:0,y:0,at:0});
 });
 
-test('eligibility excludes offline/away/dead/other-map/black-star and teacher preview; teacher retaliation opt-in is preserved',()=>{
+test('eligibility excludes offline/away/dead/other-map/black-star ; constellation previews participate and ordinary teacher opt-in is preserved',()=>{
   const f=fixture(9);
   Object.assign(f.players[1],{connected:false});Object.assign(f.players[2],{away:true});f.players[3].mapId='space-plaza';f.players[4].battleVitals.hp=0;
   f.players[5].avatar.blackStar=true;f.players[6].role='teacher';f.players[7].role='teacher';f.players[7].avatar.teacherPreview=true;f.players[8].role='teacher';
   f.boss.teacherRetaliation=new Set([f.players[7].id,f.players[8].id]);
   beginSerenaSkill(f.room,f.boss,'yellow',1000);
-  assert.deepEqual(view(f,1000).marks.map(m=>m.playerId),[f.players[0].id,f.players[8].id]);
+  assert.deepEqual(view(f,1000).marks.map(m=>m.playerId),[f.players[0].id,f.players[7].id,f.players[8].id]);
 });
 
 test('carrier departure/death and boss map change/death remove marks and pending warnings',()=>{
@@ -288,6 +288,6 @@ test('yellow lethal area preserves shared target eligibility and radius edge, ex
  carrier.x+=500;edge.x+=warning.radius+RULES.radius;outside.x+=warning.radius+RULES.radius+.01;
  offline.connected=false;away.away=true;ghost.avatar.blackStar=true;teacher.role='teacher';preview.role='teacher';preview.avatar.teacherPreview=true;fighting.role='teacher';
  f.boss.teacherRetaliation=new Set([preview.id,fighting.id]);
- const hits=tickSerenaSkills(f.room,f.boss,5000);assert.deepEqual(hits.map(h=>h.targetId),[edge.id,fighting.id]);
+ const hits=tickSerenaSkills(f.room,f.boss,5000);assert.deepEqual(hits.map(h=>h.targetId),[edge.id,preview.id,fighting.id]);
  assert.ok(hits.every(h=>h.defeated));assert.equal(carrier.battleVitals.hp,500);assert.equal(outside.battleVitals.hp,500);
 });

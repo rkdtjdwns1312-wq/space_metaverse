@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {ensureVitals,damagePlayer} from './vitals.js';
 
 export const BOSS_MAP_HAZARDS=Object.freeze({
@@ -9,11 +10,11 @@ function sourceFor(room,player,now){
   if(!player||room.players?.get(player.id)!==player||!player.connected||player.away||player.avatar?.blackStar||
     !(player.avatar?.level>=2)||!player.avatar?.constellationId||!(ensureVitals(player)?.hp>0)||
     (player.constellationAbilityState?.ariesSleep?.endsAt||0)>now)return null;
-  if(!['student','teacher'].includes(player.role)||player.role==='teacher'&&(player.teacherGhost||player.avatar?.teacherPreview))return null;
+  if(!['student','teacher'].includes(player.role)||player.role==='teacher'&&player.teacherGhost)return null;
   return [...(room.monsters?.values()||[])].find(boss=>{
     const rule=BOSS_MAP_HAZARDS[boss.typeId];
     return rule&&boss.hp>0&&boss.mapId===rule.mapId&&player.mapId===boss.mapId&&
-      (player.role!=='teacher'||boss.teacherRetaliation?.has(player.id));
+      canReceiveMonsterDamage(player,boss.teacherRetaliation);
   })||null;
 }
 

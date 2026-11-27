@@ -19,6 +19,14 @@ import {MARKET} from '../shared/market.js';
 import {serenaEligible} from '../server/serena-progress.js';
 const key='master-account-test-secret';
 const call=(socket,name,data={})=>socket.timeout(5000).emitWithAck(name,data);
+test('temporary constellation cap suspension also permits four masters of the same constellation',async t=>{
+  const f=await fixture(t);
+  for(let i=1;i<=4;i++){
+    const p=await f.master('체험'+i,'hercules');
+    assert.equal(p.avatar.constellationId,'hercules');assert.equal(p.role,'student');assert.equal(p.accountKind,'master');
+  }
+  assert.equal([...f.room.players.values()].filter(p=>p.avatar.constellationId==='hercules').length,4);
+});
 async function fixture(t){
   const directory=await mkdtemp(join(tmpdir(),'master-accounts-')),sockets=[];let game,url;
   async function start(){game=createClassroomServer({teacherKey:key,dataDir:directory,studentHours:false});const address=await game.listen();url='http://127.0.0.1:'+address.port;}
@@ -32,7 +40,7 @@ async function fixture(t){
 test('master is a room-scoped student with LV5 base stats, finite currency and no teacher authority',async t=>{
   const f=await fixture(t),master=await f.master(),socket=await f.connect();
   const joined=await call(socket,'room:join',{code:f.code,nickname:'마스터',pin:'2468',role:'teacher'});assert.ok(joined.ok);
-  const me=joined.room.players.find(p=>p.id===joined.selfId);assert.equal(me.role,'student');assert.equal(me.accountKind,'master');assert.equal(me.avatar.level,5);
+  const me=joined.room.players.find(p=>p.id===joined.selfId);assert.equal(me.role,'student');assert.equal(me.accountKind,'master');assert.equal(me.avatar.level,5);assert.equal(me.journey.stage,1);
   assert.deepEqual(me.combat,{attackPower:20,defensePower:5});assert.deepEqual(me.vitals.hp,{current:500,max:500});assert.deepEqual(me.vitals.mp,{current:500,max:500});
   assert.equal(hasUnlimitedShards(master),true);assert.equal(formatCurrency(master,'cosmicEnergy'),'∞ (무제한)');assert.equal(master.starShards,0);assert.equal(master.cosmicEnergy,0);assert.equal(serenaEligible(master),false);
   for(const [name,data] of [['student:create',{nickname:'위조',pin:'1234'}],['master:create',{nickname:'위조',pin:'1234',constellationId:'leo'}],['student:update',{playerId:master.id,nickname:'위조'}],['shards:give',{playerId:'all',amount:100}],['room:studentLink',{}],['crafting:recipes',{level:2}],['admin:list',{}]])assert.equal((await call(socket,name,data)).ok,false,name);

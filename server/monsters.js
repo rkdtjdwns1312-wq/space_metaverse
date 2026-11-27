@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {queueDailyHunt} from './daily-missions.js';
 import {tickHomingStar,homingStarView,homingStarsView,homingVolleyView,tryHomingVolley} from './forgotten-homing-star.js';
 import {tryConstellationLinks,tickConstellationLinks} from './forgotten-constellation-links.js';
@@ -44,7 +45,7 @@ export const STAR_RECORD_ATTACK=Object.freeze({warningMs:1000,cooldownMs:3000,re
 function starRecordTargets(room,boss){
   return [...room.players.values()].filter(player=>player.connected&&!player.away&&player.mapId===boss.mapId&&
     !player.avatar?.blackStar&&ensureVitals(player)?.hp>0&&
-    (player.role!=='teacher'||boss.teacherRetaliation?.has(player.id))&&
+    canReceiveMonsterDamage(player,boss.teacherRetaliation)&&
     Math.hypot(player.x-boss.x,player.y-boss.y)<=STAR_RECORD_ATTACK.reach+RULES.radius)
     .sort((a,b)=>Math.hypot(a.x-boss.x,a.y-boss.y)-Math.hypot(b.x-boss.x,b.y-boss.y));
 }
@@ -243,8 +244,8 @@ export function damageMonster(room,target,player,power,now=Date.now(),{energyRol
 }
 function registerMonsterAttacker(room,target,player,now,retaliateTeacher){
   if(!target.attackers.size)target.nextAttackAt=Math.max(target.nextAttackAt,now+150);
-  // Teacher E and an actual sigil hit opt this particular monster into retaliation.
-  if(retaliateTeacher&&player.role==='teacher'&&!player.avatar?.teacherPreview)(target.teacherRetaliation??=new Set()).add(player.id);
+  // Preview avatars retaliate on every hit, just like students. Ordinary teacher E/sigil opts in.
+  if(player.role==='teacher'&&(player.avatar?.teacherPreview===true||retaliateTeacher))(target.teacherRetaliation??=new Set()).add(player.id);
   if(player.role!=='teacher'||target.teacherRetaliation?.has(player.id))target.attackers.set(player.id,++target.attackOrder);
   selectMonsterTarget(room,target);
 }
@@ -259,7 +260,7 @@ export function selectMonsterTarget(room,monster){
     let selected=null,distance=Infinity;
     for(const player of room.players?.values()||[]){
       if(!player.connected||player.away||player.avatar?.blackStar||player.mapId!==monster.mapId||
-        !['student','teacher'].includes(player.role)||(player.role==='teacher'&&(player.avatar?.teacherPreview||!monster.teacherRetaliation?.has(player.id)))||!(ensureVitals(player)?.hp>0))continue;
+        !['student','teacher'].includes(player.role)||!canReceiveMonsterDamage(player,monster.teacherRetaliation)||!(ensureVitals(player)?.hp>0))continue;
       const next=Math.hypot(player.x-monster.x,player.y-monster.y);
       if(next<distance){selected=player;distance=next;}
     }
@@ -271,10 +272,10 @@ export function selectMonsterTarget(room,monster){
     // 현재 공격자 목록에서 맵을 실제로 떠난 사람만 한 번 집계합니다.
     // 목록에서 제거하므로 다음 틱에 중복 집계하거나 단순 재입장을 집계하지 않습니다.
     if(player&&player.mapId!==monster.mapId)monster.mapExitCount=(monster.mapExitCount||0)+1;
-    if(!player||!player.connected||player.away||(player.role==='teacher'&&(player.avatar?.teacherPreview||!monster.teacherRetaliation?.has(id)))||player.avatar?.blackStar||player.mapId!==monster.mapId||!(ensureVitals(player)?.hp>0)){
+    if(!player||!player.connected||player.away||!canReceiveMonsterDamage(player,monster.teacherRetaliation)||player.avatar?.blackStar||player.mapId!==monster.mapId||!(ensureVitals(player)?.hp>0)){
       monster.attackers.delete(id);monster.teacherRetaliation?.delete(id);continue;
     }
-    const type=player.role==='teacher'?null:constellationOf(player.avatar.constellationId,player.avatar.level)?.type;
+    const type=player.role==='teacher'&&!player.avatar?.teacherPreview?null:constellationOf(player.avatar.constellationId,player.avatar.level)?.type;
     candidates.push({player,order,priority:type==='수호계'?0:type==='특수계'?1:2});
   }
   candidates.sort((a,b)=>a.priority-b.priority||b.order-a.order);

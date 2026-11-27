@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {DARK_STAR_SKILLS as RULE,DARK_STAR_COLOR_PAIRS} from '../shared/dark-star-skills.js';
 import {RULES,mapOf,interactionDistance,interactionReach} from '../shared/config.js';
 import {onOriginFloor} from '../shared/origin-floor.js';
@@ -9,7 +10,7 @@ import {randomUUID} from 'node:crypto';
 import {consumeTruthRecordShield} from './truth-record.js';
 
 const valid=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
-  !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
+  canReceiveMonsterDamage(p,boss.teacherRetaliation);
 const stateOf=boss=>boss.darkStarSkills??={mapId:boss.mapId,sequence:0,ready:{},aim:null,projectiles:[],paths:[],cards:[],puzzleEndsAt:null,
   triggered:0,absorptionQueue:[],absorbedColors:[],absorption:null,satellites:[]};
 // A puzzle keeps its slot until success/deadline resolution; persistent satellites do not occupy it.

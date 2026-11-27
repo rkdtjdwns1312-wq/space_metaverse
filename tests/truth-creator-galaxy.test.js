@@ -46,7 +46,7 @@ test('delayed ticks do not release the queued burst simultaneously; active fligh
   assert.equal(state.orbs.length,1,'finished first projectile removed; only one late spawn');
   assert.equal(state.orbs[0].startsAt,late);tickTruthCreatorGalaxy(f.room,f.boss,late+1);assert.equal(state.queue.length,6);
 });
-test('swept body contact instantly defeats crossed players, while Libra and teacher preview/retaliation policies remain unchanged',()=>{
+test('swept body contact instantly defeats crossed players, while Libra and preview teachers participate and ordinary teacher opt-in is preserved',()=>{
   const f=fixture();f.player.y=f.boss.y;
   const immune={...f.player,id:'immune',x:f.player.x+300,avatar:{level:1,constellationId:'libra'},battleVitals:undefined};ensureVitals(immune);
   immune.libraAura={mapId:immune.mapId,endsAt:now+30000,size:20,radius:20};f.room.players.set(immune.id,immune);
@@ -55,7 +55,7 @@ test('swept body contact instantly defeats crossed players, while Libra and teac
   f.boss.teacherRetaliation=new Set(['retaliating','preview']);tryTruthCreatorGalaxy(f.room,f.boss,f.player,now,()=>0);
   const shot=f.boss.truthCreatorGalaxy.orbs[0],crossAt=now+(f.player.x-shot.x+400)/RULE.speed*1000;
   const hits=tickTruthCreatorGalaxy(f.room,f.boss,crossAt);assert(hits.some(hit=>hit.targetId==='a'&&hit.defeated));assert(hits.some(hit=>hit.targetId==='retaliating'&&hit.defeated));
-  assert(hits.some(hit=>hit.targetId==='immune'&&hit.immune));assert(f.room.players.get('teacher').battleVitals.hp>0);assert(f.room.players.get('preview').battleVitals.hp>0);
+  assert(hits.some(hit=>hit.targetId==='immune'&&hit.immune));assert(f.room.players.get('teacher').battleVitals.hp>0);assert.equal(f.room.players.get('preview').battleVitals.hp,0);
 });
 test('death, map change, departure and combat reset clear both flying galaxies and their future spawn queue',()=>{
   for(const alter of [f=>f.boss.hp=0,f=>f.boss.mapId='space-plaza',f=>f.player.mapId='space-plaza',f=>f.player.connected=false,f=>f.player.battleVitals.hp=0]){

@@ -31,20 +31,20 @@ function constellationCount(room, constellationId, exceptId = null) {
 }
 
 const constellationLimit=()=>CONSTELLATION_LIMIT;
+const hasConstellationSlot=(room,id,exceptId)=>constellationLimit()===null||constellationCount(room,id,exceptId)<constellationLimit();
 
 function quotaMessage(name) {
-  return name + '는 이미 세 친구가 선택했어요.';
+  return name + '는 이미 '+constellationLimit()+'명의 친구가 선택했어요.';
 }
 
 function optionsFor(room, player) {
   const currentLegacy=constellationOf(player.avatar?.constellationId);
   const values=currentLegacy?.legacy?[...CONSTELLATIONS,currentLegacy]:CONSTELLATIONS;
   const teacher=isTeacher(player);
-  const limit=constellationLimit();
   return values.map(value => {
     const count = constellationCount(room, value.id);
     const current = player.avatar?.constellationId === value.id;
-    return { ...constellationOf(value.id, teacher?Math.max(2,Math.min(5,player.avatar.level)):player.avatar.level), count, available: !value.legacy && (teacher || current || count < limit), current };
+    return { ...constellationOf(value.id, teacher?Math.max(2,Math.min(5,player.avatar.level)):player.avatar.level), count, available: !value.legacy && (teacher || current || hasConstellationSlot(room,value.id)), current };
   });
 }
 
@@ -86,7 +86,7 @@ export function changeConstellation(room, player, { constellationId } = {},now=D
   ensure(selected&&!selected.legacy, '현재 선택할 수 있는 별자리를 골라주세요.');
   ensure(player.avatar.level >= 2, 'LV1은 첫 진화를 할 때 별자리를 고를 수 있어요.');
   ensure(player.avatar.constellationId!==selected.id,'지금과 다른 별자리를 골라주세요.');
-  ensure(constellationCount(room, selected.id, player.id) < constellationLimit(),
+  ensure(hasConstellationSlot(room, selected.id, player.id),
     quotaMessage(selected.name));
   const cost=shardCost(player,player.avatar.level*2);
   ensure(Number.isSafeInteger(player.starShards)&&player.starShards>=cost,
@@ -113,7 +113,7 @@ export function evolveConstellation(room, player, { constellationId } = {}) {
   if (player.avatar.level === 1) {
     const selected = constellationOf(constellationId);
     ensure(selected&&!selected.legacy, '첫 진화에 사용할 별자리를 골라주세요.');
-    ensure(constellationCount(room, selected.id, player.id) < constellationLimit(),
+    ensure(hasConstellationSlot(room, selected.id, player.id),
       quotaMessage(selected.name));
     selectedId = selected.id;
   } else {

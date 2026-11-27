@@ -61,8 +61,8 @@ test('teacher E uses normal boss pending-death persistence, while ordinary death
  const b=fixture('spirit-king');b.room.persistBossDefeats=true;b.m.hp=1;castTeacherSkill(b.room,b.p,NOW);assert.equal(b.m.hp,0);assert(b.room.pendingBossDeaths.has(b.m.id));assert.equal(b.room.pendingBossDeaths.get(b.m.id).contributors[0][0],b.p.id);
 });
 
-test('teacher E retaliation covers boss hits and ends on disconnect, away, map exit, defeat or preview; Q does not opt in',()=>{
+test('teacher E retaliation covers boss hits and ends on disconnect, away, map exit, defeat ; ordinary Q does not opt in',()=>{
  const f=fixture('spirit-king'),other={...f.p,id:'observer',avatar:{level:6}};f.room.players.set(other.id,other);castTeacherSkill(f.room,f.p,NOW);moveMonsters(f.room,NOW+200,()=>0);assert(f.m.pendingAttack);const hits=moveMonsters(f.room,f.m.pendingAttack.endsAt,()=>0);assert.deepEqual(hits.map(h=>h.targetId),[f.p.id]);assert.equal(hits[0].damage,30);assert.equal(ensureVitals(other).hp,1000);
- for(const leave of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>ensureVitals(p).hp=0,p=>p.avatar.teacherPreview=true]){const {p,room,m}=fixture();castTeacherSkill(room,p,NOW);leave(p);assert.equal(selectMonsterTarget(room,m),null);assert.equal(m.attackers.size,0);assert.equal(m.teacherRetaliation.size,0);assert.equal(m.hp,m.maxHp);}
- const {p,room,m}=fixture();damageMonster(room,m,p,100,NOW);assert.equal(m.targetId,null);p.avatar.teacherPreview=true;damageMonster(room,m,p,100,NOW+100,{retaliateTeacher:true});assert.equal(m.targetId,null);
+ for(const leave of [p=>p.connected=false,p=>p.away=true,p=>p.mapId='space-plaza',p=>ensureVitals(p).hp=0]){const {p,room,m}=fixture();castTeacherSkill(room,p,NOW);leave(p);assert.equal(selectMonsterTarget(room,m),null);assert.equal(m.attackers.size,0);assert.equal(m.teacherRetaliation.size,0);assert.equal(m.hp,m.maxHp);}
+ const {p,room,m}=fixture();damageMonster(room,m,p,100,NOW);assert.equal(m.targetId,null);p.avatar.teacherPreview=true;damageMonster(room,m,p,100,NOW+100);assert.equal(m.targetId,p.id);
 });

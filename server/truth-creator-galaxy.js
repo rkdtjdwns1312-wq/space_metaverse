@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {RULES,mapOf} from '../shared/config.js';
 import {ensureVitals} from './vitals.js';
 import {truthCreatorBlueProtected} from './truth-creator-blue.js';
@@ -6,7 +7,7 @@ import {randomUUID} from 'node:crypto';
 
 export const TRUTH_CREATOR_GALAXY=Object.freeze({mana:30,cooldownMs:60000,count:8,minIntervalMs:1000,maxIntervalMs:3000,radius:96,speed:210});
 const eligible=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0&&
-  !(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
+  canReceiveMonsterDamage(p,boss.teacherRetaliation);
 const roll=random=>Math.max(0,Math.min(.999999999,Number(random())||0));
 const stateOf=boss=>boss.truthCreatorGalaxy??={mapId:boss.mapId,readyAt:0,nextSpawnAt:null,queue:[],orbs:[]};
 export function clearTruthCreatorGalaxy(boss){boss.truthCreatorGalaxy=null;}

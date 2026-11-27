@@ -68,7 +68,7 @@ export function createTruthCreatorBlueUI({request,getKey,getKeyLabel,onClose=()=
     },
     sync(monsters,player){
       if(!targetId)return;
-      if(!player||player.mapId!==mapId||player.away||player.avatar?.blackStar||player.avatar?.teacherPreview||player.vitals?.defeated||player.vitals?.hp?.current<=0){close();return;}
+      if(!player||player.mapId!==mapId||player.away||player.avatar?.blackStar||player.vitals?.defeated||player.vitals?.hp?.current<=0){close();return;}
       if(!Array.isArray(monsters))return;
       const boss=monsters.find(monster=>monster.alive&&monster.mapId===mapId&&monster.truthCreatorEffects?.blueOrbs?.some(item=>item.id===targetId));
       if(!boss){close('removed');return;}

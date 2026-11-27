@@ -1,3 +1,4 @@
+import {canReceiveMonsterDamage} from './monster-targeting.js';
 import {randomUUID} from 'node:crypto';
 import {TRUTH_CREATOR_BLUE as RULE,TRUTH_CREATOR_BLUE_ACTIONS as ACTIONS} from '../shared/truth-creator-blue.js';
 import {TRUTH_CREATOR} from '../shared/truth-creator.js';
@@ -8,8 +9,8 @@ import {defeatRecordPlayer} from './star-record-challenge.js';
 import {ensure} from './rooms.js';
 
 const present=(boss,p)=>p?.connected&&!p.away&&!p.avatar?.blackStar&&p.mapId===boss.mapId&&ensureVitals(p)?.hp>0;
-const targetable=(boss,p)=>present(boss,p)&&!(p.role==='teacher'&&(p.avatar?.teacherPreview||!boss.teacherRetaliation?.has(p.id)));
-const canInteract=(boss,p)=>present(boss,p)&&['student','teacher'].includes(p.role)&&!p.avatar?.teacherPreview;
+const targetable=(boss,p)=>present(boss,p)&&canReceiveMonsterDamage(p,boss.teacherRetaliation);
+const canInteract=(boss,p)=>present(boss,p)&&['student','teacher'].includes(p.role);
 const stateOf=boss=>boss.truthCreatorBlue??={mapId:boss.mapId,readyAt:0,orbs:[]};
 const roll=random=>Math.max(0,Math.min(.999999999,Number(random())||0));
 export function clearTruthCreatorBlue(boss){boss.truthCreatorBlue=null;}
@@ -71,7 +72,7 @@ function requireOrb(room,player,id,now){
 }
 export function openTruthCreatorBlue(room,player,orbId,now=Date.now()){
   const {state,orb}=requireOrb(room,player,orbId,now),interactionToken=randomUUID();
-  if(player.role==='student'&&!orb.openedBy.has(player.id)){
+  if((player.role==='student'||(player.role==='teacher'&&player.avatar?.teacherPreview===true))&&!orb.openedBy.has(player.id)){
     orb.openedBy.add(player.id);
     state.protectedUntil.set(player.id,now+RULE.protectionMs);
   }
@@ -80,7 +81,7 @@ export function openTruthCreatorBlue(room,player,orbId,now=Date.now()){
 }
 export function truthCreatorBlueProtected(boss,player,now){
   const state=boss.truthCreatorBlue;
-  return player.role==='student'&&player.mapId===boss.mapId&&state?.mapId===boss.mapId&&now<(state.protectedUntil?.get(player.id)??0);
+  return (player.role==='student'||(player.role==='teacher'&&player.avatar?.teacherPreview===true))&&player.mapId===boss.mapId&&state?.mapId===boss.mapId&&now<(state.protectedUntil?.get(player.id)??0);
 }
 export function inputTruthCreatorBlue(room,player,data,now=Date.now()){
   const {state,orb}=requireOrb(room,player,data?.orbId,now),session=orb.sessions.get(player.id);

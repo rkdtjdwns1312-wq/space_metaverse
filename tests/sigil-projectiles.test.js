@@ -26,10 +26,10 @@ for(const role of ['student','teacher'])test(`인장 실제 명중 ${role}: 피�
  const reply=moveMonsters(room,START+2000,()=>.99);assert(reply.some(h=>h.targetId===p.id));assert(ensureVitals(p).hp<hp);
 });
 
-test('고스트 교사의 인장 명중은 고스트를 추적하지 않는다',()=>{
+test('별자리 체험 교사의 인장 명중도 몬스터 반격을 시작한다',()=>{
  const {room,p}=fixture();p.role='teacher';p.avatar.teacherPreview=true;
  const monster=[...monstersOf({...room,monsters:undefined},START).values()].find(m=>m.mapId===p.mapId);room.monsters.set(monster.id,monster);
- const hit=resolveSigilHit(room,p,[{kind:'monster',entity:monster}],1,START);assert.equal(hit.targets.length,1);assert.equal(monster.targetId,null);
+ const hit=resolveSigilHit(room,p,[{kind:'monster',entity:monster}],1,START);assert.equal(hit.targets.length,1);assert.equal(monster.targetId,p.id);
 });
 function fixture(){
   const p={id:'sigil',role:'student',connected:true,away:false,mapId:'star-origin-1',x:500,y:450,
